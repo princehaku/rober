@@ -1,0 +1,8 @@
+# Record a waypoint during manual driving
+string name
+int8 type           # 0=patrol, 1=trash_pickup, 2=trash_bin, 3=charging
+string comment
+---
+bool success
+string message
+int32 waypoint_id

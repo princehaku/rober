@@ -1,0 +1,8 @@
+# Register a location as a trash bin
+float64 x
+float64 y
+float64 theta
+string name
+---
+bool success
+string message
