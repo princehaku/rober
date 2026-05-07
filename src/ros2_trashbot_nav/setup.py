@@ -25,6 +25,11 @@ setup(
             'waypoint_manager = ros2_trashbot_nav.waypoint_manager:main',
             'nav_to_goal = ros2_trashbot_nav.nav_to_goal:main',
             'map_recorder = ros2_trashbot_nav.map_recorder:main',
+            'fixed_route_autonomy = ros2_trashbot_nav.fixed_route_autonomy:main',
+            'route_data_recorder = ros2_trashbot_nav.route_data_recorder:main',
+            'route_csv_to_yaml = ros2_trashbot_nav.route_csv_to_yaml:main',
+            'keyframe_camera_sim = ros2_trashbot_nav.keyframe_camera_sim:main',
+            'route_debug_web = ros2_trashbot_nav.route_debug_web:main',
         ],
     },
 )

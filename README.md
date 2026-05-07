@@ -135,6 +135,92 @@ ros2 action send_goal /trashbot/patrol \
   "{use_saved_map: true, learn_mode: false}"
 ```
 
+### 6. 固定路线（小区场景）+ 前期视频数据
+
+如果扔垃圾路线固定，可用“路线点 + 视频关键帧”方案：
+
+1) **先录数据**（人工驾驶时执行）：
+
+```bash
+ros2 run ros2_trashbot_nav route_data_recorder \
+  --ros-args \
+  -p output_dir:=~/.ros/trashbot_runs/run_001 \
+  -p min_distance_m:=0.8
+```
+
+会自动生成：
+- `~/.ros/trashbot_runs/run_001/route.csv`（轨迹点）
+- `~/.ros/trashbot_runs/run_001/keyframes/000.jpg...`（关键帧）
+
+2) 再运行固定路线节点：
+
+```bash
+ros2 run ros2_trashbot_nav fixed_route_autonomy \
+  --ros-args \
+  -p route_file:=~/.ros/trashbot_runs/run_001/route.csv \
+  -p keyframe_dir:=~/.ros/trashbot_runs/run_001/keyframes \
+  -p enable_visual_gate:=true \
+  -p visual_match_threshold:=25
+```
+
+可选：将录制的 `route.csv` 导出为标准 `fixed_route.yaml`：
+
+```bash
+ros2 run ros2_trashbot_nav route_csv_to_yaml \
+  --ros-args \
+  -p input_csv:=~/.ros/trashbot_runs/run_001/route.csv \
+  -p output_yaml:=~/.ros/trashbot_maps/fixed_route.yaml
+```
+
+### 7. 模拟测试（不接真实底盘）
+
+可以在没有真实车体时做“视觉+路线”联调：
+
+终端 A：发布关键帧当作相机输入
+```bash
+ros2 run ros2_trashbot_nav keyframe_camera_sim \
+  --ros-args -p keyframe_dir:=~/.ros/trashbot_runs/run_001/keyframes
+```
+
+终端 B：运行固定路线（dry-run，不调用 Nav2）
+```bash
+ros2 run ros2_trashbot_nav fixed_route_autonomy \
+  --ros-args \
+  -p route_file:=~/.ros/trashbot_runs/run_001/route.csv \
+  -p keyframe_dir:=~/.ros/trashbot_runs/run_001/keyframes \
+  -p enable_visual_gate:=true \
+  -p dry_run:=true
+```
+
+如果日志持续打印 `[DRY_RUN] checkpoint passed`，说明你的前期数据可被视觉闸门识别，流程可跑通。
+
+### 8. Web 页面还原与 Debug
+
+支持一个轻量 Web 页面查看 fixed-route 运行状态（当前 checkpoint、总数、是否 dry-run、状态机状态）：
+
+终端 C：启动 debug web
+```bash
+TRASHBOT_STATUS_FILE=/tmp/trashbot_fixed_route_status.json \
+TRASHBOT_WEB_PORT=8765 \
+ros2 run ros2_trashbot_nav route_debug_web
+```
+
+浏览器打开：
+```text
+http://<你的主机IP>:8765
+```
+
+`fixed_route_autonomy` 会持续写入状态文件（默认 `/tmp/trashbot_fixed_route_status.json`），web 每秒自动刷新。
+该节点已改为**非阻塞轮询导航结果**，避免过去 busy-wait 占满 CPU 的问题。
+
+如果你已有人工整理的 YAML，也可继续使用：
+
+```yaml
+waypoints:
+  - {frame_id: map, x: 1.0, y: 2.0, z: 0.0, qx: 0.0, qy: 0.0, qz: 0.0, qw: 1.0}
+  - {frame_id: map, x: 3.2, y: 2.7, z: 0.0, qx: 0.0, qy: 0.0, qz: 0.7, qw: 0.7}
+```
+
 ## 引脚分配 (ESP32 DevKit)
 
 | 功能 | 引脚 | 备注 |
@@ -157,6 +243,13 @@ ros2 action send_goal /trashbot/patrol \
 - **前向避障**: 超声波 < 15cm 紧急停止
 - **心跳**: esp32_bridge 定期检查串口连通性
 - **急停服务**: `ros2 service call /trashbot/stop std_srvs/srv/Trigger`
+
+## 当前“自动驾驶”能力边界
+
+- 当前导航能力主要依赖 **SLAM + Nav2 + 里程计/IMU/超声波**，可实现室内低速自主巡航与到点导航。
+- 视觉节点 `trash_detector.py` 仍为 **颜色阈值启发式方案**（非深度学习目标检测），适合演示，不适合复杂光照/遮挡场景。
+- 因此系统目前属于 **L2/L2.5 级别的场地机器人自主**，不是可在开放道路运行的“自动驾驶汽车”。
+- 若要提升到更高等级自主能力，建议至少补齐：多传感器融合（激光/深度相机）、学习型检测模型（YOLO/RT-DETR）、动态障碍预测、系统级冗余与功能安全设计。
 
 ## 依赖
 

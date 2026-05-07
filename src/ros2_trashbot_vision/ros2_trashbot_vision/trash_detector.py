@@ -1,12 +1,12 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
 from ros2_trashbot_interfaces.msg import TrashStatus
 
 import numpy as np
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
+from typing import List, Dict
 
 
 class TrashDetector(Node):
@@ -24,6 +24,12 @@ class TrashDetector(Node):
 
         self.declare_parameter('detect_bins', True)
         self.detect_bins = self.get_parameter('detect_bins').value
+
+        self.declare_parameter('min_blob_area_ratio', 0.01)
+        self.min_blob_area_ratio = float(self.get_parameter('min_blob_area_ratio').value)
+
+        self.declare_parameter('max_publish_per_frame', 5)
+        self.max_publish_per_frame = int(self.get_parameter('max_publish_per_frame').value)
 
         self.bridge = CvBridge()
 
@@ -48,6 +54,9 @@ class TrashDetector(Node):
         # Detection pipeline
         detections = self._detect_objects(frame)
 
+        if len(detections) > self.max_publish_per_frame:
+            detections = sorted(detections, key=lambda d: d['confidence'], reverse=True)[:self.max_publish_per_frame]
+
         for det in detections:
             trash_msg = TrashStatus()
             trash_msg.frame_id = msg.header.frame_id
@@ -65,7 +74,7 @@ class TrashDetector(Node):
                 f'type={det["trash_type"]} conf={det["confidence"]}% '
                 f'at ({det["x"]:.2f}, {det["y"]:.2f})')
 
-    def _detect_objects(self, frame) -> list[dict]:
+    def _detect_objects(self, frame) -> List[Dict]:
         """Run object detection on the frame.
 
         Production: replace with YOLO/SSD model.
@@ -80,10 +89,11 @@ class TrashDetector(Node):
         detections.extend(self._find_blobs(dark_mask, frame, trash_type=3))
 
         # Detect blue recycling bins
-        blue_lower = np.array([100, 50, 50])
-        blue_upper = np.array([130, 255, 255])
-        blue_mask = cv2.inRange(hsv, blue_lower, blue_upper)
-        detections.extend(self._find_blobs(blue_mask, frame, trash_type=2, is_bin=True))
+        if self.detect_bins:
+            blue_lower = np.array([100, 50, 50])
+            blue_upper = np.array([130, 255, 255])
+            blue_mask = cv2.inRange(hsv, blue_lower, blue_upper)
+            detections.extend(self._find_blobs(blue_mask, frame, trash_type=2, is_bin=True))
 
         # Detect green organic waste
         green_lower = np.array([35, 40, 40])
@@ -93,13 +103,17 @@ class TrashDetector(Node):
 
         return detections
 
-    def _find_blobs(self, mask, frame, trash_type=0, is_bin=False) -> list[dict]:
+    def _find_blobs(self, mask, frame, trash_type=0, is_bin=False) -> List[Dict]:
         """Find connected blobs in mask and return detections above size threshold."""
         detections = []
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        kernel = np.ones((5, 5), np.uint8)
+        clean_mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        clean_mask = cv2.morphologyEx(clean_mask, cv2.MORPH_CLOSE, kernel)
+
+        contours, _ = cv2.findContours(clean_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         h, w = frame.shape[:2]
-        min_area = (h * w) * 0.01  # at least 1% of image
+        min_area = (h * w) * self.min_blob_area_ratio
 
         for cnt in contours:
             area = cv2.contourArea(cnt)

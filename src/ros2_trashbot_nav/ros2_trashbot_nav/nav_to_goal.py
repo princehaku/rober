@@ -3,6 +3,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 from nav2_simple_commander.robot_navigator import BasicNavigator
 import tf_transformations
+from typing import List
 
 
 class NavToGoal(Node):
@@ -29,7 +30,7 @@ class NavToGoal(Node):
         self.get_logger().info(f'Navigation {"succeeded" if success else "failed"}')
         return success
 
-    def go_through_poses(self, poses: list[PoseStamped]) -> bool:
+    def go_through_poses(self, poses: List[PoseStamped]) -> bool:
         """Follow a sequence of poses."""
         self.navigator.followWaypoints(poses)
 
