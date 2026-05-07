@@ -1,5 +1,4 @@
 import os
-import csv
 import json
 import yaml
 from typing import List, Dict
@@ -11,6 +10,8 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from nav2_simple_commander.robot_navigator import BasicNavigator
 from geometry_msgs.msg import PoseStamped
+
+from ros2_trashbot_nav.route_utils import load_waypoints_from_csv
 
 
 class FixedRouteAutonomy(Node):
@@ -59,32 +60,40 @@ class FixedRouteAutonomy(Node):
         if not os.path.exists(path):
             self.get_logger().error(f'Route file not found: {path}')
             return []
-        if path.endswith('.csv'):
-            return self._load_route_csv(path)
-        return self._load_route_yaml(path)
+        try:
+            if path.endswith('.csv'):
+                return self._load_route_csv(path)
+            return self._load_route_yaml(path)
+        except (OSError, ValueError, yaml.YAMLError) as exc:
+            self.get_logger().error(f'Failed loading route file {path}: {exc}')
+            return []
 
     def _load_route_yaml(self, path: str) -> List[PoseStamped]:
         with open(path, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f) or {}
-        return [self._row_to_pose(item) for item in data.get('waypoints', [])]
+        waypoints = data.get('waypoints', [])
+        if not isinstance(waypoints, list):
+            raise ValueError('route YAML field "waypoints" must be a list')
+        return [self._row_to_pose(item) for item in waypoints]
 
     def _load_route_csv(self, path: str) -> List[PoseStamped]:
-        poses = []
-        with open(path, 'r', encoding='utf-8') as f:
-            for row in csv.DictReader(f):
-                poses.append(self._row_to_pose(row))
-        return poses
+        return [self._row_to_pose(row) for row in load_waypoints_from_csv(path)]
 
     def _row_to_pose(self, row: Dict) -> PoseStamped:
+        if not isinstance(row, dict):
+            raise ValueError(f'route waypoint must be a mapping, got {type(row).__name__}')
         pose = PoseStamped()
-        pose.header.frame_id = row.get('frame_id', 'map')
-        pose.pose.position.x = float(row.get('x', 0.0))
-        pose.pose.position.y = float(row.get('y', 0.0))
-        pose.pose.position.z = float(row.get('z', 0.0))
-        pose.pose.orientation.x = float(row.get('qx', 0.0))
-        pose.pose.orientation.y = float(row.get('qy', 0.0))
-        pose.pose.orientation.z = float(row.get('qz', 0.0))
-        pose.pose.orientation.w = float(row.get('qw', 1.0))
+        pose.header.frame_id = row.get('frame_id') or 'map'
+        try:
+            pose.pose.position.x = float(row.get('x') or 0.0)
+            pose.pose.position.y = float(row.get('y') or 0.0)
+            pose.pose.position.z = float(row.get('z') or 0.0)
+            pose.pose.orientation.x = float(row.get('qx') or 0.0)
+            pose.pose.orientation.y = float(row.get('qy') or 0.0)
+            pose.pose.orientation.z = float(row.get('qz') or 0.0)
+            pose.pose.orientation.w = float(row.get('qw') or 1.0)
+        except ValueError as exc:
+            raise ValueError(f'invalid numeric waypoint field: {row}') from exc
         return pose
 
     def _load_keyframes(self, count: int):
@@ -171,8 +180,13 @@ class FixedRouteAutonomy(Node):
             'enable_visual_gate': self.enable_visual_gate,
         }
         try:
-            with open(self.debug_status_file, 'w', encoding='utf-8') as f:
+            status_dir = os.path.dirname(self.debug_status_file)
+            if status_dir:
+                os.makedirs(status_dir, exist_ok=True)
+            temp_file = f'{self.debug_status_file}.tmp'
+            with open(temp_file, 'w', encoding='utf-8') as f:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
+            os.replace(temp_file, self.debug_status_file)
         except Exception as exc:
             self.get_logger().warn(f'Failed writing debug status: {exc}')
 

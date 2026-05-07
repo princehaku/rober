@@ -1,9 +1,8 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer
-from geometry_msgs.msg import PoseStamped, Twist
+from geometry_msgs.msg import Twist
 from ros2_trashbot_interfaces.action import TrashCollection
-import time
 
 
 class TrashCollectionServer(Node):

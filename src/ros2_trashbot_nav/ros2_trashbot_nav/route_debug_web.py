@@ -49,8 +49,15 @@ def make_handler(status_file: str):
                 if not os.path.exists(status_file):
                     self._send_json({'state': 'missing_status_file', 'status_file': status_file})
                     return
-                with open(status_file, 'r', encoding='utf-8') as f:
-                    self._send_json(json.load(f))
+                try:
+                    with open(status_file, 'r', encoding='utf-8') as f:
+                        self._send_json(json.load(f))
+                except (OSError, json.JSONDecodeError) as exc:
+                    self._send_json({
+                        'state': 'invalid_status_file',
+                        'status_file': status_file,
+                        'error': str(exc),
+                    })
                 return
             self.send_response(404)
             self.end_headers()

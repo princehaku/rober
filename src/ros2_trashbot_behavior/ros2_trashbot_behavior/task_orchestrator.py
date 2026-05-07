@@ -5,10 +5,9 @@ from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 
 from ros2_trashbot_interfaces.action import TrashCollection, Patrol
-from ros2_trashbot_interfaces.msg import TrashStatus, Waypoint, WaypointList, TaskResult
+from ros2_trashbot_interfaces.msg import TrashStatus, WaypointList
 from ros2_trashbot_interfaces.srv import RecordWaypoint
 
-import time
 from enum import Enum
 
 

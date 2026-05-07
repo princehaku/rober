@@ -11,8 +11,16 @@
   <buildtool_depend>ament_python</buildtool_depend>
 
   <depend>rclpy</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
   <depend>nav2_simple_commander</depend>
   <depend>ros2_trashbot_interfaces</depend>
+  <depend>sensor_msgs</depend>
+  <depend>cv_bridge</depend>
+  <depend>ament_index_python</depend>
+  <depend>tf_transformations</depend>
+  <depend>python3-opencv</depend>
+  <depend>python3-yaml</depend>
 
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>

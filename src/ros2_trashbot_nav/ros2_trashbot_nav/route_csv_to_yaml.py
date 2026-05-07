@@ -23,7 +23,9 @@ class RouteCsvToYaml(Node):
             return False
         waypoints = load_waypoints_from_csv(self.input_csv, self.frame_id)
         import yaml
-        os.makedirs(os.path.dirname(self.output_yaml), exist_ok=True)
+        output_dir = os.path.dirname(self.output_yaml)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
         with open(self.output_yaml, 'w', encoding='utf-8') as f:
             yaml.safe_dump({'waypoints': waypoints}, f, sort_keys=False)
         self.get_logger().info(

@@ -4,8 +4,8 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+from launch.substitutions import PathJoinSubstitution
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-import os
 
 
 def generate_launch_description():
@@ -22,14 +22,25 @@ def generate_launch_description():
         'patrol_interval', default_value='300',
         description='Seconds between patrol cycles')
 
+    waypoint_file_arg = DeclareLaunchArgument(
+        'waypoint_file',
+        default_value='~/.ros/trashbot_maps/waypoints.yaml',
+        description='Path to saved waypoint YAML')
+
     use_sim_time = LaunchConfiguration('use_sim_time')
     map_file = LaunchConfiguration('map_file')
-    patrol_interval = LaunchConfiguration('patrol_interval')
+    waypoint_file = LaunchConfiguration('waypoint_file')
+    nav2_params_file = PathJoinSubstitution([
+        FindPackageShare('ros2_trashbot_nav'),
+        'config',
+        'nav2_params.yaml',
+    ])
 
     return LaunchDescription([
         use_sim_time_arg,
         map_file_arg,
         patrol_interval_arg,
+        waypoint_file_arg,
 
         # --- Hardware Bridge (ESP32 <-> ROS2) ---
         Node(
@@ -52,9 +63,7 @@ def generate_launch_description():
             launch_arguments={
                 'map': map_file,
                 'use_sim_time': use_sim_time,
-                'params_file': os.path.join(
-                    FindPackageShare('ros2_trashbot_nav').perform(None),
-                    'config', 'nav2_params.yaml'),
+                'params_file': nav2_params_file,
             }.items(),
         ),
 
@@ -66,7 +75,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'use_sim_time': use_sim_time,
-                'map_file': map_file.replace('.yaml', '_waypoints.yaml'),
+                'waypoint_file': waypoint_file,
             }],
         ),
 
@@ -84,15 +93,6 @@ def generate_launch_description():
             package='ros2_trashbot_behavior',
             executable='task_orchestrator',
             name='task_orchestrator',
-            output='screen',
-            parameters=[{'use_sim_time': use_sim_time}],
-        ),
-
-        # Trash collection server
-        Node(
-            package='ros2_trashbot_behavior',
-            executable='trash_collection_server',
-            name='trash_collection_server',
             output='screen',
             parameters=[{'use_sim_time': use_sim_time}],
         ),

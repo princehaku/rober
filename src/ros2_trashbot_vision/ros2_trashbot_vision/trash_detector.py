@@ -20,16 +20,19 @@ class TrashDetector(Node):
         camera_topic = self.get_parameter('camera_topic').value
 
         self.declare_parameter('detection_confidence', 70)
-        self.min_confidence = self.get_parameter('detection_confidence').value
+        self.min_confidence = int(self.get_parameter('detection_confidence').value)
+        self.min_confidence = max(0, min(self.min_confidence, 100))
 
         self.declare_parameter('detect_bins', True)
-        self.detect_bins = self.get_parameter('detect_bins').value
+        self.detect_bins = bool(self.get_parameter('detect_bins').value)
 
         self.declare_parameter('min_blob_area_ratio', 0.01)
         self.min_blob_area_ratio = float(self.get_parameter('min_blob_area_ratio').value)
+        self.min_blob_area_ratio = max(0.0001, min(self.min_blob_area_ratio, 1.0))
 
         self.declare_parameter('max_publish_per_frame', 5)
         self.max_publish_per_frame = int(self.get_parameter('max_publish_per_frame').value)
+        self.max_publish_per_frame = max(1, self.max_publish_per_frame)
 
         self.bridge = CvBridge()
 
@@ -49,6 +52,9 @@ class TrashDetector(Node):
             frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         except CvBridgeError as e:
             self.get_logger().error(f'CvBridge error: {e}')
+            return
+        if frame is None or frame.size == 0:
+            self.get_logger().warn('Received empty camera frame')
             return
 
         # Detection pipeline
@@ -127,7 +133,8 @@ class TrashDetector(Node):
             # Estimate depth from blob size (simple approximation)
             depth = min(bw, bh) / max(w, h) * 5.0  # crude meters estimate
 
-            confidence = min(int(area / (h * w) * 200), 100)
+            area_ratio = area / (h * w)
+            confidence = min(int(50 + (area_ratio / self.min_blob_area_ratio) * 25), 100)
             if confidence < self.min_confidence:
                 continue
 

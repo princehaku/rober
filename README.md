@@ -1,158 +1,90 @@
-# ros_rbs - Autonomous Trash Collection Robot
+# ros_rbs - ROS2 自主垃圾收集机器人
 
-ROS2 自主导航扔垃圾小车。**Orange Pi (Ubuntu) + ESP32** 上下位机架构。
+面向室内或小区固定路线场景的 ROS2 自主导航扔垃圾小车项目。系统采用 Orange Pi + ESP32 上下位机架构：Orange Pi 运行 ROS2 Humble、Nav2、SLAM、视觉检测和任务编排；ESP32 负责电机、编码器、超声波、蜂鸣器和串口协议。
 
-## 硬件拓扑
+## 架构
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                     Orange Pi (Ubuntu 22.04)                      │
-│  ┌─────────┐  ┌──────────┐  ┌───────────┐  ┌─────────────────┐  │
-│  │  Nav2   │  │  SLAM   │  │  Vision   │  │  Behavior Tree  │  │
-│  │ 路径规划│  │ Toolbox │  │ cv_bridge │  │  任务编排/状态机  │  │
-│  └────┬────┘  └────┬─────┘  └─────┬─────┘  └────────┬────────┘  │
-│       └────────────┴──────────────┴─────────────────┘            │
-│                          │ /cmd_vel, /odom                        │
-│                     ┌────┴─────┐                                  │
-│                     │ esp32_   │  ROS2 ↔ 二进制串口协议            │
-│                     │ bridge   │  115200 baud /dev/ttyUSB0        │
-│                     └────┬─────┘                                  │
-└──────────────────────────┼───────────────────────────────────────┘
-                           │ UART (TX/RX)
-                           │
-┌──────────────────────────┼───────────────────────────────────────┐
-│                     ESP32 (下位机)                                │
-│                     ┌────┴─────┐                                  │
-│                     │ main.cpp │                                  │
-│                     └────┬─────┘                                  │
-│        ┌───────────┬──────┴──────┬───────────────┐                │
-│        │           │             │               │                │
-│   ┌────┴────┐ ┌────┴────┐  ┌────┴────┐    ┌────┴────┐           │
-│   │ 左电机   │ │ 右电机   │  │ 轮式编码  │    │ 超声波x3│           │
-│   │ TB6612  │ │ TB6612  │  │ 11PPR   │    │ 前左右   │           │
-│   └─────────┘ └─────────┘  └─────────┘    └─────────┘           │
-│                                                                   │
-│   ┌─────────────────┐  ┌─────────────┐  ┌─────────────┐          │
-│   │ IMU (BNO055)   │  │ 蜂鸣器       │  │ 摄像头(USB)  │          │
-│   │ 航向角         │  │ 状态提示      │  │ 直连Orange Pi│          │
-│   └─────────────────┘  └─────────────┘  └─────────────┘          │
-└───────────────────────────────────────────────────────────────────┘
-```
+项目由 6 个主要模块组成：
 
-## 串口通信协议
+- `ros2_trashbot_interfaces`：自定义 msg、srv、action。
+- `ros2_trashbot_hardware`：ESP32 串口桥接，发布里程计和传感器状态，接收速度控制。
+- `ros2_trashbot_nav`：Nav2 导航、航点管理、地图保存、固定路线记录与回放。
+- `ros2_trashbot_vision`：基于摄像头的垃圾检测，当前为 OpenCV 阈值启发式方案。
+- `ros2_trashbot_behavior`：任务编排状态机和垃圾收集 action server。
+- `ros2_trashbot_bringup`：学习模式、自主模式和完整系统启动文件。
 
-ESP32 ↔ Orange Pi 使用二进制协议，115200 baud：
+## 工作流程
 
-```
-[0xAA 0x55] [seq] [type/cmd] [len] [payload...] [checksum]
-```
+1. 学习阶段：启动 SLAM，人工驾驶小车记录地图、路线点和关键帧。
+2. 数据整理：将记录的 `route.csv` 转为固定路线 YAML，或直接使用 CSV。
+3. 自主阶段：加载地图和路线，按航点巡逻，结合视觉检测和任务状态机执行垃圾收集。
+4. 调试阶段：可用 dry-run 和 debug web 验证固定路线与关键帧匹配。
 
-| 方向 | 类型 | 说明 |
-|------|------|------|
-| ESP32 → Pi | 0x01 ODOM | 里程计 (x, y, theta, enc_l, enc_r) |
-| ESP32 → Pi | 0x02 ULTRASONIC | 超声波 (front, left, right) |
-| ESP32 → Pi | 0x03 IMU | 航向角 (heading) |
-| ESP32 → Pi | 0x04 STATUS | 状态 (state, watchdog, battery) |
-| Pi → ESP32 | 0x01 STOP | 停止电机 |
-| Pi → ESP32 | 0x02 DRIVE | 直接 PWM (left, right) |
-| Pi → ESP32 | 0x03 SET_SPEED | 差速 (linear, angular) |
-| Pi → ESP32 | 0x04 BEEP | 蜂鸣器 |
-| Pi → ESP32 | 0x06 RESET_ODOM | 重置里程计 |
-
-## 项目结构
-
-```
-src/
-├── esp32_firmware/                  # ESP32 下位机 (PlatformIO/Arduino)
-│   ├── main.cpp                     # 主固件 (电机/编码器/超声波/串口协议)
-│   └── platformio.ini               # PlatformIO 配置
-├── ros2_trashbot_hardware/          # 硬件桥接 (Orange Pi 侧)
-│   └── esp32_bridge.py              # 串口 ↔ ROS2 双向转换
-├── ros2_trashbot_interfaces/        # 自定义接口
-│   ├── msg/                         # TrashStatus, Waypoint, ...
-│   ├── srv/                         # RecordWaypoint, SetTrashBin
-│   └── action/                      # TrashCollection, Patrol
-├── ros2_trashbot_nav/               # 导航
-│   ├── waypoint_manager.py          # 航点管理 + Nav2 集成
-│   ├── map_recorder.py              # 地图保存/加载
-│   └── nav_to_goal.py               # 简单导航到目标
-├── ros2_trashbot_vision/            # 视觉
-│   └── trash_detector.py            # 摄像头垃圾检测 (OpenCV)
-├── ros2_trashbot_behavior/          # 行为
-│   ├── task_orchestrator.py         # 状态机 + Action Server
-│   └── trash_collection_server.py   # 收集任务执行
-└── ros2_trashbot_bringup/           # 启动
-    ├── bringup.launch.py            # 完整启动
-    ├── learn.launch.py              # 学习阶段 (SLAM)
-    └── autonomous.launch.py         # 自主模式
-```
-
-## 快速开始
-
-### 1. Orange Pi 端构建
+## 构建
 
 ```bash
-sudo apt update && sudo apt install -y python3-serial
 source /opt/ros/humble/setup.bash
-cd ~/ros_rbs
 colcon build --symlink-install
 source install/setup.bash
 ```
 
-### 2. ESP32 端烧录
+ESP32 固件使用 PlatformIO：
 
 ```bash
 cd src/esp32_firmware
 pio run --target upload
 ```
 
-### 3. 连接
+## 常用启动
 
-将 ESP32 USB 连接到 Orange Pi，确认串口设备：
-```bash
-ls -l /dev/ttyUSB0   # 或 /dev/ttyACM0
-```
-
-### 4. 学习阶段（人工驾驶建图）
+学习建图：
 
 ```bash
 ros2 launch ros2_trashbot_bringup learn.launch.py
-
-# 手动驾驶，系统自动记录航点和地图
-# 完成后:
-ros2 service call /trashbot/save_map std_srvs/srv/Trigger
 ```
 
-### 5. 自主模式
+自主运行：
 
 ```bash
 ros2 launch ros2_trashbot_bringup autonomous.launch.py \
   map_file:=~/.ros/trashbot_maps/trashbot_map.yaml
+```
 
-# 触发巡逻
+发送巡逻任务：
+
+```bash
 ros2 action send_goal /trashbot/patrol \
   ros2_trashbot_interfaces/action/Patrol \
   "{use_saved_map: true, learn_mode: false}"
 ```
 
-### 6. 固定路线（小区场景）+ 前期视频数据
+## 固定路线数据采集
 
-如果扔垃圾路线固定，可用“路线点 + 视频关键帧”方案：
-
-1) **先录数据**（人工驾驶时执行）：
+人工驾驶时记录里程计航点和相机关键帧：
 
 ```bash
 ros2 run ros2_trashbot_nav route_data_recorder \
   --ros-args \
   -p output_dir:=~/.ros/trashbot_runs/run_001 \
-  -p min_distance_m:=0.8
+  -p min_distance_m:=0.8 \
+  -p route_frame_id:=map
 ```
 
-会自动生成：
-- `~/.ros/trashbot_runs/run_001/route.csv`（轨迹点）
-- `~/.ros/trashbot_runs/run_001/keyframes/000.jpg...`（关键帧）
+输出内容：
 
-2) 再运行固定路线节点：
+- `~/.ros/trashbot_runs/run_001/route.csv`：路线点。
+- `~/.ros/trashbot_runs/run_001/keyframes/*.jpg`：关键帧图片。
+
+将 CSV 转为固定路线 YAML：
+
+```bash
+ros2 run ros2_trashbot_nav route_csv_to_yaml \
+  --ros-args \
+  -p input_csv:=~/.ros/trashbot_runs/run_001/route.csv \
+  -p output_yaml:=~/.ros/trashbot_maps/fixed_route.yaml
+```
+
+运行固定路线节点：
 
 ```bash
 ros2 run ros2_trashbot_nav fixed_route_autonomy \
@@ -163,26 +95,17 @@ ros2 run ros2_trashbot_nav fixed_route_autonomy \
   -p visual_match_threshold:=25
 ```
 
-可选：将录制的 `route.csv` 导出为标准 `fixed_route.yaml`：
+## 本地联调
 
-```bash
-ros2 run ros2_trashbot_nav route_csv_to_yaml \
-  --ros-args \
-  -p input_csv:=~/.ros/trashbot_runs/run_001/route.csv \
-  -p output_yaml:=~/.ros/trashbot_maps/fixed_route.yaml
-```
+发布关键帧作为模拟相机输入：
 
-### 7. 模拟测试（不接真实底盘）
-
-可以在没有真实车体时做“视觉+路线”联调：
-
-终端 A：发布关键帧当作相机输入
 ```bash
 ros2 run ros2_trashbot_nav keyframe_camera_sim \
   --ros-args -p keyframe_dir:=~/.ros/trashbot_runs/run_001/keyframes
 ```
 
-终端 B：运行固定路线（dry-run，不调用 Nav2）
+dry-run 跑固定路线，不调用 Nav2：
+
 ```bash
 ros2 run ros2_trashbot_nav fixed_route_autonomy \
   --ros-args \
@@ -192,13 +115,8 @@ ros2 run ros2_trashbot_nav fixed_route_autonomy \
   -p dry_run:=true
 ```
 
-如果日志持续打印 `[DRY_RUN] checkpoint passed`，说明你的前期数据可被视觉闸门识别，流程可跑通。
+启动状态调试页面：
 
-### 8. Web 页面还原与 Debug
-
-支持一个轻量 Web 页面查看 fixed-route 运行状态（当前 checkpoint、总数、是否 dry-run、状态机状态）：
-
-终端 C：启动 debug web
 ```bash
 TRASHBOT_STATUS_FILE=/tmp/trashbot_fixed_route_status.json \
 TRASHBOT_WEB_PORT=8765 \
@@ -206,53 +124,27 @@ ros2 run ros2_trashbot_nav route_debug_web
 ```
 
 浏览器打开：
+
 ```text
-http://<你的主机IP>:8765
+http://<主机IP>:8765
 ```
 
-`fixed_route_autonomy` 会持续写入状态文件（默认 `/tmp/trashbot_fixed_route_status.json`），web 每秒自动刷新。
-该节点已改为**非阻塞轮询导航结果**，避免过去 busy-wait 占满 CPU 的问题。
+## 串口协议
 
-如果你已有人工整理的 YAML，也可继续使用：
+ESP32 到 Orange Pi 使用二进制串口协议，默认 115200 baud：
 
-```yaml
-waypoints:
-  - {frame_id: map, x: 1.0, y: 2.0, z: 0.0, qx: 0.0, qy: 0.0, qz: 0.0, qw: 1.0}
-  - {frame_id: map, x: 3.2, y: 2.7, z: 0.0, qx: 0.0, qy: 0.0, qz: 0.7, qw: 0.7}
+```text
+[0xAA 0x55] [seq] [type/cmd] [len] [payload...] [checksum]
 ```
 
-## 引脚分配 (ESP32 DevKit)
+主要消息：
 
-| 功能 | 引脚 | 备注 |
-|------|------|------|
-| 左电机 PWM | GPIO25 | TB6612 PWM |
-| 左电机 DIR | GPIO26, 27 | TB6612 IN1/IN2 |
-| 右电机 PWM | GPIO14 | TB6612 PWM |
-| 右电机 DIR | GPIO12, 13 | TB6612 IN1/IN2 |
-| 左编码器 A/B | GPIO32, 33 | 中断 |
-| 右编码器 A/B | GPIO18, 19 | 中断 |
-| 超声波-前 | GPIO4/16 | trig/echo |
-| 超声波-左 | GPIO17/5 | trig/echo |
-| 超声波-右 | GPIO21/22 | trig/echo |
-| 蜂鸣器 | GPIO23 | PWM |
-| 状态 LED | GPIO2 | 板载 |
+- ESP32 -> Pi：里程计、超声波、IMU、状态。
+- Pi -> ESP32：停止、电机 PWM、速度控制、蜂鸣器、重置里程计。
 
-## 安全特性
+## 安全边界
 
-- **看门狗**: ESP32 500ms 无指令自动停电机
-- **前向避障**: 超声波 < 15cm 紧急停止
-- **心跳**: esp32_bridge 定期检查串口连通性
-- **急停服务**: `ros2 service call /trashbot/stop std_srvs/srv/Trigger`
-
-## 当前“自动驾驶”能力边界
-
-- 当前导航能力主要依赖 **SLAM + Nav2 + 里程计/IMU/超声波**，可实现室内低速自主巡航与到点导航。
-- 视觉节点 `trash_detector.py` 仍为 **颜色阈值启发式方案**（非深度学习目标检测），适合演示，不适合复杂光照/遮挡场景。
-- 因此系统目前属于 **L2/L2.5 级别的场地机器人自主**，不是可在开放道路运行的“自动驾驶汽车”。
-- 若要提升到更高等级自主能力，建议至少补齐：多传感器融合（激光/深度相机）、学习型检测模型（YOLO/RT-DETR）、动态障碍预测、系统级冗余与功能安全设计。
-
-## 依赖
-
-- **Orange Pi**: Ubuntu 22.04 + ROS2 Humble + Nav2 + SLAM Toolbox
-- **ESP32**: PlatformIO + Arduino Framework
-- **Python**: pyserial, opencv-python, cv_bridge
+- ESP32 侧应保留 500 ms 看门狗，超过心跳间隔自动停车。
+- 前向超声波小于安全距离时应触发急停。
+- 当前视觉检测是启发式演示方案，复杂光照和遮挡场景需要 YOLO、RT-DETR 或深度相机等更强感知方案。
+- 当前系统适合封闭区域低速移动机器人，不适用于开放道路自动驾驶。

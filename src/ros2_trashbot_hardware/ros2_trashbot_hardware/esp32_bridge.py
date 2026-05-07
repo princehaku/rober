@@ -86,8 +86,9 @@ class ESP32Bridge(Node):
 
         # State
         self._seq_out = 0
-        self._last_cmd_time = 0
+        self._last_cmd_time = time.time()
         self._running = True
+        self._serial_lock = threading.Lock()
 
         # Start reader thread
         self._reader_thread = threading.Thread(target=self._serial_reader, daemon=True)
@@ -269,10 +270,13 @@ class ESP32Bridge(Node):
         msg.present = True
         self.battery_pub.publish(msg)
 
-    def _send_command(self, cmd, payload=b''):
+    def _send_command(self, cmd, payload=b'') -> bool:
         """Send command packet to ESP32."""
         seq = self._seq_out
         length = len(payload)
+        if length > 255:
+            self.get_logger().error(f'Command payload too large: {length} bytes')
+            return False
 
         header = struct.pack('<BBBBB', HEADER1, HEADER2, seq, cmd, length)
         data = header + payload
@@ -281,9 +285,18 @@ class ESP32Bridge(Node):
         for b in payload:
             checksum ^= b
 
-        self.serial.write(data + bytes([checksum]))
-        self._seq_out += 1
+        try:
+            with self._serial_lock:
+                if not self.serial.is_open:
+                    return False
+                self.serial.write(data + bytes([checksum]))
+        except serial.SerialException as exc:
+            self.get_logger().error(f'Serial write error: {exc}')
+            return False
+
+        self._seq_out = (self._seq_out + 1) & 0xFF
         self._last_cmd_time = time.time()
+        return True
 
     def _cmd_vel_callback(self, msg: Twist):
         """Convert /cmd_vel to ESP32 differential drive command."""
@@ -291,24 +304,22 @@ class ESP32Bridge(Node):
         angular = msg.angular.z  # rad/s
 
         payload = struct.pack('<ff', linear, angular)
-        self._send_command(CMD_SET_SPEED, payload)
+        if not self._send_command(CMD_SET_SPEED, payload):
+            self.get_logger().warn('Failed to forward /cmd_vel to ESP32')
 
     def _stop_callback(self, request, response):
-        self._send_command(CMD_STOP)
-        response.success = True
-        response.message = 'Motors stopped'
+        response.success = self._send_command(CMD_STOP)
+        response.message = 'Motors stopped' if response.success else 'Failed to send stop command'
         return response
 
     def _reset_odom_callback(self, request, response):
-        self._send_command(CMD_RESET_ODOM)
-        response.success = True
-        response.message = 'Odometry reset'
+        response.success = self._send_command(CMD_RESET_ODOM)
+        response.message = 'Odometry reset' if response.success else 'Failed to send reset odom command'
         return response
 
     def _beep_callback(self, request, response):
-        self._send_command(CMD_BEEP)
-        response.success = True
-        response.message = 'Beep sent'
+        response.success = self._send_command(CMD_BEEP)
+        response.message = 'Beep sent' if response.success else 'Failed to send beep command'
         return response
 
     def _watchdog_check(self):
