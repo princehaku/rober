@@ -9,7 +9,7 @@ Serial protocol (matches ESP32 firmware):
 
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import Twist, PoseStamped
+from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Range, Imu, BatteryState
 from std_srvs.srv import Trigger

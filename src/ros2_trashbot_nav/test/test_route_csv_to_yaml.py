@@ -49,6 +49,19 @@ def test_load_waypoints_from_csv_uses_explicit_frame_id_column():
     assert waypoints[0]["frame_id"] == "odom"
 
 
+def test_load_waypoints_from_csv_falls_back_when_frame_id_is_blank():
+    csv_content = (
+        "index,sec,nanosec,frame_id,x,y,z,qx,qy,qz,qw,frame\n"
+        "0,1,2,   ,1.25,2.5,0.0,0.0,0.0,0.1,0.99,000.jpg\n"
+    )
+    with tempfile.TemporaryDirectory() as td:
+        csv_path = Path(td) / "route.csv"
+        csv_path.write_text(csv_content, encoding="utf-8")
+        waypoints = load_waypoints_from_csv(str(csv_path), "map")
+
+    assert waypoints[0]["frame_id"] == "map"
+
+
 def test_load_waypoints_from_csv_rejects_bad_numeric_values():
     csv_content = (
         "index,sec,nanosec,x,y,z,qx,qy,qz,qw,frame\n"

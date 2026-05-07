@@ -5,7 +5,7 @@ def load_waypoints_from_csv(input_csv: str, fallback_frame_id: str = 'map'):
     waypoints = []
     with open(input_csv, 'r', encoding='utf-8') as f:
         for line_number, row in enumerate(csv.DictReader(f), start=2):
-            frame_id = (row.get('frame_id') or fallback_frame_id).strip()
+            frame_id = (row.get('frame_id') or '').strip() or fallback_frame_id.strip() or 'map'
             try:
                 waypoint = {
                     'frame_id': frame_id,

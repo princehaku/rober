@@ -18,10 +18,6 @@ def generate_launch_description():
         default_value='~/.ros/trashbot_maps/trashbot_map.yaml',
         description='Path to saved map')
 
-    patrol_interval_arg = DeclareLaunchArgument(
-        'patrol_interval', default_value='300',
-        description='Seconds between patrol cycles')
-
     waypoint_file_arg = DeclareLaunchArgument(
         'waypoint_file',
         default_value='~/.ros/trashbot_maps/waypoints.yaml',
@@ -39,7 +35,6 @@ def generate_launch_description():
     return LaunchDescription([
         use_sim_time_arg,
         map_file_arg,
-        patrol_interval_arg,
         waypoint_file_arg,
 
         # --- Hardware Bridge (ESP32 <-> ROS2) ---
