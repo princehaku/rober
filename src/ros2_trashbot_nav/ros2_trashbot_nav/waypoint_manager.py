@@ -10,6 +10,7 @@ from ros2_trashbot_interfaces.action import Patrol
 import yaml
 import os
 from ament_index_python import get_package_share_directory
+from typing import List, Optional
 
 
 class WaypointManager(Node):
@@ -27,7 +28,7 @@ class WaypointManager(Node):
         self.waypoint_file = self.get_parameter('waypoint_file').value
 
         # Waypoint storage
-        self.waypoints: list[Waypoint] = []
+        self.waypoints: List[Waypoint] = []
         self.current_map_name = ''
 
         # Services
@@ -73,7 +74,7 @@ class WaypointManager(Node):
         self.get_logger().info(response.message)
         return response
 
-    def _get_current_pose(self) -> PoseStamped | None:
+    def _get_current_pose(self) -> Optional[PoseStamped]:
         """Get current pose from robot localization."""
         # In a real deployment, subscribe to /amcl_pose or /robot_pose
         # For now, use the latest known pose from odometry
@@ -168,7 +169,7 @@ class WaypointManager(Node):
             self._save_waypoints()
         return success
 
-    def patrol_all(self) -> list[bool]:
+    def patrol_all(self) -> List[bool]:
         """Navigate to all waypoints in order. Returns list of success flags."""
         results = []
         for i, wp in enumerate(self.waypoints):
