@@ -11,10 +11,11 @@ setup(
         ('share/' + package_name, ['package.xml']),
     ],
     install_requires=['setuptools', 'pyserial'],
+    tests_require=['pytest'],
     zip_safe=True,
     maintainer='trashbot',
     maintainer_email='trashbot@local',
-    description='ESP32 serial bridge for trashbot',
+    description='Waveshare WAVE ROVER UART JSON bridge for trashbot',
     license='MIT',
     entry_points={
         'console_scripts': [

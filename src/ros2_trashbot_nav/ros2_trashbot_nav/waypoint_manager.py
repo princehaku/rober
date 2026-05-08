@@ -1,15 +1,13 @@
+import copy
 import rclpy
 from rclpy.node import Node
-from rclpy.action import ActionServer, ActionClient, GoalResponse
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
-from nav2_simple_commander.robot_navigator import BasicNavigator
+from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
 from ros2_trashbot_interfaces.srv import RecordWaypoint
 from ros2_trashbot_interfaces.msg import Waypoint, WaypointList
-from ros2_trashbot_interfaces.action import Patrol
 import yaml
 import os
-from ament_index_python import get_package_share_directory
 from typing import List, Optional
 
 
@@ -21,15 +19,24 @@ class WaypointManager(Node):
         super().__init__('waypoint_manager')
 
         self.declare_parameter('map_storage_path', '~/.ros/trashbot_maps')
-        self.map_storage_path = self.get_parameter('map_storage_path').value
+        self.map_storage_path = os.path.expanduser(self.get_parameter('map_storage_path').value)
         os.makedirs(self.map_storage_path, exist_ok=True)
 
         self.declare_parameter('waypoint_file', os.path.join(self.map_storage_path, 'waypoints.yaml'))
-        self.waypoint_file = self.get_parameter('waypoint_file').value
+        self.waypoint_file = os.path.expanduser(self.get_parameter('waypoint_file').value)
+        self.declare_parameter('pose_topic', '/amcl_pose')
+        self.pose_topic = self.get_parameter('pose_topic').value
+        self.declare_parameter('learn_mode', False)
+        self.learn_mode = self.get_parameter('learn_mode').value
+        self.declare_parameter('record_interval', 5.0)
+        self.record_interval = float(self.get_parameter('record_interval').value)
 
         # Waypoint storage
         self.waypoints: List[Waypoint] = []
         self.current_map_name = ''
+        self.latest_pose: Optional[PoseWithCovarianceStamped] = None
+        self._auto_record_count = 0
+        self._warned_missing_pose = False
 
         # Services
         self.record_wp_srv = self.create_service(
@@ -39,46 +46,87 @@ class WaypointManager(Node):
         self.waypoint_list_pub = self.create_publisher(
             WaypointList, '/trashbot/waypoints', 10)
 
+        # Pose source for recording waypoints. In learn mode this can be
+        # remapped to slam_toolbox's pose topic; in autonomous mode AMCL is the default.
+        self.pose_sub = self.create_subscription(
+            PoseWithCovarianceStamped, self.pose_topic, self._on_pose, 10)
+        self.auto_record_timer = None
+        if self.learn_mode:
+            if self.record_interval > 0.0:
+                self.auto_record_timer = self.create_timer(
+                    self.record_interval, self._record_learn_mode_waypoint)
+            else:
+                self.get_logger().warn(
+                    f'learn_mode enabled but record_interval={self.record_interval}; automatic recording disabled')
+
         # Nav2 navigator (for autonomous driving)
         self.navigator = BasicNavigator()
 
         self._load_waypoints()
         self.get_logger().info(f'WaypointManager ready. Loaded {len(self.waypoints)} waypoints.')
 
+    def _on_pose(self, msg: PoseWithCovarianceStamped):
+        """Store the latest localized robot pose for waypoint recording."""
+        self.latest_pose = msg
+
     def _record_waypoint(self, request, response):
         """Record current robot pose as a waypoint."""
-        # Get current pose from /amcl_pose
+        success, message, waypoint_id = self._append_waypoint(
+            request.name, request.type, request.comment)
+        response.success = success
+        response.message = message
+        response.waypoint_id = waypoint_id
+        return response
+
+    def _record_learn_mode_waypoint(self):
+        """Automatically record the latest pose during the learning phase."""
+        name = f'auto_{self._auto_record_count:04d}'
+        success, message, _ = self._append_waypoint(
+            name, 0, 'auto-recorded during learn mode', warn_on_missing_pose=False)
+        if success:
+            self._auto_record_count += 1
+        elif not self._warned_missing_pose:
+            self.get_logger().warn(message)
+            self._warned_missing_pose = True
+
+    def _append_waypoint(self, name: str, waypoint_type: int, comment: str, warn_on_missing_pose: bool = True):
+        """Append the latest robot pose as a waypoint."""
         pose = self._get_current_pose()
         if pose is None:
-            response.success = False
-            response.message = 'Cannot get current pose'
-            response.waypoint_id = -1
-            return response
+            message = f'Cannot get current pose from {self.pose_topic}'
+            if warn_on_missing_pose:
+                self.get_logger().warn(message)
+            return False, message, -1
+
+        self._warned_missing_pose = False
 
         wp = Waypoint()
-        wp.name = request.name
+        wp.name = name
         wp.pose = pose
-        wp.type = request.type
+        wp.type = waypoint_type
         wp.visited = False
         wp.last_visit_time = 0.0
-        wp.comment = request.comment
+        wp.comment = comment
 
         self.waypoints.append(wp)
         self._save_waypoints()
 
-        response.success = True
-        response.message = f'Recorded waypoint "{request.name}" at ({pose.pose.position.x:.2f}, {pose.pose.position.y:.2f})'
-        response.waypoint_id = len(self.waypoints) - 1
+        message = f'Recorded waypoint "{name}" at ({pose.pose.position.x:.2f}, {pose.pose.position.y:.2f})'
+        waypoint_id = len(self.waypoints) - 1
 
         self._publish_waypoint_list()
-        self.get_logger().info(response.message)
-        return response
+        self.get_logger().info(message)
+        return True, message, waypoint_id
 
     def _get_current_pose(self) -> Optional[PoseStamped]:
         """Get current pose from robot localization."""
-        # In a real deployment, subscribe to /amcl_pose or /robot_pose
-        # For now, use the latest known pose from odometry
-        return None  # TODO: implement pose subscription
+        if self.latest_pose is None:
+            return None
+
+        pose = PoseStamped()
+        pose.header = copy.deepcopy(self.latest_pose.header)
+        pose.pose = copy.deepcopy(self.latest_pose.pose.pose)
+        return pose
 
     def _load_waypoints(self):
         """Load waypoints from YAML file."""
@@ -96,6 +144,7 @@ class WaypointManager(Node):
                     wp.name = wp_data.get('name', '')
                     wp.type = wp_data.get('type', 0)
                     wp.visited = wp_data.get('visited', False)
+                    wp.last_visit_time = wp_data.get('last_visit_time', 0.0)
                     wp.comment = wp_data.get('comment', '')
                     # Pose reconstruction from stored coordinates
                     pose = PoseStamped()
@@ -116,6 +165,9 @@ class WaypointManager(Node):
 
     def _save_waypoints(self):
         """Save waypoints to YAML file."""
+        waypoint_dir = os.path.dirname(self.waypoint_file)
+        if waypoint_dir:
+            os.makedirs(waypoint_dir, exist_ok=True)
         data = {
             'map_name': self.current_map_name,
             'waypoints': [],
@@ -130,6 +182,7 @@ class WaypointManager(Node):
                 'orientation_z': wp.pose.pose.orientation.z,
                 'orientation_w': wp.pose.pose.orientation.w,
                 'visited': wp.visited,
+                'last_visit_time': wp.last_visit_time,
                 'comment': wp.comment,
             })
 
@@ -162,7 +215,7 @@ class WaypointManager(Node):
                 self.get_logger().info(f'  Remaining: {feedback.remaining_distance:.2f}m')
 
         result = self.navigator.getResult()
-        success = result == 0  # SUCCEEDED
+        success = result == TaskResult.SUCCEEDED
         if success:
             self.waypoints[index].visited = True
             self.waypoints[index].last_visit_time = self.get_clock().now().nanoseconds / 1e9

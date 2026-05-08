@@ -11,6 +11,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
     ],
     install_requires=['setuptools'],
+    tests_require=['pytest'],
     zip_safe=True,
     maintainer='trashbot',
     maintainer_email='trashbot@local',
@@ -19,7 +20,8 @@ setup(
     entry_points={
         'console_scripts': [
             'task_orchestrator = ros2_trashbot_behavior.task_orchestrator:main',
-            'trash_collection_server = ros2_trashbot_behavior.trash_collection_server:main',
+            'operator_gateway = ros2_trashbot_behavior.operator_gateway:main',
+            'legacy_trash_collection_server = ros2_trashbot_behavior.trash_collection_server:main',
         ],
     },
 )

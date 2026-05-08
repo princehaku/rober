@@ -2,12 +2,12 @@
 bool use_saved_map       # if false, do SLAM first
 bool learn_mode          # if true, record new trash/bin locations during patrol
 ---
-Waypoint current_waypoint
-float64 distance_traveled
-int32 waypoints_visited
-int32 waypoints_total
----
 bool success
 float64 total_duration_sec
 int32 new_points_recorded
 string map_save_path
+---
+Waypoint current_waypoint
+float64 distance_traveled
+int32 waypoints_visited
+int32 waypoints_total

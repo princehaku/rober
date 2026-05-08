@@ -131,16 +131,16 @@ http://<主机IP>:8765
 
 ## 串口协议
 
-ESP32 到 Orange Pi 使用二进制串口协议，默认 115200 baud：
+本项目底盘通信以 `docs/vendor/VENDOR_INDEX.md` 为硬件事实入口。当前 WAVE ROVER 官方 ESP32 固件使用 UART newline-delimited JSON：每条命令是一行 UTF-8 JSON，以 `\n` 结尾。vendor Raspberry Pi 示例为 `/dev/ttyAMA0`、`115200`，Orange Pi Zero 3 的实际串口设备名必须上车确认，launch 参数不得硬编码为 Raspberry Pi 路径。
 
-```text
-[0xAA 0x55] [seq] [type/cmd] [len] [payload...] [checksum]
-```
+常用命令：
 
-主要消息：
-
-- ESP32 -> Pi：里程计、超声波、IMU、状态。
-- Pi -> ESP32：停止、电机 PWM、速度控制、蜂鸣器、重置里程计。
+- `{"T":1,"L":0.5,"R":0.5}`：左右轮速度命令，当前默认 `/cmd_vel` 映射路径。
+- `{"T":13,"X":0.1,"Z":0.3}`：ROS 线速度/角速度命令，仅在硬件验证后通过参数启用。
+- `{"T":131,"cmd":1}`：开启底盘反馈流。
+- `{"T":142,"cmd":100}`：设置反馈间隔。
+- `{"T":143,"cmd":0}`：关闭 UART echo。
+- `T=1001` 反馈：用于 IMU、电池和底盘反馈解析；当前 `/odom` 来源需在代码和文档中明确。
 
 ## 安全边界
 

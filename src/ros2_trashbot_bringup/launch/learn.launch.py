@@ -14,12 +14,18 @@ def generate_launch_description():
         'record_interval', default_value='5.0',
         description='Seconds between automatic waypoint recording during learning')
 
+    pose_topic_arg = DeclareLaunchArgument(
+        'pose_topic', default_value='/pose',
+        description='PoseWithCovarianceStamped topic used for recording waypoints')
+
     use_sim_time = LaunchConfiguration('use_sim_time')
     record_interval = LaunchConfiguration('record_interval')
+    pose_topic = LaunchConfiguration('pose_topic')
 
     return LaunchDescription([
         use_sim_time_arg,
         record_interval_arg,
+        pose_topic_arg,
 
         # SLAM Toolbox for mapping
         Node(
@@ -52,6 +58,7 @@ def generate_launch_description():
                 'use_sim_time': use_sim_time,
                 'learn_mode': True,
                 'record_interval': record_interval,
+                'pose_topic': pose_topic,
             }],
         ),
 
