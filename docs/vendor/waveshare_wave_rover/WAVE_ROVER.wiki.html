@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html class="client-nojs" lang="zh-Hans-CN" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<title>WAVE ROVER - Waveshare Wiki</title>
+<script>document.documentElement.className="client-js";RLCONF={"wgBreakFrames":!1,"wgSeparatorTransformTable":["",""],"wgDigitTransformTable":["",""],"wgDefaultDateFormat":"zh","wgMonthNames":["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],"wgRequestId":"c1271adab303cfcfa3584419","wgCSPNonce":!1,"wgCanonicalNamespace":"","wgCanonicalSpecialPageName":!1,"wgNamespaceNumber":0,"wgPageName":"WAVE_ROVER","wgTitle":"WAVE ROVER","wgCurRevisionId":140801,"wgRevisionId":140801,"wgArticleId":19171,"wgIsArticle":!0,"wgIsRedirect":!1,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgCategories":["I2C接口","UART接口","模块","机器人","6X4","TTL总线舵机控制接口接口"],"wgPageContentLanguage":"zh-cn","wgPageContentModel":"wikitext","wgRelevantPageName":"WAVE_ROVER","wgRelevantArticleId":19171,"wgIsProbablyEditable":!1,"wgRelevantPageIsProbablyEditable":!1,"wgRestrictionEdit":[],"wgRestrictionMove":[]};RLSTATE={
+"ext.gadget.tabber":"ready","site.styles":"ready","noscript":"ready","user.styles":"ready","user":"ready","user.options":"loading","jquery.makeCollapsible.styles":"ready","mediawiki.toc.styles":"ready","skins.tweeki.styles":"ready","skins.tweeki.bootstraptheme.styles":"ready","skins.tweeki.externallinks.styles":"ready","skins.tweeki.awesome.styles":"ready"};RLPAGEMODULES=["site","mediawiki.page.startup","mediawiki.page.ready","jquery.makeCollapsible","mediawiki.toc","ext.FancyBoxThumbs","ext.gadget.subnavber","ext.gadget.slidenav","ext.HighlightjsIntegration","skins.tweeki.messages","skins.tweeki.scripts"];</script>
+<script>(RLQ=window.RLQ||[]).push(function(){mw.loader.implement("user.options@1hzgi",function($,jQuery,require,module){/*@nomin*/mw.user.tokens.set({"patrolToken":"+\\","watchToken":"+\\","csrfToken":"+\\"});mw.user.options.set({"variant":"zh-cn"});
+});});</script>
+<link rel="stylesheet" href="/w/load.php?lang=zh-cn&amp;modules=jquery.makeCollapsible.styles%7Cmediawiki.toc.styles%7Cskins.tweeki.awesome.styles%7Cskins.tweeki.bootstraptheme.styles%7Cskins.tweeki.externallinks.styles%7Cskins.tweeki.styles&amp;only=styles&amp;skin=tweeki"/>
+<script async="" src="/w/load.php?lang=zh-cn&amp;modules=startup&amp;only=scripts&amp;raw=1&amp;skin=tweeki"></script>
+<meta name="ResourceLoaderDynamicStyles" content=""/>
+<link rel="stylesheet" href="/w/load.php?lang=zh-cn&amp;modules=ext.gadget.tabber&amp;only=styles&amp;skin=tweeki"/>
+<link rel="stylesheet" href="/w/load.php?lang=zh-cn&amp;modules=site.styles&amp;only=styles&amp;skin=tweeki"/>
+<meta name="generator" content="MediaWiki 1.35.5"/>
+<meta property="og:image" content="https://www.waveshare.net/w/upload/thumb/8/85/WAVE-ROVER-1.jpg/1200px-WAVE-ROVER-1.jpg"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="shortcut icon" href="/favicon.ico"/>
+<link rel="search" type="application/opensearchdescription+xml" href="/w/opensearch_desc.php" title="Waveshare Wiki (zh-cn)"/>
+<link rel="EditURI" type="application/rsd+xml" href="https://www.waveshare.net/w/api.php?action=rsd"/>
+<link rel="alternate" type="application/atom+xml" title="Waveshare Wiki的Atom feed" href="/w/index.php?title=%E7%89%B9%E6%AE%8A:%E6%9C%80%E8%BF%91%E6%9B%B4%E6%94%B9&amp;feed=atom"/>
+<!--[if lt IE 9]><script src="/w/resources/lib/html5shiv/html5shiv.js"></script><![endif]-->
+</head>
+<body class="mediawiki ltr sitedir-ltr mw-hide-empty-elt ns-0 ns-subject page-WAVE_ROVER rootpage-WAVE_ROVER skin-tweeki action-view tweeki-animateLayout tweeki-non-advanced tweeki-user-anon">			<!-- navbar -->
+			<div id="mw-navigation" class="navbar navbar-default navbar-fixed-top navbar-expand-lg fixed-top navbar-light bg-light" role="navigation">
+				<h2>导航菜单</h2>
+				<div id="mw-head" class="navbar-inner">
+					<div class="container">
+
+						<div class="navbar-header">
+							<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+								<span class="sr-only">Toggle navigation</span>
+								<span class="icon-bar"></span>
+								<span class="icon-bar"></span>
+								<span class="icon-bar"></span>
+							</button>
+
+							<a href="/wiki/Main_Page" class="navbar-brand"><img src="https://www.waveshare.net/w/upload/b/b6/Waveshare-logo.png" alt="Waveshare Wiki" /></a>
+						</div>
+
+						<div id="navbar" class="navbar-collapse collapse">
+													<ul class="nav navbar-nav">
+							<li class="nav"><a href="https://www.waveshare.net" id="n-https.253A.252F.252Fwww.waveshare.net" rel="nofollow" target="_blank">微雪商城</a></li><li class="nav"><a href="#" id="n-raspberry-pi" class="dropdown-toggle" data-toggle="dropdown">Raspberry Pi <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523rpi-boards-.25E4.25B8.25BB.25E6.259D.25BF.252F.25E5.25A5.2597.25E4.25BB.25B6.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#RPi-Boards 主板/套件]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#RPi-Boards">主板/套件</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523rpi-displays-.25E6.2598.25BE.25E7.25A4.25BA.25E5.25B1.258F.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#RPi-Displays 显示屏]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#RPi-Displays">显示屏</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523rpi-cameras-.25E6.2591.2584.25E5.2583.258F.25E5.25A4.25B4.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#RPi-Cameras 摄像头]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#RPi-Cameras">摄像头</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523rpi-expansions-.25E6.2589.25A9.25E5.25B1.2595.25E6.259D.25BF.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#RPi-Expansions 扩展板]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#RPi-Expansions">扩展板</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523rpi-laptops-.25E7.25AC.2594.25E8.25AE.25B0.25E6.259C.25AC.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#RPi-Laptops 笔记本]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#RPi-Laptops">笔记本</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523rpi-robots-.25E6.259C.25BA.25E5.2599.25A8.25E4.25BA.25BA.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#RPi-Robots 机器人]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#RPi-Robots">机器人</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523rpi-games-.25E6.25B8.25B8.25E6.2588.258F.25E6.259C.25BA.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#RPi-Games 游戏机]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#RPi-Games">游戏机</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523android-linux-boards-android.252Flinux.25E4.25B8.25BB.25E6.259D.25BF.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Android-Linux-Boards Android/Linux主板]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Android-Linux-Boards">Android/Linux主板</a></a></li></ul></li><li class="nav"><a href="#" id="n-.25E4.25BA.25BA.25E5.25B7.25A5.25E6.2599.25BA.25E8.2583.25BD" class="dropdown-toggle" data-toggle="dropdown">人工智能 <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523jetson-ai-boards-.25E4.25B8.25BB.25E6.259D.25BF.252F.25E5.25A5.2597.25E4.25BB.25B6.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Jetson-AI-Boards 主板/套件]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Jetson-AI-Boards">主板/套件</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523jetson-ai-displays-.25E6.2598.25BE.25E7.25A4.25BA.25E5.25B1.258F.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Jetson-AI-Displays 显示屏]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Jetson-AI-Displays">显示屏</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523jetson-ai-cameras-.25E6.2591.2584.25E5.2583.258F.25E5.25A4.25B4.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Jetson-AI-Cameras 摄像头]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Jetson-AI-Cameras">摄像头</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523jetson-ai-hat-.25E6.2589.25A9.25E5.25B1.2595.25E6.259D.25BF.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Jetson-AI-HAT 扩展板]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Jetson-AI-HAT">扩展板</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523jetson-ai-robots-.25E6.259C.25BA.25E5.2599.25A8.25E4.25BA.25BA.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Jetson-AI-Robots 机器人]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Jetson-AI-Robots">机器人</a></a></li></ul></li><li class="nav"><a href="#" id="n-.25E6.2598.25BE.25E7.25A4.25BA.25E5.25B1.258F" class="dropdown-toggle" data-toggle="dropdown">显示屏 <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523display-lcd-oleds-lcd.252Foled.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Display-LCD-OLEDs LCD/OLED]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Display-LCD-OLEDs">LCD/OLED</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523display-e-paper-e-paper.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Display-e-Paper e-Paper]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Display-e-Paper">e-Paper</a></a></li></ul></li><li class="nav"><a href="#" id="n-.25E6.25A8.25A1.25E5.259D.2597" class="dropdown-toggle" data-toggle="dropdown">模块 <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523long-range-wireless-comm-.25E8.25BF.259C.25E8.25B7.259D.25E7.25A6.25BB.25E6.2597.25A0.25E7.25BA.25BF.25E9.2580.259A.25E4.25BF.25A1.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Long-range-wireless-comm 远距离无线通信]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Long-range-wireless-comm">远距离无线通信</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523short-range-wireless-comm-.25E8.25BF.2591.25E8.25B7.259D.25E7.25A6.25BB.25E6.2597.25A0.25E7.25BA.25BF.25E9.2580.259A.25E4.25BF.25A1.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Short-range-wireless-comm 近距离无线通信]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Short-range-wireless-comm">近距离无线通信</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523wired-communication-.25E6.259C.2589.25E7.25BA.25BF.25E9.2580.259A.25E4.25BF.25A1.252F.25E6.258E.25A5.25E5.258F.25A3.25E8.25BD.25AC.25E6.258D.25A2.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Wired-communication 有线通信/接口转换]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Wired-communication">有线通信/接口转换</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523misc-cameras-av-.25E6.2591.2584.25E5.2583.258F.25E5.25A4.25B4.252F.25E9.259F.25B3.25E8.25A7.2586.25E9.25A2.2591.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Misc-cameras-av 摄像头/音视频]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Misc-cameras-av">摄像头/音视频</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523misc-sensor-modules-.25E4.25BC.25A0.25E6.2584.259F.25E5.2599.25A8.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Misc-sensor-modules 传感器]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Misc-sensor-modules">传感器</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523misc-servos-motors-.25E7.2594.25B5.25E6.259C.25BA.252F.25E8.2588.25B5.25E6.259C.25BA.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Misc-servos-motors 电机/舵机]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Misc-servos-motors">电机/舵机</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523misc-other-modules-.25E5.25A4.25A7.25E6.259D.2582.25E7.2583.25A9.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Misc-other-modules 大杂烩]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Misc-other-modules">大杂烩</a></a></li></ul></li><li class="nav"><a href="#" id="n-.25E6.259C.25BA.25E5.2599.25A8.25E4.25BA.25BA" class="dropdown-toggle" data-toggle="dropdown">机器人 <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523robotics-cars-.25E6.2599.25BA.25E8.2583.25BD.25E8.25BD.25A6.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Robotics-cars 智能车]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Robotics-cars">智能车</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523robotics-drivers-sensors-.25E9.25A9.25B1.25E5.258A.25A8.25E5.2599.25A8.252F.25E4.25BC.25A0.25E6.2584.259F.25E5.2599.25A8.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Robotics-drivers-sensors 驱动器/传感器]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Robotics-drivers-sensors">驱动器/传感器</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523robotics-robot-arms-.25E6.259C.25BA.25E6.25A2.25B0.25E6.2589.258B.252F.25E4.25BA.2591.25E5.258F.25B0.25E6.258E.25A7.25E5.2588.25B6.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Robotics-robot-arms 机械手/云台控制]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Robotics-robot-arms">机械手/云台控制</a></a></li></ul></li><li class="nav"><a href="#" id="n-mcu.252Ffpga" class="dropdown-toggle" data-toggle="dropdown">MCU/FPGA <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523arduino-main-boards-arduino.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#Arduino-main-boards Arduino]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#Arduino-main-boards">Arduino</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523micro.253Abit-micro.253Abit.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#micro:bit micro:bit]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#micro:bit">micro:bit</a></a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523mcu.2farm-stm32" class="PIC"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#MCU.2FARM STM32" tabindex="-1">LPC</a></li><li id="n-.255Bhttps.253A.252F.252F.257B.257Bservername.257D.257D.252Fwiki.252Fmain_page.2523fpga-fpga.255D"><a href="INVALID-TITLE:[https://www.waveshare.net/wiki/Main_Page#FPGA FPGA]" tabindex="-1"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/wiki/Main_Page#FPGA">FPGA</a></a></li></ul></li>							</ul>
+						
+													<ul class="nav navbar-nav navbar-right">
+							</ul>
+				<form class="navbar-form navbar-right" action="/w/index.php" id="searchform">
+					<div class="form-group"><input type="search" name="search" placeholder="搜索" title="搜索Waveshare Wiki[f]" accesskey="f" id="searchInput" class="search-query form-control"/><input type="submit" name="go" value="前往" title="若相同标题存在，则直接前往该页面" id="mw-searchButton" class="searchButton btn hidden"/>
+					</div>
+				</form><ul class="nav navbar-nav navbar-right"><li class="nav"><a href="https://docs.waveshare.net" id="n-https.253A.252F.252Fdocs.waveshare.net" rel="nofollow" target="_blank">微雪文档</a></li>							</ul>
+						</div>
+						
+					</div>
+				</div>
+			</div>
+			<!-- /navbar -->
+					<div id="mw-page-base"></div>
+			<div id="mw-head-base"></div>
+			<a id="top"></a>
+
+			<!-- content -->
+			<div id="contentwrapper" class="user-loggedout not-editable container with-navbar with-navbar-fixed">
+
+				
+				<div class="row">
+					<div class="col-md-offset-2 col-md-10" role="main">
+								<div class="mw-body" id="content">
+			<div id="mw-js-message" style="display:none;"></div>
+									<h1 id="firstHeading" class="firstHeading page-header" lang="zh-Hans-CN"><span dir="auto">WAVE ROVER</span></h1>
+									<!-- bodyContent -->
+			<div id="bodyContent">
+								<div id="siteSub">来自Waveshare Wiki</div>
+								<div id="contentSub"></div>
+												<div id="jump-to-nav" class="mw-jump">
+					跳转至：					<a href="#mw-navigation">导航</a>、					<a href="#p-search">搜索</a>
+				</div>
+				<div id="mw-content-text" lang="zh-Hans-CN" dir="ltr" class="mw-content-ltr"><div class="mw-parser-output"><div class="wiki-pages blue-color">
+<div class="tabberlive newwsnav" id="wsnavbar">
+<ul class="tabbernav">
+<li class="nav-link"><a href="#myintro">说明</a></li>
+<li class="nav-link"><a href="#myresources">资料</a></li>
+<li class="nav-link"><a href="#myfaq">FAQ</a></li>
+<li class="nav-link"><a href="#mysupport">售后</a></li>
+</ul>
+</div>
+<div class="tabber">
+<table id="infotable" class="a-r at-c roundy bgd-blue bl-blue" style="margin-left: 5px; margin-bottom: 5px;">
+
+<tbody><tr>
+<td colspan="2">
+<table class="at-c roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite" style="display: none;"><span style="font-size:1.5em; line-height: 36px;"><b>WAVE ROVER</b></span>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;"><a href="https://www.waveshare.net/shop/WAVE-ROVER.htm" title="WAVER-ROVER" target="_blank" rel="nofollow noreferrer noopener"><img alt="UGV02" src="/w/upload/thumb/8/85/WAVE-ROVER-1.jpg/360px-WAVE-ROVER-1.jpg" decoding="async" loading="lazy" width="360" height="270" srcset="/w/upload/thumb/8/85/WAVE-ROVER-1.jpg/540px-WAVE-ROVER-1.jpg 1.5x, /w/upload/thumb/8/85/WAVE-ROVER-1.jpg/720px-WAVE-ROVER-1.jpg 2x" /></a>
+</td></tr></tbody></table>
+</td></tr>
+<tr style="display:none;">
+<td colspan="2">
+<table class="roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>{{{name2}}}</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;">
+</td></tr></tbody></table>
+</td></tr>
+<tr style="display:none;">
+<td>
+<table class="roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>{{{name3}}}</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;">
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td colspan="2">
+<table class="roundy" style="background: transparent; border-collapse:collapse;width:100%;display: none;">
+<tbody><tr>
+<td style="width:2%;">
+</td>
+<td style="width:3%;">
+</td>
+<th colspan="2" width="90%" class="alignt-center roundytop bgl-white">基本信息
+</th>
+<td style="width:3%;">
+</td>
+<td style="width:2%;">
+</td></tr>
+<tr>
+<th colspan="3" width="90px" class="alignt-right roundytl bgwhite b-blue" style="border-width: 0 0 1px 0;">分类：
+</th>
+<td colspan="3" class="at-l roundytr b-blue bgwhite" style="border-width: 0 0 1px 0;">机器人模块
+</td></tr>
+<tr style="display:none;">
+<th colspan="3" width="90px" class="alignt-right bgwhite b-blue" style="border-width: 0 0 1px 0;">{{{userDefinedInfo1}}}：
+</th>
+<td colspan="3" class="at-l b-blue bgwhite" style="border-width: 0 0 1px 0;">{{{userdefinedvalue1}}}
+</td></tr>
+<tr style="display:none;">
+<th colspan="3" width="90px" class="alignt-right bgwhite b-blue" style="border-width: 0 0 1px 0;">{{{userDefinedInfo2}}}：
+</th>
+<td colspan="3" class="at-l b-blue bgwhite" style="border-width: 0 0 1px 0;">{{{userdefinedvalue2}}}
+</td></tr>
+<tr style="display:none;">
+<th colspan="3" width="90px" class="alignt-right bgwhite b-blue" style="border-width: 0 0 1px 0;">{{{userDefinedInfo3}}}：
+</th>
+<td colspan="3" class="at-l b-blue bgwhite" style="border-width: 0 0 1px 0;">{{{userdefinedvalue3}}}
+</td></tr>
+<tr>
+<th colspan="3" width="90px" class="alignt-right roundybl bgwhite">品牌：
+</th>
+<td colspan="3" class="at-l roundybr bgwhite">Waveshare
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td colspan="2">
+<table class="align-right roundy" style="background: transparent; border-collapse:collapse;width:100%;">
+<tbody><tr>
+<td style="width:2%;">
+</td>
+<td style="width:3%;">
+</td>
+<th colspan="2" width="90%" class="alignt-center roundytop"><font color="white">功能简介</font>
+</th>
+<td style="width:3%;">
+</td>
+<td style="width:2%;">
+</td></tr>
+<tr>
+<td colspan="6" class="at-c">
+<table class="roundy bd-未知 bgl-未知 textblack bw-1 fulltable">
+
+<tbody><tr>
+<td>
+<table class="roundy bgwhite fulltable" style="text-align:center">
+
+<tbody><tr>
+<td class="roundyleft textwhite bgd-blue bl-blue bw-1" style="width:25%;opacity: 0.8;padding-bottom: 5px;"><small><b>特性</b></small>
+</td>
+<td class="roundyright bl-blue bw-1" colspan="3" style="width:75%;padding-bottom: 5px;color: #666;"><small>WAVE ROVER移动机器人四驱底盘</small>
+</td></tr>
+<tr style="display:none;">
+<td class="roundyleft textwhite bgd-blue bl-blue bw-1" style="width:25%;opacity: 0.8;padding-bottom: 5px;"><small>'<b><i></i></b></small>
+</td>
+<td class="roundyright bl-blue bw-1" colspan="3" style="width:75%;padding-bottom: 5px;color: #666;"><small>无特性，不解释</small>
+</td></tr>
+<tr style="display:none;">
+<td class="roundyleft textwhite bgd-blue bl-blue bw-1" style="width:25%;opacity: 0.8;padding-bottom: 5px;"><small>'<b><i></i></b></small>
+</td>
+<td class="roundyright bl-blue bw-1" colspan="3" style="width:75%;padding-bottom: 5px;color: #666;"><small>无特性，不解释</small>
+</td></tr>
+<tr style="display:none;">
+<td class="roundyleft textwhite bgd-blue bl-blue bw-1" style="width:25%;opacity: 0.8;padding-bottom: 5px;"><small>'<b><i></i></b></small>
+</td>
+<td class="roundyright bl-blue bw-1" colspan="3" style="width:75%;padding-bottom: 5px;color: #666;"><small>无特性，不解释</small>
+</td></tr>
+<tr style="display:none;">
+<td class="roundyleft textwhite bgd-blue bl-blue bw-1" style="width:25%;opacity: 0.8;padding-bottom: 5px;"><small>'<b><i></i></b></small>
+</td>
+<td class="roundyright bl-blue bw-1" colspan="3" style="width:75%;padding-bottom: 5px;color: #666;"><small>无特性，不解释</small>
+</td></tr>
+<tr>
+<td class="roundyleft textwhite bgd-blue bl-blue bw-1" style="width:25%;opacity: 0.8;padding-bottom: 5px;"><small><b>接口</b></small>
+</td>
+<td class="roundyright bl-blue bw-1" style="width:25%;padding-bottom: 5px;color: #666;"><small><a href="/w/index.php?title=%E5%88%86%E7%B1%BB:TTL%E6%80%BB%E7%BA%BF%E8%88%B5%E6%9C%BA%E6%8E%A7%E5%88%B6%E6%8E%A5%E5%8F%A3%E6%8E%A5%E5%8F%A3&amp;action=edit&amp;redlink=1" class="new" title="分类:TTL总线舵机控制接口接口（页面不存在）">TTL总线舵机控制接口</a></small>
+</td>
+<td class="roundyright bl-blue bw-1" style="width:25%;padding-bottom: 5px;color: #666;"><small><a href="/wiki/%E5%88%86%E7%B1%BB:I2C%E6%8E%A5%E5%8F%A3" title="分类:I2C接口">I2C</a></small>
+</td>
+<td class="roundyright bl-blue bw-1" style="width:25%;padding-bottom: 5px;color: #666;"><small><a href="/wiki/%E5%88%86%E7%B1%BB:UART%E6%8E%A5%E5%8F%A3" title="分类:UART接口">UART</a></small>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+</td></tr>
+<tr style="display:none;">
+<td colspan="2">
+<table class="align-right roundy" style="background: transparent; border-collapse:collapse;width:100%;display:none;">
+<tbody><tr>
+<td style="width:2%;">
+</td>
+<td style="width:3%;">
+</td>
+<th colspan="2" width="90%" class="alignt-center roundytop bgl-white">相关产品
+</th>
+<td style="width:3%;">
+</td>
+<td style="width:2%;">
+</td></tr>
+<tr>
+<td colspan="6" class="at-c">
+<table class="roundy bw-1 fulltable table table-striped table-bordered mw-collapsed align-left">
+
+<tbody><tr>
+<th>
+</th></tr>
+<tr style="display:none;">
+<th>♦   {{{Product1}}}
+</th></tr>
+<tr style="display:none;">
+<th>♦   {{{Product2}}}
+</th></tr>
+<tr style="display:none;">
+<th>♦   {{{Product3}}}
+</th></tr>
+<tr style="display:none;">
+<th>♦   {{{Product4}}}
+</th></tr>
+<tr style="display:none;">
+<th>♦   {{{Product5}}}
+</th></tr>
+<tr style="display:none;">
+<td>—— <span style="font-size:14px;text-align: left;font-weight: bold;">类目1</span> ——
+</td></tr>
+<tr>
+<td>
+<table class="mw-collapsible mw-collapsed align-left">
+
+<tbody><tr style="display:none;">
+<td><span style="font-size:14px;text-align: left;color: #0645ad;font-weight: bold;">♦   类目1</span>
+</td></tr>
+<tr style="font-size:13px; text-align: left;">
+<td>
+<p>列表1
+</p>
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="mw-collapsible mw-collapsed align-left">
+
+<tbody><tr style="display:none;">
+<td><span style="font-size:14px;text-align: left;color: #0645ad;font-weight: bold;">♦   类目2</span>
+</td></tr>
+<tr style="font-size:13px; text-align: left;">
+<td>
+<p>列表2
+</p>
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="mw-collapsible mw-collapsed align-left">
+
+<tbody><tr style="display:none;">
+<td><span style="font-size:14px;text-align: left;color: #0645ad;font-weight: bold;">♦   类目3</span>
+</td></tr>
+<tr style="font-size:13px; text-align: left;">
+<td>
+<p>列表3
+</p>
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="mw-collapsible mw-collapsed align-left">
+
+<tbody><tr style="display:none;">
+<td><span style="font-size:14px;text-align: left;color: #0645ad;font-weight: bold;">♦   类目4</span>
+</td></tr>
+<tr style="font-size:13px; text-align: left;">
+<td>
+<p>列表4
+</p>
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="mw-collapsible mw-collapsed align-left">
+
+<tbody><tr style="display:none;">
+<td><span style="font-size:14px;text-align: left;color: #0645ad;font-weight: bold;">♦   类目5</span>
+</td></tr>
+<tr style="font-size:13px; text-align: left;">
+<td>
+<p>列表5
+</p>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+<div class="tabbertab" title="使用说明">
+<div id="toc" class="toc" role="navigation" aria-labelledby="mw-toc-heading"><input type="checkbox" role="button" id="toctogglecheckbox" class="toctogglecheckbox" style="display:none" /><div class="toctitle" lang="zh-Hans-CN" dir="ltr"><h2 id="mw-toc-heading">目录</h2><span class="toctogglespan"><label class="toctogglelabel" for="toctogglecheckbox"></label></span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="#.E4.BA.A7.E5.93.81.E4.BB.8B.E7.BB.8D"><span class="tocnumber">1</span> <span class="toctext">产品介绍</span></a></li>
+<li class="toclevel-1 tocsection-2"><a href="#.E4.BA.A7.E5.93.81.E7.89.B9.E6.80.A7"><span class="tocnumber">2</span> <span class="toctext">产品特性</span></a></li>
+<li class="toclevel-1 tocsection-3"><a href="#.E4.BA.A7.E5.93.81.E5.9B.BA.E4.BB.B6.E6.9B.B4.E6.96.B0"><span class="tocnumber">3</span> <span class="toctext"><b>产品固件更新</b></span></a></li>
+<li class="toclevel-1 tocsection-4"><a href="#.E4.BA.A7.E5.93.81.E4.BD.BF.E7.94.A8.E6.95.99.E7.A8.8B"><span class="tocnumber">4</span> <span class="toctext"><b>产品使用教程</b></span></a>
+<ul>
+<li class="toclevel-2 tocsection-5"><a href="#.E7.94.B5.E6.B1.A0.E5.AE.89.E8.A3.85"><span class="tocnumber">4.1</span> <span class="toctext"><b>电池安装</b></span></a></li>
+<li class="toclevel-2 tocsection-6"><a href="#.E5.9F.BA.E6.9C.AC.E4.BD.BF.E7.94.A8"><span class="tocnumber">4.2</span> <span class="toctext"><b>基本使用</b></span></a></li>
+<li class="toclevel-2 tocsection-7"><a href="#.E8.BF.9E.E6.8E.A5.E5.88.B0.E5.B7.B2.E7.9F.A5WIFI"><span class="tocnumber">4.3</span> <span class="toctext"><b>连接到已知WIFI</b></span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-8"><a href="#JSON_.E6.8C.87.E4.BB.A4.E4.BD.BF.E7.94.A8.E6.95.99.E7.A8.8B"><span class="tocnumber">5</span> <span class="toctext"><b>JSON 指令使用教程</b></span></a>
+<ul>
+<li class="toclevel-2 tocsection-9"><a href="#.E4.BB.80.E4.B9.88.E6.98.AF_JSON.EF.BC.9F"><span class="tocnumber">5.1</span> <span class="toctext"><b>什么是 JSON？</b></span></a></li>
+<li class="toclevel-2 tocsection-10"><a href="#.E4.B8.BA.E4.BB.80.E4.B9.88.E4.BD.BF.E7.94.A8_JSON_.E6.8C.87.E4.BB.A4.E4.B8.8E.E6.9C.BA.E5.99.A8.E4.BA.BA.E8.BF.9B.E8.A1.8C.E4.BA.A4.E4.BA.92.EF.BC.9F"><span class="tocnumber">5.2</span> <span class="toctext"><b>为什么使用 JSON 指令与机器人进行交互？</b></span></a></li>
+<li class="toclevel-2 tocsection-11"><a href="#JSON_.E6.8C.87.E4.BB.A4.E7.9A.84.E9.80.9A.E4.BF.A1.E6.96.B9.E5.BC.8F"><span class="tocnumber">5.3</span> <span class="toctext"><b>JSON 指令的通信方式</b></span></a>
+<ul>
+<li class="toclevel-3 tocsection-12"><a href="#.E4.BD.BF.E7.94.A8_Web_.E5.BA.94.E7.94.A8.E4.B8.8B.E8.BE.BE_JSON_.E6.8C.87.E4.BB.A4"><span class="tocnumber">5.3.1</span> <span class="toctext"><b>使用 Web 应用下达 JSON 指令</b></span></a></li>
+<li class="toclevel-3 tocsection-13"><a href="#.E4.BD.BF.E7.94.A8_Python_.E8.84.9A.E6.9C.AC.E9.80.9A.E8.BF.87_HTTP_.E4.B8.8B.E8.BE.BE_JSON_.E6.8C.87.E4.BB.A4"><span class="tocnumber">5.3.2</span> <span class="toctext"><b>使用 Python 脚本通过 HTTP 下达 JSON 指令</b></span></a></li>
+<li class="toclevel-3 tocsection-14"><a href="#.E4.BD.BF.E7.94.A8_ESP-NOW_.E4.B8.8B.E8.BE.BE_JSON_.E6.8C.87.E4.BB.A4"><span class="tocnumber">5.3.3</span> <span class="toctext"><b>使用 ESP-NOW 下达 JSON 指令</b></span></a></li>
+<li class="toclevel-3 tocsection-15"><a href="#.E4.BD.BF.E7.94.A8_GPIO_.E6.88.96_USB_.E4.B8.B2.E5.8F.A3.E4.B8.8B.E8.BE.BE_JSON_.E6.8C.87.E4.BB.A4"><span class="tocnumber">5.3.4</span> <span class="toctext"><b>使用 GPIO 或 USB 串口下达 JSON 指令</b></span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-16"><a href="#JSON_.E6.8C.87.E4.BB.A4.E9.9B.86"><span class="tocnumber">6</span> <span class="toctext"><b>JSON 指令集</b></span></a>
+<ul>
+<li class="toclevel-2 tocsection-17"><a href="#.E5.BA.95.E7.9B.98.E7.A7.BB.E5.8A.A8"><span class="tocnumber">6.1</span> <span class="toctext"><b>底盘移动</b></span></a>
+<ul>
+<li class="toclevel-3 tocsection-18"><a href="#.E5.B7.A6.E5.8F.B3.E8.BD.AE.E9.80.9F.E5.BA.A6.E6.8E.A7.E5.88.B6_-_CMD_SPEED_CTRL"><span class="tocnumber">6.1.1</span> <span class="toctext"><b>左右轮速度控制 - CMD_SPEED_CTRL</b></span></a></li>
+<li class="toclevel-3 tocsection-19"><a href="#.E5.B7.A6.E5.8F.B3.E4.BE.A7.E7.94.B5.E6.9C.BAPWM.E6.8E.A7.E5.88.B6_-_CMD_PWM_INPUT"><span class="tocnumber">6.1.2</span> <span class="toctext"><b>左右侧电机PWM控制 - CMD_PWM_INPUT</b></span></a></li>
+<li class="toclevel-3 tocsection-20"><a href="#ROS.E6.8E.A7.E5.88.B6_-_CMD_ROS_CTRL"><span class="tocnumber">6.1.3</span> <span class="toctext"><b>ROS控制 - CMD_ROS_CTRL</b></span></a></li>
+<li class="toclevel-3 tocsection-21"><a href="#.E8.AE.BE.E7.BD.AE.E7.94.B5.E6.9C.BA_PID"><span class="tocnumber">6.1.4</span> <span class="toctext"><b>设置电机 PID</b></span></a></li>
+</ul>
+</li>
+<li class="toclevel-2 tocsection-22"><a href="#OLED_.E5.B1.8F.E5.B9.95.E8.AE.BE.E7.BD.AE"><span class="tocnumber">6.2</span> <span class="toctext"><b>OLED 屏幕设置</b></span></a>
+<ul>
+<li class="toclevel-3 tocsection-23"><a href="#OLED_.E5.B1.8F.E5.B9.95.E6.8E.A7.E5.88.B6"><span class="tocnumber">6.2.1</span> <span class="toctext"><b>OLED 屏幕控制</b></span></a></li>
+<li class="toclevel-3 tocsection-24"><a href="#OLED_.E5.B1.8F.E5.B9.95.E6.81.A2.E5.A4.8D"><span class="tocnumber">6.2.2</span> <span class="toctext"><b>OLED 屏幕恢复</b></span></a></li>
+</ul>
+</li>
+<li class="toclevel-2 tocsection-25"><a href="#.E4.BA.A7.E5.93.81.E4.BF.A1.E6.81.AF.E8.8E.B7.E5.8F.96"><span class="tocnumber">6.3</span> <span class="toctext"><b>产品信息获取</b></span></a>
+<ul>
+<li class="toclevel-3 tocsection-26"><a href="#.E8.8E.B7.E5.8F.96_IMU_.E6.95.B0.E6.8D.AE"><span class="tocnumber">6.3.1</span> <span class="toctext"><b>获取 IMU 数据</b></span></a></li>
+<li class="toclevel-3 tocsection-27"><a href="#.E8.8E.B7.E5.8F.96.E5.BA.95.E7.9B.98.E4.BF.A1.E6.81.AF.E5.8F.8D.E9.A6.88_-_CMD_BASE_FEEDBACK"><span class="tocnumber">6.3.2</span> <span class="toctext"><b>获取底盘信息反馈 - CMD_BASE_FEEDBACK</b></span></a></li>
+<li class="toclevel-3 tocsection-28"><a href="#.E4.B8.B2.E5.8F.A3.E8.BF.9E.E7.BB.AD.E5.8F.8D.E9.A6.88"><span class="tocnumber">6.3.3</span> <span class="toctext"><b>串口连续反馈</b></span></a></li>
+<li class="toclevel-3 tocsection-29"><a href="#.E4.B8.B2.E5.8F.A3.E5.9B.9E.E5.A3.B0.E5.BC.80.E5.85.B3"><span class="tocnumber">6.3.4</span> <span class="toctext"><b>串口回声开关</b></span></a></li>
+<li class="toclevel-3 tocsection-30"><a href="#.E4.B8.B2.E5.8F.A3.E5.9B.9E.E5.A3.B0.E5.BC.80.E5.85.B3_2"><span class="tocnumber">6.3.5</span> <span class="toctext"><b>串口回声开关</b></span></a></li>
+</ul>
+</li>
+<li class="toclevel-2 tocsection-31"><a href="#IO4_IO5_.E6.8E.A7.E5.88.B6"><span class="tocnumber">6.4</span> <span class="toctext"><b>IO4 IO5 控制</b></span></a></li>
+<li class="toclevel-2 tocsection-32"><a href="#.E5.A4.96.E6.8E.A5.E6.A8.A1.E5.9D.97.E6.89.A9.E5.B1.95"><span class="tocnumber">6.5</span> <span class="toctext"><b>外接模块扩展</b></span></a>
+<ul>
+<li class="toclevel-3 tocsection-33"><a href="#.E8.AE.BE.E7.BD.AE.E5.A4.96.E6.8E.A5.E6.A8.A1.E5.9D.97.E7.B1.BB.E5.9E.8B"><span class="tocnumber">6.5.1</span> <span class="toctext"><b>设置外接模块类型</b></span></a></li>
+<li class="toclevel-3 tocsection-34"><a href="#.E4.BA.91.E5.8F.B0.E5.9F.BA.E7.A1.80.E6.8E.A7.E5.88.B6"><span class="tocnumber">6.5.2</span> <span class="toctext"><b>云台基础控制</b></span></a></li>
+<li class="toclevel-3 tocsection-35"><a href="#.E6.9C.BA.E6.A2.B0.E8.87.82_JSON_.E6.8C.87.E4.BB.A4.E6.8E.A7.E5.88.B6"><span class="tocnumber">6.5.3</span> <span class="toctext"><b>机械臂 JSON 指令控制</b></span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-36"><a href="#.E4.B8.8A.E4.BD.8D.E6.9C.BA.E4.BD.BF.E7.94.A8.E6.95.99.E7.A8.8B"><span class="tocnumber">7</span> <span class="toctext"><b>上位机使用教程</b></span></a>
+<ul>
+<li class="toclevel-2 tocsection-37"><a href="#.E6.A0.91.E8.8E.93.E6.B4.BE.E4.B8.8A.E4.BD.8D.E6.9C.BA"><span class="tocnumber">7.1</span> <span class="toctext"><b>树莓派上位机</b></span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-38"><a href="#.E4.BA.A7.E5.93.81.E7.A1.AC.E4.BB.B6.E4.BB.8B.E7.BB.8D"><span class="tocnumber">8</span> <span class="toctext">产品硬件介绍</span></a>
+<ul>
+<li class="toclevel-2 tocsection-39"><a href="#.E9.A9.B1.E5.8A.A8.E6.9D.BFGeneral_Driver_for_Robots.E5.90.84.E6.A8.A1.E5.9D.97.E4.BD.BF.E7.94.A8"><span class="tocnumber">8.1</span> <span class="toctext">驱动板General Driver for Robots各模块使用</span></a></li>
+<li class="toclevel-2 tocsection-40"><a href="#.E7.94.B5.E6.9C.BA.E5.8F.82.E6.95.B0"><span class="tocnumber">8.2</span> <span class="toctext">电机参数</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#.E8.B5.84.E6.96.99"><span class="tocnumber">9</span> <span class="toctext">资料</span></a>
+<ul>
+<li class="toclevel-2 tocsection-41"><a href="#.E5.BC.80.E6.BA.90.E4.BE.8B.E7.A8.8B"><span class="tocnumber">9.1</span> <span class="toctext">开源例程</span></a></li>
+<li class="toclevel-2 tocsection-42"><a href="#.E6.9C.BA.E5.99.A8.E4.BA.BA.E5.B0.BA.E5.AF.B8.E5.9B.BE.E7.BA.B8.E5.92.8C.E6.89.A9.E5.B1.95.E5.B9.B3.E5.8F.B0.E5.9B.BE.E7.BA.B8"><span class="tocnumber">9.2</span> <span class="toctext">机器人尺寸图纸和扩展平台图纸</span></a></li>
+<li class="toclevel-2 tocsection-43"><a href="#.E6.9C.BA.E5.99.A8.E4.BA.BA.E6.A8.A1.E5.9E.8B"><span class="tocnumber">9.3</span> <span class="toctext">机器人模型</span></a></li>
+<li class="toclevel-2 tocsection-44"><a href="#.E9.85.8D.E7.BD.AE.E6.B8.85.E5.8D.95"><span class="tocnumber">9.4</span> <span class="toctext">配置清单</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#.E6.8A.80.E6.9C.AF.E6.94.AF.E6.8C.81"><span class="tocnumber">10</span> <span class="toctext">技术支持</span></a></li>
+</ul>
+</div>
+
+<h2><span id="产品介绍"></span><span class="mw-headline" id=".E4.BA.A7.E5.93.81.E4.BB.8B.E7.BB.8D">产品介绍</span></h2>
+<p>WAVE ROVER产品是一款具备强悍的越野通过能力和抗震能力的全金属框架框架移动机器人四驱底盘，其代码是全部开源的，且可二次开发。支持扩展多种上位机（树莓派、Jetson Nano、Jetson Orin Nano等），上位机通过串口与ESP32下位机进行通信。<br /><br />
+内置3S 18650锂电池UPS供电模块（3节18650锂电池串联），为机器人提供持续能量来源的同时支持边充电边放电。内置多功能机器人驱动板，可扩展总线舵机、PWM输出、SD卡等功能，驱动板基于ESP32，板载WiFi和蓝牙。<br /><br />
+它搭载了使用高质量波箱的N20减速电机，动力强劲，同时采用了柔软的橡胶车轮，极大减少了复杂地形冲击，使其轻松满足高速行驶、避震、越野等要求；并配有扩展平台，可用于安装上位机（树莓派 4B、Jetson nano等）、LD19/STL-27L激光雷达和云台模块，为二次开发提供了更多的可行性。
+</p><p><br />
+</p>
+<h2><span id="产品特性"></span><span class="mw-headline" id=".E4.BA.A7.E5.93.81.E7.89.B9.E6.80.A7">产品特性</span></h2>
+<ul><li>搭载了使用高质量波箱的N20减速电机，使产品能以 1.25m/s 的运行速度高速行驶；</li>
+<li>采用柔软的橡胶轮胎，大幅度减少复杂地形对产品的冲击；</li>
+<li>搭载交互设备 0.91inch OLED 屏幕；</li>
+<li>带有充电接口和自动下载电路，可以边充电边使用；</li>
+<li>UPS 供电模块板载 INA219 采集芯片，方便实时监控电池电压，充电电流；</li>
+<li>UPS 供电模块三节串联 18650 电池，7800mAh 大容量，输出电流更大，电机动力更强；</li>
+<li>UPS 供电模块还提供输出 5V 和 3.3V 用于扩展其它设备；</li>
+<li>UPS 供电模块板载锂电池保护电路，具有防过充、防过放、防过流和短路保护功能；</li>
+<li>例程代码使用 Arduino IDE 开发，不需要手动配置编译环境，ESP32 开机自动建立 WIFI 热点，可使用手机（Android/iOS）或电脑（Linux/Windows/Mac）连接并登录到控制页面，只需安装基于Chromium 的浏览器即可，不需要下载 app；</li>
+<li>下位机 ESP32 可用于驱动直流电机、总线舵机，板载 OLED 屏幕接口、TF 卡槽、九轴 IMU 模块、WiFi 和蓝牙，即使不安装上位机也可以单独使用；</li>
+<li>可扩展多种上位机,使用串口来传输 JSON 格式的数据来控制；</li>
+<li>全部代码开源并提供丰富的开发文档和教程；</li>
+<li>开源扩展平面图纸和底盘结构图纸，包括 3D 模型，方便进行二次开发；</li>
+<li>JSON 指令可通过串口、USB、HTTP、ESP-NOW 等方式下达；</li>
+<li>绝大部分配置设置可由 JSON 指令实现，例如不需要连接 USB 线即可为产品配置 WIFI 连接。</li></ul>
+<p><br />
+</p>
+<h2><span id="产品固件更新"></span><span class="mw-headline" id=".E4.BA.A7.E5.93.81.E5.9B.BA.E4.BB.B6.E6.9B.B4.E6.96.B0"><b>产品固件更新</b></span></h2>
+<ul><li>如果你的机器人开机时 OLED 屏幕上显示 Version:0.9 ，说明机器人产品上的驱动程序已经是新版的程序了，就不需要再执行本部分内容给产品进行更新了。</li>
+<li>如果你的机器人开机时 OLED 屏幕上没有显示 Version:0.9，说明此时机器人产品上的驱动程序依旧是老版的程序，则需要执行本部分内容给产品进行更新；如果需要恢复出厂设置，也可以通过本部分内容进行。</li></ul>
+<p>我们提供 WAVE ROVER 的 ESP32 下载工具，使用这款工具，用户可以快速给产品更新固件或还原至出厂程序。
+</p><p><b>1.</b> 首先，使用 USB 线连接机器人和你的电脑。（此步骤需要拆开机器人才能完成，拆开机器人后连接机器人驱动板中间那个的 USB 接口）。
+</p><p><b>2.</b> 下载 WAVE ROVER 的 ESP32 下载工具：<a href="/wiki/%E6%96%87%E4%BB%B6:WAVE_ROVER_FACTORY.zip" title="文件:WAVE ROVER FACTORY.zip">WAVE ROVER 的 ESP32 下载工具</a>，下载后解压缩，双击打开“flash_download_tool_3.9.5.exe”程序。打开后，会弹出两个窗口，我们需要操作的是下载工具的UI界面，而另一个窗口作为终端来显示下载工具的工作状态。
+</p><p><b>3.</b> 在“DOWNLOAD TOOL MODE”这个界面，Chip Type 选择为 ESP32，WorkMode 选择为 Factory，使用 Factory，调用二进制文件时才会使用相对路径，就不需要用户手动输入二进制文件路径，选择好后点击OK。
+</p><p><a href="/wiki/%E6%96%87%E4%BB%B6:WAVEROVER%E4%B8%8B%E8%BD%BD%E5%B7%A5%E5%85%B7.png" class="image"><img alt="WAVEROVER下载工具.png" src="/w/upload/f/f5/WAVEROVER%E4%B8%8B%E8%BD%BD%E5%B7%A5%E5%85%B7.png" decoding="async" loading="lazy" width="400" height="289" /></a>
+</p><p><b>4.</b> 在这个软件界面中，保持“LockSettings”的勾选，右边代表的是可以同时给 8 个 WAVE ROVER 上传程序。点击“COM”，选择新出现的 COM（我这里新出现的 COM 为 COM3）；BAUD 是用于设置下载速度，越高速度越快，ESP32 最高可以使用 921600。
+</p><p><a href="/wiki/%E6%96%87%E4%BB%B6:WAVEROVER%E4%B8%8B%E8%BD%BD%E5%B7%A5%E5%85%B71.png" class="image"><img alt="WAVEROVER下载工具1.png" src="/w/upload/thumb/a/ac/WAVEROVER%E4%B8%8B%E8%BD%BD%E5%B7%A5%E5%85%B71.png/800px-WAVEROVER%E4%B8%8B%E8%BD%BD%E5%B7%A5%E5%85%B71.png" decoding="async" loading="lazy" width="800" height="349" srcset="/w/upload/a/ac/WAVEROVER%E4%B8%8B%E8%BD%BD%E5%B7%A5%E5%85%B71.png 1.5x" /></a>
+</p><p><b>5.</b> 选择好后，点击 START 开始上传程序，上传完成后，“IDLE 等待”会变成“FINISH 完成”，完成后可以断开驱动板与电脑的 USB 连接，打开机器人产品的开关，通电后即可控制机器人。
+</p><p><a href="/wiki/%E6%96%87%E4%BB%B6:WAVEROVER%E4%B8%8B%E8%BD%BD%E5%B7%A5%E5%85%B72.png" class="image"><img alt="WAVEROVER下载工具2.png" src="/w/upload/thumb/9/9c/WAVEROVER%E4%B8%8B%E8%BD%BD%E5%B7%A5%E5%85%B72.png/800px-WAVEROVER%E4%B8%8B%E8%BD%BD%E5%B7%A5%E5%85%B72.png" decoding="async" loading="lazy" width="800" height="206" srcset="/w/upload/9/9c/WAVEROVER%E4%B8%8B%E8%BD%BD%E5%B7%A5%E5%85%B72.png 1.5x" /></a>
+</p><p><br />
+</p>
+<h2><span id="产品使用教程"></span><span class="mw-headline" id=".E4.BA.A7.E5.93.81.E4.BD.BF.E7.94.A8.E6.95.99.E7.A8.8B"><b>产品使用教程</b></span></h2>
+<p><font style="color:red;"><b>注意：购买海外版的客户需要自行购买安装3个18650锂电池才可以正常使用，推荐使用高放电倍率的电池。首次接上电池需注意LED灯是否亮，如果LED灯亮则表示电池的正负极接反，请检查并确保电池未接反。电池接反的情况下禁止充电，否则有几率引起爆炸。</b></font>
+</p>
+<h3><span id="电池安装"></span><span class="mw-headline" id=".E7.94.B5.E6.B1.A0.E5.AE.89.E8.A3.85"><b>电池安装</b></span></h3>
+<p><b>1.</b> 先将小车底盘的这 4 个黑色金属杯头内六角螺丝 M3*6 拧下，见下图红圈处。
+</p><p><a href="/wiki/%E6%96%87%E4%BB%B6:%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_17682684759497.png" class="image"><img alt="企业微信截图 17682684759497.png" src="/w/upload/2/25/%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_17682684759497.png" decoding="async" loading="lazy" width="500" height="380" /></a>
+</p><p><b>2.</b> 接着将 3 颗 18650 锂电池放入至电池模块中。（注意：电池模块上有正负极标注，如果电池模块上 LED 灯亮则表示电池的正负极接反，电池未接反不会有 LED 灯亮）
+</p><p><br />
+<b>3.</b> 放入后再用之前拆下的 4 个黑色金属杯头内六角螺丝 M3*6 将底盘盖固定好即可。
+</p><p><b>4.</b> 电池安装好后<font color="#FF0000">首次使用需要先用配套的 12.6V 2A 充电器插入至机器人的充电接口处激活 UPS 电源模块</font>，这样小车才有电源输出。
+</p>
+<h3><span id="基本使用"></span><span class="mw-headline" id=".E5.9F.BA.E6.9C.AC.E4.BD.BF.E7.94.A8"><b>基本使用</b></span></h3>
+<ol><li>打开机器人产品上的电源开关，通电后即可控制机器人。机器人内部电源没电后，需要使用配套的 12.6V 2A 电源插入机器人产品上的电源接口给其进行充电，支持边充边放。</li>
+<li>机器人开机后 OLED 屏幕上显示内容含义如下：
+<ul><li>第一行内容表示此时 WiFi 处于 AP 模式下，WiFi 热点名为 UGV；</li>
+<li>第二行表示 STA 模式处于关闭状态，当 WiFi 处于 STA 模式时，路由器会分配一个 IP 地址并显示出来；</li>
+<li>第三行的内容为本设备的 MAC 地址，该地址是唯一的，用于 ESP-NOW 通信。</li>
+<li>第四行表示机器人产品的电源电压。</li></ul></li>
+<li>开机后使用手机或电脑连接机器人的 WiFi：UGV，密码是 12345678，连接 WiFi 后打开谷歌浏览器，在网址栏中输入 192.168.4.1 打开Web端使用界面。接下来你就可以使用 Web 端的功能来控制机器人了，可以在这个页面上向机器人发送 JSON 指令。<br /></li></ol>
+<p><a href="/wiki/%E6%96%87%E4%BB%B6:WR-web%E7%95%8C%E9%9D%A2.png" class="image"><img alt="WR-web界面.png" src="/w/upload/thumb/5/59/WR-web%E7%95%8C%E9%9D%A2.png/600px-WR-web%E7%95%8C%E9%9D%A2.png" decoding="async" loading="lazy" width="600" height="638" srcset="/w/upload/thumb/5/59/WR-web%E7%95%8C%E9%9D%A2.png/900px-WR-web%E7%95%8C%E9%9D%A2.png 1.5x, /w/upload/5/59/WR-web%E7%95%8C%E9%9D%A2.png 2x" /></a>
+</p>
+<ul><li>这个 Web 端界面会实时显示机器人的电压、STA 模式下的 WIFI 信号强度、航向角、IP和MAC地址等信息。</li></ul>
+<ul><li>通过方向按键可以控制机器人运动，方向按键下面的SLOW、MIDDLE、FAST按键用来选择机器人的移动速度。</li></ul>
+<ul><li>在 FEEDBACK INFOMATION 这个窗口可以给机器人发送 JSON 指令，下面就是具体的 JSON 指令。</li></ul>
+<ul><li>网页端包含了“心跳检测”，打开网页端控制界面后，Web端应用会与机器人进行连续通信，如果在机器人的运动过程中断开连接，机器人在短时间内会自动停止运动，避免危险。</li></ul>
+<ul><li>此 Web 端应用是完全开源的，你可以通过更改开源程序里的 WebPage.h 来更改 Web 端应用的界面和功能。</li></ul>
+<p><br />
+</p>
+<h3><span id="连接到已知WIFI"></span><span class="mw-headline" id=".E8.BF.9E.E6.8E.A5.E5.88.B0.E5.B7.B2.E7.9F.A5WIFI"><b>连接到已知WIFI</b></span></h3>
+<ul><li>在 Web 端界面下面的 JSON 指令列表找到一条名称为 <b>CMD_WIFI_APSTA</b> 的指令。可以点击这条指令下方的 INPUT 按钮，这条指令会被自动填写在 JSON 指令输入窗口中；</li></ul>
+<p><a href="/wiki/%E6%96%87%E4%BB%B6:WR-APSTA.png" class="image"><img alt="WR-APSTA.png" src="/w/upload/thumb/f/fc/WR-APSTA.png/700px-WR-APSTA.png" decoding="async" loading="lazy" width="700" height="137" srcset="/w/upload/f/fc/WR-APSTA.png 1.5x" /></a>
+</p>
+<ul><li>在 JSON 指令输入窗口中会显示该指令的具体内容为：{"T":404,"ap_ssid":"UGV","ap_password":"12345678","sta_ssid":"your_ssid","sta_password":"password"}
+<ul><li>该指令中的 your_ssid 替换为您已知 WIFI 的名称；password 替换为您已知 WIFI 的密码。注意不要删除双引号。</li>
+<li>更改好后，点击 SEND，等待机器人进行连接。如果机器人连接该已知 WIFI 成功，OLED 屏幕上 ST 这行会显示路由器分配给机器人的 IP 地址。</li>
+<li>一旦连接成功后，机器人会自动保存这个 WIFI 配置，后续除了要更换连接的已知 WIFI，否则不需要再进行以上的步骤进行设置。</li></ul></li>
+<li>可以在同一局域网内的其它设备上打开谷歌浏览器来访问 ST 模式的 IP 地址来访问机器人的 Web 端控制页面；也可以通过简单的 Python 脚本发送 http 请求通过 JSON 指令来控制机器人。</li></ul>
+<p><br />
+</p>
+<h2><span id="JSON_指令使用教程"></span><span class="mw-headline" id="JSON_.E6.8C.87.E4.BB.A4.E4.BD.BF.E7.94.A8.E6.95.99.E7.A8.8B"><b>JSON 指令使用教程</b></span></h2>
+<h3><span id="什么是_JSON？"></span><span class="mw-headline" id=".E4.BB.80.E4.B9.88.E6.98.AF_JSON.EF.BC.9F"><b>什么是 JSON？</b></span></h3>
+<p>JSON（JavaScript Object Notation）是一种轻量级的数据交换格式。易于人阅读和编写，可以在多种语言之间进行数据交换。同时也易于机器解析和生成。
+</p>
+<h3><span id="为什么使用_JSON_指令与机器人进行交互？"></span><span class="mw-headline" id=".E4.B8.BA.E4.BB.80.E4.B9.88.E4.BD.BF.E7.94.A8_JSON_.E6.8C.87.E4.BB.A4.E4.B8.8E.E6.9C.BA.E5.99.A8.E4.BA.BA.E8.BF.9B.E8.A1.8C.E4.BA.A4.E4.BA.92.EF.BC.9F"><b>为什么使用 JSON 指令与机器人进行交互？</b></span></h3>
+<p>由于机器人驱动板的板载资源比较多、例程功能丰富、同时兼顾方便扩展上位机，让上位机对于机器人的控制功能更加丰富和方便，所以我们使用 JSON 指令通信来与机器人进行交互，同样的，你也可以基于现有的框架对这些功能进行二次开发，让机器人的功能更适合你的使用需求。
+</p>
+<h3><span id="JSON_指令的通信方式"></span><span class="mw-headline" id="JSON_.E6.8C.87.E4.BB.A4.E7.9A.84.E9.80.9A.E4.BF.A1.E6.96.B9.E5.BC.8F"><b>JSON 指令的通信方式</b></span></h3>
+<ul><li>你可以使用下面的例程来通过不同的方法发送 JSON 指令控制机器人的各项功能</li>
+<li>机器人内置心跳函数：当3秒钟内没有新的移动控制指令下达，机器人会自动停止移动，所以当你通过上位机来控制机器人时，需要定时重复下达移动指令来让机器人连续移动</li></ul>
+<h4><span id="使用_Web_应用下达_JSON_指令"></span><span class="mw-headline" id=".E4.BD.BF.E7.94.A8_Web_.E5.BA.94.E7.94.A8.E4.B8.8B.E8.BE.BE_JSON_.E6.8C.87.E4.BB.A4"><b>使用 Web 应用下达 JSON 指令</b></span></h4>
+<ul><li>开机后使用手机或电脑连接机器人的 WiFi：UGV，密码是 12345678，连接 WiFi 后打开谷歌浏览器，在网址栏中输入 192.168.4.1 打开Web端使用界面。</li>
+<li>在 FEEDBACK INFOMATION 这个窗口可以给机器人发送 JSON 指令，窗口下面就是具体的 JSON 指令，关于指令的具体解释可以参考下方的 <a href="#JSON.E6.8C.87.E4.BB.A4.E9.9B.86"><b>【JSON 指令集】</b></a>。</li></ul>
+<h4><span id="使用_Python_脚本通过_HTTP_下达_JSON_指令"></span><span class="mw-headline" id=".E4.BD.BF.E7.94.A8_Python_.E8.84.9A.E6.9C.AC.E9.80.9A.E8.BF.87_HTTP_.E4.B8.8B.E8.BE.BE_JSON_.E6.8C.87.E4.BB.A4"><b>使用 Python 脚本通过 HTTP 下达 JSON 指令</b></span></h4>
+<ul><li>点击 HTTP 请求通信的 <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/w/upload/2/21/Http_simple_ctrl.zip">http_simple_ctrl.py</a> 例程下载。具体例程内容如下：</li></ul>
+<pre class="code2highlight lang-python">import requests
+import argparse
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Http JSON Communication')
+    parser.add_argument('ip', type=str, help='IP address: 192.168.10.104')
+
+    args = parser.parse_args()
+
+    ip_addr = args.ip
+
+    try:
+        while True:
+            command = input(&quot;input your json cmd: &quot;)
+            url = &quot;http://&quot; + ip_addr + &quot;/js?json=&quot; + command
+            response = requests.get(url)
+            content = response.text
+            print(content)
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == &quot;__main__&quot;:
+    main()</pre>
+<p>在运行程序前您需要确认机器人的 ip 地址。确认机器人 ip 地址跟机器人所处的 WIFI 模式息息相关。
+</p>
+<ul><li>如果机器人 WIFI 模式仅处于 AP 模式，则 IP 地址为192.168.4.1；</li>
+<li>如果机器人 WIFI 模式处于 STA 模式，则可以在机械臂的OLED屏幕上获得该机械臂的 IP 地址。</li></ul>
+<p>使用以下命令来运行 HTTP 请求通信程序。命令中的 IP 地址要更改为您机器人的 IP 地址。
+</p>
+<pre>python http_simple_ctrl.py 192.168.4.1
+</pre>
+<p><font color="#FF0000#">注意：无论是哪一种模式下，机器人需要与该脚本运行的设备处于同一个局域网内。</font>
+</p><p><br />
+</p>
+<h4><span id="使用_ESP-NOW_下达_JSON_指令"></span><span class="mw-headline" id=".E4.BD.BF.E7.94.A8_ESP-NOW_.E4.B8.8B.E8.BE.BE_JSON_.E6.8C.87.E4.BB.A4"><b>使用 ESP-NOW 下达 JSON 指令</b></span></h4>
+<ul><li>你可以控制机器人驱动板，让它通过 ESP-NOW 来向其它驱动板发送指令，ESP-NOW 具有免连接低延迟的特点，支持单播、组播和广播通信。</li>
+<li>为方便测试，产品开机后的默认 ESP-NOW 模式即可接收 ESP-NOW 指令，如果你不希望产品被其它设备通过设备来控制可以使用 {"T":301,"mode":0} 指令来关闭 ESP-NOW 接收功能，后续也可以使用 {"T":301,"mode":3} 来恢复。</li>
+<li>如果你需要产品每次开机自动设置为 {"T":301,"mode":0}，可以将该指令写入 boot.mission 文件，这样产品每次开机会自动关闭 ESP-NOW 指令接收功能，你可以使用这条命令将 {"T":301,"mode":0} 添加到 boot.mission：{"T":222,"name":"boot","step":"{\"T\":301,\"mode\":0}"}，后续如果你想取消这一设置可以直接删除 boot.mission 文件（删除后在下次开机时会自动新建）：{"T":203,"name":"boot.mission"}。</li></ul>
+<p><span style="font-size:100%"><b>ESP-NOW 使用准备工作</b></span>
+</p>
+<ul><li>以下使用 ESP-NOW 的教程中，接收端接收 JSON 指令的前提是你已经开启了 ESP-NOW 的指令接收功能（新产品的默认状态即可）。</li>
+<li>以下功能涉及到的硬件为 General Driver for Robots 或 ROS Driver for Robots 等运行我们的下位机程序的 ESP32 设备。</li></ul>
+<p><span style="font-size:100%"><b>单播控制</b></span>
+</p><p>单播控制是点对点的控制方式，你可以通过一台设备来控制另一台设备。
+</p>
+<ul><li>用户需要获得被控制端的MAC地址，该地址通常会在OLED屏幕上有显示。</li>
+<li>用户通过本教程介绍的方法，向控制端发送JSON指令，将被控制端的MAC地址添加到peer，例如：{"T":303,"mac":"CC:DB:A7:5C:1C:40"}，你需要将 mac 的值替换为你的从动端的 mac 地址。</li>
+<li>如果你需要从peer中删除某个mac地址，可以使用 {"T":304,"mac":"CC:DB:A7:5C:1C:40"} 指令。</li>
+<li>向被控制端发送 JSON 指令：{"T":306,"mac":"CC:DB:A7:5C:1C:40","dev":0,"b":0,"s":0,"e":0,"h":0,"cmd":1,"megs":"{"T":114,"led":255}"}</li>
+<li>你可以将上面的 megs 中的 JSON 指令替换为其它指令，将 mac 的值替换为你的被控制端的 mac 地址，其余的值不要改动，那些值是用于其它功能的。</li></ul>
+<p><span style="font-size:100%"><b>广播控制</b></span>
+</p><p>广播控制是一对多的控制方式，你可以通过一台设备来同时控制多台设备。
+</p>
+<ul><li>用户不需要获得被控制端的MAC地址，该模式会向一定范围内的全部设备发送指令，广播控制的方法与单播控制的方法相同，只需要将单播控制中的 mac 值替换为广播地址即可：“FF:FF:FF:FF:FF:FF”</li>
+<li>用户通过本教程介绍的方法，向控制端发送JSON指令，将广播地址添加到peer：{"T":303,"mac":"FF:FF:FF:FF:FF:FF"}</li>
+<li>如果你需要从peer中删除广播mac地址，可以使用 {"T":304,"mac":"FF:FF:FF:FF:FF:FF"} 指令。</li>
+<li>广播发送 JSON 指令：{"T":306,"mac":"FF:FF:FF:FF:FF:FF","dev":0,"b":0,"s":0,"e":0,"h":0,"cmd":1,"megs":"{"T":114,"led":255}"}
+<ul><li>你可以将上面的 megs 中的 JSON 指令替换为其它指令，其余的值不要改动，那些值是用于其它功能的。</li></ul></li></ul>
+<p><span style="font-size:100%"><b>组播控制</b></span>
+</p><p>组播控制是一对多的控制方式，你可以通过一台设备来同时控制多台设备，与广播控制的区别是组播控制可以选择被控制的设备。
+</p>
+<ul><li>用户需要获得被控制端的MAC地址，该地址通常会在OLED屏幕上有显示。</li>
+<li>用户通过本教程介绍的方法，向控制端发送JSON指令，将被控制端的MAC地址添加到peer，例如：{"T":303,"mac":"CC:DB:A7:5C:1C:40"}，{"T":304,"mac":"CC:DB:A7:5C:E5:FC"}，你需要将 mac 的值替换为你的从动端的 mac 地址，你可以添加多个被控制端的 mac 地址，但是建议不超过20个。</li>
+<li>但是不要将广播地址“FF:FF:FF:FF:FF:FF”添加进去。</li>
+<li>如果你需要从peer中删除广播mac地址，可以使用 {"T":304,"mac":"FF:FF:FF:FF:FF:FF"} 指令。</li>
+<li>组播发送 JSON 指令：{"T":305,"dev":0,"b":0,"s":0,"e":1.57,"h":1.57,"cmd":1,"megs":"{"T":114,"led":255}"}</li>
+<li>你可以将上面的 megs 中的 JSON 指令替换为其它指令，其余的值不要改动，那些值是用于其它功能的。</li></ul>
+<p><br />
+</p>
+<h4><span id="使用_GPIO_或_USB_串口下达_JSON_指令"></span><span class="mw-headline" id=".E4.BD.BF.E7.94.A8_GPIO_.E6.88.96_USB_.E4.B8.B2.E5.8F.A3.E4.B8.8B.E8.BE.BE_JSON_.E6.8C.87.E4.BB.A4"><b>使用 GPIO 或 USB 串口下达 JSON 指令</b></span></h4>
+<p>你可以使用 PC、树莓派、Jeston Nano、Jetson Orin Nano 等上位机通过串口与 ESP32 下位机进行通信。串口连接有以下两种方法：
+</p>
+<ul><li>通过 40PIN 的 UART 接口将机器人与 树莓派、Jeston Nano、Jetson Orin Nano 进行连接</li>
+<li>通过 USB 线将机器人的下位机驱动板的 USB接口与上位机进行连接（此方法需要拆卸小车）</li>
+<li>点击串口通信的 <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net/w/upload/c/c9/Serial_simple_ctrl.zip">serial_simple_ctrl.py</a> 例程下载。具体例程内容如下：</li></ul>
+<pre class="code2highlight lang-python">import serial
+import argparse
+import threading
+
+def read_serial():
+    while True:
+        data = ser.readline().decode('utf-8')
+        if data:
+            print(f&quot;Received: {data}&quot;, end='')
+
+def main():
+    global ser
+    parser = argparse.ArgumentParser(description='Serial JSON Communication')
+    parser.add_argument('port', type=str, help='Serial port name (e.g., COM1 or /dev/ttyUSB0)')
+
+    args = parser.parse_args()
+
+    ser = serial.Serial(args.port, baudrate=115200, dsrdtr=None)
+    ser.setRTS(False)
+    ser.setDTR(False)
+
+    serial_recv_thread = threading.Thread(target=read_serial)
+    serial_recv_thread.daemon = True
+    serial_recv_thread.start()
+
+    try:
+        while True:
+            command = input(&quot;&quot;)
+            ser.write(command.encode() + b'\n')
+    except KeyboardInterrupt:
+        pass
+    finally:
+        ser.close()
+
+
+if __name__ == &quot;__main__&quot;:
+    main()</pre>
+<p>使用以下命令来运行串口通信程序，注意一定要加上机械臂所接入的端口号。将 COM20 更换成机械臂在 PC 中新插入的串口设备端口号，如果您使用的是树莓派、Jeston Orin Nano等设备，也要更改为相对应的端口名称。
+</p>
+<pre>python http_simple_ctrl.py COM20
+</pre>
+<p>运行完成后，在这个界面中可以发送 JSON 格式的指令，也可以获取机器人的反馈信息，从而与机器人进行通信。
+</p><p><br />
+</p>
+<h2><span id="JSON_指令集"></span><span class="mw-headline" id="JSON_.E6.8C.87.E4.BB.A4.E9.9B.86"><b>JSON 指令集</b></span></h2>
+<h3><span id="底盘移动"></span><span class="mw-headline" id=".E5.BA.95.E7.9B.98.E7.A7.BB.E5.8A.A8"><b>底盘移动</b></span></h3>
+<h4><span id="左右轮速度控制_-_CMD_SPEED_CTRL"></span><span class="mw-headline" id=".E5.B7.A6.E5.8F.B3.E8.BD.AE.E9.80.9F.E5.BA.A6.E6.8E.A7.E5.88.B6_-_CMD_SPEED_CTRL"><b>左右轮速度控制 - CMD_SPEED_CTRL</b></span></h4>
+<pre class="code2highlight lang-cpp">{&quot;T&quot;:1,&quot;L&quot;:0.5,&quot;R&quot;:0.5}</pre>
+<ul><li>L 为左侧轮速度，R 为右侧轮速度，速度取值范围为 -0.5 ~ +0.5，正值前进，负值后退
+<ul><li>该产品型号为 WAVE ROVER，采用的电机是没有编码器的，速度 0.5 代表该侧电机 100% 的 PWM，0.25 代表该侧电机 50% 的 PWM</li></ul></li>
+<li>推荐使用该指令对产品进行控制。</li></ul>
+<h4><span id="左右侧电机PWM控制_-_CMD_PWM_INPUT"></span><span class="mw-headline" id=".E5.B7.A6.E5.8F.B3.E4.BE.A7.E7.94.B5.E6.9C.BAPWM.E6.8E.A7.E5.88.B6_-_CMD_PWM_INPUT"><b>左右侧电机PWM控制 - CMD_PWM_INPUT</b></span></h4>
+<pre class="code2highlight lang-cpp">{&quot;T&quot;:11,&quot;L&quot;:164,&quot;R&quot;:164}</pre>
+<ul><li>L 为左侧电机 PWM 值，R 为右侧电机 PWM 值，PWM 值取值范围为 -255 ~ +255, 正值前进，负值后退</li>
+<li>由于直流减速电机的低速特性比较差，所以当 PWM 的绝对值过小时，电机可能不会转动</li>
+<li>该指令仅用于调试使用，控制产品移动请使用上面的 CMD_SPEED_CTRL</li></ul>
+<h4><span id="ROS控制_-_CMD_ROS_CTRL"></span><span class="mw-headline" id="ROS.E6.8E.A7.E5.88.B6_-_CMD_ROS_CTRL"><b>ROS控制 - CMD_ROS_CTRL</b></span></h4>
+<pre class="code2highlight lang-cpp">{&quot;T&quot;:13,&quot;X&quot;:0.1,&quot;Z&quot;:0.3}</pre>
+<ul><li>X 值为移动线速度，单位 m/s，Z 值为转向角速度，单位为 rad/s</li>
+<li>注意：该指令只适用于带编码器的 UGV01 和 UGV02</li></ul>
+<h4><span id="设置电机_PID"></span><span class="mw-headline" id=".E8.AE.BE.E7.BD.AE.E7.94.B5.E6.9C.BA_PID"><b>设置电机 PID</b></span></h4>
+<pre class="code2highlight lang-cpp">{&quot;T&quot;:2,&quot;P&quot;:200,&quot;I&quot;:2500,&quot;D&quot;:0,&quot;L&quot;:255}</pre>
+<ul><li>P、I、D 三个值分别对应比例、积分、微分系数，L 值为 Windup Limits 预留接口，目前 UGV01 中使用的默认 PID 控制器用不到该参数，我们预留了该接口方便用户更换其它的 PID 控制器</li>
+<li>注意：该指令不适用于无编码器的 WAVE ROVER</li></ul>
+<h3><span id="OLED_屏幕设置"></span><span class="mw-headline" id="OLED_.E5.B1.8F.E5.B9.95.E8.AE.BE.E7.BD.AE"><b>OLED 屏幕设置</b></span></h3>
+<h4><span id="OLED_屏幕控制"></span><span class="mw-headline" id="OLED_.E5.B1.8F.E5.B9.95.E6.8E.A7.E5.88.B6"><b>OLED 屏幕控制</b></span></h4>
+<pre class="code2highlight lang-cpp">{&quot;T&quot;:3,&quot;lineNum&quot;:0,&quot;Text&quot;:&quot;putYourTextHere&quot;}</pre>
+<ul><li>OLED屏幕显示内容设置，lineNum参数为行设置，可以为：0、1、2、3，共可以显示4行内容。每次设置一行内容，新的内容不会影响到其它行显示的内容，但是会替换掉这一行之前原有的内容。</li>
+<li>Text参数为内容设置，你可以在这里输入文字，文字会显示在对应行上</li>
+<li>当使用这条命令后，OLED屏幕将不会再显示机器人的信息，而是会显示指令让他显示的内容</li></ul>
+<h4><span id="OLED_屏幕恢复"></span><span class="mw-headline" id="OLED_.E5.B1.8F.E5.B9.95.E6.81.A2.E5.A4.8D"><b>OLED 屏幕恢复</b></span></h4>
+<pre class="code2highlight lang-cpp">{&quot;T&quot;:-3}</pre>
+<ul><li>指令类型为-3时，会将OLED屏幕重置为初始状态，显示机器人的信息</li></ul>
+<h3><span id="产品信息获取"></span><span class="mw-headline" id=".E4.BA.A7.E5.93.81.E4.BF.A1.E6.81.AF.E8.8E.B7.E5.8F.96"><b>产品信息获取</b></span></h3>
+<h4><span id="获取_IMU_数据"></span><span class="mw-headline" id=".E8.8E.B7.E5.8F.96_IMU_.E6.95.B0.E6.8D.AE"><b>获取 IMU 数据</b></span></h4>
+<pre class="code2highlight lang-cpp">{&quot;T&quot;:126}</pre>
+<ul><li>用于获取IMU信息，包括航向角、地磁场、加速度、姿态、温度等信息</li></ul>
+<h4><span id="获取底盘信息反馈_-_CMD_BASE_FEEDBACK"></span><span class="mw-headline" id=".E8.8E.B7.E5.8F.96.E5.BA.95.E7.9B.98.E4.BF.A1.E6.81.AF.E5.8F.8D.E9.A6.88_-_CMD_BASE_FEEDBACK"><b>获取底盘信息反馈 - CMD_BASE_FEEDBACK</b></span></h4>
+<pre class="code2highlight lang-cpp">{&quot;T&quot;:130}</pre>
+<h4><span id="串口连续反馈"></span><span class="mw-headline" id=".E4.B8.B2.E5.8F.A3.E8.BF.9E.E7.BB.AD.E5.8F.8D.E9.A6.88"><b>串口连续反馈</b></span></h4>
+<pre class="code2highlight lang-cpp">//关闭（默认）
+{&quot;T&quot;:131,&quot;cmd&quot;:0}
+//开启
+{&quot;T&quot;:131,&quot;cmd&quot;:1}</pre>
+<ul><li>不开启该功能时，底盘信息反馈通过一问一答的方式来实现，用过上面的 CMD_BASE_FEEDBACK 之类来获取底盘信息反馈</li>
+<li>开启该功能时，底盘会连续反馈信息，不要上位机发指令去问，适用于ROS系统</li></ul>
+<h4><span id="串口回声开关"></span><span class="mw-headline" id=".E4.B8.B2.E5.8F.A3.E5.9B.9E.E5.A3.B0.E5.BC.80.E5.85.B3"><b>串口回声开关</b></span></h4>
+<pre class="code2highlight lang-cpp">//关闭（默认）
+{&quot;T&quot;:143,&quot;cmd&quot;:0}
+//开启
+{&quot;T&quot;:143,&quot;cmd&quot;:1}</pre>
+<ul><li>开启后，你所有发送给下位机的指令都会出现在串口反馈中</li></ul>
+<h4><span id="串口回声开关_2"></span><span class="mw-headline" id=".E4.B8.B2.E5.8F.A3.E5.9B.9E.E5.A3.B0.E5.BC.80.E5.85.B3_2"><b>串口回声开关</b></span></h4>
+<pre class="code2highlight lang-cpp">//关闭（默认）
+{&quot;T&quot;:143,&quot;cmd&quot;:0}
+//开启
+{&quot;T&quot;:143,&quot;cmd&quot;:1}</pre>
+<ul><li>开启后，你所有发送给下位机的指令都会出现在串口反馈中</li></ul>
+<h3><span id="IO4_IO5_控制"></span><span class="mw-headline" id="IO4_IO5_.E6.8E.A7.E5.88.B6"><b>IO4 IO5 控制</b></span></h3>
+<pre class="code2highlight lang-cpp">{&quot;T&quot;:132,&quot;IO4&quot;:255,&quot;IO5&quot;:255}</pre>
+<ul><li>用于设置 IO4 IO5的 PWM</li></ul>
+<h3><span id="外接模块扩展"></span><span class="mw-headline" id=".E5.A4.96.E6.8E.A5.E6.A8.A1.E5.9D.97.E6.89.A9.E5.B1.95"><b>外接模块扩展</b></span></h3>
+<h4><span id="设置外接模块类型"></span><span class="mw-headline" id=".E8.AE.BE.E7.BD.AE.E5.A4.96.E6.8E.A5.E6.A8.A1.E5.9D.97.E7.B1.BB.E5.9E.8B"><b>设置外接模块类型</b></span></h4>
+<pre class="code2highlight lang-cpp">{&quot;T&quot;:4,&quot;cmd&quot;:0}</pre>
+<ul><li>0: Null - 1: RoArm-M2机械臂 - 3: Gimbal云台</li></ul>
+<h4><span id="云台基础控制"></span><span class="mw-headline" id=".E4.BA.91.E5.8F.B0.E5.9F.BA.E7.A1.80.E6.8E.A7.E5.88.B6"><b>云台基础控制</b></span></h4>
+<pre class="code2highlight lang-cpp">{&quot;T&quot;:133,&quot;X&quot;:45,&quot;Y&quot;:45,&quot;SPD&quot;:0,&quot;ACC&quot;:0}</pre>
+<ul><li>如果产品安装有云台，可通过这条指令进行控制，X 值为水平角度，正值向左，负值向右，Y 值为垂直角度，正值向上负值向下</li></ul>
+<h4><span id="机械臂_JSON_指令控制"></span><span class="mw-headline" id=".E6.9C.BA.E6.A2.B0.E8.87.82_JSON_.E6.8C.87.E4.BB.A4.E6.8E.A7.E5.88.B6"><b>机械臂 JSON 指令控制</b></span></h4>
+<p>如果产品安装有机械臂，可以通过参考 <a href="/wiki/RoArm-M2-S_JSON%E6%8C%87%E4%BB%A4%E5%90%AB%E4%B9%89" title="RoArm-M2-S JSON指令含义"><b>RoArm-M2-S_JSON 指令含义</b></a>来对机械臂进行控制。
+</p>
+<h2><span id="上位机使用教程"></span><span class="mw-headline" id=".E4.B8.8A.E4.BD.8D.E6.9C.BA.E4.BD.BF.E7.94.A8.E6.95.99.E7.A8.8B"><b>上位机使用教程</b></span></h2>
+<h3><span id="树莓派上位机"></span><span class="mw-headline" id=".E6.A0.91.E8.8E.93.E6.B4.BE.E4.B8.8A.E4.BD.8D.E6.9C.BA"><b>树莓派上位机</b></span></h3>
+<p>本章节使用树莓派5和树莓派4B测试
+</p>
+<ul><li>树莓派的USB接口连接USB摄像头，推荐 IMX335 5MP USB Camera (B)</li>
+<li>将树莓派安装到底盘上</li>
+<li>制作镜像，下载上位机程序到树莓派中
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://github.com/waveshareteam/ugv_rpi">ugv_rpi 下载链接</a></li></ul></li>
+<li>cd ugv_rpi/</li>
+<li>为安装脚本添加可执行权限 sudo chmod +x setup.sh</li>
+<li>为配置开机自动运行的脚本添加可执行权限 sudo chmod +x autorun.sh</li>
+<li>国际用户：sudo ./setup.sh</li>
+<li>国内用户：sudo ./setup.sh -i</li>
+<li>等待安装完成后，配置开机自动运行：./autorun.sh （注意该指令不可以使用 sudo 运行）</li>
+<li>配置 WIFI 相关功能（无网络时自动切换热点): cd ugv_rpi/AccessPopup/</li>
+<li>安装 AccessPopup，为安装脚本添加可执行权限：sudo chmod +x installconfig.sh</li>
+<li>运行安装脚本: sudo ./installconfig.sh</li>
+<li>输入1，安装 AccessPopup，然后按任意键退出，输入9，回车，退出安装脚本</li>
+<li>重启设备后，树莓派会自动运行产品上位机主程序</li></ul>
+<h2><span id="产品硬件介绍"></span><span class="mw-headline" id=".E4.BA.A7.E5.93.81.E7.A1.AC.E4.BB.B6.E4.BB.8B.E7.BB.8D">产品硬件介绍</span></h2>
+<h3><span id="驱动板General_Driver_for_Robots各模块使用"></span><span class="mw-headline" id=".E9.A9.B1.E5.8A.A8.E6.9D.BFGeneral_Driver_for_Robots.E5.90.84.E6.A8.A1.E5.9D.97.E4.BD.BF.E7.94.A8">驱动板General Driver for Robots各模块使用</span></h3>
+<ul><li><a href="/wiki/%E5%BA%8F%E7%AB%A0_%E5%AE%89%E8%A3%85Arduino_IDE" title="序章 安装Arduino IDE">序章 二次开发工具使用</a></li>
+<li><a href="/wiki/%E6%95%99%E7%A8%8B%E4%B8%80_%E5%B8%A6%E7%BC%96%E7%A0%81%E5%99%A8%E7%94%B5%E6%9C%BA%E6%8E%A7%E5%88%B6%E4%BE%8B%E7%A8%8B" title="教程一 带编码器电机控制例程">教程一 带编码器电机控制例程</a></li>
+<li><a href="/wiki/%E6%95%99%E7%A8%8B%E4%BA%8C_%E6%97%A0%E7%BC%96%E7%A0%81%E5%99%A8%E7%94%B5%E6%9C%BA%E6%8E%A7%E5%88%B6%E4%BE%8B%E7%A8%8B" title="教程二 无编码器电机控制例程">教程二 无编码器电机控制例程</a></li>
+<li><a href="/wiki/%E6%95%99%E7%A8%8B%E4%B8%89_ST3215%E6%80%BB%E7%BA%BF%E8%88%B5%E6%9C%BA%E6%8E%A7%E5%88%B6%E4%BE%8B%E7%A8%8B" title="教程三 ST3215总线舵机控制例程">教程三 ST3215总线舵机控制例程</a></li>
+<li><a href="/wiki/%E6%95%99%E7%A8%8B%E5%9B%9B_PWM%E8%88%B5%E6%9C%BA%E6%8E%A7%E5%88%B6%E4%BE%8B%E7%A8%8B" title="教程四 PWM舵机控制例程">教程四 PWM舵机控制例程</a></li>
+<li><a href="/wiki/%E6%95%99%E7%A8%8B%E4%BA%94_IMU%E6%95%B0%E6%8D%AE%E8%AF%BB%E5%8F%96%E4%BE%8B%E7%A8%8B" title="教程五 IMU数据读取例程">教程五 IMU数据读取例程</a></li>
+<li><a href="/wiki/%E6%95%99%E7%A8%8B%E5%85%AD_SD%E5%8D%A1%E8%AF%BB%E5%8F%96%E4%BE%8B%E7%A8%8B" title="教程六 SD卡读取例程">教程六 SD卡读取例程</a></li>
+<li><a href="/wiki/%E6%95%99%E7%A8%8B%E4%B8%83_INA219%E7%94%B5%E5%8E%8B%E7%94%B5%E6%B5%81%E7%9B%91%E6%B5%8B%E4%BE%8B%E7%A8%8B" title="教程七 INA219电压电流监测例程">教程七 INA219电压电流监测例程</a></li>
+<li><a href="/wiki/%E6%95%99%E7%A8%8B%E5%85%AB_OLED%E5%B1%8F%E5%B9%95%E6%8E%A7%E5%88%B6%E4%BE%8B%E7%A8%8B" title="教程八 OLED屏幕控制例程">教程八 OLED屏幕控制例程</a></li></ul>
+<h3><span id="电机参数"></span><span class="mw-headline" id=".E7.94.B5.E6.9C.BA.E5.8F.82.E6.95.B0">电机参数</span></h3>
+<ul><li>型号：GF12-N20电机 12V200转 进口波箱</li>
+<li>额定电压：12V</li>
+<li>额定电流：0.055A</li>
+<li>堵转电流：0.45A</li>
+<li>额定转矩：0.09kg.cm</li>
+<li>堵转转矩：0.7kg.cm</li>
+<li>额定输出功率：1.5W</li>
+<li>空载转速：66±10%RPM</li>
+<li>电机尺寸：34*12mm</li>
+<li>输出轴尺寸：4*10mm</li></ul>
+<p><br />
+</p>
+</div>
+<div class="tabbertab" title="资料" id="myresources">
+<h1><span id="资料"></span><span class="mw-headline" id=".E8.B5.84.E6.96.99">资料</span></h1>
+<h2><span id="开源例程"></span><span class="mw-headline" id=".E5.BC.80.E6.BA.90.E4.BE.8B.E7.A8.8B">开源例程</span></h2>
+<ul><li><a href="/wiki/%E6%96%87%E4%BB%B6:WAVE_ROVER.zip" title="文件:WAVE ROVER.zip">WAVE ROVER开源例程</a></li></ul>
+<ul><li><a href="/wiki/%E6%96%87%E4%BB%B6:WAVE_ROVER_FACTORY.zip" title="文件:WAVE ROVER FACTORY.zip">WAVE ROVER 的 ESP32 下载工具</a></li></ul>
+<h2><span id="机器人尺寸图纸和扩展平台图纸"></span><span class="mw-headline" id=".E6.9C.BA.E5.99.A8.E4.BA.BA.E5.B0.BA.E5.AF.B8.E5.9B.BE.E7.BA.B8.E5.92.8C.E6.89.A9.E5.B1.95.E5.B9.B3.E5.8F.B0.E5.9B.BE.E7.BA.B8">机器人尺寸图纸和扩展平台图纸</span></h2>
+<ul><li><a href="/wiki/%E6%96%87%E4%BB%B6:WAVE_ROVER_DXF.rar" title="文件:WAVE ROVER DXF.rar">底盘 DXF图纸</a></li>
+<li><a href="/wiki/%E6%96%87%E4%BB%B6:WAVE_ROVER_PDF.rar" title="文件:WAVE ROVER PDF.rar">底盘 PDF图纸</a></li>
+<li><a href="/wiki/%E6%96%87%E4%BB%B6:WAVE_ROVER-EP_DXF.rar" title="文件:WAVE ROVER-EP DXF.rar">扩展平台 DXF图纸</a></li>
+<li><a href="/wiki/%E6%96%87%E4%BB%B6:WAVE_ROVER-EP_PDF.rar" title="文件:WAVE ROVER-EP PDF.rar">扩展平台 PDF图纸</a></li></ul>
+<h2><span id="机器人模型"></span><span class="mw-headline" id=".E6.9C.BA.E5.99.A8.E4.BA.BA.E6.A8.A1.E5.9E.8B">机器人模型</span></h2>
+<ul><li><a href="/wiki/%E6%96%87%E4%BB%B6:WAVE_ROVER_MODEL_STL.rar" title="文件:WAVE ROVER MODEL STL.rar">WAVE ROVER 3D模型</a></li></ul>
+<h2><span id="配置清单"></span><span class="mw-headline" id=".E9.85.8D.E7.BD.AE.E6.B8.85.E5.8D.95">配置清单</span></h2>
+<p><a href="/wiki/%E6%96%87%E4%BB%B6:WAVE-ROVER-details-pack.jpg" class="image"><img alt="WAVE-ROVER-details-pack.jpg" src="/w/upload/thumb/7/70/WAVE-ROVER-details-pack.jpg/600px-WAVE-ROVER-details-pack.jpg" decoding="async" loading="lazy" width="600" height="438" srcset="/w/upload/thumb/7/70/WAVE-ROVER-details-pack.jpg/900px-WAVE-ROVER-details-pack.jpg 1.5x, /w/upload/7/70/WAVE-ROVER-details-pack.jpg 2x" /></a>
+</p><p><br />
+</p>
+</div>
+<p><br />
+</p>
+<h1><span id="技术支持"></span><span class="mw-headline" id=".E6.8A.80.E6.9C.AF.E6.94.AF.E6.8C.81">技术支持</span></h1>
+<p><br />联系人：方工<br />
+EMAIL：2355742825@qq.com<br />
+QQ：2355742825<br />
+微信：扫下方二维码添加<br />
+<a href="/wiki/%E6%96%87%E4%BB%B6:QRCode_YijunFang.png" class="image"><img alt="QRCode YijunFang.png" src="/w/upload/thumb/0/0c/QRCode_YijunFang.png/200px-QRCode_YijunFang.png" decoding="async" loading="lazy" width="200" height="200" srcset="/w/upload/thumb/0/0c/QRCode_YijunFang.png/300px-QRCode_YijunFang.png 1.5x, /w/upload/0/0c/QRCode_YijunFang.png 2x" /></a>
+</p>
+<style data-mw-deduplicate="TemplateStyles:r75601">.mw-parser-output .note{background-position:left 7px top 50%;padding:0.5em 0.5em 0.5em 40px;margin:0.5em 0;overflow:hidden;background-color:#f8f9fa;background-repeat:no-repeat;border:1px solid #ddd}.mw-parser-output .note-inline{display:inline-block;vertical-align:middle}.mw-parser-output .note-info{background-color:#f6efe5;background-size:25px;border-color:#ac6600;padding-left:40px;min-height:28px}.mw-parser-output .note-reminder{background-color:#fff9ea;background-size:25px;border-color:#fc3;min-height:28px}.mw-parser-output .note-warn{background-color:#fff9ea;background-size:25px;border-color:#fc3;min-height:28px}.mw-parser-output .note-error{background-color:#fee7e6;background-size:25px;border-color:#c33;min-height:28px}</style><div role="note" class="note note-error">说明：进行售后服务前，请准备好客户信息（定货单位、定货人等），以供验证</div></div></div>
+<!-- 
+NewPP limit report
+Cached time: 20260508033053
+Cache expiry: 86400
+Dynamic content: false
+Complications: []
+CPU time usage: 0.070 seconds
+Real time usage: 0.088 seconds
+Preprocessor visited node count: 592/1000000
+Post‐expand include size: 8859/2097152 bytes
+Template argument size: 931/2097152 bytes
+Highest expansion depth: 6/40
+Expensive parser function count: 0/100
+Unstrip recursion depth: 0/20
+Unstrip post‐expand size: 4058/5000000 bytes
+-->
+<!--
+Transclusion expansion time report (%,ms,calls,template)
+100.00%   19.569      1 -total
+ 58.52%   11.452      1 模板:Eng53
+ 50.52%    9.886      1 模板:Note
+ 37.66%    7.370      1 模板:外围模块
+-->
+
+<!-- Saved in parser cache with key ws_wiki_135_cn:pcache:idhash:19171-0!canonical!groups=* and timestamp 20260508033053 and revision id 140801
+ -->
+</div></div>								<div class="printfooter">
+				取自“<a dir="ltr" href="https://www.waveshare.net/w/index.php?title=WAVE_ROVER&amp;oldid=140801">https://www.waveshare.net/w/index.php?title=WAVE_ROVER&amp;oldid=140801</a>”				</div>
+												<div id="catlinks" class="catlinks" data-mw="interface"><div id="mw-normal-catlinks" class="mw-normal-catlinks"><a href="/wiki/%E7%89%B9%E6%AE%8A:%E9%A1%B5%E9%9D%A2%E5%88%86%E7%B1%BB" title="特殊:页面分类">分类</a>：<ul><li><a href="/wiki/%E5%88%86%E7%B1%BB:%E6%A8%A1%E5%9D%97" title="分类:模块">模块</a></li><li><a href="/w/index.php?title=%E5%88%86%E7%B1%BB:%E6%9C%BA%E5%99%A8%E4%BA%BA&amp;action=edit&amp;redlink=1" class="new" title="分类:机器人（页面不存在）">机器人</a></li><li><a href="/w/index.php?title=%E5%88%86%E7%B1%BB:6X4&amp;action=edit&amp;redlink=1" class="new" title="分类:6X4（页面不存在）">6X4</a></li><li><a href="/w/index.php?title=%E5%88%86%E7%B1%BB:TTL%E6%80%BB%E7%BA%BF%E8%88%B5%E6%9C%BA%E6%8E%A7%E5%88%B6%E6%8E%A5%E5%8F%A3%E6%8E%A5%E5%8F%A3&amp;action=edit&amp;redlink=1" class="new" title="分类:TTL总线舵机控制接口接口（页面不存在）">TTL总线舵机控制接口接口</a></li></ul></div><div id="mw-hidden-catlinks" class="mw-hidden-catlinks mw-hidden-cats-hidden">隐藏分类：<ul><li><a href="/wiki/%E5%88%86%E7%B1%BB:I2C%E6%8E%A5%E5%8F%A3" title="分类:I2C接口">I2C接口</a></li><li><a href="/wiki/%E5%88%86%E7%B1%BB:UART%E6%8E%A5%E5%8F%A3" title="分类:UART接口">UART接口</a></li></ul></div></div>												<div class="visualClear"></div>
+							</div>
+			<!-- /bodyContent -->
+		</div>
+						</div>
+				</div>
+			</div>
+			<!-- /content -->
+
+			<!-- sidebar-left -->
+			<div class="sidebar-wrapper sidebar-left-wrapper">
+				<div class="sidebar-container container">
+					<div class="row">
+						<div id="sidebar-left" class="col-md-2 col-md-offset-0">
+							<div id="tweekiTOC"></div>						</div>
+					</div>
+				</div>
+			</div>
+			<!-- /sidebar-left -->
+					<!-- footer -->
+			<div id="footer" role="contentinfo" class="footer container footer-sticky bg-light">
+			<ul id="footer-custom"><li class="dropup"><a href="/w/index.php?title=%E7%89%B9%E6%AE%8A:%E7%94%A8%E6%88%B7%E7%99%BB%E5%BD%95&amp;returnto=WAVE+ROVER" title="我们鼓励您登录；然而，这不是强制性的[o]" accesskey="o">Login / Create Account</a></li><li class="dropup"><a href="INVALID-TITLE:[https://www.waveshare.net Copyright © 2022 深圳市微雪电子有限公司 版权所有]" id="n-.255Bhttps.253A.252F.252Fwww.waveshare.net-copyright-.25C2.25A9-2022-.25E6.25B7.25B1.25E5.259C.25B3.25E5.25B8.2582.25E5.25BE.25AE.25E9.259B.25AA.25E7.2594.25B5.25E5.25AD.2590.25E6.259C.2589.25E9.2599.2590.25E5.2585.25AC.25E5.258F.25B8-.25E7.2589.2588.25E6.259D.2583.25E6.2589.2580.25E6.259C.2589.255D"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.net">Copyright © 2022 深圳市微雪电子有限公司 版权所有</a></a></li></ul><div style="clear:both"></div>			</div>
+			<!-- /footer -->
+		
+<script>
+var fbtFancyBoxOptions = {"openEffect":"elastic","closeEffect":"elastic","helpers":{"title":{"type":"inside"}}};
+</script>
+
+<script>(RLQ=window.RLQ||[]).push(function(){mw.config.set({"wgPageParseReport":{"limitreport":{"cputime":"0.070","walltime":"0.088","ppvisitednodes":{"value":592,"limit":1000000},"postexpandincludesize":{"value":8859,"limit":2097152},"templateargumentsize":{"value":931,"limit":2097152},"expansiondepth":{"value":6,"limit":40},"expensivefunctioncount":{"value":0,"limit":100},"unstrip-depth":{"value":0,"limit":20},"unstrip-size":{"value":4058,"limit":5000000},"timingprofile":["100.00%   19.569      1 -total"," 58.52%   11.452      1 模板:Eng53"," 50.52%    9.886      1 模板:Note"," 37.66%    7.370      1 模板:外围模块"]},"cachereport":{"timestamp":"20260508033053","ttl":86400,"transientcontent":false}}});mw.config.set({"wgBackendResponseTime":104});});</script>	</body>
+</html>
