@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
-from nav2_simple_commander.robot_navigator import BasicNavigator
+from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 import tf_transformations
 from typing import List
 
@@ -26,7 +26,7 @@ class NavToGoal(Node):
                 self.get_logger().info(f'  Distance remaining: {feedback.remaining_distance:.2f}m')
 
         result = self.navigator.getResult()
-        success = result == 0  # TaskStatus.SUCCEEDED
+        success = result == TaskResult.SUCCEEDED
         self.get_logger().info(f'Navigation {"succeeded" if success else "failed"}')
         return success
 
@@ -39,7 +39,7 @@ class NavToGoal(Node):
             if feedback:
                 self.get_logger().info(f'  On waypoint {feedback.current_waypoint + 1}/{len(poses)}')
 
-        return self.navigator.getResult() == 0
+        return self.navigator.getResult() == TaskResult.SUCCEEDED
 
 
 def main(args=None):

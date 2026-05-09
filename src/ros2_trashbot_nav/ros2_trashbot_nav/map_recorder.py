@@ -35,10 +35,15 @@ class MapRecorder(Node):
 
     def _save_map(self, request, response):
         """Save current map to disk."""
+        success, message = self.save_current_map()
+        response.success = success
+        response.message = message
+        return response
+
+    def save_current_map(self):
+        """Save current map to disk and return a service-compatible result."""
         if self.latest_map is None:
-            response.success = False
-            response.message = 'No map data received'
-            return response
+            return False, 'No map data received'
 
         map_path = os.path.join(self.map_dir, f'{self.default_map_name}.pgm')
         yaml_path = os.path.join(self.map_dir, f'{self.default_map_name}.yaml')
@@ -46,15 +51,13 @@ class MapRecorder(Node):
         try:
             self._write_pgm(self.latest_map, map_path)
             self._write_yaml(self.latest_map, yaml_path)
-            response.success = True
-            response.message = f'Map saved to {map_path}'
-            self.get_logger().info(response.message)
+            message = f'Map saved to {map_path}'
+            self.get_logger().info(message)
+            return True, message
         except Exception as e:
-            response.success = False
-            response.message = f'Failed to save map: {e}'
-            self.get_logger().error(response.message)
-
-        return response
+            message = f'Failed to save map: {e}'
+            self.get_logger().error(message)
+            return False, message
 
     def _write_pgm(self, msg: OccupancyGrid, path: str):
         """Write occupancy grid to PGM image."""
@@ -96,7 +99,7 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.call_service('/trashbot/save_map')
+        node.save_current_map()
     finally:
         node.destroy_node()
         rclpy.shutdown()

@@ -1,9 +1,9 @@
-<?xml version="1.0"?>
+﻿<?xml version="1.0"?>
 <package format="3">
   <name>ros2_trashbot_hardware</name>
   <version>0.1.0</version>
-  <description>ESP32 serial bridge - translates between ESP32 binary protocol and ROS2 messages</description>
-  <maintainer email="trashbot@local">trashbot</maintainer>
+  <description>Waveshare WAVE ROVER UART JSON bridge for ROS2 messages</description>
+  <maintainer email="trashbot@example.com">trashbot</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_python</buildtool_depend>
@@ -16,7 +16,10 @@
   <depend>ros2_trashbot_interfaces</depend>
   <exec_depend>python3-serial</exec_depend>
 
+  <test_depend>python3-pytest</test_depend>
+
   <export>
     <build_type>ament_python</build_type>
   </export>
 </package>
+

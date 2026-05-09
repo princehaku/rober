@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import yaml
 from typing import List, Dict
 
@@ -8,10 +9,14 @@ from cv_bridge import CvBridge, CvBridgeError
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from nav2_simple_commander.robot_navigator import BasicNavigator
+from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 from geometry_msgs.msg import PoseStamped
 
-from ros2_trashbot_nav.route_utils import load_waypoints_from_csv
+from ros2_trashbot_nav.route_utils import (
+    ROUTE_CONTRACT_VERSION,
+    load_waypoints_from_csv,
+    validate_route_yaml_data,
+)
 
 
 class FixedRouteAutonomy(Node):
@@ -44,6 +49,11 @@ class FixedRouteAutonomy(Node):
         self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
         self.latest_frame = None
         self.current_index = 0
+        self.last_error = ''
+        self.failure_reason = ''
+        self.state = 'initializing'
+        self.last_transition = ''
+        self.last_nav_result = ''
         self.route_poses = self._load_route(self.route_file)
         self.keyframes = self._load_keyframes(len(self.route_poses))
 
@@ -54,11 +64,19 @@ class FixedRouteAutonomy(Node):
 
         self.get_logger().info(
             f'FixedRouteAutonomy loaded {len(self.route_poses)} poses from {self.route_file}, dry_run={self.dry_run}')
-        self._write_debug_status('ready')
+        if not self.route_poses:
+            if not self.failure_reason:
+                self.failure_reason = 'route contains no waypoints'
+                self.last_error = self.failure_reason
+            self._write_debug_status('error')
+        else:
+            self._write_debug_status('ready')
 
     def _load_route(self, path: str) -> List[PoseStamped]:
         if not os.path.exists(path):
             self.get_logger().error(f'Route file not found: {path}')
+            self.failure_reason = f'route file not found: {path}'
+            self.last_error = self.failure_reason
             return []
         try:
             if path.endswith('.csv'):
@@ -66,15 +84,14 @@ class FixedRouteAutonomy(Node):
             return self._load_route_yaml(path)
         except (OSError, ValueError, yaml.YAMLError) as exc:
             self.get_logger().error(f'Failed loading route file {path}: {exc}')
+            self.failure_reason = str(exc)
+            self.last_error = self.failure_reason
             return []
 
     def _load_route_yaml(self, path: str) -> List[PoseStamped]:
         with open(path, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f) or {}
-        waypoints = data.get('waypoints', [])
-        if not isinstance(waypoints, list):
-            raise ValueError('route YAML field "waypoints" must be a list')
-        return [self._row_to_pose(item) for item in waypoints]
+        return [self._row_to_pose(item) for item in validate_route_yaml_data(data, path)]
 
     def _load_route_csv(self, path: str) -> List[PoseStamped]:
         return [self._row_to_pose(row) for row in load_waypoints_from_csv(path)]
@@ -118,7 +135,7 @@ class FixedRouteAutonomy(Node):
             self.get_logger().warn(f'image convert failed: {exc}')
 
     def _visual_gate_pass(self, idx: int) -> bool:
-        if not self.enable_visual_gate:
+        if self.dry_run or not self.enable_visual_gate:
             return True
         if idx not in self.keyframes or self.latest_frame is None:
             return False
@@ -130,6 +147,12 @@ class FixedRouteAutonomy(Node):
         return len(matches) >= self.visual_match_threshold
 
     def _run_route(self):
+        if not self.route_poses:
+            if not self.failure_reason:
+                self.failure_reason = 'route contains no waypoints'
+                self.last_error = self.failure_reason
+            self._write_debug_status('error')
+            return
         if self.current_index >= len(self.route_poses):
             self._write_debug_status('completed')
             return
@@ -139,12 +162,17 @@ class FixedRouteAutonomy(Node):
         if self.busy:
             return
         if not self._visual_gate_pass(self.current_index):
+            self.last_error = f'visual gate failed for checkpoint {self.current_index}'
+            self.failure_reason = self.last_error
             self._write_debug_status('waiting_visual_gate')
             return
         self.busy = True
         self._write_debug_status('running')
         if self.dry_run:
             self.current_index += 1
+            self.last_error = ''
+            self.failure_reason = ''
+            self.last_nav_result = 'dry_run_checkpoint_passed'
             self.get_logger().info(f'[DRY_RUN] checkpoint passed -> next {self.current_index}')
         else:
             target = self.route_poses[self.current_index]
@@ -160,24 +188,54 @@ class FixedRouteAutonomy(Node):
         if not self.navigator.isTaskComplete():
             return
         result = self.navigator.getResult()
-        if result == 0:
+        if result == TaskResult.SUCCEEDED:
             self.current_index += 1
+            self.last_error = ''
+            self.failure_reason = ''
+            self.last_nav_result = 'succeeded'
             self.get_logger().info(f'checkpoint reached -> next {self.current_index}')
         else:
+            self.last_error = f'checkpoint {self.current_index} failed'
+            self.failure_reason = self.last_error
+            self.last_nav_result = str(result)
             self.get_logger().warn(f'checkpoint {self.current_index} failed, retrying')
         self.task_in_progress = False
         state = 'completed' if self.current_index >= len(self.route_poses) else 'ready'
         self._write_debug_status(state)
 
     def _write_debug_status(self, state: str):
+        if state != self.state:
+            self.last_transition = f'{self.state}->{state}'
+            self.state = state
+        current_target = None
+        if self.current_index < len(self.route_poses):
+            pose = self.route_poses[self.current_index].pose
+            current_target = {
+                'index': self.current_index,
+                'x': pose.position.x,
+                'y': pose.position.y,
+                'z': pose.position.z,
+                'qx': pose.orientation.x,
+                'qy': pose.orientation.y,
+                'qz': pose.orientation.z,
+                'qw': pose.orientation.w,
+            }
         payload = {
             'state': state,
+            'mode': 'dry_run' if self.dry_run else 'nav2',
+            'route_contract_version': ROUTE_CONTRACT_VERSION,
             'route_file': self.route_file,
             'keyframe_dir': self.keyframe_dir,
             'current_index': self.current_index,
+            'current_target': current_target,
             'total': len(self.route_poses),
             'dry_run': self.dry_run,
             'enable_visual_gate': self.enable_visual_gate,
+            'last_error': self.last_error,
+            'failure_reason': self.failure_reason,
+            'last_transition': self.last_transition,
+            'last_nav_result': self.last_nav_result,
+            'updated_at': time.time(),
         }
         try:
             status_dir = os.path.dirname(self.debug_status_file)

@@ -1,15 +1,21 @@
-# Trash collection action - navigate to trash, pick up, deliver to bin
-string trash_goal_frame    # target frame to navigate to
-int8 trash_type            # expected trash type
----
-bool arrived               # successfully reached the trash
-bool collected             # successfully picked up trash
-bool delivered             # successfully delivered to bin
-int8 status                # 0=idle, 1=navigating, 2=collecting, 3=delivering, 4=done
-float64 elapsed_sec        # time elapsed
+# Trash delivery action - user-loaded trash is delivered to a configured station.
+string trash_goal_frame    # compatibility name; interpreted as delivery waypoint/route target
+int8 trash_type            # optional expected trash type from the vision contract
 ---
 bool success               # overall task success
 int8 items_collected       # number of items collected
 int8 items_disposed        # number of items disposed
 float64 total_duration_sec
 string error_message
+string task_record_path
+---
+bool arrived               # successfully reached the delivery target
+bool collected             # user-loaded payload accepted into the delivery flow
+bool delivered             # successfully reached dropoff/confirmation
+int8 status                # 0=idle, 1=navigating, 2=collecting, 3=delivering, 4=done
+float32 percent_complete   # compatibility progress percentage, 0-100
+string current_step        # compatibility human-readable step name
+string state               # delivery state machine state
+string event               # latest delivery event
+string message             # human-readable status or failure detail
+float64 elapsed_sec        # time elapsed
