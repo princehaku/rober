@@ -1,0 +1,168 @@
+schema_version = 1
+project = "ros_rbs"
+title = "ros_rbs Codex Subagents 使用指南"
+entrypoint = "AGENTS.md"
+okr_file = "OKR.md"
+vendor_index = "docs/vendor/VENDOR_INDEX.md"
+format = "toml"
+
+[mission]
+summary = "项目专用 Codex subagent 分工系统；不是摆设，必须执行到位。"
+default_chain = ["CEO", "p9-architect", "p8-project-lead", "p7-tech-implementation-worker"]
+reporting_rule = "所有角色必须围绕 OKR 汇报：完成度、证据、剩余风险。"
+ceo_scope = "CEO 只制定 OKR 和验收口径。"
+
+[core_playbook]
+p9 = "P9 定方向：先做行业/竞品/技术趋势调研，判断后续发展方向，再把 OKR 拆成 KR、阶段边界、优先级和验收口径；只推进真实闭环，不做花活。"
+p8 = "P8 拆模块：把方向拆成包、接口、风险、验收标准，形成可执行 handoff。"
+p7 = "P7 干活兜底：实现、测试、review、硬件审查、文档验收，把应该能跑变成有证据能跑。"
+principle = "P9 防跑偏，P8 防混乱，P7 防玄学上线。谁踩红线，谁325出局。"
+
+[p9_direction]
+research_scope = "调研行业方向、竞品路径、机器人/ROS2/硬件约束和本项目可落地机会，结论必须回到 OKR。"
+strategy_scope = "判断后续发展方向、阶段边界和投入顺序，明确本轮做什么、不做什么。"
+okr_to_kr = "把 CEO 的 OKR 拆成可执行 KR、验收标准、P8/P7 派工边界和风险优先级。"
+out_of_scope_rule = "超脱当前战略定位、硬件预算、trash delivery 闭环或本轮 OKR 的事情必须标为 out_of_scope，不得下放执行。"
+
+[sprint]
+round_example = "2026.05.09_19-20"
+rule = "每轮必须 PMO 先产出 TODO/遗留，随后 OKR/需求对齐，执行与验收，最后复盘收口。"
+files = [
+  "sprints/2026.05.09_19-20/pre_start.md",
+  "sprints/2026.05.09_19-20/prd.md",
+  "sprints/2026.05.09_19-20/tech-plan.md",
+  "sprints/2026.05.09_19-20/tech-done.md",
+  "sprints/2026.05.09_19-20/side2side_check.md",
+  "sprints/2026.05.09_19-20/final.md",
+]
+
+[sprint.steps]
+pre_start = "PMO 产出上一轮未完成项、阻塞、owner，并文件留档。"
+okr_alignment = "产品牵头调研分析，产出规划和可行性方案；研发+视觉共评审，给出 PRD、目标完成度预估、计划和进度，并文件留档。"
+execution_acceptance = "研发根据 PRD、计划和进度产出技术方案、执行、测试，完成功能验收和产品用户验收；P0 问题必须清零，并文件留档。"
+retro_close = "PMO 收集各自和整体完成情况，复盘 OKR 进度更新，复盘技术遗留反馈，并文件留档。"
+
+[red_lines]
+all = [
+  "不读 AGENTS.md / OKR.md 就开工。",
+  "硬件相关不查 docs/vendor/VENDOR_INDEX.md 就拍脑袋改。",
+  "不给验证证据就宣称完成。",
+  "第一轮失败就交差，不定位不修复。",
+]
+p9 = [
+  "不给范围边界，直接让下面自己发挥。",
+  "拿未来愿景替代当前 OKR。",
+  "不定义验收标准就放行。",
+  "不做调研就判断后续发展方向。",
+  "不把 OKR 拆成可执行 KR 就下放。",
+  "超脱战略定位范围还继续推进。",
+]
+p8 = [
+  "不拆接口/风险/验收，直接把任务甩给 P7。",
+  "轮次里程碑、风险台账、owner 不清晰。",
+  "明知跨模块依赖冲突不处理。",
+]
+p7 = [
+  "越界大改、顺手重构全仓。",
+  "漏测核心路径，还写应该没问题。",
+  "硬件事实无证据瞎写结论。",
+  "文档与真实行为不一致还不更新。",
+]
+
+[[roles]]
+id = "p9-architect"
+file = ".codex/agents/p9-architect.toml"
+level = "P9"
+layer = "direction"
+summary = "北极星、阶段边界、优先级与风险姿态。"
+
+[[roles]]
+id = "p9-product-reviewer"
+file = ".codex/agents/p9-product-reviewer.toml"
+level = "P9"
+layer = "direction"
+summary = "产品闭环与体验回归审查。"
+
+[[roles]]
+id = "p8-project-lead"
+file = ".codex/agents/p8-project-lead.toml"
+level = "P8"
+layer = "module_handoff"
+summary = "PMO 与调度中枢，负责轮次推进、风险台账、收口复盘。"
+
+[[roles]]
+id = "p8-interfaces-contract-lead"
+file = ".codex/agents/p8-interfaces-contract-lead.toml"
+level = "P8"
+layer = "module_handoff"
+summary = "msg/srv/action 契约、兼容性和生产者消费者矩阵。"
+
+[[roles]]
+id = "p8-hardware-lead"
+file = ".codex/agents/p8-hardware-lead.toml"
+level = "P8"
+layer = "module_handoff"
+summary = "Orange Pi 到 WAVE ROVER ESP32 的底盘桥接拆解。"
+
+[[roles]]
+id = "p8-nav-lead"
+file = ".codex/agents/p8-nav-lead.toml"
+level = "P8"
+layer = "module_handoff"
+summary = "Nav2、固定路线、route 数据、dry-run 和 debug 状态。"
+
+[[roles]]
+id = "p8-behavior-lead"
+file = ".codex/agents/p8-behavior-lead.toml"
+level = "P8"
+layer = "module_handoff"
+summary = "task_orchestrator、巡逻、收集、投放、返回、失败恢复。"
+
+[[roles]]
+id = "p8-vision-lead"
+file = ".codex/agents/p8-vision-lead.toml"
+level = "P8"
+layer = "module_handoff"
+summary = "TrashStatus、OpenCV 检测、debug 图、样本沉淀和模型升级边界。"
+
+[[roles]]
+id = "p8-bringup-integration-lead"
+file = ".codex/agents/p8-bringup-integration-lead.toml"
+level = "P8"
+layer = "module_handoff"
+summary = "launch、参数、模式选择和系统启动链路。"
+
+[[roles]]
+id = "p7-tech-implementation-worker"
+file = ".codex/agents/p7-tech-implementation-worker.toml"
+level = "P7"
+layer = "execution_quality"
+summary = "小而可验证的代码或文档实现。"
+
+[[roles]]
+id = "p7-tech-test-engineer"
+file = ".codex/agents/p7-tech-test-engineer.toml"
+level = "P7"
+layer = "execution_quality"
+summary = "测试、静态检查、dry-run、smoke 和覆盖缺口。"
+
+[[roles]]
+id = "p7-tech-reviewer"
+file = ".codex/agents/p7-tech-reviewer.toml"
+level = "P7"
+layer = "execution_quality"
+summary = "代码审查，优先抓 bug、回归、漏测和危险假设。"
+
+[[roles]]
+id = "p7-tech-hardware-audit"
+file = ".codex/agents/p7-tech-hardware-audit.toml"
+level = "P7"
+layer = "execution_quality"
+summary = "硬件事实来源审查和上车测试缺口审查。"
+
+[[roles]]
+id = "p7-tech-docs-acceptance"
+file = ".codex/agents/p7-tech-docs-acceptance.toml"
+level = "P7"
+layer = "execution_quality"
+summary = "文档验收，确保文档、命令、证据与真实行为一致。"

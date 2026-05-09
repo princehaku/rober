@@ -1,6 +1,6 @@
 # ros_rbs - Autonomous Trash Collection Robot
 
-ROS2 自主导航扔垃圾小车项目。
+ROS2 自主自动驾驶扔垃圾小车项目。
 
 ## 必读资料入口
 
@@ -8,7 +8,7 @@ ROS2 自主导航扔垃圾小车项目。
 
 `docs/vendor/VENDOR_INDEX.md`
 
-后续 AI coding / Agent 工作不允许凭记忆猜测硬件细节。涉及引脚、电压、UART 设备、波特率、JSON 指令、速度映射、反馈协议、机械尺寸时，必须以 `docs/vendor/` 下的本地资料为准，并在代码或说明中明确采用的资料来源。
+AI coding / Agent 工作不允许凭记忆猜测硬件细节。涉及引脚、电压、UART 设备、波特率、JSON 指令、速度映射、反馈协议、机械尺寸时，必须以 `docs/vendor/` 下的本地资料为准，并在代码或说明中明确采用的资料来源。
 
 ## 架构
 
@@ -48,14 +48,7 @@ source install/setup.bash
 
 - 当前 Windows 主机有 WSL `Ubuntu-24.04`，但本项目目标是 ROS2 Humble。不要为了 Humble 强行改造 Ubuntu 24.04。
 - ROS2 Humble 构建验证优先使用 Docker 官方 Humble 容器挂载仓库，例如挂载 `E:\rober` 到容器 `/ws` 后运行 `colcon build --symlink-install`。
-- 只有用户明确要求时，才新建 Ubuntu 22.04 WSL 专用发行版；默认不要打断现有 WSL 环境。
 
 ## 子 agent 分工铁律
 
-后续 Codex/AI 工作默认永远使用 P9/P8/P7 子 agent 分工，不允许主 agent 一个人把方向、拆解、实现、测试、审查全部包圆。
-
-- **P9 先定方向**：涉及 OKR、阶段边界、优先级、产品闭环、是否值得做时，先派 P9 agent 做判断。
-- **P8 再拆模块**：涉及硬件、导航、行为、视觉、接口、bringup 任一模块时，派对应 P8 lead 拆范围、接口、风险和验收。
-- **P7 才执行与兜底**：代码实现、测试、review、硬件审查、文档验收交给 P7 agent 或按 P7 角色清单执行。
-- **并行优先**：多个模块互不阻塞时，P8/P7 子 agent 并行工作；主 agent 负责整合、冲突处理、验证证据和最终交付。
-- **例外**：只有纯粹的一行命令查询、用户明确要求不使用子 agent、或当前运行环境无法调用子 agent 时，主 agent 才能单独处理；最终说明必须写明为什么没有派 P9/P8/P7。
+后续 Codex/AI 工作默认永远使用 子 agent 分工系统，不允许主 agent 一个人把方向、拆解、实现、测试、审查全部包圆。这不仅是分工，而是必须执行到位的闭环系统。
