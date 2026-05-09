@@ -162,6 +162,47 @@ def generate_launch_description():
         'return_target', default_value='',
         description='Optional waypoint name to return to after dropoff')
 
+    vision_detection_confidence_arg = DeclareLaunchArgument(
+        'vision_detection_confidence', default_value='70',
+        description='Minimum TrashStatus confidence percentage')
+
+    vision_min_blob_area_ratio_arg = DeclareLaunchArgument(
+        'vision_min_blob_area_ratio', default_value='0.01',
+        description='Minimum OpenCV blob area ratio inside the active ROI')
+
+    vision_roi_x_arg = DeclareLaunchArgument(
+        'vision_roi_x', default_value='0.0',
+        description='Normalized vision ROI left edge')
+
+    vision_roi_y_arg = DeclareLaunchArgument(
+        'vision_roi_y', default_value='0.0',
+        description='Normalized vision ROI top edge')
+
+    vision_roi_width_arg = DeclareLaunchArgument(
+        'vision_roi_width', default_value='1.0',
+        description='Normalized vision ROI width')
+
+    vision_roi_height_arg = DeclareLaunchArgument(
+        'vision_roi_height', default_value='1.0',
+        description='Normalized vision ROI height')
+
+    vision_publish_debug_image_arg = DeclareLaunchArgument(
+        'vision_publish_debug_image', default_value='true',
+        description='Publish annotated vision debug images')
+
+    vision_save_detection_samples_arg = DeclareLaunchArgument(
+        'vision_save_detection_samples', default_value='false',
+        description='Save raw image, annotated image, and detection JSON samples')
+
+    vision_sample_output_dir_arg = DeclareLaunchArgument(
+        'vision_sample_output_dir',
+        default_value=PathJoinSubstitution([
+            EnvironmentVariable('HOME'),
+            '.ros',
+            'trashbot_vision_samples',
+        ]),
+        description='Directory for persisted vision detection samples')
+
     use_sim_time = LaunchConfiguration('use_sim_time')
     map_file = LaunchConfiguration('map_file')
     waypoint_file = LaunchConfiguration('waypoint_file')
@@ -194,6 +235,15 @@ def generate_launch_description():
     delivery_mode = LaunchConfiguration('delivery_mode')
     delivery_target = LaunchConfiguration('delivery_target')
     return_target = LaunchConfiguration('return_target')
+    vision_detection_confidence = LaunchConfiguration('vision_detection_confidence')
+    vision_min_blob_area_ratio = LaunchConfiguration('vision_min_blob_area_ratio')
+    vision_roi_x = LaunchConfiguration('vision_roi_x')
+    vision_roi_y = LaunchConfiguration('vision_roi_y')
+    vision_roi_width = LaunchConfiguration('vision_roi_width')
+    vision_roi_height = LaunchConfiguration('vision_roi_height')
+    vision_publish_debug_image = LaunchConfiguration('vision_publish_debug_image')
+    vision_save_detection_samples = LaunchConfiguration('vision_save_detection_samples')
+    vision_sample_output_dir = LaunchConfiguration('vision_sample_output_dir')
     nav2_params_file = PathJoinSubstitution([
         FindPackageShare('ros2_trashbot_nav'),
         'config',
@@ -244,6 +294,15 @@ def generate_launch_description():
         delivery_mode_arg,
         delivery_target_arg,
         return_target_arg,
+        vision_detection_confidence_arg,
+        vision_min_blob_area_ratio_arg,
+        vision_roi_x_arg,
+        vision_roi_y_arg,
+        vision_roi_width_arg,
+        vision_roi_height_arg,
+        vision_publish_debug_image_arg,
+        vision_save_detection_samples_arg,
+        vision_sample_output_dir_arg,
 
         # --- Hardware Bridge (ESP32 <-> ROS2) ---
         Node(
@@ -292,7 +351,18 @@ def generate_launch_description():
             executable='trash_detector',
             name='trash_detector',
             output='screen',
-            parameters=[{'use_sim_time': use_sim_time}],
+            parameters=[{
+                'use_sim_time': use_sim_time,
+                'detection_confidence': vision_detection_confidence,
+                'min_blob_area_ratio': vision_min_blob_area_ratio,
+                'roi_x': vision_roi_x,
+                'roi_y': vision_roi_y,
+                'roi_width': vision_roi_width,
+                'roi_height': vision_roi_height,
+                'publish_debug_image': vision_publish_debug_image,
+                'save_detection_samples': vision_save_detection_samples,
+                'sample_output_dir': vision_sample_output_dir,
+            }],
         ),
 
         # Task orchestrator

@@ -83,6 +83,37 @@ class LaunchContractStaticTest(unittest.TestCase):
 
         self.assertIn("'fixed_route_status_file': debug_status_file", task_block)
 
+    def test_autonomous_exposes_vision_runtime_parameters(self):
+        source = read_launch("autonomous.launch.py")
+        ast.parse(source)
+
+        vision_block = node_block(source, "trash_detector")
+
+        for argument in (
+            "'vision_detection_confidence'",
+            "'vision_min_blob_area_ratio'",
+            "'vision_roi_x'",
+            "'vision_roi_y'",
+            "'vision_roi_width'",
+            "'vision_roi_height'",
+            "'vision_publish_debug_image'",
+            "'vision_save_detection_samples'",
+            "'vision_sample_output_dir'",
+        ):
+            self.assertIn(argument, source)
+        for parameter in (
+            "'detection_confidence': vision_detection_confidence",
+            "'min_blob_area_ratio': vision_min_blob_area_ratio",
+            "'roi_x': vision_roi_x",
+            "'roi_y': vision_roi_y",
+            "'roi_width': vision_roi_width",
+            "'roi_height': vision_roi_height",
+            "'publish_debug_image': vision_publish_debug_image",
+            "'save_detection_samples': vision_save_detection_samples",
+            "'sample_output_dir': vision_sample_output_dir",
+        ):
+            self.assertIn(parameter, vision_block)
+
     def test_autonomous_can_start_operator_gateway(self):
         source = read_launch("autonomous.launch.py")
         gateway_block = source[source.index("executable='operator_gateway'"):]

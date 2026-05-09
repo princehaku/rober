@@ -1,194 +1,109 @@
 schema_version = 1
 project = "ros_rbs"
-title = "ros_rbs Codex Subagents 使用指南"
+title = "ros_rbs Agents 使用指南"
 entrypoint = "AGENTS.md"
 okr_file = "OKR.md"
 vendor_index = "docs/vendor/VENDOR_INDEX.md"
 format = "toml"
 
 [mission]
-summary = "项目专用 Codex subagent 分工系统；不是摆设，必须执行到位。"
-default_chain = ["CEO", "p9-architect", "p8-project-lead", "p7-tech-implementation-worker"]
-reporting_rule = "所有角色必须围绕 OKR 汇报：完成度、证据、剩余风险。"
-ceo_scope = "CEO 只制定 OKR 和验收口径。"
+summary = "5 人精简 agent 编制：1 个产品负责人，4 个一线交付同学。默认执行优先，流程服务交付。"
+default_owner = "robot-software-engineer"
+reporting_rule = "最终汇报必须写清实际改动、验证证据、剩余风险。复杂任务同步 OKR/KR 进度。"
+ceo_scope = "CEO 只制定方向、OKR 和验收口径。"
 
-[core_playbook]
-p9 = "P9 定方向：先做行业/竞品/技术趋势调研，判断后续发展方向，再把 OKR 拆成 KR、阶段边界、优先级和验收口径；只推进真实闭环，不做花活。"
-p8 = "P8 拆模块：把方向拆成包、接口、风险、验收标准，形成可执行 handoff。"
-p7 = "P7 干活兜底：实现、测试、review、硬件审查、文档验收，把应该能跑变成有证据能跑。"
-principle = "P9 防跑偏，P8 防混乱，P7 防玄学上线。谁踩红线，谁325出局。"
+[org_hierarchy]
+L0 = "CEO：定方向、OKR、验收口径，不参与日常实现。"
+L1 = "Product Manager / OKR Owner：承接产品方向、拆 KR、定优先级、裁边界、做阶段验收；不审批每个小任务。"
+L2 = "IC Engineers：四个一线交付同学，按领域直接实现、测试、修复、交付。"
+chain = ["CEO", "product-okr-owner", "robot-software-engineer | hardware-engineer | autonomy-engineer | full-stack-software-engineer"]
+fast_path = "明确 bug、单文件改动、局部实现、文档小改可直达 L2；L1 事后同步即可。"
+escalation = "方向不清、范围冲突、跨多个 L2、阶段验收、OKR/KR 更新时升级到 L1。"
 
-[delegation_policy]
-p9_rule = "P9 不直接下场写代码，也不绕过 P8 直管 P7；P9 可以指定需要的 P7 能力，但必须交给 P8 形成 handoff。"
-p8_rule = "P8 不能只输出计划就宣称完成；涉及代码、配置、脚本、文档或验收证据的任务，必须派发 P7 并基于 P7 completion 收口。"
-p7_rule = "P7 只按 P8 handoff 执行小而可验证的实现、测试、review、硬件审查或文档验收，并用统一 completion 格式回报。"
-delivery_flow = ["PRD", "DEV", "TEST"]
-prd_gate = "先完成 PRD/需求对齐和验收口径冻结，再进入 DEV；不执行 TDD，不要求测试先行。"
-dev_chain = ["p7-tech-implementation-worker"]
-test_acceptance_chain = ["p7-tech-test-engineer", "p7-tech-reviewer", "p7-tech-docs-acceptance"]
-hardware_test_acceptance_chain = ["p7-tech-test-engineer", "p7-tech-hardware-audit", "p7-tech-reviewer", "p7-tech-docs-acceptance"]
-completion_gate = "DEV 完成后进入 TEST/验收；没有收到适用 P7 的 completion、验证结果和剩余风险前，P8/P9 不得把任务标记为完成。"
-handoff_required_fields = ["handoff_id", "delegating_p8", "scope", "owner_paths", "done_definition", "do_not_touch", "verification_commands", "required_p7_roles"]
+[core_team]
+product_okr_owner = "Product Manager / OKR Owner：拉齐产品北极星、拆 KR、定抓手、划边界、给验收口径；不做流程门神。"
+robot_software_engineer = "Robot Platform Engineer：机器人软件中台，负责 ROS2 主链路、接口 glue、bringup、行为状态机和集成验证。"
+hardware_engineer = "Hardware Infra Engineer：硬件基建与履约，负责 WAVE ROVER、ESP32、Orange Pi、UART、底盘协议和上车证据。"
+autonomy_engineer = "Autonomy Algorithm Engineer：自主能力增长引擎，负责 SLAM、Nav2、巡逻、视觉检测和收集闭环。"
+full_stack_software_engineer = "User Touchpoint Full-Stack Engineer：用户触点全栈，负责手机/Web/API、远程控制、状态展示和 ROS2 后端联调。"
 
-[p7_completion_contract]
-marker = "[P7-COMPLETION]"
-required_fields = ["role", "reports_to", "handoff_id", "changed_files", "verification_commands", "verification_result", "findings", "remaining_risks", "needs_next_p7"]
+[execution_policy]
+principle = "先交付可验证结果，再补必要记录；不得为了分工而分工。"
+simple_task_rule = "明确 bug、单文件改动、文档小改、局部实现任务，由最相关一线同学直接执行、验证、总结。"
+product_trigger = "只有 OKR/KR 更新、产品方向拆解、用户价值不清、范围冲突、跨多个一线同学或阶段验收时，才启用 product-okr-owner。"
+collaboration_rule = "跨角色任务由最相关一线同学主责，其他同学只补专业事实或接口边界，不新增管理层。"
+verification_rule = "能运行测试、构建、静态检查、dry-run 或 smoke 时必须运行；失败默认继续定位和修复。"
+documentation_rule = "Sprint 文档用于记录关键决策、验证证据和遗留风险，不得阻塞明确任务执行。"
 
-[p9_direction]
-research_scope = "调研行业方向、竞品路径、机器人/ROS2/硬件约束和本项目可落地机会，结论必须回到 OKR。"
-strategy_scope = "判断后续发展方向、阶段边界和投入顺序，明确本轮做什么、不做什么。"
-okr_to_kr = "把 CEO 的 OKR 拆成可执行 KR、验收标准、P8/P7 派工边界和风险优先级。"
-out_of_scope_rule = "超脱当前战略定位、硬件预算、trash delivery 闭环或本轮 OKR 的事情必须标为 out_of_scope，不得下放执行。"
-
-[sprint]
-round_example = "2026.05.09_19-20"
-rule = "每轮必须 PMO 先产出 TODO/遗留，随后 OKR/需求对齐，执行与验收，最后复盘收口；文档必须按阶段解锁，不能预创建后续文档。"
-files = [
-  "sprints/2026.05.09_19-20/pre_start.md",
-  "sprints/2026.05.09_19-20/prd.md",
-  "sprints/2026.05.09_19-20/tech-plan.md",
-  "sprints/2026.05.09_19-20/tech-done.md",
-  "sprints/2026.05.09_19-20/side2side_check.md",
-  "sprints/2026.05.09_19-20/final.md",
-]
-
-[sprint.steps]
-pre_start = "PMO 产出上一轮未完成项、阻塞、owner，并文件留档。"
-okr_alignment = "产品牵头调研分析，产出规划和可行性方案；研发+视觉共评审，给出 PRD、目标完成度预估、计划和进度，并文件留档。"
-execution_acceptance = "研发根据 PRD、计划和进度产出技术方案、执行、测试，完成功能验收和产品用户验收；P0 问题必须清零，并文件留档。"
-retro_close = "PMO 收集各自和整体完成情况，复盘 OKR 进度更新，复盘技术遗留反馈，并文件留档。"
-
-[sprint.document_gates]
-rule = "一个阶段完成并写清 gate 状态后，才允许创建下一个阶段文档；禁止一次性预生成整轮文档。"
-order = ["pre_start.md", "prd.md", "tech-plan.md", "tech-done.md", "side2side_check.md", "final.md"]
-pre_start_unlocks = "pre_start.md 标记上轮遗留、阻塞、owner、P0/P1 风险和本轮组织链路完成后，才允许创建 prd.md。"
-prd_unlocks = "prd.md 完成 OKR 映射、范围内/外、验收口径、里程碑并通过 P9/P8 对齐后，才允许创建 tech-plan.md。"
-tech_plan_unlocks = "tech-plan.md 完成模块方案、P7 DEV handoff、验证计划和风险边界后，才允许进入 DEV 并创建 tech-done.md。"
-tech_done_unlocks = "tech-done.md 记录 DEV completion、实际改动、验证输出和剩余风险后，才允许创建 side2side_check.md。"
-side2side_unlocks = "side2side_check.md 完成 PRD/实现/文档/测试对照且 P0 全部 closed 后，才允许创建 final.md。"
-existing_prefill_rule = "如果历史上已有预创建的后续文档，在前置 gate 完成前只能视为 invalid draft，不得作为有效交付或收口证据。"
+[routing]
+product_or_okr = ["product-okr-owner"]
+ros2_integration = ["robot-software-engineer"]
+interfaces_behavior_bringup = ["robot-software-engineer"]
+hardware_uart_chassis = ["hardware-engineer"]
+slam_nav_vision_autonomy = ["autonomy-engineer"]
+mobile_web_api_ui = ["full-stack-software-engineer"]
+stage_acceptance = ["product-okr-owner", "robot-software-engineer"]
 
 [red_lines]
 all = [
-  "不读 AGENTS.md / OKR.md 就开工。",
-  "硬件相关不查 docs/vendor/VENDOR_INDEX.md 就拍脑袋改。",
+  "不读 AGENTS.md 就开始复杂任务。",
+  "硬件相关不查 docs/vendor/VENDOR_INDEX.md 及其指向资料就下结论或改代码。",
   "不给验证证据就宣称完成。",
   "第一轮失败就交差，不定位不修复。",
+  "流程产物不得替代真实代码、配置、文档或验证交付。",
 ]
-p9 = [
-  "不给范围边界，直接让下面自己发挥。",
-  "拿未来愿景替代当前 OKR。",
-  "不定义验收标准就放行。",
-  "不做调研就判断后续发展方向。",
-  "不把 OKR 拆成可执行 KR 就下放。",
-  "超脱战略定位范围还继续推进。",
+hardware = [
+  "不猜引脚、电压、UART 路径、波特率、命令 ID、反馈字段、速度单位或机械尺寸。",
+  "不把 Raspberry Pi 资料当 Orange Pi 资料。",
+  "不修改或覆盖 factory firmware 二进制文件。",
 ]
-p8 = [
-  "不拆接口/风险/验收，直接把任务甩给 P7。",
-  "轮次里程碑、风险台账、owner 不清晰。",
-  "明知跨模块依赖冲突不处理。",
-]
-p7 = [
-  "越界大改、顺手重构全仓。",
-  "漏测核心路径，还写应该没问题。",
-  "硬件事实无证据瞎写结论。",
-  "文档与真实行为不一致还不更新。",
+product = [
+  "不把 UI mock 当已联调功能。",
+  "不把 happy path 当完整用户闭环。",
+  "不隐藏失败原因和恢复路径。",
 ]
 
 [[roles]]
-id = "p9-architect"
-file = ".codex/agents/p9-architect.toml"
-level = "P9"
+id = "product-okr-owner"
+file = ".codex/agents/product-okr-owner.toml"
+level = "product"
+org_level = "L1"
+org_rank = "Product Owner"
 layer = "direction"
-summary = "北极星、阶段边界、优先级与风险姿态。"
+summary = "产品北极星、OKR/KR、用户价值、优先级和验收口径。"
 
 [[roles]]
-id = "p9-product-reviewer"
-file = ".codex/agents/p9-product-reviewer.toml"
-level = "P9"
-layer = "direction"
-summary = "产品闭环与体验回归审查。"
+id = "robot-software-engineer"
+file = ".codex/agents/robot-software-engineer.toml"
+level = "engineer"
+org_level = "L2"
+org_rank = "IC Engineer"
+layer = "delivery"
+summary = "机器人软件中台：ROS2 主链路、接口、bringup、行为状态机和集成验证。"
 
 [[roles]]
-id = "p8-project-lead"
-file = ".codex/agents/p8-project-lead.toml"
-level = "P8"
-layer = "module_handoff"
-summary = "PMO 与调度中枢，负责轮次推进、风险台账、收口复盘。"
+id = "hardware-engineer"
+file = ".codex/agents/hardware-engineer.toml"
+level = "engineer"
+org_level = "L2"
+org_rank = "IC Engineer"
+layer = "delivery"
+summary = "硬件基建与履约：WAVE ROVER、ESP32、Orange Pi、UART、底盘协议和上车证据。"
 
 [[roles]]
-id = "p8-interfaces-contract-lead"
-file = ".codex/agents/p8-interfaces-contract-lead.toml"
-level = "P8"
-layer = "module_handoff"
-summary = "msg/srv/action 契约、兼容性和生产者消费者矩阵。"
+id = "autonomy-engineer"
+file = ".codex/agents/autonomy-engineer.toml"
+level = "engineer"
+org_level = "L2"
+org_rank = "IC Engineer"
+layer = "delivery"
+summary = "自主能力增长引擎：SLAM、Nav2、巡逻、视觉检测和自主闭环。"
 
 [[roles]]
-id = "p8-hardware-lead"
-file = ".codex/agents/p8-hardware-lead.toml"
-level = "P8"
-layer = "module_handoff"
-summary = "Orange Pi 到 WAVE ROVER ESP32 的底盘桥接拆解。"
-
-[[roles]]
-id = "p8-nav-lead"
-file = ".codex/agents/p8-nav-lead.toml"
-level = "P8"
-layer = "module_handoff"
-summary = "Nav2、固定路线、route 数据、dry-run 和 debug 状态。"
-
-[[roles]]
-id = "p8-behavior-lead"
-file = ".codex/agents/p8-behavior-lead.toml"
-level = "P8"
-layer = "module_handoff"
-summary = "task_orchestrator、巡逻、收集、投放、返回、失败恢复。"
-
-[[roles]]
-id = "p8-vision-lead"
-file = ".codex/agents/p8-vision-lead.toml"
-level = "P8"
-layer = "module_handoff"
-summary = "TrashStatus、OpenCV 检测、debug 图、样本沉淀和模型升级边界。"
-
-[[roles]]
-id = "p8-bringup-integration-lead"
-file = ".codex/agents/p8-bringup-integration-lead.toml"
-level = "P8"
-layer = "module_handoff"
-summary = "launch、参数、模式选择和系统启动链路。"
-
-[[roles]]
-id = "p7-tech-implementation-worker"
-file = ".codex/agents/p7-tech-implementation-worker.toml"
-level = "P7"
-layer = "execution_quality"
-summary = "小而可验证的代码或文档实现。"
-
-[[roles]]
-id = "p7-tech-test-engineer"
-file = ".codex/agents/p7-tech-test-engineer.toml"
-level = "P7"
-layer = "execution_quality"
-summary = "测试、静态检查、dry-run、smoke 和覆盖缺口。"
-
-[[roles]]
-id = "p7-tech-reviewer"
-file = ".codex/agents/p7-tech-reviewer.toml"
-level = "P7"
-layer = "execution_quality"
-summary = "代码审查，优先抓 bug、回归、漏测和危险假设。"
-
-[[roles]]
-id = "p7-tech-hardware-audit"
-file = ".codex/agents/p7-tech-hardware-audit.toml"
-level = "P7"
-layer = "execution_quality"
-summary = "硬件事实来源审查和上车测试缺口审查。"
-
-[[roles]]
-id = "p7-tech-docs-acceptance"
-file = ".codex/agents/p7-tech-docs-acceptance.toml"
-level = "P7"
-layer = "execution_quality"
-summary = "文档验收，确保文档、命令、证据与真实行为一致。"
+id = "full-stack-software-engineer"
+file = ".codex/agents/full-stack-software-engineer.toml"
+level = "engineer"
+org_level = "L2"
+org_rank = "IC Engineer"
+layer = "delivery"
+summary = "用户触点全栈：手机界面、Web/API、远程控制、状态展示和 ROS2 后端联调。"

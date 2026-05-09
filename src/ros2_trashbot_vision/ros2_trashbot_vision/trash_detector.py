@@ -48,11 +48,15 @@ class TrashDetector(Node):
         self.roi_height = max(0.01, min(float(self.get_parameter('roi_height').value), 1.0))
 
         self.declare_parameter('debug_image_topic', '/trashbot/vision/debug_image')
+        self.declare_parameter('publish_debug_image', True)
         self.declare_parameter('sample_output_dir', '~/.ros/trashbot_vision_samples')
         self.declare_parameter('save_detection_samples', False)
+        self.declare_parameter('sample_date_subdirs', True)
         self.debug_image_topic = self.get_parameter('debug_image_topic').value
+        self.publish_debug_image = bool(self.get_parameter('publish_debug_image').value)
         self.sample_output_dir = os.path.expanduser(self.get_parameter('sample_output_dir').value)
         self.save_detection_samples = bool(self.get_parameter('save_detection_samples').value)
+        self.sample_date_subdirs = bool(self.get_parameter('sample_date_subdirs').value)
 
         self.bridge = CvBridge()
 
@@ -85,7 +89,8 @@ class TrashDetector(Node):
             detections = sorted(detections, key=lambda d: d['confidence'], reverse=True)[:self.max_publish_per_frame]
 
         debug_frame = self._annotate_frame(frame.copy(), detections)
-        self._publish_debug_image(msg, debug_frame)
+        if self.publish_debug_image:
+            self._publish_debug_image(msg, debug_frame)
         if self.save_detection_samples and detections:
             self._save_detection_sample(frame, debug_frame, detections, msg)
 
@@ -208,22 +213,31 @@ class TrashDetector(Node):
 
     def _save_detection_sample(self, frame, debug_frame, detections, source_msg):
         try:
-            os.makedirs(self.sample_output_dir, exist_ok=True)
             stamp = source_msg.header.stamp.sec + source_msg.header.stamp.nanosec / 1e9
-            sample_id = f'{int(time.time() * 1000)}'
-            raw_path = os.path.join(self.sample_output_dir, f'{sample_id}_raw.jpg')
-            annotated_path = os.path.join(self.sample_output_dir, f'{sample_id}_annotated.jpg')
-            json_path = os.path.join(self.sample_output_dir, f'{sample_id}.json')
+            sample_id = self._make_sample_id(stamp)
+            sample_dir = self._sample_dir_for_stamp(stamp)
+            os.makedirs(sample_dir, exist_ok=True)
+            raw_name = f'{sample_id}_raw.jpg'
+            annotated_name = f'{sample_id}_annotated.jpg'
+            json_name = f'{sample_id}.json'
+            raw_path = os.path.join(sample_dir, raw_name)
+            annotated_path = os.path.join(sample_dir, annotated_name)
+            json_path = os.path.join(sample_dir, json_name)
             cv2.imwrite(raw_path, frame)
             cv2.imwrite(annotated_path, debug_frame)
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(
                     {
+                        'sample_id': sample_id,
+                        'sample_ref': self._sample_ref(json_path),
                         'timestamp': stamp,
                         'frame_id': source_msg.header.frame_id,
-                        'raw_image': raw_path,
-                        'annotated_image': annotated_path,
-                        'detections': detections,
+                        'raw_image': self._relative_sample_path(raw_path),
+                        'annotated_image': self._relative_sample_path(annotated_path),
+                        'detector': 'opencv_hsv_heuristic',
+                        'roi': self._roi_config(),
+                        'parameters': self._detector_config(),
+                        'detections': [self._sample_detection_payload(det) for det in detections],
                     },
                     f,
                     ensure_ascii=False,
@@ -231,6 +245,53 @@ class TrashDetector(Node):
                 )
         except OSError as exc:
             self.get_logger().warn(f'Failed saving detection sample: {exc}')
+
+    def _make_sample_id(self, stamp):
+        stamp_ms = int(max(0.0, stamp) * 1000)
+        wall_ms = int(time.time() * 1000)
+        return f'{stamp_ms}_{wall_ms}'
+
+    def _sample_dir_for_stamp(self, stamp):
+        if not self.sample_date_subdirs:
+            return self.sample_output_dir
+        day = time.strftime('%Y%m%d', time.localtime(stamp if stamp > 0 else time.time()))
+        return os.path.join(self.sample_output_dir, day)
+
+    def _sample_ref(self, json_path):
+        return f'vision_sample://{self._relative_sample_path(json_path)}'
+
+    def _relative_sample_path(self, path):
+        return os.path.relpath(path, self.sample_output_dir).replace(os.sep, '/')
+
+    def _roi_config(self):
+        return {
+            'x': self.roi_x,
+            'y': self.roi_y,
+            'width': self.roi_width,
+            'height': self.roi_height,
+        }
+
+    def _detector_config(self):
+        return {
+            'detection_confidence': self.min_confidence,
+            'detect_bins': self.detect_bins,
+            'min_blob_area_ratio': self.min_blob_area_ratio,
+            'max_publish_per_frame': self.max_publish_per_frame,
+            'publish_debug_image': self.publish_debug_image,
+            'save_detection_samples': self.save_detection_samples,
+            'sample_date_subdirs': self.sample_date_subdirs,
+        }
+
+    def _sample_detection_payload(self, detection):
+        return {
+            'bbox': detection.get('bbox', []),
+            'x': detection['x'],
+            'y': detection['y'],
+            'z': detection.get('z', 0.0),
+            'confidence': detection['confidence'],
+            'trash_type': detection['trash_type'],
+            'is_bin': detection.get('is_bin', False),
+        }
 
 
 def main(args=None):

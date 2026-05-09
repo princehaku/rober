@@ -4,6 +4,7 @@ import threading
 import time
 from dataclasses import asdict, dataclass
 from enum import Enum
+from urllib.parse import urlencode
 
 import rclpy
 from rclpy.node import Node
@@ -67,6 +68,7 @@ class TaskOrchestrator(Node):
         self.declare_parameter("dropoff_mode", "dry_run")
         self.declare_parameter("dropoff_timeout_sec", 30.0)
         self.declare_parameter("fixed_route_status_file", "~/.ros/trashbot_fixed_route/status.json")
+        self.declare_parameter("max_detection_snapshot_refs", 20)
         self.task_record_dir = os.path.expanduser(self.get_parameter("task_record_dir").value)
         self.delivery_target = str(self.get_parameter("delivery_target").value)
         self.delivery_mode = str(self.get_parameter("delivery_mode").value).lower()
@@ -80,12 +82,17 @@ class TaskOrchestrator(Node):
         self.fixed_route_status_file = os.path.expanduser(
             self.get_parameter("fixed_route_status_file").value
         )
+        self.max_detection_snapshot_refs = max(
+            0,
+            int(self.get_parameter("max_detection_snapshot_refs").value),
+        )
         if self.delivery_dry_run:
             self.delivery_mode = "dry_run"
         self.navigator = None
         self.dropoff_gate = DropoffConfirmationGate()
         self.collection_lock = threading.Lock()
         self.collection_active = False
+        self.detection_snapshot_refs = []
 
         # Services
         self.record_wp_client = self.create_client(
@@ -134,6 +141,7 @@ class TaskOrchestrator(Node):
 
     def _on_trash_detected(self, msg: TrashStatus):
         """Handle vision detection callback."""
+        snapshot_ref = self._record_detection_snapshot_ref(msg)
         self.get_logger().info(
             f'Trash detected: type={msg.trash_type} conf={msg.confidence}% '
             f'is_bin={msg.is_bin} pos=({msg.x:.2f}, {msg.y:.2f})')
@@ -142,13 +150,43 @@ class TaskOrchestrator(Node):
             self.bin_locations.append({
                 'x': msg.x, 'y': msg.y, 'z': msg.z,
                 'type': msg.trash_type,
+                'confidence': msg.confidence,
+                'timestamp': msg.timestamp,
+                'frame_id': msg.frame_id,
+                'snapshot_ref': snapshot_ref,
             })
         else:
             self.trash_items.append({
                 'x': msg.x, 'y': msg.y, 'z': msg.z,
                 'type': msg.trash_type,
                 'confidence': msg.confidence,
+                'timestamp': msg.timestamp,
+                'frame_id': msg.frame_id,
+                'snapshot_ref': snapshot_ref,
             })
+
+    def _record_detection_snapshot_ref(self, msg: TrashStatus) -> str:
+        snapshot_ref = self._detection_snapshot_ref(msg)
+        if self.max_detection_snapshot_refs <= 0:
+            return snapshot_ref
+        self.detection_snapshot_refs.append(snapshot_ref)
+        overflow = len(self.detection_snapshot_refs) - self.max_detection_snapshot_refs
+        if overflow > 0:
+            del self.detection_snapshot_refs[:overflow]
+        return snapshot_ref
+
+    def _detection_snapshot_ref(self, msg: TrashStatus) -> str:
+        query = urlencode({
+            "frame_id": msg.frame_id,
+            "x": f"{msg.x:.4f}",
+            "y": f"{msg.y:.4f}",
+            "z": f"{msg.z:.4f}",
+            "confidence": int(msg.confidence),
+            "trash_type": int(msg.trash_type),
+            "is_bin": str(bool(msg.is_bin)).lower(),
+        })
+        timestamp_ms = int(max(0.0, float(msg.timestamp)) * 1000)
+        return f"trash_status://detection/{timestamp_ms}?{query}"
 
     def _on_waypoint_list(self, msg: WaypointList):
         """Update when waypoint list changes."""
@@ -485,8 +523,12 @@ class TaskOrchestrator(Node):
             nav_attempts=nav_attempts,
             nav_results=[asdict(item) if isinstance(item, NavigationResult) else item for item in nav_results],
             dropoff_result=dropoff_result,
-            detection_snapshot_refs=[],
+            detection_snapshot_refs=list(self.detection_snapshot_refs),
             config=config,
+            error_code="" if final_status == "success" else (
+                machine.events[-1].event.value if machine.events else ""
+            ),
+            final_state=machine.state.value,
         )
 
     def _cancel_collection(
