@@ -111,6 +111,24 @@ class TaskOrchestratorStaticTest(unittest.TestCase):
             )
         )
 
+    def test_collection_maps_navigation_timeout_to_timeout_event(self):
+        source = ORCHESTRATOR.read_text(encoding="utf-8")
+        ast.parse(source)
+
+        self.assertIn('nav_result.result_code == "timeout"', source)
+        self.assertIn("machine.timed_out(nav_result.message)", source)
+
+    def test_collection_result_sets_error_code_and_final_state(self):
+        source = ORCHESTRATOR.read_text(encoding="utf-8")
+        ast.parse(source)
+
+        self.assertIn("result.error_code", source)
+        self.assertIn("result.final_state", source)
+        self.assertIn('result.error_code = ""', source)
+        self.assertIn("result.error_code = machine.events[-1].event.value", source)
+        self.assertIn('result.error_code = "canceled"', source)
+        self.assertIn("result.final_state = machine.state.value", source)
+
 
 if __name__ == "__main__":
     unittest.main()

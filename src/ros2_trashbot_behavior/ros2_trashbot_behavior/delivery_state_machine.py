@@ -21,6 +21,7 @@ class DeliveryEvent(Enum):
     DROPOFF_FAILED = "dropoff_failed"
     RETURN_SUCCEEDED = "return_succeeded"
     RETURN_FAILED = "return_failed"
+    TIMED_OUT = "timed_out"
     CANCELED = "canceled"
     INVALID_TRANSITION = "invalid_transition"
 
@@ -113,6 +114,17 @@ class DeliveryStateMachine:
             return
         self.error_message = message or "return failed"
         self._transition(DeliveryEvent.RETURN_FAILED, DeliveryState.ERROR, self.error_message)
+
+    def timed_out(self, message: str):
+        if not self._require_state(
+            DeliveryEvent.TIMED_OUT,
+            DeliveryState.DELIVERING,
+            DeliveryState.DROPOFF,
+            DeliveryState.RETURNING,
+        ):
+            return
+        self.error_message = message or "delivery timed out"
+        self._transition(DeliveryEvent.TIMED_OUT, DeliveryState.ERROR, self.error_message)
 
     def cancel(self, message: str):
         if not self._require_state(

@@ -26,7 +26,9 @@ class TrashCollectionActionContractStaticTest(unittest.TestCase):
             "items_collected",
             "items_disposed",
             "total_duration_sec",
+            "error_code",
             "error_message",
+            "final_state",
             "task_record_path",
         ):
             self.assertIn(field, result_fields)

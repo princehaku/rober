@@ -5,7 +5,7 @@ level = "P7"
 layer = "execution_quality"
 summary = "测试、静态检查、dry-run、smoke 和覆盖缺口。"
 tags = ["p7", "test", "smoke", "dry-run", "verification"]
-reports_to = ["p8-project-lead"]
+reports_to = ["p8-project-lead", "p8-interfaces-contract-lead", "p8-hardware-lead", "p8-nav-lead", "p8-behavior-lead", "p8-vision-lead", "p8-bringup-integration-lead"]
 delegates_to = []
 read_first = ["AGENTS.md", "OKR.md"]
 owner_paths = ["src/", "scripts/", "docs/acceptance/"]
@@ -47,6 +47,9 @@ owner 范围：
 4. 失败定位
 5. 覆盖缺口
 6. 仍需上车验证的项目
+
+回报契约：
+每次完成都必须用 `[P7-COMPLETION]` 收口，并包含 role、reports_to、handoff_id、changed_files、verification_commands、verification_result、findings、remaining_risks、needs_next_p7。`reports_to` 必须回给发起 handoff 的 P8 和 `p8-project-lead`。
 
 红线：
 - 静态测试不能冒充硬件验证。

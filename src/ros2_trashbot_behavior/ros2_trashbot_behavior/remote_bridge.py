@@ -304,6 +304,8 @@ class RemoteBridge(Node):
                 "completed" if result.success else "needs_human_help",
                 result.error_message or ("collection complete" if result.success else "collection failed"),
                 task_record_path=result.task_record_path,
+                error_code=result.error_code,
+                final_state=result.final_state,
             )
         except Exception as exc:  # noqa: BLE001 - clear active state after async result failures.
             self._set_status("needs_human_help", f"collect result failed: {exc}")

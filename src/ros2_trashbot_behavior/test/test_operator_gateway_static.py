@@ -87,6 +87,19 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("finally:", confirm_block)
         self.assertIn("confirm_dropoff service failed", confirm_block)
 
+    def test_gateway_final_status_exposes_machine_terminal_diagnostics(self):
+        source = GATEWAY.read_text(encoding="utf-8")
+        ast.parse(source)
+        result_block = source[
+            source.index("def _on_collect_result"):
+            source.index("def _set_status")
+        ]
+
+        self.assertIn("error_code=result.error_code", result_block)
+        self.assertIn("final_state=result.final_state", result_block)
+        self.assertIn('"error_code": result.error_code', result_block)
+        self.assertIn('"final_state": result.final_state', result_block)
+
 
 if __name__ == "__main__":
     unittest.main()

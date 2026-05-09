@@ -212,10 +212,17 @@ class OperatorGateway(Node):
                 result.error_message or ("collection complete" if result.success else "collection failed"),
                 task_record_path=result.task_record_path,
                 total_duration_sec=float(result.total_duration_sec),
+                error_code=result.error_code,
+                final_state=result.final_state,
                 can_collect=True,
                 can_confirm_dropoff=False,
                 can_cancel=False,
-                last_task={"task_record_path": result.task_record_path, "success": bool(result.success)},
+                last_task={
+                    "task_record_path": result.task_record_path,
+                    "success": bool(result.success),
+                    "error_code": result.error_code,
+                    "final_state": result.final_state,
+                },
             ))
         except Exception as exc:  # noqa: BLE001 - keep operator UI usable after async result failures.
             self._set_status(status_payload(

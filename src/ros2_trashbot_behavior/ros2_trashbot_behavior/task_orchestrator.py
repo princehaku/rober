@@ -264,7 +264,10 @@ class TaskOrchestrator(Node):
                     goal_handle, result, machine, start_time, task_id, nav_attempts, nav_results
                 )
             if not nav_result.success:
-                machine.navigation_failed(nav_result.message)
+                if nav_result.result_code == "timeout":
+                    machine.timed_out(nav_result.message)
+                else:
+                    machine.navigation_failed(nav_result.message)
                 raise RuntimeError(machine.error_message)
 
             machine.navigation_succeeded()
@@ -327,7 +330,10 @@ class TaskOrchestrator(Node):
                         dropoff_result,
                     )
                 if not return_result.success:
-                    machine.return_failed(return_result.message)
+                    if return_result.result_code == "timeout":
+                        machine.timed_out(return_result.message)
+                    else:
+                        machine.return_failed(return_result.message)
                     raise RuntimeError(machine.error_message)
 
             machine.return_succeeded()
@@ -337,6 +343,8 @@ class TaskOrchestrator(Node):
             result.items_collected = 1
             result.items_disposed = 1
             result.total_duration_sec = (self.get_clock().now() - start_time).nanoseconds / 1e9
+            result.error_code = ""
+            result.final_state = machine.state.value
             result.task_record_path = str(
                 self._write_collection_record(
                     task_id,
@@ -379,7 +387,9 @@ class TaskOrchestrator(Node):
                 elif machine.state.value == "returning":
                     machine.return_failed(str(e))
             result.success = False
+            result.error_code = machine.events[-1].event.value if machine.events else "failed"
             result.error_message = machine.error_message or str(e)
+            result.final_state = machine.state.value
             result.total_duration_sec = (self.get_clock().now() - start_time).nanoseconds / 1e9
             result.task_record_path = str(
                 self._write_collection_record(
@@ -494,7 +504,9 @@ class TaskOrchestrator(Node):
         goal_handle.canceled()
         self.state = RobotState.IDLE
         result.success = False
+        result.error_code = "canceled"
         result.error_message = "user canceled"
+        result.final_state = machine.state.value
         result.total_duration_sec = (self.get_clock().now() - start_time).nanoseconds / 1e9
         result.task_record_path = str(
             self._write_collection_record(

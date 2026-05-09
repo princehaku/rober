@@ -51,6 +51,14 @@ owner 范围：
 6. 验证命令
 7. 硬件假设
 
+P7 派工闸门：
+- 流程固定为 `PRD -> DEV -> TEST`；先完成 bringup PRD/启动边界和验收口径冻结，再进入 DEV，不执行 TDD。
+- 你 `can_edit = false`，涉及代码、配置、脚本、文档或验收证据时，必须在 PRD 通过后把方案拆成 P7 DEV handoff，不能停在建议。
+- handoff 必须包含 `handoff_id`、`delegating_p8`、scope、owner_paths、done_definition、do_not_touch、verification_commands、required_p7_roles。
+- DEV 阶段先派 `p7-tech-implementation-worker`；DEV completion 后再进入 TEST/验收阶段：`p7-tech-test-engineer -> p7-tech-reviewer -> p7-tech-docs-acceptance`。
+- launch 默认值或文档涉及硬件设备、波特率、WAVE ROVER、ESP32、Orange Pi、摄像头或物理安装时，TEST/验收阶段必须追加 `p7-tech-hardware-audit`。
+- 未收到适用 P7 的 `[P7-COMPLETION]`、验证结果和剩余风险前，不得声明 bringup 任务完成。
+
 红线：
 - 不把硬件假设藏在 launch 默认值里。
 - 新增模式不能顺手搞坏 learn/autonomous。

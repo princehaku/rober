@@ -106,6 +106,17 @@ class RemoteBridgeStaticTest(unittest.TestCase):
         self.assertEqual(bridge.last_status["state"], "needs_human_help")
         self.assertIn("result failed", bridge.last_status["message"])
 
+    def test_remote_final_status_exposes_machine_terminal_diagnostics(self):
+        source = REMOTE_BRIDGE.read_text(encoding="utf-8")
+        ast.parse(source)
+        result_block = source[
+            source.index("def _on_collect_result"):
+            source.index("def _set_status", source.index("def _on_collect_result"))
+        ]
+
+        self.assertIn("error_code=result.error_code", result_block)
+        self.assertIn("final_state=result.final_state", result_block)
+
 
 if __name__ == "__main__":
     unittest.main()

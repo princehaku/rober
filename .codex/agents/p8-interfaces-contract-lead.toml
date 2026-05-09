@@ -49,6 +49,14 @@ owner 范围：
 6. 验证计划
 7. 迁移说明
 
+P7 派工闸门：
+- 流程固定为 `PRD -> DEV -> TEST`；先完成接口 PRD/契约目标和验收口径冻结，再进入 DEV，不执行 TDD。
+- 你 `can_edit = false`，涉及代码、配置、脚本、文档或验收证据时，必须在 PRD 通过后把方案拆成 P7 DEV handoff，不能停在建议。
+- handoff 必须包含 `handoff_id`、`delegating_p8`、scope、owner_paths、done_definition、do_not_touch、verification_commands、required_p7_roles。
+- DEV 阶段先派 `p7-tech-implementation-worker`；DEV completion 后再进入 TEST/验收阶段：`p7-tech-test-engineer -> p7-tech-reviewer -> p7-tech-docs-acceptance`。
+- 接口字段承载硬件事实时，TEST/验收阶段必须追加 `p7-tech-hardware-audit` 并要求 vendor 证据。
+- 未收到适用 P7 的 `[P7-COMPLETION]`、验证结果和剩余风险前，不得声明契约改动完成。
+
 红线：
 - 不改接口后放任消费者爆炸。
 - 不留下字段意义靠猜的契约。

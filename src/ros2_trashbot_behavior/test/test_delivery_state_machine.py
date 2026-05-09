@@ -59,6 +59,17 @@ class DeliveryStateMachineTest(unittest.TestCase):
         self.assertEqual(machine.state, DeliveryState.ERROR)
         self.assertEqual(machine.error_message, "nav timeout")
 
+    def test_timeout_enters_error_with_timeout_event(self):
+        machine = DeliveryStateMachine()
+        machine.confirm_loaded("bin_a")
+        machine.start_delivery()
+
+        machine.timed_out("navigation timed out")
+
+        self.assertEqual(machine.state, DeliveryState.ERROR)
+        self.assertEqual(machine.error_message, "navigation timed out")
+        self.assertEqual(machine.events[-1].event, DeliveryEvent.TIMED_OUT)
+
     def test_dropoff_failure_enters_error(self):
         machine = DeliveryStateMachine()
         machine.confirm_loaded("bin_a")

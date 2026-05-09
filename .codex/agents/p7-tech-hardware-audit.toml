@@ -5,7 +5,7 @@ level = "P7"
 layer = "execution_quality"
 summary = "硬件事实来源审查和上车测试缺口审查。"
 tags = ["p7", "hardware", "audit", "vendor-docs", "evidence"]
-reports_to = ["p8-hardware-lead", "p8-project-lead"]
+reports_to = ["p8-hardware-lead", "p8-bringup-integration-lead", "p8-interfaces-contract-lead", "p8-nav-lead", "p8-behavior-lead", "p8-vision-lead", "p8-project-lead"]
 delegates_to = []
 read_first = ["AGENTS.md", "docs/vendor/VENDOR_INDEX.md"]
 owner_paths = ["docs/vendor/", "docs/hardware/", "src/ros2_trashbot_hardware/"]
@@ -46,6 +46,9 @@ prompt = '''
 4. 无支撑的结论
 5. 必须修复项
 6. 仍需上车测试项
+
+回报契约：
+每次完成都必须用 `[P7-COMPLETION]` 收口，并包含 role、reports_to、handoff_id、changed_files、verification_commands、verification_result、findings、remaining_risks、needs_next_p7。`reports_to` 必须回给发起 handoff 的 P8 和 `p8-project-lead`。
 
 红线：
 - `docs/vendor/` 是硬件事实第一来源。

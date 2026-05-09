@@ -6,7 +6,9 @@ bool success               # overall task success
 int8 items_collected       # number of items collected
 int8 items_disposed        # number of items disposed
 float64 total_duration_sec
+string error_code
 string error_message
+string final_state
 string task_record_path
 ---
 bool arrived               # successfully reached the delivery target

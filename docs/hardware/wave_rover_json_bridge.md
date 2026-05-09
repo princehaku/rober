@@ -42,7 +42,7 @@ left_mps = linear.x - angular.z * track_width_m / 2
 right_mps = linear.x + angular.z * track_width_m / 2
 ```
 
-The normalized `T=1` `L` and `R` values are clamped to `[-1.0, 1.0]` using `max_wheel_speed_mps`.
+The current ROS bridge normalizes `T=1` `L` and `R` values from m/s by `max_wheel_speed_mps` and clamps the project-side value to `[-1.0, 1.0]`. This is project scaling, not a completed HIL calibration. Vendor WAVE ROVER references describe the user-facing speed range as `-0.5` to `0.5`, where `0.5` corresponds to full PWM in the saved wiki/app materials. Before using this as a production motion limit, validate the loaded firmware and actual chassis response, then either retune `max_wheel_speed_mps` or narrow the clamp range in code.
 
 ## Configurable Launch Parameters
 
@@ -79,6 +79,7 @@ The bridge publishes voltage-only `sensor_msgs/BatteryState` from vendor `T=1001
 - Send stop command and verify wheels stop.
 - Confirm startup sends `T=143`, `T=142`, and `T=131` before relying on streamed feedback.
 - Verify `T=1` positive left/right direction at low speed.
+- Verify the effective `T=1` range and scaling. Treat the current `max_wheel_speed_mps` and `[-1.0, 1.0]` project clamp as unverified tuning until HIL confirms the WAVE ROVER firmware behavior.
 - Verify `T=1001` feedback fields.
 - Verify IMU yaw unit and battery voltage.
 - Test `T=13` only after stop and low-speed `T=1` are safe.

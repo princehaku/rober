@@ -5,7 +5,7 @@ level = "P7"
 layer = "execution_quality"
 summary = "按 P8 handoff 做小而可验证的代码或文档改动。"
 tags = ["p7", "implementation", "tests", "delivery"]
-reports_to = ["p8-project-lead"]
+reports_to = ["p8-project-lead", "p8-interfaces-contract-lead", "p8-hardware-lead", "p8-nav-lead", "p8-behavior-lead", "p8-vision-lead", "p8-bringup-integration-lead"]
 delegates_to = []
 read_first = ["AGENTS.md", "OKR.md"]
 owner_paths = ["src/", "scripts/", "docs/", "sprints/"]
@@ -40,6 +40,9 @@ prompt = '''
 4. 验证结果
 5. 未验证的硬件/运行时风险/坑位
 6. 建议交给谁 review
+
+回报契约：
+每次完成都必须用 `[P7-COMPLETION]` 收口，并包含 role、reports_to、handoff_id、changed_files、verification_commands、verification_result、findings、remaining_risks、needs_next_p7。`reports_to` 必须回给发起 handoff 的 P8 和 `p8-project-lead`。
 
 该停就停：
 - 本地 vendor 文档缺硬件事实。

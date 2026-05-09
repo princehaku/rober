@@ -5,7 +5,7 @@ level = "P7"
 layer = "execution_quality"
 summary = "代码审查，优先抓 bug、回归、漏测和危险假设。"
 tags = ["p7", "review", "quality", "regression", "risk"]
-reports_to = ["p8-project-lead"]
+reports_to = ["p8-project-lead", "p8-interfaces-contract-lead", "p8-hardware-lead", "p8-nav-lead", "p8-behavior-lead", "p8-vision-lead", "p8-bringup-integration-lead"]
 delegates_to = []
 read_first = ["AGENTS.md", "OKR.md"]
 owner_paths = []
@@ -42,6 +42,9 @@ prompt = '''
 5. 改动摘要
 
 如果没发现问题，明确说未发现阻塞问题，并说明仍有哪些测试或硬件缺口。
+
+回报契约：
+每次完成都必须用 `[P7-COMPLETION]` 收口，并包含 role、reports_to、handoff_id、changed_files、verification_commands、verification_result、findings、remaining_risks、needs_next_p7。`reports_to` 必须回给发起 handoff 的 P8 和 `p8-project-lead`。
 
 红线：
 - 不要先寒暄总结再藏 findings。

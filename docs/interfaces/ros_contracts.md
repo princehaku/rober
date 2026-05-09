@@ -20,8 +20,8 @@ Vendor sources:
 | `port` | string | empty | Deprecated alias for `serial_port`. |
 | `baudrate` | int | `0` | Deprecated alias for `serial_baudrate`; ignored when `0`. |
 | `command_mode` | string | `speed` | `speed` maps `/cmd_vel` to vendor `T=1`; `ros` maps to vendor `T=13`. |
-| `track_width_m` | double | `0.172` | Differential-drive width used by `speed` mode. Must be positive. |
-| `max_wheel_speed_mps` | double | `1.3` | Normalization limit for `T=1` left/right values. Must be positive. |
+| `track_width_m` | double | `0.172` | Differential-drive width used by `speed` mode. Must be positive. Current default is project tuning and requires HIL confirmation before production use. |
+| `max_wheel_speed_mps` | double | `1.3` | Normalization limit for project-side `T=1` left/right values. Must be positive. Vendor WAVE ROVER materials describe `-0.5` to `0.5` as the user-facing speed range, so the current scaling/clamp remains HIL-pending. |
 | `feedback_interval_ms` | int | `100` | Sent to vendor `T=142`. Must be non-negative. |
 | `odom_publish_hz` | double | `20.0` | ROS-side `/odom` publish rate. Must be positive. |
 
@@ -148,3 +148,12 @@ For `collect`, `acked` means the command was accepted/submitted locally; final d
 ### Task Record
 
 Every success, cancellation, missing target, navigation failure, dropoff failure, and unsupported-mode failure writes a JSON task record with `started_at`, `ended_at`, `delivery_mode`, `target`, `return_target`, `nav_attempts`, `nav_results`, `dropoff_result`, `detection_snapshot_refs`, `config`, `final_status`, and `error_message`. `dropoff_result` records `success`, `result_code`, `message`, `source`, and `elapsed_sec`; `manual_confirm_timeout` and `manual_rejected` are failures.
+
+### Terminal Diagnostics
+
+`TrashCollection.Result` exposes machine-readable terminal diagnostics:
+
+| Field | Contract |
+| --- | --- |
+| `error_code` | Empty on success. On failure/cancel, set from the terminal state-machine event, such as `timed_out`, `navigation_failed`, `dropoff_failed`, `return_failed`, or `canceled`. |
+| `final_state` | Final delivery state-machine state, such as `idle` or `error`. Operator and remote status payloads propagate this field so phone/cloud clients do not need to parse human text. |
