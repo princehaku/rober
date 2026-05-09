@@ -18,6 +18,8 @@ def write_task_record(
     dropoff_result=None,
     detection_snapshot_refs=None,
     config=None,
+    error_code=None,
+    final_state=None,
 ):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -36,7 +38,13 @@ def write_task_record(
         "detection_snapshot_refs": detection_snapshot_refs or [],
         "config": config or {},
         "final_status": final_status,
+        "error_code": (
+            error_code
+            if error_code is not None
+            else (machine.events[-1].event.value if machine.events else "")
+        ),
         "error_message": error_message,
+        "final_state": final_state if final_state is not None else machine.state.value,
         "duration": max(0.0, ended_at - started_at),
         "written_at": time.time(),
         "state_transitions": [

@@ -129,6 +129,21 @@ class TaskOrchestratorStaticTest(unittest.TestCase):
         self.assertIn('result.error_code = "canceled"', source)
         self.assertIn("result.final_state = machine.state.value", source)
 
+    def test_collection_record_persists_terminal_diagnostics(self):
+        source = ORCHESTRATOR.read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        function_node = next(
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "_write_collection_record"
+        )
+        function_source = ast.get_source_segment(source, function_node)
+
+        self.assertIn('error_code="" if final_status == "success"', function_source)
+        self.assertIn("machine.events[-1].event.value if machine.events else", function_source)
+        self.assertIn("final_state=machine.state.value", function_source)
+
 
 if __name__ == "__main__":
     unittest.main()

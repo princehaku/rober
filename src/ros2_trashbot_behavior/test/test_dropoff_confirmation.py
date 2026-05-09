@@ -43,6 +43,16 @@ class DropoffConfirmationGateTest(unittest.TestCase):
         self.assertFalse(result["success"])
         self.assertEqual(result["result_code"], "manual_confirm_timeout")
 
+    def test_cancel_request_returns_canceled(self):
+        gate = DropoffConfirmationGate()
+        gate.begin("task-1")
+
+        result = gate.wait(1.0, lambda: True)
+
+        self.assertFalse(result["success"])
+        self.assertEqual(result["result_code"], "canceled")
+        self.assertEqual(result["message"], "dropoff canceled")
+
     def test_confirm_without_pending_task_is_rejected(self):
         gate = DropoffConfirmationGate()
 

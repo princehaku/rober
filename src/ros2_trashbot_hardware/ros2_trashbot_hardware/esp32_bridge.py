@@ -54,7 +54,7 @@ def vendor_degrees_to_ros_radians(value: float) -> float:
 
 def encode_json_command(command: dict[str, Any]) -> bytes:
     """Encode one vendor JSON command as a newline-delimited UART frame."""
-    return (json.dumps(command, separators=(",", ":")) + "\n").encode("utf-8")
+    return (json.dumps(command, separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
 
 
 def build_cmd_vel_command(
@@ -72,6 +72,8 @@ def build_cmd_vel_command(
     mode = command_mode.lower()
     linear_x = float(linear_x)
     angular_z = float(angular_z)
+    if not math.isfinite(linear_x) or not math.isfinite(angular_z):
+        raise ValueError("cmd_vel values must be finite")
 
     if mode == "ros":
         return {"T": CMD_ROS_CTRL, "X": _round_float(linear_x), "Z": _round_float(angular_z)}

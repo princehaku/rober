@@ -28,6 +28,46 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
+### WSL Docker Humble 环境
+
+在 WSL Ubuntu 中使用 Docker 构建本项目的 ROS2 Humble 镜像：
+
+```bash
+bash scripts/docker_humble_build.sh
+```
+
+脚本默认使用清华源加速 Ubuntu APT、ROS2 APT 和 pip。需要切换镜像源时可覆盖环境变量：
+
+```bash
+UBUNTU_APT_MIRROR=https://mirrors.aliyun.com/ubuntu \
+ROS_APT_MIRROR=https://mirrors.aliyun.com/ros2/ubuntu \
+PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple \
+bash scripts/docker_humble_build.sh
+```
+
+进入本地开发容器：
+
+```bash
+bash scripts/docker_humble_dev.sh
+```
+
+如需把 WSL 串口设备透传给容器，可追加 Docker 参数：
+
+```bash
+EXTRA_DOCKER_ARGS="--device=/dev/ttyUSB0" bash scripts/docker_humble_dev.sh
+```
+
+如果 Docker Hub 拉取基础镜像较慢，可在 WSL/Linux Docker Engine 配置 `/etc/docker/daemon.json` 后重启 Docker：
+
+```json
+{
+  "registry-mirrors": [
+    "https://docker.m.daocloud.io",
+    "https://docker.1ms.run"
+  ]
+}
+```
+
 ESP32 固件使用 PlatformIO：
 
 ```bash

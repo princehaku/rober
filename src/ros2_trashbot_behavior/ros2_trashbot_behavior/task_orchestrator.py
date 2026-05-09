@@ -487,6 +487,10 @@ class TaskOrchestrator(Node):
             dropoff_result=dropoff_result,
             detection_snapshot_refs=[],
             config=config,
+            error_code="" if final_status == "success" else (
+                machine.events[-1].event.value if machine.events else ""
+            ),
+            final_state=machine.state.value,
         )
 
     def _cancel_collection(

@@ -49,46 +49,68 @@ source install/setup.bash
 - 当前 Windows 主机有 WSL `Ubuntu-24.04`，但本项目目标是 ROS2 Humble。不要为了 Humble 强行改造 Ubuntu 24.04。
 - ROS2 Humble 构建验证优先使用 Docker 官方 Humble 容器挂载仓库，例如挂载 `E:\rober` 到容器 `/ws` 后运行 `colcon build --symlink-install`。
 
-## 子 agent 分工铁律
+## 执行优先与精简团队
 
-后续 Codex/AI 工作默认永远使用 P9/P8/P7 子 agent 分工系统，不允许主 agent 一个人把方向、拆解、实现、测试、审查全部包圆。这不仅是分工，而是必须执行到位的闭环系统。一句话原则：P9 防跑偏，P8 防混乱，P7 防玄学上线。
+默认先交付可验证结果，再补必要记录。流程服务于执行，不得替代执行。
 
-#### P9 先定方向（防跑偏）：涉及 OKR、阶段边界、优先级、产品闭环、是否值得做时，先派 P9 agent（p9-architect, p9-product-reviewer）做判断。
+简单任务、明确 bug、单文件改动、文档小改，由主 agent 直接完成实现、验证和总结；不得为了分工而分工。
 
-核心打法：根据OKR和当前延展和行业调研，要能无中生有，精确判断后续发展方向，拆解OKR到KR具体执行,判断要推进的事情是否满足 OKR 和真实闭环，不做花活。
+### 5 人 agent 编制
 
-P9 红线：不给范围边界，直接让下面“自己发挥”；拿不切实际的愿景替代当前 OKR；超脱战略定位的范围；不定义验收标准就放行。
+只保留 1 个产品负责人和 4 个一线交付同学：
 
-#### P8 再拆模块（防混乱）：涉及硬件、导航、行为、视觉、接口、bringup 任一模块时，派对应 P8 lead（p8-project-lead 及各方向 lead）拆范围、接口、风险和验收。
+- **Product Manager / OKR Owner**：拉齐产品北极星，维护 `OKR.md`，拆 KR，定抓手、优先级、范围边界和验收口径。只在方向不清、用户价值不清、范围冲突、阶段收口时介入。
+- **Robot Platform Engineer**：机器人软件中台，负责 ROS2 主链路、接口 glue、bringup、行为状态机、包间集成和最小验证。
+- **Hardware Infra Engineer**：硬件基建与履约，负责 WAVE ROVER、ESP32、Orange Pi、UART、底盘协议、电气接线和上车证据。
+- **Autonomy Algorithm Engineer**：自主能力增长引擎，负责 SLAM、Nav2、巡逻、定位、视觉检测、垃圾收集自主闭环。
+- **User Touchpoint Full-Stack Engineer**：用户触点全栈，负责手机操作界面、Web/API、远程控制、状态展示、任务下发和 ROS2 后端联调。
 
-核心打法：把方向拆成包、接口、风险、验收标准，形成可执行 handoff。
+除 `Product Manager / OKR Owner` 外，不使用 Lead 角色。一线同学必须能直接实现、测试、修复和交付。
 
-P8 红线：不拆接口/风险直接甩锅 P7；轮次里程碑、风险台账、owner 不清晰；明知跨模块依赖冲突不处理。
+### 组织层级
 
-#### P7 执行与兜底（防玄学上线）：代码实现、测试、review、硬件审查、文档验收交给 P7 agent（或按 P7 角色清单执行）。
+- **L0 CEO（用户）**：定方向、OKR 和验收口径，不参与日常实现。
+- **L1 Product Manager / OKR Owner**：承接产品方向，拆 KR，定优先级，裁边界，做阶段验收；不审批每个小任务。
+- **L2 IC Engineers**：四个一线交付同学，按领域直接实现、测试、修复和交付。
 
-核心打法：把“应该能跑”变成“有证据能跑”。
+默认链路：`CEO -> Product Manager / OKR Owner -> IC Engineers`。
 
-P7 红线：越界大改或顺手重构全仓；漏测核心路径还写“应该没问题”；硬件事实无证据瞎写结论；文档与真实行为不一致且不更新。
+快速通道：明确 bug、单文件改动、局部实现、文档小改可直达 L2，一线同学直接交付，L1 事后同步即可。
 
-### 强制迭代轮次与留档：每次迭代必须按序完成并在相应目录（如 sprints/2026.05.09_19-20/）下强制留档：
+升级条件：方向不清、用户价值不清、范围冲突、跨多个 L2、阶段验收、OKR/KR 更新时，升级到 L1。
 
-PMO TODO（pre_start.md）：上轮未完成项 + 阻塞 + owner。
+### 任务路由规则
 
-OKR/需求对齐（prd.md）：产品牵头调研，研发/视觉评审，产出 PRD、预估与计划。
+- OKR/KR、产品方向拆解、用户价值判断、阶段验收、范围冲突：交给 `Product Manager / OKR Owner`。
+- ROS2 接口、行为、bringup、launch、包间集成：交给 `Robot Platform Engineer`。
+- WAVE ROVER、ESP32、Orange Pi、UART、电气、底盘协议：交给 `Hardware Infra Engineer`。
+- SLAM、Nav2、巡逻、视觉检测、自主收集闭环：交给 `Autonomy Algorithm Engineer`。
+- 手机界面、Web/API、远程控制、状态展示、任务下发：交给 `User Touchpoint Full-Stack Engineer`。
 
-执行与验收（tech-plan.md, tech-done.md, side2side_check.md）：技术方案、执行、测试与用户验收。P0 问题必须清零。
+跨角色任务由最相关一线同学主责，其他同学只补专业事实或接口边界，不新增管理层。并行只适用于互不重叠的复杂任务；若单个一线同学能在清晰边界内完成并验证，应优先单线闭环。
 
-复盘收口（final.md）：PMO 收集完成情况，复盘 OKR 进度与技术遗留。
+### Sprint 留档原则
 
-文档阶段契约：每个阶段完成并写清 gate 状态后，才允许创建下一个阶段文档。顺序固定为 `pre_start.md -> prd.md -> tech-plan.md -> tech-done.md -> side2side_check.md -> final.md`。禁止一次性预生成整轮文档；如果历史上已有预创建后续文档，在前置 gate 完成前只能视为 invalid draft，不得作为有效交付或收口证据。
+Sprint 文档用于沉淀关键决策、验证证据和遗留风险，不得阻塞明确任务执行。
 
-### 组织链路与全员红线：
+复杂任务、跨模块任务、硬件任务、阶段验收任务，需要按需补齐以下记录：
 
-汇报链路：CEO（用户）只定 OKR 和验收口径。默认链路为 CEO -> P9 -> P8 -> P7。所有角色必须围绕 OKR.md 更新：完成度、证据、剩余风险。
+- `pre_start.md`：上轮未完成项、阻塞、owner。
+- `prd.md`：需求、OKR 对齐、验收口径。
+- `tech-plan.md`：技术方案、接口、风险、验证计划。
+- `tech-done.md`：实际改动、验证结果、偏差。
+- `side2side_check.md`：用户验收或对照检查。
+- `final.md`：复盘、OKR 进度、技术遗留。
 
-全员红线：不读 AGENTS.md / OKR.md 就开工；硬件相关不查 VENDOR_INDEX.md 拍脑袋改；不给验证证据就宣称完成；第一轮失败就交差，不定位不修复。
+普通小任务不要求创建完整文档链路；必要时在最终回复中写清改动、验证和风险即可。
 
-并行优先：多个模块互不阻塞时，P8/P7 子 agent 并行工作；主 agent 负责整合、冲突处理、验证证据和最终交付。
+### 组织链路与全员红线
 
-例外：只有纯粹的一行命令查询、用户明确要求不使用子 agent、或当前运行环境无法调用子 agent 时，主 agent 才能单独处理；最终说明必须写明为什么没有派 P9/P8/P7。(谁踩红线，直接 325 开除)
+汇报链路：CEO（用户）只定 OKR 和验收口径。复杂任务围绕 `OKR.md` 更新完成度、证据和剩余风险。
+
+全员红线：
+
+- 不读 `AGENTS.md` 就开始复杂任务。
+- 硬件相关不查 `docs/vendor/VENDOR_INDEX.md` 就下结论或改代码。
+- 没有验证证据就宣称完成。
+- 验证失败后不定位、不修复，直接交差。
