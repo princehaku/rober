@@ -8,7 +8,27 @@ Start SLAM and manual driving:
 ros2 launch ros2_trashbot_bringup learn.launch.py
 ```
 
-Record route poses and camera keyframes during the run:
+Start SLAM/manual driving and fixed-route pose/keyframe capture in one learning launch:
+
+```bash
+ros2 launch ros2_trashbot_bringup learn.launch.py \
+  route_recorder:=true \
+  route_output_dir:=~/.ros/trashbot_runs/run_001 \
+  route_min_distance_m:=0.8 \
+  route_frame_id:=map
+```
+
+Use these launch arguments when the robot topic names differ from the defaults:
+
+- `route_camera_topic` defaults to `/camera/image_raw`.
+- `route_odom_topic` defaults to `/odom`.
+- `route_output_dir` defaults to `~/.ros/trashbot_runs/run_001`.
+- `route_min_distance_m` defaults to `0.8`.
+- `route_frame_id` defaults to `map`.
+
+`route_recorder` defaults to `false` so basic mapping sessions can still run without requiring a camera stream or route dataset. When enabled, it starts `ros2_trashbot_nav/route_data_recorder` under the same launch and writes route poses plus latest camera keyframes during manual driving.
+
+You can still run the recorder manually for focused route-capture debugging:
 
 ```bash
 ros2 run ros2_trashbot_nav route_data_recorder \

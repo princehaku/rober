@@ -93,6 +93,28 @@ class LaunchContractStaticTest(unittest.TestCase):
                 self.assertNotIn("vision_detection_confidence", source)
                 self.assertNotIn("save_detection_samples", source)
 
+    def test_learn_launch_can_start_fixed_route_recorder(self):
+        source = read_launch("learn.launch.py")
+        ast.parse(source)
+
+        for argument in (
+            "'route_recorder'",
+            "'route_output_dir'",
+            "'route_camera_topic'",
+            "'route_odom_topic'",
+            "'route_min_distance_m'",
+            "'route_frame_id'",
+        ):
+            self.assertIn(argument, source)
+
+        recorder_block = node_block(source, "route_data_recorder")
+        self.assertIn("condition=IfCondition(route_recorder)", recorder_block)
+        self.assertIn("'output_dir': route_output_dir", recorder_block)
+        self.assertIn("'camera_topic': route_camera_topic", recorder_block)
+        self.assertIn("'odom_topic': route_odom_topic", recorder_block)
+        self.assertIn("'min_distance_m': route_min_distance_m", recorder_block)
+        self.assertIn("'route_frame_id': route_frame_id", recorder_block)
+
     def test_autonomous_can_start_operator_gateway(self):
         source = read_launch("autonomous.launch.py")
         gateway_block = source[source.index("executable='operator_gateway'"):]
