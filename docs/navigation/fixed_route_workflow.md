@@ -103,6 +103,8 @@ ros2 launch ros2_trashbot_bringup autonomous.launch.py \
 
 Use dry-run to verify route parsing, checkpoint progression, optional keyframe gate behavior, and debug status output before hardware movement. In dry-run mode `fixed_route_autonomy` does not create `BasicNavigator`.
 
+When `enable_visual_gate:=true`, dry-run now preflights keyframe coverage for the full route before advancing the first checkpoint. A route with missing, unreadable, or descriptorless keyframes stays in `waiting_visual_gate` and exposes the full missing/invalid checkpoint list in `keyframe_preflight`.
+
 ## 4. Debug Status
 
 `fixed_route_autonomy` writes JSON status to `debug_status_file`. The status includes:
@@ -117,6 +119,7 @@ Use dry-run to verify route parsing, checkpoint progression, optional keyframe g
 - total checkpoints
 - dry-run flag
 - visual gate flag
+- keyframe preflight summary
 - last error
 - failure reason
 - last transition
@@ -137,6 +140,14 @@ Example status JSON:
   "total": 2,
   "dry_run": true,
   "enable_visual_gate": false,
+  "keyframe_preflight": {
+    "enabled": false,
+    "total_checkpoints": 2,
+    "loaded_keyframes": [],
+    "missing_keyframes": [0, 1],
+    "invalid_keyframes": [],
+    "route_visual_ready": true
+  },
   "last_error": "",
   "failure_reason": "",
   "last_transition": "running->completed",

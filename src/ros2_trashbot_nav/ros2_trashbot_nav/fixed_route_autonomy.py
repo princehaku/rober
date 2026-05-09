@@ -54,6 +54,7 @@ class FixedRouteAutonomy(Node):
         self.visual_gate_status = 'not_checked'
         self.visual_gate_detail = ''
         self.visual_gate_checkpoint = None
+        self.keyframe_preflight = {}
         self.state = 'initializing'
         self.last_transition = ''
         self.last_nav_result = ''
@@ -118,17 +119,34 @@ class FixedRouteAutonomy(Node):
 
     def _load_keyframes(self, count: int):
         keyframes = {}
+        missing_keyframes = []
+        invalid_keyframes = []
         for idx in range(count):
             keyframe_path = os.path.join(self.keyframe_dir, f'{idx:03d}.jpg')
             if not os.path.exists(keyframe_path):
+                missing_keyframes.append(idx)
                 continue
             img = cv2.imread(keyframe_path)
             if img is None:
+                invalid_keyframes.append({'index': idx, 'reason': 'image_unreadable'})
                 continue
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             kp, des = self.orb.detectAndCompute(gray, None)
             if des is not None and len(kp) > 0:
                 keyframes[idx] = des
+            else:
+                invalid_keyframes.append({'index': idx, 'reason': 'no_descriptors'})
+        self.keyframe_preflight = {
+            'enabled': self.enable_visual_gate,
+            'total_checkpoints': count,
+            'loaded_keyframes': sorted(keyframes.keys()),
+            'missing_keyframes': missing_keyframes,
+            'invalid_keyframes': invalid_keyframes,
+            'route_visual_ready': (
+                not self.enable_visual_gate
+                or (not missing_keyframes and not invalid_keyframes and len(keyframes) == count)
+            ),
+        }
         return keyframes
 
     def _on_image(self, msg: Image):
@@ -143,6 +161,12 @@ class FixedRouteAutonomy(Node):
             self.visual_gate_status = 'disabled'
             self.visual_gate_detail = 'visual gate disabled by parameter'
             return True
+        if not self.keyframe_preflight.get('route_visual_ready', False):
+            self.last_error = self._keyframe_preflight_error()
+            self.failure_reason = self.last_error
+            self.visual_gate_status = 'keyframe_preflight_failed'
+            self.visual_gate_detail = self.last_error
+            return False
         if idx not in self.keyframes:
             self.last_error = f'visual gate missing keyframe for checkpoint {idx}'
             self.failure_reason = self.last_error
@@ -178,6 +202,19 @@ class FixedRouteAutonomy(Node):
         self.visual_gate_status = 'passed'
         self.visual_gate_detail = f'visual gate passed checkpoint {idx}'
         return True
+
+    def _keyframe_preflight_error(self) -> str:
+        missing = self.keyframe_preflight.get('missing_keyframes', [])
+        invalid = self.keyframe_preflight.get('invalid_keyframes', [])
+        parts = []
+        if missing:
+            parts.append(f'missing keyframes: {missing}')
+        if invalid:
+            invalid_indexes = [item.get('index') for item in invalid]
+            parts.append(f'invalid keyframes: {invalid_indexes}')
+        if not parts:
+            parts.append('keyframe preflight failed')
+        return '; '.join(parts)
 
     def _run_route(self):
         if not self.route_poses:
@@ -262,6 +299,7 @@ class FixedRouteAutonomy(Node):
             'total': len(self.route_poses),
             'dry_run': self.dry_run,
             'enable_visual_gate': self.enable_visual_gate,
+            'keyframe_preflight': self.keyframe_preflight,
             'visual_gate_status': self.visual_gate_status,
             'visual_gate_detail': self.visual_gate_detail,
             'visual_gate_checkpoint': self.visual_gate_checkpoint,

@@ -250,11 +250,13 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["state"], "waiting_visual_gate")
             self.assertEqual(payload["current_index"], 0)
             self.assertEqual(payload["last_nav_result"], "")
-            self.assertIn("missing keyframe", payload["last_error"])
-            self.assertIn("checkpoint 0", payload["failure_reason"])
-            self.assertEqual(payload["visual_gate_status"], "missing_keyframe")
-            self.assertIn("checkpoint 0", payload["visual_gate_detail"])
+            self.assertIn("missing keyframes: [0]", payload["last_error"])
+            self.assertIn("missing keyframes: [0]", payload["failure_reason"])
+            self.assertEqual(payload["visual_gate_status"], "keyframe_preflight_failed")
+            self.assertIn("missing keyframes: [0]", payload["visual_gate_detail"])
             self.assertEqual(payload["visual_gate_checkpoint"], 0)
+            self.assertEqual(payload["keyframe_preflight"]["missing_keyframes"], [0])
+            self.assertFalse(payload["keyframe_preflight"]["route_visual_ready"])
 
     def test_dry_run_waits_for_camera_frame_when_keyframe_exists(self):
         with tempfile.TemporaryDirectory() as td:
@@ -295,6 +297,63 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["current_index"], 0)
             self.assertEqual(payload["visual_gate_status"], "waiting_camera_frame")
             self.assertIn("waiting for camera frame", payload["failure_reason"])
+
+    def test_dry_run_blocks_before_progress_when_later_keyframe_is_missing(self):
+        with tempfile.TemporaryDirectory() as td:
+            route_file = Path(td) / "fixed_route.yaml"
+            status_file = Path(td) / "status.json"
+            route_file.write_text(
+                "waypoints:\n"
+                "  - frame_id: map\n"
+                "    x: 1.0\n"
+                "    y: 2.0\n"
+                "    qw: 1.0\n"
+                "  - frame_id: map\n"
+                "    x: 2.0\n"
+                "    y: 3.0\n"
+                "    qw: 1.0\n",
+                encoding="utf-8",
+            )
+            keyframe_dir = Path(td) / "keyframes"
+            keyframe_dir.mkdir()
+            (keyframe_dir / "000.jpg").write_bytes(b"stub")
+            basic_navigator_calls = []
+            install_ros_stubs(
+                {
+                    "route_file": str(route_file),
+                    "keyframe_dir": str(keyframe_dir),
+                    "dry_run": True,
+                    "enable_visual_gate": True,
+                    "debug_status_file": str(status_file),
+                },
+                basic_navigator_calls,
+                keyframe_image=object(),
+                orb_descriptors=["keyframe-descriptor"],
+            )
+            sys.modules.pop("ros2_trashbot_nav.fixed_route_autonomy", None)
+            module = importlib.import_module("ros2_trashbot_nav.fixed_route_autonomy")
+
+            original_validate = module.validate_route_yaml_data
+            module.validate_route_yaml_data = lambda _data, _source: [
+                {"x": 1.0, "y": 2.0, "qw": 1.0},
+                {"x": 2.0, "y": 3.0, "qw": 1.0},
+            ]
+            try:
+                node = module.FixedRouteAutonomy()
+                node.latest_frame = object()
+                node._run_route()
+            finally:
+                module.validate_route_yaml_data = original_validate
+
+            payload = json.loads(status_file.read_text(encoding="utf-8"))
+            self.assertEqual(payload["state"], "waiting_visual_gate")
+            self.assertEqual(payload["current_index"], 0)
+            self.assertEqual(payload["total"], 2)
+            self.assertEqual(payload["visual_gate_status"], "keyframe_preflight_failed")
+            self.assertIn("missing keyframes: [1]", payload["failure_reason"])
+            self.assertEqual(payload["keyframe_preflight"]["loaded_keyframes"], [0])
+            self.assertEqual(payload["keyframe_preflight"]["missing_keyframes"], [1])
+            self.assertFalse(payload["keyframe_preflight"]["route_visual_ready"])
 
     def test_dry_run_advances_after_visual_gate_passes(self):
         with tempfile.TemporaryDirectory() as td:

@@ -28,6 +28,21 @@ class FixedRouteStatusStaticTest(unittest.TestCase):
         self.assertIn("'visual_gate_status'", source)
         self.assertIn("'visual_gate_detail'", source)
         self.assertIn("'visual_gate_checkpoint'", source)
+        self.assertIn("'keyframe_preflight'", source)
+        self.assertIn("self.keyframe_preflight", source)
+
+    def test_keyframe_preflight_reports_route_wide_coverage(self):
+        source = SOURCE.read_text(encoding="utf-8")
+
+        for field in (
+            "'total_checkpoints'",
+            "'loaded_keyframes'",
+            "'missing_keyframes'",
+            "'invalid_keyframes'",
+            "'route_visual_ready'",
+            "'keyframe_preflight_failed'",
+        ):
+            self.assertIn(field, source)
 
 
 if __name__ == "__main__":
