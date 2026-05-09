@@ -1,1 +1,4 @@
 approval_policy = "on-request"
+[agents]
+max_threads = 15
+max_depth = 6
