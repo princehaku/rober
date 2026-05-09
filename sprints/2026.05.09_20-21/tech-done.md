@@ -1,5 +1,14 @@
 # Sprint 2026.05.09_20-21 Tech Done
 
+## 文档阶段门禁
+
+- 前置文档：`tech-plan.md`。
+- 前置 gate：模块方案、P7 DEV handoff、验证计划、风险边界已明确。
+- 当前阶段：DEV DONE。
+- 本阶段完成条件：记录 DEV completion、实际改动、验证输出、失败定位和剩余风险。
+- 下一文档：只有本阶段完成后，才允许创建或生效 `side2side_check.md`。
+- 如果本文件早于 tech-plan gate 被预创建，则在 gate 完成前只能视为 invalid draft。
+
 ## 当前状态
 
 本文件用于记录本轮实际执行结果。启动阶段已完成 sprint 留档骨架；本轮 P7 已进入接口/行为可判定终态实现。仓库在本轮开始前已经存在 delivery state machine、delivery navigation、task record、fixed-route dry-run 与相关测试，因此状态记录拆成“既有实现已存在”和“本轮验收/补强仍在进行”，不把既有代码误写成尚未实现。

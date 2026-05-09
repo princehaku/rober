@@ -1,5 +1,13 @@
 # Sprint 2026.05.09_20-21 Final
 
+## 文档阶段门禁
+
+- 前置文档：`side2side_check.md`。
+- 前置 gate：PRD vs 实现、OKR/KR、接口、文档、测试和 P0 风险对照完成，且 P0 全部 closed。
+- 当前阶段：FINAL。
+- 本阶段完成条件：PMO 收集完成情况、验证证据、OKR 进度、技术遗留和下轮 backlog。
+- 如果本文件早于 side2side gate 被预创建，则在 gate 完成前只能视为 invalid draft，不得作为有效收口证据。
+
 ## 收口状态
 
 当前为新一轮迭代启动阶段，尚未允许最终收口。
@@ -37,7 +45,7 @@
 | 证据 | 路径 | 状态 |
 | --- | --- | --- |
 | Sprint 启动留档 | `sprints/2026.05.09_20-21/` | done |
-| 本地 smoke | `scripts/run_smoke_tests.sh` | passed after CRLF fix; final rerun pending after latest docs/interface edits |
+| 本地 smoke | `scripts/run_smoke_tests.sh` | passed after latest P7 code/docs edits: 13 + 18 + 7 + 79 + 1 tests OK |
 | ROS2 Humble build | Docker Humble `colcon build --symlink-install` | blocked: Docker unavailable in current WSL distro |
 | WAVE ROVER HIL | `docs/acceptance/wave_rover_hil_evidence.md` 或本轮 HIL 记录 | pending |
 

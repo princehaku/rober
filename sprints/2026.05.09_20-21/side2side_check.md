@@ -1,5 +1,14 @@
 # Sprint 2026.05.09_20-21 Side To Side Check
 
+## 文档阶段门禁
+
+- 前置文档：`tech-done.md`。
+- 前置 gate：DEV completion、实际改动、验证输出、失败定位和剩余风险已记录。
+- 当前阶段：SIDE TO SIDE CHECK。
+- 本阶段完成条件：完成 PRD vs 实现、OKR/KR、接口、文档、测试和 P0 风险对照，且 P0 全部 closed。
+- 下一文档：只有本阶段完成且 P0 全部 closed 后，才允许创建或生效 `final.md`。
+- 如果本文件早于 tech-done gate 被预创建，则在 gate 完成前只能视为 invalid draft。
+
 ## PRD vs 实现
 
 | PRD 项 | 实现状态 | 证据 | 结论 |

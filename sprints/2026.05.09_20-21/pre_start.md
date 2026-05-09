@@ -44,6 +44,13 @@ CEO -> P9 -> P8 -> P7。
 - DEV：PRD 通过后，`p7-tech-implementation-worker` 按 P8 handoff 做窄范围实现。
 - TEST：DEV completion 后，`p7-tech-test-engineer`、`p7-tech-reviewer`、`p7-tech-docs-acceptance` 进入测试、审查和验收；涉及硬件事实时追加 `p7-tech-hardware-audit`。
 
+文档阶段门禁：
+
+- 顺序固定为 `pre_start.md -> prd.md -> tech-plan.md -> tech-done.md -> side2side_check.md -> final.md`。
+- 一个阶段完成并写清 gate 状态后，才允许创建下一个阶段文档，禁止预生成后续文档。
+- 本文件 gate：上轮遗留、阻塞、owner、P0/P1 风险和组织链路已列出，允许进入 `prd.md`。
+- 如果本轮目录中已有预创建的下游文件，在对应前置 gate 完成前只能视为 invalid draft，不得作为有效交付或收口证据。
+
 | 层级 | 角色 | 本轮职责 |
 | --- | --- | --- |
 | P9 | `p9-architect` | 裁剪范围、OKR/KR 映射、验收口径 |

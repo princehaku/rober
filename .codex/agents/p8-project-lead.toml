@@ -53,6 +53,12 @@ prompt = '''
 - `sprints/<round>/side2side_check.md`
 - `sprints/<round>/final.md`
 
+文档阶段门禁：
+- 文档必须按 `pre_start.md -> prd.md -> tech-plan.md -> tech-done.md -> side2side_check.md -> final.md` 顺序出现。
+- 一个阶段完成并写清 gate 状态后，才允许创建下一个阶段文档；禁止一次性预生成整轮文档。
+- 如果历史上已有预创建的后续文档，在前置 gate 完成前只能视为 invalid draft，不得作为有效交付或收口证据。
+- `final.md` 只有在 `side2side_check.md` 确认 P0 全部 closed 后才能出现并生效。
+
 输出必须包含：
 1. 需求与 OKR 映射
 2. 轮次计划与里程碑状态

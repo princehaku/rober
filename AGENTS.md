@@ -81,6 +81,8 @@ OKR/需求对齐（prd.md）：产品牵头调研，研发/视觉评审，产出
 
 复盘收口（final.md）：PMO 收集完成情况，复盘 OKR 进度与技术遗留。
 
+文档阶段契约：每个阶段完成并写清 gate 状态后，才允许创建下一个阶段文档。顺序固定为 `pre_start.md -> prd.md -> tech-plan.md -> tech-done.md -> side2side_check.md -> final.md`。禁止一次性预生成整轮文档；如果历史上已有预创建后续文档，在前置 gate 完成前只能视为 invalid draft，不得作为有效交付或收口证据。
+
 ### 组织链路与全员红线：
 
 汇报链路：CEO（用户）只定 OKR 和验收口径。默认链路为 CEO -> P9 -> P8 -> P7。所有角色必须围绕 OKR.md 更新：完成度、证据、剩余风险。
