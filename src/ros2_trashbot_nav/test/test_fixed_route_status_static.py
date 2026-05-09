@@ -25,6 +25,9 @@ class FixedRouteStatusStaticTest(unittest.TestCase):
         self.assertIn("'last_nav_result'", source)
         self.assertIn("'updated_at'", source)
         self.assertIn("'current_target'", source)
+        self.assertIn("'visual_gate_status'", source)
+        self.assertIn("'visual_gate_detail'", source)
+        self.assertIn("'visual_gate_checkpoint'", source)
 
 
 if __name__ == "__main__":

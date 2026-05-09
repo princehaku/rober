@@ -11,7 +11,14 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE_ROOT))
 
 
-def install_ros_stubs(parameter_overrides, basic_navigator_calls):
+def install_ros_stubs(
+    parameter_overrides,
+    basic_navigator_calls,
+    *,
+    keyframe_image=None,
+    orb_descriptors=None,
+    match_count=0,
+):
     class Parameter:
         def __init__(self, value):
             self.value = value
@@ -72,9 +79,16 @@ def install_ros_stubs(parameter_overrides, basic_navigator_calls):
     cv2 = types.ModuleType("cv2")
     cv2.NORM_HAMMING = 6
     cv2.COLOR_BGR2GRAY = 0
-    cv2.ORB_create = lambda _count: types.SimpleNamespace(detectAndCompute=lambda *_args: ([], None))
-    cv2.BFMatcher = lambda *_args, **_kwargs: types.SimpleNamespace(match=lambda *_args: [])
-    cv2.imread = lambda _path: None
+    if orb_descriptors is None:
+        cv2.ORB_create = lambda _count: types.SimpleNamespace(detectAndCompute=lambda *_args: ([], None))
+    else:
+        cv2.ORB_create = lambda _count: types.SimpleNamespace(
+            detectAndCompute=lambda *_args: ([object()], orb_descriptors)
+        )
+    cv2.BFMatcher = lambda *_args, **_kwargs: types.SimpleNamespace(
+        match=lambda *_args: [object()] * match_count
+    )
+    cv2.imread = lambda _path: keyframe_image
     cv2.cvtColor = lambda image, _code: image
 
     modules = {
@@ -200,8 +214,10 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["last_transition"], "running->completed")
             self.assertEqual(payload["current_index"], 1)
             self.assertEqual(payload["last_nav_result"], "dry_run_checkpoint_passed")
+            self.assertEqual(payload["visual_gate_status"], "disabled")
+            self.assertEqual(payload["visual_gate_checkpoint"], 0)
 
-    def test_dry_run_bypasses_visual_gate_when_no_camera_or_keyframes_exist(self):
+    def test_dry_run_waits_for_visual_gate_when_no_camera_or_keyframes_exist(self):
         with tempfile.TemporaryDirectory() as td:
             route_file = Path(td) / "fixed_route.yaml"
             status_file = Path(td) / "status.json"
@@ -231,10 +247,98 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             node._run_route()
 
             payload = json.loads(status_file.read_text(encoding="utf-8"))
+            self.assertEqual(payload["state"], "waiting_visual_gate")
+            self.assertEqual(payload["current_index"], 0)
+            self.assertEqual(payload["last_nav_result"], "")
+            self.assertIn("missing keyframe", payload["last_error"])
+            self.assertIn("checkpoint 0", payload["failure_reason"])
+            self.assertEqual(payload["visual_gate_status"], "missing_keyframe")
+            self.assertIn("checkpoint 0", payload["visual_gate_detail"])
+            self.assertEqual(payload["visual_gate_checkpoint"], 0)
+
+    def test_dry_run_waits_for_camera_frame_when_keyframe_exists(self):
+        with tempfile.TemporaryDirectory() as td:
+            route_file = Path(td) / "fixed_route.yaml"
+            status_file = Path(td) / "status.json"
+            route_file.write_text(
+                "waypoints:\n"
+                "  - frame_id: map\n"
+                "    x: 1.0\n"
+                "    y: 2.0\n"
+                "    qw: 1.0\n",
+                encoding="utf-8",
+            )
+            keyframe_dir = Path(td) / "keyframes"
+            keyframe_dir.mkdir()
+            (keyframe_dir / "000.jpg").write_bytes(b"stub")
+            basic_navigator_calls = []
+            install_ros_stubs(
+                {
+                    "route_file": str(route_file),
+                    "keyframe_dir": str(keyframe_dir),
+                    "dry_run": True,
+                    "enable_visual_gate": True,
+                    "debug_status_file": str(status_file),
+                },
+                basic_navigator_calls,
+                keyframe_image=object(),
+                orb_descriptors=["keyframe-descriptor"],
+            )
+            sys.modules.pop("ros2_trashbot_nav.fixed_route_autonomy", None)
+            module = importlib.import_module("ros2_trashbot_nav.fixed_route_autonomy")
+
+            node = module.FixedRouteAutonomy()
+            node._run_route()
+
+            payload = json.loads(status_file.read_text(encoding="utf-8"))
+            self.assertEqual(payload["state"], "waiting_visual_gate")
+            self.assertEqual(payload["current_index"], 0)
+            self.assertEqual(payload["visual_gate_status"], "waiting_camera_frame")
+            self.assertIn("waiting for camera frame", payload["failure_reason"])
+
+    def test_dry_run_advances_after_visual_gate_passes(self):
+        with tempfile.TemporaryDirectory() as td:
+            route_file = Path(td) / "fixed_route.yaml"
+            status_file = Path(td) / "status.json"
+            route_file.write_text(
+                "waypoints:\n"
+                "  - frame_id: map\n"
+                "    x: 1.0\n"
+                "    y: 2.0\n"
+                "    qw: 1.0\n",
+                encoding="utf-8",
+            )
+            keyframe_dir = Path(td) / "keyframes"
+            keyframe_dir.mkdir()
+            (keyframe_dir / "000.jpg").write_bytes(b"stub")
+            basic_navigator_calls = []
+            install_ros_stubs(
+                {
+                    "route_file": str(route_file),
+                    "keyframe_dir": str(keyframe_dir),
+                    "dry_run": True,
+                    "enable_visual_gate": True,
+                    "visual_match_threshold": 2,
+                    "debug_status_file": str(status_file),
+                },
+                basic_navigator_calls,
+                keyframe_image=object(),
+                orb_descriptors=["shared-descriptor"],
+                match_count=2,
+            )
+            sys.modules.pop("ros2_trashbot_nav.fixed_route_autonomy", None)
+            module = importlib.import_module("ros2_trashbot_nav.fixed_route_autonomy")
+
+            node = module.FixedRouteAutonomy()
+            node.latest_frame = object()
+            node._run_route()
+
+            payload = json.loads(status_file.read_text(encoding="utf-8"))
             self.assertEqual(payload["state"], "completed")
             self.assertEqual(payload["current_index"], 1)
+            self.assertEqual(payload["visual_gate_status"], "passed")
+            self.assertIn("passed checkpoint 0", payload["visual_gate_detail"])
             self.assertEqual(payload["last_nav_result"], "dry_run_checkpoint_passed")
-            self.assertEqual(payload["last_error"], "")
 
 
 if __name__ == "__main__":
