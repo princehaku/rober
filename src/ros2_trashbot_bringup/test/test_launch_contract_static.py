@@ -104,6 +104,9 @@ class LaunchContractStaticTest(unittest.TestCase):
             "'route_odom_topic'",
             "'route_min_distance_m'",
             "'route_frame_id'",
+            "'route_id'",
+            "'route_sample_manifest_name'",
+            "'route_sample_manifest_max_entries'",
         ):
             self.assertIn(argument, source)
 
@@ -114,6 +117,9 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertIn("'odom_topic': route_odom_topic", recorder_block)
         self.assertIn("'min_distance_m': route_min_distance_m", recorder_block)
         self.assertIn("'route_frame_id': route_frame_id", recorder_block)
+        self.assertIn("'route_id': route_id", recorder_block)
+        self.assertIn("'sample_manifest_name': route_sample_manifest_name", recorder_block)
+        self.assertIn("'sample_manifest_max_entries': route_sample_manifest_max_entries", recorder_block)
 
     def test_autonomous_can_start_operator_gateway(self):
         source = read_launch("autonomous.launch.py")

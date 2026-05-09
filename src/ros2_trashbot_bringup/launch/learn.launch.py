@@ -49,6 +49,18 @@ def generate_launch_description():
         'route_frame_id', default_value='map',
         description='Frame id written to learned fixed-route CSV checkpoints')
 
+    route_id_arg = DeclareLaunchArgument(
+        'route_id', default_value='',
+        description='Route id written to learned keyframe sample manifest context')
+
+    route_sample_manifest_name_arg = DeclareLaunchArgument(
+        'route_sample_manifest_name', default_value='manifest.json',
+        description='Vision sample manifest filename written beside learned route data')
+
+    route_sample_manifest_max_entries_arg = DeclareLaunchArgument(
+        'route_sample_manifest_max_entries', default_value='500',
+        description='Maximum learned keyframe sample entries kept in the route manifest')
+
     use_sim_time = LaunchConfiguration('use_sim_time')
     record_interval = LaunchConfiguration('record_interval')
     pose_topic = LaunchConfiguration('pose_topic')
@@ -58,6 +70,9 @@ def generate_launch_description():
     route_odom_topic = LaunchConfiguration('route_odom_topic')
     route_min_distance_m = LaunchConfiguration('route_min_distance_m')
     route_frame_id = LaunchConfiguration('route_frame_id')
+    route_id = LaunchConfiguration('route_id')
+    route_sample_manifest_name = LaunchConfiguration('route_sample_manifest_name')
+    route_sample_manifest_max_entries = LaunchConfiguration('route_sample_manifest_max_entries')
 
     return LaunchDescription([
         use_sim_time_arg,
@@ -69,6 +84,9 @@ def generate_launch_description():
         route_odom_topic_arg,
         route_min_distance_m_arg,
         route_frame_id_arg,
+        route_id_arg,
+        route_sample_manifest_name_arg,
+        route_sample_manifest_max_entries_arg,
 
         # SLAM Toolbox for mapping
         Node(
@@ -119,6 +137,9 @@ def generate_launch_description():
                 'odom_topic': route_odom_topic,
                 'min_distance_m': route_min_distance_m,
                 'route_frame_id': route_frame_id,
+                'route_id': route_id,
+                'sample_manifest_name': route_sample_manifest_name,
+                'sample_manifest_max_entries': route_sample_manifest_max_entries,
             }],
         ),
     ])

@@ -14,6 +14,7 @@ Start SLAM/manual driving and fixed-route pose/keyframe capture in one learning 
 ros2 launch ros2_trashbot_bringup learn.launch.py \
   route_recorder:=true \
   route_output_dir:=~/.ros/trashbot_runs/run_001 \
+  route_id:=trash_station_route \
   route_min_distance_m:=0.8 \
   route_frame_id:=map
 ```
@@ -25,8 +26,11 @@ Use these launch arguments when the robot topic names differ from the defaults:
 - `route_output_dir` defaults to `~/.ros/trashbot_runs/run_001`.
 - `route_min_distance_m` defaults to `0.8`.
 - `route_frame_id` defaults to `map`.
+- `route_id` defaults to blank and is copied into keyframe sample manifest context.
+- `route_sample_manifest_name` defaults to `manifest.json`.
+- `route_sample_manifest_max_entries` defaults to `500`.
 
-`route_recorder` defaults to `false` so basic mapping sessions can still run without requiring a camera stream or route dataset. When enabled, it starts `ros2_trashbot_nav/route_data_recorder` under the same launch and writes route poses plus latest camera keyframes during manual driving.
+`route_recorder` defaults to `false` so basic mapping sessions can still run without requiring a camera stream or route dataset. When enabled, it starts `ros2_trashbot_nav/route_data_recorder` under the same launch and writes route poses plus latest camera keyframes during manual driving. Each saved keyframe also writes a companion JSON sample and appends `manifest.json` using the shared `trashbot.vision_samples.v1` contract, so `/api/diagnostics` can report learned route keyframe evidence through the same vision sample summary path used for detector samples.
 
 You can still run the recorder manually for focused route-capture debugging:
 
@@ -35,13 +39,16 @@ ros2 run ros2_trashbot_nav route_data_recorder \
   --ros-args \
   -p output_dir:=~/.ros/trashbot_runs/run_001 \
   -p min_distance_m:=0.8 \
-  -p route_frame_id:=map
+  -p route_frame_id:=map \
+  -p route_id:=trash_station_route
 ```
 
 Expected outputs:
 
 - `route.csv`
 - `keyframes/*.jpg`
+- `keyframes/*.json`
+- `manifest.json`
 
 ## 2. Route Conversion
 
