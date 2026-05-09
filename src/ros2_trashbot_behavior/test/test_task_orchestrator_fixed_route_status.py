@@ -19,6 +19,15 @@ def install_ros_stubs():
     class Node:
         pass
 
+    class Waypoint:
+        def __init__(self):
+            self.name = ""
+            self.pose = None
+            self.type = 0
+            self.visited = False
+            self.last_visit_time = 0.0
+            self.comment = ""
+
     modules = {
         "rclpy": types.SimpleNamespace(init=lambda args=None: None, shutdown=lambda: None),
         "rclpy.node": types.SimpleNamespace(Node=Node),
@@ -38,6 +47,7 @@ def install_ros_stubs():
         ),
         "ros2_trashbot_interfaces.msg": types.SimpleNamespace(
             TrashStatus=object,
+            Waypoint=Waypoint,
             WaypointList=object,
         ),
         "ros2_trashbot_interfaces.srv": types.SimpleNamespace(RecordWaypoint=object),

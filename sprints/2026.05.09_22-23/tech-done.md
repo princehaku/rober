@@ -19,6 +19,8 @@
 | `robot-software-engineer` | 补 `_execute_collection` dry-run success 与 fixed-route timeout action result/task record 轻量执行测试 | `src/ros2_trashbot_behavior/test/test_task_orchestrator_collection_execution.py` | A1/A2/A3 |
 | `robot-software-engineer` | 补 dropoff cancel 结果测试 | `src/ros2_trashbot_behavior/test/test_dropoff_confirmation.py` | A1 |
 | `robot-software-engineer` | 补 collection record 写入终态字段静态测试 | `src/ros2_trashbot_behavior/test/test_task_orchestrator_static.py` | A2 |
+| `robot-software-engineer` | 补 interfaces 包静态契约测试，并让 smoke 遇到缺失 test 目录时失败 | `src/ros2_trashbot_interfaces/test/test_interface_contract_static.py`；`scripts/run_smoke_tests.sh` | 本地 smoke 基线 |
+| `full-stack-software-engineer` | 远程桥接失败终态与本地手机 gateway 对齐为 `failed`，并补真实行为测试 | `src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_bridge.py`；`src/ros2_trashbot_behavior/test/test_remote_bridge.py` | Objective 5 |
 
 ## 验证记录
 
@@ -26,9 +28,11 @@
 | --- | --- | --- |
 | `python3 -m unittest discover -s src/ros2_trashbot_behavior/test -p "test*.py"` | first run failed | 81 tests run，1 failure：success 记录的 `error_code` 断言错误 |
 | `python3 -m unittest discover -s src/ros2_trashbot_behavior/test -p "test*.py"` | passed | 88 tests OK |
+| `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/ros2_trashbot_behavior python3 -m unittest discover -s src/ros2_trashbot_behavior/test -p "test_remote_bridge*.py"` | passed | 24 tests OK；远程失败终态为 `failed` 且诊断字段透出 |
 | `python3 -m unittest discover -s src/ros2_trashbot_nav/test -p "test*.py"` | passed | 18 tests OK |
+| `python3 -m unittest discover -s src/ros2_trashbot_interfaces/test -p "test*.py"` | passed | 4 tests OK；CMake 注册文件、package 依赖和字段外部依赖静态契约通过 |
 | `bash -n scripts/run_smoke_tests.sh && bash -n scripts/docker_humble_build.sh` | passed | shell syntax OK |
-| `bash scripts/run_smoke_tests.sh` | passed | interfaces skipped；13 + 18 + 7 + 88 + 1 tests OK |
+| `PYTHONDONTWRITEBYTECODE=1 bash scripts/run_smoke_tests.sh` | passed | interfaces 4 + hardware 14 + nav 18 + bringup 7 + behavior 89 + vision 1 tests OK |
 | `ROBOT_DAILY_DOCKER_BUILD=1 bash scripts/run_smoke_tests.sh` | blocked | local smoke passed；Docker gate failed because `docker` command not found in current WSL 2 distro |
 
 ## 失败定位
@@ -37,12 +41,41 @@
 - 根因：成功 action result 的 `error_code` 应为空字符串，task record 也应保持一致；不能把成功终态事件写成错误码。
 - 修复：`write_task_record()` 将 `error_code=None` 作为自动推导，显式空字符串作为成功无错误码保留；orchestrator 在 `final_status == "success"` 时传空错误码。
 - 重跑：行为包 88 tests OK。
+- 子 agent 集成中，`test_failed_collect_result_sets_failed_status_and_keeps_diagnostics` 先暴露远程失败态仍为 `needs_human_help`。
+- 根因：`RemoteBridge._on_collect_result()` 与 `operator_gateway` 对同一个失败 action result 使用了不同一级状态。
+- 修复：远程桥接失败态对齐为 `failed`，保留 `error_code`、`final_state`、`task_record_path` 诊断字段；重跑 remote bridge 24 tests OK，全局 smoke 通过。
 
 ## 当前剩余验证
 
-- 本地全局 smoke 已通过：`bash scripts/run_smoke_tests.sh`。
+- 本地全局 smoke 已通过：`PYTHONDONTWRITEBYTECODE=1 bash scripts/run_smoke_tests.sh`，包括 interfaces 静态契约测试和 remote bridge 失败终态行为测试。
 - Docker Humble build P0 blocked：当前 WSL 2 distro 找不到 `docker` 命令。
 - HIL 本轮只做准入，不做实机通过声明。
+
+## 2026-05-10 00:29 hourly iteration
+
+### 增量改动
+
+| Owner | 改动 | 路径 | 需求映射 |
+| --- | --- | --- | --- |
+| `robot-software-engineer` | 手动投放确认超时从普通 `dropoff_failed` 改为 `timed_out` 终态，action result 与 task record 均写入机器可判定超时代码 | `src/ros2_trashbot_behavior/ros2_trashbot_behavior/task_orchestrator.py` | Objective 2 KR4/KR5 |
+| `robot-software-engineer` | 新增 `_execute_collection` manual confirm timeout 轻量执行回归，覆盖 action result、final state、task record 和 dropoff result | `src/ros2_trashbot_behavior/test/test_task_orchestrator_collection_execution.py` | Objective 2 KR4/KR5 |
+| `product-okr-owner` | 删除任务豁免口径，明确所有任务必须归入 sprint 留档，流程/agent 变更至少更新 `tech-done.md` | `AGENTS.md`；`.codex/agents/registry.toml`；`.codex/agents/product-okr-owner.toml`；`.codex/agents/robot-software-engineer.toml` | Sprint 留档契约 |
+
+### 增量验证
+
+| 命令 | 结果 | 摘要 |
+| --- | --- | --- |
+| `python3 -m unittest discover -s src/ros2_trashbot_behavior/test -p 'test_task_orchestrator_collection_execution.py'` | red, then passed | 新测试先失败：expected `timed_out`, got `dropoff_failed`；修复后 3 tests OK |
+| `./scripts/run_smoke_tests.sh` | passed | interfaces 4 + hardware 14 + nav 18 + bringup 7 + behavior 90 + vision 1 tests OK |
+| `git diff --check -- src/ros2_trashbot_behavior/ros2_trashbot_behavior/task_orchestrator.py src/ros2_trashbot_behavior/test/test_task_orchestrator_collection_execution.py` | passed | 本轮两文件无 whitespace error |
+| `rg <task-exemption-terms> AGENTS.md .codex/agents` | passed | 旧任务豁免口径无残留 |
+| `python -c "import pathlib,tomllib; ..."` | passed | 6 个 `.codex/agents/*.toml` 均可解析 |
+
+### 并行检查结论
+
+- `Robot Platform Engineer` read-only 检查：Objective 2 主交付链路已有 loaded -> delivery -> dropoff -> optional return -> record；下一窄缺口是 patrol action 仍存在硬编码 5 waypoint/sleep 模拟成功。
+- `Autonomy Algorithm Engineer` read-only 检查：Objective 3 fixed-route dry-run 仍绕过 visual gate/keyframe 校验；下一窄缺口是让 `enable_visual_gate=True` 时即便 dry-run 也能验证 keyframe 缺失/匹配状态。
+- 本轮不扩大到 patrol/fixed-route visual gate，避免在已绿 smoke 上引入第二条改动线；下轮优先处理上述两个缺口。
 
 ## 本文件 Gate
 

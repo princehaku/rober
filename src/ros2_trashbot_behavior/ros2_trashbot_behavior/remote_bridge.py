@@ -301,7 +301,7 @@ class RemoteBridge(Node):
         try:
             result = future.result().result
             self._set_status(
-                "completed" if result.success else "needs_human_help",
+                "completed" if result.success else "failed",
                 result.error_message or ("collection complete" if result.success else "collection failed"),
                 task_record_path=result.task_record_path,
                 error_code=result.error_code,

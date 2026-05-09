@@ -51,6 +51,9 @@ class FixedRouteAutonomy(Node):
         self.current_index = 0
         self.last_error = ''
         self.failure_reason = ''
+        self.visual_gate_status = 'not_checked'
+        self.visual_gate_detail = ''
+        self.visual_gate_checkpoint = None
         self.state = 'initializing'
         self.last_transition = ''
         self.last_nav_result = ''
@@ -135,16 +138,46 @@ class FixedRouteAutonomy(Node):
             self.get_logger().warn(f'image convert failed: {exc}')
 
     def _visual_gate_pass(self, idx: int) -> bool:
-        if self.dry_run or not self.enable_visual_gate:
+        self.visual_gate_checkpoint = idx
+        if not self.enable_visual_gate:
+            self.visual_gate_status = 'disabled'
+            self.visual_gate_detail = 'visual gate disabled by parameter'
             return True
-        if idx not in self.keyframes or self.latest_frame is None:
+        if idx not in self.keyframes:
+            self.last_error = f'visual gate missing keyframe for checkpoint {idx}'
+            self.failure_reason = self.last_error
+            self.visual_gate_status = 'missing_keyframe'
+            self.visual_gate_detail = self.last_error
+            return False
+        if self.latest_frame is None:
+            self.last_error = f'visual gate waiting for camera frame at checkpoint {idx}'
+            self.failure_reason = self.last_error
+            self.visual_gate_status = 'waiting_camera_frame'
+            self.visual_gate_detail = self.last_error
             return False
         gray = cv2.cvtColor(self.latest_frame, cv2.COLOR_BGR2GRAY)
         _, live_des = self.orb.detectAndCompute(gray, None)
         if live_des is None:
+            self.last_error = f'visual gate found no live descriptors at checkpoint {idx}'
+            self.failure_reason = self.last_error
+            self.visual_gate_status = 'no_live_descriptors'
+            self.visual_gate_detail = self.last_error
             return False
         matches = self.matcher.match(self.keyframes[idx], live_des)
-        return len(matches) >= self.visual_match_threshold
+        if len(matches) < self.visual_match_threshold:
+            self.last_error = (
+                f'visual gate matched {len(matches)}/{self.visual_match_threshold} '
+                f'features at checkpoint {idx}'
+            )
+            self.failure_reason = self.last_error
+            self.visual_gate_status = 'insufficient_matches'
+            self.visual_gate_detail = self.last_error
+            return False
+        self.last_error = ''
+        self.failure_reason = ''
+        self.visual_gate_status = 'passed'
+        self.visual_gate_detail = f'visual gate passed checkpoint {idx}'
+        return True
 
     def _run_route(self):
         if not self.route_poses:
@@ -162,8 +195,6 @@ class FixedRouteAutonomy(Node):
         if self.busy:
             return
         if not self._visual_gate_pass(self.current_index):
-            self.last_error = f'visual gate failed for checkpoint {self.current_index}'
-            self.failure_reason = self.last_error
             self._write_debug_status('waiting_visual_gate')
             return
         self.busy = True
@@ -231,6 +262,9 @@ class FixedRouteAutonomy(Node):
             'total': len(self.route_poses),
             'dry_run': self.dry_run,
             'enable_visual_gate': self.enable_visual_gate,
+            'visual_gate_status': self.visual_gate_status,
+            'visual_gate_detail': self.visual_gate_detail,
+            'visual_gate_checkpoint': self.visual_gate_checkpoint,
             'last_error': self.last_error,
             'failure_reason': self.failure_reason,
             'last_transition': self.last_transition,

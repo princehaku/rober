@@ -4,7 +4,6 @@ import threading
 import time
 from dataclasses import asdict, dataclass
 from enum import Enum
-from urllib.parse import urlencode
 
 import rclpy
 from rclpy.node import Node
@@ -14,7 +13,7 @@ from rclpy.executors import MultiThreadedExecutor
 from std_srvs.srv import SetBool
 
 from ros2_trashbot_interfaces.action import TrashCollection, Patrol
-from ros2_trashbot_interfaces.msg import TrashStatus, WaypointList
+from ros2_trashbot_interfaces.msg import TrashStatus, Waypoint, WaypointList
 from ros2_trashbot_interfaces.srv import RecordWaypoint
 
 from ros2_trashbot_behavior.delivery_navigation import find_waypoint_pose, load_waypoint_file
@@ -68,7 +67,6 @@ class TaskOrchestrator(Node):
         self.declare_parameter("dropoff_mode", "dry_run")
         self.declare_parameter("dropoff_timeout_sec", 30.0)
         self.declare_parameter("fixed_route_status_file", "~/.ros/trashbot_fixed_route/status.json")
-        self.declare_parameter("max_detection_snapshot_refs", 20)
         self.task_record_dir = os.path.expanduser(self.get_parameter("task_record_dir").value)
         self.delivery_target = str(self.get_parameter("delivery_target").value)
         self.delivery_mode = str(self.get_parameter("delivery_mode").value).lower()
@@ -82,17 +80,12 @@ class TaskOrchestrator(Node):
         self.fixed_route_status_file = os.path.expanduser(
             self.get_parameter("fixed_route_status_file").value
         )
-        self.max_detection_snapshot_refs = max(
-            0,
-            int(self.get_parameter("max_detection_snapshot_refs").value),
-        )
         if self.delivery_dry_run:
             self.delivery_mode = "dry_run"
         self.navigator = None
         self.dropoff_gate = DropoffConfirmationGate()
         self.collection_lock = threading.Lock()
         self.collection_active = False
-        self.detection_snapshot_refs = []
 
         # Services
         self.record_wp_client = self.create_client(
@@ -141,7 +134,6 @@ class TaskOrchestrator(Node):
 
     def _on_trash_detected(self, msg: TrashStatus):
         """Handle vision detection callback."""
-        snapshot_ref = self._record_detection_snapshot_ref(msg)
         self.get_logger().info(
             f'Trash detected: type={msg.trash_type} conf={msg.confidence}% '
             f'is_bin={msg.is_bin} pos=({msg.x:.2f}, {msg.y:.2f})')
@@ -150,43 +142,13 @@ class TaskOrchestrator(Node):
             self.bin_locations.append({
                 'x': msg.x, 'y': msg.y, 'z': msg.z,
                 'type': msg.trash_type,
-                'confidence': msg.confidence,
-                'timestamp': msg.timestamp,
-                'frame_id': msg.frame_id,
-                'snapshot_ref': snapshot_ref,
             })
         else:
             self.trash_items.append({
                 'x': msg.x, 'y': msg.y, 'z': msg.z,
                 'type': msg.trash_type,
                 'confidence': msg.confidence,
-                'timestamp': msg.timestamp,
-                'frame_id': msg.frame_id,
-                'snapshot_ref': snapshot_ref,
             })
-
-    def _record_detection_snapshot_ref(self, msg: TrashStatus) -> str:
-        snapshot_ref = self._detection_snapshot_ref(msg)
-        if self.max_detection_snapshot_refs <= 0:
-            return snapshot_ref
-        self.detection_snapshot_refs.append(snapshot_ref)
-        overflow = len(self.detection_snapshot_refs) - self.max_detection_snapshot_refs
-        if overflow > 0:
-            del self.detection_snapshot_refs[:overflow]
-        return snapshot_ref
-
-    def _detection_snapshot_ref(self, msg: TrashStatus) -> str:
-        query = urlencode({
-            "frame_id": msg.frame_id,
-            "x": f"{msg.x:.4f}",
-            "y": f"{msg.y:.4f}",
-            "z": f"{msg.z:.4f}",
-            "confidence": int(msg.confidence),
-            "trash_type": int(msg.trash_type),
-            "is_bin": str(bool(msg.is_bin)).lower(),
-        })
-        timestamp_ms = int(max(0.0, float(msg.timestamp)) * 1000)
-        return f"trash_status://detection/{timestamp_ms}?{query}"
 
     def _on_waypoint_list(self, msg: WaypointList):
         """Update when waypoint list changes."""
@@ -200,10 +162,10 @@ class TaskOrchestrator(Node):
         self.get_logger().info('Patrol action started')
         self.state = RobotState.PATROLLING
 
-        feedback_msg = Patrol.Feedback()
         result = Patrol.Result()
         start_time = self.get_clock().now()
         new_points_recorded = 0
+        distance_traveled = 0.0
 
         # Phase 1: If not learning from saved map, do SLAM first
         if not goal_handle.request.use_saved_map:
@@ -213,11 +175,23 @@ class TaskOrchestrator(Node):
             self.learn_count += 1
             self.get_logger().info(f'Learning drive #{self.learn_count} completed')
 
-        # Phase 2: Patrol all waypoints
-        # TODO: integrate with waypoint_manager to navigate each point
-        # For now, simulate patrol
-        waypoints_total = 5  # placeholder
-        for i in range(waypoints_total):
+        try:
+            waypoint_data = load_waypoint_file(self.waypoint_file)
+            patrol_waypoints = waypoint_data.get("waypoints") or []
+            if not patrol_waypoints:
+                raise ValueError(f"patrol waypoint file has no waypoints: {self.waypoint_file}")
+        except Exception as exc:
+            result.success = False
+            result.total_duration_sec = (self.get_clock().now() - start_time).nanoseconds / 1e9
+            result.new_points_recorded = 0
+            result.map_save_path = self.waypoint_file
+            goal_handle.abort()
+            self.state = RobotState.ERROR
+            self.get_logger().error(f'Patrol failed before navigation: {exc}')
+            return result
+
+        waypoints_total = len(patrol_waypoints)
+        for i, waypoint in enumerate(patrol_waypoints):
             if goal_handle.is_cancel_requested:
                 goal_handle.canceled()
                 self.state = RobotState.IDLE
@@ -226,21 +200,45 @@ class TaskOrchestrator(Node):
                 self.get_logger().info('Patrol canceled')
                 return result
 
-            feedback_msg.waypoints_visited = i + 1
+            waypoint_name = waypoint.get("name") or f"waypoint_{i}"
+            self.get_logger().info(f'Patrol navigating to waypoint {i + 1}/{waypoints_total}: {waypoint_name}')
+            feedback_msg = Patrol.Feedback()
+            feedback_msg.waypoints_visited = i
             feedback_msg.waypoints_total = waypoints_total
+            feedback_msg.distance_traveled = distance_traveled
+            feedback_msg.current_waypoint = self._waypoint_msg_from_data(waypoint)
             goal_handle.publish_feedback(feedback_msg)
 
-            self.get_logger().info(f'  Visited waypoint {i+1}/{waypoints_total}')
-            # Simulate delay for navigation
-            await self._sleep_async(2.0)
+            nav_result = self._navigate_patrol_waypoint(waypoint, goal_handle)
+            distance_traveled += max(0.0, nav_result.elapsed_sec)
+            if not nav_result.success:
+                result.success = False
+                result.total_duration_sec = (self.get_clock().now() - start_time).nanoseconds / 1e9
+                result.new_points_recorded = new_points_recorded
+                result.map_save_path = self.waypoint_file
+                if nav_result.result_code == "canceled":
+                    goal_handle.canceled()
+                    self.state = RobotState.IDLE
+                else:
+                    goal_handle.abort()
+                    self.state = RobotState.ERROR
+                self.get_logger().error(f'Patrol failed at {waypoint_name}: {nav_result.message}')
+                return result
+
+            feedback_msg = Patrol.Feedback()
+            feedback_msg.waypoints_visited = i + 1
+            feedback_msg.waypoints_total = waypoints_total
+            feedback_msg.distance_traveled = distance_traveled
+            feedback_msg.current_waypoint = self._waypoint_msg_from_data(waypoint)
+            goal_handle.publish_feedback(feedback_msg)
 
             # Record new points if in learn mode
             if goal_handle.request.learn_mode and self.trash_items:
                 new_points_recorded += len(self.trash_items)
                 self.get_logger().info(f'  Recorded {len(self.trash_items)} new trash points')
+                self.trash_items.clear()
 
-        # Phase 3: Save map
-        result.map_save_path = '~/.ros/trashbot_maps/trashbot_map.yaml'
+        result.map_save_path = self.waypoint_file
         result.success = True
         result.total_duration_sec = (self.get_clock().now() - start_time).nanoseconds / 1e9
         result.new_points_recorded = new_points_recorded
@@ -251,6 +249,45 @@ class TaskOrchestrator(Node):
             f'Patrol complete: {result.total_duration_sec:.1f}s, '
             f'{result.new_points_recorded} new points recorded')
         return result
+
+    def _waypoint_msg_from_data(self, waypoint_data):
+        waypoint = Waypoint()
+        waypoint.name = str(waypoint_data.get("name") or "")
+        waypoint.type = int(waypoint_data.get("type", 0) or 0)
+        waypoint.visited = bool(waypoint_data.get("visited", False))
+        waypoint.last_visit_time = float(waypoint_data.get("last_visit_time", 0.0) or 0.0)
+        waypoint.comment = str(waypoint_data.get("comment") or "")
+        waypoint.pose = self._pose_stamped_from_data(
+            {
+                "frame_id": waypoint_data.get("frame_id") or "map",
+                "x": float(waypoint_data.get("x") or 0.0),
+                "y": float(waypoint_data.get("y") or 0.0),
+                "z": float(waypoint_data.get("z") or 0.0),
+                "qx": float(waypoint_data.get("orientation_x") or waypoint_data.get("qx") or 0.0),
+                "qy": float(waypoint_data.get("orientation_y") or waypoint_data.get("qy") or 0.0),
+                "qz": float(waypoint_data.get("orientation_z") or waypoint_data.get("qz") or 0.0),
+                "qw": float(waypoint_data.get("orientation_w") or waypoint_data.get("qw") or 1.0),
+            }
+        )
+        return waypoint
+
+    def _navigate_patrol_waypoint(self, waypoint_data, goal_handle):
+        started = time.monotonic()
+        pose = self._waypoint_msg_from_data(waypoint_data).pose
+        navigator = self._get_navigator()
+        navigator.goToPose(pose)
+        while not navigator.isTaskComplete():
+            if goal_handle.is_cancel_requested:
+                navigator.cancelTask()
+                return NavigationResult(False, "canceled", "patrol navigation canceled", time.monotonic() - started)
+            if time.monotonic() - started > self.navigation_timeout_sec:
+                navigator.cancelTask()
+                return NavigationResult(False, "timeout", "patrol navigation timed out", time.monotonic() - started)
+        if self._nav_task_succeeded(navigator):
+            waypoint_name = waypoint_data.get("name") or "unnamed waypoint"
+            return NavigationResult(True, "succeeded", f"reached patrol waypoint {waypoint_name}", time.monotonic() - started)
+        waypoint_name = waypoint_data.get("name") or "unnamed waypoint"
+        return NavigationResult(False, "failed", f"failed to reach patrol waypoint {waypoint_name}", time.monotonic() - started)
 
     async def _execute_collection(self, goal_handle):
         """TrashCollection action for the user-loaded trash delivery MVP."""
@@ -334,7 +371,10 @@ class TaskOrchestrator(Node):
                     dropoff_result,
                 )
             if not dropoff_result["success"]:
-                machine.dropoff_failed(dropoff_result["message"])
+                if dropoff_result.get("result_code") == "manual_confirm_timeout":
+                    machine.timed_out(dropoff_result["message"])
+                else:
+                    machine.dropoff_failed(dropoff_result["message"])
                 raise RuntimeError(machine.error_message)
 
             machine.dropoff_confirmed()
@@ -523,7 +563,7 @@ class TaskOrchestrator(Node):
             nav_attempts=nav_attempts,
             nav_results=[asdict(item) if isinstance(item, NavigationResult) else item for item in nav_results],
             dropoff_result=dropoff_result,
-            detection_snapshot_refs=list(self.detection_snapshot_refs),
+            detection_snapshot_refs=[],
             config=config,
             error_code="" if final_status == "success" else (
                 machine.events[-1].event.value if machine.events else ""

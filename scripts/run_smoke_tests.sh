@@ -52,7 +52,8 @@ for item in "${package_tests[@]}"; do
 done
 
 if [ ${#missing_test_packages[@]} -gt 0 ]; then
-  echo "Smoke scan skipped test execution for: ${missing_test_packages[*]}"
+  echo "Smoke scan failed because packages are missing test folders: ${missing_test_packages[*]}" >&2
+  exit 1
 fi
 
 if [ "${ROBOT_DAILY_DOCKER_BUILD:-}" = "1" ]; then

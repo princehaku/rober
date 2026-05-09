@@ -141,6 +141,20 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
                 max_wheel_speed_mps=0.0,
             )
 
+    def test_cmd_vel_rejects_non_finite_motion_values(self):
+        bridge = _bridge_module()
+
+        for linear_x, angular_z in (("NaN", 0.0), (0.0, "Infinity"), (float("-inf"), 0.0)):
+            with self.subTest(linear_x=linear_x, angular_z=angular_z):
+                with self.assertRaisesRegex(ValueError, "cmd_vel values must be finite"):
+                    bridge.build_cmd_vel_command(
+                        linear_x=linear_x,
+                        angular_z=angular_z,
+                        command_mode="speed",
+                        track_width_m=0.172,
+                        max_wheel_speed_mps=1.3,
+                    )
+
     def test_startup_config_rejects_nonpositive_max_wheel_speed(self):
         bridge = _bridge_module()
 

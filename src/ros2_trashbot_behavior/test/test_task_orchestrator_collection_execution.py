@@ -44,6 +44,15 @@ def install_ros_stubs():
             self.message = ""
             self.elapsed_sec = 0.0
 
+    class Waypoint:
+        def __init__(self):
+            self.name = ""
+            self.pose = None
+            self.type = 0
+            self.visited = False
+            self.last_visit_time = 0.0
+            self.comment = ""
+
     TrashCollection = types.SimpleNamespace(Result=Result, Feedback=Feedback)
 
     modules = {
@@ -65,6 +74,7 @@ def install_ros_stubs():
         ),
         "ros2_trashbot_interfaces.msg": types.SimpleNamespace(
             TrashStatus=object,
+            Waypoint=Waypoint,
             WaypointList=object,
         ),
         "ros2_trashbot_interfaces.srv": types.SimpleNamespace(RecordWaypoint=object),
@@ -141,8 +151,6 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         node.dropoff_mode = "dry_run"
         node.dropoff_timeout_sec = 0.0
         node.fixed_route_status_file = str(fixed_route_status_file)
-        node.max_detection_snapshot_refs = 20
-        node.detection_snapshot_refs = ["trash_status://detection/1?frame_id=camera"]
         node.get_clock = lambda: FakeClock()
         node.get_logger = lambda: FakeLogger()
         node._clear_collection_active = lambda: None
@@ -168,7 +176,6 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["final_state"], "idle")
         self.assertEqual(payload["delivery_mode"], "dry_run")
         self.assertEqual(payload["dropoff_result"]["result_code"], "dry_run")
-        self.assertEqual(payload["detection_snapshot_refs"], ["trash_status://detection/1?frame_id=camera"])
 
     def test_execute_collection_fixed_route_timeout_aborts_with_timeout_record(self):
         with tempfile.TemporaryDirectory() as td:
@@ -190,32 +197,28 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["error_code"], "timed_out")
         self.assertEqual(payload["final_state"], "error")
         self.assertEqual(payload["nav_results"][0]["result_code"], "timeout")
-        self.assertEqual(payload["detection_snapshot_refs"], ["trash_status://detection/1?frame_id=camera"])
 
-    def test_detection_snapshot_refs_use_stable_trash_status_fields(self):
-        node = object.__new__(self.module.TaskOrchestrator)
-        node.max_detection_snapshot_refs = 2
-        node.detection_snapshot_refs = []
+    def test_execute_collection_manual_dropoff_timeout_aborts_with_timeout_record(self):
+        with tempfile.TemporaryDirectory() as td:
+            node = self.make_orchestrator(Path(td))
+            node.dropoff_mode = "manual_confirm"
+            node.dropoff_timeout_sec = 0.0
+            node.dropoff_gate = self.module.DropoffConfirmationGate()
+            goal = FakeGoalHandle()
 
-        for idx in range(3):
-            msg = types.SimpleNamespace(
-                frame_id="camera_front",
-                x=0.1 * idx,
-                y=-0.2,
-                z=1.5,
-                confidence=80 + idx,
-                trash_type=2,
-                is_bin=True,
-                timestamp=100.0 + idx,
-            )
-            node._record_detection_snapshot_ref(msg)
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
 
-        self.assertEqual(len(node.detection_snapshot_refs), 2)
-        self.assertNotIn("/100000?", node.detection_snapshot_refs[0])
-        self.assertIn("trash_status://detection/101000?", node.detection_snapshot_refs[0])
-        self.assertIn("frame_id=camera_front", node.detection_snapshot_refs[0])
-        self.assertIn("trash_type=2", node.detection_snapshot_refs[0])
-        self.assertIn("is_bin=true", node.detection_snapshot_refs[0])
+        self.assertFalse(goal.succeeded)
+        self.assertTrue(goal.aborted)
+        self.assertFalse(result.success)
+        self.assertEqual(result.error_code, "timed_out")
+        self.assertEqual(result.final_state, "error")
+        self.assertIn("dropoff confirmation timed out", result.error_message)
+        self.assertEqual(payload["final_status"], "failed")
+        self.assertEqual(payload["error_code"], "timed_out")
+        self.assertEqual(payload["final_state"], "error")
+        self.assertEqual(payload["dropoff_result"]["result_code"], "manual_confirm_timeout")
 
 
 if __name__ == "__main__":

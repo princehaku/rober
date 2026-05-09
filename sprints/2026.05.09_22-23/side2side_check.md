@@ -36,6 +36,7 @@
 | `TrashCollection.Result.final_state` | behavior | 手机/远程/测试 | 使用状态机最终状态 |
 | `TrashCollection.Result.task_record_path` | behavior | debug/远程诊断/维护者 | 指向 JSON 任务记录 |
 | task record `error_code`/`final_state` | behavior | debug/远程诊断/维护者 | 已持久化 |
+| remote bridge failure `state` | behavior | 远程控制/云端 ack/debug | 与本地 gateway 对齐为 `failed` |
 | fixed route status JSON | nav | behavior | 支持 completed/error/timeout/cancel 结果路径 |
 
 ## 验证证据
@@ -43,9 +44,11 @@
 | 命令 | 状态 | 摘要 |
 | --- | --- | --- |
 | `python3 -m unittest discover -s src/ros2_trashbot_behavior/test -p "test*.py"` | passed | 88 tests OK |
+| `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/ros2_trashbot_behavior python3 -m unittest discover -s src/ros2_trashbot_behavior/test -p "test_remote_bridge*.py"` | passed | 24 tests OK；远程失败终态为 `failed` 且诊断字段透出 |
 | `python3 -m unittest discover -s src/ros2_trashbot_nav/test -p "test*.py"` | passed | 18 tests OK |
+| `python3 -m unittest discover -s src/ros2_trashbot_interfaces/test -p "test*.py"` | passed | 4 tests OK；CMake 注册文件、package 依赖和字段外部依赖静态契约通过 |
 | `bash -n scripts/run_smoke_tests.sh && bash -n scripts/docker_humble_build.sh` | passed | shell syntax OK |
-| `bash scripts/run_smoke_tests.sh` | passed | interfaces skipped；13 + 18 + 7 + 88 + 1 tests OK |
+| `PYTHONDONTWRITEBYTECODE=1 bash scripts/run_smoke_tests.sh` | passed | interfaces 4 + hardware 14 + nav 18 + bringup 7 + behavior 89 + vision 1 tests OK |
 | `ROBOT_DAILY_DOCKER_BUILD=1 bash scripts/run_smoke_tests.sh` | blocked | local smoke passed；Docker gate failed because current WSL 2 distro cannot find `docker` |
 
 ## 硬件事实与 HIL 边界
@@ -69,6 +72,8 @@ HIL 本轮状态：
 | action result 不能机器判定 success/failure/timeout/cancel | `robot-software-engineer` | 行为测试 + action execution 轻量测试 | closed |
 | fixed route delivery 没有离线结果路径证据 | `autonomy-engineer` | fixed-route status reader + nav dry-run tests | closed |
 | task record 不记录终态诊断 | `robot-software-engineer` | JSON record 字段测试 | closed |
+| interfaces 包本地 smoke 缺少契约覆盖 | `robot-software-engineer` | interfaces 静态契约测试进入 `bash scripts/run_smoke_tests.sh` | closed |
+| 手机/远程对失败任务一级状态不一致 | `full-stack-software-engineer` | remote bridge 行为测试 | closed |
 | Docker Humble build 不能证明接口/action/msg 生成 | `robot-software-engineer` | Docker build 通过 | blocked: `docker` command not found |
 | HIL 准入资料不完整却宣称硬件完成 | `hardware-engineer` | 准入清单 ready，实机 deferred | closed for documentation boundary only |
 | P0 未清零就 final | `product-okr-owner` | 本表全部 closed | open because Docker P0 blocked |

@@ -18,7 +18,6 @@ class TaskOrchestratorStaticTest(unittest.TestCase):
             "dropoff_mode",
             "dropoff_timeout_sec",
             "fixed_route_status_file",
-            "max_detection_snapshot_refs",
         ):
             self.assertIn(f'declare_parameter("{parameter}"', source)
 
@@ -129,23 +128,6 @@ class TaskOrchestratorStaticTest(unittest.TestCase):
         self.assertIn("result.error_code = machine.events[-1].event.value", source)
         self.assertIn('result.error_code = "canceled"', source)
         self.assertIn("result.final_state = machine.state.value", source)
-
-    def test_collection_record_uses_detection_snapshot_refs_without_algorithm_coupling(self):
-        source = ORCHESTRATOR.read_text(encoding="utf-8")
-        tree = ast.parse(source)
-        function_node = next(
-            node
-            for node in ast.walk(tree)
-            if isinstance(node, ast.FunctionDef)
-            and node.name == "_write_collection_record"
-        )
-        function_source = ast.get_source_segment(source, function_node)
-
-        self.assertIn("detection_snapshot_refs=list(self.detection_snapshot_refs)", function_source)
-        self.assertIn("trash_status://detection/", source)
-        self.assertIn("urlencode", source)
-        self.assertNotIn("cv2", function_source.lower())
-        self.assertNotIn("opencv", function_source.lower())
 
     def test_collection_record_persists_terminal_diagnostics(self):
         source = ORCHESTRATOR.read_text(encoding="utf-8")

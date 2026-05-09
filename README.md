@@ -28,6 +28,67 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
+### WSL Docker Humble 环境
+
+在 WSL Ubuntu 中配置 Docker Hub 国内镜像：
+
+```bash
+bash scripts/setup_wsl_docker_mirrors.sh
+```
+
+如果你用的是 Docker Desktop，需要先在 Docker Desktop 里开启当前 WSL 发行版集成；如果你用的是 WSL 内部 Docker Engine，上面的脚本会写入 `/etc/docker/daemon.json` 并尝试重启 Docker。
+
+构建本项目的 ROS2 Humble 镜像并顺手跑一次 `colcon build`：
+
+```bash
+bash scripts/docker_humble_build.sh
+```
+
+脚本默认使用清华源加速 Ubuntu APT、ROS2 APT、rosdep、rosdistro index 和 pip。只想先构建镜像、不跑工作区编译：
+
+```bash
+SKIP_COLCON=1 bash scripts/docker_humble_build.sh
+```
+
+需要切换镜像源时可覆盖环境变量：
+
+```bash
+UBUNTU_APT_MIRROR=https://mirrors.aliyun.com/ubuntu \
+ROS_APT_MIRROR=https://mirrors.aliyun.com/ros2/ubuntu \
+PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple \
+bash scripts/docker_humble_build.sh
+```
+
+进入本地开发容器：
+
+```bash
+bash scripts/docker_humble_dev.sh
+```
+
+如需把 WSL 串口设备透传给容器，可追加 Docker 参数：
+
+```bash
+EXTRA_DOCKER_ARGS="--device=/dev/ttyUSB0" bash scripts/docker_humble_dev.sh
+```
+
+也可以用 Docker Compose：
+
+```bash
+docker compose -f docker-compose.humble.yml build
+docker compose -f docker-compose.humble.yml run --rm humble
+```
+
+手动配置 Docker Hub 镜像时，可在 WSL/Linux Docker Engine 写入 `/etc/docker/daemon.json` 后重启 Docker：
+
+```json
+{
+  "registry-mirrors": [
+    "https://docker.m.daocloud.io",
+    "https://docker.1ms.run"
+  ]
+}
+```
+
 ESP32 固件使用 PlatformIO：
 
 ```bash

@@ -3,7 +3,7 @@ import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from ros2_trashbot_behavior.remote_bridge import RemoteBridgeWorker
+from ros2_trashbot_behavior.remote_bridge import RemoteBridge, RemoteBridgeWorker
 from ros2_trashbot_behavior.remote_bridge_protocol import RemoteCloudClient
 
 
@@ -233,6 +233,40 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(len(self.cloud.status_posts), 1)
         self.assertEqual(self.cloud.ack_posts, [])
         self.assertEqual(self.backend.calls, [])
+
+
+class RemoteBridgeActionResultTest(unittest.TestCase):
+    def test_failed_collect_result_sets_failed_status_and_keeps_diagnostics(self):
+        bridge = RemoteBridge.__new__(RemoteBridge)
+        bridge.robot_id = "robot-1"
+        bridge.task_lock = threading.Lock()
+        bridge.collect_pending = False
+        bridge.active_goal_handle = object()
+        bridge.last_status = {}
+
+        class Result:
+            success = False
+            error_message = "planner could not reach trash"
+            task_record_path = "/tmp/task.json"
+            error_code = 42
+            final_state = "NAVIGATION_FAILED"
+
+        class ResultEnvelope:
+            result = Result()
+
+        class DoneFuture:
+            def result(self):
+                return ResultEnvelope()
+
+        bridge._on_collect_result(DoneFuture())
+
+        self.assertEqual(bridge.last_status["state"], "failed")
+        self.assertEqual(bridge.last_status["message"], "planner could not reach trash")
+        self.assertEqual(bridge.last_status["error_code"], 42)
+        self.assertEqual(bridge.last_status["final_state"], "NAVIGATION_FAILED")
+        self.assertEqual(bridge.last_status["task_record_path"], "/tmp/task.json")
+        self.assertFalse(bridge.collect_pending)
+        self.assertIsNone(bridge.active_goal_handle)
 
 
 if __name__ == "__main__":
