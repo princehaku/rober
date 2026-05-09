@@ -44,6 +44,15 @@ def install_ros_stubs():
             self.message = ""
             self.elapsed_sec = 0.0
 
+    class Waypoint:
+        def __init__(self):
+            self.name = ""
+            self.pose = None
+            self.type = 0
+            self.visited = False
+            self.last_visit_time = 0.0
+            self.comment = ""
+
     TrashCollection = types.SimpleNamespace(Result=Result, Feedback=Feedback)
 
     modules = {
@@ -65,6 +74,7 @@ def install_ros_stubs():
         ),
         "ros2_trashbot_interfaces.msg": types.SimpleNamespace(
             TrashStatus=object,
+            Waypoint=Waypoint,
             WaypointList=object,
         ),
         "ros2_trashbot_interfaces.srv": types.SimpleNamespace(RecordWaypoint=object),
@@ -187,6 +197,28 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["error_code"], "timed_out")
         self.assertEqual(payload["final_state"], "error")
         self.assertEqual(payload["nav_results"][0]["result_code"], "timeout")
+
+    def test_execute_collection_manual_dropoff_timeout_aborts_with_timeout_record(self):
+        with tempfile.TemporaryDirectory() as td:
+            node = self.make_orchestrator(Path(td))
+            node.dropoff_mode = "manual_confirm"
+            node.dropoff_timeout_sec = 0.0
+            node.dropoff_gate = self.module.DropoffConfirmationGate()
+            goal = FakeGoalHandle()
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        self.assertFalse(goal.succeeded)
+        self.assertTrue(goal.aborted)
+        self.assertFalse(result.success)
+        self.assertEqual(result.error_code, "timed_out")
+        self.assertEqual(result.final_state, "error")
+        self.assertIn("dropoff confirmation timed out", result.error_message)
+        self.assertEqual(payload["final_status"], "failed")
+        self.assertEqual(payload["error_code"], "timed_out")
+        self.assertEqual(payload["final_state"], "error")
+        self.assertEqual(payload["dropoff_result"]["result_code"], "manual_confirm_timeout")
 
 
 if __name__ == "__main__":

@@ -51,6 +51,32 @@
 - Docker Humble build P0 blocked：当前 WSL 2 distro 找不到 `docker` 命令。
 - HIL 本轮只做准入，不做实机通过声明。
 
+## 2026-05-10 00:29 hourly iteration
+
+### 增量改动
+
+| Owner | 改动 | 路径 | 需求映射 |
+| --- | --- | --- | --- |
+| `robot-software-engineer` | 手动投放确认超时从普通 `dropoff_failed` 改为 `timed_out` 终态，action result 与 task record 均写入机器可判定超时代码 | `src/ros2_trashbot_behavior/ros2_trashbot_behavior/task_orchestrator.py` | Objective 2 KR4/KR5 |
+| `robot-software-engineer` | 新增 `_execute_collection` manual confirm timeout 轻量执行回归，覆盖 action result、final state、task record 和 dropoff result | `src/ros2_trashbot_behavior/test/test_task_orchestrator_collection_execution.py` | Objective 2 KR4/KR5 |
+| `product-okr-owner` | 删除任务豁免口径，明确所有任务必须归入 sprint 留档，流程/agent 变更至少更新 `tech-done.md` | `AGENTS.md`；`.codex/agents/registry.toml`；`.codex/agents/product-okr-owner.toml`；`.codex/agents/robot-software-engineer.toml` | Sprint 留档契约 |
+
+### 增量验证
+
+| 命令 | 结果 | 摘要 |
+| --- | --- | --- |
+| `python3 -m unittest discover -s src/ros2_trashbot_behavior/test -p 'test_task_orchestrator_collection_execution.py'` | red, then passed | 新测试先失败：expected `timed_out`, got `dropoff_failed`；修复后 3 tests OK |
+| `./scripts/run_smoke_tests.sh` | passed | interfaces 4 + hardware 14 + nav 18 + bringup 7 + behavior 90 + vision 1 tests OK |
+| `git diff --check -- src/ros2_trashbot_behavior/ros2_trashbot_behavior/task_orchestrator.py src/ros2_trashbot_behavior/test/test_task_orchestrator_collection_execution.py` | passed | 本轮两文件无 whitespace error |
+| `rg <task-exemption-terms> AGENTS.md .codex/agents` | passed | 旧任务豁免口径无残留 |
+| `python -c "import pathlib,tomllib; ..."` | passed | 6 个 `.codex/agents/*.toml` 均可解析 |
+
+### 并行检查结论
+
+- `Robot Platform Engineer` read-only 检查：Objective 2 主交付链路已有 loaded -> delivery -> dropoff -> optional return -> record；下一窄缺口是 patrol action 仍存在硬编码 5 waypoint/sleep 模拟成功。
+- `Autonomy Algorithm Engineer` read-only 检查：Objective 3 fixed-route dry-run 仍绕过 visual gate/keyframe 校验；下一窄缺口是让 `enable_visual_gate=True` 时即便 dry-run 也能验证 keyframe 缺失/匹配状态。
+- 本轮不扩大到 patrol/fixed-route visual gate，避免在已绿 smoke 上引入第二条改动线；下轮优先处理上述两个缺口。
+
 ## 本文件 Gate
 
 - DEV/TEST 实际改动和初次失败已记录。

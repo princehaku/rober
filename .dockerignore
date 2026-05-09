@@ -1,0 +1,16 @@
+.git
+.idea
+.vscode
+.codex
+.ros_home
+build
+install
+log
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+*.bag
+*.db3
+*.log

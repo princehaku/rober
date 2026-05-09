@@ -24,10 +24,11 @@ run_args=(
     -e "ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}"
     -v "$repo_root:/ws"
     -v "$repo_root/.ros_home:/root/.ros"
+    -v /tmp/.X11-unix:/tmp/.X11-unix:rw
     -w /ws
     "${extra_args[@]}"
     "$image"
-    bash -lc "source /opt/ros/humble/setup.bash && if [ -f install/setup.bash ]; then source install/setup.bash; fi; exec bash"
+    bash -l
 )
 
 docker run "${run_args[@]}"

@@ -35,6 +35,14 @@
 3. `Hardware Infra Engineer`：首次转向 HIL 不要用现有 `--turn-test` 的 `T=13`；按 vendor 资料优先使用 WAVE ROVER `T=1` 低速差速验证，并显式记录 Orange Pi 实际串口设备。
 4. `Product Manager / OKR Owner`：下一轮 `pre_start.md` 继承 Docker blocked、HIL deferred、interfaces smoke 已纳入基线这三个事实。
 
+## 2026-05-10 00:29 hourly iteration update
+
+本轮在 blocked handoff 基础上继续推进 Objective 2，没有改变 Docker/HIL 阻塞结论。
+
+- 已修复：manual dropoff confirmation timeout 现在作为 `timed_out` 终态进入 `TrashCollection.Result.error_code` 和 task record `error_code`，不再混入普通 `dropoff_failed`。
+- 验证：新增回归先红后绿；`./scripts/run_smoke_tests.sh` 通过，覆盖 interfaces 4、hardware 14、nav 18、bringup 7、behavior 90、vision 1。
+- 下一轮优先级：先处理 patrol 的硬编码 5 waypoint 模拟成功；再处理 fixed-route dry-run 绕过 visual gate/keyframe 校验。
+
 ## 采用资料
 
 - `AGENTS.md`
