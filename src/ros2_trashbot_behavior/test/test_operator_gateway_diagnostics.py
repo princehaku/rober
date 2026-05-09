@@ -30,6 +30,8 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         )
 
         self.assertEqual(payload["state"], "diagnostics_ready")
+        self.assertIn("Diagnostics are ready", payload["phone_copy"])
+        self.assertEqual(payload["speaker_prompt"], "Diagnostics are ready.")
         self.assertEqual(payload["software_version"], "1.2.3")
         self.assertEqual(payload["map_version"], "")
         self.assertEqual(payload["route_version"], "")

@@ -5,7 +5,12 @@ import unittest
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 
-from ros2_trashbot_behavior.operator_gateway_http import make_handler
+from ros2_trashbot_behavior.operator_gateway_http import (
+    OPERATOR_PROMPTS,
+    make_handler,
+    operator_prompt_for_state,
+    status_payload,
+)
 
 
 class FakeGateway:
@@ -22,6 +27,8 @@ class FakeGateway:
             "api_version": "slice2.operator.v1",
             "state": "waiting_for_trash",
             "message": "Waiting for trash.",
+            "phone_copy": "Waiting for trash. Place trash on the robot, then start delivery.",
+            "speaker_prompt": "Please place trash on the robot.",
             "can_collect": True,
             "can_confirm_dropoff": False,
             "can_cancel": False,
@@ -110,6 +117,22 @@ class OperatorGatewayHttpTest(unittest.TestCase):
 
         self.assertEqual(status, 200)
         self.assertEqual(payload["state"], "waiting_for_trash")
+        self.assertEqual(payload["phone_copy"], self.gateway.snapshot_payload["phone_copy"])
+        self.assertEqual(payload["speaker_prompt"], self.gateway.snapshot_payload["speaker_prompt"])
+
+    def test_status_payload_exposes_phone_and_speaker_copy_for_documented_states(self):
+        for state, expected in OPERATOR_PROMPTS.items():
+            with self.subTest(state=state):
+                payload = status_payload(state)
+
+                self.assertEqual(payload["phone_copy"], expected["phone_copy"])
+                self.assertEqual(payload["speaker_prompt"], expected["speaker_prompt"])
+
+    def test_unknown_operator_state_falls_back_to_human_help_prompt(self):
+        self.assertEqual(
+            operator_prompt_for_state("unexpected_state"),
+            OPERATOR_PROMPTS["needs_human_help"],
+        )
 
     def test_diagnostics_endpoint_returns_remote_support_package(self):
         status, payload = self.request("GET", "/api/diagnostics")
@@ -161,6 +184,14 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("Confirm Dropoff", body)
         self.assertIn("Cancel", body)
         self.assertIn("Diagnostics", body)
+        self.assertIn("Phone control for trash delivery", body)
+        self.assertIn("journeySteps", body)
+        self.assertIn("Support Diagnostics", body)
+        self.assertIn("phone_copy", body)
+        self.assertIn("speaker_prompt", body)
+        self.assertIn("showDiagnostics", body)
+        self.assertIn("diagSoftware", body)
+        self.assertIn("diagFailure", body)
         self.assertIn("robotMap", body)
         self.assertIn("robot_pose", body)
         self.assertIn("robot_path", body)

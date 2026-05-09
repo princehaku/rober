@@ -51,7 +51,11 @@ The local page also shows live robot location when localization is publishing. `
 
 `GET /api/diagnostics` is the minimum support package for phone UI and remote support. It reports software version, map and route version labels, latest status, last task summary, machine-readable failure fields, log references, the operator status file, and the vision sample manifest reference. It does not claim that those files exist; it gives support tools stable references to inspect.
 
+The local browser page is phone-first and uses the API fields directly: task state, `phone_copy`, `speaker_prompt`, action permissions, robot pose/path, and diagnostics. The page is still intentionally dependency-free HTML served by `operator_gateway`; it is a usable local control surface, not a production account system.
+
 ## Phone Status And Speaker Prompt Contract
+
+`operator_gateway` emits these strings in every status-style JSON payload as `phone_copy` and `speaker_prompt`, so phone UI and speaker/voice layers share the same state contract.
 
 | State | Phone copy | Speaker prompt |
 | --- | --- | --- |
