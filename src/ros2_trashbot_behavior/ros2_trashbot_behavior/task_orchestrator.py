@@ -1,12 +1,13 @@
 import json
 import os
+import threading
 import time
 from dataclasses import asdict, dataclass
 from enum import Enum
 
 import rclpy
 from rclpy.node import Node
-from rclpy.action import ActionServer, CancelResponse
+from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from std_srvs.srv import SetBool
@@ -83,6 +84,8 @@ class TaskOrchestrator(Node):
             self.delivery_mode = "dry_run"
         self.navigator = None
         self.dropoff_gate = DropoffConfirmationGate()
+        self.collection_lock = threading.Lock()
+        self.collection_active = False
 
         # Services
         self.record_wp_client = self.create_client(
@@ -110,6 +113,7 @@ class TaskOrchestrator(Node):
 
         self.collection_server = ActionServer(
             self, TrashCollection, '/trashbot/collect_trash',
+            goal_callback=self._collection_goal_callback,
             execute_callback=self._execute_collection,
             cancel_callback=self._cancel_callback,
             callback_group=cb_group)
@@ -402,8 +406,23 @@ class TaskOrchestrator(Node):
             goal_handle.abort()
             self.state = RobotState.ERROR
             self.get_logger().error(f'Collection failed: {e}, record={result.task_record_path}')
-
+        finally:
+            self._clear_collection_active()
         return result
+
+    def _collection_goal_callback(self, goal_request):
+        """Allow one behavior collection at a time across local and remote gateways."""
+        del goal_request
+        with self.collection_lock:
+            if self.collection_active:
+                self.get_logger().warn("Rejecting collection goal because another collection is active")
+                return GoalResponse.REJECT
+            self.collection_active = True
+        return GoalResponse.ACCEPT
+
+    def _clear_collection_active(self):
+        with self.collection_lock:
+            self.collection_active = False
 
     def _publish_collection_feedback(
         self,
@@ -498,6 +517,7 @@ class TaskOrchestrator(Node):
                 },
             )
         )
+        self._clear_collection_active()
         return result
 
     def _navigate_delivery_target(self, target_name: str, goal_handle):

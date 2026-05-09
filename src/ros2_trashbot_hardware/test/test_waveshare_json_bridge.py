@@ -194,6 +194,17 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             )
         )
 
+    def test_feedback_parser_rejects_non_finite_numeric_values(self):
+        bridge = _bridge_module()
+
+        for key in ("L", "R", "r", "p", "y", "v"):
+            payload = {"T": 1001, "L": 0.2, "R": 0.3, "r": 1.0, "p": 2.0, "y": 3.0, "v": 11.7}
+            payload[key] = "NaN"
+            self.assertIsNone(bridge.parse_feedback_line(json.dumps(payload)))
+
+            payload[key] = "Infinity"
+            self.assertIsNone(bridge.parse_feedback_line(json.dumps(payload)))
+
     def test_startup_config_sends_echo_interval_and_feedback_flow(self):
         bridge = _bridge_module()
 

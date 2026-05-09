@@ -142,7 +142,7 @@ def parse_feedback_line(line: bytes | str) -> Optional[dict[str, float]]:
         return None
 
     try:
-        return {
+        feedback = {
             "left_speed": float(data["L"]),
             "right_speed": float(data["R"]),
             "roll": float(data["r"]),
@@ -152,6 +152,11 @@ def parse_feedback_line(line: bytes | str) -> Optional[dict[str, float]]:
         }
     except (TypeError, ValueError):
         return None
+
+    if not all(math.isfinite(value) for value in feedback.values()):
+        return None
+
+    return feedback
 
 
 class ESP32Bridge(Node):

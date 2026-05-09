@@ -1,4 +1,5 @@
 import json
+import math
 import threading
 from http.server import ThreadingHTTPServer
 
@@ -6,6 +7,7 @@ import rclpy
 from rclpy.action import ActionClient
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
+from geometry_msgs.msg import PoseWithCovarianceStamped
 from std_srvs.srv import SetBool
 
 from ros2_trashbot_interfaces.action import TrashCollection
@@ -26,6 +28,7 @@ class OperatorGateway(Node):
         self.declare_parameter("collect_action_name", "/trashbot/collect_trash")
         self.declare_parameter("dropoff_service_name", "/trashbot/confirm_dropoff")
         self.declare_parameter("status_file", "/tmp/trashbot_operator_status.json")
+        self.declare_parameter("pose_topic", "/amcl_pose")
 
         self.host = str(self.get_parameter("host").value)
         self.port = int(self.get_parameter("port").value)
@@ -33,9 +36,13 @@ class OperatorGateway(Node):
         self.collect_action_name = str(self.get_parameter("collect_action_name").value)
         self.dropoff_service_name = str(self.get_parameter("dropoff_service_name").value)
         self.status_file = str(self.get_parameter("status_file").value)
+        self.pose_topic = str(self.get_parameter("pose_topic").value)
 
         self._lock = threading.Lock()
         self._goal_handle = None
+        self._collect_pending = False
+        self._robot_pose = None
+        self._robot_path = []
         self._latest_status = status_payload(
             "waiting_for_trash",
             "Waiting for trash.",
@@ -46,10 +53,18 @@ class OperatorGateway(Node):
             active_task=None,
             last_task=None,
             target=self.default_target,
+            robot_pose=None,
+            robot_path=[],
         )
 
         self.collect_client = ActionClient(self, TrashCollection, self.collect_action_name)
         self.dropoff_client = self.create_client(SetBool, self.dropoff_service_name)
+        self.pose_subscription = self.create_subscription(
+            PoseWithCovarianceStamped,
+            self.pose_topic,
+            self._on_pose,
+            10,
+        )
         self.server = ThreadingHTTPServer((self.host, self.port), make_handler(self))
         self.server_thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.server_thread.start()
@@ -64,6 +79,9 @@ class OperatorGateway(Node):
     def snapshot(self):
         with self._lock:
             payload = dict(self._latest_status)
+            payload["robot_pose"] = dict(self._robot_pose) if self._robot_pose else None
+            payload["robot_location"] = dict(self._robot_pose) if self._robot_pose else None
+            payload["robot_path"] = list(self._robot_path)
         self._write_status(payload)
         return payload
 
@@ -72,7 +90,10 @@ class OperatorGateway(Node):
         if not target:
             return 400, status_payload("bad_request", "target is required")
         with self._lock:
-            if self._goal_handle is not None and self._latest_status.get("state") not in TERMINAL_STATES:
+            task_active = self._collect_pending or (
+                self._goal_handle is not None and self._latest_status.get("state") not in TERMINAL_STATES
+            )
+            if task_active:
                 return 409, status_payload("busy", "collection already running")
             self._latest_status = status_payload(
                 "loaded_and_ready",
@@ -83,10 +104,13 @@ class OperatorGateway(Node):
                 can_cancel=True,
             )
             self._goal_handle = None
+            self._collect_pending = True
             self._write_status(self._latest_status)
 
         if not self.collect_client.wait_for_server(timeout_sec=1.0):
             payload = status_payload("needs_human_help", "collect_trash action server is unavailable", target=target)
+            with self._lock:
+                self._collect_pending = False
             self._set_status(payload)
             return 503, payload
 
@@ -109,14 +133,22 @@ class OperatorGateway(Node):
         holder = {}
 
         def _done(result_future):
-            holder["response"] = result_future.result()
-            done.set()
+            try:
+                holder["response"] = result_future.result()
+            except Exception as exc:  # noqa: BLE001 - report async service failures to the operator.
+                holder["error"] = exc
+            finally:
+                done.set()
 
         future.add_done_callback(_done)
         if not done.wait(2.0):
             payload = status_payload("needs_human_help", "confirm_dropoff service timed out")
             self._set_status(payload)
             return 504, payload
+        if "error" in holder:
+            payload = status_payload("needs_human_help", f"confirm_dropoff service failed: {holder['error']}")
+            self._set_status(payload)
+            return 503, payload
         response = holder["response"]
         state = "returning" if accepted and response.success else "needs_human_help"
         payload = status_payload(state, response.message, accepted=accepted, service_accepted=response.success)
@@ -126,18 +158,32 @@ class OperatorGateway(Node):
     def cancel_collection(self):
         with self._lock:
             goal_handle = self._goal_handle
+            collect_pending = self._collect_pending
         if goal_handle is None:
+            if collect_pending:
+                return 409, status_payload("busy", "collect goal is still pending; retry cancel after acceptance")
             return 409, status_payload("canceled", "no active collection goal")
         future = goal_handle.cancel_goal_async()
         future.add_done_callback(lambda _future: self._set_status(status_payload("canceled", "cancel requested")))
         return 202, status_payload("canceling", "cancel requested")
 
     def _on_goal_response(self, future):
-        goal_handle = future.result()
+        try:
+            goal_handle = future.result()
+        except Exception as exc:  # noqa: BLE001 - surface async action failures to the operator.
+            with self._lock:
+                self._collect_pending = False
+                self._goal_handle = None
+            self._set_status(status_payload("needs_human_help", f"collect_trash goal failed: {exc}"))
+            return
         if not goal_handle.accepted:
+            with self._lock:
+                self._collect_pending = False
+                self._goal_handle = None
             self._set_status(status_payload("rejected", "collect_trash goal rejected"))
             return
         with self._lock:
+            self._collect_pending = False
             self._goal_handle = goal_handle
         self._set_status(status_payload("delivering", "collect_trash goal accepted", can_cancel=True))
         result_future = goal_handle.get_result_async()
@@ -158,25 +204,68 @@ class OperatorGateway(Node):
         ))
 
     def _on_collect_result(self, future):
-        result = future.result().result
-        state = "completed" if result.success else "failed"
-        self._set_status(status_payload(
-            state,
-            result.error_message or ("collection complete" if result.success else "collection failed"),
-            task_record_path=result.task_record_path,
-            total_duration_sec=float(result.total_duration_sec),
-            can_collect=True,
-            can_confirm_dropoff=False,
-            can_cancel=False,
-            last_task={"task_record_path": result.task_record_path, "success": bool(result.success)},
-        ))
-        with self._lock:
-            self._goal_handle = None
+        try:
+            result = future.result().result
+            state = "completed" if result.success else "failed"
+            self._set_status(status_payload(
+                state,
+                result.error_message or ("collection complete" if result.success else "collection failed"),
+                task_record_path=result.task_record_path,
+                total_duration_sec=float(result.total_duration_sec),
+                can_collect=True,
+                can_confirm_dropoff=False,
+                can_cancel=False,
+                last_task={"task_record_path": result.task_record_path, "success": bool(result.success)},
+            ))
+        except Exception as exc:  # noqa: BLE001 - keep operator UI usable after async result failures.
+            self._set_status(status_payload(
+                "needs_human_help",
+                f"collect_trash result failed: {exc}",
+                can_collect=True,
+                can_confirm_dropoff=False,
+                can_cancel=False,
+            ))
+        finally:
+            with self._lock:
+                self._goal_handle = None
+                self._collect_pending = False
 
     def _set_status(self, payload):
         with self._lock:
+            payload["robot_pose"] = dict(self._robot_pose) if self._robot_pose else None
+            payload["robot_location"] = dict(self._robot_pose) if self._robot_pose else None
+            payload["robot_path"] = list(self._robot_path)
             self._latest_status = payload
         self._write_status(payload)
+
+    def _on_pose(self, msg):
+        pose = msg.pose.pose
+        yaw = self._yaw_from_quaternion(pose.orientation)
+        robot_pose = {
+            "frame_id": msg.header.frame_id or "map",
+            "x": float(pose.position.x),
+            "y": float(pose.position.y),
+            "yaw": yaw,
+            "updated_at": self.get_clock().now().nanoseconds / 1e9,
+        }
+        with self._lock:
+            self._robot_pose = robot_pose
+            self._robot_path.append({
+                "x": robot_pose["x"],
+                "y": robot_pose["y"],
+                "yaw": robot_pose["yaw"],
+                "updated_at": robot_pose["updated_at"],
+            })
+            self._robot_path = self._robot_path[-200:]
+            self._latest_status["robot_pose"] = dict(robot_pose)
+            self._latest_status["robot_location"] = dict(robot_pose)
+            self._latest_status["robot_path"] = list(self._robot_path)
+        self._write_status()
+
+    def _yaw_from_quaternion(self, orientation):
+        siny_cosp = 2.0 * (orientation.w * orientation.z + orientation.x * orientation.y)
+        cosy_cosp = 1.0 - 2.0 * (orientation.y * orientation.y + orientation.z * orientation.z)
+        return math.atan2(siny_cosp, cosy_cosp)
 
     def _write_status(self, payload=None):
         payload = payload or self._latest_status

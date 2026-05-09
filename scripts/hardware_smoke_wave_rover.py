@@ -67,12 +67,28 @@ def run_move_test(ser: serial.Serial, speed: float, duration_s: float) -> None:
     stop(ser)
 
 
+def run_reverse_test(ser: serial.Serial, speed: float, duration_s: float) -> None:
+    signed_speed = -abs(speed)
+    print(f"Running low-speed reverse T=1 test: L=R={signed_speed} for {duration_s:.2f}s")
+    send(ser, {"T": 1, "L": signed_speed, "R": signed_speed})
+    time.sleep(duration_s)
+    stop(ser)
+
+
 def run_ros_mode_test(ser: serial.Serial, linear_x: float, angular_z: float, duration_s: float) -> None:
     print(
         "Running low-speed T=13 ROS-mode test: "
         f"X={linear_x}, Z={angular_z} for {duration_s:.2f}s"
     )
     send(ser, {"T": 13, "X": linear_x, "Z": angular_z})
+    time.sleep(duration_s)
+    send(ser, {"T": 13, "X": 0, "Z": 0})
+    stop(ser)
+
+
+def run_turn_test(ser: serial.Serial, angular_z: float, duration_s: float) -> None:
+    print(f"Running in-place turn T=13 test: X=0, Z={angular_z} for {duration_s:.2f}s")
+    send(ser, {"T": 13, "X": 0, "Z": angular_z})
     time.sleep(duration_s)
     send(ser, {"T": 13, "X": 0, "Z": 0})
     stop(ser)
@@ -85,10 +101,13 @@ def main() -> int:
     parser.add_argument("--feedback-interval-ms", type=int, default=100)
     parser.add_argument("--feedback-timeout-s", type=float, default=5.0)
     parser.add_argument("--move-test", action="store_true", help="Run a short T=1 low-speed movement")
+    parser.add_argument("--reverse-test", action="store_true", help="Run a short T=1 low-speed reverse movement")
     parser.add_argument("--ros-mode-test", action="store_true", help="Run a short T=13 X/Z movement")
+    parser.add_argument("--turn-test", action="store_true", help="Run a short in-place T=13 angular movement")
     parser.add_argument("--test-speed", type=float, default=0.08)
     parser.add_argument("--test-duration-s", type=float, default=0.5)
     parser.add_argument("--ros-angular-z", type=float, default=0.0)
+    parser.add_argument("--turn-angular-z", type=float, default=0.3)
     args = parser.parse_args()
 
     if args.feedback_interval_ms < 0:
@@ -111,8 +130,12 @@ def main() -> int:
 
         if args.move_test:
             run_move_test(ser, args.test_speed, args.test_duration_s)
+        if args.reverse_test:
+            run_reverse_test(ser, args.test_speed, args.test_duration_s)
         if args.ros_mode_test:
             run_ros_mode_test(ser, args.test_speed, args.ros_angular_z, args.test_duration_s)
+        if args.turn_test:
+            run_turn_test(ser, args.turn_angular_z, args.test_duration_s)
         return 0
     except KeyboardInterrupt:
         print("Interrupted; sending stop before exit", file=sys.stderr)

@@ -135,7 +135,7 @@ class FixedRouteAutonomy(Node):
             self.get_logger().warn(f'image convert failed: {exc}')
 
     def _visual_gate_pass(self, idx: int) -> bool:
-        if not self.enable_visual_gate:
+        if self.dry_run or not self.enable_visual_gate:
             return True
         if idx not in self.keyframes or self.latest_frame is None:
             return False

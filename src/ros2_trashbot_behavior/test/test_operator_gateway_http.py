@@ -1,4 +1,5 @@
 import json
+import socket
 import threading
 import unittest
 from http.client import HTTPConnection
@@ -17,16 +18,28 @@ class FakeGateway:
         self.cancel_payload = {"state": "canceled"}
         self.last_collect = None
         self.last_confirm = None
-
-    def snapshot(self):
-        return {
+        self.snapshot_payload = {
             "api_version": "slice2.operator.v1",
             "state": "waiting_for_trash",
             "message": "Waiting for trash.",
             "can_collect": True,
             "can_confirm_dropoff": False,
             "can_cancel": False,
+            "robot_pose": {
+                "frame_id": "map",
+                "x": 1.25,
+                "y": -0.5,
+                "yaw": 0.75,
+                "updated_at": 10.0,
+            },
+            "robot_path": [
+                {"x": 0.0, "y": 0.0, "yaw": 0.0, "updated_at": 9.0},
+                {"x": 1.25, "y": -0.5, "yaw": 0.75, "updated_at": 10.0},
+            ],
         }
+
+    def snapshot(self):
+        return dict(self.snapshot_payload)
 
     def start_collection(self, target, trash_type=0):
         self.last_collect = {"target": target, "trash_type": trash_type}
@@ -72,6 +85,68 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(payload["state"], "waiting_for_trash")
 
+    def test_status_preserves_robot_location_snapshot_fields(self):
+        self.gateway.snapshot_payload["robot_location"] = {
+            "frame_id": "map",
+            "x": 1.25,
+            "y": -0.5,
+            "yaw": 1.57,
+            "source": "odom",
+            "updated_at": 1710000000.0,
+        }
+
+        status, payload = self.request("GET", "/api/status")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["robot_location"]["frame_id"], "map")
+        self.assertEqual(payload["robot_location"]["x"], 1.25)
+        self.assertEqual(payload["robot_location"]["y"], -0.5)
+        self.assertEqual(payload["robot_location"]["yaw"], 1.57)
+
+    def get_text(self, path):
+        conn = HTTPConnection("127.0.0.1", self.port, timeout=2)
+        conn.request("GET", path)
+        response = conn.getresponse()
+        body = response.read().decode("utf-8")
+        conn.close()
+        return response, body
+
+    def test_index_page_contains_operator_controls(self):
+        response, body = self.get_text("/")
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.getheader("Content-Type"), "text/html; charset=utf-8")
+        self.assertIn("Trashbot Operator", body)
+        self.assertIn("Start Delivery", body)
+        self.assertIn("Confirm Dropoff", body)
+        self.assertIn("Cancel", body)
+        self.assertIn("robotMap", body)
+        self.assertIn("robot_pose", body)
+        self.assertIn("robot_path", body)
+        self.assertIn("waiting for /amcl_pose", body)
+        self.assertIn("/api/status", body)
+        self.assertIn("/api/collect", body)
+        self.assertIn("/api/dropoff/confirm", body)
+        self.assertIn("/api/cancel", body)
+        self.assertIn("collectButton.disabled = !Boolean(payload.can_collect)", body)
+        self.assertIn("dropoffButton.disabled = !Boolean(payload.can_confirm_dropoff)", body)
+        self.assertIn("cancelButton.disabled = !Boolean(payload.can_cancel)", body)
+        self.assertIn("catch (error)", body)
+        self.assertIn('id="locationPanel"', body)
+        self.assertIn('id="locationFrame"', body)
+        self.assertIn('id="locationX"', body)
+        self.assertIn('id="locationY"', body)
+        self.assertIn('id="locationYaw"', body)
+        self.assertIn("const location = payload.robot_location || payload.location", body)
+        self.assertIn("locationPanel.hidden = !location", body)
+
+    def test_index_html_route_serves_operator_page(self):
+        response, body = self.get_text("/index.html")
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.getheader("Content-Type"), "text/html; charset=utf-8")
+        self.assertIn("Trashbot Operator", body)
+
     def test_collect_accepts_empty_body_and_query_target(self):
         status, _payload = self.request("POST", "/api/collect?target=trash_station")
 
@@ -102,6 +177,18 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         status, _payload = self.request("POST", "/api/cancel")
         self.assertEqual(status, 202)
 
+    def test_dropoff_confirm_parses_string_false(self):
+        status, _payload = self.request("POST", "/api/dropoff/confirm", {"accepted": "false"})
+
+        self.assertEqual(status, 200)
+        self.assertFalse(self.gateway.last_confirm)
+
+    def test_dropoff_confirm_rejects_invalid_boolean(self):
+        status, payload = self.request("POST", "/api/dropoff/confirm", {"accepted": "maybe"})
+
+        self.assertEqual(status, 400)
+        self.assertEqual(payload["state"], "bad_request")
+
     def test_malformed_json_returns_400(self):
         status, payload = self.request("POST", "/api/collect", b"{bad")
 
@@ -113,6 +200,27 @@ class OperatorGatewayHttpTest(unittest.TestCase):
 
         self.assertEqual(status, 400)
         self.assertEqual(payload["state"], "bad_request")
+
+    def test_malformed_content_length_returns_json_400(self):
+        with socket.create_connection(("127.0.0.1", self.port), timeout=2) as sock:
+            sock.sendall(
+                b"POST /api/collect HTTP/1.1\r\n"
+                b"Host: 127.0.0.1\r\n"
+                b"Content-Type: application/json\r\n"
+                b"Content-Length: nope\r\n"
+                b"Connection: close\r\n"
+                b"\r\n"
+            )
+            chunks = []
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            response = b"".join(chunks).decode("utf-8", errors="replace")
+
+        self.assertIn("400", response.splitlines()[0])
+        self.assertIn('"state": "bad_request"', response)
 
 
 if __name__ == "__main__":

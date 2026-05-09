@@ -102,8 +102,48 @@ The optional `operator_gateway` node exposes a local HTTP API for phone or brows
 | --- | --- | --- |
 | `/api/status` | GET | Returns `state`, `message`, `updated_at`, and the latest task metadata such as `task_record_path`, `error_message`, progress, or target when available. |
 | `/api/collect` | POST | Starts `/trashbot/collect_trash`. Optional JSON body or query parameter `target` overrides the default delivery target. |
-| `/api/dropoff/confirm` | POST | Calls `/trashbot/confirm_dropoff` with `true`. |
+| `/api/dropoff/confirm` | POST | Calls `/trashbot/confirm_dropoff`; optional JSON `accepted=false` rejects a pending manual dropoff. |
 | `/api/cancel` | POST | Cancels the active `collect_trash` action goal if one is running. |
+
+The same `/api/status` payload carries live location telemetry when available:
+
+| Field | Contract |
+| --- | --- |
+| `robot_pose` | Latest `/amcl_pose` sample as `frame_id`, `x`, `y`, `yaw`, and `updated_at`. `null` until pose data arrives. |
+| `robot_location` | Compatibility alias for `robot_pose`. |
+| `robot_path` | Recent pose trail, capped at 200 points, for the browser trajectory view. |
+
+| Parameter | Default | Contract |
+| --- | --- | --- |
+| `pose_topic` | `/amcl_pose` | `geometry_msgs/msg/PoseWithCovarianceStamped` topic used for the local web location view. |
+
+### 4G Remote Bridge
+
+The optional `remote_bridge` node is the formal 4G-oriented remote MVP path. It does not expose robot-local HTTP to the phone. Instead, the robot initiates outbound HTTP polling to a cloud or mock-cloud endpoint. It is disabled by default in launch files and is intended to be testable without a real cloud account.
+
+| Parameter | Default | Contract |
+| --- | --- | --- |
+| `enabled` | `false` | Runtime guard; launch also keeps the node off by default. |
+| `cloud_base_url` | empty | Base URL for a mock or future cloud service. |
+| `robot_id` | `trashbot-001` | Robot identity included in status and ack payloads. |
+| `auth_token` | empty | Optional bearer token. |
+| `poll_interval_sec` | `2.0` | Periodic command polling interval. |
+| `request_timeout_sec` | `5.0` | HTTP request timeout. |
+
+| Direction | Endpoint | Contract |
+| --- | --- | --- |
+| robot -> cloud | `POST /robots/{robot_id}/status` | Sends the latest `trashbot.remote.v1` robot state before polling. |
+| robot -> cloud | `GET /robots/{robot_id}/commands/next?last_ack_id=<id>` | Pulls `{"command": null}` or one command object. |
+| robot -> cloud | `POST /robots/{robot_id}/commands/{command_id}/ack` | Sends `acked`, `failed`, or `ignored` plus local operator result metadata. `ignored` is used for expired commands that were not executed. |
+
+Allowed remote commands are `collect`, `confirm_dropoff`, and `cancel`. The bridge only calls behavior-layer ROS contracts and never exposes direct base velocity control.
+For `collect`, `acked` means the command was accepted/submitted locally; final delivery success or failure is reported through later status payloads.
+
+| Type | Payload | Local action |
+| --- | --- | --- |
+| `collect` | Required `target`, optional `trash_type` | Starts `/trashbot/collect_trash`; malformed commands without a non-empty `target` are failed before any local action goal is sent. |
+| `confirm_dropoff` | optional `accepted` | Calls `/trashbot/confirm_dropoff`. |
+| `cancel` | empty object | Cancels the active collection goal when one exists. |
 
 ### Task Record
 

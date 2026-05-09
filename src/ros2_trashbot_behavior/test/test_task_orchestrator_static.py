@@ -73,6 +73,44 @@ class TaskOrchestratorStaticTest(unittest.TestCase):
         self.assertIn("manual_confirm_timeout", gate_source)
         self.assertNotIn("manual_confirm_timeout_elapsed", source)
 
+    def test_collection_action_rejects_concurrent_goals(self):
+        source = ORCHESTRATOR.read_text(encoding="utf-8")
+        ast.parse(source)
+
+        self.assertIn("GoalResponse", source)
+        self.assertIn("goal_callback=self._collection_goal_callback", source)
+        self.assertIn("self.collection_lock = threading.Lock()", source)
+        self.assertIn("self.collection_active = False", source)
+        self.assertIn("def _collection_goal_callback", source)
+        self.assertIn("return GoalResponse.REJECT", source)
+        self.assertIn("return GoalResponse.ACCEPT", source)
+        self.assertIn("def _clear_collection_active", source)
+        self.assertIn("self._clear_collection_active()", source)
+
+    def test_collection_active_flag_is_cleared_in_finally(self):
+        source = ORCHESTRATOR.read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        function_node = next(
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.AsyncFunctionDef)
+            and node.name == "_execute_collection"
+        )
+        try_nodes = [node for node in ast.walk(function_node) if isinstance(node, ast.Try)]
+
+        self.assertTrue(
+            any(
+                any(
+                    isinstance(stmt, ast.Expr)
+                    and isinstance(stmt.value, ast.Call)
+                    and isinstance(stmt.value.func, ast.Attribute)
+                    and stmt.value.func.attr == "_clear_collection_active"
+                    for stmt in try_node.finalbody
+                )
+                for try_node in try_nodes
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

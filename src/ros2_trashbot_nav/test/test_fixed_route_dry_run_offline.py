@@ -201,6 +201,41 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["current_index"], 1)
             self.assertEqual(payload["last_nav_result"], "dry_run_checkpoint_passed")
 
+    def test_dry_run_bypasses_visual_gate_when_no_camera_or_keyframes_exist(self):
+        with tempfile.TemporaryDirectory() as td:
+            route_file = Path(td) / "fixed_route.yaml"
+            status_file = Path(td) / "status.json"
+            route_file.write_text(
+                "waypoints:\n"
+                "  - frame_id: map\n"
+                "    x: 1.0\n"
+                "    y: 2.0\n"
+                "    qw: 1.0\n",
+                encoding="utf-8",
+            )
+            basic_navigator_calls = []
+            install_ros_stubs(
+                {
+                    "route_file": str(route_file),
+                    "keyframe_dir": str(Path(td) / "missing_keyframes"),
+                    "dry_run": True,
+                    "enable_visual_gate": True,
+                    "debug_status_file": str(status_file),
+                },
+                basic_navigator_calls,
+            )
+            sys.modules.pop("ros2_trashbot_nav.fixed_route_autonomy", None)
+            module = importlib.import_module("ros2_trashbot_nav.fixed_route_autonomy")
+
+            node = module.FixedRouteAutonomy()
+            node._run_route()
+
+            payload = json.loads(status_file.read_text(encoding="utf-8"))
+            self.assertEqual(payload["state"], "completed")
+            self.assertEqual(payload["current_index"], 1)
+            self.assertEqual(payload["last_nav_result"], "dry_run_checkpoint_passed")
+            self.assertEqual(payload["last_error"], "")
+
 
 if __name__ == "__main__":
     unittest.main()

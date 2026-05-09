@@ -12,8 +12,9 @@
 - Keep the existing WSL `Ubuntu-24.04` untouched for ROS2 Humble.
 - Build and verify Humble through Docker:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\docker_humble_build.ps1
+```bash
+# 说明：本仓库的 smoke 脚本在 WSL 下使用 bash + python3
+bash scripts/docker_humble_build.sh
 ```
 
 - Confirm all six ROS2 packages build: interfaces, nav, vision, hardware, behavior, bringup.
@@ -63,6 +64,7 @@ powershell -ExecutionPolicy Bypass -File scripts\docker_humble_build.ps1
 
 ## Post-Run Evidence
 
+- Fill `docs/acceptance/wave_rover_hil_evidence.md` for the first real WAVE ROVER run.
 - Save task record JSON.
 - Save route debug status.
 - Save relevant ROS logs.

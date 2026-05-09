@@ -88,6 +88,34 @@ def generate_launch_description():
         'operator_status_file', default_value='/tmp/trashbot_operator_status.json',
         description='Operator gateway status JSON path')
 
+    operator_pose_topic_arg = DeclareLaunchArgument(
+        'operator_pose_topic', default_value='/amcl_pose',
+        description='Pose topic used by the operator gateway live location view')
+
+    remote_bridge_arg = DeclareLaunchArgument(
+        'remote_bridge', default_value='false',
+        description='Start outbound 4G remote bridge')
+
+    remote_cloud_base_url_arg = DeclareLaunchArgument(
+        'remote_cloud_base_url', default_value='',
+        description='Remote cloud base URL for outbound polling')
+
+    remote_robot_id_arg = DeclareLaunchArgument(
+        'remote_robot_id', default_value='trashbot-001',
+        description='Remote cloud robot identifier')
+
+    remote_auth_token_arg = DeclareLaunchArgument(
+        'remote_auth_token', default_value='',
+        description='Remote cloud bearer token')
+
+    remote_poll_interval_sec_arg = DeclareLaunchArgument(
+        'remote_poll_interval_sec', default_value='2.0',
+        description='Remote bridge polling interval in seconds')
+
+    remote_request_timeout_sec_arg = DeclareLaunchArgument(
+        'remote_request_timeout_sec', default_value='5.0',
+        description='Remote bridge HTTP request timeout in seconds')
+
     use_sim_time = LaunchConfiguration('use_sim_time')
     camera_topic = LaunchConfiguration('camera_topic')
     serial_port = LaunchConfiguration('serial_port')
@@ -108,6 +136,14 @@ def generate_launch_description():
     operator_gateway_collect_action = LaunchConfiguration('operator_gateway_collect_action')
     operator_gateway_dropoff_service = LaunchConfiguration('operator_gateway_dropoff_service')
     operator_status_file = LaunchConfiguration('operator_status_file')
+    operator_pose_topic = LaunchConfiguration('operator_pose_topic')
+    remote_bridge = LaunchConfiguration('remote_bridge')
+    remote_cloud_base_url = LaunchConfiguration('remote_cloud_base_url')
+    remote_robot_id = LaunchConfiguration('remote_robot_id')
+    remote_auth_token = LaunchConfiguration('remote_auth_token')
+    remote_poll_interval_sec = LaunchConfiguration('remote_poll_interval_sec')
+    remote_request_timeout_sec = LaunchConfiguration('remote_request_timeout_sec')
+    remote_bridge_condition = IfCondition(remote_bridge)
 
     nodes = [
         # --- Hardware Bridge (ESP32 <-> ROS2) ---
@@ -192,6 +228,25 @@ def generate_launch_description():
                 'collect_action_name': operator_gateway_collect_action,
                 'dropoff_service_name': operator_gateway_dropoff_service,
                 'status_file': operator_status_file,
+                'pose_topic': operator_pose_topic,
+            }],
+        ),
+
+        Node(
+            package='ros2_trashbot_behavior',
+            executable='remote_bridge',
+            name='remote_bridge',
+            output='screen',
+            condition=remote_bridge_condition,
+            parameters=[{
+                'enabled': remote_bridge,
+                'cloud_base_url': remote_cloud_base_url,
+                'robot_id': remote_robot_id,
+                'auth_token': remote_auth_token,
+                'poll_interval_sec': remote_poll_interval_sec,
+                'request_timeout_sec': remote_request_timeout_sec,
+                'collect_action_name': operator_gateway_collect_action,
+                'dropoff_service_name': operator_gateway_dropoff_service,
             }],
         ),
     ]
@@ -217,5 +272,12 @@ def generate_launch_description():
         operator_gateway_collect_action_arg,
         operator_gateway_dropoff_service_arg,
         operator_status_file_arg,
+        operator_pose_topic_arg,
+        remote_bridge_arg,
+        remote_cloud_base_url_arg,
+        remote_robot_id_arg,
+        remote_auth_token_arg,
+        remote_poll_interval_sec_arg,
+        remote_request_timeout_sec_arg,
         *nodes,
     ])
