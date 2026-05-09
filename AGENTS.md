@@ -48,6 +48,12 @@ source install/setup.bash
 
 - 当前 Windows 主机有 WSL `Ubuntu-24.04`，但本项目目标是 ROS2 Humble。不要为了 Humble 强行改造 Ubuntu 24.04。
 - ROS2 Humble 构建验证优先使用 Docker 官方 Humble 容器挂载仓库，例如挂载 `E:\rober` 到容器 `/ws` 后运行 `colcon build --symlink-install`。
+- 本项目已有本地 Docker/Humble 环境：`docker/humble/Dockerfile` 默认使用清华 Ubuntu APT、ROS2 APT、pip、rosdep/rosdistro 镜像源，适合 WSL + Docker Desktop/Engine。
+- 构建并验证工作区：`bash scripts/docker_humble_build.sh`。脚本会构建 `ros-rbs-humble:dev`，再在容器内清理 `build/ install/ log/` 并执行 `colcon build --symlink-install`。
+- 只构建镜像不跑 colcon：`SKIP_COLCON=1 bash scripts/docker_humble_build.sh`。需要换源时覆盖 `UBUNTU_APT_MIRROR`、`ROS_APT_MIRROR`、`PIP_INDEX_URL`、`ROSDEP_SOURCE_MIRROR`、`ROSDISTRO_INDEX_URL`。
+- 进入开发容器：`bash scripts/docker_humble_dev.sh`。容器挂载仓库到 `/ws`、持久化 `.ros_home` 到 `/root/.ros`、使用 `--network host`，登录 shell 会自动 source `/opt/ros/humble/setup.bash` 和 `/ws/install/setup.bash`。
+- 串口或图形参数通过 `EXTRA_DOCKER_ARGS` 传入，例如 `EXTRA_DOCKER_ARGS="--device=/dev/ttyUSB0" bash scripts/docker_humble_dev.sh`。
+- 最近验证：`bash scripts/docker_humble_build.sh` 可完成镜像构建和 `colcon build`；`docker run --rm -v "$PWD:/ws" -w /ws ros-rbs-humble:dev bash -l -c "ros2 pkg prefix ros2_trashbot_bringup"` 能返回 `/ws/install/ros2_trashbot_bringup`。
 
 ## 执行优先与精简团队
 
