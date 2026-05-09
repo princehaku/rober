@@ -13,7 +13,7 @@ from rclpy.executors import MultiThreadedExecutor
 from std_srvs.srv import SetBool
 
 from ros2_trashbot_interfaces.action import TrashCollection, Patrol
-from ros2_trashbot_interfaces.msg import TrashStatus, Waypoint, WaypointList
+from ros2_trashbot_interfaces.msg import Waypoint, WaypointList
 from ros2_trashbot_interfaces.srv import RecordWaypoint
 
 from ros2_trashbot_behavior.delivery_navigation import find_waypoint_pose, load_waypoint_file
@@ -53,8 +53,6 @@ class TaskOrchestrator(Node):
         # State machine
         self.state = RobotState.IDLE
         self.learn_count = 0
-        self.trash_items = []        # detected trash positions
-        self.bin_locations = []      # known bin positions
         self.collection_count = 0
         self.declare_parameter("task_record_dir", "~/.ros/trashbot_tasks")
         self.declare_parameter("delivery_target", "trash_station")
@@ -94,10 +92,6 @@ class TaskOrchestrator(Node):
             SetBool, '/trashbot/confirm_dropoff', self._confirm_dropoff_callback)
 
         # Subscriptions
-        self.trash_sub = self.create_subscription(
-            TrashStatus, '/trashbot/vision/trash_detected',
-            self._on_trash_detected, 10)
-
         self.waypoint_sub = self.create_subscription(
             WaypointList, '/trashbot/waypoints',
             self._on_waypoint_list, 10)
@@ -129,26 +123,7 @@ class TaskOrchestrator(Node):
         self.get_logger().debug(
             f'State={state_names[self.state]} '
             f'learn_count={self.learn_count} '
-            f'trash_items={len(self.trash_items)} '
             f'collections={self.collection_count}')
-
-    def _on_trash_detected(self, msg: TrashStatus):
-        """Handle vision detection callback."""
-        self.get_logger().info(
-            f'Trash detected: type={msg.trash_type} conf={msg.confidence}% '
-            f'is_bin={msg.is_bin} pos=({msg.x:.2f}, {msg.y:.2f})')
-
-        if msg.is_bin:
-            self.bin_locations.append({
-                'x': msg.x, 'y': msg.y, 'z': msg.z,
-                'type': msg.trash_type,
-            })
-        else:
-            self.trash_items.append({
-                'x': msg.x, 'y': msg.y, 'z': msg.z,
-                'type': msg.trash_type,
-                'confidence': msg.confidence,
-            })
 
     def _on_waypoint_list(self, msg: WaypointList):
         """Update when waypoint list changes."""
@@ -231,12 +206,6 @@ class TaskOrchestrator(Node):
             feedback_msg.distance_traveled = distance_traveled
             feedback_msg.current_waypoint = self._waypoint_msg_from_data(waypoint)
             goal_handle.publish_feedback(feedback_msg)
-
-            # Record new points if in learn mode
-            if goal_handle.request.learn_mode and self.trash_items:
-                new_points_recorded += len(self.trash_items)
-                self.get_logger().info(f'  Recorded {len(self.trash_items)} new trash points')
-                self.trash_items.clear()
 
         result.map_save_path = self.waypoint_file
         result.success = True

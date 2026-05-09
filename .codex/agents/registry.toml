@@ -23,13 +23,14 @@ escalation = "方向不清、范围冲突、跨多个 L2、阶段验收、OKR/KR
 product_okr_owner = "Product Manager / OKR Owner：拉齐产品北极星、拆 KR、定抓手、划边界、给验收口径；不做流程门神。"
 robot_software_engineer = "Robot Platform Engineer：机器人软件中台，负责 ROS2 主链路、接口 glue、bringup、行为状态机和集成验证。"
 hardware_engineer = "Hardware Infra Engineer：硬件基建与履约，负责 WAVE ROVER、ESP32、Orange Pi、UART、底盘协议和上车证据。"
-autonomy_engineer = "Autonomy Algorithm Engineer：自主能力增长引擎，负责 SLAM、Nav2、巡逻、视觉检测和收集闭环。"
+autonomy_engineer = "Autonomy Algorithm Engineer：自主能力增长引擎，负责 SLAM、Nav2、巡逻、未来可选视觉感知和送达闭环。"
 full_stack_software_engineer = "User Touchpoint Full-Stack Engineer：用户触点全栈，负责手机/Web/API、远程控制、状态展示和 ROS2 后端联调。"
 
 [execution_policy]
 principle = "先交付可验证结果，再同步更新迭代记录；不得为了分工而分工，但所有任务都必须进入 sprint 留档。"
 product_trigger = "只有 OKR/KR 更新、产品方向拆解、用户价值不清、范围冲突、跨多个一线同学或阶段验收时，才启用 product-okr-owner。"
 collaboration_rule = "跨角色任务由最相关一线同学主责，其他同学只补专业事实或接口边界，不新增管理层。"
+tech_plan_execution_rule = "当当前 sprint 的 tech-plan.md 已完成，且写清任务分工、文件范围、接口影响、验收命令和风险边界时，默认进入实现阶段：单 owner 任务由主责 Engineer 直接实现；多个互不重叠任务可并行启动对应 Engineer；跨角色或接口耦合任务必须指定一个主责 owner 做最终集成验证。只有用户明确要求只做计划、不要实现或等确认时才暂停。"
 verification_rule = "能运行测试、构建、静态检查、dry-run 或 smoke 时必须运行；失败默认继续定位和修复。"
 documentation_rule = "Sprint 文档仍是迭代主线；执行优先不是不写文档，而是边交付边更新关键证据和风险。"
 
@@ -44,7 +45,7 @@ product_or_okr = ["product-okr-owner"]
 ros2_integration = ["robot-software-engineer"]
 interfaces_behavior_bringup = ["robot-software-engineer"]
 hardware_uart_chassis = ["hardware-engineer"]
-slam_nav_vision_autonomy = ["autonomy-engineer"]
+slam_nav_future_vision_autonomy = ["autonomy-engineer"]
 mobile_web_api_ui = ["full-stack-software-engineer"]
 stage_acceptance = ["product-okr-owner", "robot-software-engineer"]
 
@@ -101,7 +102,7 @@ level = "engineer"
 org_level = "L2"
 org_rank = "IC Engineer"
 layer = "delivery"
-summary = "自主能力增长引擎：SLAM、Nav2、巡逻、视觉检测和自主闭环。"
+summary = "自主能力增长引擎：SLAM、Nav2、巡逻、未来可选视觉感知和送达闭环。"
 
 [[roles]]
 id = "full-stack-software-engineer"

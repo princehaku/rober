@@ -34,6 +34,7 @@ HTML = """<!doctype html>
     <button id="collectButton" onclick="collect()">Start Delivery</button>
     <button id="dropoffButton" onclick="confirmDropoff()">Confirm Dropoff</button>
     <button id="cancelButton" onclick="cancelTask()">Cancel</button>
+    <button id="diagnosticsButton" onclick="diagnostics()">Diagnostics</button>
   </div>
   <div id="locationPanel" class="telemetry" hidden>
     <div>Frame <strong id="locationFrame">unknown</strong></div>
@@ -155,6 +156,7 @@ async function collect() {
 }
 async function confirmDropoff() { await api('/api/dropoff/confirm', {method: 'POST'}); }
 async function cancelTask() { await api('/api/cancel', {method: 'POST'}); }
+async function diagnostics() { await api('/api/diagnostics'); }
 setInterval(refresh, 1000);
 refresh();
 </script>
@@ -206,6 +208,9 @@ def make_handler(gateway):
                 return
             if path == "/api/status":
                 self._send_json(200, gateway.snapshot())
+                return
+            if path == "/api/diagnostics":
+                self._send_json(200, gateway.diagnostics())
                 return
             self._send_json(404, status_payload("not_found", f"unknown path: {path}"))
 

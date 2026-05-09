@@ -22,7 +22,7 @@ class LaunchContractStaticTest(unittest.TestCase):
         source = read_launch("bringup.launch.py")
 
         task_block = source[source.index("executable='task_orchestrator'"):]
-        map_block = source[source.index("executable='map_recorder'"):source.index("# --- Vision ---")]
+        map_block = source[source.index("executable='map_recorder'"):source.index("# --- Behavior ---")]
 
         for key in (
             "'waypoint_file'",
@@ -83,36 +83,15 @@ class LaunchContractStaticTest(unittest.TestCase):
 
         self.assertIn("'fixed_route_status_file': debug_status_file", task_block)
 
-    def test_autonomous_exposes_vision_runtime_parameters(self):
-        source = read_launch("autonomous.launch.py")
-        ast.parse(source)
+    def test_launches_do_not_start_retired_trash_detector(self):
+        for launch_name in ("learn.launch.py", "bringup.launch.py", "autonomous.launch.py"):
+            with self.subTest(launch_name=launch_name):
+                source = read_launch(launch_name)
+                ast.parse(source)
 
-        vision_block = node_block(source, "trash_detector")
-
-        for argument in (
-            "'vision_detection_confidence'",
-            "'vision_min_blob_area_ratio'",
-            "'vision_roi_x'",
-            "'vision_roi_y'",
-            "'vision_roi_width'",
-            "'vision_roi_height'",
-            "'vision_publish_debug_image'",
-            "'vision_save_detection_samples'",
-            "'vision_sample_output_dir'",
-        ):
-            self.assertIn(argument, source)
-        for parameter in (
-            "'detection_confidence': vision_detection_confidence",
-            "'min_blob_area_ratio': vision_min_blob_area_ratio",
-            "'roi_x': vision_roi_x",
-            "'roi_y': vision_roi_y",
-            "'roi_width': vision_roi_width",
-            "'roi_height': vision_roi_height",
-            "'publish_debug_image': vision_publish_debug_image",
-            "'save_detection_samples': vision_save_detection_samples",
-            "'sample_output_dir': vision_sample_output_dir",
-        ):
-            self.assertIn(parameter, vision_block)
+                self.assertNotIn("trash_detector", source)
+                self.assertNotIn("vision_detection_confidence", source)
+                self.assertNotIn("save_detection_samples", source)
 
     def test_autonomous_can_start_operator_gateway(self):
         source = read_launch("autonomous.launch.py")

@@ -21,7 +21,8 @@ class PerceptionDocsStaticTest(unittest.TestCase):
         ):
             self.assertIn(dimension, source)
         self.assertIn("Scattered-trash detection is an enhancement", source)
-        self.assertIn("Current MVP default", source)
+        self.assertIn("No default detector is shipped", source)
+        self.assertIn("not part of the current MVP default", source)
 
 
 if __name__ == "__main__":

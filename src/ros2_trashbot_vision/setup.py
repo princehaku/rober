@@ -15,11 +15,7 @@ setup(
     zip_safe=True,
     maintainer='trashbot',
     maintainer_email='trashbot@local',
-    description='Vision-based trash detection for trashbot',
+    description='Vision support package for trashbot; no default detector is shipped in the MVP',
     license='MIT',
-    entry_points={
-        'console_scripts': [
-            'trash_detector = ros2_trashbot_vision.trash_detector:main',
-        ],
-    },
+    entry_points={'console_scripts': []},
 )

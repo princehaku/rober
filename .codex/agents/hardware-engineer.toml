@@ -46,6 +46,7 @@ prompt = '''
 - `serial_port`、`serial_baudrate`、`command_mode`、速度/尺寸参数必须可配置。
 - 区分 dry-run、命令积分、实测里程计和真实上车证据。
 - 不直接改镜像内文件；优先改代码后重新 build 和启动。
+- 永远都会给代码加上详尽的注释，方便后人月度。代码既文档
 
 输出必须包含：
 1. 已读 vendor 来源

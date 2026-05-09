@@ -52,11 +52,28 @@ class TrashDetector(Node):
         self.declare_parameter('sample_output_dir', '~/.ros/trashbot_vision_samples')
         self.declare_parameter('save_detection_samples', False)
         self.declare_parameter('sample_date_subdirs', True)
+        self.declare_parameter('sample_task_id', '')
+        self.declare_parameter('sample_route_id', '')
+        self.declare_parameter('sample_checkpoint_id', '')
+        self.declare_parameter('sample_event_type', 'detection')
+        self.declare_parameter('sample_anomaly_type', '')
+        self.declare_parameter('sample_manifest_name', 'manifest.json')
+        self.declare_parameter('sample_manifest_max_entries', 500)
+        self.declare_parameter('save_empty_detection_samples', False)
         self.debug_image_topic = self.get_parameter('debug_image_topic').value
         self.publish_debug_image = bool(self.get_parameter('publish_debug_image').value)
         self.sample_output_dir = os.path.expanduser(self.get_parameter('sample_output_dir').value)
         self.save_detection_samples = bool(self.get_parameter('save_detection_samples').value)
         self.sample_date_subdirs = bool(self.get_parameter('sample_date_subdirs').value)
+        self.sample_task_id = str(self.get_parameter('sample_task_id').value)
+        self.sample_route_id = str(self.get_parameter('sample_route_id').value)
+        self.sample_checkpoint_id = str(self.get_parameter('sample_checkpoint_id').value)
+        self.sample_event_type = str(self.get_parameter('sample_event_type').value or 'detection')
+        self.sample_anomaly_type = str(self.get_parameter('sample_anomaly_type').value)
+        self.sample_manifest_name = str(self.get_parameter('sample_manifest_name').value or 'manifest.json')
+        self.sample_manifest_max_entries = max(1, int(self.get_parameter('sample_manifest_max_entries').value))
+        self.save_empty_detection_samples = bool(self.get_parameter('save_empty_detection_samples').value)
+        self._sample_sequence = 0
 
         self.bridge = CvBridge()
 
@@ -91,7 +108,7 @@ class TrashDetector(Node):
         debug_frame = self._annotate_frame(frame.copy(), detections)
         if self.publish_debug_image:
             self._publish_debug_image(msg, debug_frame)
-        if self.save_detection_samples and detections:
+        if self.save_detection_samples and (detections or self.save_empty_detection_samples):
             self._save_detection_sample(frame, debug_frame, detections, msg)
 
         for det in detections:
@@ -223,33 +240,31 @@ class TrashDetector(Node):
             raw_path = os.path.join(sample_dir, raw_name)
             annotated_path = os.path.join(sample_dir, annotated_name)
             json_path = os.path.join(sample_dir, json_name)
-            cv2.imwrite(raw_path, frame)
-            cv2.imwrite(annotated_path, debug_frame)
+            self._write_image_or_raise(raw_path, frame)
+            self._write_image_or_raise(annotated_path, debug_frame)
+            payload = {
+                'sample_id': sample_id,
+                'sample_ref': self._sample_ref(json_path),
+                'timestamp': stamp,
+                'frame_id': source_msg.header.frame_id,
+                'raw_image': self._relative_sample_path(raw_path),
+                'annotated_image': self._relative_sample_path(annotated_path),
+                'detector': 'opencv_hsv_heuristic',
+                'context': self._sample_context(),
+                'roi': self._roi_config(),
+                'parameters': self._detector_config(),
+                'detections': [self._sample_detection_payload(det) for det in detections],
+            }
             with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(
-                    {
-                        'sample_id': sample_id,
-                        'sample_ref': self._sample_ref(json_path),
-                        'timestamp': stamp,
-                        'frame_id': source_msg.header.frame_id,
-                        'raw_image': self._relative_sample_path(raw_path),
-                        'annotated_image': self._relative_sample_path(annotated_path),
-                        'detector': 'opencv_hsv_heuristic',
-                        'roi': self._roi_config(),
-                        'parameters': self._detector_config(),
-                        'detections': [self._sample_detection_payload(det) for det in detections],
-                    },
-                    f,
-                    ensure_ascii=False,
-                    indent=2,
-                )
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+            self._write_sample_manifest(payload)
         except OSError as exc:
             self.get_logger().warn(f'Failed saving detection sample: {exc}')
 
     def _make_sample_id(self, stamp):
         stamp_ms = int(max(0.0, stamp) * 1000)
-        wall_ms = int(time.time() * 1000)
-        return f'{stamp_ms}_{wall_ms}'
+        self._sample_sequence += 1
+        return f'{stamp_ms}_{time.time_ns()}_{self._sample_sequence}'
 
     def _sample_dir_for_stamp(self, stamp):
         if not self.sample_date_subdirs:
@@ -262,6 +277,51 @@ class TrashDetector(Node):
 
     def _relative_sample_path(self, path):
         return os.path.relpath(path, self.sample_output_dir).replace(os.sep, '/')
+
+    def _write_image_or_raise(self, path, frame):
+        if not cv2.imwrite(path, frame):
+            raise OSError(f'cv2.imwrite returned false for {path}')
+
+    def _manifest_path(self):
+        return os.path.join(self.sample_output_dir, self.sample_manifest_name)
+
+    def _write_sample_manifest(self, payload):
+        manifest_path = self._manifest_path()
+        manifest = {
+            'schema': 'trashbot.vision_samples.v1',
+            'sample_output_dir': self.sample_output_dir,
+            'updated_at': time.time(),
+            'samples': [],
+        }
+        try:
+            if os.path.exists(manifest_path):
+                with open(manifest_path, 'r', encoding='utf-8') as f:
+                    current = json.load(f)
+                if isinstance(current, dict) and isinstance(current.get('samples'), list):
+                    manifest['samples'] = current['samples']
+        except (OSError, json.JSONDecodeError) as exc:
+            self.get_logger().warn(f'Rebuilding detection sample manifest: {exc}')
+
+        manifest['updated_at'] = time.time()
+        manifest['samples'].append({
+            'sample_id': payload['sample_id'],
+            'sample_ref': payload['sample_ref'],
+            'timestamp': payload['timestamp'],
+            'frame_id': payload['frame_id'],
+            'raw_image': payload['raw_image'],
+            'annotated_image': payload['annotated_image'],
+            'json': self._relative_sample_path(self._json_path_from_ref(payload['sample_ref'])),
+            'context': payload['context'],
+            'detection_count': len(payload['detections']),
+            'max_confidence': max((det['confidence'] for det in payload['detections']), default=0),
+        })
+        manifest['samples'] = manifest['samples'][-self.sample_manifest_max_entries:]
+        with open(manifest_path, 'w', encoding='utf-8') as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=2)
+
+    def _json_path_from_ref(self, sample_ref):
+        relative = sample_ref.replace('vision_sample://', '', 1)
+        return os.path.join(self.sample_output_dir, relative)
 
     def _roi_config(self):
         return {
@@ -279,7 +339,19 @@ class TrashDetector(Node):
             'max_publish_per_frame': self.max_publish_per_frame,
             'publish_debug_image': self.publish_debug_image,
             'save_detection_samples': self.save_detection_samples,
+            'save_empty_detection_samples': self.save_empty_detection_samples,
             'sample_date_subdirs': self.sample_date_subdirs,
+            'sample_event_type': self.sample_event_type,
+            'sample_manifest_name': self.sample_manifest_name,
+        }
+
+    def _sample_context(self):
+        return {
+            'task_id': self.sample_task_id,
+            'route_id': self.sample_route_id,
+            'checkpoint_id': self.sample_checkpoint_id,
+            'event_type': self.sample_event_type,
+            'anomaly_type': self.sample_anomaly_type,
         }
 
     def _sample_detection_payload(self, detection):

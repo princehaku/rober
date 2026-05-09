@@ -40,6 +40,7 @@ Users should not need SSH, ROS2 commands, serial tools, or direct hardware debug
 The first operator gateway is intentionally small: an API-first local HTTP service plus a minimal browser page at `/`. It is enough for a phone browser on the robot network, but it is not a polished native app, does not include account/login flows, and does not replace hardware bringup checks.
 
 - `GET /api/status`
+- `GET /api/diagnostics`
 - `POST /api/collect`
 - `POST /api/dropoff/confirm`
 - `POST /api/cancel`
@@ -47,6 +48,23 @@ The first operator gateway is intentionally small: an API-first local HTTP servi
 This is enough for a phone page or local browser control surface to complete a dry-run task and drive the manual dropoff confirmation service.
 
 The local page also shows live robot location when localization is publishing. `operator_gateway` subscribes to `/amcl_pose` by default and includes `robot_pose` plus recent `robot_path` points in `GET /api/status`; without AMCL data the controls still work, but the map panel waits for pose updates.
+
+`GET /api/diagnostics` is the minimum support package for phone UI and remote support. It reports software version, map and route version labels, latest status, last task summary, machine-readable failure fields, log references, the operator status file, and the vision sample manifest reference. It does not claim that those files exist; it gives support tools stable references to inspect.
+
+## Phone Status And Speaker Prompt Contract
+
+| State | Phone copy | Speaker prompt |
+| --- | --- | --- |
+| `waiting_for_trash` | Waiting for trash. Place trash on the robot, then start delivery. | Please place trash on the robot. |
+| `loaded_and_ready` | Trash is loaded. Ready to deliver. | Trash loaded. Preparing to depart. |
+| `delivering` | Delivering to the selected trash station. | Delivering trash now. |
+| `arrived_at_station` | Arrived. Remove or dispose of the load, then confirm dropoff. | Arrived at the trash station. Please remove the trash. |
+| `returning` | Dropoff confirmed. Returning or waiting for the next task. | Dropoff confirmed. Returning now. |
+| `completed` | Task completed. | Task completed. |
+| `canceling` | Cancel request sent. Waiting for the robot to stop. | Cancel request sent. |
+| `canceled` | Task canceled. The robot is stopped or returning to standby. | Task canceled. |
+| `failed` | Task failed. Check diagnostics or request help. | Task failed. Please check the phone. |
+| `needs_human_help` | Human help is required. Follow the shown instruction. | Human help is required. |
 
 ## 4G Remote MVP
 

@@ -1,6 +1,8 @@
 import json
 import math
+import os
 import threading
+from importlib.metadata import PackageNotFoundError, version
 from http.server import ThreadingHTTPServer
 
 import rclpy
@@ -11,10 +13,18 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from std_srvs.srv import SetBool
 
 from ros2_trashbot_interfaces.action import TrashCollection
+from ros2_trashbot_behavior.operator_gateway_diagnostics import build_diagnostics_payload, normalize_log_refs
 from ros2_trashbot_behavior.operator_gateway_http import make_handler, status_payload
 
 
 TERMINAL_STATES = {"completed", "failed", "canceled", "rejected"}
+
+
+def _installed_version(package_name, fallback="0.1.0"):
+    try:
+        return version(package_name)
+    except (PackageNotFoundError, ValueError):
+        return fallback
 
 
 class OperatorGateway(Node):
@@ -29,6 +39,11 @@ class OperatorGateway(Node):
         self.declare_parameter("dropoff_service_name", "/trashbot/confirm_dropoff")
         self.declare_parameter("status_file", "/tmp/trashbot_operator_status.json")
         self.declare_parameter("pose_topic", "/amcl_pose")
+        self.declare_parameter("software_version", _installed_version("ros2_trashbot_behavior"))
+        self.declare_parameter("map_version", "")
+        self.declare_parameter("route_version", "")
+        self.declare_parameter("log_refs", [])
+        self.declare_parameter("vision_sample_manifest_ref", "~/.ros/trashbot_vision_samples/manifest.json")
 
         self.host = str(self.get_parameter("host").value)
         self.port = int(self.get_parameter("port").value)
@@ -37,6 +52,13 @@ class OperatorGateway(Node):
         self.dropoff_service_name = str(self.get_parameter("dropoff_service_name").value)
         self.status_file = str(self.get_parameter("status_file").value)
         self.pose_topic = str(self.get_parameter("pose_topic").value)
+        self.software_version = str(self.get_parameter("software_version").value)
+        self.map_version = str(self.get_parameter("map_version").value)
+        self.route_version = str(self.get_parameter("route_version").value)
+        self.log_refs = normalize_log_refs(self.get_parameter("log_refs").value)
+        self.vision_sample_manifest_ref = os.path.expanduser(
+            str(self.get_parameter("vision_sample_manifest_ref").value)
+        )
 
         self._lock = threading.Lock()
         self._goal_handle = None
@@ -84,6 +106,18 @@ class OperatorGateway(Node):
             payload["robot_path"] = list(self._robot_path)
         self._write_status(payload)
         return payload
+
+    def diagnostics(self):
+        latest_status = self.snapshot()
+        return build_diagnostics_payload(
+            latest_status,
+            software_version=self.software_version,
+            map_version=self.map_version,
+            route_version=self.route_version,
+            log_refs=self.log_refs,
+            vision_sample_manifest_ref=self.vision_sample_manifest_ref,
+            operator_status_file=self.status_file,
+        )
 
     def start_collection(self, target, trash_type=0):
         target = (target or self.default_target).strip()

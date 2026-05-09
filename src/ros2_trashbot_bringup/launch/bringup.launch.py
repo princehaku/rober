@@ -12,10 +12,6 @@ def generate_launch_description():
         'use_sim_time', default_value='false',
         description='Use simulation clock')
 
-    camera_topic_arg = DeclareLaunchArgument(
-        'camera_topic', default_value='/camera/image_raw',
-        description='Camera image topic')
-
     serial_port_arg = DeclareLaunchArgument(
         'serial_port', default_value='/dev/ttyUSB0',
         description='UART device for the WAVE ROVER ESP32 controller')
@@ -117,7 +113,6 @@ def generate_launch_description():
         description='Remote bridge HTTP request timeout in seconds')
 
     use_sim_time = LaunchConfiguration('use_sim_time')
-    camera_topic = LaunchConfiguration('camera_topic')
     serial_port = LaunchConfiguration('serial_port')
     serial_baudrate = LaunchConfiguration('serial_baudrate')
     command_mode = LaunchConfiguration('command_mode')
@@ -184,18 +179,6 @@ def generate_launch_description():
             }],
         ),
 
-        # --- Vision ---
-        Node(
-            package='ros2_trashbot_vision',
-            executable='trash_detector',
-            name='trash_detector',
-            output='screen',
-            parameters=[{
-                'use_sim_time': use_sim_time,
-                'camera_topic': camera_topic,
-            }],
-        ),
-
         # --- Behavior ---
         Node(
             package='ros2_trashbot_behavior',
@@ -253,7 +236,6 @@ def generate_launch_description():
 
     return LaunchDescription([
         use_sim_time_arg,
-        camera_topic_arg,
         serial_port_arg,
         serial_baudrate_arg,
         command_mode_arg,

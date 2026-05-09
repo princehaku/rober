@@ -37,9 +37,35 @@ class FakeGateway:
                 {"x": 1.25, "y": -0.5, "yaw": 0.75, "updated_at": 10.0},
             ],
         }
+        self.diagnostics_payload = {
+            "api_version": "slice2.operator.v1",
+            "state": "diagnostics_ready",
+            "software_version": "0.1.0",
+            "map_version": "map-a",
+            "route_version": "route-a",
+            "latest_status": self.snapshot_payload,
+            "last_task": {
+                "task_record_path": "/tmp/task.json",
+                "error_code": "timed_out",
+                "final_state": "error",
+            },
+            "failure": {
+                "state": "failed",
+                "message": "fixed route timed out",
+                "error_code": "timed_out",
+                "final_state": "error",
+                "task_record_path": "/tmp/task.json",
+            },
+            "log_refs": ["/tmp/trashbot.log"],
+            "vision_sample_manifest_ref": "/tmp/vision/manifest.json",
+            "operator_status_file": "/tmp/trashbot_operator_status.json",
+        }
 
     def snapshot(self):
         return dict(self.snapshot_payload)
+
+    def diagnostics(self):
+        return dict(self.diagnostics_payload)
 
     def start_collection(self, target, trash_type=0):
         self.last_collect = {"target": target, "trash_type": trash_type}
@@ -85,6 +111,20 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(payload["state"], "waiting_for_trash")
 
+    def test_diagnostics_endpoint_returns_remote_support_package(self):
+        status, payload = self.request("GET", "/api/diagnostics")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["state"], "diagnostics_ready")
+        self.assertEqual(payload["software_version"], "0.1.0")
+        self.assertEqual(payload["map_version"], "map-a")
+        self.assertEqual(payload["route_version"], "route-a")
+        self.assertEqual(payload["latest_status"]["state"], "waiting_for_trash")
+        self.assertEqual(payload["last_task"]["error_code"], "timed_out")
+        self.assertEqual(payload["failure"]["final_state"], "error")
+        self.assertEqual(payload["log_refs"], ["/tmp/trashbot.log"])
+        self.assertEqual(payload["vision_sample_manifest_ref"], "/tmp/vision/manifest.json")
+
     def test_status_preserves_robot_location_snapshot_fields(self):
         self.gateway.snapshot_payload["robot_location"] = {
             "frame_id": "map",
@@ -120,11 +160,13 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("Start Delivery", body)
         self.assertIn("Confirm Dropoff", body)
         self.assertIn("Cancel", body)
+        self.assertIn("Diagnostics", body)
         self.assertIn("robotMap", body)
         self.assertIn("robot_pose", body)
         self.assertIn("robot_path", body)
         self.assertIn("waiting for /amcl_pose", body)
         self.assertIn("/api/status", body)
+        self.assertIn("/api/diagnostics", body)
         self.assertIn("/api/collect", body)
         self.assertIn("/api/dropoff/confirm", body)
         self.assertIn("/api/cancel", body)

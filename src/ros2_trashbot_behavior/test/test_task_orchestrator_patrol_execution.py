@@ -60,7 +60,6 @@ def install_ros_stubs():
             Patrol=types.SimpleNamespace(Result=PatrolResult, Feedback=PatrolFeedback),
         ),
         "ros2_trashbot_interfaces.msg": types.SimpleNamespace(
-            TrashStatus=object,
             Waypoint=Waypoint,
             WaypointList=object,
         ),
@@ -127,7 +126,6 @@ class TaskOrchestratorPatrolExecutionTest(unittest.TestCase):
         node = object.__new__(self.module.TaskOrchestrator)
         node.state = self.module.RobotState.IDLE
         node.learn_count = 0
-        node.trash_items = []
         node.waypoint_file = str(waypoint_file)
         node.navigation_timeout_sec = 1.0
         node.get_clock = lambda: FakeClock()

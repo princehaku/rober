@@ -101,6 +101,7 @@ The optional `operator_gateway` node exposes a local HTTP API for phone or brows
 | Endpoint | Method | Contract |
 | --- | --- | --- |
 | `/api/status` | GET | Returns `state`, `message`, `updated_at`, and the latest task metadata such as `task_record_path`, `error_message`, progress, or target when available. |
+| `/api/diagnostics` | GET | Returns the minimum remote-support diagnostic package: software version, map/route versions, latest status, last task summary, terminal failure fields, log references, vision sample manifest reference, and operator status file path. |
 | `/api/collect` | POST | Starts `/trashbot/collect_trash`. Optional JSON body or query parameter `target` overrides the default delivery target. |
 | `/api/dropoff/confirm` | POST | Calls `/trashbot/confirm_dropoff`; optional JSON `accepted=false` rejects a pending manual dropoff. |
 | `/api/cancel` | POST | Cancels the active `collect_trash` action goal if one is running. |
@@ -116,6 +117,11 @@ The same `/api/status` payload carries live location telemetry when available:
 | Parameter | Default | Contract |
 | --- | --- | --- |
 | `pose_topic` | `/amcl_pose` | `geometry_msgs/msg/PoseWithCovarianceStamped` topic used for the local web location view. |
+| `software_version` | installed package version or `0.1.0` fallback | Version reported in `/api/diagnostics`. |
+| `map_version` | empty | Map version label reported in `/api/diagnostics`; route/map generation should set this when available. |
+| `route_version` | empty | Route version label reported in `/api/diagnostics`; fixed-route tooling should set this when available. |
+| `log_refs` | empty list | Operator-facing log references included in `/api/diagnostics`. |
+| `vision_sample_manifest_ref` | `~/.ros/trashbot_vision_samples/manifest.json` | Optional deployment-supplied reference for future vision samples; the current MVP does not ship a default detector or manifest producer. |
 
 ### 4G Remote Bridge
 

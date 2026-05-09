@@ -61,13 +61,4 @@ def generate_launch_description():
                 'pose_topic': pose_topic,
             }],
         ),
-
-        # Trash detector (recording detections during learning)
-        Node(
-            package='ros2_trashbot_vision',
-            executable='trash_detector',
-            name='trash_detector',
-            output='screen',
-            parameters=[{'use_sim_time': use_sim_time}],
-        ),
     ])

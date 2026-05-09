@@ -73,7 +73,6 @@ def install_ros_stubs():
             Patrol=object,
         ),
         "ros2_trashbot_interfaces.msg": types.SimpleNamespace(
-            TrashStatus=object,
             Waypoint=Waypoint,
             WaypointList=object,
         ),
