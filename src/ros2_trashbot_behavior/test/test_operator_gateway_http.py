@@ -65,6 +65,18 @@ class FakeGateway:
             },
             "log_refs": ["/tmp/trashbot.log"],
             "vision_sample_manifest_ref": "/tmp/vision/manifest.json",
+            "vision_samples": {
+                "manifest_ref": "/tmp/vision/manifest.json",
+                "exists": True,
+                "schema": "trashbot.vision_samples.v1",
+                "sample_count": 3,
+                "latest_sample_ref": "vision_sample://20260510/latest.json",
+                "latest_timestamp": 1778357000.0,
+                "latest_context": {"task_id": "task-7", "route_id": "route-a"},
+                "latest_detection_count": 1,
+                "latest_max_confidence": 88,
+                "read_error": "",
+            },
             "operator_status_file": "/tmp/trashbot_operator_status.json",
         }
 
@@ -147,6 +159,8 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["failure"]["final_state"], "error")
         self.assertEqual(payload["log_refs"], ["/tmp/trashbot.log"])
         self.assertEqual(payload["vision_sample_manifest_ref"], "/tmp/vision/manifest.json")
+        self.assertEqual(payload["vision_samples"]["sample_count"], 3)
+        self.assertEqual(payload["vision_samples"]["latest_sample_ref"], "vision_sample://20260510/latest.json")
 
     def test_status_preserves_robot_location_snapshot_fields(self):
         self.gateway.snapshot_payload["robot_location"] = {
@@ -192,6 +206,10 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("showDiagnostics", body)
         self.assertIn("diagSoftware", body)
         self.assertIn("diagFailure", body)
+        self.assertIn("diagVisionSamples", body)
+        self.assertIn("diagLatestVisionSample", body)
+        self.assertIn("vision_samples", body)
+        self.assertIn("latest_sample_ref", body)
         self.assertIn("robotMap", body)
         self.assertIn("robot_pose", body)
         self.assertIn("robot_path", body)

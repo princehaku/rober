@@ -77,6 +77,8 @@ class OperatorGatewayStaticTest(unittest.TestCase):
 
         self.assertIn('latest_status.get("error_code") or last_task.get("error_code", "")', diagnostics_block)
         self.assertIn('latest_status.get("final_state") or last_task.get("final_state", "")', diagnostics_block)
+        self.assertIn("summarize_vision_manifest", diagnostics_source)
+        self.assertIn("vision_samples=summarize_vision_manifest(vision_sample_manifest_ref)", diagnostics_block)
         self.assertIn(
             'latest_status.get("task_record_path") or last_task.get("task_record_path", "")',
             diagnostics_block,

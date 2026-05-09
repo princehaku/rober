@@ -286,6 +286,8 @@ HTML = """<!doctype html>
         <div class="metric"><span>Failure</span><strong id="diagFailure">-</strong></div>
         <div class="metric"><span>Task record</span><strong id="diagTask">-</strong></div>
         <div class="metric"><span>Status file</span><strong id="diagStatusFile">-</strong></div>
+        <div class="metric"><span>Vision samples</span><strong id="diagVisionSamples">-</strong></div>
+        <div class="metric"><span>Latest vision sample</span><strong id="diagLatestVisionSample">-</strong></div>
       </div>
       <ul id="diagRefs" class="supportList"></ul>
     </section>
@@ -421,6 +423,7 @@ function showDiagnostics(payload) {
   panel.hidden = false;
   const failure = payload.failure || {};
   const latest = payload.latest_status || {};
+  const visionSamples = payload.vision_samples || {};
   const refs = Array.isArray(payload.log_refs) ? payload.log_refs : [];
   const taskRecord = failure.task_record_path || (payload.last_task || {}).task_record_path || latest.task_record_path || '';
   document.getElementById('diagSoftware').textContent = text(payload.software_version, 'not reported');
@@ -429,6 +432,13 @@ function showDiagnostics(payload) {
   document.getElementById('diagFailure').textContent = text(failure.error_code || failure.message, 'none reported');
   document.getElementById('diagTask').textContent = text(taskRecord, 'not reported');
   document.getElementById('diagStatusFile').textContent = text(payload.operator_status_file, 'not reported');
+  document.getElementById('diagVisionSamples').textContent = visionSamples.read_error
+    ? visionSamples.read_error
+    : `${Number(visionSamples.sample_count || 0)} samples`;
+  document.getElementById('diagLatestVisionSample').textContent = text(
+    visionSamples.latest_sample_ref,
+    visionSamples.sample_count ? 'sample reference missing' : 'no samples'
+  );
   const refList = document.getElementById('diagRefs');
   refList.innerHTML = '';
   [...refs, payload.vision_sample_manifest_ref].filter(Boolean).forEach((ref) => {
