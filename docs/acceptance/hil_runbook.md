@@ -1,4 +1,4 @@
-# WAVE ROVER HIL Runbook (04-05)
+# WAVE ROVER HIL Runbook (06-07)
 
 ## Scope
 
@@ -12,9 +12,26 @@
 2. 固定模板状态：  
    `python3 scripts/hardware_smoke_wave_rover.py --status`
 3. 记录下列文件路径（本轮更新）：
-   - `docs/hardware/wave_rover_json_bridge.md`
-   - `docs/acceptance/wave_rover_hil_evidence.md`
-   - `docs/acceptance/robot_bringup_checklist.md`
+  - `docs/hardware/wave_rover_json_bridge.md`
+  - `docs/acceptance/wave_rover_hil_evidence.md`
+  - `docs/acceptance/robot_bringup_checklist.md`
+
+### 0.1) 环境阻塞前置
+
+- 如 `pyserial` 缺失：先执行 `python3 -c "import importlib.util; print(bool(importlib.util.find_spec('serial')))"` 验证，若失败执行：
+  - `python3 -m pip install pyserial`
+  - 或进入项目镜像：`bash scripts/docker_humble_build.sh` / `bash scripts/docker_humble_dev.sh`
+- 依赖缺失只允许跑 `--help` 与 `--status`，禁止误报 `hil_pass` 成功。
+
+## 0.5) Evidence Packet（单次 run）
+
+- 命名建议：`run_<YYYYMMDD_HHMMSS>`
+- 每次 `hil_pass` 运行应产出证据目录并包含：
+  - `command.txt`（完整命令与参数）
+  - `serial.log`（脚本原始输出）
+  - `feedback_T1001.log`（至少两条）
+  - `odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl`
+  - 回填 `evidence_ref`（回链到 task record / diagnostics）
 
 ## 1) Parameter Lock
 
@@ -39,7 +56,7 @@ python3 scripts/hardware_smoke_wave_rover.py \
   --move-test --test-speed 0.05 --test-duration-s 0.3
 ```
 
-可选添加方向与 `T=13` 验证：
+可选方向复验（同一 run）：`--reverse-test --ros-mode-test --turn-test`。
 
 ```bash
 python3 scripts/hardware_smoke_wave_rover.py \

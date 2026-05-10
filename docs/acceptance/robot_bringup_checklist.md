@@ -7,6 +7,8 @@
 - Confirm Orange Pi serial device on the actual robot.
 - Confirm `115200` baud with the loaded ESP32 firmware.
 - Confirm evidence source policy: `source=software_proof` for template checks, `source=hil_pass` for real UART verification.
+- Run `python3 scripts/hardware_smoke_wave_rover.py --status` first; require no pyserial for this step.
+- If `pyserial` is missing, record dependency-block status and do not claim hil gate complete.
 
 ## Desktop ROS2 Build Check
 
@@ -46,6 +48,7 @@ bash scripts/docker_humble_build.sh
 - Capture one `ros2 topic echo /battery --once` sample and verify it only claims voltage-level data.
 - Capture one `ros2 topic echo /imu/data --once` sample and verify the current contract is yaw-only orientation.
 - Capture one `ros2 topic echo /odom --once` sample and label it command-integrated unless encoder validation has been completed.
+- 若 `T=1001` 字段缺失或 `feedback_interval_ms` 偏离大幅，记录阻塞原因并在下一轮修复前停止推进。
 
 ## Navigation
 

@@ -15,11 +15,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
 from typing import Any
-
-import serial
-
+import time
 
 SCRIPT_VENDOR_SOURCES = [
     "docs/vendor/VENDOR_INDEX.md",
@@ -29,34 +26,42 @@ SCRIPT_VENDOR_SOURCES = [
 ]
 
 SOFTWARE_PROOF_SOURCE = "software_proof"
+SERIAL_IMPORT_ERROR = (
+    "ERROR: missing dependency pyserial.\n"
+    "  Install once: python3 -m pip install pyserial\n"
+    "  Then rerun the hardware command."
+)
+
+try:
+    import serial
+    from serial import SerialException
+except ModuleNotFoundError:
+    serial = None
+    SerialException = OSError
 
 
 def encode(command: dict[str, Any]) -> bytes:
     return (json.dumps(command, separators=(",", ":")) + "\n").encode("utf-8")
 
 
-def send(ser: serial.Serial, command: dict[str, Any]) -> None:
+def send(ser: Any, command: dict[str, Any]) -> None:
     frame = encode(command)
     ser.write(frame)
     ser.flush()
     print(f"> {frame.decode('utf-8').strip()}")
 
 
-def stop(ser: serial.Serial) -> None:
+def stop(ser: Any) -> None:
     if ser.is_open:
         send(ser, {"T": 1, "L": 0, "R": 0})
 
 
 def read_feedback(
-    ser: serial.Serial,
+    ser: Any,
     timeout_s: float,
     min_samples: int = 2,
 ) -> tuple[list[dict[str, Any]], float | None]:
-    """Read sampled T=1001 base feedback frames.
-
-    Vendor feedback uses command `T=1001` and includes fields: L, R, r, p, y, v.
-    Feedback interval is inferred from sampling timestamps to verify `feedback_interval_ms`.
-    """
+    """Read sampled T=1001 base feedback frames."""
     samples: list[dict[str, Any]] = []
     sample_intervals_ms: list[float] = []
     last_sample_t: float | None = None
@@ -98,8 +103,8 @@ def print_status() -> None:
                 "baudrate": 115200,
                 "feedback_interval_ms": 100,
                 "feedback_timeout_s": 5.0,
-                "test_speed": 0.08,
-                "test_duration_s": 0.5,
+                "test_speed": 0.05,
+                "test_duration_s": 0.3,
             },
             "required_args_for_hil": [
                 "--serial-port",
@@ -118,26 +123,27 @@ def print_status() -> None:
                 "--ros-mode-test",
                 "--turn-test",
             ],
+            "dependency_note": "pyserial required for hil commands",
         },
         indent=2,
         sort_keys=True,
     ))
 
 
-def configure_feedback(ser: serial.Serial, feedback_interval_ms: int) -> None:
+def configure_feedback(ser: Any, feedback_interval_ms: int) -> None:
     send(ser, {"T": 143, "cmd": 0})
     send(ser, {"T": 142, "cmd": feedback_interval_ms})
     send(ser, {"T": 131, "cmd": 1})
 
 
-def run_move_test(ser: serial.Serial, speed: float, duration_s: float) -> None:
+def run_move_test(ser: Any, speed: float, duration_s: float) -> None:
     print(f"Running low-speed T=1 move test: L=R={speed} for {duration_s:.2f}s")
     send(ser, {"T": 1, "L": speed, "R": speed})
     time.sleep(duration_s)
     stop(ser)
 
 
-def run_reverse_test(ser: serial.Serial, speed: float, duration_s: float) -> None:
+def run_reverse_test(ser: Any, speed: float, duration_s: float) -> None:
     signed_speed = -abs(speed)
     print(f"Running low-speed reverse T=1 test: L=R={signed_speed} for {duration_s:.2f}s")
     send(ser, {"T": 1, "L": signed_speed, "R": signed_speed})
@@ -145,7 +151,7 @@ def run_reverse_test(ser: serial.Serial, speed: float, duration_s: float) -> Non
     stop(ser)
 
 
-def run_ros_mode_test(ser: serial.Serial, linear_x: float, angular_z: float, duration_s: float) -> None:
+def run_ros_mode_test(ser: Any, linear_x: float, angular_z: float, duration_s: float) -> None:
     print(
         "Running low-speed T=13 ROS-mode test: "
         f"X={linear_x}, Z={angular_z} for {duration_s:.2f}s"
@@ -156,7 +162,7 @@ def run_ros_mode_test(ser: serial.Serial, linear_x: float, angular_z: float, dur
     stop(ser)
 
 
-def run_turn_test(ser: serial.Serial, angular_z: float, duration_s: float) -> None:
+def run_turn_test(ser: Any, angular_z: float, duration_s: float) -> None:
     print(f"Running in-place turn T=13 test: X=0, Z={angular_z} for {duration_s:.2f}s")
     send(ser, {"T": 13, "X": 0, "Z": angular_z})
     time.sleep(duration_s)
@@ -179,8 +185,8 @@ def main() -> int:
     parser.add_argument("--reverse-test", action="store_true", help="Run a short T=1 low-speed reverse movement")
     parser.add_argument("--ros-mode-test", action="store_true", help="Run a short T=13 X/Z movement")
     parser.add_argument("--turn-test", action="store_true", help="Run a short in-place T=13 angular movement")
-    parser.add_argument("--test-speed", type=float, default=0.08)
-    parser.add_argument("--test-duration-s", type=float, default=0.5)
+    parser.add_argument("--test-speed", type=float, default=0.05)
+    parser.add_argument("--test-duration-s", type=float, default=0.3)
     parser.add_argument("--ros-angular-z", type=float, default=0.0)
     parser.add_argument("--turn-angular-z", type=float, default=0.3)
     args = parser.parse_args()
@@ -192,10 +198,13 @@ def main() -> int:
     if args.status:
         print_status()
         return 0
+    if serial is None:
+        print(SERIAL_IMPORT_ERROR, file=sys.stderr)
+        return 2
 
-    ser: serial.Serial | None = None
+    ser: Any | None = None
     try:
-        ser = serial.Serial(args.serial_port, args.baudrate, timeout=0.2)
+        ser = serial.Serial(args.serial_port, args.baudrate, timeout=0.2)  # type: ignore[arg-type]
         print(f"Opened {args.serial_port} @ {args.baudrate}")
         stop(ser)
         configure_feedback(ser, args.feedback_interval_ms)
@@ -221,10 +230,10 @@ def main() -> int:
             )
         print(f"T=1001 feedback sample: {feedback_samples[0]}")
         print(
-            f"Firmware feedback fields present: "
+            "Firmware feedback fields present: "
             f"{[key for key in ['L', 'R', 'r', 'p', 'y', 'v'] if key in feedback_samples[0]]}",
         )
-        print(f"source=software_proof smoke template complete before action")
+        print(f"source=hil_pass smoke template complete before action")
 
         if not any([args.move_test, args.reverse_test, args.ros_mode_test, args.turn_test]):
             print("No movement flags set; smoke checks startup feedback only.")
@@ -241,7 +250,7 @@ def main() -> int:
     except KeyboardInterrupt:
         print("Interrupted; sending stop before exit", file=sys.stderr)
         return 130
-    except (OSError, serial.SerialException) as exc:
+    except (OSError, SerialException) as exc:
         print(f"ERROR: serial failure: {exc}", file=sys.stderr)
         return 1
     finally:

@@ -76,15 +76,17 @@ right_mps = linear.x + angular.z * track_width_m / 2
 
 ### `/odom`
 
-当前实现基于最近一次 `/cmd_vel` 的指令积分计算（未使用轮速闭环），未经过独立编码器融合校验。故 `/odom` 在证据上应默认带 `source=software_proof`，在 HIL 完成轮速/里程对照后改为同时保留 `source=hil_pass`。
+当前实现基于最近一次 `/cmd_vel` 的指令积分计算（未使用轮速闭环），未经过独立编码器融合校验。故 `/odom` 在证据上应标注 `source=command_integration` 并由 HIL 的第一轮 run 带 `source=hil_pass` 重验。
 
 ### `/imu/data`
 
-当前仅发布 yaw 四元数，来源是 `T=1001` 的 `y`。`r/p` 仍存在于反馈帧但暂未进入 ROS 消息。
+当前仅发布 yaw 四元数（`T=1001` 的 `y`），`r/p` 虽在反馈帧内但未进入 ROS 消息。
+HIL run 必须在报告中说明：`/imu/data` 与 `T=1001.y` 一一对应（以 `evidence_ref` 绑定）。
 
 ### `/battery`
 
 当前仅发布电压（来自 `T=1001.v`）。不提供当前、SOC、容量与电芯信息。
+HIL run 需记录 `T=1001.v` 与 `/battery` 取样对齐证据。
 
 ## Run-time Validation Checklist
 
@@ -94,3 +96,4 @@ right_mps = linear.x + angular.z * track_width_m / 2
 - 低速 `T=1` 前进、倒退、转向方向验证通过（由 HIL 填写）。
 - 采集至少两帧 `T=1001` 并核对 `L/R/r/p/y/v`。
 - 只在停稳和 `T=1` 安全后再尝试 `T=13`。
+- 下发顺序与间隔复验通过后，才允许把 run 标记为 `hil_pass`。
