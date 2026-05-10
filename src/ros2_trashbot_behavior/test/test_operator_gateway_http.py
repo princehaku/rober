@@ -40,6 +40,24 @@ class FakeGateway:
                     "last_decision": None,
                 }
             ],
+            "progress_summary": {
+                "total": 3,
+                "decided": 2,
+                "pending": 1,
+                "coverage_rate": 0.6667,
+            },
+            "decision_distribution": {
+                "approved": {"count": 1, "ratio": 0.5},
+                "rejected": {"count": 1, "ratio": 0.5},
+                "needs_retry": {"count": 0, "ratio": 0.0},
+            },
+            "next_pending_sample": {
+                "sample_id": "route-001",
+                "sample_ref": "vision_sample://20260510/route-001.json",
+                "reason": "route_keyframe_review",
+                "event_type": "route_keyframe",
+                "timestamp": 1778356990.0,
+            },
             "manifest_read_error": "",
         }
         self.review_submit_status = 201
@@ -133,6 +151,24 @@ class FakeGateway:
                         "last_decision": None,
                     },
                 ],
+                "progress_summary": {
+                    "total": 3,
+                    "decided": 1,
+                    "pending": 2,
+                    "coverage_rate": 0.3333,
+                },
+                "decision_distribution": {
+                    "approved": {"count": 1, "ratio": 1.0},
+                    "rejected": {"count": 0, "ratio": 0.0},
+                    "needs_retry": {"count": 0, "ratio": 0.0},
+                },
+                "next_pending_sample": {
+                    "sample_id": "route-001",
+                    "sample_ref": "vision_sample://20260510/route-001.json",
+                    "reason": "route_keyframe_review",
+                    "event_type": "route_keyframe",
+                    "timestamp": 1778356990.0,
+                },
                 "read_error": "",
                 "integrity_summary": {"status": "warning"},
                 "integrity_error_count": 0,
@@ -265,6 +301,13 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["vision_samples"]["review_queue"][-1]["reason"], "anomaly_sample")
         self.assertEqual(payload["vision_samples"]["review_queue"][0]["review_status"], "pending")
         self.assertIsNone(payload["vision_samples"]["review_queue"][0]["last_decision"])
+        self.assertEqual(payload["vision_samples"]["progress_summary"]["total"], 3)
+        self.assertEqual(payload["vision_samples"]["progress_summary"]["decided"], 1)
+        self.assertEqual(payload["vision_samples"]["progress_summary"]["pending"], 2)
+        self.assertEqual(payload["vision_samples"]["decision_distribution"]["approved"]["count"], 1)
+        self.assertEqual(payload["vision_samples"]["decision_distribution"]["approved"]["ratio"], 1.0)
+        self.assertEqual(payload["vision_samples"]["decision_distribution"]["needs_retry"]["count"], 0)
+        self.assertEqual(payload["vision_samples"]["next_pending_sample"]["sample_id"], "route-001")
         self.assertEqual(payload["vision_samples"]["integrity_summary"]["status"], "warning")
         self.assertEqual(payload["vision_samples"]["integrity_error_count"], 0)
         self.assertEqual(payload["vision_samples"]["integrity_warning_count"], 1)
@@ -372,6 +415,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("reviewSampleSelect", body)
         self.assertIn("reviewDecisionSelect", body)
         self.assertIn("reviewCommentInput", body)
+        self.assertIn("reviewProgressSummary", body)
+        self.assertIn("reviewDecisionDistribution", body)
+        self.assertIn("reviewNextPending", body)
+        self.assertIn("reviewJumpPendingButton", body)
+        self.assertIn("jumpToNextPending", body)
+        self.assertIn("applyReviewProgress", body)
         self.assertIn("loadReviewQueue", body)
         self.assertIn("submitReviewDecision", body)
         self.assertIn("collectButton.disabled = !Boolean(payload.can_collect)", body)
@@ -443,6 +492,11 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["review_queue_count"], 1)
         self.assertEqual(payload["review_queue"][0]["sample_id"], "route-001")
         self.assertEqual(payload["review_queue"][0]["review_status"], "pending")
+        self.assertEqual(payload["progress_summary"]["total"], 3)
+        self.assertEqual(payload["progress_summary"]["decided"], 2)
+        self.assertEqual(payload["decision_distribution"]["approved"]["count"], 1)
+        self.assertEqual(payload["decision_distribution"]["rejected"]["ratio"], 0.5)
+        self.assertEqual(payload["next_pending_sample"]["sample_id"], "route-001")
 
     def test_review_decision_submission_endpoint(self):
         body = {

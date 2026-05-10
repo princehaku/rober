@@ -404,10 +404,14 @@ HTML = """<!doctype html>
       </label>
       <div class="row">
         <button id="reviewRefreshButton" onclick="loadReviewQueue()">Refresh Queue</button>
+        <button id="reviewJumpPendingButton" onclick="jumpToNextPending()">Jump To Next Pending</button>
         <button id="reviewSubmitButton" class="primary" onclick="submitReviewDecision()">Submit Review Decision</button>
       </div>
       <div class="reviewMeta">
         <p class="message">Queue status: <strong id="reviewQueueStatus">not loaded</strong></p>
+        <p class="message">Progress: <strong id="reviewProgressSummary">not loaded</strong></p>
+        <p class="message">Decision distribution: <strong id="reviewDecisionDistribution">not loaded</strong></p>
+        <p class="message">Next pending sample: <strong id="reviewNextPending">not loaded</strong></p>
         <p class="message">Selected summary: <code id="reviewSelectedSummary">none</code></p>
         <p class="message">Result: <strong id="reviewResultMessage">not submitted</strong></p>
       </div>
@@ -434,6 +438,7 @@ const STATE_COPY = {
   network_error: ['Connection issue', 'The phone cannot reach the robot control page.', 'waiting']
 };
 const STEP_ORDER = ['waiting', 'delivering', 'dropoff', 'returning', 'completed'];
+let reviewQueueSnapshot = null;
 function fmt(value) {
   return Number.isFinite(value) ? value.toFixed(2) : '-';
 }
@@ -611,6 +616,55 @@ function decisionSummaryText(item) {
   if (!last) return `${status} | ${reason}`;
   return `${status} | ${reason} | ${text(last.decision, 'unknown')} @ ${text(last.timestamp, 'unknown time')}`;
 }
+function percent(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return '0.0%';
+  return `${(numeric * 100).toFixed(1)}%`;
+}
+function progressSummaryText(progressSummary) {
+  if (!progressSummary || typeof progressSummary !== 'object') return 'not reported';
+  const total = Number(progressSummary.total || 0);
+  const decided = Number(progressSummary.decided || 0);
+  const pending = Number(progressSummary.pending || 0);
+  const coverageRate = percent(progressSummary.coverage_rate || 0);
+  return `${decided}/${total} decided | ${pending} pending | coverage ${coverageRate}`;
+}
+function decisionDistributionText(distribution) {
+  if (!distribution || typeof distribution !== 'object') return 'not reported';
+  const entries = ['approved', 'rejected', 'needs_retry'].map((decision) => {
+    const item = distribution[decision] && typeof distribution[decision] === 'object'
+      ? distribution[decision]
+      : {count: 0, ratio: 0};
+    return `${decision} ${Number(item.count || 0)} (${percent(item.ratio || 0)})`;
+  });
+  return entries.join(' | ');
+}
+function nextPendingText(nextPendingSample) {
+  if (!nextPendingSample || typeof nextPendingSample !== 'object') {
+    return 'none';
+  }
+  return `${text(nextPendingSample.sample_id, 'unknown')} | ${text(nextPendingSample.reason, 'review')}`;
+}
+function applyReviewProgress(queuePayload) {
+  const progressSummary = queuePayload && typeof queuePayload === 'object'
+    ? queuePayload.progress_summary
+    : null;
+  const decisionDistribution = queuePayload && typeof queuePayload === 'object'
+    ? queuePayload.decision_distribution
+    : null;
+  const nextPendingSample = queuePayload && typeof queuePayload === 'object'
+    ? queuePayload.next_pending_sample
+    : null;
+  reviewQueueSnapshot = queuePayload && typeof queuePayload === 'object' ? queuePayload : null;
+  document.getElementById('reviewProgressSummary').textContent = progressSummaryText(progressSummary);
+  document.getElementById('reviewDecisionDistribution').textContent = decisionDistributionText(decisionDistribution);
+  document.getElementById('reviewNextPending').textContent = nextPendingText(nextPendingSample);
+  document.getElementById('reviewJumpPendingButton').disabled = !(
+    nextPendingSample &&
+    typeof nextPendingSample === 'object' &&
+    text(nextPendingSample.sample_id, '')
+  );
+}
 function updateSelectedReviewSummary() {
   const select = document.getElementById('reviewSampleSelect');
   const currentOption = select.options[select.selectedIndex];
@@ -619,6 +673,7 @@ function updateSelectedReviewSummary() {
     : 'none';
 }
 function renderReviewQueue(queuePayload) {
+  applyReviewProgress(queuePayload);
   const queue = Array.isArray(queuePayload.review_queue) ? queuePayload.review_queue : [];
   const select = document.getElementById('reviewSampleSelect');
   select.innerHTML = '';
@@ -645,6 +700,25 @@ function renderReviewQueue(queuePayload) {
   document.getElementById('reviewSubmitButton').disabled = false;
   document.getElementById('reviewQueueStatus').textContent = `${Number(queuePayload.review_queue_count || queue.length)} sample(s)`;
   updateSelectedReviewSummary();
+}
+function jumpToNextPending() {
+  const nextPendingSample = reviewQueueSnapshot && typeof reviewQueueSnapshot === 'object'
+    ? reviewQueueSnapshot.next_pending_sample
+    : null;
+  const sampleId = text((nextPendingSample || {}).sample_id, '');
+  if (!sampleId) {
+    document.getElementById('reviewResultMessage').textContent = 'No pending sample available.';
+    return;
+  }
+  const select = document.getElementById('reviewSampleSelect');
+  const option = Array.from(select.options).find((item) => item.value === sampleId);
+  if (!option) {
+    document.getElementById('reviewResultMessage').textContent = `Pending sample ${sampleId} is outside the current queue window.`;
+    return;
+  }
+  select.value = sampleId;
+  updateSelectedReviewSummary();
+  document.getElementById('reviewResultMessage').textContent = `Focused pending sample ${sampleId}.`;
 }
 function drawMap(payload) {
   const canvas = document.getElementById('robotMap');
@@ -769,15 +843,23 @@ function showDiagnostics(payload) {
     visionSamples.sample_count ? 'sample reference missing' : 'no samples'
   );
   const reviewQueue = Array.isArray(visionSamples.review_queue) ? visionSamples.review_queue : [];
-  const nextReview = reviewQueue[reviewQueue.length - 1] || {};
-  document.getElementById('diagReviewQueue').textContent = `${Number(visionSamples.review_queue_count || 0)} samples`;
-  document.getElementById('diagNextReviewSample').textContent = nextReview.sample_ref
-    ? `${text(nextReview.reason, 'review')} ${nextReview.sample_ref}`
+  const progressSummary = visionSamples.progress_summary && typeof visionSamples.progress_summary === 'object'
+    ? visionSamples.progress_summary
+    : {};
+  const nextReview = visionSamples.next_pending_sample && typeof visionSamples.next_pending_sample === 'object'
+    ? visionSamples.next_pending_sample
+    : null;
+  document.getElementById('diagReviewQueue').textContent = `${Number(progressSummary.pending || 0)} pending / ${Number(progressSummary.total || 0)} total`;
+  document.getElementById('diagNextReviewSample').textContent = nextReview
+    ? `${text(nextReview.reason, 'review')} ${text(nextReview.sample_ref, text(nextReview.sample_id, 'unknown'))}`
     : 'no pending sample';
   renderReviewQueue({
     review_queue_count: visionSamples.review_queue_count,
     review_queue: reviewQueue,
-    manifest_read_error: visionSamples.read_error
+    progress_summary: visionSamples.progress_summary,
+    decision_distribution: visionSamples.decision_distribution,
+    next_pending_sample: visionSamples.next_pending_sample,
+    manifest_read_error: visionSamples.read_error,
   });
   const refList = document.getElementById('diagRefs');
   refList.innerHTML = '';

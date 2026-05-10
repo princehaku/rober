@@ -15,6 +15,7 @@ REVIEW_QUEUE_LIMIT = 5
 LOW_CONFIDENCE_REVIEW_THRESHOLD = 75
 HARDWARE_PROOF_STATUSES = {"software_proof", "needs_hil", "invalid_config", "read_error"}
 REVIEW_DECISION_VALUES = {"approved", "rejected", "needs_retry"}
+REVIEW_DECISION_ORDER = ("approved", "rejected", "needs_retry")
 
 
 def _default_hardware_proof_summary(path, status="read_error", read_error=""):
@@ -294,6 +295,63 @@ def build_vision_review_queue(samples, decision_index=None, limit=REVIEW_QUEUE_L
     return list(reversed(queue))
 
 
+def _review_decision_distribution(counts, decided):
+    decided = int(decided or 0)
+    distribution = {}
+    for decision in REVIEW_DECISION_ORDER:
+        count = int(counts.get(decision, 0))
+        distribution[decision] = {
+            "count": count,
+            "ratio": round(count / decided, 4) if decided > 0 else 0.0,
+        }
+    return distribution
+
+
+def summarize_review_progress(samples, decision_index=None):
+    decision_index = decision_index if isinstance(decision_index, dict) else {}
+    reviewable = []
+    decision_counts = {decision: 0 for decision in REVIEW_DECISION_ORDER}
+    decided = 0
+    next_pending_sample = None
+
+    for sample in samples:
+        if not isinstance(sample, dict):
+            continue
+        reason = sample_review_reason(sample)
+        if not reason:
+            continue
+        reviewable.append(sample)
+        sample_id = str(sample.get("sample_id", ""))
+        decision_entry = decision_index.get(sample_id) if sample_id else None
+        decision = str((decision_entry or {}).get("decision", "")).strip()
+        if decision in REVIEW_DECISION_VALUES:
+            decided += 1
+            decision_counts[decision] += 1
+            continue
+        if next_pending_sample is None:
+            next_pending_sample = {
+                "sample_id": sample_id,
+                "sample_ref": str(sample.get("sample_ref", "")),
+                "reason": reason,
+                "event_type": sample_event_type(sample),
+                "timestamp": sample.get("timestamp"),
+            }
+
+    total = len(reviewable)
+    pending = max(total - decided, 0)
+    progress_summary = {
+        "total": total,
+        "decided": decided,
+        "pending": pending,
+        "coverage_rate": round(decided / total, 4) if total > 0 else 0.0,
+    }
+    return {
+        "progress_summary": progress_summary,
+        "decision_distribution": _review_decision_distribution(decision_counts, decided),
+        "next_pending_sample": next_pending_sample,
+    }
+
+
 def default_integrity_fields(status, *, error="", warning=""):
     errors = [error] if error else []
     warnings = [warning] if warning else []
@@ -392,6 +450,14 @@ def summarize_vision_manifest(path, decision_index=None):
         "event_counts": {},
         "review_queue_count": 0,
         "review_queue": [],
+        "progress_summary": {
+            "total": 0,
+            "decided": 0,
+            "pending": 0,
+            "coverage_rate": 0.0,
+        },
+        "decision_distribution": _review_decision_distribution({}, 0),
+        "next_pending_sample": None,
         "read_error": "",
     }
     summary.update(vision_manifest_integrity_fields(path))
@@ -425,6 +491,7 @@ def summarize_vision_manifest(path, decision_index=None):
         event_counts[event_type] = event_counts.get(event_type, 0) + 1
     summary["event_counts"] = event_counts
     review_queue = build_vision_review_queue(samples, decision_index=decision_index)
+    summary.update(summarize_review_progress(samples, decision_index=decision_index))
     summary["review_queue"] = review_queue
     summary["review_queue_count"] = len(review_queue)
     latest = samples[-1] if samples and isinstance(samples[-1], dict) else {}

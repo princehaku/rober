@@ -102,7 +102,7 @@ The optional `operator_gateway` node exposes a local HTTP API for phone or brows
 | --- | --- | --- |
 | `/api/status` | GET | Returns `state`, `message`, `updated_at`, and the latest task metadata such as `task_record_path`, `error_message`, progress, or target when available. |
 | `/api/diagnostics` | GET | Returns the minimum remote-support diagnostic package: software version, map/route versions, latest status, last task summary, terminal failure fields, log references, vision sample manifest reference, hardware proof summary, and operator status file path. |
-| `/api/vision/review-queue` | GET | Returns review queue samples with `review_status` and `last_decision` summary. Queue/manifest errors are returned as structured fields instead of breaking the operator main flow. |
+| `/api/vision/review-queue` | GET | Returns review queue samples with `review_status` and `last_decision` summary, plus progress aggregates (`progress_summary`), decision distribution (`decision_distribution`), and `next_pending_sample` for quick operator focus. Queue/manifest errors are returned as structured fields instead of breaking the operator main flow. |
 | `/api/vision/review-decisions` | POST | Stores a manual review decision for one sample. Required fields: `sample_id`, `decision` (`approved`, `rejected`, `needs_retry`). Optional: `comment`, `option`, `operator`. |
 | `/api/collect` | POST | Starts `/trashbot/collect_trash`. Optional JSON body or query parameter `target` overrides the default delivery target. |
 | `/api/dropoff/confirm` | POST | Calls `/trashbot/confirm_dropoff`; optional JSON `accepted=false` rejects a pending manual dropoff. |
@@ -152,6 +152,18 @@ If the manifest is not configured or the vision checker cannot be imported, diag
 | --- | --- |
 | `review_status` | `pending` or `decided`; derived from decision-log merge, not from UI-local state. |
 | `last_decision` | `null` or latest decision summary (`decision_id`, `decision`, `comment`, `option`, `operator`, `timestamp`). |
+
+Review progress aggregates are exposed by both `/api/vision/review-queue` and `/api/diagnostics.vision_samples`:
+
+| Field | Contract |
+| --- | --- |
+| `progress_summary.total` | Number of reviewable samples based on current manifest queue criteria. |
+| `progress_summary.decided` | Number of reviewable samples that have a valid latest decision. Duplicate records for one sample use last-valid-decision semantics. |
+| `progress_summary.pending` | `max(total - decided, 0)`. |
+| `progress_summary.coverage_rate` | `decided / total` rounded to 4 decimals; returns `0.0` when `total=0`. |
+| `decision_distribution.<decision>.count` | Final-decision count per decision type (`approved`, `rejected`, `needs_retry`) among decided samples. |
+| `decision_distribution.<decision>.ratio` | `count / decided` rounded to 4 decimals; returns `0.0` when `decided=0`. |
+| `next_pending_sample` | `null` when there is no pending sample; otherwise includes `sample_id`, `sample_ref`, `reason`, `event_type`, and `timestamp`. |
 
 `/api/diagnostics.review_decision_log` and `/api/vision/review-queue.review_decision_log` expose decision-store health:
 

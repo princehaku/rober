@@ -147,6 +147,9 @@ class OperatorGateway(Node):
             "review_decision_log": review_decision_log,
             "review_queue_count": int(vision_samples.get("review_queue_count", 0)),
             "review_queue": list(vision_samples.get("review_queue", [])),
+            "progress_summary": dict(vision_samples.get("progress_summary") or {}),
+            "decision_distribution": dict(vision_samples.get("decision_distribution") or {}),
+            "next_pending_sample": vision_samples.get("next_pending_sample"),
             "manifest_ref": vision_samples.get("manifest_ref", self.vision_sample_manifest_ref),
             "manifest_read_error": vision_samples.get("read_error", ""),
         }

@@ -86,8 +86,12 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("summarize_vision_manifest", diagnostics_source)
         self.assertIn("load_review_decision_log", diagnostics_source)
         self.assertIn("summarize_hardware_proof", diagnostics_source)
+        self.assertIn("summarize_review_progress", diagnostics_source)
         self.assertIn("vision_samples=summarize_vision_manifest(", diagnostics_block)
         self.assertIn("decision_index=decision_index", diagnostics_block)
+        self.assertIn('"progress_summary"', diagnostics_source)
+        self.assertIn('"decision_distribution"', diagnostics_source)
+        self.assertIn('"next_pending_sample"', diagnostics_source)
         self.assertIn("hardware_proof=summarize_hardware_proof(hardware_proof_ref)", diagnostics_block)
         self.assertIn(
             'latest_status.get("task_record_path") or last_task.get("task_record_path", "")',
@@ -112,6 +116,15 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "invalid_config",
             "read_error",
             "Software proof exists, hardware-in-loop still required",
+            "reviewProgressSummary",
+            "reviewDecisionDistribution",
+            "reviewNextPending",
+            "reviewJumpPendingButton",
+            "jumpToNextPending",
+            "applyReviewProgress",
+            "progress_summary",
+            "decision_distribution",
+            "next_pending_sample",
         ):
             self.assertIn(text, http_source)
 

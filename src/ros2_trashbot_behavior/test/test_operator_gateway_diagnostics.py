@@ -316,6 +316,13 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(summary["review_queue"][1]["reason"], "anomaly_sample")
         self.assertEqual(summary["review_queue"][0]["review_status"], "pending")
         self.assertIsNone(summary["review_queue"][0]["last_decision"])
+        self.assertEqual(summary["progress_summary"]["total"], 2)
+        self.assertEqual(summary["progress_summary"]["decided"], 0)
+        self.assertEqual(summary["progress_summary"]["pending"], 2)
+        self.assertEqual(summary["progress_summary"]["coverage_rate"], 0.0)
+        self.assertEqual(summary["decision_distribution"]["approved"]["count"], 0)
+        self.assertEqual(summary["decision_distribution"]["approved"]["ratio"], 0.0)
+        self.assertEqual(summary["next_pending_sample"]["sample_id"], "old")
         self.assertEqual(summary["integrity_summary"]["status"], "ok")
         self.assertEqual(summary["integrity_error_count"], 0)
         self.assertEqual(summary["integrity_warning_count"], 0)
@@ -380,6 +387,11 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             ["low_confidence_detection", "route_keyframe_review", "anomaly_sample"],
         )
         self.assertEqual(summary["review_queue"][-1]["sample_ref"], "vision_sample://anomaly.json")
+        self.assertEqual(summary["progress_summary"]["total"], 3)
+        self.assertEqual(summary["progress_summary"]["decided"], 0)
+        self.assertEqual(summary["progress_summary"]["pending"], 3)
+        self.assertEqual(summary["progress_summary"]["coverage_rate"], 0.0)
+        self.assertEqual(summary["next_pending_sample"]["sample_id"], "low-confidence")
 
     def test_diagnostics_merges_last_review_decision_into_queue(self):
         with tempfile.TemporaryDirectory() as td:
@@ -439,6 +451,14 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(queue_item["sample_id"], "sample-1")
         self.assertEqual(queue_item["review_status"], "decided")
         self.assertEqual(queue_item["last_decision"]["decision"], "approved")
+        self.assertEqual(payload["vision_samples"]["progress_summary"]["total"], 1)
+        self.assertEqual(payload["vision_samples"]["progress_summary"]["decided"], 1)
+        self.assertEqual(payload["vision_samples"]["progress_summary"]["pending"], 0)
+        self.assertEqual(payload["vision_samples"]["progress_summary"]["coverage_rate"], 1.0)
+        self.assertEqual(payload["vision_samples"]["decision_distribution"]["approved"]["count"], 1)
+        self.assertEqual(payload["vision_samples"]["decision_distribution"]["approved"]["ratio"], 1.0)
+        self.assertEqual(payload["vision_samples"]["decision_distribution"]["rejected"]["count"], 0)
+        self.assertIsNone(payload["vision_samples"]["next_pending_sample"])
 
     def test_vision_manifest_summary_handles_missing_and_corrupt_files(self):
         with tempfile.TemporaryDirectory() as td:
@@ -518,7 +538,96 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(summary["event_counts"], {})
         self.assertEqual(summary["review_queue_count"], 0)
         self.assertEqual(summary["review_queue"], [])
+        self.assertEqual(summary["progress_summary"]["total"], 0)
+        self.assertEqual(summary["progress_summary"]["decided"], 0)
+        self.assertEqual(summary["progress_summary"]["pending"], 0)
+        self.assertEqual(summary["progress_summary"]["coverage_rate"], 0.0)
+        self.assertEqual(summary["decision_distribution"]["approved"]["count"], 0)
+        self.assertEqual(summary["decision_distribution"]["approved"]["ratio"], 0.0)
+        self.assertIsNone(summary["next_pending_sample"])
         self.assertEqual(summary["read_error"], "")
+
+    def test_review_progress_uses_last_valid_decision_per_sample(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            manifest_path = root / "manifest.json"
+            decision_log_path = root / "review_decisions.jsonl"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.vision_samples.v1",
+                        "samples": [
+                            {
+                                "sample_id": "sample-1",
+                                "sample_ref": "vision_sample://sample-1.json",
+                                "timestamp": 1.0,
+                                "context": {"event_type": "route_keyframe"},
+                                "detection_count": 0,
+                                "max_confidence": 0,
+                            },
+                            {
+                                "sample_id": "sample-2",
+                                "sample_ref": "vision_sample://sample-2.json",
+                                "timestamp": 2.0,
+                                "context": {"event_type": "anomaly"},
+                                "detection_count": 0,
+                                "max_confidence": 0,
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            decision_log_path.write_text(
+                (
+                    json.dumps(
+                        {
+                            "decision_id": "d-1",
+                            "sample_id": "sample-1",
+                            "decision": "approved",
+                            "timestamp": 100.0,
+                        }
+                    )
+                    + "\n"
+                    + json.dumps(
+                        {
+                            "decision_id": "d-2",
+                            "sample_id": "sample-1",
+                            "decision": "rejected",
+                            "timestamp": 101.0,
+                        }
+                    )
+                    + "\n"
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref=str(manifest_path),
+                review_decision_log_ref=str(decision_log_path),
+                operator_status_file="/tmp/status.json",
+            )
+
+        review_log = payload["review_decision_log"]
+        vision_samples = payload["vision_samples"]
+        self.assertEqual(review_log["decision_count"], 2)
+        self.assertEqual(review_log["sample_count"], 1)
+        self.assertEqual(vision_samples["progress_summary"]["total"], 2)
+        self.assertEqual(vision_samples["progress_summary"]["decided"], 1)
+        self.assertEqual(vision_samples["progress_summary"]["pending"], 1)
+        self.assertEqual(vision_samples["progress_summary"]["coverage_rate"], 0.5)
+        self.assertEqual(vision_samples["decision_distribution"]["approved"]["count"], 0)
+        self.assertEqual(vision_samples["decision_distribution"]["approved"]["ratio"], 0.0)
+        self.assertEqual(vision_samples["decision_distribution"]["rejected"]["count"], 1)
+        self.assertEqual(vision_samples["decision_distribution"]["rejected"]["ratio"], 1.0)
+        self.assertEqual(vision_samples["decision_distribution"]["needs_retry"]["count"], 0)
+        self.assertEqual(vision_samples["next_pending_sample"]["sample_id"], "sample-2")
+        self.assertEqual(vision_samples["review_queue"][0]["last_decision"]["decision"], "rejected")
 
 
 if __name__ == "__main__":
