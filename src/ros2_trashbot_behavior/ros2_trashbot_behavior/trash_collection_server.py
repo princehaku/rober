@@ -1,83 +1,61 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer
-from geometry_msgs.msg import Twist
 from ros2_trashbot_interfaces.action import TrashCollection
 
 
+LEGACY_ERROR_CODE = 'legacy_server_quarantined'
+LEGACY_ERROR_MESSAGE = (
+    'legacy_trash_collection_server is quarantined because it was a sleep-demo '
+    'pipeline. Use task_orchestrator for /trashbot/collect_trash.'
+)
+
+
 class TrashCollectionServer(Node):
-    """Standalone trash collection action server.
-    Handles the full pipeline: nav → collect → deliver."""
+    """Compatibility action server that refuses the legacy sleep-demo path."""
 
     def __init__(self):
         super().__init__('trash_collection_server')
 
-        # Cmd vel publisher for base movement
-        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
-
-        # Action server
         self.action_server = ActionServer(
             self, TrashCollection, '/trashbot/collect_trash',
             self._execute_callback)
 
-        self.get_logger().info('TrashCollectionServer ready')
+        self.get_logger().warn(
+            'legacy_trash_collection_server is quarantined; '
+            'use task_orchestrator for /trashbot/collect_trash'
+        )
 
     async def _execute_callback(self, goal_handle):
-        """Execute the full trash collection sequence."""
+        """Abort legacy goals instead of reporting fake collection success."""
         feedback = TrashCollection.Feedback()
         result = TrashCollection.Result()
 
-        self.get_logger().info(f'Executing collection for frame: {goal_handle.request.trash_goal_frame}')
+        target = goal_handle.request.trash_goal_frame
+        self.get_logger().error(
+            f'Rejecting legacy trash collection goal for {target!r}: '
+            f'{LEGACY_ERROR_MESSAGE}'
+        )
 
-        # Step 1: Navigate to trash
-        feedback.status = 1
-        self.get_logger().info('  -> Navigating to trash location')
-        await self._navigate_to_trash(goal_handle.request.trash_goal_frame)
-        feedback.arrived = True
+        feedback.status = 0
+        feedback.percent_complete = 0.0
+        feedback.current_step = 'legacy_server_quarantined'
+        feedback.state = 'error'
+        feedback.event = LEGACY_ERROR_CODE
+        feedback.message = LEGACY_ERROR_MESSAGE
         goal_handle.publish_feedback(feedback)
 
-        # Step 2: Collect
-        feedback.status = 2
-        self.get_logger().info('  -> Collecting trash')
-        await self._collect_trash()
-        feedback.collected = True
-        result.items_collected = 1
-        goal_handle.publish_feedback(feedback)
+        result.success = False
+        result.items_collected = 0
+        result.items_disposed = 0
+        result.total_duration_sec = 0.0
+        result.error_code = LEGACY_ERROR_CODE
+        result.error_message = LEGACY_ERROR_MESSAGE
+        result.final_state = 'error'
+        result.task_record_path = ''
 
-        # Step 3: Deliver to bin
-        feedback.status = 3
-        self.get_logger().info('  -> Delivering to bin')
-        await self._deliver_to_bin()
-        feedback.delivered = True
-        result.items_disposed = 1
-        goal_handle.publish_feedback(feedback)
-
-        feedback.status = 4
-        result.success = True
-        goal_handle.succeed()
-
-        self.get_logger().info('Collection successful')
+        goal_handle.abort()
         return result
-
-    async def _navigate_to_trash(self, target_frame: str):
-        """Navigate to the trash location."""
-        # TODO: integrate with Nav2
-        # Send goal to /navigate_to_pose action
-        await self._sleep(3.0)
-
-    async def _collect_trash(self):
-        """Activate manipulator to collect trash."""
-        # TODO: trigger manipulator/gripper
-        await self._sleep(2.0)
-
-    async def _deliver_to_bin(self):
-        """Navigate to nearest bin and drop."""
-        # TODO: query bin locations, navigate to nearest, drop
-        await self._sleep(3.0)
-
-    async def _sleep(self, seconds: float):
-        import asyncio
-        await asyncio.sleep(seconds)
 
 
 def main(args=None):

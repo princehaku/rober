@@ -63,7 +63,7 @@ The ESP32 feedback frame used by this contract is vendor `T=1001` with at least 
 
 | Name | Type | Contract |
 | --- | --- | --- |
-| `/trashbot/collect_trash` | `ros2_trashbot_interfaces/action/TrashCollection` | Default product entry point is `task_orchestrator`; the legacy standalone server is installed as `legacy_trash_collection_server` only. |
+| `/trashbot/collect_trash` | `ros2_trashbot_interfaces/action/TrashCollection` | Default product entry point is `task_orchestrator`; the legacy standalone server is installed as `legacy_trash_collection_server` only for compatibility and aborts goals with `legacy_server_quarantined` instead of reporting demo success. |
 
 ### Feedback Fields
 
