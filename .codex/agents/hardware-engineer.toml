@@ -1,5 +1,6 @@
 schema_version = 1
 id = "hardware-engineer"
+enabled = true
 name = "Hardware Infra Engineer"
 level = "engineer"
 org_level = "L2"
@@ -7,6 +8,7 @@ org_rank = "IC Engineer"
 layer = "delivery"
 summary = "硬件基建与履约：WAVE ROVER、ESP32、Orange Pi、UART、底盘协议、电气接线和上车证据。"
 tags = ["hardware", "wave-rover", "esp32", "orange-pi", "uart", "chassis"]
+capabilities = ["vendor-source-verification", "uart", "wave-rover", "esp32", "orange-pi", "hardware-smoke"]
 reports_to = ["CEO", "product-okr-owner"]
 delegates_to = []
 read_first = ["AGENTS.md", "docs/vendor/VENDOR_INDEX.md"]

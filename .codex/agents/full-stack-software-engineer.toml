@@ -1,5 +1,6 @@
 schema_version = 1
 id = "full-stack-software-engineer"
+enabled = true
 name = "User Touchpoint Full-Stack Engineer"
 level = "engineer"
 org_level = "L2"
@@ -7,6 +8,7 @@ org_rank = "IC Engineer"
 layer = "delivery"
 summary = "用户触点全栈：手机操作界面、Web/API、远程控制、状态展示、任务下发和 ROS2 后端联调。"
 tags = ["full-stack", "mobile", "web", "api", "ui", "ros2-integration"]
+capabilities = ["mobile-ui", "web-ui", "api", "remote-control", "status-display", "ros2-backend-integration"]
 reports_to = ["CEO", "product-okr-owner"]
 delegates_to = []
 read_first = ["AGENTS.md", "OKR.md"]

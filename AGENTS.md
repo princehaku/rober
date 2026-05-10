@@ -72,28 +72,58 @@ source install/setup.bash
 除 `Product Manager / OKR Owner` 外，不使用 Lead 角色。
 
 编码、测试、修复和交付 必须由子agent
+"product-okr-owner"
 "robot-software-engineer"
 "hardware-engineer"
 "full-stack-software-engineer"
 "autonomy-engineer"
-来完成，严禁主节点自己写代码和测试。
+来完成，严禁主节点自己写产品代码、测试代码或硬件配置。
 
 ### 子 Agent 启动 SOP（主节点必读）
 
-主节点（Cursor Agent）的唯一职责是：任务拆解、子 agent 启动、集成验收、sprint 文档更新。**写代码、改文件、跑测试，一律由子 agent 完成。**
+主节点（Cursor Agent / Codex 主会话）的唯一职责是：读文件、任务拆解、子 agent 启动、等待子 agent、集成验收、sprint 文档更新、最终汇总。**写产品代码、写测试代码、改硬件配置、运行实现/测试/修复命令，一律由子 agent 完成。**
 
-#### Role → Cursor Task 映射
+主节点白名单：
 
-| 业务角色 | Task subagent_type | 读取 prompt 来源 |
-|---|---|---|
-| robot-software-engineer | `generalPurpose` | `.codex/agents/robot-software-engineer.toml` 的 `prompt` 字段 |
-| hardware-engineer | `generalPurpose` | `.codex/agents/hardware-engineer.toml` 的 `prompt` 字段 |
-| autonomy-engineer | `generalPurpose` | `.codex/agents/autonomy-engineer.toml` 的 `prompt` 字段 |
-| full-stack-software-engineer | `generalPurpose` | `.codex/agents/full-stack-software-engineer.toml` 的 `prompt` 字段 |
+- 只读查看 `AGENTS.md`、`OKR.md`、当前 sprint 文档、相关代码和配置。
+- 拆分任务、确认 owner、生成子 agent prompt。
+- 通过运行时支持的子 agent 工具派发任务，并等待结果。
+- 汇总子 agent 结果，做集成验收判断，必要时要求子 agent 重试。
+- 更新 sprint 留档和最终汇总；若用户明确限定文件范围，则只在允许范围内更新。
+
+主节点禁区：
+
+- 不直接修改产品代码、测试代码、硬件配置、launch 参数或业务文档。
+- 不直接运行构建、测试、硬件 smoke、格式化或修复命令；验收命令必须交给对应子 agent 执行。
+- 不覆盖他人改动，不回滚无关文件，不扩大文件范围。
+- 无子 agent 工具时，不得假装已经派发；只能做只读排查、计划拆解，并明确说明当前运行时缺少子 agent 能力。
+
+#### 可机械执行决策树
+
+1. read-only：用户明确要求只读排查、解释、review、状态同步时，主节点可只读文件并输出结论；不得改文件或运行测试。
+2. planning：方向不清、文件范围/验收命令/接口边界不清，或当前 sprint 缺少 `tech-plan.md` 时，主节点补计划或要求 Product Manager / OKR Owner 产出计划；计划完成前不得进入实现。
+3. implementation：需求、owner、文件范围、验收命令清楚时，必须派子 agent 执行实现、测试和修复。1 owner 必须派 1 个子agent；2+ owner 且文件范围互不重叠必须并行派多个子agent；2+ owner 但接口耦合时指定 1 个主责 owner，其他 owner 只做只读咨询或接口事实补充。
+4. acceptance：子 agent 返回后，主节点只做结果验收、证据核对、sprint 留档和最终汇总；如果验证失败或证据不足，必须把失败定位和重试任务再派给对应子 agent。
+
+#### Role → Runtime 映射
+
+| 业务角色 | Cursor Task subagent_type | Codex agent_type | 读取 prompt 来源 | 可改范围 |
+|---|---|---|---|---|
+| product-okr-owner | `generalPurpose` | `worker` | `.codex/agents/product-okr-owner.toml` 的 `prompt` 字段 | `OKR.md`、`sprints/`、`docs/product/` |
+| robot-software-engineer | `generalPurpose` | `worker` | `.codex/agents/robot-software-engineer.toml` 的 `prompt` 字段 | ROS2 主链路、接口、behavior、bringup、脚本和相关文档 |
+| hardware-engineer | `generalPurpose` | `worker` | `.codex/agents/hardware-engineer.toml` 的 `prompt` 字段 | 硬件驱动、bringup 硬件参数、硬件/vendor 文档 |
+| autonomy-engineer | `generalPurpose` | `worker` | `.codex/agents/autonomy-engineer.toml` 的 `prompt` 字段 | nav、vision、behavior 自主能力和相关文档 |
+| full-stack-software-engineer | `generalPurpose` | `worker` | `.codex/agents/full-stack-software-engineer.toml` 的 `prompt` 字段 | 手机/Web/API/UI、接口文档和触点联调 |
+
+运行时调用规则：
+
+- Cursor：使用 Cursor Task，`subagent_type=generalPurpose`。
+- Codex：使用 `spawn_agent(agent_type=worker)`，prompt 中显式写入角色 id 和完整 System Prompt。
+- 其他运行时：若没有等价子 agent 工具，只能降级为 read-only/planning，并向用户说明不能执行实现。
 
 #### 子 Agent Prompt 固定结构
 
-主节点在调用 Task 工具时，prompt 必须包含以下五段，不得省略：
+主节点在调用 Cursor Task 或 Codex `spawn_agent(agent_type=worker)` 时，prompt 必须包含以下五段，不得省略：
 
 ```
 [角色 System Prompt]
@@ -118,8 +148,10 @@ source install/setup.bash
 
 #### 并行启动强制规则
 
-- **tech-plan 有清晰文件范围且任务互不重叠时，必须在同一条消息里并行发起多个 Task 调用**（每个角色一个 Task，不序列化等待）。
-- 单 owner 任务（整个 sprint 只有一个工程师负责）也**必须派子 agent**，不得主节点自己动手。
+- **tech-plan 有清晰文件范围且任务互不重叠时，必须在同一条消息里并行发起多个 Task / spawn_agent 调用**（每个角色一个子 agent，不序列化等待）。
+- 1 owner 任务（整个 sprint 只有一个工程师负责）也**必须派 1 个子agent**，不得主节点自己动手。
+- 2+ owner 且文件范围互不重叠时，必须并行派多个子agent。
+- 2+ owner 但接口耦合、共享文件或验收链路强相关时，指定 1 个主责 owner 负责实现和集成，其他 owner 只读咨询或补专业事实。
 - "单线闭环"的含义是：**一个子 agent 单线负责到底**，不是主节点自己写。
 - 主节点收到子 agent 返回后，只做：验收结果、更新 sprint 文档、决定是否需要重试或集成。
 
@@ -147,8 +179,8 @@ source install/setup.bash
 
 当当前 sprint 的 `tech-plan.md` 已完成，并且已经写清任务分工、文件范围、接口影响、验收命令和风险边界时，默认进入实现阶段，不再停留在计划阶段：
 
-- 单 owner 任务由主责 Engineer 直接实现、验证并更新 `tech-done.md`。
-- 多个互不重叠的任务可以并行启动对应 Engineer；必须明确每个 Engineer 的文件范围、接口边界和验证命令。
+- 1 owner 任务由主责 Engineer 子 agent 直接实现、验证并更新 `tech-done.md`。
+- 2+ owner 且文件范围互不重叠的任务必须并行启动对应 Engineer 子 agent；必须明确每个 Engineer 的文件范围、接口边界和验证命令。
 - 跨角色或接口耦合任务必须指定一个主责 owner 做最终集成验证，默认由 `Robot Platform Engineer` 承担 ROS2 主链路集成。
 - 如果 `tech-plan.md` 缺少验收命令、文件范围或接口边界，先补齐计划再执行；不得用模糊计划触发并行改代码。
 - 只有用户明确要求“只做计划 / 不要实现 / 等我确认”时，才在 `tech-plan.md` 后暂停。

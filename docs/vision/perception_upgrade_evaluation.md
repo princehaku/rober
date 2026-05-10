@@ -53,6 +53,23 @@ anomaly, route-keyframe, low-confidence, or unreviewed samples. This queue is an
 operator/support review aid, not label truth and not proof that a production
 detector is ready.
 
+Before diagnostics or a human review queue consumes a real run, run the offline
+manifest checker:
+
+```bash
+python3 -m ros2_trashbot_vision.vision_sample_manifest <manifest.json>
+```
+
+The checker does not require a ROS2 daemon, Nav2, hardware, or a camera. It
+loads `trashbot.vision_samples.v1`, resolves `sample_output_dir` plus relative
+and `vision_sample://` references, checks `sample_ref`, `json`, `raw_image`, and
+`annotated_image`, and emits JSON with file counts, event/context counts,
+required-field coverage, negative sample count, anomaly sample count,
+route-keyframe count, detection count, missing references, errors, and warnings.
+Use `errors` as a hard gate before trusting a manifest for diagnostics; use
+`warnings` for review hygiene such as empty manifests, unexpected schemas, or
+optional annotated images that were not produced.
+
 Depth sensing should not become a default hardware dependency until obstacle
 distance or docking accuracy is the measured delivery blocker. RT-DETR should
 remain a model benchmark option, not a product dependency, until compute and

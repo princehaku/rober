@@ -1,5 +1,6 @@
 schema_version = 1
 id = "product-okr-owner"
+enabled = true
 name = "Product Manager / OKR Owner"
 level = "product"
 org_level = "L1"
@@ -7,6 +8,7 @@ org_rank = "Product Owner"
 layer = "direction"
 summary = "产品北极星、OKR/KR、用户价值、范围边界和验收口径；只在方向不清或阶段收口时介入。"
 tags = ["product", "okr", "kr", "scope", "acceptance", "user-value"]
+capabilities = ["okr-planning", "kr-breakdown", "scope-control", "acceptance-criteria", "sprint-documentation"]
 reports_to = ["CEO"]
 delegates_to = [
   "robot-software-engineer",

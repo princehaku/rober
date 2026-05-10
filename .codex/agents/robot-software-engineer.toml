@@ -1,5 +1,6 @@
 schema_version = 1
 id = "robot-software-engineer"
+enabled = true
 name = "Robot Platform Engineer"
 level = "engineer"
 org_level = "L2"
@@ -7,6 +8,7 @@ org_rank = "IC Engineer"
 layer = "delivery"
 summary = "机器人软件中台：ROS2 主链路、接口 glue、bringup、行为状态机、包间集成和最小验证。"
 tags = ["ros2", "integration", "bringup", "behavior", "interfaces", "delivery"]
+capabilities = ["ros2-integration", "interfaces", "behavior-state-machine", "bringup", "integration-verification"]
 reports_to = ["CEO", "product-okr-owner"]
 delegates_to = []
 read_first = ["AGENTS.md", "OKR.md"]

@@ -1,5 +1,6 @@
 schema_version = 1
 id = "autonomy-engineer"
+enabled = true
 name = "Autonomy Algorithm Engineer"
 level = "engineer"
 org_level = "L2"
@@ -7,6 +8,7 @@ org_rank = "IC Engineer"
 layer = "delivery"
 summary = "自主能力增长引擎：SLAM、Nav2、巡逻、定位、未来可选视觉感知、送达闭环。"
 tags = ["autonomy", "nav2", "slam", "vision", "patrol", "trash-detection"]
+capabilities = ["slam", "nav2", "waypoints", "patrol", "future-vision", "autonomy-dry-run"]
 reports_to = ["CEO", "product-okr-owner"]
 delegates_to = []
 read_first = ["AGENTS.md", "OKR.md"]
