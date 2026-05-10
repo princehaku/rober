@@ -19,18 +19,17 @@ ros2 launch ros2_trashbot_bringup learn.launch.py \
   route_frame_id:=map
 ```
 
-Use these launch arguments when the robot topic names differ from the defaults:
+Use these launch arguments when the robot topic names differ from defaults:
 
 - `route_camera_topic` defaults to `/camera/image_raw`.
 - `route_odom_topic` defaults to `/odom`.
 - `route_output_dir` defaults to `~/.ros/trashbot_runs/run_001`.
 - `route_min_distance_m` defaults to `0.8`.
-- `route_frame_id` defaults to `map`.
 - `route_id` defaults to blank and is copied into keyframe sample manifest context.
 - `route_sample_manifest_name` defaults to `manifest.json`.
 - `route_sample_manifest_max_entries` defaults to `500`.
 
-`route_recorder` defaults to `false` so basic mapping sessions can still run without requiring a camera stream or route dataset. When enabled, it starts `ros2_trashbot_nav/route_data_recorder` under the same launch and writes route poses plus latest camera keyframes during manual driving. Each saved keyframe also writes a companion JSON sample and appends `manifest.json` using the shared `trashbot.vision_samples.v1` contract, so `/api/diagnostics` can report learned route keyframe evidence through the same vision sample summary path used for detector samples.
+`route_recorder` defaults to `false` so basic mapping sessions can still run without requiring a camera stream or route dataset. When enabled, it starts `ros2_trashbot_nav/route_data_recorder` under the same launch and writes route poses plus latest camera keyframes during manual driving. Each saved keyframe also writes a companion JSON sample and appends `manifest.json` using `trashbot.vision_samples.v1` contract, so `/api/diagnostics` can report learned route keyframe evidence through the same vision sample summary path used for detector samples.
 
 You can still run the recorder manually for focused route-capture debugging:
 
@@ -108,99 +107,154 @@ ros2 launch ros2_trashbot_bringup autonomous.launch.py \
   route_debug_web:=true
 ```
 
-Use dry-run to verify route parsing, checkpoint progression, optional keyframe gate behavior, and debug status output before hardware movement. In dry-run mode `fixed_route_autonomy` does not create `BasicNavigator`.
+When `enable_visual_gate:=true`, dry-run preflights keyframe coverage for the full route before first checkpoint. A route with missing/unreadable/descriptorless keyframes stays in `waiting_visual_gate` and exposes missing/invalid checkpoint lists in `keyframe_preflight`.
 
-When `enable_visual_gate:=true`, dry-run now preflights keyframe coverage for the full route before advancing the first checkpoint. A route with missing, unreadable, or descriptorless keyframes stays in `waiting_visual_gate` and exposes the full missing/invalid checkpoint list in `keyframe_preflight`.
+## 4. Debug Status Contract (O3 目标面)
 
-## 4. Debug Status
+`fixed_route_autonomy` writes JSON status to `debug_status_file`:
 
-`fixed_route_autonomy` writes JSON status to `debug_status_file`. The status includes:
+- `state`
+- `mode`
+- `route_contract_version`
+- `route_file`
+- `route_file_basename`
+- `route_id`
+- `route_progress`
+- `checkpoint`
+- `current_index`
+- `target`
+- `current_target`
+- `checkpoint_id`
+- `evidence_ref`
+- `source`
+- `total`
+- `dry_run`
+- `enable_visual_gate`
+- `navigation_timeout_sec`
+- `navigation_elapsed_sec`
+- `keyframe_preflight`
+- `visual_gate_status`
+- `visual_gate_detail`
+- `visual_gate_checkpoint`
+- `route_proof_summary`
+- `failure_reason`
+- `failure_code`
+- `last_error`
+- `last_transition`
+- `last_nav_result`
+- `updated_at`
+- `elevator_assist`
 
-- state
-- mode
-- route contract version
-- route file
-- keyframe directory
-- current index
-- current target pose
-- total checkpoints
-- dry-run flag
-- visual gate flag
-- route proof summary
-- keyframe preflight summary
-- last error
-- failure reason
-- last transition
-- last navigation result
-- update timestamp
+`route_progress` 是本轮新增用于 task_record 对齐的最小主键对象，包含：
 
-Example status JSON:
+- `route_id`: 路线标识（默认取 `route_file` basename stem）
+- `route_file_basename`
+- `checkpoint_id`: `route_id:NNN` 格式
+- `evidence_ref`: status 文件路径
+- `checkpoint`: 当前索引
+- `total_checkpoints`: 路线总 checkpoint
+- `route_contract_version`
+
+示例状态片段：
 
 ```json
 {
-  "state": "completed",
-  "mode": "dry_run",
+  "state": "running",
   "route_contract_version": "fixed_route.v1",
   "route_file": "/home/orangepi/.ros/trashbot_maps/fixed_route.yaml",
-  "keyframe_dir": "/home/orangepi/.ros/trashbot_maps/keyframes",
-  "checkpoint": 2,
-  "current_index": 2,
+  "route_file_basename": "fixed_route.yaml",
+  "route_id": "fixed_route",
+  "checkpoint": 1,
+  "current_index": 1,
+  "checkpoint_id": "fixed_route:001",
   "target": null,
   "current_target": null,
   "total": 2,
-  "dry_run": true,
-  "enable_visual_gate": false,
-  "route_proof_summary": {
-    "coverage_rate": 1.0,
-    "covered_checkpoints": 2,
+  "evidence_ref": "/tmp/trashbot_fixed_route_status.json",
+  "route_progress": {
+    "route_id": "fixed_route",
+    "route_file_basename": "fixed_route.yaml",
+    "checkpoint_id": "fixed_route:001",
+    "evidence_ref": "/tmp/trashbot_fixed_route_status.json",
+    "checkpoint": 1,
     "total_checkpoints": 2,
-    "missing_checkpoints": [],
-    "gate_status": "passed",
-    "last_block_reason": ""
+    "route_contract_version": "fixed_route.v1",
+    "source": "fixed_route"
   },
-  "keyframe_preflight": {
-    "enabled": false,
-    "total_checkpoints": 2,
-    "loaded_keyframes": [],
-    "missing_keyframes": [0, 1],
-    "invalid_keyframes": [],
-    "route_visual_ready": true
-  },
-  "last_error": "",
-  "failure_reason": "",
+  "navigation_timeout_sec": 0.0,
+  "navigation_elapsed_sec": 0.24,
   "failure_code": "",
-  "last_transition": "running->completed",
-  "last_nav_result": "dry_run_checkpoint_passed",
-  "updated_at": 1778256000.0
+  "last_nav_result": "succeeded"
 }
 ```
 
-Failure code field (`failure_code`) records the structured root cause when `state` is blocked or error:
+Failure code update (O3):
 
 - `NO_ROUTE`: route file missing, unreadable, or invalid/empty.
-- `CHECKPOINT_MISSING`: keyframe assets missing or checkpoint keyframe mapping incomplete.
-- `NAVIGATION_ABORT`: Nav2 task failed after a checkpoint was submitted.
+- `CHECKPOINT_MISSING`: keyframe assets missing or checkpoint mapping incomplete.
+- `NAVIGATION_TIMEOUT`: route status loop超过 `navigation_timeout_sec`。
+- `NAVIGATION_INTERRUPTED`: Nav2 返回取消/终止。
+- `NAVIGATION_ABORT`: 其它导航失败。
 
-When a failure is in `waiting_*` gate states, `failure_code` stays empty and `failure_reason` carries the blocking reason.
+`route_proof_summary` 仍作为覆盖率与门控依据：
 
-`route_proof_summary` is the navigation-side source of truth for Objective 3 route proof coverage:
+- `coverage_rate`
+- `covered_checkpoints`
+- `total_checkpoints`
+- `missing_checkpoints`
+- `gate_status`
+- `last_block_reason`
 
-- `coverage_rate`: `covered_checkpoints / total_checkpoints`, rounded to 4 decimals.
-- `covered_checkpoints`: checkpoints already proven by fixed-route dry-run progression.
-- `total_checkpoints`: full checkpoint count from the validated fixed route.
-- `missing_checkpoints`: checkpoint indexes that are not yet proven (`covered_checkpoints..total_checkpoints-1`); indexes below `covered_checkpoints` are normalized out.
-- `gate_status`: current visual gate block state, or `passed` when all checkpoints are covered.
-- `last_block_reason`: latest block reason copied from `failure_reason`/`last_error`; empty when fully covered.
+`waiting_visual_gate` 属于 keyframe 或视觉门控未完成状态；`failure_code` 可能为空。
 
-Stability rules:
+## 5. 关键缺失与超时复现脚本（离线）
 
-- Full coverage: `coverage_rate=1.0`, `missing_checkpoints=[]`, `gate_status=passed`.
-- Partial coverage: `coverage_rate<1.0`, `missing_checkpoints` lists uncovered tail indexes.
-- Partial coverage without an active gate block can still report `gate_status=passed`; readiness must be decided from `coverage_rate` + `missing_checkpoints` together.
-- Missing keyframe: `gate_status=keyframe_preflight_failed` or `missing_keyframe`, with keyframe detail in `last_block_reason`.
-- Visual gate not passed (camera frame/descriptors/matches): `gate_status` reflects the concrete gate status and keeps the failure detail in `last_block_reason`.
+### 5.1 固定路线关键点缺失
 
-## 5. Debug Web
+```bash
+cat >/tmp/missing_keyframe_route.yaml <<'YAML'
+waypoints:
+  - frame_id: map
+    x: 1.0
+    y: 2.0
+    qw: 1.0
+YAML
+
+ros2 run ros2_trashbot_nav fixed_route_autonomy \
+  --ros-args \
+  -p route_file:=/tmp/missing_keyframe_route.yaml \
+  -p keyframe_dir:=/tmp/does_not_exist \
+  -p enable_visual_gate:=true \
+  -p debug_status_file:=/tmp/trashbot_fixed_route_status.json \
+  -p dry_run:=true
+jq '.state,.failure_code,.failure_reason,.keyframe_preflight,.route_progress' /tmp/trashbot_fixed_route_status.json
+```
+
+预期：
+
+- `state` 为 `waiting_visual_gate`
+- `failure_code` 为 `CHECKPOINT_MISSING`
+- `failure_reason` 包含 `missing keyframes`
+- `route_progress.checkpoint_id` 为 `route_id:000`
+- `route_progress.evidence_ref` 仍是 status 文件路径
+
+### 5.2 导航中断/超时（离线复现框架）
+
+本地可通过伪造 `BasicNavigator` 让 `isTaskComplete()` 长期返回 `False`，并设置 `navigation_timeout_sec` 为 0.2s，确认状态进入 timeout 分支，写入：
+
+- `failure_code` 为 `NAVIGATION_TIMEOUT`
+- `navigation_elapsed_sec` > 0
+- `state=error`
+- `route_progress.evidence_ref` 一致
+
+可复现点在以下文件里：
+
+- `src/ros2_trashbot_nav/ros2_trashbot_nav/fixed_route_autonomy.py`
+  - `_poll_nav_result`
+  - `_set_navigation_error`
+  - `_write_debug_status`
+
+## 6. Debug Web
 
 Start the debug page:
 
@@ -225,7 +279,7 @@ Open:
 http://<host-ip>:8765
 ```
 
-## 6. Autonomous Run
+## 7. Autonomous Run
 
 Run the full autonomous launch with a saved map:
 
@@ -240,12 +294,11 @@ Switch from `fixed_route_dry_run:=true` to real fixed-route navigation only afte
 
 - The route YAML or CSV passes offline parsing and contains the expected checkpoint count.
 - Dry-run reaches `state: completed` with empty `failure_reason`.
-- `checkpoint/current_index/target` coordinates align with task-record replay fields and the debug web updates once per checkpoint.
-- If `enable_visual_gate:=true`, each checkpoint has a corresponding keyframe and live camera frames pass the visual gate at the expected locations.
-- Nav2 localization, map loading, emergency stop, low-speed base motion, and manual recovery have been verified on the robot.
-- No waypoint patrol node is active at the same time; use `navigation_mode:=fixed_route` or `delivery_mode:=fixed_route`.
+- `checkpoint/current_index/target` 与任务复盘 `evidence` 的 `current_index/target/evidence_ref` 可对齐。
+- `navigation_timeout_sec` and `navigation_elapsed_sec` 在出现异常时可用于复现与修复。
+- No waypoint patrol node is active at the same time; use `navigation_mode:=fixed_route`.
 
-## 7. Delivery Action Modes
+## 8. Delivery Action Modes
 
 The task orchestrator defaults to safe dry-run delivery:
 
@@ -255,15 +308,10 @@ ros2 launch ros2_trashbot_bringup autonomous.launch.py \
   delivery_target:=trash_station
 ```
 
-After map, localization, waypoint YAML, emergency stop, and low-speed base checks pass, enable waypoint delivery:
+After map/localization and recovery checks pass, enable waypoint delivery:
 
 ```bash
 ros2 launch ros2_trashbot_bringup autonomous.launch.py \
-  map_file:=~/.ros/trashbot_maps/trashbot_map.yaml \
-  waypoint_file:=~/.ros/trashbot_maps/waypoints.yaml \
   delivery_mode:=waypoint \
-  delivery_target:=trash_station \
-  return_target:=home
+  delivery_target:=trash_station
 ```
-
-`delivery_target` and `return_target` are waypoint names from the YAML file. If `delivery_target` is blank, the behavior layer selects the first waypoint with `type: 2`.

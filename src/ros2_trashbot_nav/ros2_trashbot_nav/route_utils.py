@@ -1,4 +1,5 @@
 import csv
+from pathlib import Path
 
 
 ROUTE_CONTRACT_VERSION = 'fixed_route.v1'
@@ -9,6 +10,8 @@ OPTIONAL_NUMERIC_FIELDS = ('z', 'qx', 'qy', 'qz')
 FAILURE_CODE_NO_ROUTE = 'NO_ROUTE'
 FAILURE_CODE_CHECKPOINT_MISSING = 'CHECKPOINT_MISSING'
 FAILURE_CODE_NAVIGATION_ABORT = 'NAVIGATION_ABORT'
+FAILURE_CODE_NAVIGATION_TIMEOUT = 'NAVIGATION_TIMEOUT'
+FAILURE_CODE_NAVIGATION_INTERRUPTED = 'NAVIGATION_INTERRUPTED'
 ELEVATOR_ASSIST_EVIDENCE_STATUSES = (
     'door_open',
     'door_closed_or_unknown',
@@ -18,6 +21,67 @@ ELEVATOR_ASSIST_EVIDENCE_STATUSES = (
     'safe_to_exit',
     'unsafe_to_exit',
 )
+
+
+def build_route_id(route_file: str) -> str:
+    """Normalize route contract identifier for cross-layer evidence linking."""
+    route_file_name = str(route_file or "").strip()
+    if not route_file_name:
+        return 'fixed_route'
+    route_stem = Path(route_file_name).stem
+    return route_stem or 'fixed_route'
+
+
+def build_checkpoint_id(route_id: str, checkpoint: int) -> str:
+    """Build a stable checkpoint identifier for evidence correlation."""
+    try:
+        index = int(checkpoint)
+    except (TypeError, ValueError):
+        index = 0
+    if index < 0:
+        index = 0
+    return f'{route_id}:{index:03d}'
+
+
+def build_route_checkpoint_payload(
+    route_file: str,
+    debug_status_file: str,
+    current_index: int,
+    total_checkpoints: int,
+    *,
+    route_id: str | None = None,
+):
+    """Build route-layer progress identifiers used by diagnostics/task_record.
+
+    The payload is intentionally narrow and stable:
+    - route_id: route basename stem
+    - checkpoint_id: semantic keypoint key
+    - evidence_ref: status file path used as run anchor
+    """
+    normalized_route_id = (route_id or build_route_id(route_file)).strip() or 'fixed_route'
+    try:
+        index = int(current_index)
+    except (TypeError, ValueError):
+        index = 0
+    try:
+        total = int(total_checkpoints)
+    except (TypeError, ValueError):
+        total = 0
+    if total < 0:
+        total = 0
+    if index < 0:
+        index = 0
+    if total and index > total:
+        index = total
+
+    return {
+        'route_id': normalized_route_id,
+        'route_file_basename': Path(str(route_file or '').strip() or 'fixed_route').name,
+        'checkpoint_id': build_checkpoint_id(normalized_route_id, index),
+        'evidence_ref': str(debug_status_file or '').strip(),
+        'checkpoint': index,
+        'total_checkpoints': total,
+    }
 
 _ELEVATOR_EVIDENCE_PROFILES = {
     'door_open': {

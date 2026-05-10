@@ -16,7 +16,12 @@ from ros2_trashbot_nav.route_utils import (
     ROUTE_CONTRACT_VERSION,
     FAILURE_CODE_CHECKPOINT_MISSING,
     FAILURE_CODE_NAVIGATION_ABORT,
+    FAILURE_CODE_NAVIGATION_INTERRUPTED,
+    FAILURE_CODE_NAVIGATION_TIMEOUT,
     FAILURE_CODE_NO_ROUTE,
+    build_checkpoint_id,
+    build_route_checkpoint_payload,
+    build_route_id,
     build_elevator_assist_evidence,
     build_elevator_assist_status,
     load_waypoints_from_csv,
@@ -40,6 +45,7 @@ class FixedRouteAutonomy(Node):
         self.declare_parameter('keyframe_dir', '~/.ros/trashbot_maps/keyframes')
         self.declare_parameter('dry_run', False)
         self.declare_parameter('debug_status_file', '/tmp/trashbot_fixed_route_status.json')
+        self.declare_parameter('navigation_timeout_sec', 0.0)
 
         self.route_file = os.path.expanduser(self.get_parameter('route_file').value)
         self.camera_topic = self.get_parameter('camera_topic').value
@@ -48,6 +54,9 @@ class FixedRouteAutonomy(Node):
         self.keyframe_dir = os.path.expanduser(self.get_parameter('keyframe_dir').value)
         self.dry_run = bool(self.get_parameter('dry_run').value)
         self.debug_status_file = self.get_parameter('debug_status_file').value
+        self.navigation_timeout_sec = float(self.get_parameter('navigation_timeout_sec').value)
+        self.route_id = build_route_id(self.route_file)
+        self.source = 'fixed_route'
 
         self.bridge = CvBridge()
         self.navigator = None if self.dry_run else BasicNavigator()
@@ -61,6 +70,8 @@ class FixedRouteAutonomy(Node):
         self.visual_gate_status = 'not_checked'
         self.visual_gate_detail = ''
         self.visual_gate_checkpoint = None
+        self.navigation_started_at = None
+        self.navigation_elapsed_sec = 0.0
         self.keyframe_preflight = {}
         self.state = 'initializing'
         self.last_transition = ''
@@ -81,6 +92,48 @@ class FixedRouteAutonomy(Node):
             self._write_debug_status('error')
         else:
             self._write_debug_status('ready')
+
+    def _navigation_error_code(self, result) -> str:
+        result_name = str(result).strip().lower()
+        if 'timeout' in result_name:
+            return FAILURE_CODE_NAVIGATION_TIMEOUT
+        if 'cancel' in result_name:
+            return FAILURE_CODE_NAVIGATION_INTERRUPTED
+        return FAILURE_CODE_NAVIGATION_ABORT
+
+    def _set_navigation_error(self, checkpoint: int, result) -> None:
+        code = self._navigation_error_code(result)
+        if code == FAILURE_CODE_NAVIGATION_TIMEOUT:
+            self._set_failure(f'checkpoint {checkpoint} navigation timeout', code)
+            self.last_nav_result = 'timeout'
+        elif code == FAILURE_CODE_NAVIGATION_INTERRUPTED:
+            self._set_failure(f'checkpoint {checkpoint} navigation interrupted', code)
+            self.last_nav_result = 'interrupted'
+        else:
+            self._set_failure(f'checkpoint {checkpoint} failed', code)
+            self.last_nav_result = str(result)
+
+    def _mark_checkpoint_progress(self, state: str):
+        target_payload = build_route_checkpoint_payload(
+            self.route_file,
+            self.debug_status_file,
+            self.current_index,
+            len(self.route_poses),
+            route_id=self.route_id,
+        )
+        target_payload['route_contract_version'] = ROUTE_CONTRACT_VERSION
+        target_payload['source'] = self.source
+        target_payload['evidence_ref'] = self.debug_status_file
+        target_payload['checkpoint_id'] = build_checkpoint_id(
+            target_payload['route_id'],
+            target_payload['checkpoint'],
+        )
+        if self.navigation_started_at is not None and state in ('running', 'waiting_visual_gate'):
+            elapsed = time.monotonic() - self.navigation_started_at
+            target_payload['navigation_elapsed_sec'] = max(0.0, round(elapsed, 4))
+        else:
+            target_payload['navigation_elapsed_sec'] = self.navigation_elapsed_sec
+        return target_payload
 
     def _load_route(self, path: str) -> List[PoseStamped]:
         if not os.path.exists(path):
@@ -259,6 +312,8 @@ class FixedRouteAutonomy(Node):
             target = self.route_poses[self.current_index]
             target.header.stamp = self.get_clock().now().to_msg()
             self.get_logger().info(f'Navigate to checkpoint #{self.current_index}')
+            self.navigation_started_at = time.monotonic()
+            self.navigation_elapsed_sec = 0.0
             self.navigator.goToPose(target)
             self.task_in_progress = True
         state = 'completed' if self.current_index >= len(self.route_poses) else 'ready'
@@ -267,18 +322,37 @@ class FixedRouteAutonomy(Node):
 
     def _poll_nav_result(self):
         if not self.navigator.isTaskComplete():
+            if (
+                self.navigation_timeout_sec > 0
+                and self.navigation_started_at is not None
+                and (time.monotonic() - self.navigation_started_at) > self.navigation_timeout_sec
+            ):
+                self.navigation_elapsed_sec = time.monotonic() - self.navigation_started_at
+                checkpoint_for_error = self.current_index
+                self._set_failure(
+                    f'checkpoint {checkpoint_for_error} navigation timeout',
+                    FAILURE_CODE_NAVIGATION_TIMEOUT,
+                )
+                self.last_nav_result = 'timeout'
+                self.navigation_started_at = None
+                self.task_in_progress = False
+                self._write_debug_status('error')
+                return
             return
         result = self.navigator.getResult()
+        self.navigation_elapsed_sec = (
+            0.0 if self.navigation_started_at is None else time.monotonic() - self.navigation_started_at
+        )
         if result == TaskResult.SUCCEEDED:
             self.current_index += 1
             self._clear_failure()
             self.last_nav_result = 'succeeded'
             self.get_logger().info(f'checkpoint reached -> next {self.current_index}')
         else:
-            self._set_failure(f'checkpoint {self.current_index} failed', FAILURE_CODE_NAVIGATION_ABORT)
-            self.last_nav_result = str(result)
+            self._set_navigation_error(self.current_index, result)
             self.get_logger().warn(f'checkpoint {self.current_index} failed, retrying')
         self.task_in_progress = False
+        self.navigation_started_at = None
         state = 'completed' if self.current_index >= len(self.route_poses) else 'ready'
         self._write_debug_status(state)
 
@@ -310,6 +384,7 @@ class FixedRouteAutonomy(Node):
             gate_status=self.visual_gate_status,
             last_block_reason=self.failure_reason or self.last_error,
         )
+        route_progress = self._mark_checkpoint_progress(state)
         # Fixed-route does not infer elevator semantics by default. The status
         # carries a normalized placeholder so behavior/operator layers can write
         # or display future dry-run evidence without depending on camera OCR.
@@ -330,9 +405,17 @@ class FixedRouteAutonomy(Node):
             'current_index': self.current_index,
             'target': current_target,
             'current_target': current_target,
+            'route_id': route_progress['route_id'],
+            'route_file_basename': route_progress['route_file_basename'],
+            'checkpoint_id': route_progress['checkpoint_id'],
+            'evidence_ref': route_progress['evidence_ref'],
+            'source': self.source,
+            'route_progress': route_progress,
             'total': len(self.route_poses),
             'dry_run': self.dry_run,
             'enable_visual_gate': self.enable_visual_gate,
+            'navigation_timeout_sec': self.navigation_timeout_sec,
+            'navigation_elapsed_sec': round(self.navigation_elapsed_sec, 4),
             'keyframe_preflight': self.keyframe_preflight,
             'visual_gate_status': self.visual_gate_status,
             'visual_gate_detail': self.visual_gate_detail,

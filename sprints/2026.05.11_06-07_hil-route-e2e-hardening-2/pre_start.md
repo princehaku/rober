@@ -2,43 +2,36 @@
 
 ## 状态
 
-- 阶段：pre-start started（重聚焦 O1）
-- 时间：2026-05-11 06:00 Asia/Shanghai
+- 阶段：pre-start
+- 时间：2026-05-11
 - 目录：`sprints/2026.05.11_06-07_hil-route-e2e-hardening-2/`
-- Owner：`hardware-engineer`
-- 本轮目标：优先完成 O1/HIL 首轮实机闭环；其余 O2/O3 仅在 `hil_pass` 阻塞解除后恢复。
+- Owner：`full-stack-software-engineer`
+- 本轮目标：为 O1/O2/O3 的新证据字段与故障码，补齐 operator gateway 统一透传链路，并在手机端给出可执行恢复建议。
 
-## 启动依据（证据驱动）
+## 证据驱动启动依据
 
-1. `sprints/2026.05.10_21-22_review-progress-metrics/tech-done.md` 与 `final.md` 复盘到 `NO TESTS RAN`，围栏命名与执行链存在复发风险。
-2. `docs/acceptance/hil_runbook.md` 与 `docs/acceptance/wave_rover_hil_evidence.md` 尚未形成第一轮 `source=hil_pass` 的统一证据包（尤其命令、反馈、topic快照与 `evidence_ref`）。
-3. 历史 `scripts/hardware_smoke_wave_rover.py --status` 可跑，但 pyserial 缺失会直接阻断 hil_pass；该阻塞已在最近评审被反复提及，当前仍影响闭环。
-4. `docs/hardware/wave_rover_json_bridge.md` 的映射表已齐备，但与第一轮 run 的 `T=143/T=142/T=131/T=1001` 复验尚未按证据链固定。
+- O1/O2/O3 已有部分证据字段在行为侧已有落盘，但 operator status/diagnostics 透传口径分散，存在重复拼接与字段丢失。
+- `failure_code/evidence_ref/source/state_transition_history/human_intervention_required` 在多入口（`latest_status`、`task_record`、`last_task`）提取逻辑不统一，容易出现 UI 与后端契约偏差。
+- 现有手机端只给“人工接管”提示，无法把失败分支映射为下一步可执行动作，用户无法快速恢复。
 
-## 本轮核心抓手（O1）
+## 本轮执行清单（仅本轮交付）
 
-### 1) 先把 `hil_pass` 做成可重现实机证据闭环
+1. 在 operator gateway 行为层统一 `failure_code/evidence_ref/source/state_transition_history/human_intervention_required` 的透传规则，避免重复拼接。
+2. 保持 `status` 与 `diagnostics` 在 payload 上下文中一致透传，避免 O1/O2/O3 证据信息在链路中断层。
+3. 在 operator 页面展示新增字段，并基于现有 evidence 与失败分支给出可执行恢复建议。
+4. 在 sprint 文档写清验收边界与残留风险，不新增测试文件。
 
-- 动作：固定第一轮 run 的 `run_id` + `evidence_ref`，并要求 evidence 文档保留 command、serial log、两帧以上 `T=1001`、主题快照。
-- 证据链：`docs/acceptance/hil_runbook.md`、`docs/acceptance/wave_rover_hil_evidence.md`、`docs/acceptance/robot_bringup_checklist.md`。
-- 验收：至少一次完整 `source=hil_pass` run 后，能从 `wave_rover_hil_evidence.md` 回查同一 evidence。
+## 交付范围（本轮）
 
-### 2) `cmd_vel` 与底盘映射复验（命令-反馈一体）
+- `sprints/2026.05.11_06-07_hil-route-e2e-hardening-2/pre_start.md`
+- `sprints/2026.05.11_06-07_hil-route-e2e-hardening-2/prd.md`
+- `sprints/2026.05.11_06-07_hil-route-e2e-hardening-2/tech-plan.md`
+- `src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway.py`
+- `src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`
+- `src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_http.py`
 
-- 动作：围栏命令固定验证启动下发顺序（`T=143`、`T=142`、`T=131`）、`T=1001` 字段完整性、`L/R/r/p/y/v` + 回环反馈频率。
-- 证据链：`scripts/hardware_smoke_wave_rover.py`、`docs/hardware/wave_rover_json_bridge.md`、`docs/acceptance/hil_runbook.md`。
-- 验收：`hil_pass` 日志中出现上述序列与字段，`/odom` `/imu/data` `/battery` 源头说明齐全。
+## 验收边界（本轮）
 
-### 3) 依赖阻塞（pyserial / 串口）作为硬边界，不替代通过
-
-- 动作：在脚本中明确 pyserial 缺失时不误报；`--help` 与 `--status` 仍可执行，硬件围栏禁止在依赖阻塞下伪通过。
-- 证据链：`scripts/hardware_smoke_wave_rover.py`、`AGENTS.md`、`docs/acceptance/robot_bringup_checklist.md`。
-- 验收：未安装依赖时显示明确修复路径；依赖修复后执行 `--move-test`。
-
-## 围栏策略（本轮不加新测试矩阵）
-
-- 围栏固定三条：
-  - `python3 scripts/hardware_smoke_wave_rover.py --help`
-  - `python3 scripts/hardware_smoke_wave_rover.py --status`
-  - `python3 scripts/hardware_smoke_wave_rover.py --move-test --test-speed 0.05 --test-duration-s 0.3 --serial-port /dev/ttyUSB0 --baudrate 115200`
-- 禁止 `test_*review*py` 通配验收；任何失败必须以 residual risk 形式进入 `tech-done`。
+- 本轮只补强 O1/O2/O3 证据透传一致性与用户提示，不涉及硬件协议、UART/串口、ESP32/Orange Pi 供应商细节。
+- 不新增新测试文件；沿用现有 `operator_gateway` 相关单测。
+- 不改行为状态机策略与任务调度算法。

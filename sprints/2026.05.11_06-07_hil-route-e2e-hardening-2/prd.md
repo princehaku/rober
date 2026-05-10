@@ -1,55 +1,62 @@
 # Sprint 2026.05.11 06-07 HIL + Route E2E Hardening-2 - PRD
 
-## 用户价值与产品北极星
+## 用户价值与北极星
 
-把 O1 优先级回归到“能上车可复现”——以 `source=hil_pass` 的证据替代文档验收，确保下一步动作有真实闭环。
+让手机端“看到同一套证据就知道下一步做什么”，在 O1/O2/O3 任何失败分支下，展示统一的 `failure_code/evidence_ref/source/state_transition_history/human_intervention_required`，并给出可执行恢复建议，减少用户猜测和误操作。
 
-## 目标与验收意图
+## 本轮目标
 
-- 清理最近评审复发点：`hil_pass`、命令反馈映射与依赖阻塞未形成可复现证据。
-- 用最小围栏推进 O1，避免扩场景和临时测试堆叠。
-- O2/O3 本轮暂不扩展实现，只保留在 `hil_pass` 恢复后可顺延。
+1. operator gateway status/diagnostics 统一采集与透传规则，避免 O1/O2/O3 的证据字段漏传、重复拼接。
+2. 失败链路中将 `evidence` 与 `failure_code` 映射为用户可执行的恢复建议（而非空洞提示）。
+3. 仅更新现有三份 sprint 文件与行为网关代码，不新增测试文件。
 
-## OKR 映射（本轮聚焦 O1）
+## 用户旅程收益
 
-### Objective 1：HIL 可复现闭环
+- 用户触发任务→运行中可持续查看 `source/evidence_ref/human_intervention_required`。
+- 任务失败时看到清晰 `failure_code` 与来源证据，不再只看到“异常停止/需人工接管”。
+- 依据建议直接执行“重试/清场/回点位/恢复路线”等动作，闭环率更高。
 
-- KR1：第一轮 `source=hil_pass` 有明确 `run_id / evidence_ref`。
-- KR2：`hil_pass` 产物包含 command、serial log、feedback、`/odom`、`/imu/data`、`/battery` 证据。
-- KR3：`source=software_proof` 与 `source=hil_pass` 清晰分离，不混用为通过依据。
+## OKR 映射（本轮聚焦）
 
-### Objective 1 扩展 KR：命令反馈映射复验
+- KR1：同一失败事件在 `status` 与 `diagnostics` 中的 `failure_code/evidence_ref/source/state_transition_history/human_intervention_required` 保持一致。
+- KR2：普通用户在 operator 页面可读到可执行恢复建议，并可追踪来源（evidence + 失败分支）。
+- KR3：完成一次性规则定义并沉淀进本轮 `tech-plan` 方便下轮接手。
 
-- KR1：复验显示 `T=143 -> T=142 -> T=131` 下发顺序与参数一致。
-- KR2：`T=1001` 连续样本>=2且字段含 `L,R,r,p,y,v`。
-- KR3：每次运动前后都有 `T=1,L=0,R=0` 覆盖停命令。
+## 范围
 
-### Objective 1 风险 KR：依赖阻塞治理
+### 做什么
 
-- KR1：pyserial 缺失时阻塞告警明确，不误报 `hil_pass`。
-- KR2：串口路径、波特率、参数锁定在 evidence packet 复核。
-
-## 本轮范围（仅 O1）
-
-### 做什么（按优先级）
-
-1. 更新 `hardware_smoke_wave_rover.py` 以应对依赖阻塞并固定最小围栏参数（与验收命令一致）。
-2. 在 `hil_runbook` 增加 run packet 与复验规则，形成可复用 `hil_pass` 包。
-3. 在 `wave_rover_hil_evidence` 与 `robot_bringup_checklist` 绑定 `evidence_ref` + 主题反馈归一。
+1. 修改 `src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway.py`
+2. 修改 `src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`
+3. 修改 `src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_http.py`
+4. 同步更新本轮 `pre_start.md`、`prd.md`、`tech-plan.md`
 
 ### 不做什么
 
-- 不新增测试矩阵，不改 O2/O3 任务实现。
-- 不把 `dry-run` 或 `software_proof` 标注为硬件通过。
-- 不恢复到 `test_*review*py` 命名方式。
+- 不改硬件协议、vendor 资料、WAVE ROVER/ESP32/Orange Pi 接口。
+- 不新增测试文件，不扩展到 detector / vision 分支。
+- 不改 behavior 状态机关键策略，不改调度算法。
 
-## 验收门槛（固定围栏）
+## 验收标准（用户可见结果）
 
-- `python3 scripts/hardware_smoke_wave_rover.py --help`
-- `python3 scripts/hardware_smoke_wave_rover.py --status`
-- `python3 scripts/hardware_smoke_wave_rover.py --move-test --test-speed 0.05 --test-duration-s 0.3 --serial-port /dev/ttyUSB0 --baudrate 115200`
+1. 失败时 status 与 diagnostics 均返回以下字段且来源一致：
+   - `source`
+   - `evidence_ref`
+   - `failure_code`
+   - `state_transition_history`
+   - `human_intervention_required`
+2. `diagRecoveryHint` 在 operator 页面展示建议文字，且建议与 evidence 失败分支可对应（如缺图像点、导航中断、路由跳转中断）。
+3. 手机端不再重复拼接 `evidence` 字段；字段以透传主数据为准。
+4. 未新增测试文件；仅在既有测试命令上验证。
 
-## 对应责任 Engineer
+## 验收命令
 
-- `hardware-engineer`：O1 主责。
-- `robot-software-engineer`/`autonomy-engineer`：在 O1 未阻塞前仅支持，不改核心代码。
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest src/ros2_trashbot_behavior/test/test_operator_gateway_static.py src/ros2_trashbot_behavior/test/test_operator_gateway_http.py src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py
+```
+
+## 预计用户提示优先级
+
+- P0：`failure_code` 有值但用户页没看到/不一致。
+- P1：`failure_code` 显示但无具体建议，不能执行下一步。
+- P2：多路数据源重复拼接，导致建议文本误导。
