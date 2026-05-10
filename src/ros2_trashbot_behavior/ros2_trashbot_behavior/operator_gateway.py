@@ -56,6 +56,9 @@ class OperatorGateway(Node):
             "review_decision_log_ref",
             "~/.ros/trashbot_vision_samples/review_decisions.jsonl",
         )
+        # This reference points to a software proof artifact only. It never
+        # upgrades diagnostics to hardware/HIL pass by itself.
+        self.declare_parameter("hardware_proof_ref", "")
 
         self.host = str(self.get_parameter("host").value)
         self.port = int(self.get_parameter("port").value)
@@ -73,6 +76,9 @@ class OperatorGateway(Node):
         )
         self.review_decision_log_ref = os.path.expanduser(
             str(self.get_parameter("review_decision_log_ref").value)
+        )
+        self.hardware_proof_ref = os.path.expanduser(
+            str(self.get_parameter("hardware_proof_ref").value)
         )
 
         self._lock = threading.Lock()
@@ -133,6 +139,7 @@ class OperatorGateway(Node):
             vision_sample_manifest_ref=self.vision_sample_manifest_ref,
             review_decision_log_ref=self.review_decision_log_ref,
             operator_status_file=self.status_file,
+            hardware_proof_ref=self.hardware_proof_ref,
         )
 
     def vision_review_queue(self):

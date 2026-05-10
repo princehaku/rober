@@ -106,6 +106,10 @@ def generate_launch_description():
         'operator_pose_topic', default_value='/amcl_pose',
         description='Pose topic used by the operator gateway live location view')
 
+    operator_hardware_proof_ref_arg = DeclareLaunchArgument(
+        'operator_hardware_proof_ref', default_value='',
+        description='Optional software-proof artifact path for diagnostics.hardware_proof (not HIL evidence)')
+
     remote_bridge_arg = DeclareLaunchArgument(
         'remote_bridge', default_value='false',
         description='Start outbound 4G remote bridge')
@@ -180,6 +184,7 @@ def generate_launch_description():
     operator_gateway_dropoff_service = LaunchConfiguration('operator_gateway_dropoff_service')
     operator_status_file = LaunchConfiguration('operator_status_file')
     operator_pose_topic = LaunchConfiguration('operator_pose_topic')
+    operator_hardware_proof_ref = LaunchConfiguration('operator_hardware_proof_ref')
     remote_bridge = LaunchConfiguration('remote_bridge')
     remote_cloud_base_url = LaunchConfiguration('remote_cloud_base_url')
     remote_robot_id = LaunchConfiguration('remote_robot_id')
@@ -230,6 +235,7 @@ def generate_launch_description():
         operator_gateway_dropoff_service_arg,
         operator_status_file_arg,
         operator_pose_topic_arg,
+        operator_hardware_proof_ref_arg,
         remote_bridge_arg,
         remote_cloud_base_url_arg,
         remote_robot_id_arg,
@@ -353,6 +359,7 @@ def generate_launch_description():
                 'dropoff_service_name': operator_gateway_dropoff_service,
                 'status_file': operator_status_file,
                 'pose_topic': operator_pose_topic,
+                'hardware_proof_ref': operator_hardware_proof_ref,
             }],
         ),
 

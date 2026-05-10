@@ -132,6 +132,12 @@ The same `/api/status` payload carries live location telemetry when available:
 | `log_refs` | empty list | Operator-facing log references included in `/api/diagnostics`. |
 | `vision_sample_manifest_ref` | `~/.ros/trashbot_vision_samples/manifest.json` | Optional deployment-supplied reference for future vision samples; the current MVP does not ship a default detector or manifest producer. |
 | `review_decision_log_ref` | `~/.ros/trashbot_vision_samples/review_decisions.jsonl` | Local JSONL sink for manual review decisions. Missing/corrupt decision logs are reported through structured diagnostics fields. |
+| `hardware_proof_ref` | empty | Optional software-proof artifact path consumed by `/api/diagnostics.hardware_proof`. Empty or unreadable paths must degrade to `read_error`; this evidence is software-only and is never equivalent to HIL pass. |
+
+Launch entry mapping:
+
+- `bringup.launch.py` and `autonomous.launch.py` expose `operator_hardware_proof_ref`.
+- That launch argument maps 1:1 to operator gateway node parameter `hardware_proof_ref`.
 
 `/api/diagnostics.vision_samples` keeps the legacy summary fields (`manifest_ref`, `exists`, `schema`, `sample_count`, latest sample fields, `event_counts`, `review_queue`, and `read_error`) and adds manifest integrity fields produced from `ros2_trashbot_vision.vision_sample_manifest.summarize_manifest()` when available:
 

@@ -52,11 +52,12 @@ class LaunchContractStaticTest(unittest.TestCase):
             "'operator_gateway'",
             "'operator_gateway_host'",
             "'operator_gateway_port'",
-                    "'operator_gateway_collect_action'",
-                    "'operator_gateway_dropoff_service'",
-                    "'operator_status_file'",
-                    "'operator_pose_topic'",
-                    "'remote_bridge'",
+            "'operator_gateway_collect_action'",
+            "'operator_gateway_dropoff_service'",
+            "'operator_status_file'",
+            "'operator_pose_topic'",
+            "'operator_hardware_proof_ref'",
+            "'remote_bridge'",
             "'remote_cloud_base_url'",
             "'remote_robot_id'",
             "'remote_auth_token'",
@@ -132,6 +133,7 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertIn("'default_target': delivery_target", gateway_block)
         self.assertIn("'collect_action_name': operator_gateway_collect_action", gateway_block)
         self.assertIn("'dropoff_service_name': operator_gateway_dropoff_service", gateway_block)
+        self.assertIn("'hardware_proof_ref': operator_hardware_proof_ref", gateway_block)
 
     def test_launches_can_start_remote_bridge(self):
         for launch_name in ("bringup.launch.py", "autonomous.launch.py"):
@@ -166,10 +168,11 @@ class LaunchContractStaticTest(unittest.TestCase):
             "'operator_gateway'",
             "'operator_gateway_host'",
             "'operator_gateway_port'",
-                "'operator_gateway_collect_action'",
-                "'operator_gateway_dropoff_service'",
-                "'operator_status_file'",
-                "'operator_pose_topic'",
+            "'operator_gateway_collect_action'",
+            "'operator_gateway_dropoff_service'",
+            "'operator_status_file'",
+            "'operator_pose_topic'",
+            "'operator_hardware_proof_ref'",
             ):
                 self.assertIn(argument, source)
         self.assertIn("condition=IfCondition(operator_gateway)", gateway_block)
@@ -178,6 +181,7 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertIn("'dropoff_service_name': operator_gateway_dropoff_service", gateway_block)
         self.assertIn("'status_file': operator_status_file", gateway_block)
         self.assertIn("'pose_topic': operator_pose_topic", gateway_block)
+        self.assertIn("'hardware_proof_ref': operator_hardware_proof_ref", gateway_block)
 
     def test_hardware_bridge_launches_with_canonical_serial_parameters(self):
         for launch_name in ("bringup.launch.py", "autonomous.launch.py"):

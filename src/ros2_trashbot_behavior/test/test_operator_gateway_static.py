@@ -38,6 +38,8 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("log_refs", source)
         self.assertIn("vision_sample_manifest_ref", source)
         self.assertIn("review_decision_log_ref", source)
+        self.assertIn('self.declare_parameter("hardware_proof_ref", "")', source)
+        self.assertIn('self.hardware_proof_ref = os.path.expanduser(', source)
         self.assertIn("def diagnostics", source)
         self.assertIn("build_diagnostics_payload", source)
         self.assertIn("def vision_review_queue", source)
@@ -77,6 +79,7 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "log_refs=self.log_refs",
             "vision_sample_manifest_ref=self.vision_sample_manifest_ref",
             "review_decision_log_ref=self.review_decision_log_ref",
+            "hardware_proof_ref=self.hardware_proof_ref",
             "operator_status_file=self.status_file",
         ):
             self.assertIn(field, gateway_diagnostics_block)
