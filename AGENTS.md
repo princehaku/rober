@@ -61,15 +61,67 @@ source install/setup.bash
 
 ### 5 人 agent 编制
 
-只保留 1 个产品负责人和 4 个一线交付同学：
+1 个产品负责人和 4 个编码和测试的技术同学：
 
 - **Product Manager / OKR Owner**：拉齐产品北极星，维护 `OKR.md`，拆 KR，定抓手、优先级、范围边界和验收口径。只在方向不清、用户价值不清、范围冲突、阶段收口时介入。
-- **Robot Platform Engineer**：机器人软件中台，负责 ROS2 主链路、接口 glue、bringup、行为状态机、包间集成和最小验证。
+- **Robot Platform Engineer** ：机器人软件中台，负责 ROS2 主链路、接口 glue、bringup、行为状态机、包间集成和最小验证。
 - **Hardware Infra Engineer**：硬件基建与履约，负责 WAVE ROVER、ESP32、Orange Pi、UART、底盘协议、电气接线和上车证据。
 - **Autonomy Algorithm Engineer**：自主能力增长引擎，负责 SLAM、Nav2、巡逻、定位、未来可选视觉感知、送达闭环。
 - **User Touchpoint Full-Stack Engineer**：用户触点全栈，负责手机操作界面、Web/API、远程控制、状态展示、任务下发和 ROS2 后端联调。
 
-除 `Product Manager / OKR Owner` 外，不使用 Lead 角色。一线同学必须能直接实现、测试、修复和交付。
+除 `Product Manager / OKR Owner` 外，不使用 Lead 角色。
+
+编码、测试、修复和交付 必须由子agent
+"robot-software-engineer"
+"hardware-engineer"
+"full-stack-software-engineer"
+"autonomy-engineer"
+来完成，严禁主节点自己写代码和测试。
+
+### 子 Agent 启动 SOP（主节点必读）
+
+主节点（Cursor Agent）的唯一职责是：任务拆解、子 agent 启动、集成验收、sprint 文档更新。**写代码、改文件、跑测试，一律由子 agent 完成。**
+
+#### Role → Cursor Task 映射
+
+| 业务角色 | Task subagent_type | 读取 prompt 来源 |
+|---|---|---|
+| robot-software-engineer | `generalPurpose` | `.codex/agents/robot-software-engineer.toml` 的 `prompt` 字段 |
+| hardware-engineer | `generalPurpose` | `.codex/agents/hardware-engineer.toml` 的 `prompt` 字段 |
+| autonomy-engineer | `generalPurpose` | `.codex/agents/autonomy-engineer.toml` 的 `prompt` 字段 |
+| full-stack-software-engineer | `generalPurpose` | `.codex/agents/full-stack-software-engineer.toml` 的 `prompt` 字段 |
+
+#### 子 Agent Prompt 固定结构
+
+主节点在调用 Task 工具时，prompt 必须包含以下五段，不得省略：
+
+```
+[角色 System Prompt]
+（从对应 .codex/agents/<role>.toml 的 prompt 字段完整复制，不裁剪）
+
+[本轮任务]
+（清晰描述这次要做什么，包括背景和目标）
+
+[文件范围]
+（明确列出允许改动的文件路径；范围外的文件不得改动）
+
+[验收命令]
+（从 tech-plan.md 复制验证命令，子 agent 必须运行并给出结果）
+
+[输出要求]
+必须返回：
+1. 实际改动的文件列表
+2. 验证命令输出结果（截图或日志片段）
+3. 失败定位（如有）
+4. 剩余风险
+```
+
+#### 并行启动强制规则
+
+- **tech-plan 有清晰文件范围且任务互不重叠时，必须在同一条消息里并行发起多个 Task 调用**（每个角色一个 Task，不序列化等待）。
+- 单 owner 任务（整个 sprint 只有一个工程师负责）也**必须派子 agent**，不得主节点自己动手。
+- "单线闭环"的含义是：**一个子 agent 单线负责到底**，不是主节点自己写。
+- 主节点收到子 agent 返回后，只做：验收结果、更新 sprint 文档、决定是否需要重试或集成。
 
 ### 组织层级
 

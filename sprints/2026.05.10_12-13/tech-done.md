@@ -28,3 +28,18 @@
 - 本轮不涉及硬件、vendor 文件、串口、波特率、底盘协议或电气假设。
 - 没有真实 ROS2/Humble action runtime、fixed-route/Nav2 行驶、真实 SLAM/Nav2 学习到巡逻 E2E 或 WAVE ROVER HIL。
 - `AGENTS.md` 是既有 unrelated 修改，本轮保持未改、未提交。
+
+## 流程改进（本次额外）
+
+**根因**：主节点（Cursor Agent）在历次迭代中违反"严禁主节点自己写代码"规则，自己承担了本应由子 agent 完成的编码、测试和修复工作。
+
+**诊断出的三层根因**：
+1. AGENTS.md 写了禁令但缺少操作化 SOP——主节点不知道用哪个 `subagent_type`、prompt 怎么组装。
+2. `registry.toml` 的 role id（如 `robot-software-engineer`）与 Cursor Task 工具的 `subagent_type`（如 `generalPurpose`）没有映射关系。
+3. "单线闭环"被误读成"主节点自己单线干"，而非"派一个子 agent 单线干"。
+
+**本次改动**：
+- `AGENTS.md`：在"5 人 agent 编制"段新增"子 Agent 启动 SOP"小节，明确 role → cursor_task_type 映射表、prompt 五段固定结构、并行强制启动规则。
+- `.codex/agents/registry.toml`：每个 `[[roles]]` 块新增 `cursor_task_type` 和 `prompt_field` 字段；`execution_policy` 新增 `sub_agent_dispatch_rule` 条目，机器可读地重申主节点不得自行写代码。
+
+**验证**：规则文档改动，无可运行测试；影响范围为 agent 行为约束，不涉及 ROS2 包代码或硬件配置。
