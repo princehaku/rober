@@ -1,4 +1,5 @@
 import importlib
+import csv
 import json
 import sys
 import tempfile
@@ -149,6 +150,114 @@ class RouteDataRecorderManifestTest(unittest.TestCase):
 
         self.assertEqual(manifest["schema"], "trashbot.vision_samples.v1")
         self.assertEqual(manifest["samples"], [entry])
+
+    def test_fake_callbacks_write_route_keyframe_json_and_manifest(self):
+        written_frames = []
+
+        def fake_imwrite(path, frame):
+            written_frames.append((Path(path), frame))
+            Path(path).write_bytes(b"fake-jpeg")
+            return True
+
+        class FakeBridge:
+            def imgmsg_to_cv2(self, msg, desired_encoding="bgr8"):
+                self.encoding = desired_encoding
+                return {"encoding": desired_encoding, "data": msg.data}
+
+        class FakeLogger:
+            def __init__(self):
+                self.messages = []
+
+            def info(self, message):
+                self.messages.append(("info", message))
+
+            def warn(self, message):
+                self.messages.append(("warn", message))
+
+        def fake_odom(sec=12, nanosec=345000000, x=1.25, y=2.5, z=0.0):
+            return types.SimpleNamespace(
+                header=types.SimpleNamespace(stamp=types.SimpleNamespace(sec=sec, nanosec=nanosec)),
+                pose=types.SimpleNamespace(
+                    pose=types.SimpleNamespace(
+                        position=types.SimpleNamespace(x=x, y=y, z=z),
+                        orientation=types.SimpleNamespace(x=0.0, y=0.0, z=0.707, w=0.707),
+                    )
+                ),
+            )
+
+        with tempfile.TemporaryDirectory() as td:
+            output_dir = Path(td)
+            keyframe_dir = output_dir / "keyframes"
+            keyframe_dir.mkdir()
+            route_csv = output_dir / "route.csv"
+
+            recorder = self.module.RouteDataRecorder.__new__(self.module.RouteDataRecorder)
+            recorder.output_dir = str(output_dir)
+            recorder.keyframe_dir = str(keyframe_dir)
+            recorder.route_csv = str(route_csv)
+            recorder.min_distance_m = 0.8
+            recorder.route_frame_id = "map"
+            recorder.route_id = "runtime_fake_route"
+            recorder.sample_manifest_name = "manifest.json"
+            recorder.sample_manifest_max_entries = 10
+            recorder.bridge = FakeBridge()
+            recorder.latest_frame = None
+            recorder.last_x = None
+            recorder.last_y = None
+            recorder.index = 0
+            recorder.csv_file = open(route_csv, "w", newline="", encoding="utf-8")
+            recorder.writer = csv.writer(recorder.csv_file)
+            recorder.writer.writerow(["index", "sec", "nanosec", "frame_id", "x", "y", "z", "qx", "qy", "qz", "qw", "frame"])
+            logger = FakeLogger()
+            recorder.get_logger = lambda: logger
+
+            self.module.cv2.imwrite = fake_imwrite
+
+            try:
+                recorder._on_image(types.SimpleNamespace(data=b"raw-image"))
+                recorder._on_odom(fake_odom())
+            finally:
+                recorder.csv_file.close()
+
+            keyframe_path = keyframe_dir / "000.jpg"
+            json_path = keyframe_dir / "000.json"
+            manifest_path = output_dir / "manifest.json"
+
+            with route_csv.open("r", encoding="utf-8") as f:
+                route_rows = list(csv.DictReader(f))
+            keyframe_payload = json.loads(json_path.read_text(encoding="utf-8"))
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            keyframe_bytes = keyframe_path.read_bytes()
+
+        self.assertEqual(len(route_rows), 1)
+        self.assertEqual(route_rows[0]["index"], "0")
+        self.assertEqual(route_rows[0]["sec"], "12")
+        self.assertEqual(route_rows[0]["nanosec"], "345000000")
+        self.assertEqual(route_rows[0]["frame_id"], "map")
+        self.assertEqual(route_rows[0]["x"], "1.25")
+        self.assertEqual(route_rows[0]["y"], "2.5")
+        self.assertEqual(route_rows[0]["qz"], "0.707")
+        self.assertEqual(route_rows[0]["qw"], "0.707")
+        self.assertEqual(route_rows[0]["frame"], "000.jpg")
+        self.assertEqual(written_frames, [(keyframe_path, {"encoding": "bgr8", "data": b"raw-image"})])
+        self.assertEqual(keyframe_bytes, b"fake-jpeg")
+        self.assertEqual(keyframe_payload["sample_id"], "route_keyframe_000")
+        self.assertEqual(keyframe_payload["sample_ref"], "vision_sample://keyframes/000.json")
+        self.assertEqual(keyframe_payload["timestamp"], 12.345)
+        self.assertEqual(keyframe_payload["raw_image"], "keyframes/000.jpg")
+        self.assertEqual(keyframe_payload["context"]["route_id"], "runtime_fake_route")
+        self.assertEqual(keyframe_payload["context"]["checkpoint_id"], "0")
+        self.assertEqual(keyframe_payload["route_pose"]["x"], 1.25)
+        self.assertEqual(manifest["schema"], "trashbot.vision_samples.v1")
+        self.assertEqual(len(manifest["samples"]), 1)
+        self.assertEqual(manifest["samples"][0]["sample_ref"], "vision_sample://keyframes/000.json")
+        self.assertEqual(manifest["samples"][0]["json"], "keyframes/000.json")
+        self.assertEqual(manifest["samples"][0]["context"]["event_type"], "route_keyframe")
+        self.assertEqual(manifest["samples"][0]["detection_count"], 0)
+        self.assertEqual(manifest["samples"][0]["max_confidence"], 0)
+        self.assertEqual(recorder.index, 1)
+        self.assertEqual((recorder.last_x, recorder.last_y), (1.25, 2.5))
+        self.assertEqual(logger.messages[-1], ("info", "Saved waypoint #1 at (1.25, 2.50)"))
 
 
 if __name__ == "__main__":
