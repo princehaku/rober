@@ -29,6 +29,12 @@ ROUTE_PROOF_WAITING_GATE_STATUSES = {
     "waiting",
     "pending",
     "blocked_by_visual_gate",
+    "waiting_camera_frame",
+    "missing_live_frame",
+    "keyframe_preflight_failed",
+    "missing_keyframe",
+    "no_live_descriptors",
+    "insufficient_matches",
 }
 ROUTE_PROOF_READY_GATE_STATUSES = {"passed", "ready", "ok"}
 
@@ -348,20 +354,23 @@ def classify_route_proof(route_proof_summary, source=""):
         missing_checkpoints = []
     missing_checkpoint_values = [str(item).strip() for item in missing_checkpoints if str(item).strip()]
 
+    if gate_status in ROUTE_PROOF_WAITING_GATE_STATUSES:
+        reason = "waiting for visual gate to pass"
+        if blocking_reason:
+            reason = f"waiting for visual gate: {blocking_reason}"
+        return {
+            "state": "waiting_visual_gate",
+            "reason": reason,
+            "blocking_reason": "",
+            "missing_fields": [],
+            "source": source_text,
+        }
+
     if blocking_reason:
         return {
             "state": "blocked",
             "reason": f"blocked: {blocking_reason}",
             "blocking_reason": blocking_reason,
-            "missing_fields": [],
-            "source": source_text,
-        }
-
-    if gate_status in ROUTE_PROOF_WAITING_GATE_STATUSES:
-        return {
-            "state": "waiting_visual_gate",
-            "reason": "waiting for visual gate to pass",
-            "blocking_reason": "",
             "missing_fields": [],
             "source": source_text,
         }

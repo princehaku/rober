@@ -185,6 +185,7 @@ Stability rules:
 
 - Full coverage: `coverage_rate=1.0`, `missing_checkpoints=[]`, `gate_status=passed`.
 - Partial coverage: `coverage_rate<1.0`, `missing_checkpoints` lists uncovered tail indexes.
+- Partial coverage without an active gate block can still report `gate_status=passed`; readiness must be decided from `coverage_rate` + `missing_checkpoints` together.
 - Missing keyframe: `gate_status=keyframe_preflight_failed` or `missing_keyframe`, with keyframe detail in `last_block_reason`.
 - Visual gate not passed (camera frame/descriptors/matches): `gate_status` reflects the concrete gate status and keeps the failure detail in `last_block_reason`.
 

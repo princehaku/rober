@@ -89,6 +89,25 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["route_proof_status"]["blocking_reason"], "corridor blocked by obstacle")
         self.assertIn("corridor blocked by obstacle", payload["route_proof_status"]["reason"])
 
+    def test_route_proof_summary_waiting_gate_status_wins_over_block_reason(self):
+        payload = self._base_build_payload(
+            {
+                "state": "failed",
+                "route_proof_summary": {
+                    "coverage_rate": 0.25,
+                    "covered_checkpoints": 1,
+                    "total_checkpoints": 4,
+                    "missing_checkpoints": ["checkpoint_2", "checkpoint_3", "checkpoint_4"],
+                    "gate_status": "waiting_camera_frame",
+                    "last_block_reason": "visual gate waiting for camera frame at checkpoint 2",
+                },
+            }
+        )
+
+        self.assertEqual(payload["route_proof_status"]["state"], "waiting_visual_gate")
+        self.assertEqual(payload["route_proof_status"]["blocking_reason"], "")
+        self.assertIn("waiting for visual gate", payload["route_proof_status"]["reason"])
+
     def test_route_proof_summary_empty_maps_to_unknown(self):
         payload = self._base_build_payload(
             {

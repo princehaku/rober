@@ -60,6 +60,20 @@ class RouteProofSummaryTest(unittest.TestCase):
         self.assertEqual(summary["gate_status"], "missing_keyframe")
         self.assertIn("checkpoint 1", summary["last_block_reason"])
 
+    def test_partial_coverage_can_keep_passed_gate_when_not_blocked(self):
+        summary = build_route_proof_summary(
+            total_checkpoints=3,
+            covered_checkpoints=1,
+            gate_status="passed",
+            last_block_reason="",
+        )
+        self.assertEqual(summary["coverage_rate"], 0.3333)
+        self.assertEqual(summary["covered_checkpoints"], 1)
+        self.assertEqual(summary["total_checkpoints"], 3)
+        self.assertEqual(summary["missing_checkpoints"], [1, 2])
+        self.assertEqual(summary["gate_status"], "passed")
+        self.assertEqual(summary["last_block_reason"], "")
+
 
 if __name__ == "__main__":
     unittest.main()
