@@ -14,6 +14,7 @@ except ImportError:
 REVIEW_QUEUE_LIMIT = 5
 LOW_CONFIDENCE_REVIEW_THRESHOLD = 75
 HARDWARE_PROOF_STATUSES = {"software_proof", "needs_hil", "invalid_config", "read_error"}
+REVIEW_DECISION_VALUES = {"approved", "rejected", "needs_retry"}
 
 
 def _default_hardware_proof_summary(path, status="read_error", read_error=""):
@@ -160,6 +161,75 @@ def normalize_log_refs(value):
     return [item.strip() for item in text.split(",") if item.strip()]
 
 
+def default_review_decision_log(path, status="read_error", read_error=""):
+    return {
+        "status": status,
+        "decision_log_ref": str(path or ""),
+        "exists": False,
+        "decision_count": 0,
+        "sample_count": 0,
+        "read_error": str(read_error or ""),
+    }
+
+
+def review_decision_entry(record):
+    return {
+        "decision_id": str(record.get("decision_id", "")),
+        "decision": str(record.get("decision", "")),
+        "comment": str(record.get("comment", "")),
+        "option": str(record.get("option", "")),
+        "operator": str(record.get("operator", "")),
+        "timestamp": record.get("timestamp"),
+    }
+
+
+def load_review_decision_log(path):
+    decision_log_path = os.path.expanduser(str(path or ""))
+    summary = default_review_decision_log(
+        decision_log_path,
+        status="not_configured",
+        read_error="review decision log is not configured",
+    )
+    decision_index = {}
+    if not decision_log_path:
+        return summary, decision_index
+    if not os.path.exists(decision_log_path):
+        summary["status"] = "missing"
+        summary["read_error"] = f"review decision log not found: {decision_log_path}"
+        return summary, decision_index
+
+    summary["exists"] = True
+    summary["read_error"] = ""
+    try:
+        with open(decision_log_path, "r", encoding="utf-8") as f:
+            for line_number, line in enumerate(f, start=1):
+                text = line.strip()
+                if not text:
+                    continue
+                try:
+                    record = json.loads(text)
+                except json.JSONDecodeError as exc:
+                    summary["status"] = "read_error"
+                    summary["read_error"] = f"invalid decision JSONL at line {line_number}: {exc}"
+                    return summary, {}
+                if not isinstance(record, dict):
+                    continue
+                sample_id = str(record.get("sample_id", "")).strip()
+                decision = str(record.get("decision", "")).strip()
+                if not sample_id or decision not in REVIEW_DECISION_VALUES:
+                    continue
+                summary["decision_count"] += 1
+                decision_index[sample_id] = review_decision_entry(record)
+    except OSError as exc:
+        summary["status"] = "read_error"
+        summary["read_error"] = f"failed reading review decision log: {exc}"
+        return summary, {}
+
+    summary["sample_count"] = len(decision_index)
+    summary["status"] = "ok"
+    return summary, decision_index
+
+
 def safe_int(value, default=0):
     try:
         return int(value)
@@ -189,10 +259,14 @@ def sample_review_reason(sample):
     return ""
 
 
-def vision_sample_review_item(sample):
+def vision_sample_review_item(sample, decision_index=None):
     context = sample.get("context") if isinstance(sample.get("context"), dict) else {}
+    sample_id = str(sample.get("sample_id", ""))
+    last_decision = None
+    if isinstance(decision_index, dict):
+        last_decision = dict(decision_index.get(sample_id) or {}) or None
     return {
-        "sample_id": str(sample.get("sample_id", "")),
+        "sample_id": sample_id,
         "sample_ref": str(sample.get("sample_ref", "")),
         "timestamp": sample.get("timestamp"),
         "context": context,
@@ -200,10 +274,12 @@ def vision_sample_review_item(sample):
         "detection_count": safe_int(sample.get("detection_count")),
         "max_confidence": safe_int(sample.get("max_confidence")),
         "reason": sample_review_reason(sample),
+        "review_status": "decided" if last_decision else "pending",
+        "last_decision": last_decision,
     }
 
 
-def build_vision_review_queue(samples, limit=REVIEW_QUEUE_LIMIT):
+def build_vision_review_queue(samples, decision_index=None, limit=REVIEW_QUEUE_LIMIT):
     queue = []
     for sample in reversed(samples):
         if not isinstance(sample, dict):
@@ -211,7 +287,7 @@ def build_vision_review_queue(samples, limit=REVIEW_QUEUE_LIMIT):
         reason = sample_review_reason(sample)
         if not reason:
             continue
-        item = vision_sample_review_item(sample)
+        item = vision_sample_review_item(sample, decision_index=decision_index)
         queue.append(item)
         if len(queue) >= limit:
             break
@@ -301,7 +377,7 @@ def vision_manifest_integrity_fields(path):
     }
 
 
-def summarize_vision_manifest(path):
+def summarize_vision_manifest(path, decision_index=None):
     path = os.path.expanduser(str(path or ""))
     summary = {
         "manifest_ref": path,
@@ -348,7 +424,7 @@ def summarize_vision_manifest(path):
         event_type = sample_event_type(sample)
         event_counts[event_type] = event_counts.get(event_type, 0) + 1
     summary["event_counts"] = event_counts
-    review_queue = build_vision_review_queue(samples)
+    review_queue = build_vision_review_queue(samples, decision_index=decision_index)
     summary["review_queue"] = review_queue
     summary["review_queue_count"] = len(review_queue)
     latest = samples[-1] if samples and isinstance(samples[-1], dict) else {}
@@ -368,6 +444,7 @@ def build_diagnostics_payload(
     route_version,
     log_refs,
     vision_sample_manifest_ref,
+    review_decision_log_ref,
     operator_status_file,
     hardware_proof_ref="",
 ):
@@ -380,6 +457,7 @@ def build_diagnostics_payload(
         "final_state": latest_status.get("final_state") or last_task.get("final_state", ""),
         "task_record_path": latest_status.get("task_record_path") or last_task.get("task_record_path", ""),
     }
+    review_decision_log, decision_index = load_review_decision_log(review_decision_log_ref)
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -391,7 +469,12 @@ def build_diagnostics_payload(
         failure=failure,
         log_refs=normalize_log_refs(log_refs),
         vision_sample_manifest_ref=str(vision_sample_manifest_ref or ""),
-        vision_samples=summarize_vision_manifest(vision_sample_manifest_ref),
+        review_decision_log_ref=str(review_decision_log_ref or ""),
+        review_decision_log=review_decision_log,
+        vision_samples=summarize_vision_manifest(
+            vision_sample_manifest_ref,
+            decision_index=decision_index,
+        ),
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),
         operator_status_file=str(operator_status_file or ""),
     )

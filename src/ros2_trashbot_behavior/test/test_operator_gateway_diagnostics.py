@@ -38,6 +38,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             route_version="",
             log_refs=" /tmp/a.log, /tmp/b.log ",
             vision_sample_manifest_ref="/tmp/vision/manifest.json",
+            review_decision_log_ref="",
             operator_status_file="/tmp/status.json",
         )
 
@@ -56,6 +57,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("not found", payload["vision_samples"]["read_error"])
         self.assertEqual(payload["hardware_proof"]["status"], "read_error")
         self.assertIn("not configured", payload["hardware_proof"]["read_error"])
+        self.assertEqual(payload["review_decision_log"]["status"], "not_configured")
         self.assertEqual(payload["operator_status_file"], "/tmp/status.json")
 
     def test_diagnostics_falls_back_to_last_task_terminal_fields(self):
@@ -74,6 +76,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             route_version="route-a",
             log_refs=["/tmp/robot.log", ""],
             vision_sample_manifest_ref="",
+            review_decision_log_ref="",
             operator_status_file="/tmp/status.json",
         )
 
@@ -86,6 +89,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["vision_samples"]["integrity_summary"]["status"], "not_configured")
         self.assertEqual(payload["vision_samples"]["integrity_error_count"], 1)
         self.assertEqual(payload["hardware_proof"]["status"], "read_error")
+        self.assertEqual(payload["review_decision_log"]["status"], "not_configured")
 
     def test_hardware_proof_ready_with_hil_risk_maps_to_needs_hil(self):
         with tempfile.TemporaryDirectory() as td:
@@ -230,6 +234,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                 route_version="",
                 log_refs=[],
                 vision_sample_manifest_ref="",
+                review_decision_log_ref="",
                 operator_status_file="/tmp/status.json",
                 hardware_proof_ref=str(proof_path),
             )
@@ -309,6 +314,8 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(summary["review_queue_count"], 2)
         self.assertEqual(summary["review_queue"][0]["reason"], "route_keyframe_review")
         self.assertEqual(summary["review_queue"][1]["reason"], "anomaly_sample")
+        self.assertEqual(summary["review_queue"][0]["review_status"], "pending")
+        self.assertIsNone(summary["review_queue"][0]["last_decision"])
         self.assertEqual(summary["integrity_summary"]["status"], "ok")
         self.assertEqual(summary["integrity_error_count"], 0)
         self.assertEqual(summary["integrity_warning_count"], 0)
@@ -373,6 +380,65 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             ["low_confidence_detection", "route_keyframe_review", "anomaly_sample"],
         )
         self.assertEqual(summary["review_queue"][-1]["sample_ref"], "vision_sample://anomaly.json")
+
+    def test_diagnostics_merges_last_review_decision_into_queue(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            manifest_path = root / "manifest.json"
+            decision_log_path = root / "review_decisions.jsonl"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.vision_samples.v1",
+                        "samples": [
+                            {
+                                "sample_id": "sample-1",
+                                "sample_ref": "vision_sample://sample-1.json",
+                                "timestamp": 1.0,
+                                "context": {"event_type": "route_keyframe"},
+                                "detection_count": 0,
+                                "max_confidence": 0,
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            decision_log_path.write_text(
+                json.dumps(
+                    {
+                        "decision_id": "d-1",
+                        "sample_id": "sample-1",
+                        "decision": "approved",
+                        "option": "route_keyframe_review",
+                        "comment": "looks correct",
+                        "operator": "op-7",
+                        "timestamp": 100.0,
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref=str(manifest_path),
+                review_decision_log_ref=str(decision_log_path),
+                operator_status_file="/tmp/status.json",
+            )
+
+        self.assertEqual(payload["review_decision_log"]["status"], "ok")
+        self.assertEqual(payload["review_decision_log"]["decision_count"], 1)
+        self.assertEqual(payload["review_decision_log"]["sample_count"], 1)
+        self.assertEqual(payload["vision_samples"]["review_queue_count"], 1)
+        queue_item = payload["vision_samples"]["review_queue"][0]
+        self.assertEqual(queue_item["sample_id"], "sample-1")
+        self.assertEqual(queue_item["review_status"], "decided")
+        self.assertEqual(queue_item["last_decision"]["decision"], "approved")
 
     def test_vision_manifest_summary_handles_missing_and_corrupt_files(self):
         with tempfile.TemporaryDirectory() as td:

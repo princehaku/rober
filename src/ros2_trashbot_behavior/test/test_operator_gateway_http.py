@@ -27,8 +27,32 @@ class FakeGateway:
         self.dropoff_payload = {"state": "returning"}
         self.cancel_status = 202
         self.cancel_payload = {"state": "canceled"}
+        self.review_queue_status = 200
+        self.review_queue_payload = {
+            "ok": True,
+            "review_queue_count": 1,
+            "review_queue": [
+                {
+                    "sample_id": "route-001",
+                    "sample_ref": "vision_sample://20260510/route-001.json",
+                    "reason": "route_keyframe_review",
+                    "review_status": "pending",
+                    "last_decision": None,
+                }
+            ],
+            "manifest_read_error": "",
+        }
+        self.review_submit_status = 201
+        self.review_submit_payload = {
+            "ok": True,
+            "decision_id": "decision-1",
+            "sample_id": "route-001",
+            "decision": "approved",
+            "stored_at": "2026-05-10T12:00:00Z",
+        }
         self.last_collect = None
         self.last_confirm = None
+        self.last_review_decision = None
         self.snapshot_payload = {
             "api_version": "slice2.operator.v1",
             "state": "waiting_for_trash",
@@ -93,6 +117,8 @@ class FakeGateway:
                         "detection_count": 0,
                         "max_confidence": 0,
                         "reason": "route_keyframe_review",
+                        "review_status": "pending",
+                        "last_decision": None,
                     },
                     {
                         "sample_id": "latest",
@@ -103,6 +129,8 @@ class FakeGateway:
                         "detection_count": 1,
                         "max_confidence": 88,
                         "reason": "anomaly_sample",
+                        "review_status": "pending",
+                        "last_decision": None,
                     },
                 ],
                 "read_error": "",
@@ -161,6 +189,13 @@ class FakeGateway:
 
     def cancel_collection(self):
         return self.cancel_status, self.cancel_payload
+
+    def vision_review_queue(self):
+        return dict(self.review_queue_payload)
+
+    def submit_review_decision(self, payload):
+        self.last_review_decision = dict(payload)
+        return self.review_submit_status, dict(self.review_submit_payload)
 
 
 class OperatorGatewayHttpTest(unittest.TestCase):
@@ -228,6 +263,8 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["vision_samples"]["latest_sample_ref"], "vision_sample://20260510/latest.json")
         self.assertEqual(payload["vision_samples"]["review_queue_count"], 2)
         self.assertEqual(payload["vision_samples"]["review_queue"][-1]["reason"], "anomaly_sample")
+        self.assertEqual(payload["vision_samples"]["review_queue"][0]["review_status"], "pending")
+        self.assertIsNone(payload["vision_samples"]["review_queue"][0]["last_decision"])
         self.assertEqual(payload["vision_samples"]["integrity_summary"]["status"], "warning")
         self.assertEqual(payload["vision_samples"]["integrity_error_count"], 0)
         self.assertEqual(payload["vision_samples"]["integrity_warning_count"], 1)
@@ -325,9 +362,18 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("waiting for /amcl_pose", body)
         self.assertIn("/api/status", body)
         self.assertIn("/api/diagnostics", body)
+        self.assertIn("/api/vision/review-queue", body)
+        self.assertIn("/api/vision/review-decisions", body)
         self.assertIn("/api/collect", body)
         self.assertIn("/api/dropoff/confirm", body)
         self.assertIn("/api/cancel", body)
+        self.assertIn("Vision Review Queue", body)
+        self.assertIn("Submit Review Decision", body)
+        self.assertIn("reviewSampleSelect", body)
+        self.assertIn("reviewDecisionSelect", body)
+        self.assertIn("reviewCommentInput", body)
+        self.assertIn("loadReviewQueue", body)
+        self.assertIn("submitReviewDecision", body)
         self.assertIn("collectButton.disabled = !Boolean(payload.can_collect)", body)
         self.assertIn("dropoffButton.disabled = !Boolean(payload.can_confirm_dropoff)", body)
         self.assertIn("cancelButton.disabled = !Boolean(payload.can_cancel)", body)
@@ -388,6 +434,31 @@ class OperatorGatewayHttpTest(unittest.TestCase):
 
         self.assertEqual(status, 400)
         self.assertEqual(payload["state"], "bad_request")
+
+    def test_review_queue_endpoint(self):
+        status, payload = self.request("GET", "/api/vision/review-queue")
+
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["review_queue_count"], 1)
+        self.assertEqual(payload["review_queue"][0]["sample_id"], "route-001")
+        self.assertEqual(payload["review_queue"][0]["review_status"], "pending")
+
+    def test_review_decision_submission_endpoint(self):
+        body = {
+            "sample_id": "route-001",
+            "decision": "approved",
+            "comment": "looks correct",
+            "option": "route_keyframe_review",
+        }
+        status, payload = self.request("POST", "/api/vision/review-decisions", body)
+
+        self.assertEqual(status, 201)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["sample_id"], "route-001")
+        self.assertEqual(payload["decision"], "approved")
+        self.assertEqual(self.gateway.last_review_decision["sample_id"], "route-001")
+        self.assertEqual(self.gateway.last_review_decision["decision"], "approved")
 
     def test_malformed_json_returns_400(self):
         status, payload = self.request("POST", "/api/collect", b"{bad")

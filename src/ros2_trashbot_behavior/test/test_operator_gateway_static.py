@@ -20,6 +20,8 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         for route in (
             '"/api/status"',
             '"/api/diagnostics"',
+            '"/api/vision/review-queue"',
+            '"/api/vision/review-decisions"',
             '"/api/collect"',
             '"/api/dropoff/confirm"',
             '"/api/cancel"',
@@ -35,8 +37,11 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("route_version", source)
         self.assertIn("log_refs", source)
         self.assertIn("vision_sample_manifest_ref", source)
+        self.assertIn("review_decision_log_ref", source)
         self.assertIn("def diagnostics", source)
         self.assertIn("build_diagnostics_payload", source)
+        self.assertIn("def vision_review_queue", source)
+        self.assertIn("def submit_review_decision", source)
         self.assertIn("PoseWithCovarianceStamped", source)
         self.assertIn("robot_pose", source)
         self.assertIn("robot_path", source)
@@ -71,6 +76,7 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "route_version=self.route_version",
             "log_refs=self.log_refs",
             "vision_sample_manifest_ref=self.vision_sample_manifest_ref",
+            "review_decision_log_ref=self.review_decision_log_ref",
             "operator_status_file=self.status_file",
         ):
             self.assertIn(field, gateway_diagnostics_block)
@@ -78,8 +84,10 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn('latest_status.get("error_code") or last_task.get("error_code", "")', diagnostics_block)
         self.assertIn('latest_status.get("final_state") or last_task.get("final_state", "")', diagnostics_block)
         self.assertIn("summarize_vision_manifest", diagnostics_source)
+        self.assertIn("load_review_decision_log", diagnostics_source)
         self.assertIn("summarize_hardware_proof", diagnostics_source)
-        self.assertIn("vision_samples=summarize_vision_manifest(vision_sample_manifest_ref)", diagnostics_block)
+        self.assertIn("vision_samples=summarize_vision_manifest(", diagnostics_block)
+        self.assertIn("decision_index=decision_index", diagnostics_block)
         self.assertIn("hardware_proof=summarize_hardware_proof(hardware_proof_ref)", diagnostics_block)
         self.assertIn(
             'latest_status.get("task_record_path") or last_task.get("task_record_path", "")',

@@ -102,6 +102,8 @@ The optional `operator_gateway` node exposes a local HTTP API for phone or brows
 | --- | --- | --- |
 | `/api/status` | GET | Returns `state`, `message`, `updated_at`, and the latest task metadata such as `task_record_path`, `error_message`, progress, or target when available. |
 | `/api/diagnostics` | GET | Returns the minimum remote-support diagnostic package: software version, map/route versions, latest status, last task summary, terminal failure fields, log references, vision sample manifest reference, hardware proof summary, and operator status file path. |
+| `/api/vision/review-queue` | GET | Returns review queue samples with `review_status` and `last_decision` summary. Queue/manifest errors are returned as structured fields instead of breaking the operator main flow. |
+| `/api/vision/review-decisions` | POST | Stores a manual review decision for one sample. Required fields: `sample_id`, `decision` (`approved`, `rejected`, `needs_retry`). Optional: `comment`, `option`, `operator`. |
 | `/api/collect` | POST | Starts `/trashbot/collect_trash`. Optional JSON body or query parameter `target` overrides the default delivery target. |
 | `/api/dropoff/confirm` | POST | Calls `/trashbot/confirm_dropoff`; optional JSON `accepted=false` rejects a pending manual dropoff. |
 | `/api/cancel` | POST | Cancels the active `collect_trash` action goal if one is running. |
@@ -129,6 +131,7 @@ The same `/api/status` payload carries live location telemetry when available:
 | `route_version` | empty | Route version label reported in `/api/diagnostics`; fixed-route tooling should set this when available. |
 | `log_refs` | empty list | Operator-facing log references included in `/api/diagnostics`. |
 | `vision_sample_manifest_ref` | `~/.ros/trashbot_vision_samples/manifest.json` | Optional deployment-supplied reference for future vision samples; the current MVP does not ship a default detector or manifest producer. |
+| `review_decision_log_ref` | `~/.ros/trashbot_vision_samples/review_decisions.jsonl` | Local JSONL sink for manual review decisions. Missing/corrupt decision logs are reported through structured diagnostics fields. |
 
 `/api/diagnostics.vision_samples` keeps the legacy summary fields (`manifest_ref`, `exists`, `schema`, `sample_count`, latest sample fields, `event_counts`, `review_queue`, and `read_error`) and adds manifest integrity fields produced from `ros2_trashbot_vision.vision_sample_manifest.summarize_manifest()` when available:
 
@@ -142,6 +145,23 @@ The same `/api/status` payload carries live location telemetry when available:
 | `file_counts` | Per-reference present/missing/empty counts for `sample_ref`, `json`, `raw_image`, and `annotated_image`. |
 
 If the manifest is not configured or the vision checker cannot be imported, diagnostics still returns HTTP payloads with the legacy fields and a structured integrity fallback instead of failing the whole endpoint.
+
+`review_queue` items include manual-review merge fields:
+
+| Field | Contract |
+| --- | --- |
+| `review_status` | `pending` or `decided`; derived from decision-log merge, not from UI-local state. |
+| `last_decision` | `null` or latest decision summary (`decision_id`, `decision`, `comment`, `option`, `operator`, `timestamp`). |
+
+`/api/diagnostics.review_decision_log` and `/api/vision/review-queue.review_decision_log` expose decision-store health:
+
+| Field | Contract |
+| --- | --- |
+| `status` | `ok`, `not_configured`, `missing`, or `read_error`. |
+| `decision_log_ref` | Resolved decision JSONL path. |
+| `exists` | Whether the decision log exists. |
+| `decision_count` / `sample_count` | Valid decision rows and distinct sample IDs in the log. |
+| `read_error` | Structured read/parsing error detail when unavailable or malformed. |
 
 `/api/diagnostics.hardware_proof` summarizes an offline artifact produced by `ros2_trashbot_hardware.hardware_diagnostics_proof`. The artifact source remains hardware-owned and vendor-backed by `docs/vendor/VENDOR_INDEX.md`; the operator gateway only reads it and maps it into phone-safe support states. Software proof is not HIL pass, hardware pass, real UART validation, wheel-direction validation, speed-unit validation, feedback-frequency measurement, IMU validation, or battery validation.
 

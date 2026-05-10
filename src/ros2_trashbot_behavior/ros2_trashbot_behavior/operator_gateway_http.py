@@ -101,7 +101,7 @@ HTML = """<!doctype html>
     }
     h1 { font-size: 22px; margin: 0; }
     h2 { font-size: 15px; margin: 0 0 10px; }
-    button, input {
+    button, input, select, textarea {
       border-radius: 8px;
       font: inherit;
       min-height: 44px;
@@ -126,7 +126,8 @@ HTML = """<!doctype html>
       opacity: 0.55;
     }
     label { color: var(--muted); display: grid; gap: 6px; font-size: 13px; }
-    input { border: 1px solid var(--line); width: 100%; }
+    input, select, textarea { border: 1px solid var(--line); width: 100%; }
+    textarea { min-height: 86px; resize: vertical; }
     canvas {
       background: #fbfcfc;
       border: 1px solid var(--line);
@@ -263,6 +264,23 @@ HTML = """<!doctype html>
       margin: 8px 0 0;
       padding-left: 18px;
     }
+    .reviewGrid {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-top: 10px;
+    }
+    .reviewMeta {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-top: 10px;
+      padding: 10px;
+    }
+    .reviewMeta code {
+      color: var(--ink);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
     [hidden] { display: none; }
     @media (max-width: 560px) {
       main { padding: 10px; }
@@ -270,6 +288,7 @@ HTML = """<!doctype html>
       .status { grid-template-columns: 1fr; }
       .steps { grid-template-columns: 1fr; }
       .telemetry, .diagnosticGrid { grid-template-columns: 1fr; }
+      .reviewGrid { grid-template-columns: 1fr; }
       canvas { height: 220px; }
     }
   </style>
@@ -356,6 +375,42 @@ HTML = """<!doctype html>
         <ul id="diagHardwareProofReasons" class="supportList"></ul>
       </div>
       <ul id="diagRefs" class="supportList"></ul>
+    </section>
+    <section class="panel">
+      <h2>Vision Review Queue</h2>
+      <p class="message">Select a sample and submit a manual review decision.</p>
+      <div class="reviewGrid">
+        <label>Sample
+          <select id="reviewSampleSelect"></select>
+        </label>
+        <label>Decision
+          <select id="reviewDecisionSelect">
+            <option value="approved">approved</option>
+            <option value="rejected">rejected</option>
+            <option value="needs_retry">needs_retry</option>
+          </select>
+        </label>
+      </div>
+      <div class="reviewGrid">
+        <label>Option (optional)
+          <input id="reviewOptionInput" autocomplete="off" placeholder="e.g. route_keyframe_review">
+        </label>
+        <label>Operator (optional)
+          <input id="reviewOperatorInput" autocomplete="off" placeholder="operator_id">
+        </label>
+      </div>
+      <label>Comment (optional)
+        <textarea id="reviewCommentInput" placeholder="why this sample was approved or rejected"></textarea>
+      </label>
+      <div class="row">
+        <button id="reviewRefreshButton" onclick="loadReviewQueue()">Refresh Queue</button>
+        <button id="reviewSubmitButton" class="primary" onclick="submitReviewDecision()">Submit Review Decision</button>
+      </div>
+      <div class="reviewMeta">
+        <p class="message">Queue status: <strong id="reviewQueueStatus">not loaded</strong></p>
+        <p class="message">Selected summary: <code id="reviewSelectedSummary">none</code></p>
+        <p class="message">Result: <strong id="reviewResultMessage">not submitted</strong></p>
+      </div>
     </section>
     <section class="panel">
       <h2>Raw Status</h2>
@@ -549,6 +604,48 @@ function renderHardwareProof(hardwareProof) {
     reasonList.appendChild(item);
   });
 }
+function decisionSummaryText(item) {
+  const status = text(item.review_status, 'pending');
+  const reason = text(item.reason, 'unknown_reason');
+  const last = item.last_decision && typeof item.last_decision === 'object' ? item.last_decision : null;
+  if (!last) return `${status} | ${reason}`;
+  return `${status} | ${reason} | ${text(last.decision, 'unknown')} @ ${text(last.timestamp, 'unknown time')}`;
+}
+function updateSelectedReviewSummary() {
+  const select = document.getElementById('reviewSampleSelect');
+  const currentOption = select.options[select.selectedIndex];
+  document.getElementById('reviewSelectedSummary').textContent = currentOption
+    ? text(currentOption.dataset.summary, 'none')
+    : 'none';
+}
+function renderReviewQueue(queuePayload) {
+  const queue = Array.isArray(queuePayload.review_queue) ? queuePayload.review_queue : [];
+  const select = document.getElementById('reviewSampleSelect');
+  select.innerHTML = '';
+  if (!queue.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'No sample pending review';
+    option.dataset.summary = 'queue empty';
+    select.appendChild(option);
+    select.disabled = true;
+    document.getElementById('reviewSubmitButton').disabled = true;
+    document.getElementById('reviewQueueStatus').textContent = `0 sample | ${text(queuePayload.manifest_read_error, 'queue empty')}`;
+    updateSelectedReviewSummary();
+    return;
+  }
+  queue.forEach((item) => {
+    const option = document.createElement('option');
+    option.value = text(item.sample_id, '');
+    option.textContent = `${text(item.sample_id, 'unknown')} (${text(item.review_status, 'pending')})`;
+    option.dataset.summary = decisionSummaryText(item);
+    select.appendChild(option);
+  });
+  select.disabled = false;
+  document.getElementById('reviewSubmitButton').disabled = false;
+  document.getElementById('reviewQueueStatus').textContent = `${Number(queuePayload.review_queue_count || queue.length)} sample(s)`;
+  updateSelectedReviewSummary();
+}
 function drawMap(payload) {
   const canvas = document.getElementById('robotMap');
   const ctx = canvas.getContext('2d');
@@ -677,6 +774,11 @@ function showDiagnostics(payload) {
   document.getElementById('diagNextReviewSample').textContent = nextReview.sample_ref
     ? `${text(nextReview.reason, 'review')} ${nextReview.sample_ref}`
     : 'no pending sample';
+  renderReviewQueue({
+    review_queue_count: visionSamples.review_queue_count,
+    review_queue: reviewQueue,
+    manifest_read_error: visionSamples.read_error
+  });
   const refList = document.getElementById('diagRefs');
   refList.innerHTML = '';
   [...refs, payload.vision_sample_manifest_ref, hardwareProof.artifact_ref].filter(Boolean).forEach((ref) => {
@@ -712,12 +814,58 @@ async function collect() {
 }
 async function confirmDropoff() { await api('/api/dropoff/confirm', {method: 'POST'}); }
 async function cancelTask() { await api('/api/cancel', {method: 'POST'}); }
+async function loadReviewQueue() {
+  try {
+    const response = await fetch('/api/vision/review-queue');
+    const payload = await response.json();
+    renderReviewQueue(payload);
+    if (!payload.ok && payload.error) {
+      document.getElementById('reviewResultMessage').textContent = `${text(payload.error.code, 'error')}: ${text(payload.error.message, 'request failed')}`;
+    }
+  } catch (error) {
+    document.getElementById('reviewQueueStatus').textContent = `queue load failed: ${String(error)}`;
+  }
+}
+async function submitReviewDecision() {
+  const sampleSelect = document.getElementById('reviewSampleSelect');
+  const sampleId = text(sampleSelect.value, '');
+  if (!sampleId) {
+    document.getElementById('reviewResultMessage').textContent = 'sample_id is required';
+    return;
+  }
+  const body = {
+    sample_id: sampleId,
+    decision: text(document.getElementById('reviewDecisionSelect').value, 'approved'),
+    option: text(document.getElementById('reviewOptionInput').value, ''),
+    operator: text(document.getElementById('reviewOperatorInput').value, ''),
+    comment: text(document.getElementById('reviewCommentInput').value, '')
+  };
+  try {
+    const response = await fetch('/api/vision/review-decisions', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    const payload = await response.json();
+    if (response.ok && payload.ok) {
+      document.getElementById('reviewResultMessage').textContent = `stored ${payload.decision} for ${payload.sample_id} at ${text(payload.stored_at, 'unknown time')}`;
+      await loadReviewQueue();
+      return;
+    }
+    const error = payload.error || {};
+    document.getElementById('reviewResultMessage').textContent = `${text(error.code, 'error')}: ${text(error.message, 'request failed')}`;
+  } catch (error) {
+    document.getElementById('reviewResultMessage').textContent = `submit failed: ${String(error)}`;
+  }
+}
 async function diagnostics() {
   const payload = await api('/api/diagnostics');
   if (payload) showDiagnostics(payload);
 }
+document.getElementById('reviewSampleSelect').addEventListener('change', updateSelectedReviewSummary);
 setInterval(refresh, 1000);
 refresh();
+loadReviewQueue();
 </script>
 </body>
 </html>"""
@@ -774,6 +922,9 @@ def make_handler(gateway):
             if path == "/api/diagnostics":
                 self._send_json(200, gateway.diagnostics())
                 return
+            if path == "/api/vision/review-queue":
+                self._send_json(200, gateway.vision_review_queue())
+                return
             self._send_json(404, status_payload("not_found", f"unknown path: {path}"))
 
         def do_POST(self):
@@ -809,6 +960,10 @@ def make_handler(gateway):
                 return
             if path == "/api/cancel":
                 status, payload = gateway.cancel_collection()
+                self._send_json(status, payload)
+                return
+            if path == "/api/vision/review-decisions":
+                status, payload = gateway.submit_review_decision(body)
                 self._send_json(status, payload)
                 return
             self._send_json(404, status_payload("not_found", f"unknown path: {path}"))

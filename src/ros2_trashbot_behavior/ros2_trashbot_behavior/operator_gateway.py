@@ -2,6 +2,8 @@ import json
 import math
 import os
 import threading
+import time
+import uuid
 from importlib.metadata import PackageNotFoundError, version
 from http.server import ThreadingHTTPServer
 
@@ -13,7 +15,13 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from std_srvs.srv import SetBool
 
 from ros2_trashbot_interfaces.action import TrashCollection
-from ros2_trashbot_behavior.operator_gateway_diagnostics import build_diagnostics_payload, normalize_log_refs
+from ros2_trashbot_behavior.operator_gateway_diagnostics import (
+    REVIEW_DECISION_VALUES,
+    build_diagnostics_payload,
+    load_review_decision_log,
+    normalize_log_refs,
+    summarize_vision_manifest,
+)
 from ros2_trashbot_behavior.operator_gateway_http import make_handler, status_payload
 
 
@@ -44,6 +52,10 @@ class OperatorGateway(Node):
         self.declare_parameter("route_version", "")
         self.declare_parameter("log_refs", [])
         self.declare_parameter("vision_sample_manifest_ref", "~/.ros/trashbot_vision_samples/manifest.json")
+        self.declare_parameter(
+            "review_decision_log_ref",
+            "~/.ros/trashbot_vision_samples/review_decisions.jsonl",
+        )
 
         self.host = str(self.get_parameter("host").value)
         self.port = int(self.get_parameter("port").value)
@@ -58,6 +70,9 @@ class OperatorGateway(Node):
         self.log_refs = normalize_log_refs(self.get_parameter("log_refs").value)
         self.vision_sample_manifest_ref = os.path.expanduser(
             str(self.get_parameter("vision_sample_manifest_ref").value)
+        )
+        self.review_decision_log_ref = os.path.expanduser(
+            str(self.get_parameter("review_decision_log_ref").value)
         )
 
         self._lock = threading.Lock()
@@ -116,8 +131,100 @@ class OperatorGateway(Node):
             route_version=self.route_version,
             log_refs=self.log_refs,
             vision_sample_manifest_ref=self.vision_sample_manifest_ref,
+            review_decision_log_ref=self.review_decision_log_ref,
             operator_status_file=self.status_file,
         )
+
+    def vision_review_queue(self):
+        review_decision_log, decision_index = load_review_decision_log(self.review_decision_log_ref)
+        vision_samples = summarize_vision_manifest(
+            self.vision_sample_manifest_ref,
+            decision_index=decision_index,
+        )
+        return {
+            "ok": True,
+            "review_decision_log_ref": self.review_decision_log_ref,
+            "review_decision_log": review_decision_log,
+            "review_queue_count": int(vision_samples.get("review_queue_count", 0)),
+            "review_queue": list(vision_samples.get("review_queue", [])),
+            "manifest_ref": vision_samples.get("manifest_ref", self.vision_sample_manifest_ref),
+            "manifest_read_error": vision_samples.get("read_error", ""),
+        }
+
+    def submit_review_decision(self, payload):
+        payload = dict(payload or {})
+        sample_id = str(payload.get("sample_id", "")).strip()
+        decision = str(payload.get("decision", "")).strip().lower()
+        comment = str(payload.get("comment", "")).strip()
+        option = str(payload.get("option", "")).strip()
+        operator = str(payload.get("operator", "")).strip()
+        if not sample_id:
+            return 400, self._review_error(
+                "bad_request",
+                "sample_id is required",
+                details={"field": "sample_id"},
+            )
+        if decision not in REVIEW_DECISION_VALUES:
+            return 400, self._review_error(
+                "bad_request",
+                "decision must be one of approved, rejected, needs_retry",
+                details={"field": "decision", "allowed_values": sorted(REVIEW_DECISION_VALUES)},
+            )
+
+        sample_ref_map, sample_error = self._vision_sample_refs()
+        if sample_error:
+            return 503, self._review_error(
+                "review_queue_unavailable",
+                sample_error,
+                details={"vision_sample_manifest_ref": self.vision_sample_manifest_ref},
+            )
+        if sample_id not in sample_ref_map:
+            return 404, self._review_error(
+                "sample_not_found",
+                f"sample_id not found in vision manifest: {sample_id}",
+                details={"sample_id": sample_id, "vision_sample_manifest_ref": self.vision_sample_manifest_ref},
+            )
+
+        ts = time.time()
+        decision_record = {
+            "decision_id": f"review-{int(ts * 1000)}-{uuid.uuid4().hex[:8]}",
+            "sample_id": sample_id,
+            "sample_ref": sample_ref_map[sample_id],
+            "decision": decision,
+            "option": option,
+            "comment": comment,
+            "operator": operator,
+            "timestamp": ts,
+            "stored_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts)),
+            "source_ref": self.review_decision_log_ref,
+        }
+        write_error = self._append_review_decision(decision_record)
+        if write_error:
+            return 503, self._review_error(
+                "decision_store_write_failed",
+                write_error,
+                details={"review_decision_log_ref": self.review_decision_log_ref},
+            )
+
+        return 201, {
+            "ok": True,
+            "decision_id": decision_record["decision_id"],
+            "sample_id": sample_id,
+            "decision": decision,
+            "option": option,
+            "comment": comment,
+            "operator": operator,
+            "stored_at": decision_record["stored_at"],
+            "review_decision_log_ref": self.review_decision_log_ref,
+            "last_decision": {
+                "decision_id": decision_record["decision_id"],
+                "decision": decision,
+                "option": option,
+                "comment": comment,
+                "operator": operator,
+                "timestamp": ts,
+            },
+        }
 
     def start_collection(self, target, trash_type=0):
         target = (target or self.default_target).strip()
@@ -315,6 +422,54 @@ class OperatorGateway(Node):
                 json.dump(payload, f, ensure_ascii=False, indent=2)
         except OSError as exc:
             self.get_logger().warn(f"failed writing operator status: {exc}")
+
+    def _append_review_decision(self, record):
+        decision_log_dir = os.path.dirname(self.review_decision_log_ref)
+        try:
+            if decision_log_dir:
+                os.makedirs(decision_log_dir, exist_ok=True)
+            with self._lock:
+                with open(self.review_decision_log_ref, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            return ""
+        except OSError as exc:
+            return f"failed writing review decision log: {exc}"
+
+    def _vision_sample_refs(self):
+        if not self.vision_sample_manifest_ref:
+            return None, "vision sample manifest is not configured"
+        if not os.path.exists(self.vision_sample_manifest_ref):
+            return None, f"vision sample manifest not found: {self.vision_sample_manifest_ref}"
+        try:
+            with open(self.vision_sample_manifest_ref, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            return None, f"failed reading vision sample manifest: {exc}"
+
+        samples = manifest.get("samples") if isinstance(manifest, dict) else None
+        if not isinstance(samples, list):
+            return None, "vision sample manifest has no samples list"
+        refs = {}
+        for sample in samples:
+            if not isinstance(sample, dict):
+                continue
+            sample_id = str(sample.get("sample_id", "")).strip()
+            if not sample_id:
+                continue
+            refs[sample_id] = str(sample.get("sample_ref", "")).strip()
+        if not refs:
+            return None, "vision sample manifest has no valid sample_id entries"
+        return refs, ""
+
+    def _review_error(self, code, message, details=None):
+        return {
+            "ok": False,
+            "error": {
+                "code": str(code),
+                "message": str(message),
+                "details": details if isinstance(details, dict) else {},
+            },
+        }
 
     def _operator_state(self, feedback_state, current_step):
         if current_step == "dropoff" or feedback_state == "dropoff":
