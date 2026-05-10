@@ -87,6 +87,58 @@ class TaskOrchestratorFixedRouteStatusTest(unittest.TestCase):
         self.assertEqual(result.result_code, "fixed_route_completed")
         self.assertEqual(result.message, "fixed_route completed")
 
+    def test_fixed_route_completed_status_includes_structured_evidence(self):
+        with tempfile.TemporaryDirectory() as td:
+            status_file = Path(td) / "status.json"
+            status_file.write_text(
+                json.dumps(
+                    {
+                        "state": "completed",
+                        "mode": "fixed_route",
+                        "route_contract_version": "fixed_route.v1",
+                        "route_file": "/tmp/routes/trash_station.json",
+                        "current_index": 3,
+                        "current_target": "trash_station",
+                        "total": 4,
+                        "dry_run": True,
+                        "enable_visual_gate": True,
+                        "visual_gate_status": "passed",
+                        "visual_gate_detail": "checkpoint matched",
+                        "visual_gate_checkpoint": "station_entrance",
+                        "last_transition": "navigate_to_checkpoint",
+                        "last_nav_result": "dry_run_checkpoint_passed",
+                        "updated_at": "2026-05-10T12:00:00Z",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            node = self.make_orchestrator(status_file)
+
+            result = node._navigate_fixed_route_status("trash_station", GoalHandle())
+
+        self.assertTrue(result.success)
+        self.assertEqual(
+            result.evidence,
+            {
+                "fixed_route_status_file": str(status_file),
+                "state": "completed",
+                "mode": "fixed_route",
+                "route_contract_version": "fixed_route.v1",
+                "route_file": "/tmp/routes/trash_station.json",
+                "current_index": 3,
+                "current_target": "trash_station",
+                "total": 4,
+                "dry_run": True,
+                "enable_visual_gate": True,
+                "visual_gate_status": "passed",
+                "visual_gate_detail": "checkpoint matched",
+                "visual_gate_checkpoint": "station_entrance",
+                "last_transition": "navigate_to_checkpoint",
+                "last_nav_result": "dry_run_checkpoint_passed",
+                "updated_at": "2026-05-10T12:00:00Z",
+            },
+        )
+
     def test_fixed_route_error_status_returns_failure_reason(self):
         with tempfile.TemporaryDirectory() as td:
             status_file = Path(td) / "status.json"
@@ -101,6 +153,7 @@ class TaskOrchestratorFixedRouteStatusTest(unittest.TestCase):
         self.assertFalse(result.success)
         self.assertEqual(result.result_code, "fixed_route_failed")
         self.assertEqual(result.message, "route file not found")
+        self.assertEqual(result.evidence["failure_reason"], "route file not found")
 
     def test_fixed_route_missing_terminal_status_times_out(self):
         with tempfile.TemporaryDirectory() as td:

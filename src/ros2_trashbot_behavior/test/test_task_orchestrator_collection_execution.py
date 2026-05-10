@@ -197,6 +197,52 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["final_state"], "error")
         self.assertEqual(payload["nav_results"][0]["result_code"], "timeout")
 
+    def test_execute_collection_fixed_route_success_records_status_evidence(self):
+        with tempfile.TemporaryDirectory() as td:
+            status_file = Path(td) / "status.json"
+            status_file.write_text(
+                json.dumps(
+                    {
+                        "state": "completed",
+                        "route_contract_version": "fixed_route.v1",
+                        "route_file": "/tmp/routes/trash_station.json",
+                        "current_index": 2,
+                        "total": 3,
+                        "last_nav_result": "dry_run_checkpoint_passed",
+                        "updated_at": "2026-05-10T12:30:00Z",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            node = self.make_orchestrator(Path(td), status_file)
+            node.delivery_mode = "fixed_route"
+            node.navigation_timeout_sec = 0.1
+            goal = FakeGoalHandle()
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        self.assertTrue(goal.succeeded)
+        self.assertFalse(goal.aborted)
+        self.assertTrue(result.success)
+        self.assertEqual(payload["delivery_mode"], "fixed_route")
+        self.assertEqual(payload["final_status"], "success")
+        self.assertEqual(payload["nav_results"][0]["result_code"], "fixed_route_completed")
+        self.assertEqual(payload["nav_results"][0]["message"], "fixed_route completed")
+        self.assertEqual(
+            payload["nav_results"][0]["evidence"],
+            {
+                "fixed_route_status_file": str(status_file),
+                "state": "completed",
+                "route_contract_version": "fixed_route.v1",
+                "route_file": "/tmp/routes/trash_station.json",
+                "current_index": 2,
+                "total": 3,
+                "last_nav_result": "dry_run_checkpoint_passed",
+                "updated_at": "2026-05-10T12:30:00Z",
+            },
+        )
+
     def test_execute_collection_manual_dropoff_timeout_aborts_with_timeout_record(self):
         with tempfile.TemporaryDirectory() as td:
             node = self.make_orchestrator(Path(td))

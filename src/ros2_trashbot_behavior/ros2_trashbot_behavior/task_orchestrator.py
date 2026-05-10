@@ -2,7 +2,7 @@ import json
 import os
 import threading
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 
 import rclpy
@@ -40,6 +40,7 @@ class NavigationResult:
     result_code: str
     message: str
     elapsed_sec: float
+    evidence: dict = field(default_factory=dict)
 
 
 class TaskOrchestrator(Node):
@@ -630,11 +631,24 @@ class TaskOrchestrator(Node):
                 with open(status_path, "r", encoding="utf-8") as f:
                     payload = json.load(f)
             except (OSError, json.JSONDecodeError) as exc:
-                return NavigationResult(False, "status_file_error", str(exc), time.monotonic() - start)
+                return NavigationResult(
+                    False,
+                    "status_file_error",
+                    str(exc),
+                    time.monotonic() - start,
+                    self._fixed_route_status_evidence(status_path),
+                )
+            evidence = self._fixed_route_status_evidence(status_path, payload)
             status = str(payload.get("status", "")).lower()
             state = str(payload.get("state", "")).lower()
             if payload.get("success") is True or status in ("success", "succeeded", "completed") or state in ("success", "succeeded", "completed"):
-                return NavigationResult(True, "fixed_route_completed", "fixed_route completed", time.monotonic() - start)
+                return NavigationResult(
+                    True,
+                    "fixed_route_completed",
+                    "fixed_route completed",
+                    time.monotonic() - start,
+                    evidence,
+                )
             if payload.get("success") is False or status in ("failed", "error") or state in ("failed", "error"):
                 message = (
                     payload.get("message")
@@ -642,14 +656,53 @@ class TaskOrchestrator(Node):
                     or payload.get("last_error")
                     or "fixed_route failed"
                 )
-                return NavigationResult(False, "fixed_route_failed", message, time.monotonic() - start)
+                return NavigationResult(
+                    False,
+                    "fixed_route_failed",
+                    message,
+                    time.monotonic() - start,
+                    evidence,
+                )
             time.sleep(0.1)
         return NavigationResult(
             False,
             "timeout",
             f"fixed_route status file did not report completion: {status_path}",
             time.monotonic() - start,
+            self._fixed_route_status_evidence(status_path),
         )
+
+    def _fixed_route_status_evidence(self, status_path, payload=None):
+        evidence = {"fixed_route_status_file": status_path}
+        if not isinstance(payload, dict):
+            return evidence
+        for key in (
+            "state",
+            "status",
+            "success",
+            "mode",
+            "route_contract_version",
+            "route_file",
+            "keyframe_dir",
+            "current_index",
+            "current_target",
+            "total",
+            "dry_run",
+            "enable_visual_gate",
+            "keyframe_preflight",
+            "visual_gate_status",
+            "visual_gate_detail",
+            "visual_gate_checkpoint",
+            "last_error",
+            "failure_reason",
+            "message",
+            "last_transition",
+            "last_nav_result",
+            "updated_at",
+        ):
+            if key in payload:
+                evidence[key] = payload[key]
+        return evidence
 
     def _perform_dropoff(self, goal_handle, task_id):
         start = time.monotonic()
