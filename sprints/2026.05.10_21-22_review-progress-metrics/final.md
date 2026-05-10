@@ -2,45 +2,31 @@
 
 ## 结果摘要
 
-本轮围绕 Objective 4（感知复核链路）完成了 review progress metrics 切片交付：
+本轮完成了 review progress metrics 切片闭环：
 
-- 后端在 review queue/diagnostics 路径统一输出复核进度、决策分布、下一条待处理样本。
-- operator 页面新增可视化统计和快速定位入口，减少人工复核切换成本。
-- 最小护栏测试覆盖空数据、部分已判定、重复决策最后有效记录口径。
-- 接口文档已同步字段语义和计算口径。
+- 后端统一提供 `progress_summary`、`decision_distribution`、`next_pending_sample`。
+- operator 页面可直接看到复核进度、分布，并支持 `Jump To Next Pending`。
+- 接口文档已同步字段语义与口径。
 
-## 对 Objective 4 的前进价值
+## 对 Objective 4 的推进价值
 
-1. 从“只能提交决策”升级为“可观测复核进度”，运营可直接看覆盖率和 pending 压力。
-2. `next_pending_sample` 把“下一步做什么”显式化，降低人工检索成本。
-3. 重复决策口径固定为最后有效记录，复核统计和页面展示一致，减少误解。
+1. 复核流程从“仅能提交决策”升级为“可观测覆盖率与 pending 压力”。
+2. `next_pending_sample` 给出下一步操作入口，减少人工检索。
+3. 统计口径与页面展示一致，降低运营解释成本。
 
-## 验证结论
+## 验证结论（tech-plan 命令）
 
-- 三个 targeted unittest 全通过。
-- `py_compile` 通过。
-- `scripts/run_smoke_tests.sh` 通过。
-- 全量 `git diff --check` 因并行 README 尾随空格失败；本任务允许范围内 diff-check 通过。
+- `test_*operator*py`、`py_compile`、`scripts/run_smoke_tests.sh`、scoped `git diff --check` 通过。
+- `test_*review*py` 失败（`NO TESTS RAN`，文件命名与 pattern 不匹配）。
+- 全量 `git diff --check` 失败（范围外 `README.md` trailing whitespace）。
 
 ## 未完成事项与风险
 
-1. 全量仓库格式健康（`git diff --check`）仍受范围外 README 并行改动影响，需 owner 统一清理。
-2. `review_queue` 当前为窗口化展示，`next_pending_sample` 在窗口外时仅提示不可直接选中，后续可评估分页/跳转策略。
-3. 本轮是软件侧 contract/页面闭环，不等于真实相机或硬件上车验证。
+1. 若验收要求 `test_*review*py` 全绿，需要新增或重命名符合 pattern 的测试文件（本轮受文件范围限制未处理）。
+2. 全仓 `git diff --check` 受范围外 `README.md` 影响，需对应 owner 清理。
+3. 当前 `next_pending_sample` 仍受窗口化队列限制，窗口外仅提示不可直跳。
 
-## 建议下一步
+## 下一步建议
 
-- 由主责 owner 决定是否在下一轮加入 queue 分页或“跨窗口拉取 next pending”能力。
-- 将本轮统计字段接入上层运营看板或日报，验证覆盖率是否与人工工作量变化一致。
-
-## 2026-05-10 22:15 验收闭环补充
-
-- 本轮按 tech-plan 验收命令原样复跑：除 `test_*review*py`（0 tests）与全量 `git diff --check`（范围外 `README.md` 尾随空白）外，其余命令通过。
-- 在任务允许范围内，`summary/distribution/next_pending` 的后端聚合、接口透传、页面展示与 `Jump To Next Pending` 跳转逻辑一致。
-- scoped `git diff --check`（限定允许文件）通过，确认本轮未引入范围内格式问题。
-
-## 2026-05-10 22:15 CST 验收复跑状态
-
-- 复跑定位：验收优先，仅验证现有增量，不扩大实现范围。
-- 复跑结果：3 个 targeted unittest、`py_compile`、`scripts/run_smoke_tests.sh` 全通过。
-- 唯一未清零项：全仓 `git diff --check` 被范围外 `README.md` 历史尾随空格阻塞；切片范围内 diff-check 已通过。
+- 由 owner 决策下一轮是否补 `*review*` 命名测试文件并纳入硬门禁。
+- 清理范围外 `README.md` 尾随空白后再做一次全仓 diff-check 收口。
