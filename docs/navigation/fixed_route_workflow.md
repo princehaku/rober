@@ -126,6 +126,7 @@ When `enable_visual_gate:=true`, dry-run now preflights keyframe coverage for th
 - total checkpoints
 - dry-run flag
 - visual gate flag
+- route proof summary
 - keyframe preflight summary
 - last error
 - failure reason
@@ -147,6 +148,14 @@ Example status JSON:
   "total": 2,
   "dry_run": true,
   "enable_visual_gate": false,
+  "route_proof_summary": {
+    "coverage_rate": 1.0,
+    "covered_checkpoints": 2,
+    "total_checkpoints": 2,
+    "missing_checkpoints": [],
+    "gate_status": "passed",
+    "last_block_reason": ""
+  },
   "keyframe_preflight": {
     "enabled": false,
     "total_checkpoints": 2,
@@ -162,6 +171,22 @@ Example status JSON:
   "updated_at": 1778256000.0
 }
 ```
+
+`route_proof_summary` is the navigation-side source of truth for Objective 3 route proof coverage:
+
+- `coverage_rate`: `covered_checkpoints / total_checkpoints`, rounded to 4 decimals.
+- `covered_checkpoints`: checkpoints already proven by fixed-route dry-run progression.
+- `total_checkpoints`: full checkpoint count from the validated fixed route.
+- `missing_checkpoints`: checkpoint indexes that are not yet proven (`covered_checkpoints..total_checkpoints-1`).
+- `gate_status`: current visual gate block state, or `passed` when all checkpoints are covered.
+- `last_block_reason`: latest block reason copied from `failure_reason`/`last_error`; empty when fully covered.
+
+Stability rules:
+
+- Full coverage: `coverage_rate=1.0`, `missing_checkpoints=[]`, `gate_status=passed`.
+- Partial coverage: `coverage_rate<1.0`, `missing_checkpoints` lists uncovered tail indexes.
+- Missing keyframe: `gate_status=keyframe_preflight_failed` or `missing_keyframe`, with keyframe detail in `last_block_reason`.
+- Visual gate not passed (camera frame/descriptors/matches): `gate_status` reflects the concrete gate status and keeps the failure detail in `last_block_reason`.
 
 ## 5. Debug Web
 

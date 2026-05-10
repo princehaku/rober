@@ -89,6 +89,8 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("summarize_review_progress", diagnostics_source)
         self.assertIn("vision_samples=summarize_vision_manifest(", diagnostics_block)
         self.assertIn("decision_index=decision_index", diagnostics_block)
+        self.assertIn("route_proof_summary, route_proof_source = _extract_route_proof_summary", diagnostics_block)
+        self.assertIn("route_proof_status=route_proof_status", diagnostics_block)
         self.assertIn('"progress_summary"', diagnostics_source)
         self.assertIn('"decision_distribution"', diagnostics_source)
         self.assertIn('"next_pending_sample"', diagnostics_source)
@@ -119,6 +121,11 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "reviewProgressSummary",
             "reviewDecisionDistribution",
             "reviewNextPending",
+            "diagRouteProofState",
+            "diagRouteProofReason",
+            "diagRouteProofSource",
+            "route_proof_summary",
+            "route_proof_status",
             "reviewJumpPendingButton",
             "jumpToNextPending",
             "applyReviewProgress",

@@ -27,6 +27,10 @@ from ros2_trashbot_nav.route_utils import (
     load_waypoints_from_csv,
     validate_route_yaml_data,
 )
+from ros2_trashbot_nav.route_proof_summary import (
+    build_route_proof_summary,
+    summarize_checkpoints_from_visual_gate,
+)
 
 
 PASSED = "passed"
@@ -235,6 +239,13 @@ def _invalid_route_proof(route_file: str, keyframe_dir: str, live_frame_dir: str
     debug_status["visual_gate_detail"] = error
     debug_status["last_error"] = error
     debug_status["failure_reason"] = error
+    route_proof_summary = build_route_proof_summary(
+        total_checkpoints=0,
+        covered_checkpoints=0,
+        gate_status=INVALID_ROUTE,
+        last_block_reason=error,
+        missing_checkpoints=[],
+    )
     return {
         "route": {
             "path": str(Path(route_file).expanduser()),
@@ -250,6 +261,7 @@ def _invalid_route_proof(route_file: str, keyframe_dir: str, live_frame_dir: str
             "failed": 1,
             "failure_reasons": {INVALID_ROUTE: 1},
         },
+        "route_proof_summary": route_proof_summary,
         "debug_status": debug_status,
         "inputs": {
             "keyframe_dir": str(Path(keyframe_dir).expanduser()),
@@ -293,6 +305,7 @@ def build_visual_gate_proof(
     for item in failed:
         failure_reasons[item["status"]] = failure_reasons.get(item["status"], 0) + 1
     summary_status = PASSED if not failed else "failed"
+    route_proof_summary = summarize_checkpoints_from_visual_gate(checkpoints)
     proof = {
         "route": {
             "path": str(Path(route_file).expanduser()),
@@ -306,6 +319,7 @@ def build_visual_gate_proof(
             "failed": len(failed),
             "failure_reasons": failure_reasons,
         },
+        "route_proof_summary": route_proof_summary,
         "debug_status": _debug_status(route_file, keyframe_dir, checkpoints, summary_status),
         "inputs": {
             "keyframe_dir": str(Path(keyframe_dir).expanduser()),

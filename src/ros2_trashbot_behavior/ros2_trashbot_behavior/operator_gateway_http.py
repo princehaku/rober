@@ -353,6 +353,10 @@ HTML = """<!doctype html>
         <div class="metric"><span>Latest vision sample</span><strong id="diagLatestVisionSample">-</strong></div>
         <div class="metric"><span>Review queue</span><strong id="diagReviewQueue">-</strong></div>
         <div class="metric"><span>Next review sample</span><strong id="diagNextReviewSample">-</strong></div>
+        <div class="metric"><span>Route proof state</span><strong id="diagRouteProofState">-</strong></div>
+        <div class="metric"><span>Route proof summary</span><strong id="diagRouteProofSummary">-</strong></div>
+        <div class="metric"><span>Route proof reason</span><strong id="diagRouteProofReason">-</strong></div>
+        <div class="metric"><span>Route proof source</span><strong id="diagRouteProofSource">-</strong></div>
       </div>
       <div id="diagVisionIntegrity" class="integrityCard">
         <div class="integrityHeader">
@@ -645,6 +649,20 @@ function nextPendingText(nextPendingSample) {
   }
   return `${text(nextPendingSample.sample_id, 'unknown')} | ${text(nextPendingSample.reason, 'review')}`;
 }
+function routeProofSummaryText(routeProofSummary) {
+  if (!routeProofSummary || typeof routeProofSummary !== 'object') return 'not reported';
+  const coverageRate = Number(routeProofSummary.coverage_rate);
+  const covered = Number(routeProofSummary.covered_checkpoints);
+  const total = Number(routeProofSummary.total_checkpoints);
+  const gateStatus = text(routeProofSummary.gate_status, 'unknown');
+  const missing = Array.isArray(routeProofSummary.missing_checkpoints)
+    ? routeProofSummary.missing_checkpoints.map((item) => String(item || '').trim()).filter(Boolean)
+    : [];
+  const coverageText = Number.isFinite(coverageRate) ? percent(coverageRate) : 'n/a';
+  const countText = Number.isFinite(covered) && Number.isFinite(total) ? `${covered}/${total}` : 'n/a';
+  const missingText = missing.length ? missing.join(', ') : 'none';
+  return `coverage ${coverageText} | checkpoints ${countText} | gate ${gateStatus} | missing ${missingText}`;
+}
 function applyReviewProgress(queuePayload) {
   const progressSummary = queuePayload && typeof queuePayload === 'object'
     ? queuePayload.progress_summary
@@ -824,6 +842,8 @@ function showDiagnostics(payload) {
   const failure = payload.failure || {};
   const latest = payload.latest_status || {};
   const visionSamples = payload.vision_samples || {};
+  const routeProofSummary = payload.route_proof_summary || {};
+  const routeProofStatus = payload.route_proof_status || {};
   const hardwareProof = payload.hardware_proof || {};
   const refs = Array.isArray(payload.log_refs) ? payload.log_refs : [];
   const taskRecord = failure.task_record_path || (payload.last_task || {}).task_record_path || latest.task_record_path || '';
@@ -853,6 +873,13 @@ function showDiagnostics(payload) {
   document.getElementById('diagNextReviewSample').textContent = nextReview
     ? `${text(nextReview.reason, 'review')} ${text(nextReview.sample_ref, text(nextReview.sample_id, 'unknown'))}`
     : 'no pending sample';
+  document.getElementById('diagRouteProofState').textContent = text(routeProofStatus.state, 'unknown');
+  document.getElementById('diagRouteProofSummary').textContent = routeProofSummaryText(routeProofSummary);
+  document.getElementById('diagRouteProofReason').textContent = text(
+    routeProofStatus.blocking_reason || routeProofStatus.reason,
+    'not reported'
+  );
+  document.getElementById('diagRouteProofSource').textContent = text(routeProofStatus.source, 'not reported');
   renderReviewQueue({
     review_queue_count: visionSamples.review_queue_count,
     review_queue: reviewQueue,

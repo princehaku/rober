@@ -16,6 +16,21 @@ LOW_CONFIDENCE_REVIEW_THRESHOLD = 75
 HARDWARE_PROOF_STATUSES = {"software_proof", "needs_hil", "invalid_config", "read_error"}
 REVIEW_DECISION_VALUES = {"approved", "rejected", "needs_retry"}
 REVIEW_DECISION_ORDER = ("approved", "rejected", "needs_retry")
+ROUTE_PROOF_REQUIRED_FIELDS = (
+    "coverage_rate",
+    "covered_checkpoints",
+    "total_checkpoints",
+    "missing_checkpoints",
+    "gate_status",
+    "last_block_reason",
+)
+ROUTE_PROOF_WAITING_GATE_STATUSES = {
+    "waiting_visual_gate",
+    "waiting",
+    "pending",
+    "blocked_by_visual_gate",
+}
+ROUTE_PROOF_READY_GATE_STATUSES = {"passed", "ready", "ok"}
 
 
 def _default_hardware_proof_summary(path, status="read_error", read_error=""):
@@ -236,6 +251,158 @@ def safe_int(value, default=0):
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def safe_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _read_task_record(path):
+    record_path = os.path.expanduser(str(path or ""))
+    if not record_path or not os.path.exists(record_path):
+        return {}
+    try:
+        with open(record_path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _route_proof_from_task_record(task_record):
+    if not isinstance(task_record, dict):
+        return None, ""
+    summary = task_record.get("route_proof_summary")
+    if isinstance(summary, dict):
+        return summary, "task_record.route_proof_summary"
+    nav_results = task_record.get("nav_results")
+    if not isinstance(nav_results, list):
+        return None, ""
+    for nav_result in reversed(nav_results):
+        if not isinstance(nav_result, dict):
+            continue
+        candidate = nav_result.get("route_proof_summary")
+        if isinstance(candidate, dict):
+            return candidate, "task_record.nav_results.route_proof_summary"
+        evidence = nav_result.get("evidence")
+        if isinstance(evidence, dict) and isinstance(evidence.get("route_proof_summary"), dict):
+            return evidence.get("route_proof_summary"), "task_record.nav_results.evidence.route_proof_summary"
+    return None, ""
+
+
+def _extract_route_proof_summary(latest_status, last_task):
+    latest_status = latest_status if isinstance(latest_status, dict) else {}
+    last_task = last_task if isinstance(last_task, dict) else {}
+    for summary, source in (
+        (latest_status.get("route_proof_summary"), "latest_status.route_proof_summary"),
+        (last_task.get("route_proof_summary"), "last_task.route_proof_summary"),
+    ):
+        if isinstance(summary, dict):
+            return dict(summary), source
+    task_record_path = (
+        latest_status.get("task_record_path")
+        or last_task.get("task_record_path")
+        or ""
+    )
+    task_record = _read_task_record(task_record_path)
+    summary, source = _route_proof_from_task_record(task_record)
+    if isinstance(summary, dict):
+        return dict(summary), source
+    return {}, ""
+
+
+def _route_proof_missing_fields(route_proof_summary):
+    return [field for field in ROUTE_PROOF_REQUIRED_FIELDS if field not in route_proof_summary]
+
+
+def classify_route_proof(route_proof_summary, source=""):
+    route_proof_summary = route_proof_summary if isinstance(route_proof_summary, dict) else {}
+    source_text = str(source or "")
+    if not route_proof_summary:
+        return {
+            "state": "unknown",
+            "reason": "route_proof_summary is missing",
+            "blocking_reason": "",
+            "missing_fields": list(ROUTE_PROOF_REQUIRED_FIELDS),
+            "source": source_text,
+        }
+
+    missing_fields = _route_proof_missing_fields(route_proof_summary)
+    if missing_fields:
+        return {
+            "state": "unknown",
+            "reason": f"route_proof_summary missing required fields: {', '.join(missing_fields)}",
+            "blocking_reason": "",
+            "missing_fields": missing_fields,
+            "source": source_text,
+        }
+
+    gate_status = str(route_proof_summary.get("gate_status", "")).strip().lower()
+    blocking_reason = str(route_proof_summary.get("last_block_reason", "")).strip()
+    coverage_rate = safe_float(route_proof_summary.get("coverage_rate"))
+    missing_checkpoints = route_proof_summary.get("missing_checkpoints")
+    if not isinstance(missing_checkpoints, list):
+        missing_checkpoints = []
+    missing_checkpoint_values = [str(item).strip() for item in missing_checkpoints if str(item).strip()]
+
+    if blocking_reason:
+        return {
+            "state": "blocked",
+            "reason": f"blocked: {blocking_reason}",
+            "blocking_reason": blocking_reason,
+            "missing_fields": [],
+            "source": source_text,
+        }
+
+    if gate_status in ROUTE_PROOF_WAITING_GATE_STATUSES:
+        return {
+            "state": "waiting_visual_gate",
+            "reason": "waiting for visual gate to pass",
+            "blocking_reason": "",
+            "missing_fields": [],
+            "source": source_text,
+        }
+
+    if coverage_rate is None:
+        return {
+            "state": "unknown",
+            "reason": "route_proof_summary.coverage_rate is not a number",
+            "blocking_reason": "",
+            "missing_fields": [],
+            "source": source_text,
+        }
+
+    if coverage_rate < 1.0 or missing_checkpoint_values:
+        reason = f"coverage_rate={coverage_rate:.4f} indicates incomplete route proof"
+        if missing_checkpoint_values:
+            reason = f"missing checkpoints: {', '.join(missing_checkpoint_values)}"
+        return {
+            "state": "insufficient_coverage",
+            "reason": reason,
+            "blocking_reason": "",
+            "missing_fields": [],
+            "source": source_text,
+        }
+
+    if gate_status in ROUTE_PROOF_READY_GATE_STATUSES:
+        return {
+            "state": "ready",
+            "reason": "route proof is ready",
+            "blocking_reason": "",
+            "missing_fields": [],
+            "source": source_text,
+        }
+
+    return {
+        "state": "unknown",
+        "reason": f"unsupported gate_status: {gate_status or 'empty'}",
+        "blocking_reason": "",
+        "missing_fields": [],
+        "source": source_text,
+    }
 
 
 def sample_event_type(sample):
@@ -517,6 +684,8 @@ def build_diagnostics_payload(
 ):
     latest_status = dict(latest_status or {})
     last_task = dict(latest_status.get("last_task") or {})
+    route_proof_summary, route_proof_source = _extract_route_proof_summary(latest_status, last_task)
+    route_proof_status = classify_route_proof(route_proof_summary, source=route_proof_source)
     failure = {
         "state": latest_status.get("state", ""),
         "message": latest_status.get("message", ""),
@@ -542,6 +711,8 @@ def build_diagnostics_payload(
             vision_sample_manifest_ref,
             decision_index=decision_index,
         ),
+        route_proof_summary=route_proof_summary,
+        route_proof_status=route_proof_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),
         operator_status_file=str(operator_status_file or ""),
     )

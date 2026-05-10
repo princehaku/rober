@@ -82,6 +82,12 @@ class VisualGateProofTest(unittest.TestCase):
             self.assertEqual(proof["summary"]["status"], "passed")
             self.assertEqual(proof["summary"]["passed"], 2)
             self.assertEqual(proof["summary"]["failed"], 0)
+            self.assertEqual(proof["route_proof_summary"]["coverage_rate"], 1.0)
+            self.assertEqual(proof["route_proof_summary"]["covered_checkpoints"], 2)
+            self.assertEqual(proof["route_proof_summary"]["total_checkpoints"], 2)
+            self.assertEqual(proof["route_proof_summary"]["missing_checkpoints"], [])
+            self.assertEqual(proof["route_proof_summary"]["gate_status"], "passed")
+            self.assertEqual(proof["route_proof_summary"]["last_block_reason"], "")
             self.assertEqual(proof["checkpoints"][0]["status"], "passed")
             self.assertEqual(proof["checkpoints"][0]["match_count"], 32)
             self.assertEqual(proof["checkpoints"][0]["threshold"], 25)
@@ -113,6 +119,11 @@ class VisualGateProofTest(unittest.TestCase):
             self.assertEqual(proof["summary"]["status"], "passed")
             self.assertEqual(proof["route"]["total_checkpoints"], 1)
             self.assertEqual(proof["checkpoints"][0]["match_count"], 40)
+            self.assertEqual(proof["route_proof_summary"]["coverage_rate"], 1.0)
+            self.assertEqual(proof["route_proof_summary"]["covered_checkpoints"], 1)
+            self.assertEqual(proof["route_proof_summary"]["total_checkpoints"], 1)
+            self.assertEqual(proof["route_proof_summary"]["missing_checkpoints"], [])
+            self.assertEqual(proof["route_proof_summary"]["gate_status"], "passed")
 
     def test_insufficient_matches_is_structured_failure(self):
         with tempfile.TemporaryDirectory() as td:
@@ -140,6 +151,12 @@ class VisualGateProofTest(unittest.TestCase):
             self.assertEqual(proof["summary"]["failure_reasons"], {"insufficient_matches": 1})
             self.assertEqual(proof["checkpoints"][0]["status"], "insufficient_matches")
             self.assertIn("12/25", proof["checkpoints"][0]["detail"])
+            self.assertEqual(proof["route_proof_summary"]["coverage_rate"], 0.0)
+            self.assertEqual(proof["route_proof_summary"]["covered_checkpoints"], 0)
+            self.assertEqual(proof["route_proof_summary"]["total_checkpoints"], 2)
+            self.assertEqual(proof["route_proof_summary"]["missing_checkpoints"], [0, 1])
+            self.assertEqual(proof["route_proof_summary"]["gate_status"], "insufficient_matches")
+            self.assertIn("12/25", proof["route_proof_summary"]["last_block_reason"])
             self.assertEqual(proof["debug_status"]["visual_gate_status"], "insufficient_matches")
             self.assertEqual(proof["debug_status"]["visual_gate_checkpoint"], 0)
 
@@ -164,6 +181,12 @@ class VisualGateProofTest(unittest.TestCase):
 
             self.assertEqual(proof["checkpoints"][0]["status"], "missing_keyframe")
             self.assertEqual(proof["summary"]["failure_reasons"], {"missing_keyframe": 1})
+            self.assertEqual(proof["route_proof_summary"]["coverage_rate"], 0.0)
+            self.assertEqual(proof["route_proof_summary"]["covered_checkpoints"], 0)
+            self.assertEqual(proof["route_proof_summary"]["total_checkpoints"], 2)
+            self.assertEqual(proof["route_proof_summary"]["missing_checkpoints"], [0, 1])
+            self.assertEqual(proof["route_proof_summary"]["gate_status"], "missing_keyframe")
+            self.assertIn("missing keyframe", proof["route_proof_summary"]["last_block_reason"])
             self.assertEqual(proof["debug_status"]["keyframe_preflight"]["missing_keyframes"], [0])
             self.assertEqual(len(matcher.calls), 1)
 
@@ -188,6 +211,11 @@ class VisualGateProofTest(unittest.TestCase):
 
             self.assertEqual(proof["checkpoints"][0]["status"], "missing_live_frame")
             self.assertEqual(proof["summary"]["failure_reasons"], {"missing_live_frame": 1})
+            self.assertEqual(proof["route_proof_summary"]["coverage_rate"], 0.0)
+            self.assertEqual(proof["route_proof_summary"]["covered_checkpoints"], 0)
+            self.assertEqual(proof["route_proof_summary"]["total_checkpoints"], 2)
+            self.assertEqual(proof["route_proof_summary"]["missing_checkpoints"], [0, 1])
+            self.assertEqual(proof["route_proof_summary"]["gate_status"], "missing_live_frame")
             self.assertEqual(proof["debug_status"]["visual_gate_status"], "missing_live_frame")
             self.assertEqual(len(matcher.calls), 1)
 
@@ -205,6 +233,11 @@ class VisualGateProofTest(unittest.TestCase):
             self.assertEqual(proof["route"]["status"], "invalid_route")
             self.assertEqual(proof["summary"]["status"], "invalid_route")
             self.assertEqual(proof["debug_status"]["visual_gate_status"], "invalid_route")
+            self.assertEqual(proof["route_proof_summary"]["coverage_rate"], 0.0)
+            self.assertEqual(proof["route_proof_summary"]["covered_checkpoints"], 0)
+            self.assertEqual(proof["route_proof_summary"]["total_checkpoints"], 0)
+            self.assertEqual(proof["route_proof_summary"]["missing_checkpoints"], [])
+            self.assertEqual(proof["route_proof_summary"]["gate_status"], "invalid_route")
             self.assertIn("route file not found", proof["debug_status"]["failure_reason"])
             self.assertEqual(proof["checkpoints"], [])
 

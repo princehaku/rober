@@ -19,6 +19,130 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
 
 
 class OperatorGatewayDiagnosticsTest(unittest.TestCase):
+    def _base_build_payload(self, latest_status):
+        return build_diagnostics_payload(
+            latest_status,
+            software_version="",
+            map_version="",
+            route_version="",
+            log_refs=[],
+            vision_sample_manifest_ref="",
+            review_decision_log_ref="",
+            operator_status_file="/tmp/status.json",
+        )
+
+    def test_route_proof_summary_passthrough_and_ready_state(self):
+        route_proof_summary = {
+            "coverage_rate": 1.0,
+            "covered_checkpoints": 3,
+            "total_checkpoints": 3,
+            "missing_checkpoints": [],
+            "gate_status": "passed",
+            "last_block_reason": "",
+        }
+        payload = self._base_build_payload(
+            {
+                "state": "waiting_for_trash",
+                "route_proof_summary": route_proof_summary,
+            }
+        )
+
+        self.assertEqual(payload["route_proof_summary"], route_proof_summary)
+        self.assertEqual(payload["route_proof_status"]["state"], "ready")
+        self.assertEqual(payload["route_proof_status"]["source"], "latest_status.route_proof_summary")
+        self.assertEqual(payload["route_proof_status"]["blocking_reason"], "")
+
+    def test_route_proof_summary_missing_fields_downgrades_to_unknown(self):
+        payload = self._base_build_payload(
+            {
+                "state": "failed",
+                "route_proof_summary": {
+                    "coverage_rate": 0.5,
+                    "covered_checkpoints": 1,
+                    "total_checkpoints": 2,
+                    "gate_status": "passed",
+                },
+            }
+        )
+
+        self.assertEqual(payload["route_proof_status"]["state"], "unknown")
+        self.assertIn("missing required fields", payload["route_proof_status"]["reason"])
+        self.assertIn("missing_checkpoints", payload["route_proof_status"]["missing_fields"])
+        self.assertIn("last_block_reason", payload["route_proof_status"]["missing_fields"])
+
+    def test_route_proof_summary_blocked_surfaces_reason(self):
+        payload = self._base_build_payload(
+            {
+                "state": "failed",
+                "route_proof_summary": {
+                    "coverage_rate": 0.66,
+                    "covered_checkpoints": 2,
+                    "total_checkpoints": 3,
+                    "missing_checkpoints": ["checkpoint_3"],
+                    "gate_status": "passed",
+                    "last_block_reason": "corridor blocked by obstacle",
+                },
+            }
+        )
+
+        self.assertEqual(payload["route_proof_status"]["state"], "blocked")
+        self.assertEqual(payload["route_proof_status"]["blocking_reason"], "corridor blocked by obstacle")
+        self.assertIn("corridor blocked by obstacle", payload["route_proof_status"]["reason"])
+
+    def test_route_proof_summary_empty_maps_to_unknown(self):
+        payload = self._base_build_payload(
+            {
+                "state": "failed",
+                "route_proof_summary": {},
+            }
+        )
+
+        self.assertEqual(payload["route_proof_summary"], {})
+        self.assertEqual(payload["route_proof_status"]["state"], "unknown")
+        self.assertIn("route_proof_summary is missing", payload["route_proof_status"]["reason"])
+
+    def test_route_proof_summary_can_be_read_from_task_record_nav_evidence(self):
+        with tempfile.TemporaryDirectory() as td:
+            task_record_path = Path(td) / "task.json"
+            task_record_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "delivery-1",
+                        "nav_results": [
+                            {
+                                "success": False,
+                                "result_code": "fixed_route_failed",
+                                "evidence": {
+                                    "route_proof_summary": {
+                                        "coverage_rate": 0.5,
+                                        "covered_checkpoints": 1,
+                                        "total_checkpoints": 2,
+                                        "missing_checkpoints": ["checkpoint_2"],
+                                        "gate_status": "passed",
+                                        "last_block_reason": "",
+                                    }
+                                },
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            payload = self._base_build_payload(
+                {
+                    "state": "failed",
+                    "task_record_path": str(task_record_path),
+                    "last_task": {"task_record_path": str(task_record_path)},
+                }
+            )
+
+        self.assertEqual(payload["route_proof_status"]["state"], "insufficient_coverage")
+        self.assertEqual(
+            payload["route_proof_status"]["source"],
+            "task_record.nav_results.evidence.route_proof_summary",
+        )
+        self.assertEqual(payload["route_proof_summary"]["missing_checkpoints"], ["checkpoint_2"])
+
     def test_diagnostics_prefers_latest_status_terminal_fields(self):
         payload = build_diagnostics_payload(
             {

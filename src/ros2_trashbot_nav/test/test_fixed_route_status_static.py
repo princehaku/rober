@@ -28,6 +28,7 @@ class FixedRouteStatusStaticTest(unittest.TestCase):
         self.assertIn("'visual_gate_status'", source)
         self.assertIn("'visual_gate_detail'", source)
         self.assertIn("'visual_gate_checkpoint'", source)
+        self.assertIn("'route_proof_summary'", source)
         self.assertIn("'keyframe_preflight'", source)
         self.assertIn("self.keyframe_preflight", source)
 

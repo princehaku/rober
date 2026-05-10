@@ -101,7 +101,7 @@ The optional `operator_gateway` node exposes a local HTTP API for phone or brows
 | Endpoint | Method | Contract |
 | --- | --- | --- |
 | `/api/status` | GET | Returns `state`, `message`, `updated_at`, and the latest task metadata such as `task_record_path`, `error_message`, progress, or target when available. |
-| `/api/diagnostics` | GET | Returns the minimum remote-support diagnostic package: software version, map/route versions, latest status, last task summary, terminal failure fields, log references, vision sample manifest reference, hardware proof summary, and operator status file path. |
+| `/api/diagnostics` | GET | Returns the minimum remote-support diagnostic package: software version, map/route versions, latest status, last task summary, terminal failure fields, route proof summary + mapped route proof state, log references, vision sample manifest reference, hardware proof summary, and operator status file path. |
 | `/api/vision/review-queue` | GET | Returns review queue samples with `review_status` and `last_decision` summary, plus progress aggregates (`progress_summary`), decision distribution (`decision_distribution`), and `next_pending_sample` for quick operator focus. Queue/manifest errors are returned as structured fields instead of breaking the operator main flow. |
 | `/api/vision/review-decisions` | POST | Stores a manual review decision for one sample. Required fields: `sample_id`, `decision` (`approved`, `rejected`, `needs_retry`). Optional: `comment`, `option`, `operator`. |
 | `/api/collect` | POST | Starts `/trashbot/collect_trash`. Optional JSON body or query parameter `target` overrides the default delivery target. |
@@ -145,6 +145,27 @@ The same `/api/status` payload carries live location telemetry when available:
 | `file_counts` | Per-reference present/missing/empty counts for `sample_ref`, `json`, `raw_image`, and `annotated_image`. |
 
 If the manifest is not configured or the vision checker cannot be imported, diagnostics still returns HTTP payloads with the legacy fields and a structured integrity fallback instead of failing the whole endpoint.
+
+`/api/diagnostics.route_proof_summary` is consumed from navigation proof output only (pass-through/mapping on behavior side). Behavior/operator must not recalculate coverage logic from local samples:
+
+| Field | Contract |
+| --- | --- |
+| `route_proof_summary.coverage_rate` | Nav proof source-of-truth ratio. Behavior side only reads and displays it. |
+| `route_proof_summary.covered_checkpoints` | Nav proof source-of-truth covered count. |
+| `route_proof_summary.total_checkpoints` | Nav proof source-of-truth route checkpoint count. |
+| `route_proof_summary.missing_checkpoints` | Nav proof source-of-truth missing checkpoint IDs/names. |
+| `route_proof_summary.gate_status` | Nav proof source-of-truth visual gate status. |
+| `route_proof_summary.last_block_reason` | Nav proof source-of-truth block reason text. |
+
+`/api/diagnostics.route_proof_status` is a behavior-side readable classification derived from the above fields only:
+
+| Field | Contract |
+| --- | --- |
+| `route_proof_status.state` | One of `ready`, `waiting_visual_gate`, `insufficient_coverage`, `blocked`, `unknown`. |
+| `route_proof_status.reason` | Human-readable mapped explanation for the current state. |
+| `route_proof_status.blocking_reason` | Non-empty only when state is `blocked`; sourced from `route_proof_summary.last_block_reason`. |
+| `route_proof_status.missing_fields` | Required fields that were missing in `route_proof_summary`; non-empty implies `state=unknown`. |
+| `route_proof_status.source` | Where behavior consumed the proof (`latest_status`, `last_task`, or task record evidence). |
 
 `review_queue` items include manual-review merge fields:
 

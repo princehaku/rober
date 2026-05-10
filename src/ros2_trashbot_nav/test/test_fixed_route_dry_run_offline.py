@@ -139,6 +139,13 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertNotEqual(payload["state"], "completed")
             self.assertIn("route file not found", payload["failure_reason"])
             self.assertEqual(payload["total"], 0)
+            summary = payload["route_proof_summary"]
+            self.assertEqual(summary["coverage_rate"], 0.0)
+            self.assertEqual(summary["covered_checkpoints"], 0)
+            self.assertEqual(summary["total_checkpoints"], 0)
+            self.assertEqual(summary["missing_checkpoints"], [])
+            self.assertEqual(summary["gate_status"], "not_checked")
+            self.assertIn("route file not found", summary["last_block_reason"])
 
     def test_empty_route_file_writes_error_not_completed(self):
         with tempfile.TemporaryDirectory() as td:
@@ -175,6 +182,13 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertNotEqual(payload["state"], "completed")
             self.assertIn("route must not be empty", payload["failure_reason"])
             self.assertEqual(payload["total"], 0)
+            summary = payload["route_proof_summary"]
+            self.assertEqual(summary["coverage_rate"], 0.0)
+            self.assertEqual(summary["covered_checkpoints"], 0)
+            self.assertEqual(summary["total_checkpoints"], 0)
+            self.assertEqual(summary["missing_checkpoints"], [])
+            self.assertEqual(summary["gate_status"], "not_checked")
+            self.assertIn("route must not be empty", summary["last_block_reason"])
 
     def test_dry_run_does_not_create_basic_navigator_and_writes_contract_status(self):
         with tempfile.TemporaryDirectory() as td:
@@ -216,6 +230,13 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["last_nav_result"], "dry_run_checkpoint_passed")
             self.assertEqual(payload["visual_gate_status"], "disabled")
             self.assertEqual(payload["visual_gate_checkpoint"], 0)
+            summary = payload["route_proof_summary"]
+            self.assertEqual(summary["coverage_rate"], 1.0)
+            self.assertEqual(summary["covered_checkpoints"], 1)
+            self.assertEqual(summary["total_checkpoints"], 1)
+            self.assertEqual(summary["missing_checkpoints"], [])
+            self.assertEqual(summary["gate_status"], "passed")
+            self.assertEqual(summary["last_block_reason"], "")
 
     def test_dry_run_waits_for_visual_gate_when_no_camera_or_keyframes_exist(self):
         with tempfile.TemporaryDirectory() as td:
@@ -257,6 +278,13 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["visual_gate_checkpoint"], 0)
             self.assertEqual(payload["keyframe_preflight"]["missing_keyframes"], [0])
             self.assertFalse(payload["keyframe_preflight"]["route_visual_ready"])
+            summary = payload["route_proof_summary"]
+            self.assertEqual(summary["coverage_rate"], 0.0)
+            self.assertEqual(summary["covered_checkpoints"], 0)
+            self.assertEqual(summary["total_checkpoints"], 1)
+            self.assertEqual(summary["missing_checkpoints"], [0])
+            self.assertEqual(summary["gate_status"], "keyframe_preflight_failed")
+            self.assertIn("missing keyframes: [0]", summary["last_block_reason"])
 
     def test_dry_run_waits_for_camera_frame_when_keyframe_exists(self):
         with tempfile.TemporaryDirectory() as td:
@@ -297,6 +325,13 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["current_index"], 0)
             self.assertEqual(payload["visual_gate_status"], "waiting_camera_frame")
             self.assertIn("waiting for camera frame", payload["failure_reason"])
+            summary = payload["route_proof_summary"]
+            self.assertEqual(summary["coverage_rate"], 0.0)
+            self.assertEqual(summary["covered_checkpoints"], 0)
+            self.assertEqual(summary["total_checkpoints"], 1)
+            self.assertEqual(summary["missing_checkpoints"], [0])
+            self.assertEqual(summary["gate_status"], "waiting_camera_frame")
+            self.assertIn("waiting for camera frame", summary["last_block_reason"])
 
     def test_dry_run_blocks_before_progress_when_later_keyframe_is_missing(self):
         with tempfile.TemporaryDirectory() as td:
@@ -354,6 +389,13 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["keyframe_preflight"]["loaded_keyframes"], [0])
             self.assertEqual(payload["keyframe_preflight"]["missing_keyframes"], [1])
             self.assertFalse(payload["keyframe_preflight"]["route_visual_ready"])
+            summary = payload["route_proof_summary"]
+            self.assertEqual(summary["coverage_rate"], 0.0)
+            self.assertEqual(summary["covered_checkpoints"], 0)
+            self.assertEqual(summary["total_checkpoints"], 2)
+            self.assertEqual(summary["missing_checkpoints"], [0, 1])
+            self.assertEqual(summary["gate_status"], "keyframe_preflight_failed")
+            self.assertIn("missing keyframes: [1]", summary["last_block_reason"])
 
     def test_dry_run_advances_after_visual_gate_passes(self):
         with tempfile.TemporaryDirectory() as td:
@@ -398,6 +440,13 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["visual_gate_status"], "passed")
             self.assertIn("passed checkpoint 0", payload["visual_gate_detail"])
             self.assertEqual(payload["last_nav_result"], "dry_run_checkpoint_passed")
+            summary = payload["route_proof_summary"]
+            self.assertEqual(summary["coverage_rate"], 1.0)
+            self.assertEqual(summary["covered_checkpoints"], 1)
+            self.assertEqual(summary["total_checkpoints"], 1)
+            self.assertEqual(summary["missing_checkpoints"], [])
+            self.assertEqual(summary["gate_status"], "passed")
+            self.assertEqual(summary["last_block_reason"], "")
 
 
 if __name__ == "__main__":

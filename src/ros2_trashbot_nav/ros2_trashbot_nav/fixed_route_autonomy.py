@@ -17,6 +17,7 @@ from ros2_trashbot_nav.route_utils import (
     load_waypoints_from_csv,
     validate_route_yaml_data,
 )
+from ros2_trashbot_nav.route_proof_summary import build_route_proof_summary
 
 
 class FixedRouteAutonomy(Node):
@@ -288,6 +289,12 @@ class FixedRouteAutonomy(Node):
                 'qz': pose.orientation.z,
                 'qw': pose.orientation.w,
             }
+        route_proof_summary = build_route_proof_summary(
+            total_checkpoints=len(self.route_poses),
+            covered_checkpoints=self.current_index,
+            gate_status=self.visual_gate_status,
+            last_block_reason=self.failure_reason or self.last_error,
+        )
         payload = {
             'state': state,
             'mode': 'dry_run' if self.dry_run else 'nav2',
@@ -303,6 +310,7 @@ class FixedRouteAutonomy(Node):
             'visual_gate_status': self.visual_gate_status,
             'visual_gate_detail': self.visual_gate_detail,
             'visual_gate_checkpoint': self.visual_gate_checkpoint,
+            'route_proof_summary': route_proof_summary,
             'last_error': self.last_error,
             'failure_reason': self.failure_reason,
             'last_transition': self.last_transition,
