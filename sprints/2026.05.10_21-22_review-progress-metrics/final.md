@@ -7,6 +7,7 @@
 - 后端统一提供 `progress_summary`、`decision_distribution`、`next_pending_sample`。
 - operator 页面可直接看到复核进度、分布，并支持 `Jump To Next Pending`。
 - 接口文档已同步字段语义与口径。
+- 文档收口以已存在 commit `5cd60d8` 为基线，不夸大到实机闭环。
 
 ## 对 Objective 4 的推进价值
 
