@@ -142,19 +142,18 @@ class TaskOrchestrator(Node):
         new_points_recorded = 0
         distance_traveled = 0.0
 
-        # Phase 1: If not learning from saved map, do SLAM first
-        if not goal_handle.request.use_saved_map:
-            self.get_logger().info('No saved map - learning mode, driving to build map')
-            self.state = RobotState.LEARNING
-            # In real deployment, trigger SLAM here and drive around
-            self.learn_count += 1
-            self.get_logger().info(f'Learning drive #{self.learn_count} completed')
-
         try:
             waypoint_data = load_waypoint_file(self.waypoint_file)
             patrol_waypoints = waypoint_data.get("waypoints") or []
             if not patrol_waypoints:
                 raise ValueError(f"patrol waypoint file has no waypoints: {self.waypoint_file}")
+            if not goal_handle.request.use_saved_map:
+                self.state = RobotState.LEARNING
+                self.learn_count += 1
+                self.get_logger().info(
+                    f'Learning proof accepted from {self.waypoint_file}: '
+                    f'{len(patrol_waypoints)} waypoint(s)'
+                )
         except Exception as exc:
             result.success = False
             result.total_duration_sec = (self.get_clock().now() - start_time).nanoseconds / 1e9
@@ -162,9 +161,13 @@ class TaskOrchestrator(Node):
             result.map_save_path = self.waypoint_file
             goal_handle.abort()
             self.state = RobotState.ERROR
-            self.get_logger().error(f'Patrol failed before navigation: {exc}')
+            if goal_handle.request.use_saved_map:
+                self.get_logger().error(f'Patrol failed before navigation: {exc}')
+            else:
+                self.get_logger().error(f'Patrol learning proof missing or invalid: {exc}')
             return result
 
+        self.state = RobotState.PATROLLING
         waypoints_total = len(patrol_waypoints)
         for i, waypoint in enumerate(patrol_waypoints):
             if goal_handle.is_cancel_requested:

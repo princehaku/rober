@@ -172,6 +172,60 @@ class TaskOrchestratorPatrolExecutionTest(unittest.TestCase):
         self.assertEqual(goal.feedback[-1].waypoints_visited, 2)
         self.assertEqual(result.map_save_path, str(waypoint_file))
 
+    def test_execute_patrol_aborts_learning_without_waypoint_proof(self):
+        with tempfile.TemporaryDirectory() as td:
+            waypoint_file = Path(td) / "missing-waypoints.yaml"
+            node = self.make_orchestrator(waypoint_file)
+            goal = FakeGoalHandle()
+            goal.request.use_saved_map = False
+
+            result = asyncio.run(node._execute_patrol(goal))
+
+        self.assertFalse(result.success)
+        self.assertFalse(goal.succeeded)
+        self.assertTrue(goal.aborted)
+        self.assertEqual(node.learn_count, 0)
+        self.assertEqual(node.state, self.module.RobotState.ERROR)
+        self.assertEqual(goal.feedback, [])
+        self.assertEqual(result.map_save_path, str(waypoint_file))
+
+    def test_execute_patrol_accepts_learning_with_waypoint_proof(self):
+        with tempfile.TemporaryDirectory() as td:
+            waypoint_file = Path(td) / "waypoints.yaml"
+            waypoint_file.write_text(
+                "waypoints:\n"
+                "  - name: learned_dropoff_route\n"
+                "    type: 0\n"
+                "    x: 1.0\n"
+                "    y: 2.0\n",
+                encoding="utf-8",
+            )
+            node = self.make_orchestrator(waypoint_file)
+            visited = []
+
+            def navigate(waypoint, _goal_handle):
+                visited.append(waypoint["name"])
+                return self.module.NavigationResult(True, "succeeded", "ok", 0.25)
+
+            node._navigate_patrol_waypoint = navigate
+            goal = FakeGoalHandle()
+            goal.request.use_saved_map = False
+
+            result = asyncio.run(node._execute_patrol(goal))
+
+        self.assertTrue(result.success)
+        self.assertTrue(goal.succeeded)
+        self.assertFalse(goal.aborted)
+        self.assertEqual(node.learn_count, 1)
+        self.assertEqual(visited, ["learned_dropoff_route"])
+        self.assertEqual(result.map_save_path, str(waypoint_file))
+
+    def test_execute_patrol_source_has_no_fake_learning_drive(self):
+        source = Path(self.module.__file__).read_text(encoding="utf-8")
+
+        self.assertNotIn("driving to build map", source)
+        self.assertNotIn("Learning drive #", source)
+
 
 if __name__ == "__main__":
     unittest.main()
