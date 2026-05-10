@@ -1,7 +1,14 @@
 import unittest
 import json
+import sys
 import tempfile
 from pathlib import Path
+
+
+BEHAVIOR_PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+VISION_PACKAGE_ROOT = BEHAVIOR_PACKAGE_ROOT.parent / "ros2_trashbot_vision"
+sys.path.insert(0, str(BEHAVIOR_PACKAGE_ROOT))
+sys.path.insert(0, str(VISION_PACKAGE_ROOT))
 
 from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     build_diagnostics_payload,
@@ -73,6 +80,8 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["map_version"], "map-a")
         self.assertEqual(payload["route_version"], "route-a")
         self.assertEqual(payload["log_refs"], ["/tmp/robot.log"])
+        self.assertEqual(payload["vision_samples"]["integrity_summary"]["status"], "not_configured")
+        self.assertEqual(payload["vision_samples"]["integrity_error_count"], 1)
 
     def test_log_refs_are_normalized_without_claiming_file_existence(self):
         self.assertEqual(normalize_log_refs(None), [])
@@ -82,24 +91,41 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
 
     def test_vision_manifest_summary_reports_latest_sample(self):
         with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            samples = root / "samples"
+            samples.mkdir()
+            (samples / "old.json").write_text("{}", encoding="utf-8")
+            (samples / "old_raw.jpg").write_bytes(b"old")
+            (samples / "new.json").write_text("{}", encoding="utf-8")
+            (samples / "new_raw.jpg").write_bytes(b"new")
+            (samples / "new_annotated.jpg").write_bytes(b"annotated")
             manifest_path = Path(td) / "manifest.json"
             manifest_path.write_text(
                 json.dumps(
                     {
                         "schema": "trashbot.vision_samples.v1",
+                        "sample_output_dir": str(root),
                         "samples": [
                             {
                                 "sample_id": "old",
-                                "sample_ref": "vision_sample://20260510/old.json",
+                                "sample_ref": "vision_sample://samples/old.json",
                                 "timestamp": 1.0,
+                                "frame_id": "map",
+                                "raw_image": "samples/old_raw.jpg",
+                                "annotated_image": "",
+                                "json": "samples/old.json",
                                 "context": {"route_id": "old-route", "event_type": "route_keyframe"},
                                 "detection_count": 0,
                                 "max_confidence": 0,
                             },
                             {
                                 "sample_id": "new",
-                                "sample_ref": "vision_sample://20260510/new.json",
+                                "sample_ref": "vision_sample://samples/new.json",
                                 "timestamp": 2.0,
+                                "frame_id": "camera",
+                                "raw_image": "samples/new_raw.jpg",
+                                "annotated_image": "samples/new_annotated.jpg",
+                                "json": "samples/new.json",
                                 "context": {
                                     "task_id": "task-7",
                                     "route_id": "route-a",
@@ -120,7 +146,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertTrue(summary["exists"])
         self.assertEqual(summary["schema"], "trashbot.vision_samples.v1")
         self.assertEqual(summary["sample_count"], 2)
-        self.assertEqual(summary["latest_sample_ref"], "vision_sample://20260510/new.json")
+        self.assertEqual(summary["latest_sample_ref"], "vision_sample://samples/new.json")
         self.assertEqual(summary["latest_timestamp"], 2.0)
         self.assertEqual(summary["latest_context"]["task_id"], "task-7")
         self.assertEqual(summary["latest_detection_count"], 2)
@@ -129,6 +155,16 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(summary["review_queue_count"], 2)
         self.assertEqual(summary["review_queue"][0]["reason"], "route_keyframe_review")
         self.assertEqual(summary["review_queue"][1]["reason"], "anomaly_sample")
+        self.assertEqual(summary["integrity_summary"]["status"], "ok")
+        self.assertEqual(summary["integrity_error_count"], 0)
+        self.assertEqual(summary["integrity_warning_count"], 0)
+        self.assertEqual(summary["missing_file_ref_count"], 0)
+        self.assertEqual(summary["file_counts"]["sample_ref"]["present"], 2)
+        self.assertEqual(summary["file_counts"]["raw_image"]["present"], 2)
+        self.assertEqual(summary["file_counts"]["annotated_image"]["present"], 1)
+        self.assertEqual(summary["context_field_coverage"]["present"]["event_type"], 2)
+        self.assertEqual(summary["context_field_coverage"]["present"]["route_id"], 2)
+        self.assertEqual(summary["context_field_coverage"]["missing"]["task_id"], 1)
         self.assertEqual(summary["read_error"], "")
 
     def test_vision_manifest_summary_builds_bounded_review_queue(self):
@@ -195,8 +231,54 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
 
         self.assertFalse(missing_summary["exists"])
         self.assertIn("not found", missing_summary["read_error"])
+        self.assertEqual(missing_summary["integrity_summary"]["status"], "error")
+        self.assertEqual(missing_summary["integrity_error_count"], 1)
         self.assertTrue(corrupt_summary["exists"])
         self.assertIn("failed reading", corrupt_summary["read_error"])
+        self.assertEqual(corrupt_summary["integrity_summary"]["status"], "error")
+        self.assertGreaterEqual(corrupt_summary["integrity_error_count"], 1)
+
+    def test_vision_manifest_summary_reports_missing_file_refs(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "sample.json").write_text("{}", encoding="utf-8")
+            manifest_path = root / "manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.vision_samples.v1",
+                        "sample_output_dir": ".",
+                        "samples": [
+                            {
+                                "sample_id": "bad",
+                                "sample_ref": "vision_sample://sample.json",
+                                "timestamp": 1.0,
+                                "frame_id": "camera",
+                                "raw_image": "missing_raw.jpg",
+                                "annotated_image": "missing_annotated.jpg",
+                                "json": "sample.json",
+                                "context": {"event_type": "detection", "anomaly_type": ""},
+                                "detection_count": 0,
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            summary = summarize_vision_manifest(str(manifest_path))
+
+        self.assertTrue(summary["exists"])
+        self.assertEqual(summary["sample_count"], 1)
+        self.assertEqual(summary["integrity_summary"]["status"], "error")
+        self.assertEqual(summary["integrity_error_count"], 1)
+        self.assertEqual(summary["integrity_warning_count"], 1)
+        self.assertEqual(summary["missing_file_ref_count"], 2)
+        self.assertEqual(summary["file_counts"]["raw_image"]["missing"], 1)
+        self.assertEqual(summary["file_counts"]["annotated_image"]["missing"], 1)
+        self.assertEqual(summary["context_field_coverage"]["present"]["event_type"], 1)
+        self.assertEqual(summary["context_field_coverage"]["missing"]["task_id"], 1)
+        self.assertEqual(summary["missing_file_refs"][0]["field"], "raw_image")
 
     def test_vision_manifest_summary_handles_empty_manifest(self):
         with tempfile.TemporaryDirectory() as td:

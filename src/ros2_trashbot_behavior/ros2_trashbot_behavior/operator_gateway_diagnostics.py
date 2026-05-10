@@ -3,6 +3,13 @@ import os
 
 from ros2_trashbot_behavior.operator_gateway_http import status_payload
 
+# Diagnostics must stay available even when the optional vision package is not
+# installed in a minimal operator-gateway environment.
+try:
+    from ros2_trashbot_vision.vision_sample_manifest import summarize_manifest
+except ImportError:
+    summarize_manifest = None
+
 
 REVIEW_QUEUE_LIMIT = 5
 LOW_CONFIDENCE_REVIEW_THRESHOLD = 75
@@ -77,6 +84,89 @@ def build_vision_review_queue(samples, limit=REVIEW_QUEUE_LIMIT):
     return list(reversed(queue))
 
 
+def default_integrity_fields(status, *, error="", warning=""):
+    errors = [error] if error else []
+    warnings = [warning] if warning else []
+    return {
+        "integrity_summary": {
+            "status": status,
+            "error_count": len(errors),
+            "warning_count": len(warnings),
+            "missing_file_ref_count": 0,
+            "sample_output_dir": "",
+            "negative_sample_count": 0,
+            "anomaly_sample_count": 0,
+            "route_keyframe_sample_count": 0,
+            "detection_sample_count": 0,
+        },
+        "integrity_errors": errors,
+        "integrity_warnings": warnings,
+        "integrity_error_count": len(errors),
+        "integrity_warning_count": len(warnings),
+        "missing_file_ref_count": 0,
+        "missing_file_refs": [],
+        "context_field_coverage": {"present": {}, "missing": {}},
+        "file_counts": {},
+    }
+
+
+def integrity_status(checker_summary):
+    if checker_summary.get("errors"):
+        return "error"
+    if checker_summary.get("warnings"):
+        return "warning"
+    return "ok"
+
+
+def vision_manifest_integrity_fields(path):
+    if not path:
+        return default_integrity_fields(
+            "not_configured",
+            error="vision sample manifest is not configured",
+        )
+    if summarize_manifest is None:
+        return default_integrity_fields(
+            "checker_unavailable",
+            warning="ros2_trashbot_vision.vision_sample_manifest is not importable",
+        )
+
+    try:
+        checker_summary = summarize_manifest(path)
+    except Exception as exc:
+        return default_integrity_fields(
+            "checker_failed",
+            error=f"vision sample manifest checker failed: {exc}",
+        )
+
+    errors = [str(item) for item in checker_summary.get("errors", [])]
+    warnings = [str(item) for item in checker_summary.get("warnings", [])]
+    missing_file_refs = [
+        item for item in checker_summary.get("missing_file_refs", []) if isinstance(item, dict)
+    ]
+    status = integrity_status({"errors": errors, "warnings": warnings})
+    return {
+        "integrity_summary": {
+            "status": status,
+            "error_count": len(errors),
+            "warning_count": len(warnings),
+            "missing_file_ref_count": len(missing_file_refs),
+            "sample_output_dir": str(checker_summary.get("sample_output_dir", "")),
+            "negative_sample_count": safe_int(checker_summary.get("negative_sample_count")),
+            "anomaly_sample_count": safe_int(checker_summary.get("anomaly_sample_count")),
+            "route_keyframe_sample_count": safe_int(checker_summary.get("route_keyframe_sample_count")),
+            "detection_sample_count": safe_int(checker_summary.get("detection_sample_count")),
+        },
+        "integrity_errors": errors,
+        "integrity_warnings": warnings,
+        "integrity_error_count": len(errors),
+        "integrity_warning_count": len(warnings),
+        "missing_file_ref_count": len(missing_file_refs),
+        "missing_file_refs": missing_file_refs,
+        "context_field_coverage": checker_summary.get("context_field_coverage", {"present": {}, "missing": {}}),
+        "file_counts": checker_summary.get("file_counts", {}),
+    }
+
+
 def summarize_vision_manifest(path):
     path = os.path.expanduser(str(path or ""))
     summary = {
@@ -94,6 +184,7 @@ def summarize_vision_manifest(path):
         "review_queue": [],
         "read_error": "",
     }
+    summary.update(vision_manifest_integrity_fields(path))
     if not path:
         summary["read_error"] = "vision sample manifest is not configured"
         return summary

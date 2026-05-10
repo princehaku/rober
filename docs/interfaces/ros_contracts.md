@@ -130,6 +130,19 @@ The same `/api/status` payload carries live location telemetry when available:
 | `log_refs` | empty list | Operator-facing log references included in `/api/diagnostics`. |
 | `vision_sample_manifest_ref` | `~/.ros/trashbot_vision_samples/manifest.json` | Optional deployment-supplied reference for future vision samples; the current MVP does not ship a default detector or manifest producer. |
 
+`/api/diagnostics.vision_samples` keeps the legacy summary fields (`manifest_ref`, `exists`, `schema`, `sample_count`, latest sample fields, `event_counts`, `review_queue`, and `read_error`) and adds manifest integrity fields produced from `ros2_trashbot_vision.vision_sample_manifest.summarize_manifest()` when available:
+
+| Field | Contract |
+| --- | --- |
+| `integrity_summary.status` | `ok`, `warning`, `error`, `not_configured`, `checker_unavailable`, or `checker_failed`; phone and support tools can use this as the high-level sample-chain health state. |
+| `integrity_error_count` / `integrity_warning_count` | Counts of checker errors and warnings. Errors mean required manifest shape or required file references are not trustworthy; warnings mean optional evidence or schema expectations need review. |
+| `integrity_errors` / `integrity_warnings` | Checker messages for remote support. These are diagnostic strings, not user-facing phone copy. |
+| `missing_file_ref_count` / `missing_file_refs` | Count and detail list for manifest references that could not be resolved or found, including `sample_index`, field name, original value, and resolved path when available. |
+| `context_field_coverage` | Per-context-field present/missing counts for `task_id`, `route_id`, `checkpoint_id`, `event_type`, and `anomaly_type`. |
+| `file_counts` | Per-reference present/missing/empty counts for `sample_ref`, `json`, `raw_image`, and `annotated_image`. |
+
+If the manifest is not configured or the vision checker cannot be imported, diagnostics still returns HTTP payloads with the legacy fields and a structured integrity fallback instead of failing the whole endpoint.
+
 ### 4G Remote Bridge
 
 The optional `remote_bridge` node is the formal 4G-oriented remote MVP path. It does not expose robot-local HTTP to the phone. Instead, the robot initiates outbound HTTP polling to a cloud or mock-cloud endpoint. It is disabled by default in launch files and is intended to be testable without a real cloud account.
