@@ -2,61 +2,88 @@
 
 ## 用户价值与北极星
 
-让手机端“看到同一套证据就知道下一步做什么”，在 O1/O2/O3 任何失败分支下，展示统一的 `failure_code/evidence_ref/source/state_transition_history/human_intervention_required`，并给出可执行恢复建议，减少用户猜测和误操作。
+把“普通手机用户一键发起送垃圾任务”从演示可用提升到“可复现、可恢复、可解释”的实机可交付闭环：同一趟任务能由证据说明是否真正送达、为何失败、如何恢复。
 
-## 本轮目标
+## 本轮目标（仅 O1/O2/O3）
 
-1. operator gateway status/diagnostics 统一采集与透传规则，避免 O1/O2/O3 的证据字段漏传、重复拼接。
-2. 失败链路中将 `evidence` 与 `failure_code` 映射为用户可执行的恢复建议（而非空洞提示）。
-3. 仅更新现有三份 sprint 文件与行为网关代码，不新增测试文件。
+1. 将上轮软件侧改造（O1/O2/O3）持续推进到可复现证据主线，不将 full-stack 展示作为验收主目标。
+   - 证据来源：`OKR.md`（O1/O2/O3 低完成度）、`05-06 tech-done.md`（O1/O2/O3 已有软件字段）、`21-22 review`（验收命令仍有摩擦）。
+2. 统一 O1/O2/O3 证据字段与复盘口径，优先解决“实机闭环不足”和“失败不可恢复”问题。
+   - 证据来源：同上。
+3. 保持围栏最小，不新增 test 文件。
+   - 证据来源：`OKR.md` 进度复盘中强调真实证据优先于广义回归，`21-22 review` 重复暴露命名风险。
 
-## 用户旅程收益
+## OKR 映射（本轮下沉）
 
-- 用户触发任务→运行中可持续查看 `source/evidence_ref/human_intervention_required`。
-- 任务失败时看到清晰 `failure_code` 与来源证据，不再只看到“异常停止/需人工接管”。
-- 依据建议直接执行“重试/清场/回点位/恢复路线”等动作，闭环率更高。
+### Objective 1：硬件协议与反馈源可信
 
-## OKR 映射（本轮聚焦）
+- KR1：形成一次可复现的 WAVE ROVER 运行证据（参数、反馈字段、`evidence_ref`）。
+  - 证据来源：`OKR.md`（真实 WAVE ROVER HIL缺口）、`05-06 tech-done.md`（HIL 运行模板与阻塞信息）。
+- KR2：明确 `hil_pass` 与 `software_proof` 分层边界。
+  - 证据来源：`OKR.md`、`05-06 tech-done.md`。
+- KR3：在任务复盘中可回看硬件样本来源。
+  - 证据来源：`05-06 tech-done.md`（hardware diagnostics 文档链条）。
 
-- KR1：同一失败事件在 `status` 与 `diagnostics` 中的 `failure_code/evidence_ref/source/state_transition_history/human_intervention_required` 保持一致。
-- KR2：普通用户在 operator 页面可读到可执行恢复建议，并可追踪来源（evidence + 失败分支）。
-- KR3：完成一次性规则定义并沉淀进本轮 `tech-plan` 方便下轮接手。
+### Objective 2：送垃圾任务闭环可恢复
 
-## 范围
+- KR1：送达任务失败、超时、取消链路产生完整 `failure_code` 与 `state_transition_history`。
+  - 证据来源：`OKR.md`（任务闭环缺口）、`05-06 tech-done.md`（task record 字段能力）。
+- KR2：失败场景提供可执行干预建议，并写入 `human_intervention_required`。
+  - 证据来源：`OKR.md`（需可复苏）、`05-06 tech-done.md`。
+- KR3：任务复盘与 diagnostics/状态端对齐同一 `evidence_ref`。
+  - 证据来源：`05-06 tech-done.md`（多端字段统一趋势）、`21-22 review`（验收链路一致性问题）。
 
-### 做什么
+### Objective 3：固定路线可验证
 
-1. 修改 `src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway.py`
-2. 修改 `src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`
-3. 修改 `src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_http.py`
-4. 同步更新本轮 `pre_start.md`、`prd.md`、`tech-plan.md`
+- KR1：固定路线 `checkpoint/current_index/target` 与任务复盘字段对齐。
+  - 证据来源：`OKR.md`（路测/固定路线实测缺口）、`05-06 tech-done.md`（fixed-route 字段增强）。
+- KR2：路线中断/缺点/失败码可复现归因。
+  - 证据来源：同上。
+- KR3：dry-run 与 hil_pass 证据类型可分离展示。
+  - 证据来源：`OKR.md`（不能将软件证据视为实测）、`05-06 tech-done.md`（来源分层尝试）。
 
-### 不做什么
+## 本轮范围：做 / 不做
 
-- 不改硬件协议、vendor 资料、WAVE ROVER/ESP32/Orange Pi 接口。
-- 不新增测试文件，不扩展到 detector / vision 分支。
-- 不改 behavior 状态机关键策略，不改调度算法。
+### 做什么（仅 O1/O2/O3）
 
-## 验收标准（用户可见结果）
+1. O1：先补硬件 HIL 证据执行链与 run 分层。
+   - 证据来源：`OKR.md`、`05-06 tech-done.md`。
+2. O2：再补任务失败恢复与 evidence_ref 回放一致。
+   - 证据来源：`OKR.md`、`05-06 tech-done.md`。
+3. O3：再补 fixed-route 字段对齐与复盘一致。
+   - 证据来源：`OKR.md`、`05-06 tech-done.md`。
+4. 收口 `review` 命名问题，防止 `NO TESTS RAN`。
+   - 证据来源：`21-22 review`。
 
-1. 失败时 status 与 diagnostics 均返回以下字段且来源一致：
-   - `source`
-   - `evidence_ref`
-   - `failure_code`
-   - `state_transition_history`
-   - `human_intervention_required`
-2. `diagRecoveryHint` 在 operator 页面展示建议文字，且建议与 evidence 失败分支可对应（如缺图像点、导航中断、路由跳转中断）。
-3. 手机端不再重复拼接 `evidence` 字段；字段以透传主数据为准。
-4. 未新增测试文件；仅在既有测试命令上验证。
+### 不做
 
-## 验收命令
+- 不做：新增电梯控制、OCR、楼宇模型、视觉检测训练矩阵。
+- 不做：新增测试文件；不扩展 full-stack 作为主线。
+- 不做：把 `software_proof` 标记为 `hil_pass`。
 
-```bash
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest src/ros2_trashbot_behavior/test/test_operator_gateway_static.py src/ros2_trashbot_behavior/test/test_operator_gateway_http.py src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py
-```
+## 优先级
 
-## 预计用户提示优先级
+- P0（主线）：O1（HIL 证据分层与可复现）
+- P1：O2（失败恢复与复盘字段）
+- P2：O3（固定路线可复验字段对齐）
+- P3：review 围栏修复（避免 `NO TESTS RAN`）
 
-- P0：`failure_code` 有值但用户页没看到/不一致。
-- P1：`failure_code` 显示但无具体建议，不能执行下一步。
-- P2：多路数据源重复拼接，导致建议文本误导。
+## 验收口径
+
+1. O1 有至少一次 `hil_pass` 或明确 blocked 记录（含参数、时间戳、`evidence_ref`）。
+   - 证据来源：`OKR.md`、`05-06 tech-done.md`。
+2. O2 失败/超时/取消路径 `failure_code`、`state_transition_history`、`human_intervention_required` 全链路存在。
+   - 证据来源：`OKR.md`、`05-06 tech-done.md`。
+3. O3 fixed-route 的 checkpoint/index/target 能与任务复盘 run 对齐。
+   - 证据来源：`OKR.md`、`05-06 tech-done.md`。
+4. 回归命令可执行且不新增测试文件。
+   - 证据来源：`21-22 review`（命名造成 NO TESTS RAN）。
+
+## 对应责任 Engineer
+
+- 主责：
+  - `hardware-engineer`（O1）
+  - `robot-software-engineer`（O2）
+  - `autonomy-engineer`（O3）
+- 同步：`full-stack-software-engineer`（仅同步消费，不承担主线闭环）
+  - 证据来源：`OKR.md`（主线是 O1/O2/O3）与 `05-06 tech-done.md`（当前已完成 O1/O2/O3 软件侧闭环部分）。
