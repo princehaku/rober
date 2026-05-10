@@ -92,7 +92,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                                 "sample_id": "old",
                                 "sample_ref": "vision_sample://20260510/old.json",
                                 "timestamp": 1.0,
-                                "context": {"route_id": "old-route"},
+                                "context": {"route_id": "old-route", "event_type": "route_keyframe"},
                                 "detection_count": 0,
                                 "max_confidence": 0,
                             },
@@ -125,7 +125,64 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(summary["latest_context"]["task_id"], "task-7")
         self.assertEqual(summary["latest_detection_count"], 2)
         self.assertEqual(summary["latest_max_confidence"], 91)
+        self.assertEqual(summary["event_counts"], {"route_keyframe": 1, "anomaly": 1})
+        self.assertEqual(summary["review_queue_count"], 2)
+        self.assertEqual(summary["review_queue"][0]["reason"], "route_keyframe_review")
+        self.assertEqual(summary["review_queue"][1]["reason"], "anomaly_sample")
         self.assertEqual(summary["read_error"], "")
+
+    def test_vision_manifest_summary_builds_bounded_review_queue(self):
+        with tempfile.TemporaryDirectory() as td:
+            manifest_path = Path(td) / "manifest.json"
+            samples = [
+                {
+                    "sample_id": "normal-reviewed",
+                    "sample_ref": "vision_sample://normal-reviewed.json",
+                    "timestamp": 1.0,
+                    "context": {"event_type": "detection"},
+                    "detection_count": 1,
+                    "max_confidence": 95,
+                    "review_status": "accepted",
+                },
+                {
+                    "sample_id": "low-confidence",
+                    "sample_ref": "vision_sample://low-confidence.json",
+                    "timestamp": 2.0,
+                    "context": {"event_type": "detection"},
+                    "detection_count": 1,
+                    "max_confidence": 62,
+                },
+                {
+                    "sample_id": "route-keyframe",
+                    "sample_ref": "vision_sample://route-keyframe.json",
+                    "timestamp": 3.0,
+                    "context": {"event_type": "route_keyframe", "route_id": "route-a"},
+                    "detection_count": 0,
+                    "max_confidence": 0,
+                },
+                {
+                    "sample_id": "anomaly",
+                    "sample_ref": "vision_sample://anomaly.json",
+                    "timestamp": 4.0,
+                    "context": {"event_type": "anomaly", "anomaly_type": "blocked_view"},
+                    "detection_count": 0,
+                    "max_confidence": 0,
+                },
+            ]
+            manifest_path.write_text(
+                json.dumps({"schema": "trashbot.vision_samples.v1", "samples": samples}),
+                encoding="utf-8",
+            )
+
+            summary = summarize_vision_manifest(str(manifest_path))
+
+        self.assertEqual(summary["event_counts"], {"detection": 2, "route_keyframe": 1, "anomaly": 1})
+        self.assertEqual(summary["review_queue_count"], 3)
+        self.assertEqual(
+            [item["reason"] for item in summary["review_queue"]],
+            ["low_confidence_detection", "route_keyframe_review", "anomaly_sample"],
+        )
+        self.assertEqual(summary["review_queue"][-1]["sample_ref"], "vision_sample://anomaly.json")
 
     def test_vision_manifest_summary_handles_missing_and_corrupt_files(self):
         with tempfile.TemporaryDirectory() as td:
@@ -156,6 +213,9 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(summary["sample_count"], 0)
         self.assertEqual(summary["latest_sample_ref"], "")
         self.assertEqual(summary["latest_context"], {})
+        self.assertEqual(summary["event_counts"], {})
+        self.assertEqual(summary["review_queue_count"], 0)
+        self.assertEqual(summary["review_queue"], [])
         self.assertEqual(summary["read_error"], "")
 
 

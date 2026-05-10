@@ -75,6 +75,30 @@ class FakeGateway:
                 "latest_context": {"task_id": "task-7", "route_id": "route-a"},
                 "latest_detection_count": 1,
                 "latest_max_confidence": 88,
+                "event_counts": {"route_keyframe": 2, "anomaly": 1},
+                "review_queue_count": 2,
+                "review_queue": [
+                    {
+                        "sample_id": "route-001",
+                        "sample_ref": "vision_sample://20260510/route-001.json",
+                        "timestamp": 1778356990.0,
+                        "context": {"event_type": "route_keyframe", "route_id": "route-a"},
+                        "event_type": "route_keyframe",
+                        "detection_count": 0,
+                        "max_confidence": 0,
+                        "reason": "route_keyframe_review",
+                    },
+                    {
+                        "sample_id": "latest",
+                        "sample_ref": "vision_sample://20260510/latest.json",
+                        "timestamp": 1778357000.0,
+                        "context": {"event_type": "anomaly", "route_id": "route-a"},
+                        "event_type": "anomaly",
+                        "detection_count": 1,
+                        "max_confidence": 88,
+                        "reason": "anomaly_sample",
+                    },
+                ],
                 "read_error": "",
             },
             "operator_status_file": "/tmp/trashbot_operator_status.json",
@@ -161,6 +185,8 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["vision_sample_manifest_ref"], "/tmp/vision/manifest.json")
         self.assertEqual(payload["vision_samples"]["sample_count"], 3)
         self.assertEqual(payload["vision_samples"]["latest_sample_ref"], "vision_sample://20260510/latest.json")
+        self.assertEqual(payload["vision_samples"]["review_queue_count"], 2)
+        self.assertEqual(payload["vision_samples"]["review_queue"][-1]["reason"], "anomaly_sample")
 
     def test_status_preserves_robot_location_snapshot_fields(self):
         self.gateway.snapshot_payload["robot_location"] = {
@@ -208,8 +234,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("diagFailure", body)
         self.assertIn("diagVisionSamples", body)
         self.assertIn("diagLatestVisionSample", body)
+        self.assertIn("diagReviewQueue", body)
+        self.assertIn("diagNextReviewSample", body)
         self.assertIn("vision_samples", body)
         self.assertIn("latest_sample_ref", body)
+        self.assertIn("review_queue", body)
+        self.assertIn("review_queue_count", body)
         self.assertIn("robotMap", body)
         self.assertIn("robot_pose", body)
         self.assertIn("robot_path", body)

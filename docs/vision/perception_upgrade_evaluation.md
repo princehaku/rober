@@ -47,7 +47,11 @@ station/bin/anomaly detection than simpler heuristics.
 
 The operator gateway diagnostics endpoint may still expose
 `vision_sample_manifest_ref`, but it is an optional reference supplied by the
-deployment. The current codebase does not produce that manifest by default.
+deployment. When a manifest is present, diagnostics now summarizes sample count,
+event-type distribution, latest sample metadata, and a bounded review queue for
+anomaly, route-keyframe, low-confidence, or unreviewed samples. This queue is an
+operator/support review aid, not label truth and not proof that a production
+detector is ready.
 
 Depth sensing should not become a default hardware dependency until obstacle
 distance or docking accuracy is the measured delivery blocker. RT-DETR should

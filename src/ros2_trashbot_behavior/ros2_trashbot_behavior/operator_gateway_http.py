@@ -288,6 +288,8 @@ HTML = """<!doctype html>
         <div class="metric"><span>Status file</span><strong id="diagStatusFile">-</strong></div>
         <div class="metric"><span>Vision samples</span><strong id="diagVisionSamples">-</strong></div>
         <div class="metric"><span>Latest vision sample</span><strong id="diagLatestVisionSample">-</strong></div>
+        <div class="metric"><span>Review queue</span><strong id="diagReviewQueue">-</strong></div>
+        <div class="metric"><span>Next review sample</span><strong id="diagNextReviewSample">-</strong></div>
       </div>
       <ul id="diagRefs" class="supportList"></ul>
     </section>
@@ -439,6 +441,12 @@ function showDiagnostics(payload) {
     visionSamples.latest_sample_ref,
     visionSamples.sample_count ? 'sample reference missing' : 'no samples'
   );
+  const reviewQueue = Array.isArray(visionSamples.review_queue) ? visionSamples.review_queue : [];
+  const nextReview = reviewQueue[reviewQueue.length - 1] || {};
+  document.getElementById('diagReviewQueue').textContent = `${Number(visionSamples.review_queue_count || 0)} samples`;
+  document.getElementById('diagNextReviewSample').textContent = nextReview.sample_ref
+    ? `${text(nextReview.reason, 'review')} ${nextReview.sample_ref}`
+    : 'no pending sample';
   const refList = document.getElementById('diagRefs');
   refList.innerHTML = '';
   [...refs, payload.vision_sample_manifest_ref].filter(Boolean).forEach((ref) => {
