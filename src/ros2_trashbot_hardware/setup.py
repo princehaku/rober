@@ -20,6 +20,7 @@ setup(
     entry_points={
         'console_scripts': [
             'esp32_bridge = ros2_trashbot_hardware.esp32_bridge:main',
+            'hardware_diagnostics_proof = ros2_trashbot_hardware.hardware_diagnostics_proof:main',
         ],
     },
 )
