@@ -177,7 +177,7 @@ Example status JSON:
 - `coverage_rate`: `covered_checkpoints / total_checkpoints`, rounded to 4 decimals.
 - `covered_checkpoints`: checkpoints already proven by fixed-route dry-run progression.
 - `total_checkpoints`: full checkpoint count from the validated fixed route.
-- `missing_checkpoints`: checkpoint indexes that are not yet proven (`covered_checkpoints..total_checkpoints-1`).
+- `missing_checkpoints`: checkpoint indexes that are not yet proven (`covered_checkpoints..total_checkpoints-1`); indexes below `covered_checkpoints` are normalized out.
 - `gate_status`: current visual gate block state, or `passed` when all checkpoints are covered.
 - `last_block_reason`: latest block reason copied from `failure_reason`/`last_error`; empty when fully covered.
 

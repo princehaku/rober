@@ -2,15 +2,15 @@
 
 ## 检查状态
 
-- 时间：2026-05-11 00:21 Asia/Shanghai
-- 结论：本轮 route proof coverage 切片已按 PRD/tech-plan 收口，导航 proof 与 operator 展示口径一致。
+- 时间：2026-05-11 00:31 Asia/Shanghai
+- 结论：本轮 route proof coverage 切片已按 PRD/tech-plan 收口；在既有 contract 上完成 `missing_checkpoints` 归一化补强，导航 proof 与 operator 展示口径一致。
 - 证据来源：两位工程子 agent 已完成实现与验证回传；本轮 Product 仅做文档收口，不重复运行长验证。
 
 ## 需求对照
 
 1. nav 侧输出 route proof 核心字段（coverage/missing/gate/block reason）
 - 状态：已完成
-- 证据：`route_proof_summary` 已进入 fixed-route status 与文档 contract。
+- 证据：`route_proof_summary` 已进入 fixed-route status 与文档 contract；本轮新增 `missing_checkpoints` 归一化规则，避免与 `covered_checkpoints` 自相矛盾。
 
 2. behavior/operator 消费同一 proof contract，不重算 coverage
 - 状态：已完成
@@ -23,9 +23,13 @@
 4. 以最小护栏证明无明显回归
 - 状态：已完成（软件侧）
 - 证据：
-  - nav tests：`Ran 42 tests ... OK`
-  - behavior operator tests：`Ran 47 tests ... OK`
-  - smoke：`Ran 127 tests ... OK`、`Ran 13 tests ... OK`
+  - nav tests：`Ran 44 tests ... OK`
+  - behavior operator tests：`Ran 48 tests ... OK`
+  - smoke：`Ran 128 tests ... OK`、`Ran 13 tests ... OK`
+
+5. behavior/operator 映射与文档一致性复核
+- 状态：已完成
+- 证据：full-stack 本轮未新增代码，仅补 `docs/interfaces/ros_contracts.md` 收口记录并完成 operator tests/smoke/scoped diff-check。
 
 ## 验收口径结论
 

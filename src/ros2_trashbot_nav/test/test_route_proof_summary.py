@@ -74,6 +74,21 @@ class RouteProofSummaryTest(unittest.TestCase):
         self.assertEqual(summary["gate_status"], "passed")
         self.assertEqual(summary["last_block_reason"], "")
 
+    def test_build_route_proof_summary_ignores_missing_indexes_below_coverage(self):
+        summary = build_route_proof_summary(
+            total_checkpoints=4,
+            covered_checkpoints=2,
+            gate_status="waiting_camera_frame",
+            last_block_reason="visual gate waiting for camera frame at checkpoint 2",
+            missing_checkpoints=[0, 3, 7],
+        )
+        self.assertEqual(summary["coverage_rate"], 0.5)
+        self.assertEqual(summary["covered_checkpoints"], 2)
+        self.assertEqual(summary["total_checkpoints"], 4)
+        self.assertEqual(summary["missing_checkpoints"], [3])
+        self.assertEqual(summary["gate_status"], "waiting_camera_frame")
+        self.assertIn("checkpoint 2", summary["last_block_reason"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -68,29 +68,66 @@
 2. 无 HIL/实机证据（串口、底盘反馈、实车路线采集、实车视觉门控）仍是 Objective 3/1 的关键缺口。
 3. route proof 可解释性已提升，但现场可达性仍需后续上车验证闭环。
 
-### 3) Objective 3 nav contract 复验补录（`autonomy-engineer`，2026-05-11 00:17 Asia/Shanghai）
+## 2026-05-11 Full-Stack 收口补充（behavior/operator）
+
+- 执行 owner：`full-stack-software-engineer`
+- 目标：复核 operator 侧 `route_proof_summary -> route_proof_status` 映射是否覆盖 nav 当前 gate_status 语义，并补齐接口文档一致性。
+
+本次实际改动（限定范围内）：
+
+- `docs/interfaces/ros_contracts.md`
+  - 增补 `route_proof_status.state` 的明确映射规则表，声明等待态 gate_status 白名单和判定优先级（先 `waiting_visual_gate`，再 `blocked`），与 behavior 当前实现一致。
+
+复核结论：
+
+- `src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py` 已包含 `ready` / `waiting_visual_gate` / `insufficient_coverage` / `blocked` / `unknown` 五态映射。
+- 已包含 nav 当前常见等待态 gate_status（如 `waiting_camera_frame`、`missing_keyframe`、`keyframe_preflight_failed` 等）并优先归类为 `waiting_visual_gate`，避免被 `last_block_reason` 误判为 `blocked`。
+- `src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py` 已有对应回归用例（`test_route_proof_summary_waiting_gate_status_wins_over_block_reason`）。
+
+验收命令与关键输出：
+
+1. `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s src/ros2_trashbot_behavior/test -p 'test_*operator*py'`
+   - `Ran 48 tests in 9.619s`
+   - `OK`
+2. `PYTHONDONTWRITEBYTECODE=1 bash -lc "changed_py=$(git diff --name-only -- src/ros2_trashbot_behavior docs/interfaces | grep -E '\\.py$' || true); if [ -n \"$changed_py\" ]; then python3 -m py_compile $changed_py; else echo 'no python files changed for py_compile'; fi"`
+   - `no python files changed for py_compile`
+3. `PYTHONDONTWRITEBYTECODE=1 bash scripts/run_smoke_tests.sh`
+   - `Ran 128 tests in 17.776s` / `OK`
+   - `Ran 13 tests in 0.635s` / `OK`
+4. `git diff --check -- src/ros2_trashbot_behavior docs/interfaces sprints/2026.05.10_23-24_route-proof-coverage/tech-done.md sprints/2026.05.10_23-24_route-proof-coverage/side2side_check.md sprints/2026.05.10_23-24_route-proof-coverage/final.md`
+   - 无输出（通过）
+
+剩余风险：
+
+- 本次为 behavior/operator 语义与文档收口，不新增 HIL 或实机验证证据。
+- nav 侧后续如果新增 gate_status 枚举，需同步更新 behavior 等待态映射白名单和接口文档。
+
+### 3) Objective 3 nav contract 复验补录（`autonomy-engineer`，2026-05-11 00:25 Asia/Shanghai）
 
 本次基于当前工作区已有改动做了最小语义补强与复验，目标是稳定 `route_proof_summary` 在 dry-run / visual gate 下的解释口径。
 
 追加改动（仅 nav 允许范围）：
 
+- `src/ros2_trashbot_nav/ros2_trashbot_nav/route_proof_summary.py`
 - `src/ros2_trashbot_nav/test/test_route_proof_summary.py`
 - `docs/navigation/fixed_route_workflow.md`
 
 补强点：
 
 - 新增 unittest：`test_partial_coverage_can_keep_passed_gate_when_not_blocked`，明确“部分 coverage 但当前无 gate 阻塞时，`gate_status` 可为 `passed`，可发车判断必须结合 `coverage_rate + missing_checkpoints`”。
-- 导航文档 `Stability rules` 增加同口径说明，避免只看 `gate_status` 误判 readiness。
+- `build_route_proof_summary()` 对 `missing_checkpoints` 做 contract 归一：过滤已覆盖索引，仅保留未覆盖尾段索引，避免 `covered_checkpoints` 与 `missing_checkpoints` 自相矛盾。
+- 新增 unittest：`test_build_route_proof_summary_ignores_missing_indexes_below_coverage`，锁定上述归一化规则。
+- 导航文档补充 `missing_checkpoints` 归一化说明与稳定性规则，避免只看 `gate_status` 误判 readiness。
 
 本轮验收命令结果（nav owner 命令集）：
 
 1. `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s src/ros2_trashbot_nav/test -p 'test_*py'`
-   - 关键输出：`Ran 43 tests in 2.603s`，`OK`
+   - 关键输出：`Ran 44 tests in 2.514s`，`OK`
 2. `PYTHONDONTWRITEBYTECODE=1 bash -lc "changed_py=$(git diff --name-only -- src/ros2_trashbot_nav docs/navigation | grep -E '\\.py$' || true); if [ -n \"$changed_py\" ]; then python3 -m py_compile $changed_py; else echo 'no python files changed for py_compile'; fi"`
-   - 关键输出：`no python files changed for py_compile`
+   - 关键输出：空（`py_compile` 对改动 Python 文件检查通过）
 3. `PYTHONDONTWRITEBYTECODE=1 bash scripts/run_smoke_tests.sh`
-   - 关键输出：`Ran 128 tests in 17.753s`，`OK`
-   - 关键输出：`Ran 13 tests in 0.601s`，`OK`
+   - 关键输出：`Ran 128 tests in 17.752s`，`OK`
+   - 关键输出：`Ran 13 tests in 0.613s`，`OK`
 4. `git diff --check -- src/ros2_trashbot_nav docs/navigation sprints/2026.05.10_23-24_route-proof-coverage/tech-done.md sprints/2026.05.10_23-24_route-proof-coverage/side2side_check.md sprints/2026.05.10_23-24_route-proof-coverage/final.md`
    - 关键输出：空（无 whitespace 错误）
 

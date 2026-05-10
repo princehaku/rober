@@ -47,8 +47,12 @@ def build_route_proof_summary(
         normalized_missing = []
         summary_gate_status = PASSED
         summary_block_reason = ""
-    elif not normalized_missing:
-        normalized_missing = list(range(covered, total))
+    elif total > 0:
+        derived_missing = set(range(covered, total))
+        if normalized_missing:
+            normalized_missing = sorted(item for item in normalized_missing if item in derived_missing)
+        else:
+            normalized_missing = sorted(derived_missing)
 
     return {
         "coverage_rate": coverage_rate,

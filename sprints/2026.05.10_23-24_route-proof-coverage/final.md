@@ -2,9 +2,9 @@
 
 ## 结果摘要
 
-本轮完成 Objective 3 主切片收口：fixed-route 的 route proof coverage 已形成“导航侧单一口径 + behavior/operator 可读消费”的闭环，能更明确回答“是否可发车、为什么被阻塞、缺哪些 checkpoint”。
+本轮完成 Objective 3 主切片收口补强：fixed-route 的 route proof coverage 在既有“导航侧单一口径 + behavior/operator 可读消费”闭环上，进一步稳定了 `route_proof_summary.missing_checkpoints` 归一化规则，能更一致地回答“是否可发车、为什么被阻塞、缺哪些 checkpoint”。
 
-本轮同时给 Objective 5 带来小幅次级收益：operator 触点对 route-proof 状态的可解释性增强，但不等于手机端完整体验或实机能力闭环。
+本轮同时给 Objective 5 带来小幅次级收益：operator 触点对 route-proof 状态的可解释性增强；full-stack 本轮未新增代码，仅完成 behavior/operator 映射与文档一致性复核，但不等于手机端完整体验或实机能力闭环。
 
 ## 对 OKR 的影响
 
@@ -14,9 +14,9 @@
 
 ## 验证证据（子 agent 已回传）
 
-- nav tests：`Ran 42 tests ... OK`
-- behavior operator tests：`Ran 47 tests ... OK`
-- smoke：`Ran 127 tests ... OK`
+- nav tests：`Ran 44 tests ... OK`
+- behavior operator tests：`Ran 48 tests ... OK`
+- smoke：`Ran 128 tests ... OK`
 - smoke：`Ran 13 tests ... OK`
 
 说明：本轮 Product 文档收口不重复执行 `run_smoke_tests.sh`。
