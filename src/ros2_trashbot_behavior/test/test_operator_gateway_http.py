@@ -12,8 +12,10 @@ BEHAVIOR_PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BEHAVIOR_PACKAGE_ROOT))
 
 from ros2_trashbot_behavior.operator_gateway_http import (
+    ELEVATOR_ASSIST_SPEAKER_PROMPT,
     OPERATOR_PROMPTS,
     make_handler,
+    normalize_elevator_assist,
     operator_prompt_for_state,
     status_payload,
 )
@@ -203,6 +205,25 @@ class FakeGateway:
                 "missing_fields": [],
                 "source": "task_record.nav_results.evidence.route_proof_summary",
             },
+            "elevator_assist": {
+                "enabled": False,
+                "mode": "",
+                "state": "disabled",
+                "phase": "",
+                "requires_human_help": False,
+                "reason": "",
+                "target_floor": "",
+                "phone_copy": "",
+                "speaker_prompt": "",
+                "evidence": {},
+                "events": [],
+            },
+            "elevator_assist_status": {
+                "state": "disabled",
+                "reason": "elevator assisted delivery is not active",
+                "next_step": "Continue the normal trash delivery flow.",
+                "source": "",
+            },
             "hardware_proof": {
                 "status": "needs_hil",
                 "artifact_ref": "/tmp/hardware-proof.json",
@@ -290,6 +311,39 @@ class OperatorGatewayHttpTest(unittest.TestCase):
 
                 self.assertEqual(payload["phone_copy"], expected["phone_copy"])
                 self.assertEqual(payload["speaker_prompt"], expected["speaker_prompt"])
+                self.assertEqual(payload["elevator_assist"]["state"], "disabled")
+
+    def test_status_payload_exposes_elevator_assist_copy_without_breaking_state_contract(self):
+        payload = status_payload(
+            "requesting_floor_help",
+            "entered elevator",
+            elevator_assist={
+                "enabled": True,
+                "mode": "dry_run",
+                "phase": "requesting_floor_help",
+                "requires_human_help": True,
+                "target_floor": "1",
+                "evidence": {"inside_elevator": True},
+            },
+        )
+
+        self.assertEqual(payload["state"], "requesting_floor_help")
+        self.assertEqual(payload["elevator_assist"]["phase"], "requesting_floor_help")
+        self.assertEqual(payload["elevator_assist"]["target_floor"], "1")
+        self.assertEqual(payload["elevator_assist"]["evidence"]["inside_elevator"], True)
+        self.assertEqual(payload["speaker_prompt"], ELEVATOR_ASSIST_SPEAKER_PROMPT)
+        self.assertIn("请求帮忙按楼层", payload["phone_copy"])
+
+    def test_elevator_assist_can_be_inferred_from_elevator_state(self):
+        payload = status_payload("waiting_target_floor", "waiting for target floor")
+
+        self.assertTrue(payload["elevator_assist"]["enabled"])
+        self.assertEqual(payload["elevator_assist"]["phase"], "waiting_target_floor")
+        self.assertIn("等待目标楼层", payload["phone_copy"])
+        self.assertEqual(
+            normalize_elevator_assist({"state": "target_floor_unconfirmed"})["requires_human_help"],
+            True,
+        )
 
     def test_unknown_operator_state_falls_back_to_human_help_prompt(self):
         self.assertEqual(
@@ -341,6 +395,8 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["hardware_proof"]["next_step"], "Run the WAVE ROVER HIL recipe on a prepared robot.")
         self.assertEqual(payload["hardware_proof"]["read_error"], "")
         self.assertEqual(payload["hardware_proof"]["risk_flags"][0]["id"], "hil_required")
+        self.assertEqual(payload["elevator_assist"]["state"], "disabled")
+        self.assertEqual(payload["elevator_assist_status"]["state"], "disabled")
 
     def test_status_preserves_robot_location_snapshot_fields(self):
         self.gateway.snapshot_payload["robot_location"] = {
@@ -393,6 +449,10 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("diagRouteProofState", body)
         self.assertIn("diagRouteProofReason", body)
         self.assertIn("diagRouteProofSource", body)
+        self.assertIn("diagElevatorAssistState", body)
+        self.assertIn("diagElevatorAssistPrompt", body)
+        self.assertIn("diagElevatorAssistEvidence", body)
+        self.assertIn("diagElevatorAssistNextStep", body)
         self.assertIn("diagVisionIntegrity", body)
         self.assertIn("diagVisionIntegrityBadge", body)
         self.assertIn("diagVisionIntegritySummary", body)
@@ -442,6 +502,9 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("reviewNextPending", body)
         self.assertIn("route_proof_summary", body)
         self.assertIn("route_proof_status", body)
+        self.assertIn("elevator_assist", body)
+        self.assertIn("elevator_assist_status", body)
+        self.assertIn("你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,", body)
         self.assertIn("reviewJumpPendingButton", body)
         self.assertIn("jumpToNextPending", body)
         self.assertIn("applyReviewProgress", body)

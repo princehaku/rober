@@ -12,10 +12,13 @@ sys.path.insert(0, str(VISION_PACKAGE_ROOT))
 
 from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     build_diagnostics_payload,
+    classify_elevator_assist,
+    extract_elevator_assist,
     normalize_log_refs,
     summarize_hardware_proof,
     summarize_vision_manifest,
 )
+from ros2_trashbot_behavior.operator_gateway_http import ELEVATOR_ASSIST_SPEAKER_PROMPT
 
 
 class OperatorGatewayDiagnosticsTest(unittest.TestCase):
@@ -51,6 +54,85 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["route_proof_status"]["state"], "ready")
         self.assertEqual(payload["route_proof_status"]["source"], "latest_status.route_proof_summary")
         self.assertEqual(payload["route_proof_status"]["blocking_reason"], "")
+
+    def test_elevator_assist_passthrough_and_request_floor_help_prompt(self):
+        payload = self._base_build_payload(
+            {
+                "state": "requesting_floor_help",
+                "elevator_assist": {
+                    "enabled": True,
+                    "mode": "dry_run",
+                    "phase": "requesting_floor_help",
+                    "requires_human_help": True,
+                    "target_floor": "1",
+                    "evidence": {"inside_elevator": True},
+                    "events": [{"phase": "entering_elevator"}, {"phase": "requesting_floor_help"}],
+                },
+            }
+        )
+
+        self.assertEqual(payload["elevator_assist"]["phase"], "requesting_floor_help")
+        self.assertEqual(payload["elevator_assist"]["target_floor"], "1")
+        self.assertEqual(payload["elevator_assist"]["speaker_prompt"], ELEVATOR_ASSIST_SPEAKER_PROMPT)
+        self.assertEqual(payload["elevator_assist_status"]["state"], "needs_human_help")
+        self.assertEqual(payload["elevator_assist_status"]["source"], "latest_status.elevator_assist")
+
+    def test_elevator_assist_diagnostics_explains_unreliable_target_floor(self):
+        summary = classify_elevator_assist(
+            {
+                "enabled": True,
+                "mode": "dry_run",
+                "state": "target_floor_evidence_unreliable",
+                "phase": "waiting_target_floor",
+                "requires_human_help": True,
+                "reason": "target_floor_unconfirmed",
+                "evidence": {"target_floor_unconfirmed": True},
+            },
+            source="last_task.elevator_assist",
+        )
+
+        self.assertEqual(summary["state"], "needs_human_help")
+        self.assertIn("target_floor_unconfirmed", summary["reason"])
+        self.assertIn("operator", summary["next_step"])
+        self.assertEqual(summary["source"], "last_task.elevator_assist")
+
+    def test_elevator_assist_can_be_read_from_task_record_events(self):
+        with tempfile.TemporaryDirectory() as td:
+            task_record_path = Path(td) / "task.json"
+            task_record_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "delivery-elevator-1",
+                        "elevator_assist_events": [
+                            {
+                                "phase": "waiting_elevator_open",
+                                "reason": "door_closed_or_unknown",
+                                "evidence": {"door_closed_or_unknown": True},
+                            },
+                            {
+                                "phase": "waiting_target_floor",
+                                "state": "target_floor_unconfirmed",
+                                "requires_human_help": True,
+                                "target_floor": "1",
+                                "reason": "target_floor_unconfirmed",
+                                "evidence": {"target_floor_unconfirmed": True},
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            elevator_assist, source = extract_elevator_assist(
+                {"task_record_path": str(task_record_path)},
+                {},
+            )
+
+        self.assertEqual(source, "task_record.elevator_assist_events")
+        self.assertEqual(elevator_assist["phase"], "waiting_target_floor")
+        self.assertEqual(elevator_assist["state"], "target_floor_unconfirmed")
+        self.assertTrue(elevator_assist["requires_human_help"])
+        self.assertEqual(elevator_assist["target_floor"], "1")
+        self.assertEqual(elevator_assist["evidence"]["target_floor_unconfirmed"], True)
 
     def test_route_proof_summary_missing_fields_downgrades_to_unknown(self):
         payload = self._base_build_payload(

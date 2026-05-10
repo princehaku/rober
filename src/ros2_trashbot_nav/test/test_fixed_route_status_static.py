@@ -30,7 +30,28 @@ class FixedRouteStatusStaticTest(unittest.TestCase):
         self.assertIn("'visual_gate_checkpoint'", source)
         self.assertIn("'route_proof_summary'", source)
         self.assertIn("'keyframe_preflight'", source)
+        self.assertIn("'elevator_assist'", source)
+        self.assertIn("build_elevator_assist_evidence", source)
+        self.assertIn("build_elevator_assist_status", source)
         self.assertIn("self.keyframe_preflight", source)
+
+    def test_elevator_evidence_schema_is_offline_and_explicit(self):
+        route_utils = REPO_ROOT / "ros2_trashbot_nav" / "ros2_trashbot_nav" / "route_utils.py"
+        source = route_utils.read_text(encoding="utf-8")
+
+        for status in (
+            "'door_open'",
+            "'door_closed_or_unknown'",
+            "'inside_elevator'",
+            "'target_floor_confirmed'",
+            "'target_floor_unconfirmed'",
+            "'safe_to_exit'",
+            "'unsafe_to_exit'",
+        ):
+            self.assertIn(status, source)
+        self.assertIn("'elevator_assist.evidence.v1'", source)
+        self.assertIn("'robot_readable'", source)
+        self.assertIn("'operator_readable'", source)
 
     def test_keyframe_preflight_reports_route_wide_coverage(self):
         source = SOURCE.read_text(encoding="utf-8")

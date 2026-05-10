@@ -230,6 +230,30 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["last_nav_result"], "dry_run_checkpoint_passed")
             self.assertEqual(payload["visual_gate_status"], "disabled")
             self.assertEqual(payload["visual_gate_checkpoint"], 0)
+            elevator_assist = payload["elevator_assist"]
+            self.assertFalse(elevator_assist["enabled"])
+            self.assertEqual(elevator_assist["mode"], "offline_schema")
+            self.assertEqual(
+                elevator_assist["evidence_schema_version"],
+                "elevator_assist.evidence.v1",
+            )
+            self.assertEqual(
+                elevator_assist["supported_evidence"],
+                [
+                    "door_open",
+                    "door_closed_or_unknown",
+                    "inside_elevator",
+                    "target_floor_confirmed",
+                    "target_floor_unconfirmed",
+                    "safe_to_exit",
+                    "unsafe_to_exit",
+                ],
+            )
+            self.assertEqual(elevator_assist["evidence"]["status"], "door_closed_or_unknown")
+            self.assertEqual(elevator_assist["evidence"]["source"], "fixed_route_debug_status")
+            self.assertFalse(elevator_assist["evidence"]["allows_entry"])
+            self.assertFalse(elevator_assist["evidence"]["allows_exit"])
+            self.assertTrue(elevator_assist["evidence"]["requires_operator"])
             summary = payload["route_proof_summary"]
             self.assertEqual(summary["coverage_rate"], 1.0)
             self.assertEqual(summary["covered_checkpoints"], 1)

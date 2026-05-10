@@ -52,9 +52,12 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("make_handler(self)", source)
         self.assertIn("status_payload", source)
         self.assertIn("OPERATOR_PROMPTS", http_source)
+        self.assertIn("ELEVATOR_ASSIST_SPEAKER_PROMPT", http_source)
+        self.assertIn("normalize_elevator_assist", http_source)
         self.assertIn("operator_prompt_for_state", http_source)
         self.assertIn('"phone_copy": prompt["phone_copy"]', http_source)
         self.assertIn('"speaker_prompt": prompt["speaker_prompt"]', http_source)
+        self.assertIn('"elevator_assist": elevator_assist', http_source)
         self.assertIn("gateway.diagnostics()", http_source)
         self.assertNotIn("flask", source.lower())
         self.assertNotIn("aiohttp", source.lower())
@@ -98,6 +101,10 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn('"decision_distribution"', diagnostics_source)
         self.assertIn('"next_pending_sample"', diagnostics_source)
         self.assertIn("hardware_proof=summarize_hardware_proof(hardware_proof_ref)", diagnostics_block)
+        self.assertIn("extract_elevator_assist", diagnostics_source)
+        self.assertIn("classify_elevator_assist", diagnostics_source)
+        self.assertIn("elevator_assist=elevator_assist", diagnostics_block)
+        self.assertIn("elevator_assist_status=elevator_assist_status", diagnostics_block)
         self.assertIn(
             'latest_status.get("task_record_path") or last_task.get("task_record_path", "")',
             diagnostics_block,
@@ -129,6 +136,16 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "diagRouteProofSource",
             "route_proof_summary",
             "route_proof_status",
+            "diagElevatorAssistState",
+            "diagElevatorAssistPrompt",
+            "diagElevatorAssistEvidence",
+            "diagElevatorAssistNextStep",
+            "elevator_assist",
+            "elevator_assist_status",
+            "requesting_floor_help",
+            "waiting_target_floor",
+            "target_floor_unconfirmed",
+            "你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,",
             "reviewJumpPendingButton",
             "jumpToNextPending",
             "applyReviewProgress",
@@ -202,6 +219,8 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("final_state=result.final_state", result_block)
         self.assertIn('"error_code": result.error_code', result_block)
         self.assertIn('"final_state": result.final_state', result_block)
+        self.assertIn("extract_elevator_assist", result_block)
+        self.assertIn('"elevator_assist": elevator_assist', result_block)
 
 
 if __name__ == "__main__":

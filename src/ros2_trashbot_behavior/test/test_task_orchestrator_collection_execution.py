@@ -150,6 +150,10 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         node.dropoff_mode = "dry_run"
         node.dropoff_timeout_sec = 0.0
         node.fixed_route_status_file = str(fixed_route_status_file)
+        node.elevator_assist_enabled = False
+        node.elevator_assist_mode = "dry_run"
+        node.elevator_assist_target_floor = "1"
+        node.elevator_assist_dry_run_failure = ""
         node.get_clock = lambda: FakeClock()
         node.get_logger = lambda: FakeLogger()
         node._clear_collection_active = lambda: None
@@ -175,6 +179,67 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["final_state"], "idle")
         self.assertEqual(payload["delivery_mode"], "dry_run")
         self.assertEqual(payload["dropoff_result"]["result_code"], "dry_run")
+        self.assertEqual(payload["elevator_assist"]["enabled"], False)
+        self.assertEqual(payload["elevator_assist"]["phase"], "disabled")
+
+    def test_execute_collection_elevator_assist_dry_run_records_happy_path(self):
+        with tempfile.TemporaryDirectory() as td:
+            node = self.make_orchestrator(Path(td))
+            node.elevator_assist_enabled = True
+            goal = FakeGoalHandle()
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        phases = [event["phase"] for event in payload["elevator_assist"]["events"]]
+        elevator_events = [
+            transition for transition in payload["state_transitions"]
+            if transition["event"] == "elevator_phase"
+        ]
+
+        self.assertTrue(result.success)
+        self.assertEqual(
+            phases,
+            [
+                "approaching_elevator",
+                "waiting_elevator_open",
+                "entering_elevator",
+                "requesting_floor_help",
+                "waiting_target_floor",
+                "exiting_elevator",
+                "resume_delivery",
+            ],
+        )
+        self.assertEqual(payload["elevator_assist"]["enabled"], True)
+        self.assertEqual(payload["elevator_assist"]["mode"], "dry_run")
+        self.assertEqual(payload["elevator_assist"]["phase"], "resume_delivery")
+        self.assertEqual(payload["elevator_assist"]["target_floor"], "1")
+        self.assertEqual(
+            payload["elevator_assist"]["speaker_prompt"],
+            self.module.ELEVATOR_ASSIST_PROMPT,
+        )
+        self.assertEqual(payload["elevator_assist"]["evidence"]["waiting_elevator_open"], "door_open")
+        self.assertEqual(len(elevator_events), 7)
+        self.assertEqual(payload["final_status"], "success")
+
+    def test_execute_collection_elevator_assist_failure_aborts_with_record(self):
+        with tempfile.TemporaryDirectory() as td:
+            node = self.make_orchestrator(Path(td))
+            node.elevator_assist_enabled = True
+            node.elevator_assist_dry_run_failure = "target_floor_unconfirmed"
+            goal = FakeGoalHandle()
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        self.assertFalse(result.success)
+        self.assertTrue(goal.aborted)
+        self.assertEqual(result.error_code, "elevator_failed")
+        self.assertEqual(payload["final_status"], "failed")
+        self.assertEqual(payload["elevator_assist"]["state"], "failed")
+        self.assertEqual(payload["elevator_assist"]["phase"], "waiting_target_floor")
+        self.assertEqual(payload["elevator_assist"]["evidence"]["failure"], "target_floor_unconfirmed")
+        self.assertIn("target floor", payload["error_message"])
 
     def test_execute_collection_fixed_route_timeout_aborts_with_timeout_record(self):
         with tempfile.TemporaryDirectory() as td:

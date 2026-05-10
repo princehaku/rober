@@ -40,6 +40,18 @@ class TaskRecordTest(unittest.TestCase):
                     "source": "/trashbot/confirm_dropoff",
                     "elapsed_sec": 0.25,
                 },
+                elevator_assist={
+                    "enabled": True,
+                    "mode": "dry_run",
+                    "state": "resume_delivery",
+                    "phase": "resume_delivery",
+                    "requires_human_help": False,
+                    "reason": "elevator assist dry-run complete",
+                    "target_floor": "1",
+                    "speaker_prompt": "你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,",
+                    "evidence": {"waiting_elevator_open": "door_open"},
+                    "events": [{"phase": "waiting_elevator_open"}],
+                },
                 detection_snapshot_refs=["vision://snapshot/1"],
                 config={"dropoff_mode": "dry_run"},
                 error_code="",
@@ -57,6 +69,9 @@ class TaskRecordTest(unittest.TestCase):
         self.assertEqual(payload["dropoff_result"]["source"], "/trashbot/confirm_dropoff")
         self.assertEqual(payload["dropoff_result"]["message"], "dropoff confirmed")
         self.assertEqual(payload["dropoff_result"]["elapsed_sec"], 0.25)
+        self.assertEqual(payload["elevator_assist"]["enabled"], True)
+        self.assertEqual(payload["elevator_assist"]["phase"], "resume_delivery")
+        self.assertEqual(payload["elevator_assist"]["evidence"]["waiting_elevator_open"], "door_open")
         self.assertEqual(payload["detection_snapshot_refs"], ["vision://snapshot/1"])
         self.assertEqual(payload["config"]["dropoff_mode"], "dry_run")
         self.assertIn("started_at", payload)

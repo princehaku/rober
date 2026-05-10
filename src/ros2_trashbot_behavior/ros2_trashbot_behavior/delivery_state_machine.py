@@ -23,6 +23,9 @@ class DeliveryEvent(Enum):
     RETURN_FAILED = "return_failed"
     TIMED_OUT = "timed_out"
     CANCELED = "canceled"
+    ELEVATOR_PHASE = "elevator_phase"
+    ELEVATOR_FAILED = "elevator_failed"
+    ELEVATOR_COMPLETED = "elevator_completed"
     INVALID_TRANSITION = "invalid_transition"
 
 
@@ -92,6 +95,30 @@ class DeliveryStateMachine:
             return
         self.error_message = message or "navigation failed"
         self._transition(DeliveryEvent.NAVIGATION_FAILED, DeliveryState.ERROR, self.error_message)
+
+    def elevator_phase(self, phase: str, message: str = ""):
+        if not self._require_state(DeliveryEvent.ELEVATOR_PHASE, DeliveryState.DELIVERING):
+            return
+        phase = (phase or "").strip()
+        if not phase:
+            self.error_message = "elevator phase is required"
+            self._transition(DeliveryEvent.ELEVATOR_FAILED, DeliveryState.ERROR, self.error_message)
+            return
+        # Keep the main delivery state in DELIVERING while recording the finer
+        # grained elevator dry-run phase in the transition message for replay.
+        detail = message or phase
+        self._transition(DeliveryEvent.ELEVATOR_PHASE, DeliveryState.DELIVERING, detail)
+
+    def elevator_failed(self, reason: str):
+        if not self._require_state(DeliveryEvent.ELEVATOR_FAILED, DeliveryState.DELIVERING):
+            return
+        self.error_message = reason or "elevator assisted delivery failed"
+        self._transition(DeliveryEvent.ELEVATOR_FAILED, DeliveryState.ERROR, self.error_message)
+
+    def elevator_completed(self, message: str = "resume delivery"):
+        if not self._require_state(DeliveryEvent.ELEVATOR_COMPLETED, DeliveryState.DELIVERING):
+            return
+        self._transition(DeliveryEvent.ELEVATOR_COMPLETED, DeliveryState.DELIVERING, message)
 
     def dropoff_confirmed(self):
         if not self._require_state(DeliveryEvent.DROPOFF_CONFIRMED, DeliveryState.DROPOFF):

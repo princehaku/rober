@@ -11,6 +11,10 @@ from unittest import mock
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE_ROOT))
 
+from ros2_trashbot_nav.route_utils import (
+    ELEVATOR_ASSIST_EVIDENCE_STATUSES,
+    build_elevator_assist_evidence,
+)
 from ros2_trashbot_nav.visual_gate_proof import build_visual_gate_proof, main
 
 
@@ -95,6 +99,21 @@ class VisualGateProofTest(unittest.TestCase):
             self.assertEqual(proof["debug_status"]["visual_gate_checkpoint"], 1)
             self.assertEqual(proof["debug_status"]["failure_reason"], "")
             self.assertTrue(proof["debug_status"]["keyframe_preflight"]["route_visual_ready"])
+            elevator_assist = proof["elevator_assist"]
+            self.assertFalse(elevator_assist["enabled"])
+            self.assertEqual(elevator_assist["mode"], "offline_schema")
+            self.assertEqual(
+                elevator_assist["supported_evidence"],
+                list(ELEVATOR_ASSIST_EVIDENCE_STATUSES),
+            )
+            self.assertEqual(elevator_assist["evidence"]["status"], "target_floor_unconfirmed")
+            self.assertEqual(elevator_assist["evidence"]["source"], "visual_gate_offline_proof")
+            self.assertEqual(
+                elevator_assist["evidence"]["metadata"]["visual_gate_status"],
+                "passed",
+            )
+            self.assertFalse(elevator_assist["evidence"]["confirms_target_floor"])
+            self.assertFalse(elevator_assist["evidence"]["allows_exit"])
 
     def test_csv_route_and_dict_matcher_are_supported(self):
         with tempfile.TemporaryDirectory() as td:
@@ -240,6 +259,57 @@ class VisualGateProofTest(unittest.TestCase):
             self.assertEqual(proof["route_proof_summary"]["gate_status"], "invalid_route")
             self.assertIn("route file not found", proof["debug_status"]["failure_reason"])
             self.assertEqual(proof["checkpoints"], [])
+            self.assertEqual(
+                proof["elevator_assist"]["evidence"]["status"],
+                "door_closed_or_unknown",
+            )
+            self.assertIn(
+                "route file not found",
+                proof["elevator_assist"]["evidence"]["detail"],
+            )
+
+    def test_elevator_assist_evidence_schema_covers_dry_run_statuses(self):
+        expected_flags = {
+            "door_open": ("allows_entry", True),
+            "door_closed_or_unknown": ("requires_operator", True),
+            "inside_elevator": ("reliable", True),
+            "target_floor_confirmed": ("confirms_target_floor", True),
+            "target_floor_unconfirmed": ("requires_operator", True),
+            "safe_to_exit": ("allows_exit", True),
+            "unsafe_to_exit": ("requires_operator", True),
+        }
+        self.assertEqual(
+            list(ELEVATOR_ASSIST_EVIDENCE_STATUSES),
+            [
+                "door_open",
+                "door_closed_or_unknown",
+                "inside_elevator",
+                "target_floor_confirmed",
+                "target_floor_unconfirmed",
+                "safe_to_exit",
+                "unsafe_to_exit",
+            ],
+        )
+        for status, (flag, value) in expected_flags.items():
+            evidence = build_elevator_assist_evidence(
+                status,
+                source="unit_test",
+                confidence=1.5,
+                checkpoint=3,
+                metadata={"fixture": True},
+            )
+            self.assertEqual(evidence["schema_version"], "elevator_assist.evidence.v1")
+            self.assertEqual(evidence["status"], status)
+            self.assertEqual(evidence["source"], "unit_test")
+            self.assertEqual(evidence["confidence"], 1.0)
+            self.assertEqual(evidence["checkpoint"], 3)
+            self.assertTrue(evidence["robot_readable"])
+            self.assertTrue(evidence["operator_readable"])
+            self.assertEqual(evidence["metadata"], {"fixture": True})
+            self.assertEqual(evidence[flag], value)
+
+        with self.assertRaises(ValueError):
+            build_elevator_assist_evidence("floor_wait_timer_elapsed")
 
     def test_cli_writes_json_file(self):
         with tempfile.TemporaryDirectory() as td:

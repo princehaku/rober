@@ -18,6 +18,14 @@
 - Waiting for trash.
 - Loaded and ready.
 - Delivering.
+- Elevator assisted delivery states when enabled for a dry-run or controlled H2 route:
+  - `approaching_elevator`
+  - `waiting_elevator_open`
+  - `entering_elevator`
+  - `requesting_floor_help`
+  - `waiting_target_floor`
+  - `exiting_elevator`
+  - `resume_delivery`
 - Arrived at station.
 - Returning.
 - Completed.
@@ -30,6 +38,10 @@ The phone UI should show plain-language messages:
 - "Route is not ready."
 - "Robot cannot find the trash station."
 - "Navigation failed."
+- "电梯未开门，需要人工协助。"
+- "未确认目标楼层，请人工确认。"
+- "目标楼层证据不可靠，请人工确认。"
+- "需要人工接管电梯段任务。"
 - "Please remove trash manually."
 - "Robot stopped for safety."
 
@@ -53,6 +65,25 @@ The local page also shows live robot location when localization is publishing. `
 
 The local browser page is phone-first and uses the API fields directly: task state, `phone_copy`, `speaker_prompt`, action permissions, robot pose/path, and diagnostics. The page is still intentionally dependency-free HTML served by `operator_gateway`; it is a usable local control surface, not a production account system.
 
+For H2 elevator assisted delivery dry-runs, `GET /api/status` and `GET /api/diagnostics` may include an `elevator_assist` object. Older clients can ignore it. New clients should treat it as the machine-readable source for elevator UI:
+
+- `enabled`: boolean; false means normal single-floor delivery UI.
+- `mode`: expected to be `dry_run` until controlled real-world validation exists.
+- `state` / `phase`: current elevator sub-state or failure reason.
+- `requires_human_help`: true when the phone should ask for operator or bystander help.
+- `reason`: machine-readable explanation such as `door_timeout`, `target_floor_unconfirmed`, or `unsafe_to_exit`.
+- `target_floor`: target floor label when known.
+- `phone_copy`: user-facing copy for the phone.
+- `speaker_prompt`: prompt contract for a future speaker/TTS layer; the local gateway does not play audio.
+- `evidence`: dry-run evidence such as `door_open`, `door_closed_or_unknown`, `inside_elevator`, `target_floor_confirmed`, `target_floor_unconfirmed`, `safe_to_exit`, or `unsafe_to_exit`.
+- `events`: ordered elevator sub-state events when a task record provides them.
+
+When `phase=requesting_floor_help`, `speaker_prompt` must be:
+
+```text
+你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,
+```
+
 ## Phone Status And Speaker Prompt Contract
 
 `operator_gateway` emits these strings in every status-style JSON payload as `phone_copy` and `speaker_prompt`, so phone UI and speaker/voice layers share the same state contract.
@@ -62,6 +93,12 @@ The local browser page is phone-first and uses the API fields directly: task sta
 | `waiting_for_trash` | Waiting for trash. Place trash on the robot, then start delivery. | Please place trash on the robot. |
 | `loaded_and_ready` | Trash is loaded. Ready to deliver. | Trash loaded. Preparing to depart. |
 | `delivering` | Delivering to the selected trash station. | Delivering trash now. |
+| `waiting_elevator_open` | 已到电梯厅，等待电梯开门。 | 等待电梯开门。 |
+| `requesting_floor_help` | 已进入电梯，正在请求帮忙按楼层。 | 你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯, |
+| `waiting_target_floor` | 正在等待目标楼层，请保持通道安全。 | 正在等待目标楼层。 |
+| `target_floor_unconfirmed` | 未确认目标楼层，请人工确认。 | 未确认目标楼层，需要人工协助。 |
+| `unsafe_to_exit` | 目标楼层出口不安全，需要人工接管。 | 需要人工协助。 |
+| `resume_delivery` | 已驶出电梯，继续送往垃圾站。 | 已驶出电梯，继续送垃圾。 |
 | `arrived_at_station` | Arrived. Remove or dispose of the load, then confirm dropoff. | Arrived at the trash station. Please remove the trash. |
 | `returning` | Dropoff confirmed. Returning or waiting for the next task. | Dropoff confirmed. Returning now. |
 | `completed` | Task completed. | Task completed. |

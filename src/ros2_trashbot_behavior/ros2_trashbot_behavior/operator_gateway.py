@@ -18,6 +18,7 @@ from ros2_trashbot_interfaces.action import TrashCollection
 from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     REVIEW_DECISION_VALUES,
     build_diagnostics_payload,
+    extract_elevator_assist,
     load_review_decision_log,
     normalize_log_refs,
     summarize_vision_manifest,
@@ -358,6 +359,10 @@ class OperatorGateway(Node):
         try:
             result = future.result().result
             state = "completed" if result.success else "failed"
+            elevator_assist, _elevator_assist_source = extract_elevator_assist(
+                {"task_record_path": result.task_record_path},
+                {},
+            )
             self._set_status(status_payload(
                 state,
                 result.error_message or ("collection complete" if result.success else "collection failed"),
@@ -365,6 +370,7 @@ class OperatorGateway(Node):
                 total_duration_sec=float(result.total_duration_sec),
                 error_code=result.error_code,
                 final_state=result.final_state,
+                elevator_assist=elevator_assist,
                 can_collect=True,
                 can_confirm_dropoff=False,
                 can_cancel=False,
@@ -373,6 +379,7 @@ class OperatorGateway(Node):
                     "success": bool(result.success),
                     "error_code": result.error_code,
                     "final_state": result.final_state,
+                    "elevator_assist": elevator_assist,
                 },
             ))
         except Exception as exc:  # noqa: BLE001 - keep operator UI usable after async result failures.

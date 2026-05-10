@@ -24,6 +24,9 @@ except ImportError:  # pragma: no cover - tests use dependency injection.
 
 from ros2_trashbot_nav.route_utils import (
     ROUTE_CONTRACT_VERSION,
+    build_elevator_assist_evidence,
+    build_elevator_assist_status,
+    load_waypoints_from_simple_yaml,
     load_waypoints_from_csv,
     validate_route_yaml_data,
 )
@@ -100,7 +103,7 @@ def _load_route(route_file: str) -> Tuple[List[Dict[str, Any]], Optional[str]]:
         if path.suffix.lower() == ".csv":
             return load_waypoints_from_csv(str(path)), None
         if yaml is None:
-            return [], "PyYAML is not available for route YAML parsing"
+            return load_waypoints_from_simple_yaml(str(path)), None
         with path.open("r", encoding="utf-8") as stream:
             data = yaml.safe_load(stream)
         return validate_route_yaml_data(data, str(path)), None
@@ -233,6 +236,41 @@ def _debug_status(
     }
 
 
+def _elevator_assist_from_visual_gate(
+    summary_status: str,
+    checkpoints: List[Dict[str, Any]],
+    route_error: str = "",
+) -> Dict[str, Any]:
+    """Expose visual-gate output as elevator evidence without claiming OCR.
+
+    A passing fixed-route visual proof only says the route checkpoint imagery is
+    consistent; it does not prove door state or floor text. The normalized
+    evidence therefore remains conservative until a future source supplies a
+    door/floor-specific status.
+    """
+    failing = next((item for item in checkpoints if item["status"] != PASSED), None)
+    latest = checkpoints[-1] if checkpoints else None
+    focus = failing or latest
+    checkpoint = focus["index"] if focus else None
+    detail = route_error or (focus["detail"] if focus else "visual gate proof has no checkpoints")
+    status = "door_closed_or_unknown"
+    if summary_status == PASSED and checkpoints:
+        detail = "visual gate passed; elevator door and floor evidence remain unconfirmed"
+        status = "target_floor_unconfirmed"
+    evidence = build_elevator_assist_evidence(
+        status,
+        source="visual_gate_offline_proof",
+        confidence=0.0,
+        detail=detail,
+        checkpoint=checkpoint,
+        metadata={
+            "visual_gate_status": summary_status,
+            "visual_gate_checkpoint": checkpoint,
+        },
+    )
+    return build_elevator_assist_status(evidence, enabled=False, mode="offline_schema")
+
+
 def _invalid_route_proof(route_file: str, keyframe_dir: str, live_frame_dir: str, error: str) -> Dict[str, Any]:
     debug_status = _debug_status(route_file, keyframe_dir, [], INVALID_ROUTE, error)
     debug_status["visual_gate_status"] = INVALID_ROUTE
@@ -263,6 +301,7 @@ def _invalid_route_proof(route_file: str, keyframe_dir: str, live_frame_dir: str
         },
         "route_proof_summary": route_proof_summary,
         "debug_status": debug_status,
+        "elevator_assist": _elevator_assist_from_visual_gate(INVALID_ROUTE, [], error),
         "inputs": {
             "keyframe_dir": str(Path(keyframe_dir).expanduser()),
             "live_frame_dir": str(Path(live_frame_dir).expanduser()),
@@ -321,6 +360,7 @@ def build_visual_gate_proof(
         },
         "route_proof_summary": route_proof_summary,
         "debug_status": _debug_status(route_file, keyframe_dir, checkpoints, summary_status),
+        "elevator_assist": _elevator_assist_from_visual_gate(summary_status, checkpoints),
         "inputs": {
             "keyframe_dir": str(Path(keyframe_dir).expanduser()),
             "live_frame_dir": str(Path(live_frame_dir).expanduser()),

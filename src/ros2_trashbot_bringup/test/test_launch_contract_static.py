@@ -29,6 +29,10 @@ class LaunchContractStaticTest(unittest.TestCase):
             "'delivery_mode'",
             "'delivery_target'",
             "'return_target'",
+            "'elevator_assist_enabled'",
+            "'elevator_assist_mode'",
+            "'elevator_assist_target_floor'",
+            "'elevator_assist_dry_run_failure'",
             "'task_record_dir'",
             "'dropoff_timeout_sec'",
             "'navigation_timeout_sec'",
@@ -63,6 +67,10 @@ class LaunchContractStaticTest(unittest.TestCase):
             "'remote_auth_token'",
             "'remote_poll_interval_sec'",
             "'remote_request_timeout_sec'",
+            "'elevator_assist_enabled'",
+            "'elevator_assist_mode'",
+            "'elevator_assist_target_floor'",
+            "'elevator_assist_dry_run_failure'",
         ):
             self.assertIn(argument, source)
 
@@ -83,6 +91,28 @@ class LaunchContractStaticTest(unittest.TestCase):
         ]
 
         self.assertIn("'fixed_route_status_file': debug_status_file", task_block)
+
+    def test_launches_default_elevator_assist_off_and_pass_to_orchestrator(self):
+        for launch_name in ("bringup.launch.py", "autonomous.launch.py"):
+            with self.subTest(launch_name=launch_name):
+                source = read_launch(launch_name)
+                ast.parse(source)
+                task_block = source[
+                    source.index("executable='task_orchestrator'"):
+                    source.index("# Patrol scheduler" if launch_name == "autonomous.launch.py" else "Node(\n            package='ros2_trashbot_behavior',\n            executable='operator_gateway'")
+                ]
+
+                self.assertIn("'elevator_assist_enabled', default_value='false'", source)
+                self.assertIn("'elevator_assist_mode', default_value='dry_run'", source)
+                self.assertIn("'elevator_assist_target_floor', default_value='1'", source)
+                self.assertIn("'elevator_assist_dry_run_failure', default_value=''", source)
+                self.assertIn("'elevator_assist_enabled': elevator_assist_enabled", task_block)
+                self.assertIn("'elevator_assist_mode': elevator_assist_mode", task_block)
+                self.assertIn("'elevator_assist_target_floor': elevator_assist_target_floor", task_block)
+                self.assertIn(
+                    "'elevator_assist_dry_run_failure': elevator_assist_dry_run_failure",
+                    task_block,
+                )
 
     def test_launches_do_not_start_retired_trash_detector(self):
         for launch_name in ("learn.launch.py", "bringup.launch.py", "autonomous.launch.py"):

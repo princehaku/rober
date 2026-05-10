@@ -166,6 +166,22 @@ def generate_launch_description():
         'return_target', default_value='',
         description='Optional waypoint name to return to after dropoff')
 
+    elevator_assist_enabled_arg = DeclareLaunchArgument(
+        'elevator_assist_enabled', default_value='false',
+        description='Enable elevator assisted delivery dry-run subflow')
+
+    elevator_assist_mode_arg = DeclareLaunchArgument(
+        'elevator_assist_mode', default_value='dry_run',
+        description='Elevator assisted delivery mode; dry_run is the only software-only mode')
+
+    elevator_assist_target_floor_arg = DeclareLaunchArgument(
+        'elevator_assist_target_floor', default_value='1',
+        description='Target floor used in elevator assisted delivery dry-run records')
+
+    elevator_assist_dry_run_failure_arg = DeclareLaunchArgument(
+        'elevator_assist_dry_run_failure', default_value='',
+        description='Optional dry-run failure: door_timeout, target_floor_unconfirmed, unsafe_to_exit')
+
     use_sim_time = LaunchConfiguration('use_sim_time')
     map_file = LaunchConfiguration('map_file')
     waypoint_file = LaunchConfiguration('waypoint_file')
@@ -199,6 +215,10 @@ def generate_launch_description():
     delivery_mode = LaunchConfiguration('delivery_mode')
     delivery_target = LaunchConfiguration('delivery_target')
     return_target = LaunchConfiguration('return_target')
+    elevator_assist_enabled = LaunchConfiguration('elevator_assist_enabled')
+    elevator_assist_mode = LaunchConfiguration('elevator_assist_mode')
+    elevator_assist_target_floor = LaunchConfiguration('elevator_assist_target_floor')
+    elevator_assist_dry_run_failure = LaunchConfiguration('elevator_assist_dry_run_failure')
     nav2_params_file = PathJoinSubstitution([
         FindPackageShare('ros2_trashbot_nav'),
         'config',
@@ -250,6 +270,10 @@ def generate_launch_description():
         delivery_mode_arg,
         delivery_target_arg,
         return_target_arg,
+        elevator_assist_enabled_arg,
+        elevator_assist_mode_arg,
+        elevator_assist_target_floor_arg,
+        elevator_assist_dry_run_failure_arg,
         # --- Hardware Bridge (ESP32 <-> ROS2) ---
         Node(
             package='ros2_trashbot_hardware',
@@ -304,6 +328,10 @@ def generate_launch_description():
                 'delivery_target': delivery_target,
                 'return_target': return_target,
                 'fixed_route_status_file': debug_status_file,
+                'elevator_assist_enabled': elevator_assist_enabled,
+                'elevator_assist_mode': elevator_assist_mode,
+                'elevator_assist_target_floor': elevator_assist_target_floor,
+                'elevator_assist_dry_run_failure': elevator_assist_dry_run_failure,
             }],
         ),
 

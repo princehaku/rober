@@ -14,6 +14,8 @@ from geometry_msgs.msg import PoseStamped
 
 from ros2_trashbot_nav.route_utils import (
     ROUTE_CONTRACT_VERSION,
+    build_elevator_assist_evidence,
+    build_elevator_assist_status,
     load_waypoints_from_csv,
     validate_route_yaml_data,
 )
@@ -295,6 +297,16 @@ class FixedRouteAutonomy(Node):
             gate_status=self.visual_gate_status,
             last_block_reason=self.failure_reason or self.last_error,
         )
+        # Fixed-route does not infer elevator semantics by default. The status
+        # carries a normalized placeholder so behavior/operator layers can write
+        # or display future dry-run evidence without depending on camera OCR.
+        elevator_evidence = build_elevator_assist_evidence(
+            'door_closed_or_unknown',
+            source='fixed_route_debug_status',
+            confidence=0.0,
+            detail='fixed-route autonomy has no elevator evidence source enabled',
+            checkpoint=self.current_index if self.route_poses else None,
+        )
         payload = {
             'state': state,
             'mode': 'dry_run' if self.dry_run else 'nav2',
@@ -311,6 +323,11 @@ class FixedRouteAutonomy(Node):
             'visual_gate_detail': self.visual_gate_detail,
             'visual_gate_checkpoint': self.visual_gate_checkpoint,
             'route_proof_summary': route_proof_summary,
+            'elevator_assist': build_elevator_assist_status(
+                elevator_evidence,
+                enabled=False,
+                mode='offline_schema',
+            ),
             'last_error': self.last_error,
             'failure_reason': self.failure_reason,
             'last_transition': self.last_transition,

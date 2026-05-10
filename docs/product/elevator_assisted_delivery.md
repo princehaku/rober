@@ -59,6 +59,44 @@ P1 识别要求：
 - 记录每次门开、进入、等待、驶出的相机快照引用。
 - 把失败原因写入 diagnostics 和 task record。
 
+## Dry-run Evidence Schema
+
+本轮软件 dry-run 只定义离线证据结构，不做真实相机识别、楼层 OCR 或电梯实景验证。Robot Platform、Operator diagnostics 和后续视觉/路线证据统一消费 `elevator_assist.evidence` dict：
+
+```json
+{
+  "schema_version": "elevator_assist.evidence.v1",
+  "status": "target_floor_unconfirmed",
+  "source": "visual_gate_offline_proof",
+  "confidence": 0.0,
+  "detail": "visual gate passed; elevator door and floor evidence remain unconfirmed",
+  "checkpoint": 1,
+  "observed_at": null,
+  "robot_readable": "target floor evidence is not confirmed",
+  "operator_readable": "未确认目标楼层。",
+  "reliable": false,
+  "allows_entry": false,
+  "confirms_target_floor": false,
+  "allows_exit": false,
+  "requires_operator": true,
+  "metadata": {}
+}
+```
+
+允许的 `status` 固定为：
+
+| Status | Robot 含义 | Operator 含义 | 行为含义 |
+| --- | --- | --- | --- |
+| `door_open` | 电梯门已打开。 | 电梯门已打开。 | 可作为进入电梯的必要证据之一。 |
+| `door_closed_or_unknown` | 电梯门关闭或未知。 | 电梯门未打开或状态未知。 | 不允许进入；需要等待或人工协助。 |
+| `inside_elevator` | 小车已在轿厢内停车。 | 小车已进入电梯并停车等待。 | 可进入请求按楼层和等待目标楼层阶段。 |
+| `target_floor_confirmed` | 目标楼层证据已确认。 | 已确认到达目标楼层。 | 只确认楼层，不单独允许驶出。 |
+| `target_floor_unconfirmed` | 目标楼层证据未确认。 | 未确认目标楼层。 | 不允许驶出；需要继续等待或人工确认。 |
+| `safe_to_exit` | 目标楼层和驶出路径证据满足。 | 目标楼层和驶出条件已满足。 | 可进入驶出电梯阶段。 |
+| `unsafe_to_exit` | 驶出条件不安全或未知。 | 驶出条件不安全或未知。 | 停止并请求人工接管。 |
+
+固定路线和 visual gate 当前只能输出保守离线 evidence；即使 visual gate 通过，也只能说明路线 checkpoint 图像一致，不能宣称已识别电梯门或目标楼层。
+
 ## 人工协助边界
 
 小车不会按电梯按钮，不控制电梯系统，不改造楼宇电梯。人工协助不是失败，而是该场景的产品边界：

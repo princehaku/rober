@@ -43,6 +43,44 @@ class NavigationResult:
     evidence: dict = field(default_factory=dict)
 
 
+ELEVATOR_ASSIST_PROMPT = "你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,"
+ELEVATOR_ASSIST_DRY_RUN_PHASES = (
+    "approaching_elevator",
+    "waiting_elevator_open",
+    "entering_elevator",
+    "requesting_floor_help",
+    "waiting_target_floor",
+    "exiting_elevator",
+    "resume_delivery",
+)
+ELEVATOR_ASSIST_DRY_RUN_EVIDENCE = {
+    "approaching_elevator": "door_closed_or_unknown",
+    "waiting_elevator_open": "door_open",
+    "entering_elevator": "inside_elevator",
+    "requesting_floor_help": "inside_elevator",
+    "waiting_target_floor": "target_floor_confirmed",
+    "exiting_elevator": "safe_to_exit",
+    "resume_delivery": "safe_to_exit",
+}
+ELEVATOR_ASSIST_FAILURES = {
+    "door_timeout": {
+        "phase": "waiting_elevator_open",
+        "evidence": "door_closed_or_unknown",
+        "reason": "elevator door did not open before dry-run timeout",
+    },
+    "target_floor_unconfirmed": {
+        "phase": "waiting_target_floor",
+        "evidence": "target_floor_unconfirmed",
+        "reason": "target floor was not confirmed by dry-run evidence",
+    },
+    "unsafe_to_exit": {
+        "phase": "exiting_elevator",
+        "evidence": "unsafe_to_exit",
+        "reason": "dry-run evidence marked elevator exit unsafe",
+    },
+}
+
+
 class TaskOrchestrator(Node):
     """Main task coordinator. Manages the full lifecycle:
     Phase 1 (Learning): Drive around, build map, record waypoints
@@ -66,6 +104,10 @@ class TaskOrchestrator(Node):
         self.declare_parameter("dropoff_mode", "dry_run")
         self.declare_parameter("dropoff_timeout_sec", 30.0)
         self.declare_parameter("fixed_route_status_file", "~/.ros/trashbot_fixed_route/status.json")
+        self.declare_parameter("elevator_assist_enabled", False)
+        self.declare_parameter("elevator_assist_mode", "dry_run")
+        self.declare_parameter("elevator_assist_target_floor", "1")
+        self.declare_parameter("elevator_assist_dry_run_failure", "")
         self.task_record_dir = os.path.expanduser(self.get_parameter("task_record_dir").value)
         self.delivery_target = str(self.get_parameter("delivery_target").value)
         self.delivery_mode = str(self.get_parameter("delivery_mode").value).lower()
@@ -79,6 +121,14 @@ class TaskOrchestrator(Node):
         self.fixed_route_status_file = os.path.expanduser(
             self.get_parameter("fixed_route_status_file").value
         )
+        self.elevator_assist_enabled = bool(self.get_parameter("elevator_assist_enabled").value)
+        self.elevator_assist_mode = str(self.get_parameter("elevator_assist_mode").value).lower()
+        self.elevator_assist_target_floor = str(
+            self.get_parameter("elevator_assist_target_floor").value
+        )
+        self.elevator_assist_dry_run_failure = str(
+            self.get_parameter("elevator_assist_dry_run_failure").value
+        ).strip().lower()
         if self.delivery_dry_run:
             self.delivery_mode = "dry_run"
         self.navigator = None
@@ -275,6 +325,7 @@ class TaskOrchestrator(Node):
         nav_attempts = 0
         nav_results = []
         dropoff_result = {}
+        elevator_assist = self._elevator_assist_disabled_status()
         record_config = {
             "delivery_mode": self.delivery_mode,
             "navigation_timeout_sec": self.navigation_timeout_sec,
@@ -283,6 +334,10 @@ class TaskOrchestrator(Node):
             "dropoff_timeout_sec": self.dropoff_timeout_sec,
             "fixed_route_status_file": self.fixed_route_status_file,
             "waypoint_file": self.waypoint_file,
+            "elevator_assist_enabled": self.elevator_assist_enabled,
+            "elevator_assist_mode": self.elevator_assist_mode,
+            "elevator_assist_target_floor": self.elevator_assist_target_floor,
+            "elevator_assist_dry_run_failure": self.elevator_assist_dry_run_failure,
         }
 
         try:
@@ -316,6 +371,11 @@ class TaskOrchestrator(Node):
                     machine.timed_out(nav_result.message)
                 else:
                     machine.navigation_failed(nav_result.message)
+                raise RuntimeError(machine.error_message)
+
+            elevator_assist = self._perform_elevator_assist(machine)
+            if not elevator_assist["success"]:
+                machine.elevator_failed(elevator_assist["reason"])
                 raise RuntimeError(machine.error_message)
 
             machine.navigation_succeeded()
@@ -406,6 +466,7 @@ class TaskOrchestrator(Node):
                     nav_attempts,
                     nav_results,
                     dropoff_result,
+                    elevator_assist,
                     record_config,
                 )
             )
@@ -452,6 +513,7 @@ class TaskOrchestrator(Node):
                     nav_attempts,
                     nav_results,
                     dropoff_result,
+                    elevator_assist,
                     record_config,
                 )
             )
@@ -522,6 +584,7 @@ class TaskOrchestrator(Node):
         nav_attempts,
         nav_results,
         dropoff_result,
+        elevator_assist,
         config,
     ):
         return write_task_record(
@@ -536,6 +599,7 @@ class TaskOrchestrator(Node):
             nav_attempts=nav_attempts,
             nav_results=[asdict(item) if isinstance(item, NavigationResult) else item for item in nav_results],
             dropoff_result=dropoff_result,
+            elevator_assist=elevator_assist,
             detection_snapshot_refs=[],
             config=config,
             error_code="" if final_status == "success" else (
@@ -573,6 +637,7 @@ class TaskOrchestrator(Node):
                 nav_attempts,
                 nav_results or [],
                 dropoff_result or {},
+                self._elevator_assist_disabled_status(),
                 {
                     "delivery_mode": self.delivery_mode,
                     "navigation_timeout_sec": self.navigation_timeout_sec,
@@ -581,6 +646,10 @@ class TaskOrchestrator(Node):
                     "dropoff_timeout_sec": self.dropoff_timeout_sec,
                     "fixed_route_status_file": self.fixed_route_status_file,
                     "waypoint_file": self.waypoint_file,
+                    "elevator_assist_enabled": self.elevator_assist_enabled,
+                    "elevator_assist_mode": self.elevator_assist_mode,
+                    "elevator_assist_target_floor": self.elevator_assist_target_floor,
+                    "elevator_assist_dry_run_failure": self.elevator_assist_dry_run_failure,
                 },
             )
         )
@@ -730,6 +799,89 @@ class TaskOrchestrator(Node):
             )
         finally:
             self.dropoff_gate.clear()
+
+    def _elevator_assist_disabled_status(self):
+        return {
+            "enabled": False,
+            "mode": getattr(self, "elevator_assist_mode", ""),
+            "state": "disabled",
+            "phase": "disabled",
+            "requires_human_help": False,
+            "reason": "elevator assist disabled",
+            "target_floor": "",
+            "speaker_prompt": "",
+            "evidence": {},
+            "events": [],
+            "success": True,
+        }
+
+    def _perform_elevator_assist(self, machine):
+        if not self.elevator_assist_enabled:
+            return self._elevator_assist_disabled_status()
+        if self.elevator_assist_mode != "dry_run":
+            return {
+                "enabled": True,
+                "mode": self.elevator_assist_mode,
+                "state": "failed",
+                "phase": "unsupported_mode",
+                "requires_human_help": True,
+                "reason": f"Unsupported elevator_assist_mode: {self.elevator_assist_mode}",
+                "target_floor": self.elevator_assist_target_floor,
+                "speaker_prompt": ELEVATOR_ASSIST_PROMPT,
+                "evidence": {},
+                "events": [],
+                "success": False,
+            }
+
+        events = []
+        evidence = {}
+        failure = ELEVATOR_ASSIST_FAILURES.get(self.elevator_assist_dry_run_failure)
+        for phase in ELEVATOR_ASSIST_DRY_RUN_PHASES:
+            evidence_key = ELEVATOR_ASSIST_DRY_RUN_EVIDENCE[phase]
+            event = {
+                "phase": phase,
+                "state": phase,
+                "evidence": evidence_key,
+                "requires_human_help": phase in (
+                    "requesting_floor_help",
+                    "waiting_target_floor",
+                ),
+                "speaker_prompt": ELEVATOR_ASSIST_PROMPT
+                if phase == "requesting_floor_help"
+                else "",
+            }
+            events.append(event)
+            evidence[phase] = evidence_key
+            machine.elevator_phase(phase, json.dumps(event, ensure_ascii=False, sort_keys=True))
+            if failure and failure["phase"] == phase:
+                return {
+                    "enabled": True,
+                    "mode": "dry_run",
+                    "state": "failed",
+                    "phase": phase,
+                    "requires_human_help": True,
+                    "reason": failure["reason"],
+                    "target_floor": self.elevator_assist_target_floor,
+                    "speaker_prompt": ELEVATOR_ASSIST_PROMPT,
+                    "evidence": {**evidence, "failure": failure["evidence"]},
+                    "events": events,
+                    "success": False,
+                }
+
+        machine.elevator_completed("elevator assist dry-run complete; resume delivery")
+        return {
+            "enabled": True,
+            "mode": "dry_run",
+            "state": "resume_delivery",
+            "phase": "resume_delivery",
+            "requires_human_help": False,
+            "reason": "elevator assist dry-run complete",
+            "target_floor": self.elevator_assist_target_floor,
+            "speaker_prompt": ELEVATOR_ASSIST_PROMPT,
+            "evidence": evidence,
+            "events": events,
+            "success": True,
+        }
 
     def _confirm_dropoff_callback(self, request, response):
         accepted, message = self.dropoff_gate.confirm(
