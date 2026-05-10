@@ -1,9 +1,15 @@
 import json
 import socket
+import sys
 import threading
 import unittest
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
+from pathlib import Path
+
+
+BEHAVIOR_PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BEHAVIOR_PACKAGE_ROOT))
 
 from ros2_trashbot_behavior.operator_gateway_http import (
     OPERATOR_PROMPTS,
@@ -100,6 +106,23 @@ class FakeGateway:
                     },
                 ],
                 "read_error": "",
+                "integrity_summary": {"status": "warning"},
+                "integrity_error_count": 0,
+                "integrity_warning_count": 1,
+                "missing_file_ref_count": 1,
+                "missing_file_refs": [
+                    {
+                        "field": "raw_image",
+                        "resolved_path": "/tmp/vision/missing/raw.jpg",
+                    }
+                ],
+                "integrity_errors": [],
+                "integrity_warnings": ["annotated image coverage is incomplete"],
+                "context_field_coverage": {
+                    "present": {"task_id": 3, "route_id": 3},
+                    "missing": {"checkpoint_id": 1},
+                },
+                "file_counts": {"raw_image": {"present": 2, "missing": 1}},
             },
             "operator_status_file": "/tmp/trashbot_operator_status.json",
         }
@@ -187,6 +210,15 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["vision_samples"]["latest_sample_ref"], "vision_sample://20260510/latest.json")
         self.assertEqual(payload["vision_samples"]["review_queue_count"], 2)
         self.assertEqual(payload["vision_samples"]["review_queue"][-1]["reason"], "anomaly_sample")
+        self.assertEqual(payload["vision_samples"]["integrity_summary"]["status"], "warning")
+        self.assertEqual(payload["vision_samples"]["integrity_error_count"], 0)
+        self.assertEqual(payload["vision_samples"]["integrity_warning_count"], 1)
+        self.assertEqual(payload["vision_samples"]["missing_file_ref_count"], 1)
+        self.assertEqual(payload["vision_samples"]["missing_file_refs"][0]["field"], "raw_image")
+        self.assertEqual(payload["vision_samples"]["missing_file_refs"][0]["resolved_path"], "/tmp/vision/missing/raw.jpg")
+        self.assertEqual(payload["vision_samples"]["integrity_warnings"], ["annotated image coverage is incomplete"])
+        self.assertEqual(payload["vision_samples"]["context_field_coverage"]["present"]["task_id"], 3)
+        self.assertEqual(payload["vision_samples"]["file_counts"]["raw_image"]["missing"], 1)
 
     def test_status_preserves_robot_location_snapshot_fields(self):
         self.gateway.snapshot_payload["robot_location"] = {
@@ -236,10 +268,21 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("diagLatestVisionSample", body)
         self.assertIn("diagReviewQueue", body)
         self.assertIn("diagNextReviewSample", body)
+        self.assertIn("diagVisionIntegrity", body)
+        self.assertIn("diagVisionIntegrityBadge", body)
+        self.assertIn("diagVisionIntegritySummary", body)
+        self.assertIn("diagVisionIntegrityReasons", body)
+        self.assertIn("diagVisionIntegrityAdvice", body)
+        self.assertIn("renderVisionIntegrity", body)
+        self.assertIn("visionIntegrityView", body)
         self.assertIn("vision_samples", body)
         self.assertIn("latest_sample_ref", body)
         self.assertIn("review_queue", body)
         self.assertIn("review_queue_count", body)
+        self.assertIn("integrity_summary", body)
+        self.assertIn("missing_file_refs", body)
+        self.assertIn("context_field_coverage", body)
+        self.assertIn("file_counts", body)
         self.assertIn("robotMap", body)
         self.assertIn("robot_pose", body)
         self.assertIn("robot_path", body)

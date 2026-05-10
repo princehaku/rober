@@ -213,6 +213,50 @@ HTML = """<!doctype html>
       margin-bottom: 3px;
     }
     .metric strong { overflow-wrap: anywhere; }
+    .integrityCard {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-top: 12px;
+      padding: 12px;
+    }
+    .integrityHeader {
+      align-items: center;
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+    }
+    .integrityBadge {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 750;
+      padding: 5px 9px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .integrityBadge.ok {
+      background: #edf7f0;
+      border-color: #b7dfc4;
+      color: var(--ok);
+    }
+    .integrityBadge.warning {
+      background: #fff7e6;
+      border-color: #f0cf8a;
+      color: var(--warn);
+    }
+    .integrityBadge.error {
+      background: #fff1ed;
+      border-color: #efb7aa;
+      color: var(--danger);
+    }
+    .integrityBadge.muted {
+      background: #eef3f4;
+      border-color: var(--line);
+      color: var(--muted);
+    }
+    .integrityCard .supportList li {
+      overflow-wrap: anywhere;
+    }
     .supportList {
       color: var(--muted);
       font-size: 13px;
@@ -291,6 +335,17 @@ HTML = """<!doctype html>
         <div class="metric"><span>Review queue</span><strong id="diagReviewQueue">-</strong></div>
         <div class="metric"><span>Next review sample</span><strong id="diagNextReviewSample">-</strong></div>
       </div>
+      <div id="diagVisionIntegrity" class="integrityCard">
+        <div class="integrityHeader">
+          <h2>Vision evidence chain</h2>
+          <span id="diagVisionIntegrityBadge" class="integrityBadge muted">unknown</span>
+        </div>
+        <p id="diagVisionIntegritySummary" class="message">Diagnostics have not been loaded yet.</p>
+        <ul id="diagVisionIntegrityReasons" class="supportList"></ul>
+        <p class="message">Context coverage: <strong id="diagVisionContextCoverage">not reported</strong></p>
+        <p class="message">File counts: <strong id="diagVisionFileCounts">not reported</strong></p>
+        <p class="message">Next step: <strong id="diagVisionIntegrityAdvice">Refresh diagnostics after the robot publishes a support package.</strong></p>
+      </div>
       <ul id="diagRefs" class="supportList"></ul>
     </section>
     <section class="panel">
@@ -321,6 +376,104 @@ function fmt(value) {
 function text(value, fallback) {
   const normalized = String(value || '').trim();
   return normalized || fallback;
+}
+function arrayText(value) {
+  return Array.isArray(value) ? value.map(item => String(item || '').trim()).filter(Boolean) : [];
+}
+function countSummary(value) {
+  if (!value || typeof value !== 'object') return 'not reported';
+  return Object.keys(value).map((key) => {
+    const counts = value[key] && typeof value[key] === 'object' ? value[key] : {};
+    const parts = Object.keys(counts).map(countKey => `${countKey} ${counts[countKey]}`);
+    return parts.length ? `${key}: ${parts.join(', ')}` : key;
+  }).join('; ') || 'not reported';
+}
+function visionIntegrityView(visionSamples) {
+  const summary = visionSamples.integrity_summary || {};
+  const status = text(summary.status, 'unknown');
+  const config = {
+    ok: {
+      label: 'Healthy',
+      tone: 'ok',
+      summary: 'Vision evidence chain is complete and ready for support review.',
+      advice: 'Continue the task flow. Keep collecting samples during real runs.'
+    },
+    warning: {
+      label: 'Needs review',
+      tone: 'warning',
+      summary: 'Vision evidence chain is usable, but some evidence should be reviewed first.',
+      advice: 'Review the listed sample evidence before using it for route or anomaly decisions.'
+    },
+    error: {
+      label: 'Broken',
+      tone: 'error',
+      summary: 'Vision evidence chain is not trustworthy until the reported issue is repaired.',
+      advice: 'Recreate or repair the missing sample files, then rerun diagnostics.'
+    },
+    not_configured: {
+      label: 'Not configured',
+      tone: 'muted',
+      summary: 'Vision sample evidence is not configured on this robot yet.',
+      advice: 'Configure vision_sample_manifest_ref or run a learning route that writes a manifest.'
+    },
+    checker_unavailable: {
+      label: 'Checker unavailable',
+      tone: 'muted',
+      summary: 'This software environment cannot run the vision sample checker.',
+      advice: 'Install or source the vision package before relying on this support signal.'
+    },
+    checker_failed: {
+      label: 'Checker failed',
+      tone: 'error',
+      summary: 'The vision sample checker failed, so the sample chain cannot be judged from the phone.',
+      advice: 'Share the diagnostics package with support and inspect the checker error.'
+    },
+    unknown: {
+      label: 'Unknown',
+      tone: 'muted',
+      summary: 'There is not enough diagnostics data to judge the vision evidence chain.',
+      advice: 'Refresh diagnostics after the robot publishes a support package.'
+    }
+  };
+  const view = config[status] || config.unknown;
+  const missingRefs = Array.isArray(visionSamples.missing_file_refs) ? visionSamples.missing_file_refs : [];
+  const reasons = [];
+  missingRefs.forEach((item) => {
+    if (!item || typeof item !== 'object') return;
+    const field = text(item.field, 'file_ref');
+    const detail = text(item.resolved_path, text(item.value, 'unresolved path'));
+    reasons.push(`Missing ${field}: ${detail}`);
+  });
+  reasons.push(...arrayText(visionSamples.integrity_errors));
+  reasons.push(...arrayText(visionSamples.integrity_warnings));
+  if (text(visionSamples.read_error, '')) reasons.push(text(visionSamples.read_error, ''));
+  return {
+    status,
+    label: view.label,
+    tone: view.tone,
+    summary: view.summary,
+    reasons: reasons.slice(0, 3).length ? reasons.slice(0, 3) : ['No blocking evidence-chain issue reported.'],
+    advice: view.advice,
+    contextCoverage: countSummary(visionSamples.context_field_coverage),
+    fileCounts: countSummary(visionSamples.file_counts)
+  };
+}
+function renderVisionIntegrity(visionSamples) {
+  const view = visionIntegrityView(visionSamples || {});
+  const badge = document.getElementById('diagVisionIntegrityBadge');
+  badge.textContent = view.label;
+  badge.className = `integrityBadge ${view.tone}`;
+  document.getElementById('diagVisionIntegritySummary').textContent = view.summary;
+  document.getElementById('diagVisionIntegrityAdvice').textContent = view.advice;
+  document.getElementById('diagVisionContextCoverage').textContent = view.contextCoverage;
+  document.getElementById('diagVisionFileCounts').textContent = view.fileCounts;
+  const reasonList = document.getElementById('diagVisionIntegrityReasons');
+  reasonList.innerHTML = '';
+  view.reasons.forEach((reason) => {
+    const item = document.createElement('li');
+    item.textContent = reason;
+    reasonList.appendChild(item);
+  });
 }
 function drawMap(payload) {
   const canvas = document.getElementById('robotMap');
@@ -428,6 +581,7 @@ function showDiagnostics(payload) {
   const visionSamples = payload.vision_samples || {};
   const refs = Array.isArray(payload.log_refs) ? payload.log_refs : [];
   const taskRecord = failure.task_record_path || (payload.last_task || {}).task_record_path || latest.task_record_path || '';
+  renderVisionIntegrity(visionSamples);
   document.getElementById('diagSoftware').textContent = text(payload.software_version, 'not reported');
   document.getElementById('diagMap').textContent = text(payload.map_version, 'not reported');
   document.getElementById('diagRoute').textContent = text(payload.route_version, 'not reported');
