@@ -29,6 +29,70 @@ from ros2_trashbot_behavior.operator_gateway_http import make_handler, status_pa
 TERMINAL_STATES = {"completed", "failed", "canceled", "rejected"}
 
 
+TASK_GATEWAY_VALID_SOURCES = {"hil_pass", "software_proof", "simulated"}
+
+
+def _normalize_task_source(value):
+    source = str(value or "").strip().lower().replace("-", "_")
+    if source in TASK_GATEWAY_VALID_SOURCES:
+        return source
+    if source in {"task_orchestrator", "dry_run", "robot_sim", "simulated", "software"}:
+        return "simulated"
+    if source in {"hil", "hil_pass"}:
+        return "hil_pass"
+    if source in {"software_proof", "software-proof", "proof"}:
+        return "software_proof"
+    return "simulated"
+
+
+def _read_task_record(path):
+    task_record_path = os.path.expanduser(str(path or ""))
+    if not task_record_path or not os.path.exists(task_record_path):
+        return {}
+    try:
+        with open(task_record_path, "r", encoding="utf-8") as task_record_file:
+            payload = json.load(task_record_file)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _task_record_support_fields(task_record_path, latest_state_payload):
+    record = _read_task_record(task_record_path)
+    latest_state_payload = latest_state_payload if isinstance(latest_state_payload, dict) else {}
+    support = {
+        "source": _normalize_task_source(
+            record.get("source")
+            or latest_state_payload.get("source")
+            or latest_state_payload.get("task_record_source", "")
+        ),
+        "evidence_ref": str(
+            record.get("result_path")
+            or record.get("evidence_ref")
+            or latest_state_payload.get("evidence_ref", "")
+            or latest_state_payload.get("task_record_path", "")
+            or latest_state_payload.get("result_path", "")
+        ),
+        "failure_code": str(
+            record.get("failure_code")
+            or latest_state_payload.get("failure_code", "")
+            or latest_state_payload.get("error_code", "")
+        ),
+        "human_intervention_required": bool(
+            record.get("human_intervention_required")
+            or latest_state_payload.get("human_intervention_required", False)
+        ),
+    }
+    state_transition_history = record.get("state_transition_history")
+    if not isinstance(state_transition_history, list):
+        legacy_state_transition_history = record.get("state_transitions")
+        state_transition_history = (
+            legacy_state_transition_history if isinstance(legacy_state_transition_history, list) else []
+        )
+    support["state_transition_history"] = state_transition_history
+    return support
+
+
 def _installed_version(package_name, fallback="0.1.0"):
     try:
         return version(package_name)
@@ -363,14 +427,39 @@ class OperatorGateway(Node):
                 {"task_record_path": result.task_record_path},
                 {},
             )
+            task_record_fields = _task_record_support_fields(
+                result.task_record_path,
+                {
+                    "task_record_path": result.task_record_path,
+                    "result_path": result.task_record_path,
+                    "error_code": result.error_code,
+                    "failure_code": result.error_code,
+                    "human_intervention_required": not bool(result.success),
+                    "source": "task_orchestrator",
+                },
+            )
+            failure_code = str(task_record_fields.get("failure_code") or result.error_code or "")
+            human_intervention_required = bool(
+                task_record_fields.get("human_intervention_required")
+                or (not bool(result.success))
+            )
+            evidence_ref = str(task_record_fields.get("evidence_ref") or result.task_record_path or "")
+            state_transition_history = task_record_fields.get("state_transition_history") or []
+            source = _normalize_task_source(task_record_fields.get("source"))
             self._set_status(status_payload(
                 state,
                 result.error_message or ("collection complete" if result.success else "collection failed"),
                 task_record_path=result.task_record_path,
                 total_duration_sec=float(result.total_duration_sec),
                 error_code=result.error_code,
+                source=source,
+                failure_code=failure_code,
+                evidence_ref=evidence_ref,
+                result_path=result.task_record_path,
+                human_intervention_required=human_intervention_required,
                 final_state=result.final_state,
                 elevator_assist=elevator_assist,
+                state_transition_history=state_transition_history,
                 can_collect=True,
                 can_confirm_dropoff=False,
                 can_cancel=False,
@@ -378,7 +467,13 @@ class OperatorGateway(Node):
                     "task_record_path": result.task_record_path,
                     "success": bool(result.success),
                     "error_code": result.error_code,
+                    "failure_code": failure_code,
+                    "source": source,
+                    "evidence_ref": evidence_ref,
+                    "result_path": result.task_record_path,
+                    "human_intervention_required": human_intervention_required,
                     "final_state": result.final_state,
+                    "state_transition_history": state_transition_history,
                     "elevator_assist": elevator_assist,
                 },
             ))

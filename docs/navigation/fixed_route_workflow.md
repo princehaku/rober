@@ -143,7 +143,9 @@ Example status JSON:
   "route_contract_version": "fixed_route.v1",
   "route_file": "/home/orangepi/.ros/trashbot_maps/fixed_route.yaml",
   "keyframe_dir": "/home/orangepi/.ros/trashbot_maps/keyframes",
+  "checkpoint": 2,
   "current_index": 2,
+  "target": null,
   "current_target": null,
   "total": 2,
   "dry_run": true,
@@ -166,11 +168,20 @@ Example status JSON:
   },
   "last_error": "",
   "failure_reason": "",
+  "failure_code": "",
   "last_transition": "running->completed",
   "last_nav_result": "dry_run_checkpoint_passed",
   "updated_at": 1778256000.0
 }
 ```
+
+Failure code field (`failure_code`) records the structured root cause when `state` is blocked or error:
+
+- `NO_ROUTE`: route file missing, unreadable, or invalid/empty.
+- `CHECKPOINT_MISSING`: keyframe assets missing or checkpoint keyframe mapping incomplete.
+- `NAVIGATION_ABORT`: Nav2 task failed after a checkpoint was submitted.
+
+When a failure is in `waiting_*` gate states, `failure_code` stays empty and `failure_reason` carries the blocking reason.
 
 `route_proof_summary` is the navigation-side source of truth for Objective 3 route proof coverage:
 
@@ -229,7 +240,7 @@ Switch from `fixed_route_dry_run:=true` to real fixed-route navigation only afte
 
 - The route YAML or CSV passes offline parsing and contains the expected checkpoint count.
 - Dry-run reaches `state: completed` with empty `failure_reason`.
-- `current_target` coordinates match the learned route and the debug web updates once per checkpoint.
+- `checkpoint/current_index/target` coordinates align with task-record replay fields and the debug web updates once per checkpoint.
 - If `enable_visual_gate:=true`, each checkpoint has a corresponding keyframe and live camera frames pass the visual gate at the expected locations.
 - Nav2 localization, map loading, emergency stop, low-speed base motion, and manual recovery have been verified on the robot.
 - No waypoint patrol node is active at the same time; use `navigation_mode:=fixed_route` or `delivery_mode:=fixed_route`.

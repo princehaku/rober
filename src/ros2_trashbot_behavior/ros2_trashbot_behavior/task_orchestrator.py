@@ -326,6 +326,7 @@ class TaskOrchestrator(Node):
         nav_results = []
         dropoff_result = {}
         elevator_assist = self._elevator_assist_disabled_status()
+        task_source = "task_orchestrator"
         record_config = {
             "delivery_mode": self.delivery_mode,
             "navigation_timeout_sec": self.navigation_timeout_sec,
@@ -368,9 +369,9 @@ class TaskOrchestrator(Node):
                 )
             if not nav_result.success:
                 if nav_result.result_code == "timeout":
-                    machine.timed_out(nav_result.message)
+                    machine.timed_out(nav_result.message, "NAV_TIMEOUT")
                 else:
-                    machine.navigation_failed(nav_result.message)
+                    machine.navigation_failed(nav_result.message, "NAV_FAIL")
                 raise RuntimeError(machine.error_message)
 
             elevator_assist = self._perform_elevator_assist(machine)
@@ -442,7 +443,7 @@ class TaskOrchestrator(Node):
                     )
                 if not return_result.success:
                     if return_result.result_code == "timeout":
-                        machine.timed_out(return_result.message)
+                        machine.timed_out(return_result.message, "NAV_TIMEOUT")
                     else:
                         machine.return_failed(return_result.message)
                     raise RuntimeError(machine.error_message)
@@ -468,6 +469,7 @@ class TaskOrchestrator(Node):
                     dropoff_result,
                     elevator_assist,
                     record_config,
+                    source=task_source,
                 )
             )
 
@@ -515,6 +517,7 @@ class TaskOrchestrator(Node):
                     dropoff_result,
                     elevator_assist,
                     record_config,
+                    source=task_source,
                 )
             )
             self._publish_collection_feedback(
@@ -586,7 +589,16 @@ class TaskOrchestrator(Node):
         dropoff_result,
         elevator_assist,
         config,
+        *,
+        source="task_orchestrator",
     ):
+        failure_code = "" if final_status == "success" else self._derive_failure_code(machine)
+        result_path = self._derive_result_path(nav_results)
+        human_intervention_required = bool(
+            failure_code in ("NAV_FAIL", "NAV_TIMEOUT", "TASK_CANCEL")
+            or (dropoff_result or {}).get("result_code") in ("manual_confirm_timeout", "unsupported_dropoff_mode")
+            or (elevator_assist or {}).get("requires_human_help")
+        )
         return write_task_record(
             self.task_record_dir,
             task_id,
@@ -606,6 +618,10 @@ class TaskOrchestrator(Node):
                 machine.events[-1].event.value if machine.events else ""
             ),
             final_state=machine.state.value,
+            source=source,
+            result_path=result_path,
+            failure_code=failure_code,
+            human_intervention_required=human_intervention_required,
         )
 
     def _cancel_collection(
@@ -619,7 +635,7 @@ class TaskOrchestrator(Node):
         nav_results=None,
         dropoff_result=None,
     ):
-        machine.cancel("user canceled")
+        machine.cancel("user canceled", "TASK_CANCEL")
         goal_handle.canceled()
         self.state = RobotState.IDLE
         result.success = False
@@ -651,10 +667,33 @@ class TaskOrchestrator(Node):
                     "elevator_assist_target_floor": self.elevator_assist_target_floor,
                     "elevator_assist_dry_run_failure": self.elevator_assist_dry_run_failure,
                 },
+                source="task_orchestrator",
             )
         )
         self._clear_collection_active()
         return result
+
+    def _derive_result_path(self, nav_results):
+        for item in nav_results or []:
+            evidence = item.evidence if isinstance(item, NavigationResult) else item.get("evidence", {})
+            if not isinstance(evidence, dict):
+                continue
+            candidate = evidence.get("route_file") or evidence.get("fixed_route_status_file")
+            if candidate:
+                return str(candidate)
+        return ""
+
+    def _derive_failure_code(self, machine):
+        if not machine.events:
+            return ""
+        event = machine.events[-1].event.value
+        if event == "canceled":
+            return "TASK_CANCEL"
+        if event == "timed_out":
+            return "NAV_TIMEOUT"
+        if event in ("navigation_failed", "return_failed"):
+            return "NAV_FAIL"
+        return event
 
     def _navigate_delivery_target(self, target_name: str, goal_handle):
         if self.delivery_mode not in ("dry_run", "waypoint", "fixed_route"):

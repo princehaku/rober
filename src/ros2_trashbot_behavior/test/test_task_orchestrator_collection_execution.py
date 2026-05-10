@@ -181,6 +181,9 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["dropoff_result"]["result_code"], "dry_run")
         self.assertEqual(payload["elevator_assist"]["enabled"], False)
         self.assertEqual(payload["elevator_assist"]["phase"], "disabled")
+        self.assertEqual(payload["source"], "task_orchestrator")
+        self.assertEqual(payload["failure_code"], "")
+        self.assertEqual(payload["human_intervention_required"], False)
 
     def test_execute_collection_elevator_assist_dry_run_records_happy_path(self):
         with tempfile.TemporaryDirectory() as td:
@@ -236,6 +239,8 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertTrue(goal.aborted)
         self.assertEqual(result.error_code, "elevator_failed")
         self.assertEqual(payload["final_status"], "failed")
+        self.assertEqual(payload["failure_code"], "elevator_failed")
+        self.assertEqual(payload["human_intervention_required"], True)
         self.assertEqual(payload["elevator_assist"]["state"], "failed")
         self.assertEqual(payload["elevator_assist"]["phase"], "waiting_target_floor")
         self.assertEqual(payload["elevator_assist"]["evidence"]["failure"], "target_floor_unconfirmed")
@@ -259,6 +264,8 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertIn("did not report completion", result.error_message)
         self.assertEqual(payload["final_status"], "failed")
         self.assertEqual(payload["error_code"], "timed_out")
+        self.assertEqual(payload["failure_code"], "NAV_TIMEOUT")
+        self.assertEqual(payload["result_path"], str(status_file))
         self.assertEqual(payload["final_state"], "error")
         self.assertEqual(payload["nav_results"][0]["result_code"], "timeout")
 
@@ -292,6 +299,7 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertEqual(payload["delivery_mode"], "fixed_route")
         self.assertEqual(payload["final_status"], "success")
+        self.assertEqual(payload["result_path"], "/tmp/routes/trash_station.json")
         self.assertEqual(payload["nav_results"][0]["result_code"], "fixed_route_completed")
         self.assertEqual(payload["nav_results"][0]["message"], "fixed_route completed")
         self.assertEqual(
@@ -327,6 +335,8 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertIn("dropoff confirmation timed out", result.error_message)
         self.assertEqual(payload["final_status"], "failed")
         self.assertEqual(payload["error_code"], "timed_out")
+        self.assertEqual(payload["failure_code"], "NAV_TIMEOUT")
+        self.assertEqual(payload["human_intervention_required"], True)
         self.assertEqual(payload["final_state"], "error")
         self.assertEqual(payload["dropoff_result"]["result_code"], "manual_confirm_timeout")
 

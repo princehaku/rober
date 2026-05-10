@@ -6,6 +6,7 @@
 - Confirm WAVE ROVER UART JSON references before changing driver behavior.
 - Confirm Orange Pi serial device on the actual robot.
 - Confirm `115200` baud with the loaded ESP32 firmware.
+- Confirm evidence source policy: `source=software_proof` for template checks, `source=hil_pass` for real UART verification.
 
 ## Desktop ROS2 Build Check
 
@@ -24,13 +25,14 @@ bash scripts/docker_humble_build.sh
 - Open the configured serial device.
 - Record the exact `serial_port`, `serial_baudrate`, `command_mode`, `track_width_m`, `max_wheel_speed_mps`, `feedback_interval_ms`, and `odom_publish_hz` used for the run.
 - Capture bridge startup logs showing vendor newline-delimited JSON protocol, selected command mode, and `/odom` source.
+- 标注 `source=hil_pass` 在真实硬件采集时，`source=software_proof` 仅用于模板/离线验证。
 - Send stop command and verify wheels do not move.
 - Confirm startup configuration frames were sent: `T=143` echo off, `T=142` feedback interval, `T=131` feedback flow on.
 - Send low-speed `T=1` forward command and verify direction.
 - Send low-speed `T=1` reverse command and verify direction.
 - Send low-speed turn command and verify left/right mapping.
 - Return to stop command after every movement check.
-- If using `scripts/hardware_smoke_wave_rover.py`, save the terminal output and the exact command line.
+- If using `scripts/hardware_smoke_wave_rover.py`, run `python3 scripts/hardware_smoke_wave_rover.py --status` first (software proof), then save terminal output and the exact command line for `source=hil_pass` runs.
 
 ## Feedback
 
@@ -39,7 +41,8 @@ bash scripts/docker_humble_build.sh
 - Confirm battery voltage is plausible.
 - Confirm IMU yaw units before relying on orientation.
 - Record whether `/odom` is command-integrated or measured.
-- Capture one sample `T=1001` JSON line with `L`, `R`, `r`, `p`, `y`, and `v`.
+- Capture one sample `T=1001` JSON line with `L`, `R`, `r`, `p`, `y`, and `v` and mark field completeness as evidence.
+- 采样至少两帧并记录平均间隔（`feedback_interval_ms` 验证），标注为 `source=hil_pass`。
 - Capture one `ros2 topic echo /battery --once` sample and verify it only claims voltage-level data.
 - Capture one `ros2 topic echo /imu/data --once` sample and verify the current contract is yaw-only orientation.
 - Capture one `ros2 topic echo /odom --once` sample and label it command-integrated unless encoder validation has been completed.

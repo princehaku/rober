@@ -27,6 +27,9 @@ class DeliveryEvent(Enum):
     ELEVATOR_FAILED = "elevator_failed"
     ELEVATOR_COMPLETED = "elevator_completed"
     INVALID_TRANSITION = "invalid_transition"
+    NAV_FAIL = "NAV_FAIL"
+    NAV_TIMEOUT = "NAV_TIMEOUT"
+    TASK_CANCEL = "TASK_CANCEL"
 
 
 @dataclass
@@ -90,11 +93,11 @@ class DeliveryStateMachine:
             return
         self._transition(DeliveryEvent.NAVIGATION_SUCCEEDED, DeliveryState.DROPOFF)
 
-    def navigation_failed(self, message: str):
+    def navigation_failed(self, message: str, failure_code: str = "NAV_FAIL"):
         if not self._require_state(DeliveryEvent.NAVIGATION_FAILED, DeliveryState.DELIVERING):
             return
         self.error_message = message or "navigation failed"
-        self._transition(DeliveryEvent.NAVIGATION_FAILED, DeliveryState.ERROR, self.error_message)
+        self._transition(DeliveryEvent.NAVIGATION_FAILED, DeliveryState.ERROR, failure_code)
 
     def elevator_phase(self, phase: str, message: str = ""):
         if not self._require_state(DeliveryEvent.ELEVATOR_PHASE, DeliveryState.DELIVERING):
@@ -142,7 +145,7 @@ class DeliveryStateMachine:
         self.error_message = message or "return failed"
         self._transition(DeliveryEvent.RETURN_FAILED, DeliveryState.ERROR, self.error_message)
 
-    def timed_out(self, message: str):
+    def timed_out(self, message: str, failure_code: str = "NAV_TIMEOUT"):
         if not self._require_state(
             DeliveryEvent.TIMED_OUT,
             DeliveryState.DELIVERING,
@@ -151,9 +154,9 @@ class DeliveryStateMachine:
         ):
             return
         self.error_message = message or "delivery timed out"
-        self._transition(DeliveryEvent.TIMED_OUT, DeliveryState.ERROR, self.error_message)
+        self._transition(DeliveryEvent.TIMED_OUT, DeliveryState.ERROR, failure_code)
 
-    def cancel(self, message: str):
+    def cancel(self, message: str, failure_code: str = "TASK_CANCEL"):
         if not self._require_state(
             DeliveryEvent.CANCELED,
             DeliveryState.LOADED,
@@ -162,4 +165,4 @@ class DeliveryStateMachine:
             DeliveryState.RETURNING,
         ):
             return
-        self._transition(DeliveryEvent.CANCELED, DeliveryState.IDLE, message)
+        self._transition(DeliveryEvent.CANCELED, DeliveryState.IDLE, failure_code)

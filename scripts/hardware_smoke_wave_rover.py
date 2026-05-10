@@ -21,6 +21,16 @@ from typing import Any
 import serial
 
 
+SCRIPT_VENDOR_SOURCES = [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+]
+
+SOFTWARE_PROOF_SOURCE = "software_proof"
+
+
 def encode(command: dict[str, Any]) -> bytes:
     return (json.dumps(command, separators=(",", ":")) + "\n").encode("utf-8")
 
@@ -37,7 +47,19 @@ def stop(ser: serial.Serial) -> None:
         send(ser, {"T": 1, "L": 0, "R": 0})
 
 
-def read_feedback(ser: serial.Serial, timeout_s: float) -> dict[str, Any] | None:
+def read_feedback(
+    ser: serial.Serial,
+    timeout_s: float,
+    min_samples: int = 2,
+) -> tuple[list[dict[str, Any]], float | None]:
+    """Read sampled T=1001 base feedback frames.
+
+    Vendor feedback uses command `T=1001` and includes fields: L, R, r, p, y, v.
+    Feedback interval is inferred from sampling timestamps to verify `feedback_interval_ms`.
+    """
+    samples: list[dict[str, Any]] = []
+    sample_intervals_ms: list[float] = []
+    last_sample_t: float | None = None
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         line = ser.readline()
@@ -50,8 +72,56 @@ def read_feedback(ser: serial.Serial, timeout_s: float) -> dict[str, Any] | None
         except json.JSONDecodeError:
             continue
         if data.get("T") == 1001:
-            return data
-    return None
+            now = time.monotonic()
+            if last_sample_t is not None:
+                sample_intervals_ms.append((now - last_sample_t) * 1000.0)
+            last_sample_t = now
+            if isinstance(data, dict):
+                samples.append(data)
+            if len(samples) >= min_samples:
+                break
+    if not sample_intervals_ms:
+        return samples, None
+    return samples, sum(sample_intervals_ms) / len(sample_intervals_ms)
+
+
+def print_status() -> None:
+    """Print a software-only smoke template status."""
+    print(json.dumps(
+        {
+            "status": "ready",
+            "source": SOFTWARE_PROOF_SOURCE,
+            "script": "scripts/hardware_smoke_wave_rover.py",
+            "vendor_sources": SCRIPT_VENDOR_SOURCES,
+            "defaults": {
+                "serial_port": "/dev/ttyUSB0",
+                "baudrate": 115200,
+                "feedback_interval_ms": 100,
+                "feedback_timeout_s": 5.0,
+                "test_speed": 0.08,
+                "test_duration_s": 0.5,
+            },
+            "required_args_for_hil": [
+                "--serial-port",
+                "--baudrate",
+                "--feedback-interval-ms",
+                "--move-test",
+            ],
+            "startup_commands": [
+                {"T": 143, "cmd": 0},
+                {"T": 142, "cmd": 100},
+                {"T": 131, "cmd": 1},
+            ],
+            "tests": [
+                "--move-test",
+                "--reverse-test",
+                "--ros-mode-test",
+                "--turn-test",
+            ],
+        },
+        indent=2,
+        sort_keys=True,
+    ))
 
 
 def configure_feedback(ser: serial.Serial, feedback_interval_ms: int) -> None:
@@ -96,10 +166,15 @@ def run_turn_test(ser: serial.Serial, angular_z: float, duration_s: float) -> No
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Smoke test WAVE ROVER ESP32 UART JSON bridge.")
-    parser.add_argument("--serial-port", required=True, help="Robot UART device, for example /dev/ttyS1")
+    parser.add_argument(
+        "--serial-port",
+        default="/dev/ttyUSB0",
+        help="Robot UART device, for example /dev/ttyUSB0",
+    )
     parser.add_argument("--baudrate", type=int, default=115200, help="UART baudrate; vendor default is 115200")
     parser.add_argument("--feedback-interval-ms", type=int, default=100)
     parser.add_argument("--feedback-timeout-s", type=float, default=5.0)
+    parser.add_argument("--status", action="store_true", help="Print smoke template status only; no serial access.")
     parser.add_argument("--move-test", action="store_true", help="Run a short T=1 low-speed movement")
     parser.add_argument("--reverse-test", action="store_true", help="Run a short T=1 low-speed reverse movement")
     parser.add_argument("--ros-mode-test", action="store_true", help="Run a short T=13 X/Z movement")
@@ -114,6 +189,9 @@ def main() -> int:
         parser.error("--feedback-interval-ms must be >= 0")
     if args.test_duration_s <= 0:
         parser.error("--test-duration-s must be > 0")
+    if args.status:
+        print_status()
+        return 0
 
     ser: serial.Serial | None = None
     try:
@@ -122,11 +200,34 @@ def main() -> int:
         stop(ser)
         configure_feedback(ser, args.feedback_interval_ms)
 
-        feedback = read_feedback(ser, args.feedback_timeout_s)
-        if feedback is None:
+        feedback_samples, avg_feedback_interval_ms = read_feedback(
+            ser,
+            args.feedback_timeout_s,
+            min_samples=2,
+        )
+        if not feedback_samples:
             print("ERROR: no T=1001 feedback received before timeout", file=sys.stderr)
             return 2
-        print(f"T=1001 feedback OK: {feedback}")
+        if avg_feedback_interval_ms is None:
+            print(
+                f"WARN: T=1001 feedback received {len(feedback_samples)} sample only; "
+                "feedback frequency cannot be inferred from single sample",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"T=1001 feedback rate: avg interval={avg_feedback_interval_ms:.2f}ms "
+                f"(~{1000/avg_feedback_interval_ms:.2f}Hz)",
+            )
+        print(f"T=1001 feedback sample: {feedback_samples[0]}")
+        print(
+            f"Firmware feedback fields present: "
+            f"{[key for key in ['L', 'R', 'r', 'p', 'y', 'v'] if key in feedback_samples[0]]}",
+        )
+        print(f"source=software_proof smoke template complete before action")
+
+        if not any([args.move_test, args.reverse_test, args.ros_mode_test, args.turn_test]):
+            print("No movement flags set; smoke checks startup feedback only.")
 
         if args.move_test:
             run_move_test(ser, args.test_speed, args.test_duration_s)

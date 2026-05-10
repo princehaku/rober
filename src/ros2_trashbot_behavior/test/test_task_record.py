@@ -56,6 +56,10 @@ class TaskRecordTest(unittest.TestCase):
                 config={"dropoff_mode": "dry_run"},
                 error_code="",
                 final_state="idle",
+                source="task_orchestrator",
+                result_path="/tmp/routes/fixed_route.yaml",
+                failure_code="",
+                human_intervention_required=False,
             )
             payload = json.loads(output.read_text(encoding="utf-8"))
 
@@ -79,6 +83,11 @@ class TaskRecordTest(unittest.TestCase):
         self.assertEqual(payload["final_status"], "success")
         self.assertEqual(payload["error_code"], "")
         self.assertEqual(payload["final_state"], "idle")
+        self.assertEqual(payload["source"], "task_orchestrator")
+        self.assertEqual(payload["result_path"], "/tmp/routes/fixed_route.yaml")
+        self.assertEqual(payload["failure_code"], "")
+        self.assertEqual(payload["human_intervention_required"], False)
+        self.assertEqual(payload["state_transition_history"], payload["state_transitions"])
         self.assertGreaterEqual(len(payload["state_transitions"]), 4)
 
     def test_write_task_record_persists_failure_terminal_diagnostics(self):
@@ -110,6 +119,10 @@ class TaskRecordTest(unittest.TestCase):
                     "delivery_mode": "fixed_route",
                     "fixed_route_status_file": "/tmp/trashbot_fixed_route_status.json",
                 },
+                source="task_orchestrator",
+                result_path="/tmp/trashbot_fixed_route_status.json",
+                failure_code="NAV_TIMEOUT",
+                human_intervention_required=True,
             )
             payload = json.loads(output.read_text(encoding="utf-8"))
 
@@ -120,6 +133,10 @@ class TaskRecordTest(unittest.TestCase):
         self.assertEqual(payload["delivery_mode"], "fixed_route")
         self.assertEqual(payload["nav_results"][0]["result_code"], "timeout")
         self.assertEqual(payload["config"]["fixed_route_status_file"], "/tmp/trashbot_fixed_route_status.json")
+        self.assertEqual(payload["source"], "task_orchestrator")
+        self.assertEqual(payload["result_path"], "/tmp/trashbot_fixed_route_status.json")
+        self.assertEqual(payload["failure_code"], "NAV_TIMEOUT")
+        self.assertEqual(payload["human_intervention_required"], True)
 
 
 if __name__ == "__main__":

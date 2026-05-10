@@ -21,11 +21,25 @@ def write_task_record(
     config=None,
     error_code=None,
     final_state=None,
+    source="task_orchestrator",
+    result_path="",
+    failure_code="",
+    human_intervention_required=False,
 ):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     started_at = machine.events[0].timestamp if machine.events else time.time()
     ended_at = machine.events[-1].timestamp if machine.events else started_at
+    state_transitions = [
+        {
+            "timestamp": event.timestamp,
+            "event": event.event.value,
+            "from_state": event.from_state.value,
+            "to_state": event.to_state.value,
+            "message": event.message,
+        }
+        for event in machine.events
+    ]
     payload = {
         "task_id": task_id,
         "started_at": started_at,
@@ -58,18 +72,14 @@ def write_task_record(
         ),
         "error_message": error_message,
         "final_state": final_state if final_state is not None else machine.state.value,
+        "source": source,
+        "result_path": result_path,
+        "failure_code": failure_code,
+        "human_intervention_required": bool(human_intervention_required),
         "duration": max(0.0, ended_at - started_at),
         "written_at": time.time(),
-        "state_transitions": [
-            {
-                "timestamp": event.timestamp,
-                "event": event.event.value,
-                "from_state": event.from_state.value,
-                "to_state": event.to_state.value,
-                "message": event.message,
-            }
-            for event in machine.events
-        ],
+        "state_transitions": state_transitions,
+        "state_transition_history": state_transitions,
     }
     path = output_dir / f"{task_id}.json"
     temp_path = path.with_suffix(".json.tmp")

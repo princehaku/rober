@@ -101,9 +101,35 @@ class FakeGateway:
             "map_version": "map-a",
             "route_version": "route-a",
             "latest_status": self.snapshot_payload,
+            "source": "software_proof",
+            "evidence_ref": "/tmp/task.json",
+            "failure_code": "timed_out",
+            "human_intervention_required": True,
+            "state_transition_history": [
+                {
+                    "timestamp": 1710000000.0,
+                    "event": "timed_out",
+                    "from_state": "navigating",
+                    "to_state": "error",
+                    "message": "timeout waiting for gate",
+                }
+            ],
             "last_task": {
                 "task_record_path": "/tmp/task.json",
+                "source": "software_proof",
+                "evidence_ref": "/tmp/task.json",
                 "error_code": "timed_out",
+                "failure_code": "TIMED_OUT",
+                "human_intervention_required": True,
+                "state_transition_history": [
+                    {
+                        "timestamp": 1710000000.0,
+                        "event": "timed_out",
+                        "from_state": "navigating",
+                        "to_state": "error",
+                        "message": "timeout waiting for gate",
+                    }
+                ],
                 "final_state": "error",
             },
             "failure": {
@@ -112,6 +138,19 @@ class FakeGateway:
                 "error_code": "timed_out",
                 "final_state": "error",
                 "task_record_path": "/tmp/task.json",
+                "source": "software_proof",
+                "evidence_ref": "/tmp/task.json",
+                "failure_code": "TIMED_OUT",
+                "human_intervention_required": True,
+                "state_transition_history": [
+                    {
+                        "timestamp": 1710000000.0,
+                        "event": "timed_out",
+                        "from_state": "navigating",
+                        "to_state": "error",
+                        "message": "timeout waiting for gate",
+                    }
+                ],
             },
             "log_refs": ["/tmp/trashbot.log"],
             "vision_sample_manifest_ref": "/tmp/vision/manifest.json",
@@ -364,6 +403,11 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["failure"]["final_state"], "error")
         self.assertEqual(payload["log_refs"], ["/tmp/trashbot.log"])
         self.assertEqual(payload["vision_sample_manifest_ref"], "/tmp/vision/manifest.json")
+        self.assertEqual(payload["source"], "software_proof")
+        self.assertEqual(payload["evidence_ref"], "/tmp/task.json")
+        self.assertEqual(payload["failure_code"], "timed_out")
+        self.assertEqual(payload["human_intervention_required"], True)
+        self.assertEqual(payload["state_transition_history"][0]["event"], "timed_out")
         self.assertEqual(payload["vision_samples"]["sample_count"], 3)
         self.assertEqual(payload["vision_samples"]["latest_sample_ref"], "vision_sample://20260510/latest.json")
         self.assertEqual(payload["vision_samples"]["review_queue_count"], 2)
@@ -390,6 +434,11 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["route_proof_summary"]["missing_checkpoints"], ["checkpoint_2"])
         self.assertEqual(payload["route_proof_status"]["state"], "insufficient_coverage")
         self.assertEqual(payload["route_proof_status"]["source"], "task_record.nav_results.evidence.route_proof_summary")
+        self.assertEqual(payload["failure"]["source"], "software_proof")
+        self.assertEqual(payload["failure"]["evidence_ref"], "/tmp/task.json")
+        self.assertEqual(payload["failure"]["failure_code"], "TIMED_OUT")
+        self.assertEqual(payload["failure"]["human_intervention_required"], True)
+        self.assertEqual(payload["failure"]["state_transition_history"][0]["from_state"], "navigating")
         self.assertEqual(payload["hardware_proof"]["status"], "needs_hil")
         self.assertEqual(payload["hardware_proof"]["summary"], "Software proof exists, hardware-in-loop still required before treating the robot as validated.")
         self.assertEqual(payload["hardware_proof"]["next_step"], "Run the WAVE ROVER HIL recipe on a prepared robot.")
@@ -442,6 +491,13 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("showDiagnostics", body)
         self.assertIn("diagSoftware", body)
         self.assertIn("diagFailure", body)
+        self.assertIn("diagSource", body)
+        self.assertIn("diagFailureCode", body)
+        self.assertIn("diagEvidenceRef", body)
+        self.assertIn("diagHumanIntervention", body)
+        self.assertIn("diagStateTransitionHistory", body)
+        self.assertIn("diagStateTransitionHistoryList", body)
+        self.assertIn("diagRecoveryHint", body)
         self.assertIn("diagVisionSamples", body)
         self.assertIn("diagLatestVisionSample", body)
         self.assertIn("diagReviewQueue", body)

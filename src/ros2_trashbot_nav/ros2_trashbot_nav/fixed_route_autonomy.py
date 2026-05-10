@@ -14,6 +14,9 @@ from geometry_msgs.msg import PoseStamped
 
 from ros2_trashbot_nav.route_utils import (
     ROUTE_CONTRACT_VERSION,
+    FAILURE_CODE_CHECKPOINT_MISSING,
+    FAILURE_CODE_NAVIGATION_ABORT,
+    FAILURE_CODE_NO_ROUTE,
     build_elevator_assist_evidence,
     build_elevator_assist_status,
     load_waypoints_from_csv,
@@ -54,6 +57,7 @@ class FixedRouteAutonomy(Node):
         self.current_index = 0
         self.last_error = ''
         self.failure_reason = ''
+        self.failure_code = ''
         self.visual_gate_status = 'not_checked'
         self.visual_gate_detail = ''
         self.visual_gate_checkpoint = None
@@ -73,8 +77,7 @@ class FixedRouteAutonomy(Node):
             f'FixedRouteAutonomy loaded {len(self.route_poses)} poses from {self.route_file}, dry_run={self.dry_run}')
         if not self.route_poses:
             if not self.failure_reason:
-                self.failure_reason = 'route contains no waypoints'
-                self.last_error = self.failure_reason
+                self._set_failure('route contains no waypoints', FAILURE_CODE_NO_ROUTE)
             self._write_debug_status('error')
         else:
             self._write_debug_status('ready')
@@ -82,8 +85,7 @@ class FixedRouteAutonomy(Node):
     def _load_route(self, path: str) -> List[PoseStamped]:
         if not os.path.exists(path):
             self.get_logger().error(f'Route file not found: {path}')
-            self.failure_reason = f'route file not found: {path}'
-            self.last_error = self.failure_reason
+            self._set_failure(f'route file not found: {path}', FAILURE_CODE_NO_ROUTE)
             return []
         try:
             if path.endswith('.csv'):
@@ -91,8 +93,7 @@ class FixedRouteAutonomy(Node):
             return self._load_route_yaml(path)
         except (OSError, ValueError, yaml.YAMLError) as exc:
             self.get_logger().error(f'Failed loading route file {path}: {exc}')
-            self.failure_reason = str(exc)
-            self.last_error = self.failure_reason
+            self._set_failure(str(exc), FAILURE_CODE_NO_ROUTE)
             return []
 
     def _load_route_yaml(self, path: str) -> List[PoseStamped]:
@@ -152,6 +153,16 @@ class FixedRouteAutonomy(Node):
         }
         return keyframes
 
+    def _set_failure(self, reason: str, code: str):
+        self.failure_reason = str(reason)
+        self.last_error = str(reason)
+        self.failure_code = str(code)
+
+    def _clear_failure(self):
+        self.failure_reason = ''
+        self.last_error = ''
+        self.failure_code = ''
+
     def _on_image(self, msg: Image):
         try:
             self.latest_frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -163,45 +174,46 @@ class FixedRouteAutonomy(Node):
         if not self.enable_visual_gate:
             self.visual_gate_status = 'disabled'
             self.visual_gate_detail = 'visual gate disabled by parameter'
+            self._clear_failure()
             return True
         if not self.keyframe_preflight.get('route_visual_ready', False):
-            self.last_error = self._keyframe_preflight_error()
-            self.failure_reason = self.last_error
+            self._set_failure(self._keyframe_preflight_error(), FAILURE_CODE_CHECKPOINT_MISSING)
             self.visual_gate_status = 'keyframe_preflight_failed'
             self.visual_gate_detail = self.last_error
             return False
         if idx not in self.keyframes:
-            self.last_error = f'visual gate missing keyframe for checkpoint {idx}'
-            self.failure_reason = self.last_error
+            self._set_failure(
+                f'visual gate missing keyframe for checkpoint {idx}',
+                FAILURE_CODE_CHECKPOINT_MISSING,
+            )
             self.visual_gate_status = 'missing_keyframe'
             self.visual_gate_detail = self.last_error
             return False
         if self.latest_frame is None:
-            self.last_error = f'visual gate waiting for camera frame at checkpoint {idx}'
-            self.failure_reason = self.last_error
+            self._set_failure(f'visual gate waiting for camera frame at checkpoint {idx}', '')
             self.visual_gate_status = 'waiting_camera_frame'
             self.visual_gate_detail = self.last_error
             return False
         gray = cv2.cvtColor(self.latest_frame, cv2.COLOR_BGR2GRAY)
         _, live_des = self.orb.detectAndCompute(gray, None)
         if live_des is None:
-            self.last_error = f'visual gate found no live descriptors at checkpoint {idx}'
-            self.failure_reason = self.last_error
+            self._set_failure(f'visual gate found no live descriptors at checkpoint {idx}', '')
             self.visual_gate_status = 'no_live_descriptors'
             self.visual_gate_detail = self.last_error
             return False
         matches = self.matcher.match(self.keyframes[idx], live_des)
         if len(matches) < self.visual_match_threshold:
-            self.last_error = (
-                f'visual gate matched {len(matches)}/{self.visual_match_threshold} '
-                f'features at checkpoint {idx}'
+            self._set_failure(
+                (
+                    f'visual gate matched {len(matches)}/{self.visual_match_threshold} '
+                    f'features at checkpoint {idx}'
+                ),
+                '',
             )
-            self.failure_reason = self.last_error
             self.visual_gate_status = 'insufficient_matches'
             self.visual_gate_detail = self.last_error
             return False
-        self.last_error = ''
-        self.failure_reason = ''
+        self._clear_failure()
         self.visual_gate_status = 'passed'
         self.visual_gate_detail = f'visual gate passed checkpoint {idx}'
         return True
@@ -222,8 +234,7 @@ class FixedRouteAutonomy(Node):
     def _run_route(self):
         if not self.route_poses:
             if not self.failure_reason:
-                self.failure_reason = 'route contains no waypoints'
-                self.last_error = self.failure_reason
+                self._set_failure('route contains no waypoints', FAILURE_CODE_NO_ROUTE)
             self._write_debug_status('error')
             return
         if self.current_index >= len(self.route_poses):
@@ -241,8 +252,7 @@ class FixedRouteAutonomy(Node):
         self._write_debug_status('running')
         if self.dry_run:
             self.current_index += 1
-            self.last_error = ''
-            self.failure_reason = ''
+            self._clear_failure()
             self.last_nav_result = 'dry_run_checkpoint_passed'
             self.get_logger().info(f'[DRY_RUN] checkpoint passed -> next {self.current_index}')
         else:
@@ -261,13 +271,11 @@ class FixedRouteAutonomy(Node):
         result = self.navigator.getResult()
         if result == TaskResult.SUCCEEDED:
             self.current_index += 1
-            self.last_error = ''
-            self.failure_reason = ''
+            self._clear_failure()
             self.last_nav_result = 'succeeded'
             self.get_logger().info(f'checkpoint reached -> next {self.current_index}')
         else:
-            self.last_error = f'checkpoint {self.current_index} failed'
-            self.failure_reason = self.last_error
+            self._set_failure(f'checkpoint {self.current_index} failed', FAILURE_CODE_NAVIGATION_ABORT)
             self.last_nav_result = str(result)
             self.get_logger().warn(f'checkpoint {self.current_index} failed, retrying')
         self.task_in_progress = False
@@ -278,6 +286,11 @@ class FixedRouteAutonomy(Node):
         if state != self.state:
             self.last_transition = f'{self.state}->{state}'
             self.state = state
+        checkpoint = self.current_index
+        if checkpoint < 0:
+            checkpoint = 0
+        elif checkpoint > len(self.route_poses):
+            checkpoint = len(self.route_poses)
         current_target = None
         if self.current_index < len(self.route_poses):
             pose = self.route_poses[self.current_index].pose
@@ -313,7 +326,9 @@ class FixedRouteAutonomy(Node):
             'route_contract_version': ROUTE_CONTRACT_VERSION,
             'route_file': self.route_file,
             'keyframe_dir': self.keyframe_dir,
+            'checkpoint': checkpoint,
             'current_index': self.current_index,
+            'target': current_target,
             'current_target': current_target,
             'total': len(self.route_poses),
             'dry_run': self.dry_run,
@@ -330,6 +345,7 @@ class FixedRouteAutonomy(Node):
             ),
             'last_error': self.last_error,
             'failure_reason': self.failure_reason,
+            'failure_code': self.failure_code,
             'last_transition': self.last_transition,
             'last_nav_result': self.last_nav_result,
             'updated_at': time.time(),

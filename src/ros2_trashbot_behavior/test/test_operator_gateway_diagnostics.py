@@ -244,6 +244,49 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         )
         self.assertEqual(payload["route_proof_summary"]["missing_checkpoints"], ["checkpoint_2"])
 
+    def test_diagnostics_includes_traceability_fields_from_task_record(self):
+        with tempfile.TemporaryDirectory() as td:
+            task_record_path = Path(td) / "task.json"
+            task_record_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "delivery-123",
+                        "source": "hil_pass",
+                        "result_path": "/tmp/task_records/task-123.bin",
+                        "failure_code": "NAV_TIMEOUT",
+                        "human_intervention_required": True,
+                        "state_transition_history": [
+                            {
+                                "timestamp": 1710000000.0,
+                                "event": "nav_timeout",
+                                "from_state": "navigating",
+                                "to_state": "error",
+                                "message": "timeout waiting for gate",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            payload = self._base_build_payload(
+                {
+                    "state": "failed",
+                    "task_record_path": str(task_record_path),
+                    "error_code": "old_error",
+                }
+            )
+
+        self.assertEqual(payload["source"], "hil_pass")
+        self.assertEqual(payload["evidence_ref"], "/tmp/task_records/task-123.bin")
+        self.assertEqual(payload["failure_code"], "NAV_TIMEOUT")
+        self.assertTrue(payload["human_intervention_required"])
+        self.assertEqual(payload["failure"]["evidence_ref"], "/tmp/task_records/task-123.bin")
+        self.assertEqual(payload["failure"]["failure_code"], "NAV_TIMEOUT")
+        self.assertTrue(payload["failure"]["human_intervention_required"])
+        self.assertEqual(payload["failure"]["source"], "hil_pass")
+        self.assertEqual(len(payload["failure"]["state_transition_history"]), 1)
+        self.assertEqual(payload["failure"]["state_transition_history"][0]["event"], "nav_timeout")
+
     def test_diagnostics_prefers_latest_status_terminal_fields(self):
         payload = build_diagnostics_payload(
             {
@@ -294,6 +337,17 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                     "error_code": "timed_out",
                     "final_state": "dropoff",
                     "task_record_path": "/tmp/task.json",
+                    "source": "task_orchestrator",
+                    "failure_code": "TASK_CANCEL",
+                    "human_intervention_required": True,
+                    "state_transition_history": [
+                        {
+                            "timestamp": 1710000000.0,
+                            "event": "user_cancel",
+                            "from_state": "navigating",
+                            "to_state": "canceled",
+                        }
+                    ],
                 },
             },
             software_version="",
@@ -308,6 +362,13 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["failure"]["error_code"], "timed_out")
         self.assertEqual(payload["failure"]["final_state"], "dropoff")
         self.assertEqual(payload["failure"]["task_record_path"], "/tmp/task.json")
+        self.assertEqual(payload["source"], "simulated")
+        self.assertEqual(payload["evidence_ref"], "/tmp/task.json")
+        self.assertEqual(payload["failure_code"], "TASK_CANCEL")
+        self.assertEqual(payload["human_intervention_required"], True)
+        self.assertEqual(payload["failure"]["source"], "simulated")
+        self.assertEqual(payload["failure"]["failure_code"], "TASK_CANCEL")
+        self.assertEqual(payload["failure"]["human_intervention_required"], True)
         self.assertEqual(payload["map_version"], "map-a")
         self.assertEqual(payload["route_version"], "route-a")
         self.assertEqual(payload["log_refs"], ["/tmp/robot.log"])

@@ -138,6 +138,7 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["state"], "error")
             self.assertNotEqual(payload["state"], "completed")
             self.assertIn("route file not found", payload["failure_reason"])
+            self.assertEqual(payload["failure_code"], "NO_ROUTE")
             self.assertEqual(payload["total"], 0)
             summary = payload["route_proof_summary"]
             self.assertEqual(summary["coverage_rate"], 0.0)
@@ -181,6 +182,7 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["state"], "error")
             self.assertNotEqual(payload["state"], "completed")
             self.assertIn("route must not be empty", payload["failure_reason"])
+            self.assertEqual(payload["failure_code"], "NO_ROUTE")
             self.assertEqual(payload["total"], 0)
             summary = payload["route_proof_summary"]
             self.assertEqual(summary["coverage_rate"], 0.0)
@@ -225,6 +227,11 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["mode"], "dry_run")
             self.assertEqual(payload["route_contract_version"], "fixed_route.v1")
             self.assertEqual(payload["failure_reason"], "")
+            self.assertEqual(payload["failure_code"], "")
+            self.assertIn("checkpoint", payload)
+            self.assertIn("target", payload)
+            self.assertEqual(payload["checkpoint"], payload["current_index"])
+            self.assertEqual(payload["target"], payload["current_target"])
             self.assertEqual(payload["last_transition"], "running->completed")
             self.assertEqual(payload["current_index"], 1)
             self.assertEqual(payload["last_nav_result"], "dry_run_checkpoint_passed")
@@ -297,6 +304,7 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["last_nav_result"], "")
             self.assertIn("missing keyframes: [0]", payload["last_error"])
             self.assertIn("missing keyframes: [0]", payload["failure_reason"])
+            self.assertEqual(payload["failure_code"], "CHECKPOINT_MISSING")
             self.assertEqual(payload["visual_gate_status"], "keyframe_preflight_failed")
             self.assertIn("missing keyframes: [0]", payload["visual_gate_detail"])
             self.assertEqual(payload["visual_gate_checkpoint"], 0)
@@ -349,6 +357,7 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["current_index"], 0)
             self.assertEqual(payload["visual_gate_status"], "waiting_camera_frame")
             self.assertIn("waiting for camera frame", payload["failure_reason"])
+            self.assertEqual(payload["failure_code"], "")
             summary = payload["route_proof_summary"]
             self.assertEqual(summary["coverage_rate"], 0.0)
             self.assertEqual(summary["covered_checkpoints"], 0)
@@ -410,6 +419,7 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["total"], 2)
             self.assertEqual(payload["visual_gate_status"], "keyframe_preflight_failed")
             self.assertIn("missing keyframes: [1]", payload["failure_reason"])
+            self.assertEqual(payload["failure_code"], "CHECKPOINT_MISSING")
             self.assertEqual(payload["keyframe_preflight"]["loaded_keyframes"], [0])
             self.assertEqual(payload["keyframe_preflight"]["missing_keyframes"], [1])
             self.assertFalse(payload["keyframe_preflight"]["route_visual_ready"])
@@ -464,6 +474,7 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["visual_gate_status"], "passed")
             self.assertIn("passed checkpoint 0", payload["visual_gate_detail"])
             self.assertEqual(payload["last_nav_result"], "dry_run_checkpoint_passed")
+            self.assertEqual(payload["failure_code"], "")
             summary = payload["route_proof_summary"]
             self.assertEqual(summary["coverage_rate"], 1.0)
             self.assertEqual(summary["covered_checkpoints"], 1)
@@ -471,6 +482,51 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(summary["missing_checkpoints"], [])
             self.assertEqual(summary["gate_status"], "passed")
             self.assertEqual(summary["last_block_reason"], "")
+
+    def test_navigation_failure_records_nav_abort_code(self):
+        with tempfile.TemporaryDirectory() as td:
+            route_file = Path(td) / "fixed_route.yaml"
+            status_file = Path(td) / "status.json"
+            route_file.write_text(
+                "waypoints:\n"
+                "  - frame_id: map\n"
+                "    x: 1.0\n"
+                "    y: 2.0\n"
+                "    qw: 1.0\n",
+                encoding="utf-8",
+            )
+            basic_navigator_calls = []
+            install_ros_stubs(
+                {
+                    "route_file": str(route_file),
+                    "keyframe_dir": str(Path(td) / "keyframes"),
+                    "dry_run": True,
+                    "enable_visual_gate": False,
+                    "debug_status_file": str(status_file),
+                },
+                basic_navigator_calls,
+            )
+            sys.modules.pop("ros2_trashbot_nav.fixed_route_autonomy", None)
+            module = importlib.import_module("ros2_trashbot_nav.fixed_route_autonomy")
+
+            node = module.FixedRouteAutonomy()
+            node.task_in_progress = True
+
+            class _NavigatorStub:
+                def isTaskComplete(self):
+                    return True
+
+                def getResult(self):
+                    return "nav_failed"
+
+            node.navigator = _NavigatorStub()
+            node._poll_nav_result()
+
+            payload = json.loads(status_file.read_text(encoding="utf-8"))
+            self.assertEqual(payload["state"], "ready")
+            self.assertEqual(payload["failure_code"], "NAVIGATION_ABORT")
+            self.assertIn("checkpoint 0 failed", payload["failure_reason"])
+            self.assertEqual(payload["last_nav_result"], "nav_failed")
 
 
 if __name__ == "__main__":

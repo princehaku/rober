@@ -89,6 +89,7 @@ class OperatorGatewayStaticTest(unittest.TestCase):
 
         self.assertIn('latest_status.get("error_code") or last_task.get("error_code", "")', diagnostics_block)
         self.assertIn('latest_status.get("final_state") or last_task.get("final_state", "")', diagnostics_block)
+        self.assertIn("normalize_evidence_source", diagnostics_block)
         self.assertIn("summarize_vision_manifest", diagnostics_source)
         self.assertIn("load_review_decision_log", diagnostics_source)
         self.assertIn("summarize_hardware_proof", diagnostics_source)
@@ -105,6 +106,11 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("classify_elevator_assist", diagnostics_source)
         self.assertIn("elevator_assist=elevator_assist", diagnostics_block)
         self.assertIn("elevator_assist_status=elevator_assist_status", diagnostics_block)
+        self.assertIn("source=", diagnostics_block)
+        self.assertIn("evidence_ref=", diagnostics_block)
+        self.assertIn("failure_code=", diagnostics_block)
+        self.assertIn("human_intervention_required=", diagnostics_block)
+        self.assertIn("state_transition_history=", diagnostics_block)
         self.assertIn(
             'latest_status.get("task_record_path") or last_task.get("task_record_path", "")',
             diagnostics_block,
@@ -120,6 +126,13 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "diagHardwareProofSummary",
             "diagHardwareProofNextStep",
             "diagHardwareProofReasons",
+            "diagSource",
+            "diagFailureCode",
+            "diagEvidenceRef",
+            "diagHumanIntervention",
+            "diagStateTransitionHistory",
+            "diagStateTransitionHistoryList",
+            "diagRecoveryHint",
             "hardwareProofView",
             "renderHardwareProof",
             "hardware_proof",

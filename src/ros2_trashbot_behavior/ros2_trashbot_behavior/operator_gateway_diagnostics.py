@@ -14,6 +14,10 @@ except ImportError:
 REVIEW_QUEUE_LIMIT = 5
 LOW_CONFIDENCE_REVIEW_THRESHOLD = 75
 HARDWARE_PROOF_STATUSES = {"software_proof", "needs_hil", "invalid_config", "read_error"}
+EVIDENCE_SOURCE_SIMULATED = "simulated"
+EVIDENCE_SOURCE_SOFTWARE = "software_proof"
+EVIDENCE_SOURCE_HIL = "hil_pass"
+VALID_EVIDENCE_SOURCES = {EVIDENCE_SOURCE_SIMULATED, EVIDENCE_SOURCE_SOFTWARE, EVIDENCE_SOURCE_HIL}
 REVIEW_DECISION_VALUES = {"approved", "rejected", "needs_retry"}
 REVIEW_DECISION_ORDER = ("approved", "rejected", "needs_retry")
 ROUTE_PROOF_REQUIRED_FIELDS = (
@@ -327,6 +331,27 @@ def _extract_route_proof_summary(latest_status, last_task):
     if isinstance(summary, dict):
         return dict(summary), source
     return {}, ""
+
+
+def normalize_evidence_source(value):
+    """Normalize evidence provenance to user-facing contracts.
+
+    Source tags are intentionally limited to three values so O2/O3 users can
+    clearly distinguish offline replay evidence from real hardware-in-loop evidence:
+    - hil_pass: evidence is robot-side validated with HIL/real hardware artifacts.
+    - software_proof: software-only proof is available but HIL is still required.
+    - simulated: fallback for dry-run, offline, or unknown runtime sources.
+    """
+    normalized = str(value or "").strip().lower().replace("-", "_")
+    if normalized in VALID_EVIDENCE_SOURCES:
+        return normalized
+    if normalized in {"task_orchestrator", "dry_run", "robot_sim", "simulated", "software", "software_proof"}:
+        if normalized == "software":
+            return EVIDENCE_SOURCE_SOFTWARE
+        return EVIDENCE_SOURCE_SIMULATED
+    if normalized == "hil":
+        return EVIDENCE_SOURCE_HIL
+    return EVIDENCE_SOURCE_SIMULATED
 
 
 def _elevator_assist_from_task_record(task_record):
@@ -817,16 +842,66 @@ def build_diagnostics_payload(
 ):
     latest_status = dict(latest_status or {})
     last_task = dict(latest_status.get("last_task") or {})
+    task_record_path = (
+        latest_status.get("task_record_path")
+        or last_task.get("task_record_path")
+        or last_task.get("evidence_ref", "")
+        or ""
+    )
+    task_record = _read_task_record(task_record_path)
     route_proof_summary, route_proof_source = _extract_route_proof_summary(latest_status, last_task)
     route_proof_status = classify_route_proof(route_proof_summary, source=route_proof_source)
     elevator_assist, elevator_assist_source = extract_elevator_assist(latest_status, last_task)
     elevator_assist_status = classify_elevator_assist(elevator_assist, source=elevator_assist_source)
+    evidence_ref = str(
+        task_record.get("result_path")
+        or task_record.get("evidence_ref")
+        or latest_status.get("evidence_ref")
+        or last_task.get("evidence_ref")
+        or latest_status.get("task_record_path")
+        or last_task.get("task_record_path")
+        or ""
+    )
+    source = normalize_evidence_source(task_record.get("source") or latest_status.get("source") or last_task.get("source"))
+    state_transition_history = task_record.get("state_transition_history")
+    if not isinstance(state_transition_history, list):
+        legacy_state_transitions = task_record.get("state_transitions")
+        state_transition_history = (
+            legacy_state_transitions if isinstance(legacy_state_transitions, list) else []
+        )
+    failure_code = (
+        task_record.get("failure_code")
+        or latest_status.get("failure_code")
+        or last_task.get("failure_code")
+        or latest_status.get("error_code")
+        or last_task.get("error_code", "")
+        or ""
+    )
+    human_intervention_required = bool(
+        task_record.get("human_intervention_required")
+        or latest_status.get("human_intervention_required")
+        or last_task.get("human_intervention_required")
+        or False
+    )
+    last_task.setdefault("source", source)
+    last_task.setdefault("evidence_ref", evidence_ref)
+    if not last_task.get("failure_code"):
+        last_task["failure_code"] = failure_code
+    if not last_task.get("state_transition_history"):
+        last_task["state_transition_history"] = state_transition_history
+    if "human_intervention_required" not in last_task:
+        last_task["human_intervention_required"] = human_intervention_required
     failure = {
         "state": latest_status.get("state", ""),
         "message": latest_status.get("message", ""),
         "error_code": latest_status.get("error_code") or last_task.get("error_code", ""),
         "final_state": latest_status.get("final_state") or last_task.get("final_state", ""),
         "task_record_path": latest_status.get("task_record_path") or last_task.get("task_record_path", ""),
+        "source": source,
+        "evidence_ref": evidence_ref,
+        "failure_code": failure_code,
+        "human_intervention_required": human_intervention_required,
+        "state_transition_history": state_transition_history,
     }
     review_decision_log, decision_index = load_review_decision_log(review_decision_log_ref)
     return status_payload(
@@ -837,6 +912,11 @@ def build_diagnostics_payload(
         route_version=str(route_version or ""),
         latest_status=latest_status,
         last_task=last_task,
+        source=source,
+        evidence_ref=evidence_ref,
+        failure_code=failure_code,
+        human_intervention_required=human_intervention_required,
+        state_transition_history=state_transition_history,
         failure=failure,
         log_refs=normalize_log_refs(log_refs),
         vision_sample_manifest_ref=str(vision_sample_manifest_ref or ""),

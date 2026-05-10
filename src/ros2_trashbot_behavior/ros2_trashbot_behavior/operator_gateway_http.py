@@ -505,8 +505,13 @@ HTML = """<!doctype html>
         <div class="metric"><span>Map</span><strong id="diagMap">-</strong></div>
         <div class="metric"><span>Route</span><strong id="diagRoute">-</strong></div>
         <div class="metric"><span>Failure</span><strong id="diagFailure">-</strong></div>
+        <div class="metric"><span>Source</span><strong id="diagSource">-</strong></div>
+        <div class="metric"><span>Failure code</span><strong id="diagFailureCode">-</strong></div>
+        <div class="metric"><span>Evidence ref</span><strong id="diagEvidenceRef">-</strong></div>
+        <div class="metric"><span>Human takeover</span><strong id="diagHumanIntervention">-</strong></div>
         <div class="metric"><span>Task record</span><strong id="diagTask">-</strong></div>
         <div class="metric"><span>Status file</span><strong id="diagStatusFile">-</strong></div>
+        <div class="metric"><span>State transitions</span><strong id="diagStateTransitionHistory">-</strong></div>
         <div class="metric"><span>Vision samples</span><strong id="diagVisionSamples">-</strong></div>
         <div class="metric"><span>Latest vision sample</span><strong id="diagLatestVisionSample">-</strong></div>
         <div class="metric"><span>Review queue</span><strong id="diagReviewQueue">-</strong></div>
@@ -520,6 +525,8 @@ HTML = """<!doctype html>
         <div class="metric"><span>Elevator evidence</span><strong id="diagElevatorAssistEvidence">-</strong></div>
         <div class="metric"><span>Elevator next step</span><strong id="diagElevatorAssistNextStep">-</strong></div>
       </div>
+      <p id="diagRecoveryHint" class="message">No manual takeover required.</p>
+      <ul id="diagStateTransitionHistoryList" class="supportList"></ul>
       <div id="diagVisionIntegrity" class="integrityCard">
         <div class="integrityHeader">
           <h2>Vision evidence chain</h2>
@@ -839,6 +846,15 @@ function elevatorEvidenceText(elevatorAssist) {
   if (!keys.length) return 'not reported';
   return keys.map((key) => `${key}: ${JSON.stringify(evidence[key])}`).join(' | ');
 }
+function stateTransitionSummary(item) {
+  if (!item || typeof item !== 'object') return 'unknown transition';
+  return `${text(item.from_state, 'unknown')} -> ${text(item.to_state, 'unknown')} (${text(item.event, 'transition')}) @ ${text(item.timestamp, '-')}`;
+}
+function stateTransitionHistoryText(items) {
+  const transitionHistory = Array.isArray(items) ? items : [];
+  if (!transitionHistory.length) return 'no transition history';
+  return `${Number(transitionHistory.length)} transition(s)`;
+}
 function applyReviewProgress(queuePayload) {
   const progressSummary = queuePayload && typeof queuePayload === 'object'
     ? queuePayload.progress_summary
@@ -1025,14 +1041,37 @@ function showDiagnostics(payload) {
   const elevatorAssistStatus = payload.elevator_assist_status || {};
   const refs = Array.isArray(payload.log_refs) ? payload.log_refs : [];
   const taskRecord = failure.task_record_path || (payload.last_task || {}).task_record_path || latest.task_record_path || '';
+  const humanIntervention = Boolean(
+    failure.human_intervention_required
+    || payload.human_intervention_required
+    || failure.message === 'manual takeover required'
+  );
+  const transitionHistory = Array.isArray(payload.state_transition_history)
+    ? payload.state_transition_history
+    : (Array.isArray(failure.state_transition_history) ? failure.state_transition_history : []);
+  const source = text(
+    failure.source || payload.source || (payload.last_task || {}).source || latest.source,
+    'simulated'
+  );
   renderVisionIntegrity(visionSamples);
   renderHardwareProof(hardwareProof);
   document.getElementById('diagSoftware').textContent = text(payload.software_version, 'not reported');
   document.getElementById('diagMap').textContent = text(payload.map_version, 'not reported');
   document.getElementById('diagRoute').textContent = text(payload.route_version, 'not reported');
   document.getElementById('diagFailure').textContent = text(failure.error_code || failure.message, 'none reported');
+  document.getElementById('diagSource').textContent = source;
+  document.getElementById('diagFailureCode').textContent = text(
+    failure.failure_code || failure.error_code,
+    'not reported'
+  );
+  document.getElementById('diagEvidenceRef').textContent = text(
+    failure.evidence_ref || payload.evidence_ref || taskRecord,
+    'not reported'
+  );
+  document.getElementById('diagHumanIntervention').textContent = humanIntervention ? 'Required' : 'No';
   document.getElementById('diagTask').textContent = text(taskRecord, 'not reported');
   document.getElementById('diagStatusFile').textContent = text(payload.operator_status_file, 'not reported');
+  document.getElementById('diagStateTransitionHistory').textContent = stateTransitionHistoryText(transitionHistory);
   document.getElementById('diagVisionSamples').textContent = visionSamples.read_error
     ? visionSamples.read_error
     : `${Number(visionSamples.sample_count || 0)} samples`;
@@ -1071,6 +1110,22 @@ function showDiagnostics(payload) {
     elevatorAssistStatus.next_step || elevatorAssistStatus.reason,
     'not reported'
   );
+  document.getElementById('diagRecoveryHint').textContent = humanIntervention
+    ? 'Manual takeover required: keep task in safe mode,复位现场阻塞后，可重新发起任务。'
+    : 'No manual takeover required.';
+  const transitionHistoryList = document.getElementById('diagStateTransitionHistoryList');
+  transitionHistoryList.innerHTML = '';
+  if (!transitionHistory.length) {
+    const item = document.createElement('li');
+    item.textContent = 'No transition history reported.';
+    transitionHistoryList.appendChild(item);
+  } else {
+    transitionHistory.slice(-5).forEach((transition) => {
+      const item = document.createElement('li');
+      item.textContent = stateTransitionSummary(transition);
+      transitionHistoryList.appendChild(item);
+    });
+  }
   renderReviewQueue({
     review_queue_count: visionSamples.review_queue_count,
     review_queue: reviewQueue,
