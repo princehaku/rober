@@ -167,6 +167,16 @@ If the manifest is not configured or the vision checker cannot be imported, diag
 | `route_proof_status.missing_fields` | Required fields that were missing in `route_proof_summary`; non-empty implies `state=unknown`. |
 | `route_proof_status.source` | Where behavior consumed the proof (`latest_status`, `last_task`, or task record evidence). |
 
+`route_proof_status.state` mapping rule (single behavior-side contract, no local recomputation):
+
+| State | Mapping condition |
+| --- | --- |
+| `unknown` | `route_proof_summary` missing, required fields missing, `coverage_rate` is non-numeric, or unsupported `gate_status`. |
+| `waiting_visual_gate` | `gate_status` in `{waiting_visual_gate, waiting, pending, blocked_by_visual_gate, waiting_camera_frame, missing_live_frame, keyframe_preflight_failed, missing_keyframe, no_live_descriptors, insufficient_matches}`. This check runs before generic `blocked` mapping to preserve nav visual-gate waiting semantics. |
+| `blocked` | `last_block_reason` is non-empty and `gate_status` is not one of the waiting statuses above. |
+| `insufficient_coverage` | `coverage_rate < 1.0` or `missing_checkpoints` still has values after field validation. |
+| `ready` | `coverage_rate >= 1.0`, `missing_checkpoints` empty, and `gate_status` in `{passed, ready, ok}`. |
+
 `review_queue` items include manual-review merge fields:
 
 | Field | Contract |

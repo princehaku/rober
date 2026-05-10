@@ -67,3 +67,34 @@
 1. 本轮仍是软件/离线验证证据，不代表真实 Nav2、真实相机输入或真实 WAVE ROVER 行驶成功。
 2. 无 HIL/实机证据（串口、底盘反馈、实车路线采集、实车视觉门控）仍是 Objective 3/1 的关键缺口。
 3. route proof 可解释性已提升，但现场可达性仍需后续上车验证闭环。
+
+### 3) Objective 3 nav contract 复验补录（`autonomy-engineer`，2026-05-11 00:17 Asia/Shanghai）
+
+本次基于当前工作区已有改动做了最小语义补强与复验，目标是稳定 `route_proof_summary` 在 dry-run / visual gate 下的解释口径。
+
+追加改动（仅 nav 允许范围）：
+
+- `src/ros2_trashbot_nav/test/test_route_proof_summary.py`
+- `docs/navigation/fixed_route_workflow.md`
+
+补强点：
+
+- 新增 unittest：`test_partial_coverage_can_keep_passed_gate_when_not_blocked`，明确“部分 coverage 但当前无 gate 阻塞时，`gate_status` 可为 `passed`，可发车判断必须结合 `coverage_rate + missing_checkpoints`”。
+- 导航文档 `Stability rules` 增加同口径说明，避免只看 `gate_status` 误判 readiness。
+
+本轮验收命令结果（nav owner 命令集）：
+
+1. `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s src/ros2_trashbot_nav/test -p 'test_*py'`
+   - 关键输出：`Ran 43 tests in 2.603s`，`OK`
+2. `PYTHONDONTWRITEBYTECODE=1 bash -lc "changed_py=$(git diff --name-only -- src/ros2_trashbot_nav docs/navigation | grep -E '\\.py$' || true); if [ -n \"$changed_py\" ]; then python3 -m py_compile $changed_py; else echo 'no python files changed for py_compile'; fi"`
+   - 关键输出：`no python files changed for py_compile`
+3. `PYTHONDONTWRITEBYTECODE=1 bash scripts/run_smoke_tests.sh`
+   - 关键输出：`Ran 128 tests in 17.753s`，`OK`
+   - 关键输出：`Ran 13 tests in 0.601s`，`OK`
+4. `git diff --check -- src/ros2_trashbot_nav docs/navigation sprints/2026.05.10_23-24_route-proof-coverage/tech-done.md sprints/2026.05.10_23-24_route-proof-coverage/side2side_check.md sprints/2026.05.10_23-24_route-proof-coverage/final.md`
+   - 关键输出：空（无 whitespace 错误）
+
+风险结论（本段复验维度）：
+
+- contract 语义和离线/单测证据已补齐，但仍不代表 Nav2 实机与真实相机流的 HIL 成功。
+- readiness 仍需由上层同时参考 `coverage_rate`、`missing_checkpoints` 与 `gate_status`，不能单看任一字段。
