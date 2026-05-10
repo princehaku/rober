@@ -346,6 +346,15 @@ HTML = """<!doctype html>
         <p class="message">File counts: <strong id="diagVisionFileCounts">not reported</strong></p>
         <p class="message">Next step: <strong id="diagVisionIntegrityAdvice">Refresh diagnostics after the robot publishes a support package.</strong></p>
       </div>
+      <div id="diagHardwareProof" class="integrityCard">
+        <div class="integrityHeader">
+          <h2>Hardware proof</h2>
+          <span id="diagHardwareProofBadge" class="integrityBadge muted">unknown</span>
+        </div>
+        <p id="diagHardwareProofSummary" class="message">Diagnostics have not been loaded yet.</p>
+        <p class="message">Next step: <strong id="diagHardwareProofNextStep">Run software proof, then hardware-in-loop validation.</strong></p>
+        <ul id="diagHardwareProofReasons" class="supportList"></ul>
+      </div>
       <ul id="diagRefs" class="supportList"></ul>
     </section>
     <section class="panel">
@@ -475,6 +484,71 @@ function renderVisionIntegrity(visionSamples) {
     reasonList.appendChild(item);
   });
 }
+function hardwareProofView(hardwareProof) {
+  const status = text(hardwareProof.status, 'read_error');
+  const config = {
+    software_proof: {
+      label: 'Software proof',
+      tone: 'warning',
+      summary: 'Software proof is ready only; it does not validate real hardware or HIL.',
+      nextStep: 'Run WAVE ROVER hardware-in-loop validation before treating the robot as hardware-ready.'
+    },
+    needs_hil: {
+      label: 'Needs HIL',
+      tone: 'warning',
+      summary: 'Software proof exists, hardware-in-loop still required before treating the robot as validated.',
+      nextStep: 'Run the WAVE ROVER HIL recipe and capture UART, motion, IMU, and battery evidence.'
+    },
+    invalid_config: {
+      label: 'Invalid config',
+      tone: 'error',
+      summary: 'The hardware proof artifact reports an invalid bridge configuration.',
+      nextStep: 'Fix the bridge configuration, rerun software proof, then run HIL.'
+    },
+    read_error: {
+      label: 'Read error',
+      tone: 'error',
+      summary: 'The hardware proof artifact cannot be read or trusted.',
+      nextStep: 'Recreate the artifact and keep hardware status conservative until HIL passes.'
+    }
+  };
+  const view = config[status] || config.read_error;
+  const reasons = [];
+  const readError = text(hardwareProof.read_error, '');
+  if (readError) reasons.push(readError);
+  const riskFlags = Array.isArray(hardwareProof.risk_flags) ? hardwareProof.risk_flags : [];
+  riskFlags.slice(0, 3).forEach((flag) => {
+    if (flag && typeof flag === 'object') {
+      reasons.push(`${text(flag.id, 'risk')}: ${text(flag.detail, text(flag.severity, 'review required'))}`);
+    } else {
+      reasons.push(String(flag));
+    }
+  });
+  if (text(hardwareProof.artifact_ref, '')) reasons.push(`Artifact: ${hardwareProof.artifact_ref}`);
+  return {
+    status,
+    label: view.label,
+    tone: view.tone,
+    summary: text(hardwareProof.summary, view.summary),
+    nextStep: text(hardwareProof.next_step, view.nextStep),
+    reasons: reasons.length ? reasons.slice(0, 4) : ['No blocking hardware proof detail reported.']
+  };
+}
+function renderHardwareProof(hardwareProof) {
+  const view = hardwareProofView(hardwareProof || {});
+  const badge = document.getElementById('diagHardwareProofBadge');
+  badge.textContent = view.label;
+  badge.className = `integrityBadge ${view.tone}`;
+  document.getElementById('diagHardwareProofSummary').textContent = view.summary;
+  document.getElementById('diagHardwareProofNextStep').textContent = view.nextStep;
+  const reasonList = document.getElementById('diagHardwareProofReasons');
+  reasonList.innerHTML = '';
+  view.reasons.forEach((reason) => {
+    const item = document.createElement('li');
+    item.textContent = reason;
+    reasonList.appendChild(item);
+  });
+}
 function drawMap(payload) {
   const canvas = document.getElementById('robotMap');
   const ctx = canvas.getContext('2d');
@@ -579,9 +653,11 @@ function showDiagnostics(payload) {
   const failure = payload.failure || {};
   const latest = payload.latest_status || {};
   const visionSamples = payload.vision_samples || {};
+  const hardwareProof = payload.hardware_proof || {};
   const refs = Array.isArray(payload.log_refs) ? payload.log_refs : [];
   const taskRecord = failure.task_record_path || (payload.last_task || {}).task_record_path || latest.task_record_path || '';
   renderVisionIntegrity(visionSamples);
+  renderHardwareProof(hardwareProof);
   document.getElementById('diagSoftware').textContent = text(payload.software_version, 'not reported');
   document.getElementById('diagMap').textContent = text(payload.map_version, 'not reported');
   document.getElementById('diagRoute').textContent = text(payload.route_version, 'not reported');
@@ -603,7 +679,7 @@ function showDiagnostics(payload) {
     : 'no pending sample';
   const refList = document.getElementById('diagRefs');
   refList.innerHTML = '';
-  [...refs, payload.vision_sample_manifest_ref].filter(Boolean).forEach((ref) => {
+  [...refs, payload.vision_sample_manifest_ref, hardwareProof.artifact_ref].filter(Boolean).forEach((ref) => {
     const item = document.createElement('li');
     item.textContent = ref;
     refList.appendChild(item);

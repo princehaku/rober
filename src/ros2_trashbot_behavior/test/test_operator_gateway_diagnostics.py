@@ -13,6 +13,7 @@ sys.path.insert(0, str(VISION_PACKAGE_ROOT))
 from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     build_diagnostics_payload,
     normalize_log_refs,
+    summarize_hardware_proof,
     summarize_vision_manifest,
 )
 
@@ -53,6 +54,8 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["vision_sample_manifest_ref"], "/tmp/vision/manifest.json")
         self.assertFalse(payload["vision_samples"]["exists"])
         self.assertIn("not found", payload["vision_samples"]["read_error"])
+        self.assertEqual(payload["hardware_proof"]["status"], "read_error")
+        self.assertIn("not configured", payload["hardware_proof"]["read_error"])
         self.assertEqual(payload["operator_status_file"], "/tmp/status.json")
 
     def test_diagnostics_falls_back_to_last_task_terminal_fields(self):
@@ -82,6 +85,157 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["log_refs"], ["/tmp/robot.log"])
         self.assertEqual(payload["vision_samples"]["integrity_summary"]["status"], "not_configured")
         self.assertEqual(payload["vision_samples"]["integrity_error_count"], 1)
+        self.assertEqual(payload["hardware_proof"]["status"], "read_error")
+
+    def test_hardware_proof_ready_with_hil_risk_maps_to_needs_hil(self):
+        with tempfile.TemporaryDirectory() as td:
+            proof_path = Path(td) / "hardware-proof.json"
+            proof_path.write_text(
+                json.dumps(
+                    {
+                        "status": "software_proof_ready",
+                        "vendor_sources": ["docs/vendor/VENDOR_INDEX.md"],
+                        "risk_flags": [
+                            {
+                                "id": "hil_required",
+                                "severity": "high",
+                                "detail": "Offline proof still needs hardware-in-loop.",
+                            }
+                        ],
+                        "hil_recipe": {"no_motion": "python3 scripts/hardware_smoke_wave_rover.py"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            summary = summarize_hardware_proof(str(proof_path))
+
+        self.assertEqual(summary["status"], "needs_hil")
+        self.assertEqual(summary["source_status"], "software_proof_ready")
+        self.assertTrue(summary["exists"])
+        self.assertEqual(summary["vendor_sources"], ["docs/vendor/VENDOR_INDEX.md"])
+        self.assertEqual(summary["risk_flags"][0]["id"], "hil_required")
+        self.assertIn("hardware-in-loop still required", summary["summary"])
+        self.assertNotIn("hardware passed", summary["summary"].lower())
+        self.assertNotIn("hil passed", summary["summary"].lower())
+
+    def test_hardware_proof_ready_without_hil_risk_maps_to_software_proof(self):
+        with tempfile.TemporaryDirectory() as td:
+            proof_path = Path(td) / "hardware-proof.json"
+            proof_path.write_text(
+                json.dumps(
+                    {
+                        "status": "software_proof_ready",
+                        "vendor_sources": ["docs/vendor/VENDOR_INDEX.md"],
+                        "risk_flags": [
+                            {
+                                "id": "doc_review",
+                                "severity": "medium",
+                                "detail": "Keep vendor references with the support package.",
+                            }
+                        ],
+                        "hil_recipe": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            summary = summarize_hardware_proof(str(proof_path))
+
+        self.assertEqual(summary["status"], "software_proof")
+        self.assertIn("Software proof is ready only", summary["summary"])
+        self.assertIn("does not validate real UART", summary["summary"])
+
+    def test_hardware_proof_invalid_config_maps_to_invalid_config(self):
+        with tempfile.TemporaryDirectory() as td:
+            proof_path = Path(td) / "hardware-proof.json"
+            proof_path.write_text(
+                json.dumps(
+                    {
+                        "status": "invalid_config",
+                        "vendor_sources": ["docs/vendor/VENDOR_INDEX.md"],
+                        "config_validation": {"error": "track_width_m must be positive"},
+                        "risk_flags": [],
+                        "hil_recipe": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            summary = summarize_hardware_proof(str(proof_path))
+
+        self.assertEqual(summary["status"], "invalid_config")
+        self.assertEqual(summary["read_error"], "track_width_m must be positive")
+        self.assertIn("Fix the reported bridge configuration", summary["next_step"])
+
+    def test_hardware_proof_feedback_parse_failed_stays_conservative(self):
+        with tempfile.TemporaryDirectory() as td:
+            proof_path = Path(td) / "hardware-proof.json"
+            proof_path.write_text(
+                json.dumps(
+                    {
+                        "status": "feedback_parse_failed",
+                        "vendor_sources": ["docs/vendor/VENDOR_INDEX.md"],
+                        "risk_flags": [],
+                        "hil_recipe": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            summary = summarize_hardware_proof(str(proof_path))
+
+        self.assertEqual(summary["status"], "needs_hil")
+        self.assertIn("feedback parsing failed", summary["summary"])
+
+    def test_hardware_proof_read_errors_are_structured(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            missing = root / "missing.json"
+            corrupt = root / "corrupt.json"
+            non_dict = root / "non-dict.json"
+            missing_status = root / "missing-status.json"
+            corrupt.write_text("{bad json", encoding="utf-8")
+            non_dict.write_text(json.dumps(["not", "an", "object"]), encoding="utf-8")
+            missing_status.write_text(json.dumps({"risk_flags": []}), encoding="utf-8")
+
+            missing_summary = summarize_hardware_proof(str(missing))
+            corrupt_summary = summarize_hardware_proof(str(corrupt))
+            non_dict_summary = summarize_hardware_proof(str(non_dict))
+            missing_status_summary = summarize_hardware_proof(str(missing_status))
+
+        self.assertEqual(missing_summary["status"], "read_error")
+        self.assertFalse(missing_summary["exists"])
+        self.assertIn("not found", missing_summary["read_error"])
+        self.assertEqual(corrupt_summary["status"], "read_error")
+        self.assertTrue(corrupt_summary["exists"])
+        self.assertIn("failed reading", corrupt_summary["read_error"])
+        self.assertEqual(non_dict_summary["status"], "read_error")
+        self.assertIn("must be an object", non_dict_summary["read_error"])
+        self.assertEqual(missing_status_summary["status"], "read_error")
+        self.assertIn("missing status", missing_status_summary["read_error"])
+
+    def test_diagnostics_payload_includes_configured_hardware_proof(self):
+        with tempfile.TemporaryDirectory() as td:
+            proof_path = Path(td) / "hardware-proof.json"
+            proof_path.write_text(
+                json.dumps({"status": "software_proof_ready", "risk_flags": [], "vendor_sources": []}),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                operator_status_file="/tmp/status.json",
+                hardware_proof_ref=str(proof_path),
+            )
+
+        self.assertEqual(payload["hardware_proof"]["status"], "software_proof")
+        self.assertEqual(payload["hardware_proof"]["artifact_ref"], str(proof_path))
 
     def test_log_refs_are_normalized_without_claiming_file_existence(self):
         self.assertEqual(normalize_log_refs(None), [])

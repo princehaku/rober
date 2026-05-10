@@ -78,11 +78,37 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn('latest_status.get("error_code") or last_task.get("error_code", "")', diagnostics_block)
         self.assertIn('latest_status.get("final_state") or last_task.get("final_state", "")', diagnostics_block)
         self.assertIn("summarize_vision_manifest", diagnostics_source)
+        self.assertIn("summarize_hardware_proof", diagnostics_source)
         self.assertIn("vision_samples=summarize_vision_manifest(vision_sample_manifest_ref)", diagnostics_block)
+        self.assertIn("hardware_proof=summarize_hardware_proof(hardware_proof_ref)", diagnostics_block)
         self.assertIn(
             'latest_status.get("task_record_path") or last_task.get("task_record_path", "")',
             diagnostics_block,
         )
+
+    def test_operator_page_exposes_hardware_proof_diagnostics_card(self):
+        http_source = HTTP.read_text(encoding="utf-8")
+        ast.parse(http_source)
+
+        for text in (
+            "diagHardwareProof",
+            "diagHardwareProofBadge",
+            "diagHardwareProofSummary",
+            "diagHardwareProofNextStep",
+            "diagHardwareProofReasons",
+            "hardwareProofView",
+            "renderHardwareProof",
+            "hardware_proof",
+            "software_proof",
+            "needs_hil",
+            "invalid_config",
+            "read_error",
+            "Software proof exists, hardware-in-loop still required",
+        ):
+            self.assertIn(text, http_source)
+
+        self.assertNotIn("hardware passed", http_source.lower())
+        self.assertNotIn("hil passed", http_source.lower())
 
     def test_gateway_has_console_entry_point(self):
         source = SETUP.read_text(encoding="utf-8")

@@ -124,6 +124,24 @@ class FakeGateway:
                 },
                 "file_counts": {"raw_image": {"present": 2, "missing": 1}},
             },
+            "hardware_proof": {
+                "status": "needs_hil",
+                "artifact_ref": "/tmp/hardware-proof.json",
+                "source_status": "software_proof_ready",
+                "exists": True,
+                "read_error": "",
+                "summary": "Software proof exists, hardware-in-loop still required before treating the robot as validated.",
+                "next_step": "Run the WAVE ROVER HIL recipe on a prepared robot.",
+                "vendor_sources": ["docs/vendor/VENDOR_INDEX.md"],
+                "risk_flags": [
+                    {
+                        "id": "hil_required",
+                        "severity": "high",
+                        "detail": "Offline proof does not validate real UART, motion, IMU, or battery.",
+                    }
+                ],
+                "hil_recipe": {"no_motion": "python3 scripts/hardware_smoke_wave_rover.py"},
+            },
             "operator_status_file": "/tmp/trashbot_operator_status.json",
         }
 
@@ -219,6 +237,11 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["vision_samples"]["integrity_warnings"], ["annotated image coverage is incomplete"])
         self.assertEqual(payload["vision_samples"]["context_field_coverage"]["present"]["task_id"], 3)
         self.assertEqual(payload["vision_samples"]["file_counts"]["raw_image"]["missing"], 1)
+        self.assertEqual(payload["hardware_proof"]["status"], "needs_hil")
+        self.assertEqual(payload["hardware_proof"]["summary"], "Software proof exists, hardware-in-loop still required before treating the robot as validated.")
+        self.assertEqual(payload["hardware_proof"]["next_step"], "Run the WAVE ROVER HIL recipe on a prepared robot.")
+        self.assertEqual(payload["hardware_proof"]["read_error"], "")
+        self.assertEqual(payload["hardware_proof"]["risk_flags"][0]["id"], "hil_required")
 
     def test_status_preserves_robot_location_snapshot_fields(self):
         self.gateway.snapshot_payload["robot_location"] = {
@@ -273,6 +296,19 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("diagVisionIntegritySummary", body)
         self.assertIn("diagVisionIntegrityReasons", body)
         self.assertIn("diagVisionIntegrityAdvice", body)
+        self.assertIn("diagHardwareProof", body)
+        self.assertIn("diagHardwareProofBadge", body)
+        self.assertIn("diagHardwareProofSummary", body)
+        self.assertIn("diagHardwareProofNextStep", body)
+        self.assertIn("diagHardwareProofReasons", body)
+        self.assertIn("renderHardwareProof", body)
+        self.assertIn("hardwareProofView", body)
+        self.assertIn("hardware_proof", body)
+        self.assertIn("software_proof", body)
+        self.assertIn("needs_hil", body)
+        self.assertIn("invalid_config", body)
+        self.assertIn("read_error", body)
+        self.assertIn("Software proof exists, hardware-in-loop still required", body)
         self.assertIn("renderVisionIntegrity", body)
         self.assertIn("visionIntegrityView", body)
         self.assertIn("vision_samples", body)

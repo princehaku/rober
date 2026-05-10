@@ -101,7 +101,7 @@ The optional `operator_gateway` node exposes a local HTTP API for phone or brows
 | Endpoint | Method | Contract |
 | --- | --- | --- |
 | `/api/status` | GET | Returns `state`, `message`, `updated_at`, and the latest task metadata such as `task_record_path`, `error_message`, progress, or target when available. |
-| `/api/diagnostics` | GET | Returns the minimum remote-support diagnostic package: software version, map/route versions, latest status, last task summary, terminal failure fields, log references, vision sample manifest reference, and operator status file path. |
+| `/api/diagnostics` | GET | Returns the minimum remote-support diagnostic package: software version, map/route versions, latest status, last task summary, terminal failure fields, log references, vision sample manifest reference, hardware proof summary, and operator status file path. |
 | `/api/collect` | POST | Starts `/trashbot/collect_trash`. Optional JSON body or query parameter `target` overrides the default delivery target. |
 | `/api/dropoff/confirm` | POST | Calls `/trashbot/confirm_dropoff`; optional JSON `accepted=false` rejects a pending manual dropoff. |
 | `/api/cancel` | POST | Cancels the active `collect_trash` action goal if one is running. |
@@ -142,6 +142,31 @@ The same `/api/status` payload carries live location telemetry when available:
 | `file_counts` | Per-reference present/missing/empty counts for `sample_ref`, `json`, `raw_image`, and `annotated_image`. |
 
 If the manifest is not configured or the vision checker cannot be imported, diagnostics still returns HTTP payloads with the legacy fields and a structured integrity fallback instead of failing the whole endpoint.
+
+`/api/diagnostics.hardware_proof` summarizes an offline artifact produced by `ros2_trashbot_hardware.hardware_diagnostics_proof`. The artifact source remains hardware-owned and vendor-backed by `docs/vendor/VENDOR_INDEX.md`; the operator gateway only reads it and maps it into phone-safe support states. Software proof is not HIL pass, hardware pass, real UART validation, wheel-direction validation, speed-unit validation, feedback-frequency measurement, IMU validation, or battery validation.
+
+| Field | Contract |
+| --- | --- |
+| `status` | One of `software_proof`, `needs_hil`, `invalid_config`, or `read_error`. Unknown, missing, malformed, or unreadable artifacts must map conservatively and must not make `/api/diagnostics` fail. |
+| `artifact_ref` | Path or deployment reference used to read the artifact. Empty means no artifact is configured. |
+| `source_status` | Raw artifact status, such as `software_proof_ready`, `invalid_config`, or `feedback_parse_failed`. |
+| `exists` | Whether the artifact path existed and could be opened far enough for the summary attempt. |
+| `read_error` | Structured read/config/parsing problem. This field is populated for missing files, bad JSON, non-object JSON, missing status, unsupported status, invalid config detail, or feedback-parse failure. |
+| `summary` | Phone/support copy. It must remain conservative and must never claim hardware passed or HIL passed. |
+| `next_step` | Recovery or validation action, such as rerunning software proof, fixing bridge config, or running WAVE ROVER HIL. |
+| `vendor_sources` | Vendor source references copied from the artifact. The operator gateway must not invent new hardware facts here. |
+| `risk_flags` | Risk flags copied from the artifact. `hil_required` or high-severity HIL risk maps `software_proof_ready` to `needs_hil`. |
+| `hil_recipe` | HIL recipe copied from the artifact for support/engineering validation. |
+
+Status mapping:
+
+| Artifact condition | Product status |
+| --- | --- |
+| `status=software_proof_ready` with `hil_required` or high HIL risk | `needs_hil` |
+| `status=software_proof_ready` without HIL risk | `software_proof`, with copy that still says software proof only |
+| `status=invalid_config` | `invalid_config` |
+| `status=feedback_parse_failed` | `needs_hil` or `read_error`; current gateway uses `needs_hil` with read-error detail |
+| Missing path, missing file, unreadable file, bad JSON, non-object JSON, missing status, unsupported status | `read_error` |
 
 ### 4G Remote Bridge
 

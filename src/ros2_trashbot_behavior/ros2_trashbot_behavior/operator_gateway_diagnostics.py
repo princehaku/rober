@@ -13,6 +13,140 @@ except ImportError:
 
 REVIEW_QUEUE_LIMIT = 5
 LOW_CONFIDENCE_REVIEW_THRESHOLD = 75
+HARDWARE_PROOF_STATUSES = {"software_proof", "needs_hil", "invalid_config", "read_error"}
+
+
+def _default_hardware_proof_summary(path, status="read_error", read_error=""):
+    return {
+        "status": status,
+        "artifact_ref": str(path or ""),
+        "source_status": "",
+        "exists": False,
+        "read_error": str(read_error or ""),
+        "summary": "Hardware diagnostics proof is not available; no hardware pass can be inferred.",
+        "next_step": "Run hardware_diagnostics_proof and then complete WAVE ROVER hardware-in-loop validation.",
+        "vendor_sources": [],
+        "risk_flags": [],
+        "hil_recipe": {},
+    }
+
+
+def _hardware_proof_risk_text(flag):
+    if isinstance(flag, dict):
+        parts = [
+            flag.get("id", ""),
+            flag.get("severity", ""),
+            flag.get("detail", ""),
+            flag.get("message", ""),
+        ]
+        return " ".join(str(part) for part in parts if part)
+    return str(flag)
+
+
+def _has_hil_risk(risk_flags):
+    if not isinstance(risk_flags, list):
+        return True
+    for flag in risk_flags:
+        text = _hardware_proof_risk_text(flag).lower()
+        severity = str(flag.get("severity", "")).lower() if isinstance(flag, dict) else ""
+        flag_id = str(flag.get("id", "")).lower() if isinstance(flag, dict) else text
+        if flag_id == "hil_required":
+            return True
+        if ("hil" in text or "hardware-in-loop" in text) and severity in {"high", "critical"}:
+            return True
+    return False
+
+
+def summarize_hardware_proof(path):
+    """Return a phone-safe summary of an offline WAVE ROVER proof artifact.
+
+    Vendor/source boundary: the artifact itself is produced by the hardware
+    package from docs/vendor/VENDOR_INDEX.md-backed WAVE ROVER references. This
+    operator summary only reads and downgrades the artifact; it never upgrades
+    software evidence into a hardware pass or invents extra hardware facts.
+    """
+    proof_path = os.path.expanduser(str(path or ""))
+    summary = _default_hardware_proof_summary(
+        proof_path,
+        read_error="hardware diagnostics proof is not configured",
+    )
+    if not proof_path:
+        return summary
+    if not os.path.exists(proof_path):
+        summary["read_error"] = f"hardware diagnostics proof not found: {proof_path}"
+        return summary
+
+    summary["exists"] = True
+    try:
+        with open(proof_path, "r", encoding="utf-8") as f:
+            artifact = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        summary["read_error"] = f"failed reading hardware diagnostics proof: {exc}"
+        return summary
+
+    if not isinstance(artifact, dict):
+        summary["read_error"] = "hardware diagnostics proof JSON must be an object"
+        return summary
+
+    source_status = str(artifact.get("status") or "")
+    summary["source_status"] = source_status
+    summary["vendor_sources"] = (
+        list(artifact.get("vendor_sources")) if isinstance(artifact.get("vendor_sources"), list) else []
+    )
+    summary["risk_flags"] = (
+        list(artifact.get("risk_flags")) if isinstance(artifact.get("risk_flags"), list) else []
+    )
+    summary["hil_recipe"] = artifact.get("hil_recipe") if isinstance(artifact.get("hil_recipe"), dict) else {}
+
+    if not source_status:
+        summary["read_error"] = "hardware diagnostics proof is missing status"
+        return summary
+
+    if source_status == "invalid_config":
+        summary.update(
+            {
+                "status": "invalid_config",
+                "summary": "Hardware diagnostics proof found an invalid bridge configuration.",
+                "next_step": "Fix the reported bridge configuration, rerun software proof, then run WAVE ROVER HIL.",
+                "read_error": str((artifact.get("config_validation") or {}).get("error", "")),
+            }
+        )
+        return summary
+
+    if source_status == "software_proof_ready":
+        if _has_hil_risk(summary["risk_flags"]):
+            summary.update(
+                {
+                    "status": "needs_hil",
+                    "summary": "Software proof exists, hardware-in-loop still required before treating the robot as validated.",
+                    "next_step": "Run the WAVE ROVER HIL recipe on a prepared robot and capture UART, motion, IMU, and battery evidence.",
+                    "read_error": "",
+                }
+            )
+            return summary
+        summary.update(
+            {
+                "status": "software_proof",
+                "summary": "Software proof is ready only; this does not validate real UART, wheel motion, IMU, battery, or HIL.",
+                "next_step": "Use this artifact as software evidence, then schedule WAVE ROVER hardware-in-loop validation.",
+                "read_error": "",
+            }
+        )
+        return summary
+
+    if source_status == "feedback_parse_failed":
+        summary.update(
+            {
+                "status": "needs_hil",
+                "summary": "Software artifact exists but feedback parsing failed; hardware-in-loop validation is still required.",
+                "next_step": "Inspect the feedback sample, rerun proof with valid T=1001 feedback, then run WAVE ROVER HIL.",
+                "read_error": "feedback sample did not parse as trusted hardware feedback",
+            }
+        )
+        return summary
+
+    summary["read_error"] = f"unsupported hardware diagnostics proof status: {source_status}"
+    return summary
 
 
 def normalize_log_refs(value):
@@ -235,6 +369,7 @@ def build_diagnostics_payload(
     log_refs,
     vision_sample_manifest_ref,
     operator_status_file,
+    hardware_proof_ref="",
 ):
     latest_status = dict(latest_status or {})
     last_task = dict(latest_status.get("last_task") or {})
@@ -257,5 +392,6 @@ def build_diagnostics_payload(
         log_refs=normalize_log_refs(log_refs),
         vision_sample_manifest_ref=str(vision_sample_manifest_ref or ""),
         vision_samples=summarize_vision_manifest(vision_sample_manifest_ref),
+        hardware_proof=summarize_hardware_proof(hardware_proof_ref),
         operator_status_file=str(operator_status_file or ""),
     )
