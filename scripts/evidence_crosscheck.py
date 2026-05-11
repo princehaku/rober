@@ -71,9 +71,13 @@ def _find_task_record_by_evidence_ref(root: Path, evidence_ref: str):
     return ""
 
 
-def _select_task_record_payload(path: str, evidence_ref: str) -> tuple[dict[str, Any], str]:
+def _select_task_record_payload(path: str, task_record_dir: str, evidence_ref: str) -> tuple[dict[str, Any], str]:
     if path:
         return _load_json(path, "task_record"), str(path)
+    if evidence_ref and task_record_dir:
+        found = _find_task_record_by_evidence_ref(Path(task_record_dir), evidence_ref)
+        if found:
+            return _load_json(found, "task_record"), found
     if evidence_ref:
         task_dir = Path.home() / ".ros" / "trashbot_tasks"
         found = _find_task_record_by_evidence_ref(task_dir, evidence_ref)
@@ -111,10 +115,10 @@ def _get_status_and_route_fields(status_payload: dict[str, Any], replay_payload:
     )
     replay_fields = {field: _dict_get(replay_payload, field) for field in FIELD_SET}
     status_fields = {
-        "checkpoint": _dict_get(status_payload, "checkpoint") if isinstance(status_payload, dict) else None,
-        "current_index": _dict_get(status_payload, "current_index") if isinstance(status_payload, dict) else None,
-        "target": _dict_get(status_payload, "target") if isinstance(status_payload, dict) else None,
-        "failure_code": _dict_get(status_payload, "failure_code") if isinstance(status_payload, dict) else None,
+        "checkpoint": _dict_get(status_payload, "checkpoint", _dict_get(status_route, "checkpoint")),
+        "current_index": _dict_get(status_payload, "current_index", _dict_get(status_route, "current_index")),
+        "target": _dict_get(status_payload, "target", _dict_get(status_route, "target")),
+        "failure_code": _dict_get(status_payload, "failure_code", _dict_get(status_route, "failure_code")),
         "evidence_ref": status_evidence_ref,
     }
     route_progress_fields = {
@@ -144,48 +148,48 @@ def _compare_task_record(
         if isinstance(last_nav, dict):
             evidence_from_nav = last_nav.get("evidence", {}) if isinstance(last_nav.get("evidence"), dict) else {}
     route_progress_from_nav = evidence_from_nav.get("route_progress", {}) if isinstance(evidence_from_nav, dict) else {}
-    task_route_fields = {
-        field: _dict_get(route_progress_from_nav, field)
-        for field in FIELD_SET
-        if field in route_progress_from_nav
-    }
-
+    task_route_progress = task_record.get("route_progress", {}) if isinstance(task_record.get("route_progress"), dict) else {}
     _compare(
         "task_record.evidence_ref == status.evidence_ref",
         task_evidence_ref,
-        str(_dict_get(status_payload, "evidence_ref")),
+        str(status_fields.get("evidence_ref") or ""),
         mismatches,
     )
 
-    if task_route_fields:
+    if task_route_progress:
         for field in FIELD_SET:
-            left = status_fields.get(field)
-            right = task_route_fields.get(field)
-            _compare(f"task_record route_progress.{field}", left, right, mismatches)
-    elif evidence_from_nav:
-        # Keep a minimum bridge for older task_record payloads that don't persist route_progress.
-        for field in (
-            "current_index",
-            "target",
-            "failure_code",
-            "evidence_ref",
-        ):
-            if field in evidence_from_nav:
+            if field in task_route_progress:
                 _compare(
-                    f"task_record nav_result.evidence.{field}",
+                    f"task_record.route_progress.{field}",
                     status_fields.get(field),
-                    evidence_from_nav.get(field),
+                    task_route_progress.get(field),
                     mismatches,
                 )
-        if evidence_from_nav.get("checkpoint") not in (None, ""):
-            _compare(
-                "task_record nav_result.evidence.checkpoint",
-                status_fields.get("checkpoint"),
-                evidence_from_nav.get("checkpoint"),
-                mismatches,
-            )
-    else:
-        print("INFO task_record nav_result.evidence.route_progress not found; no route-level fields to compare")
+
+    if route_progress_from_nav:
+        for field in FIELD_SET:
+            if field in route_progress_from_nav:
+                _compare(
+                    f"task_record.nav_results[-1].evidence.route_progress.{field}",
+                    status_fields.get(field),
+                    route_progress_from_nav.get(field),
+                    mismatches,
+                )
+
+    if task_route_progress and route_progress_from_nav:
+        for field in FIELD_SET:
+            if field in task_route_progress and field in route_progress_from_nav:
+                _compare(
+                    f"task_record.route_progress == nav route_progress:{field}",
+                    task_route_progress.get(field),
+                    route_progress_from_nav.get(field),
+                    mismatches,
+                )
+    elif not task_route_progress and not route_progress_from_nav:
+        mismatches.append("task_record.route_progress: missing")
+        mismatches.append("task_record.nav_results[-1].evidence.route_progress: missing")
+        print("FAIL task_record.route_progress: missing")
+        print("FAIL task_record.nav_results[-1].evidence.route_progress: missing")
 
 
 
@@ -202,7 +206,12 @@ def _derive_replay_path(status_payload: dict[str, Any]) -> str:
     return ""
 
 
-def run_crosscheck(route_status_file: str, task_record: str, task_record_dir: str, expected_evidence_ref: str) -> int:
+def run_crosscheck(
+    route_status_file: str,
+    task_record: str,
+    task_record_dir: str,
+    expected_evidence_ref: str,
+) -> int:
     mismatches: list[str] = []
     status_payload = _load_json(route_status_file, "route_status")
     if not isinstance(status_payload, dict):
@@ -256,7 +265,7 @@ def run_crosscheck(route_status_file: str, task_record: str, task_record_dir: st
             mismatches,
         )
 
-    task_payload, resolved_task_record = _select_task_record_payload(task_record, evidence_ref)
+    task_payload, resolved_task_record = _select_task_record_payload(task_record, task_record_dir, evidence_ref)
     print(f"\ntask_record: {resolved_task_record or 'not provided'}")
     _compare_task_record(task_payload, status_payload, status_fields, mismatches)
 

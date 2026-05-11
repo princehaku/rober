@@ -374,6 +374,28 @@ def _extract_traceability_field(payload, field_name, *fallbacks):
     return None
 
 
+def _extract_route_progress(payload, *fallbacks):
+    for candidate_payload in (payload, *fallbacks):
+        if not isinstance(candidate_payload, dict):
+            continue
+        route_progress = candidate_payload.get("route_progress")
+        if isinstance(route_progress, dict):
+            return dict(route_progress)
+        nav_results = candidate_payload.get("nav_results")
+        if not isinstance(nav_results, list):
+            continue
+        for nav_result in reversed(nav_results):
+            if not isinstance(nav_result, dict):
+                continue
+            evidence = nav_result.get("evidence")
+            if not isinstance(evidence, dict):
+                continue
+            route_progress = evidence.get("route_progress")
+            if isinstance(route_progress, dict):
+                return dict(route_progress)
+    return {}
+
+
 def coalesce_traceability_fields(latest_status, *, task_record=None, last_task=None):
     """Return one canonical traceability bundle for diagnostics and gateway status."""
     latest_status = latest_status if isinstance(latest_status, dict) else {}
@@ -454,6 +476,7 @@ def coalesce_traceability_fields(latest_status, *, task_record=None, last_task=N
         "human_intervention_required": bool(human_intervention_required),
         "state_transition_history": state_transition_history,
         "task_record_path": task_record_path,
+        "route_progress": _extract_route_progress(task_record, latest_status, last_task),
     }
 
 
@@ -966,6 +989,7 @@ def build_diagnostics_payload(
     failure_code = traceability["failure_code"]
     human_intervention_required = traceability["human_intervention_required"]
     state_transition_history = traceability["state_transition_history"]
+    route_progress = traceability["route_progress"]
     last_task["source"] = source
     last_task["result_path"] = result_path
     if "evidence_ref" in last_task:
@@ -977,6 +1001,7 @@ def build_diagnostics_payload(
     last_task["failure_code"] = failure_code
     last_task["state_transition_history"] = state_transition_history
     last_task["human_intervention_required"] = human_intervention_required
+    last_task["route_progress"] = route_progress
     failure = {
         "state": latest_status.get("state", ""),
         "message": latest_status.get("message", ""),
@@ -989,6 +1014,7 @@ def build_diagnostics_payload(
         "failure_code": failure_code,
         "human_intervention_required": human_intervention_required,
         "state_transition_history": state_transition_history,
+        "route_progress": route_progress,
     }
     review_decision_log, decision_index = load_review_decision_log(review_decision_log_ref)
     return status_payload(
@@ -1005,6 +1031,7 @@ def build_diagnostics_payload(
         failure_code=failure_code,
         human_intervention_required=human_intervention_required,
         state_transition_history=state_transition_history,
+        route_progress=route_progress,
         failure=failure,
         log_refs=normalize_log_refs(log_refs),
         vision_sample_manifest_ref=str(vision_sample_manifest_ref or ""),

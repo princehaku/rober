@@ -28,6 +28,11 @@ to `source=hil_pass` after a real hardware run for the same `evidence_ref`.
 - Notes:
   - `pyserial` 先通过依赖检查恢复后再重试，阻塞仍在于设备路径/硬件环境
   - 严格 evidence_ref 统一写入 `command.txt`、`serial.log`、`feedback_T1001.log`、`odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl`
+  - `scripts/hardware_smoke_wave_rover.py --status` 的
+    `serial_candidate_globs` / `serial_candidates` / `pyserial_available` /
+    `hil_ready` / `blocked_reason` / `required_evidence_files` / `source_boundary`
+    字段只用于 `source=software_proof` 前置核验；未打开真实串口、未采到 `T=1001`
+    硬件反馈前，不得升级为 `source=hil_pass`。
 
 ## Latest Execution Record (2026-05-11T09:40:18Z)
 
@@ -78,6 +83,18 @@ to `source=hil_pass` after a real hardware run for the same `evidence_ref`.
 - `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`
 - `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h`
 - `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h`
+
+## Status JSON Source Boundary
+
+- `serial_candidate_globs`: `/dev/ttyUSB*`, `/dev/ttyAMA*`, `/dev/serial*`
+- `serial_candidates`: 对上述 glob 的只读扫描结果，不打开串口、不发送 JSON。
+- `pyserial_available`: 仅表示 Python 运行时可导入 `serial`。
+- `hil_ready`: 仅表示当前主机同时有 pyserial 与候选串口路径，可进入 HIL 尝试。
+- `blocked_reason`: `pyserial_missing`、`no_serial_candidates_found` 或 `null`。
+- `required_evidence_files`: HIL 证据包模板路径；生成清单不等于证据已存在。
+- `source_boundary`: 明确 `--status` 为 `source=software_proof`；真实 `hil_pass`
+  仍必须打开经现场确认的 WAVE ROVER UART，采集 `T=1001` 反馈，并归档同一
+  `evidence_ref` 的证据包。
 
 ## Evidence Source
 

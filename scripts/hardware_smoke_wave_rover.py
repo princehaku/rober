@@ -13,22 +13,33 @@ The ESP32 firmware uses one UTF-8 JSON object per UART line, terminated by \n.
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import sys
 import time
 from datetime import datetime, timezone
-from typing import Any
 from shlex import quote
+from typing import Any
 
 SCRIPT_VENDOR_SOURCES = [
     "docs/vendor/VENDOR_INDEX.md",
     "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
     "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
     "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h",
 ]
 
 SOFTWARE_PROOF_SOURCE = "software_proof"
 HIL_SOURCE = "hil_pass"
+SERIAL_CANDIDATE_GLOBS = ["/dev/ttyUSB*", "/dev/ttyAMA*", "/dev/serial*"]
+REQUIRED_EVIDENCE_FILES = [
+    "evidence/<evidence_ref>/command.txt",
+    "evidence/<evidence_ref>/serial.log",
+    "evidence/<evidence_ref>/feedback_T1001.log",
+    "evidence/<evidence_ref>/odom_once.jsonl",
+    "evidence/<evidence_ref>/imu_once.jsonl",
+    "evidence/<evidence_ref>/battery_once.jsonl",
+]
 SERIAL_IMPORT_ERROR = (
     "ERROR: missing dependency pyserial.\n"
     "  Install once: python3 -m pip install pyserial\n"
@@ -80,6 +91,22 @@ def build_hil_parameter_lock(args: argparse.Namespace, evidence_ref: str) -> dic
 
 def print_command_template() -> str:
     return " ".join(quote(p) for p in sys.argv)
+
+
+def collect_serial_candidates() -> dict[str, list[str]]:
+    """List candidate UART paths without opening devices or sending commands."""
+    return {pattern: sorted(glob.glob(pattern)) for pattern in SERIAL_CANDIDATE_GLOBS}
+
+
+def build_status_blocked_reason(
+    pyserial_available: bool,
+    serial_candidates: dict[str, list[str]],
+) -> str | None:
+    if not pyserial_available:
+        return "pyserial_missing"
+    if not any(serial_candidates.values()):
+        return "no_serial_candidates_found"
+    return None
 
 try:
     import serial
@@ -142,6 +169,9 @@ def read_feedback(
 def print_status() -> None:
     """Print a software-only smoke template status."""
     template_ref = f"run_template_{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}"
+    serial_candidates = collect_serial_candidates()
+    pyserial_available = serial is not None
+    blocked_reason = build_status_blocked_reason(pyserial_available, serial_candidates)
     print(json.dumps(
         {
             "status": "ready",
@@ -149,6 +179,11 @@ def print_status() -> None:
             "evidence_ref": template_ref,
             "script": "scripts/hardware_smoke_wave_rover.py",
             "vendor_sources": SCRIPT_VENDOR_SOURCES,
+            "serial_candidate_globs": SERIAL_CANDIDATE_GLOBS,
+            "serial_candidates": serial_candidates,
+            "pyserial_available": pyserial_available,
+            "hil_ready": blocked_reason is None,
+            "blocked_reason": blocked_reason,
             "defaults": {
                 "serial_port": "/dev/ttyUSB0",
                 "baudrate": 115200,
@@ -163,6 +198,7 @@ def print_status() -> None:
                 "--feedback-interval-ms",
                 "--move-test",
             ],
+            "required_evidence_files": REQUIRED_EVIDENCE_FILES,
             "startup_commands": [
                 {"T": 143, "cmd": 0},
                 {"T": 142, "cmd": 100},
@@ -176,6 +212,15 @@ def print_status() -> None:
             ],
             "dependency_note": "pyserial required for hil commands",
             "command_template": "python3 scripts/hardware_smoke_wave_rover.py --move-test --serial-port <device> --baudrate <baud> --test-speed <speed> --test-duration-s <duration>",
+            "source_boundary": {
+                "status": SOFTWARE_PROOF_SOURCE,
+                "hil_pass_requires": [
+                    "open a confirmed robot UART device",
+                    "capture WAVE ROVER T=1001 feedback from hardware",
+                    "archive the required evidence files for the same evidence_ref",
+                ],
+                "vendor_sources": SCRIPT_VENDOR_SOURCES,
+            },
         },
         indent=2,
         sort_keys=True,

@@ -1,11 +1,13 @@
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PACKAGE_ROOT))
 
 from ros2_trashbot_behavior.delivery_state_machine import DeliveryStateMachine
@@ -32,7 +34,22 @@ class TaskRecordTest(unittest.TestCase):
                 target="bin_a",
                 return_target="home",
                 nav_attempts=1,
-                nav_results=[{"success": True, "result_code": "dry_run"}],
+                nav_results=[
+                    {
+                        "success": True,
+                        "result_code": "dry_run",
+                        "evidence": {
+                            "route_progress": {
+                                "checkpoint": "cp-1",
+                                "current_index": 1,
+                                "target": {"name": "bin_a"},
+                                "failure_code": "",
+                                "evidence_ref": "/tmp/routes/fixed_route.yaml",
+                                "source": "software_proof",
+                            }
+                        },
+                    }
+                ],
                 dropoff_result={
                     "success": True,
                     "result_code": "manual_confirmed",
@@ -89,8 +106,157 @@ class TaskRecordTest(unittest.TestCase):
         self.assertEqual(payload["evidence_ref"], "/tmp/routes/fixed_route.yaml")
         self.assertEqual(payload["failure_code"], "")
         self.assertEqual(payload["human_intervention_required"], False)
+        self.assertEqual(payload["route_progress"]["checkpoint"], "cp-1")
+        self.assertEqual(payload["route_progress"]["current_index"], 1)
+        self.assertEqual(payload["route_progress"]["evidence_ref"], "/tmp/routes/fixed_route.yaml")
         self.assertEqual(payload["state_transition_history"], payload["state_transitions"])
         self.assertGreaterEqual(len(payload["state_transitions"]), 4)
+
+    def test_write_task_record_accepts_explicit_route_progress(self):
+        with tempfile.TemporaryDirectory() as td:
+            machine = DeliveryStateMachine()
+            machine.confirm_loaded("trash_station")
+            machine.start_delivery()
+            machine.navigation_succeeded()
+            machine.dropoff_confirmed()
+            machine.return_succeeded()
+            route_progress = {
+                "checkpoint": "cp-2",
+                "current_index": 2,
+                "target": {"name": "trash_station"},
+                "failure_code": "",
+                "evidence_ref": "run-123",
+                "source": "software_proof",
+            }
+
+            output = write_task_record(
+                Path(td),
+                "task-explicit-route-progress",
+                machine,
+                "success",
+                "",
+                nav_results=[],
+                evidence_ref="run-123",
+                route_progress=route_progress,
+            )
+            payload = json.loads(output.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload["route_progress"], route_progress)
+
+    def test_evidence_crosscheck_uses_task_record_dir(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            evidence_ref = "run-123"
+            replay_path = root / "route_replay.jsonl"
+            status_path = root / "status.json"
+            task_record_dir = root / "tasks"
+            task_record_dir.mkdir()
+            route_progress = {
+                "checkpoint": "cp-3",
+                "current_index": 3,
+                "target": {"name": "trash_station"},
+                "failure_code": "",
+                "evidence_ref": evidence_ref,
+            }
+            replay_path.write_text(json.dumps(route_progress) + "\n", encoding="utf-8")
+            status_path.write_text(
+                json.dumps(
+                    {
+                        "status": "completed",
+                        "route_progress": route_progress,
+                        "evidence_ref": evidence_ref,
+                        "software_proof": {"artifact_path": str(replay_path)},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (task_record_dir / "task.json").write_text(
+                json.dumps(
+                    {
+                        "task_id": "task-dir-lookup",
+                        "evidence_ref": evidence_ref,
+                        "route_progress": route_progress,
+                        "nav_results": [{"evidence": {"route_progress": route_progress}}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(REPO_ROOT / "scripts" / "evidence_crosscheck.py"),
+                    str(status_path),
+                    "--task-record-dir",
+                    str(task_record_dir),
+                    "--evidence-ref",
+                    evidence_ref,
+                ],
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("task_record:", result.stdout)
+        self.assertIn("CHECK summary: mismatches=0", result.stdout)
+
+    def test_evidence_crosscheck_fails_when_task_record_lacks_route_progress(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            evidence_ref = "run-missing-route-progress"
+            replay_path = root / "route_replay.jsonl"
+            status_path = root / "status.json"
+            task_record_path = root / "task.json"
+            route_progress = {
+                "checkpoint": "cp-4",
+                "current_index": 4,
+                "target": {"name": "trash_station"},
+                "failure_code": "",
+                "evidence_ref": evidence_ref,
+            }
+            replay_path.write_text(json.dumps(route_progress) + "\n", encoding="utf-8")
+            status_path.write_text(
+                json.dumps(
+                    {
+                        "status": "completed",
+                        "route_progress": route_progress,
+                        "evidence_ref": evidence_ref,
+                        "software_proof": {"artifact_path": str(replay_path)},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            task_record_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "task-missing-route-progress",
+                        "evidence_ref": evidence_ref,
+                        "nav_results": [{"evidence": {}}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(REPO_ROOT / "scripts" / "evidence_crosscheck.py"),
+                    str(status_path),
+                    "--task-record",
+                    str(task_record_path),
+                    "--evidence-ref",
+                    evidence_ref,
+                ],
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("task_record.route_progress: missing", result.stdout)
 
     def test_write_task_record_persists_failure_terminal_diagnostics(self):
         with tempfile.TemporaryDirectory() as td:

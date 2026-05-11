@@ -22,6 +22,10 @@
   - `python3 -m pip install pyserial`
   - 或进入项目镜像：`bash scripts/docker_humble_build.sh` / `bash scripts/docker_humble_dev.sh`
 - 依赖缺失只允许跑 `--help` 与 `--status`，禁止误报 `hil_pass` 成功。
+- `--status` 现在会只读扫描 `/dev/ttyUSB*`、`/dev/ttyAMA*`、`/dev/serial*`，
+  输出 `serial_candidates`、`pyserial_available`、`hil_ready` 与 `blocked_reason`。
+  该输出仍是 `source=software_proof`，只能说明当前主机是否具备发起 HIL 的前置条件；
+  不能替代真实 WAVE ROVER 串口打开、`T=1001` 反馈和证据包归档。
 
 ## 0.5) Evidence Packet（单次 run）
 
@@ -32,6 +36,8 @@
   - `feedback_T1001.log`（至少两条）
   - `odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl`
   - 回填 `evidence_ref`（回链到 task record / diagnostics）
+- `--status` 输出中的 `required_evidence_files` 是证据包清单模板，`source=software_proof`；
+  只有同一个 `evidence_ref` 下实际写入文件并采到硬件反馈后，才可登记为 `source=hil_pass`。
 
 ## 0.6) Blocked Run Record
 

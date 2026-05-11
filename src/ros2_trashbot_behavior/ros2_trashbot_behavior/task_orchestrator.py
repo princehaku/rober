@@ -43,6 +43,24 @@ class NavigationResult:
     evidence: dict = field(default_factory=dict)
 
 
+FIXED_ROUTE_PROGRESS_FIELDS = (
+    "source",
+    "route_contract_version",
+    "route_file",
+    "route_id",
+    "route_file_basename",
+    "checkpoint",
+    "checkpoint_id",
+    "current_index",
+    "target",
+    "current_target",
+    "total",
+    "total_checkpoints",
+    "evidence_ref",
+    "failure_code",
+)
+
+
 ELEVATOR_ASSIST_PROMPT = "你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,"
 ELEVATOR_ASSIST_DRY_RUN_PHASES = (
     "approaching_elevator",
@@ -818,11 +836,21 @@ class TaskOrchestrator(Node):
             "success",
             "mode",
             "route_contract_version",
+            "source",
             "route_file",
+            "route_id",
+            "route_file_basename",
             "keyframe_dir",
+            "checkpoint",
+            "checkpoint_id",
             "current_index",
+            "target",
             "current_target",
             "total",
+            "total_checkpoints",
+            "evidence_ref",
+            "failure_code",
+            "route_progress",
             "dry_run",
             "enable_visual_gate",
             "keyframe_preflight",
@@ -838,6 +866,17 @@ class TaskOrchestrator(Node):
         ):
             if key in payload:
                 evidence[key] = payload[key]
+        route_progress = payload.get("route_progress")
+        if isinstance(route_progress, dict):
+            evidence["route_progress"] = dict(route_progress)
+        else:
+            progress = {
+                key: payload[key]
+                for key in FIXED_ROUTE_PROGRESS_FIELDS
+                if key in payload
+            }
+            if progress:
+                evidence["route_progress"] = progress
         return evidence
 
     def _perform_dropoff(self, goal_handle, task_id):

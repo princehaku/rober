@@ -256,6 +256,14 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                         "evidence_ref": "/tmp/evidence_refs/task-123.ref.json",
                         "failure_code": "NAV_TIMEOUT",
                         "human_intervention_required": True,
+                        "route_progress": {
+                            "checkpoint": "cp-timeout",
+                            "current_index": 2,
+                            "target": {"name": "trash_station"},
+                            "failure_code": "NAV_TIMEOUT",
+                            "evidence_ref": "/tmp/evidence_refs/task-123.ref.json",
+                            "source": "hil_pass",
+                        },
                         "state_transition_history": [
                             {
                                 "timestamp": 1710000000.0,
@@ -286,6 +294,9 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["failure"]["evidence_ref"], "/tmp/evidence_refs/task-123.ref.json")
         self.assertEqual(payload["failure"]["failure_code"], "NAV_TIMEOUT")
         self.assertTrue(payload["failure"]["human_intervention_required"])
+        self.assertEqual(payload["route_progress"]["checkpoint"], "cp-timeout")
+        self.assertEqual(payload["failure"]["route_progress"]["current_index"], 2)
+        self.assertEqual(payload["last_task"]["route_progress"]["target"], {"name": "trash_station"})
         self.assertEqual(payload["failure"]["source"], "hil_pass")
         self.assertEqual(payload["last_task"]["source"], "hil_pass")
         self.assertEqual(payload["last_task"]["evidence_ref"], "/tmp/task_records/task-123.bin")

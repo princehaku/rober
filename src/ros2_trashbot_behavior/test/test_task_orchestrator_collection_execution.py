@@ -322,14 +322,36 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
     def test_execute_collection_fixed_route_success_records_status_evidence(self):
         with tempfile.TemporaryDirectory() as td:
             status_file = Path(td) / "status.json"
+            evidence_file = Path(td) / "route-replay.jsonl"
+            route_progress = {
+                "route_id": "fixed_route",
+                "checkpoint_id": "fixed_route:002",
+                "evidence_ref": str(evidence_file),
+                "checkpoint": 2,
+                "current_index": 2,
+                "target": {"x": 1.2, "y": -0.5, "yaw": 0.0},
+                "total_checkpoints": 3,
+                "route_contract_version": "fixed_route.v1",
+                "failure_code": "",
+            }
             status_file.write_text(
                 json.dumps(
                     {
                         "state": "completed",
                         "route_contract_version": "fixed_route.v1",
+                        "source": "software_proof",
                         "route_file": "/tmp/routes/trash_station.json",
+                        "route_id": "fixed_route",
+                        "route_file_basename": "trash_station.json",
+                        "checkpoint": 2,
+                        "checkpoint_id": "fixed_route:002",
                         "current_index": 2,
+                        "target": {"x": 1.2, "y": -0.5, "yaw": 0.0},
                         "total": 3,
+                        "total_checkpoints": 3,
+                        "evidence_ref": str(evidence_file),
+                        "failure_code": "",
+                        "route_progress": route_progress,
                         "last_nav_result": "dry_run_checkpoint_passed",
                         "updated_at": "2026-05-10T12:30:00Z",
                     }
@@ -349,8 +371,9 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertEqual(payload["delivery_mode"], "fixed_route")
         self.assertEqual(payload["final_status"], "success")
-        self.assertEqual(payload["result_path"], str(status_file))
-        self.assertEqual(payload["evidence_ref"], str(status_file))
+        self.assertEqual(payload["result_path"], str(evidence_file))
+        self.assertEqual(payload["evidence_ref"], str(evidence_file))
+        self.assertEqual(payload["route_progress"], route_progress)
         self.assertEqual(payload["nav_results"][0]["result_code"], "fixed_route_completed")
         self.assertEqual(payload["nav_results"][0]["message"], "fixed_route completed")
         self.assertEqual(
@@ -359,9 +382,19 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
                 "fixed_route_status_file": str(status_file),
                 "state": "completed",
                 "route_contract_version": "fixed_route.v1",
+                "source": "software_proof",
                 "route_file": "/tmp/routes/trash_station.json",
+                "route_id": "fixed_route",
+                "route_file_basename": "trash_station.json",
+                "checkpoint": 2,
+                "checkpoint_id": "fixed_route:002",
                 "current_index": 2,
+                "target": {"x": 1.2, "y": -0.5, "yaw": 0.0},
                 "total": 3,
+                "total_checkpoints": 3,
+                "evidence_ref": str(evidence_file),
+                "failure_code": "",
+                "route_progress": route_progress,
                 "last_nav_result": "dry_run_checkpoint_passed",
                 "updated_at": "2026-05-10T12:30:00Z",
             },
