@@ -293,7 +293,7 @@ jq '.state,.failure_code,.failure_reason,.keyframe_preflight,.route_progress' /t
 ```bash
 ROUTE_STATUS=/tmp/trashbot_fixed_route_status.json
 ROUTE_REPLAY_EVIDENCE=/tmp/route_replay_evidence.json
-pytest -q src/ros2_trashbot_nav/test/test_fixed_route_dry_run_offline.py::FixedRouteDryRunOfflineTest.test_dry_run_evidence_ref_syncs_to_route_progress
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest src/ros2_trashbot_nav/test/test_fixed_route_dry_run_offline.py::FixedRouteDryRunOfflineTest.test_dry_run_evidence_ref_syncs_to_route_progress
 
 ros2 run ros2_trashbot_nav fixed_route_autonomy \
   --ros-args \
@@ -307,6 +307,25 @@ jq '.state,.checkpoint,.current_index,.failure_code,.evidence_ref,.route_progres
   $ROUTE_STATUS
 ```
 
+示例输出（关键字段）：
+
+```text
+{
+  "state": "completed",
+  "checkpoint": 1,
+  "current_index": 1,
+  "failure_code": "",
+  "evidence_ref": "/tmp/route_replay_evidence.json",
+  "route_progress": {
+    "checkpoint": 1,
+    "current_index": 1,
+    "target": null,
+    "failure_code": "",
+    "evidence_ref": "/tmp/route_replay_evidence.json"
+  }
+}
+```
+
 检查清单：
 
 - `route_progress.checkpoint == payload.current_index == payload.checkpoint`
@@ -314,7 +333,8 @@ jq '.state,.checkpoint,.current_index,.failure_code,.evidence_ref,.route_progres
 - `route_progress.current_index == payload.current_index`
 - `route_progress.failure_code == payload.failure_code`
 - `route_progress.evidence_ref == payload.evidence_ref`
-- 受控 replay 场景用 `route_progress.evidence_ref` 查 task record 的同名证据文件。
+- `route_replay` 的 JSONL 每行都应含 `state/checkpoint/current_index/target/failure_code/evidence_ref/checkpoint_id`。
+- 受控 replay 场景可用 `route_progress.evidence_ref` 查 task record 的同名证据文件。
 
 ## 6. Debug Web
 
