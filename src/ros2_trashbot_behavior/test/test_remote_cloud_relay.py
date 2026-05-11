@@ -130,6 +130,42 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIsNone(payload["command"])
 
+    def test_health_and_readiness_are_phone_safe(self):
+        status, payload = self.client.request("GET", "/healthz", token="")
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["protocol_version"], PROTOCOL_VERSION)
+        self.assertEqual(payload["evidence_boundary"], "software_proof_docker_deploy")
+
+        status, payload = self.client.request("GET", "/readyz", token="")
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["checks"]["protocol"])
+        self.assertTrue(payload["checks"]["credential_gate"])
+        self.assertTrue(payload["checks"]["state_store"])
+        self.assertTrue(payload["checks"]["phone_safe_failure"])
+
+        encoded = json.dumps(payload, ensure_ascii=False)
+        for forbidden in ("phone-token", "Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_readiness_fails_without_credential_gate(self):
+        server = build_server("127.0.0.1", 0, self.state_path, "")
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        client = RelayHttpClient(f"http://127.0.0.1:{server.server_address[1]}", token="")
+        try:
+            status, payload = client.request("GET", "/readyz", token="")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=1.0)
+
+        self.assertEqual(status, 503)
+        self.assertFalse(payload["ok"])
+        self.assertFalse(payload["checks"]["credential_gate"])
+        self.assertEqual(payload["error"]["code"], "not_ready")
+
     def test_expired_command_is_not_returned_as_next(self):
         status, payload = self.client.request(
             "POST",

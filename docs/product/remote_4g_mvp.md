@@ -28,14 +28,14 @@ The Docker/local proof now has two control-plane surfaces:
 - Local fallback: `operator_gateway` still embeds a mock cloud for local
   debugging and degraded operator workflows.
 - Independent relay: `ros2_trashbot_behavior.remote_cloud_relay` is a separate
-  HTTP service module with bearer auth, file-backed persistence, and phone-safe
-  JSON errors. It can run in local Python or Docker without ROS2 runtime and
-  without the `operator_gateway` process.
+  HTTP service module with bearer auth, file-backed persistence, health/readiness
+  checks, and phone-safe JSON errors. It can run in local Python or Docker
+  without ROS2 runtime and without the `operator_gateway` process.
 
 Both surfaces preserve `trashbot.remote.v1` command/status/ack semantics and do
 not expose `/cmd_vel`, serial ports, baudrate, WAVE ROVER parameters, or raw
 ROS2 topic names to ordinary phone users. The independent relay is still
-`software_proof_docker_only`: it does not prove production cloud hosting,
+`software_proof_docker_deploy`: it does not prove production cloud hosting,
 HTTPS/TLS, public ingress, real 4G/SIM, OSS/CDN, Nav2/fixed-route, WAVE ROVER,
 or HIL.
 
@@ -48,6 +48,25 @@ python3 -m ros2_trashbot_behavior.remote_cloud_relay \
   --host 127.0.0.1 \
   --port 8088 \
   --state-path /tmp/trashbot_remote_cloud_relay.json
+```
+
+Example Docker deploy proof:
+
+```bash
+cp .env.example .env
+# Set TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN to a local placeholder only.
+docker compose -f docker-compose.remote-cloud-relay.yml build remote-cloud-relay
+docker compose -f docker-compose.remote-cloud-relay.yml up -d remote-cloud-relay
+curl -fsS http://127.0.0.1:8088/healthz
+curl -fsS http://127.0.0.1:8088/readyz
+```
+
+For a fenced end-to-end Docker smoke:
+
+```bash
+TRASHBOT_REMOTE_CLOUD_PUBLISHED_PORT=18088 \
+TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-smoke-token \
+scripts/remote_cloud_relay_docker_smoke.sh
 ```
 
 ## Bearer Auth Gate
@@ -174,6 +193,22 @@ gate. `degradation_state=ok` means the control-plane contract is healthy enough
 for the next software step. Neither value proves the robot delivered trash,
 reached a Nav2/fixed-route target, moved the WAVE ROVER base, or passed HIL.
 
+The independent Docker relay also exposes process-level readiness:
+
+```text
+GET /healthz
+GET /readyz
+```
+
+`/healthz` reports service liveness, protocol version, and
+`software_proof_docker_deploy` evidence boundary. `/readyz` returns true only
+when the protocol is the expected `trashbot.remote.v1`, the credential gate is
+configured, the proof state store is writable, and the phone-safe failure
+redaction self-check passes. These endpoints are for deployment and future phone
+diagnostics; they must not expose bearer tokens, credential-bearing URLs, serial
+devices, baudrate, WAVE ROVER parameters, ROS topic names, `/cmd_vel`, or raw
+tracebacks.
+
 ## Ack Contract
 
 ```json
@@ -224,7 +259,7 @@ processed the command yet.
 - No SIM or carrier network test has been run.
 - The local mock-cloud tests validate protocol behavior only.
 - The independent relay tests validate local HTTP, bearer auth, file persistence,
-  and phone-safe error behavior only.
+  health/readiness, Docker deploy startup, and phone-safe error behavior only.
 - Bearer auth gate is covered by local/mock software proof only; production identity, provisioning, rotation, permissions, HTTPS/TLS, and public cloud ingress are not implemented.
 - Remote bridge degradation/cursor safety is covered by local/mock software proof only; it does not prove weak-network recovery on a carrier 4G link.
 - OSS/CDN upload, STS credentials, CDN read path, Nav2/fixed-route delivery,

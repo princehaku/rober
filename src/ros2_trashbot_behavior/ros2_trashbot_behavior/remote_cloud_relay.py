@@ -19,6 +19,7 @@ STATUS_STALE_AFTER_SEC = 90.0
 PHONE_COPY = {
     "auth_failed": "手机登录已失效，请重新登录或检查访问凭证。",
     "bad_request": "请求内容有误，请返回上一步后重试。",
+    "not_ready": "云端中转服务尚未就绪，请等待服务恢复后重试。",
     "not_found": "没有找到对应记录，请稍后刷新或重新发起。",
     "status_missing": "小车尚未上报状态，请等待小车联网后再试。",
     "status_stale": "小车状态已过期，请等待小车重新联网或检查网络。",
@@ -109,6 +110,22 @@ def phone_error(code, message="", *, status=None, details=None):
     if isinstance(status, dict):
         payload["status"] = safe_value(status)
     return payload
+
+
+def _phone_safe_failure_ready():
+    # readiness 自检用固定敏感样本，避免以后改脱敏规则时把底层细节暴露给手机。
+    sample = phone_error(
+        "bad_request",
+        "Authorization Bearer token leaked /cmd_vel ttyUSB0 baudrate https://secret.invalid",
+        details={
+            "authorization": "Bearer hidden",
+            "serial_port": "/dev/ttyUSB0",
+            "safe": "visible",
+        },
+    )
+    encoded = json.dumps(sample, ensure_ascii=False)
+    forbidden = ("Bearer", "token", "/cmd_vel", "ttyUSB", "baudrate", "https://secret")
+    return not any(marker in encoded for marker in forbidden)
 
 
 def _timestamp(value, field_name):
@@ -300,6 +317,23 @@ class FileBackedRelayStore:
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
+    def state_store_writable(self):
+        # readiness 只证明 proof store 目录可写，不把真实 state path 回传给客户端。
+        if not self.state_path:
+            return False
+        state_dir = os.path.dirname(self.state_path) or "."
+        try:
+            os.makedirs(state_dir, exist_ok=True)
+            fd, tmp_path = tempfile.mkstemp(prefix=".remote-cloud-ready-", suffix=".tmp", dir=state_dir)
+            with os.fdopen(fd, "w", encoding="utf-8") as tmp_file:
+                tmp_file.write("ready\n")
+                tmp_file.flush()
+                os.fsync(tmp_file.fileno())
+            os.unlink(tmp_path)
+            return True
+        except OSError:
+            return False
+
     def _touch_locked(self, robot, field):
         # stats 只用于 proof 复盘和容量估算，不参与业务状态判定。
         stats = robot.setdefault("stats", {})
@@ -378,6 +412,29 @@ class FileBackedRelayStore:
         return 200, {"ok": True, "ack": dict(ack)}
 
 
+def readiness_payload(store, expected_token):
+    # 这里的字段面向编排和未来手机 UI，避免输出 host/path/token 等部署细节。
+    checks = {
+        "protocol": PROTOCOL_VERSION == "trashbot.remote.v1",
+        "credential_gate": bool(str(expected_token or "").strip()),
+        "state_store": store.state_store_writable(),
+        "phone_safe_failure": _phone_safe_failure_ready(),
+    }
+    ready = all(checks.values())
+    payload = {
+        "ok": ready,
+        "service": "remote_cloud_relay",
+        "protocol_version": PROTOCOL_VERSION,
+        "evidence_boundary": "software_proof_docker_deploy",
+        "checks": checks,
+        "safe_phone_copy": "云端中转服务已就绪。" if ready else PHONE_COPY["not_ready"],
+    }
+    if ready:
+        return 200, payload
+    payload["error"] = phone_error("not_ready", "relay readiness check failed")["error"]
+    return 503, payload
+
+
 def _route(path):
     parts = [part for part in str(path or "").strip("/").split("/") if part]
     if len(parts) < 3 or parts[0] != "robots":
@@ -448,6 +505,21 @@ def make_handler(store, bearer_token):
 
         def do_GET(self):
             parsed = urlparse(self.path)
+            if parsed.path == "/healthz":
+                self._send_json(
+                    200,
+                    {
+                        "ok": True,
+                        "service": "remote_cloud_relay",
+                        "protocol_version": PROTOCOL_VERSION,
+                        "evidence_boundary": "software_proof_docker_deploy",
+                    },
+                )
+                return
+            if parsed.path == "/readyz":
+                status_code, payload = readiness_payload(store, expected_token)
+                self._send_json(status_code, payload)
+                return
             route = _route(parsed.path)
             if not route:
                 self._send_json(404, phone_error("not_found", "path not found"))

@@ -1,0 +1,33 @@
+services:
+  remote-cloud-relay:
+    build:
+      context: .
+      dockerfile: docker/remote-cloud-relay/Dockerfile
+    image: ros-rbs-remote-cloud-relay:dev
+    environment:
+      # 容器内必须监听 0.0.0.0，主机暴露端口由 compose ports 控制。
+      TRASHBOT_REMOTE_CLOUD_HOST: ${TRASHBOT_REMOTE_CLOUD_HOST:-0.0.0.0}
+      TRASHBOT_REMOTE_CLOUD_PORT: ${TRASHBOT_REMOTE_CLOUD_PORT:-8088}
+      TRASHBOT_REMOTE_CLOUD_STATE: ${TRASHBOT_REMOTE_CLOUD_STATE:-/data/remote_cloud_relay_state.json}
+      TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN: ${TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN:?set-dev-placeholder-token}
+      TRASHBOT_REMOTE_CLOUD_TLS_MODE: ${TRASHBOT_REMOTE_CLOUD_TLS_MODE:-future_reverse_proxy}
+      TRASHBOT_REMOTE_CLOUD_OSS_BUCKET: ${TRASHBOT_REMOTE_CLOUD_OSS_BUCKET:-bytegallop}
+      TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL: ${TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL:-https://cdn.bytegallop.com/rober/}
+    ports:
+      - "${TRASHBOT_REMOTE_CLOUD_PUBLISHED_PORT:-8088}:${TRASHBOT_REMOTE_CLOUD_PORT:-8088}"
+    volumes:
+      # named volume 只证明 Docker deploy 的本地持久化；不代表生产数据库。
+      - remote-cloud-relay-state:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import json,os,urllib.request; port=os.environ.get('TRASHBOT_REMOTE_CLOUD_PORT','8088'); data=json.load(urllib.request.urlopen(f'http://127.0.0.1:{port}/readyz', timeout=2)); raise SystemExit(0 if data.get('ok') else 1)\"",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  remote-cloud-relay-state:

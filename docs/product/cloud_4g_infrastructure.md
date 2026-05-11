@@ -4,7 +4,7 @@
 
 O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过 4G 主动 outbound polling 云端控制面。云端只承载轻量 JSON command/status/ack，不承载图片大对象，不暴露底层机器人控制入口，也不要求手机和小车处于同一 WiFi。
 
-本轮 `2026.05.12_05-06_remote-cloud-service-docker-proof` 只完成 independent Docker/local HTTP relay proof：`remote_cloud_relay.py` 可在本机 Python 或 Docker 容器内独立运行，不依赖 ROS2 runtime 或 `operator_gateway` 进程。该 proof 不等于真实云、真实 4G、HTTPS/TLS、OSS/CDN、Nav2/fixed-route、WAVE ROVER 或 HIL。
+本轮 `2026.05.12_06-07_remote-cloud-entry-docker-deploy` 将 independent relay 从 local Python proof 推进到 `software_proof_docker_deploy`：`remote_cloud_relay.py` 可通过专用 Dockerfile 和 compose service 启动，使用 env 注入 host/port/state path/bearer token，并提供 `/healthz` 与 `/readyz`。该 proof 不等于真实云、真实 4G、HTTPS/TLS、OSS/CDN、Nav2/fixed-route、WAVE ROVER 或 HIL。
 
 ## 云端基线规格
 
@@ -46,7 +46,7 @@ phone diagnostics -> CDN or cloud API references
 - 运维 SSH：限制来源地址；不与产品 API 共用凭证。
 - 数据库、队列、对象存储凭证：不直接暴露公网。
 
-本轮 Docker/local proof 不配置真实防火墙。`remote_cloud_relay.py` 默认建议监听 `127.0.0.1`，用于本机或容器内验证。
+本轮 Docker/local proof 不配置真实防火墙。`remote_cloud_relay.py` 本机默认建议监听 `127.0.0.1`；容器内通过 compose 监听 `0.0.0.0`，主机暴露端口由 `TRASHBOT_REMOTE_CLOUD_PUBLISHED_PORT` 控制。
 
 ## 容量边界
 
@@ -81,21 +81,24 @@ phone diagnostics -> CDN or cloud API references
 服务端、CI 和上车机器人均通过环境变量或安全配置注入凭证：
 
 - `TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN`：本轮 independent relay proof 的 bearer token。
+- `TRASHBOT_REMOTE_CLOUD_HOST` / `TRASHBOT_REMOTE_CLOUD_PORT`：容器内监听地址和端口。
+- `TRASHBOT_REMOTE_CLOUD_PUBLISHED_PORT`：compose 暴露到开发主机的端口。
+- `TRASHBOT_REMOTE_CLOUD_STATE`：file-backed proof store 路径。
 - `.env` 不入仓库；`.env.example` 只能放占位符。
 - 错误响应和 state file 不得包含 bearer token、Authorization header、credential-bearing URL、串口设备、baudrate、WAVE ROVER 参数、底层速度控制入口或 raw ROS topic 名。
 - token rotate、账号分级、机器人 provisioning 和审计日志是后续真实云 sprint 的范围。
 
-## 本轮 Docker Proof
+## 本轮 Docker Deploy Proof
 
-本轮新增 independent relay service module：
+本轮新增 independent relay service module 的 Docker 启动入口：
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
-TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-token \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay \
-  --host 127.0.0.1 \
-  --port 8088 \
-  --state-path /tmp/trashbot_remote_cloud_relay.json
+cp .env.example .env
+# 修改 .env 中的 TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN 为本地占位值，不提交真实密钥。
+docker compose -f docker-compose.remote-cloud-relay.yml build remote-cloud-relay
+docker compose -f docker-compose.remote-cloud-relay.yml up -d remote-cloud-relay
+curl -fsS http://127.0.0.1:8088/healthz
+curl -fsS http://127.0.0.1:8088/readyz
 ```
 
 已覆盖 API：
@@ -109,6 +112,11 @@ POST /robots/{robot_id}/commands/{command_id}/ack
 GET  /robots/{robot_id}/commands/{command_id}/ack
 ```
 
+health/readiness：
+
+- `GET /healthz`：只证明进程存活、service 名称、protocol version 和 `software_proof_docker_deploy` evidence boundary。
+- `GET /readyz`：覆盖 protocol/version、credential gate 是否配置、state store 是否可写、phone-safe failure 脱敏自检。未配置 bearer token 或 state store 不可写时返回 503 和 `not_ready`，不回显 token、state path、credential URL、串口、baudrate、WAVE ROVER 参数、ROS topic、`/cmd_vel` 或 traceback。
+
 proof 边界：
 
 - bearer auth：缺 token 或错 token 返回 `auth_failed`。
@@ -117,6 +125,7 @@ proof 边界：
 - ACK：终态只允许 `acked`、`failed`、`ignored`。
 - persistence：commands/status/acks 写入本地 JSON state file，使用临时文件加 `os.replace` 做原子替换。
 - phone-safe errors：覆盖 `auth_failed`、`bad_request`、`not_found`、`status_missing`、`status_stale`、`malformed_json`。
+- Docker deploy smoke：`scripts/remote_cloud_relay_docker_smoke.sh` 覆盖 compose build、容器启动、health/readiness、post status、enqueue command、robot-style next command、post ack、read ack/status、停止容器并输出相关日志。
 
 未完成项：
 
