@@ -16,6 +16,24 @@
   - `docs/acceptance/wave_rover_hil_evidence.md`
   - `docs/acceptance/robot_bringup_checklist.md`
 
+### 0.0.1) Docker-only Host Boundary
+
+- Docker/Humble preflight 的目标是证明 ROS2 Humble 容器入口可用：
+  `SKIP_COLCON=1 bash scripts/docker_humble_build.sh`。
+- 本机只有 Docker、没有真实 WAVE ROVER、Orange Pi 串口或 `/dev/ttyUSB*`
+  时，只能产出 readiness/blocked evidence。
+- Docker 镜像构建成功不等于 `hil_pass`；`hil_pass` 必须来自真实 UART
+  设备打开、WAVE ROVER `T=1001` 反馈和同一 `evidence_ref` 的证据包归档。
+- 如果 Docker 构建失败，先看 `scripts/docker_humble_build.sh` 输出的
+  `Docker build failure classification`，按类别处理：
+  - `Docker daemon`：启动 Docker Desktop/Engine，确认当前 context。
+  - `Docker builder`：检查 `docker buildx ls`，切换或重建 builder。
+  - `base image`：单独验证 `docker pull osrf/ros:humble-desktop`。
+  - `registry mirror/proxy`：关闭或更换 registry mirror/proxy，避免 HTML
+    响应被当作镜像 metadata/layer。
+  - `proxy`：修复主机 DNS、代理认证或证书链。
+  - `cache`：确认无其他构建依赖后清理 Docker builder cache。
+
 ### 0.1) 环境阻塞前置
 
 - 如 `pyserial` 缺失：先执行 `python3 -c "import importlib.util; print(bool(importlib.util.find_spec('serial')))"` 验证，若失败执行：
@@ -26,6 +44,10 @@
   输出 `serial_candidates`、`pyserial_available`、`hil_ready` 与 `blocked_reason`。
   该输出仍是 `source=software_proof`，只能说明当前主机是否具备发起 HIL 的前置条件；
   不能替代真实 WAVE ROVER 串口打开、`T=1001` 反馈和证据包归档。
+- 在 Docker-only host 上，`blocked_reason=no_serial_candidates_found` 是预期阻塞；
+  记录为 preflight readiness 结果，不创建 `source=hil_pass` 条目。
+- 真实上车前，通过 Docker 传入串口设备：
+  `EXTRA_DOCKER_ARGS="--device=<real_serial_device>" bash scripts/docker_humble_dev.sh`。
 
 ## 0.5) Evidence Packet（单次 run）
 

@@ -9,6 +9,9 @@
 - Confirm evidence source policy: `source=software_proof` for template checks, `source=hil_pass` for real UART verification.
 - Run `python3 scripts/hardware_smoke_wave_rover.py --status` first; require no pyserial for this step.
 - If `pyserial` is missing or `serial` open fails, record `Blocked` and capture repro steps; do not claim `hil_pass`.
+- On a Docker-only host with no `/dev/ttyUSB*`, record `readiness_blocked`
+  or `source=software_proof` only. Do not convert Docker image success,
+  `--status`, or missing-serial evidence into `source=hil_pass`.
 - 当前本轮状态：`Blocked`（`/dev/ttyUSB0` 不存在，host 无串口设备）
 - 本轮上机尝试：`run_20260511T094018Z_hil_pass_speed0p050_dur0p30`
 - 本轮阻塞重现：
@@ -31,7 +34,25 @@
 bash scripts/docker_humble_build.sh
 ```
 
+- Docker image-only preflight:
+
+```bash
+SKIP_COLCON=1 bash scripts/docker_humble_build.sh
+```
+
+- If Docker fails, use the emitted `Docker build failure classification` and
+  preserve its key log snippet in the sprint `tech-done.md`:
+  - `Docker daemon`: Docker Desktop/Engine/context is unavailable.
+  - `Docker builder`: BuildKit/buildx builder is missing or unhealthy.
+  - `base image`: `osrf/ros:humble-desktop` metadata or manifest cannot be resolved.
+  - `registry mirror/proxy`: a mirror/proxy returned HTML or wrong content for image metadata/layers.
+  - `proxy`: DNS/proxy/certificate/auth prevents registry traffic.
+  - `cache`: local builder cache or layer extraction is corrupt.
+  - `unknown`: preserve full log and rerun on another Docker host/network.
 - Confirm all six ROS2 packages build: interfaces, nav, vision, hardware, behavior, bringup.
+- Docker success on a host with no serial device is only container readiness;
+  HIL remains pending until a real device is passed into the container, for example:
+  `EXTRA_DOCKER_ARGS="--device=<real_serial_device>" bash scripts/docker_humble_dev.sh`.
 
 ## Serial And Base Safety
 
