@@ -1,7 +1,9 @@
 import json
 import socket
 import sys
+import tempfile
 import threading
+import time
 import unittest
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
@@ -13,6 +15,7 @@ sys.path.insert(0, str(BEHAVIOR_PACKAGE_ROOT))
 
 from ros2_trashbot_behavior.operator_gateway_http import (
     ELEVATOR_ASSIST_SPEAKER_PROMPT,
+    MockCloudStore,
     OPERATOR_PROMPTS,
     REMOTE_PROTOCOL_VERSION,
     make_handler,
@@ -689,7 +692,7 @@ class OperatorGatewayHttpTest(unittest.TestCase):
                 "protocol_version": REMOTE_PROTOCOL_VERSION,
                 "state": "delivering",
                 "message": "remote collect command accepted",
-                "updated_at": 1778256012.0,
+                "updated_at": time.time(),
                 "diagnostics": {"network": "mock_cloud"},
             },
         )
@@ -700,6 +703,11 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         status, payload = self.request("GET", "/robots/trashbot-001/status")
         self.assertEqual(status, 200)
         self.assertEqual(payload["status"]["message"], "remote collect command accepted")
+        self.assertTrue(payload["remote_readiness"]["remote_ready"])
+        self.assertTrue(payload["remote_readiness"]["cloud_reachable"])
+        self.assertFalse(payload["remote_readiness"]["status_stale"])
+        self.assertEqual(payload["remote_readiness"]["auth_state"], "mock_not_required")
+        self.assertEqual(payload["remote_readiness"]["retry_hint"], "wait_for_command_ack")
 
         status, payload = self.request(
             "POST",
@@ -715,6 +723,8 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(payload["ack"]["state"], "acked")
         self.assertEqual(payload["ack"]["command_id"], "cmd-0001")
+        self.assertEqual(payload["remote_readiness"]["last_command_ack"], "cmd-0001")
+        self.assertEqual(payload["remote_readiness"]["retry_hint"], "ok")
 
         status, payload = self.request("GET", "/robots/trashbot-001/commands/cmd-0001/ack")
         self.assertEqual(status, 200)
@@ -723,6 +733,79 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         status, payload = self.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=cmd-0001")
         self.assertEqual(status, 200)
         self.assertIsNone(payload["command"])
+
+    def test_mock_cloud_persists_queue_status_ack_without_sensitive_fields(self):
+        with tempfile.TemporaryDirectory() as td:
+            state_path = Path(td) / "mock_cloud_state.json"
+            store = MockCloudStore(state_path=state_path)
+            store.submit_command(
+                "trashbot-001",
+                {
+                    "protocol_version": REMOTE_PROTOCOL_VERSION,
+                    "id": "cmd-persist-1",
+                    "type": "collect",
+                    "expires_at": 4102444800.0,
+                    "payload": {
+                        "target": "trash_station",
+                        "token": "must-not-persist",
+                        "ros_topic": "/cmd_vel",
+                        "serial_port": "/dev/ttyUSB0",
+                    },
+                },
+            )
+            store.post_status(
+                "trashbot-001",
+                {
+                    "protocol_version": REMOTE_PROTOCOL_VERSION,
+                    "state": "delivering",
+                    "message": "robot accepted command",
+                    "updated_at": time.time(),
+                    "diagnostics": {
+                        "network": "mock_cloud",
+                        "bearer_token": "must-not-persist",
+                        "baudrate": 115200,
+                    },
+                },
+            )
+            store.post_ack(
+                "trashbot-001",
+                "cmd-persist-1",
+                {
+                    "protocol_version": REMOTE_PROTOCOL_VERSION,
+                    "state": "acked",
+                    "message": "submitted",
+                    "updated_at": time.time(),
+                    "result": {"behavior": "submitted", "authorization": "must-not-persist"},
+                },
+            )
+
+            persisted = state_path.read_text(encoding="utf-8")
+            self.assertIn("trashbot.mock_cloud_store.v1", persisted)
+            self.assertIn("cmd-persist-1", persisted)
+            self.assertNotIn("must-not-persist", persisted)
+            self.assertNotIn("/cmd_vel", persisted)
+            self.assertNotIn("ttyUSB", persisted)
+            self.assertNotIn("baudrate", persisted)
+            self.assertNotIn("command_index", persisted)
+
+            restored = MockCloudStore(state_path=state_path)
+            next_payload = restored.next_command("trashbot-001", last_ack_id="")
+            self.assertIsNone(next_payload["command"])
+            status_payload = restored.get_status("trashbot-001")
+            self.assertEqual(status_payload["status"]["state"], "delivering")
+            self.assertEqual(status_payload["remote_readiness"]["last_command_ack"], "cmd-persist-1")
+            self.assertTrue(status_payload["remote_readiness"]["queue_persisted"])
+
+    def test_mock_cloud_status_defaults_to_phone_readable_not_ready(self):
+        status, payload = self.request("GET", "/robots/trashbot-new/status")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["status"]["state"], "unknown")
+        self.assertFalse(payload["remote_readiness"]["remote_ready"])
+        self.assertTrue(payload["remote_readiness"]["cloud_reachable"])
+        self.assertTrue(payload["remote_readiness"]["status_stale"])
+        self.assertEqual(payload["remote_readiness"]["retry_hint"], "wait_for_robot_status")
+        self.assertEqual(payload["remote_readiness"]["auth_state"], "mock_not_required")
 
     def test_mock_cloud_next_command_uses_queue_order_not_string_order(self):
         for command_id in ("cmd-9", "cmd-10"):

@@ -44,7 +44,9 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("vision_sample_manifest_ref", source)
         self.assertIn("review_decision_log_ref", source)
         self.assertIn('self.declare_parameter("hardware_proof_ref", "")', source)
+        self.assertIn('self.declare_parameter("mock_cloud_state_path", "")', source)
         self.assertIn('self.hardware_proof_ref = os.path.expanduser(', source)
+        self.assertIn('self.mock_cloud_state_path = os.path.expanduser(', source)
         self.assertIn("def diagnostics", source)
         self.assertIn("build_diagnostics_payload", source)
         self.assertIn("def vision_review_queue", source)
@@ -63,6 +65,10 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("REMOTE_PROTOCOL_VERSION", http_source)
         self.assertIn("trashbot.remote.v1", http_source)
         self.assertIn("MockCloudStore", http_source)
+        self.assertIn("REMOTE_PERSISTENCE_SCHEMA", http_source)
+        self.assertIn("REMOTE_STATUS_STALE_AFTER_SEC", http_source)
+        self.assertIn("_remote_safe_value", http_source)
+        self.assertIn("state_path=state_path", http_source)
         self.assertIn("normalize_remote_command", http_source)
         self.assertIn("normalize_remote_status", http_source)
         self.assertIn("normalize_remote_ack", http_source)
@@ -71,6 +77,12 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("mock_cloud.post_status", http_source)
         self.assertIn("mock_cloud.post_ack", http_source)
         self.assertIn("mock_cloud.get_ack", http_source)
+        self.assertIn('"remote_ready"', http_source)
+        self.assertIn('"cloud_reachable"', http_source)
+        self.assertIn('"last_command_ack"', http_source)
+        self.assertIn('"status_stale"', http_source)
+        self.assertIn('"retry_hint"', http_source)
+        self.assertIn('"auth_state"', http_source)
         self.assertIn('"phone_copy": prompt["phone_copy"]', http_source)
         self.assertIn('"speaker_prompt": prompt["speaker_prompt"]', http_source)
         self.assertIn('"elevator_assist": elevator_assist', http_source)
@@ -80,7 +92,7 @@ class OperatorGatewayStaticTest(unittest.TestCase):
 
         remote_source = http_source[
             http_source.index("def normalize_remote_command"):
-            http_source.index("class MockCloudStore")
+            http_source.index("SENSITIVE_REMOTE_KEYS")
         ]
         self.assertIn("REMOTE_COMMAND_TYPES", remote_source)
         self.assertIn('"collect"', http_source)

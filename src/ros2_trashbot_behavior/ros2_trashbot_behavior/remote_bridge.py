@@ -1,3 +1,8 @@
+import json
+import os
+import time
+from pathlib import Path
+
 try:
     import rclpy
     from rclpy.action import ActionClient
@@ -43,11 +48,20 @@ class RemoteBridgeWorker:
     wheel or base velocity commands.
     """
 
-    def __init__(self, cloud_client, operator_backend, robot_id, max_command_results=200, last_ack_id=""):
+    def __init__(
+        self,
+        cloud_client,
+        operator_backend,
+        robot_id,
+        max_command_results=200,
+        last_ack_id="",
+        cursor_state_path="",
+    ):
         self.cloud = cloud_client
         self.operator_backend = operator_backend
         self.robot_id = robot_id
-        self.last_ack_id = str(last_ack_id or "")
+        self.cursor_state_path = str(cursor_state_path or "").strip()
+        self.last_ack_id = self._load_last_ack_id(str(last_ack_id or ""))
         self.command_results = {}
         self.max_command_results = int(max_command_results)
 
@@ -113,7 +127,45 @@ class RemoteBridgeWorker:
             self._remember_command_result(command_id, ack)
         self.cloud.post_ack(command_id, ack["state"], ack["message"], ack["result"])
         self.last_ack_id = command_id
+        self._persist_last_ack_id(command_id)
         self._post_status_from_ack(ack)
+
+    def _load_last_ack_id(self, fallback):
+        if not self.cursor_state_path:
+            return fallback
+        path = Path(self.cursor_state_path)
+        if not path.exists():
+            return fallback
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError(f"remote bridge cursor state unreadable: {exc}") from exc
+        if not isinstance(payload, dict):
+            raise RuntimeError("remote bridge cursor state must be a JSON object")
+        # 状态文件只保存游标和时间，不写 token、URL 或硬件细节，避免把运行密钥落盘。
+        return str(payload.get("last_terminal_ack_id") or payload.get("last_ack_id") or fallback or "")
+
+    def _persist_last_ack_id(self, command_id):
+        if not self.cursor_state_path:
+            return
+        path = Path(self.cursor_state_path)
+        payload = {
+            "protocol_version": "trashbot.remote.cursor.v1",
+            "robot_id": self.robot_id,
+            "last_terminal_ack_id": str(command_id),
+            "updated_at": time.time(),
+        }
+        # 先写同目录临时文件再原子替换，避免重启时读到半截 JSON 后误用旧游标。
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+        try:
+            tmp_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+            os.replace(tmp_path, path)
+        finally:
+            try:
+                tmp_path.unlink()
+            except FileNotFoundError:
+                pass
 
     def _post_status_from_ack(self, ack):
         status = (ack.get("result") or {}).get("operator_status")
@@ -162,6 +214,7 @@ class RemoteBridge(Node):
         self.declare_parameter("auth_token", "")
         self.declare_parameter("poll_interval_sec", 2.0)
         self.declare_parameter("last_ack_id", "")
+        self.declare_parameter("cursor_state_path", "")
         self.declare_parameter("request_timeout_sec", 5.0)
         self.declare_parameter("collect_action_name", "/trashbot/collect_trash")
         self.declare_parameter("dropoff_service_name", "/trashbot/confirm_dropoff")
@@ -201,6 +254,7 @@ class RemoteBridge(Node):
                 self,
                 self.robot_id,
                 last_ack_id=str(self.get_parameter("last_ack_id").value),
+                cursor_state_path=str(self.get_parameter("cursor_state_path").value),
             )
         self.timer = self.create_timer(max(0.2, self.poll_interval_sec), self._poll_once)
         self.get_logger().info(

@@ -109,6 +109,7 @@ class OperatorGateway(Node):
         # This reference points to a software proof artifact only. It never
         # upgrades diagnostics to hardware/HIL pass by itself.
         self.declare_parameter("hardware_proof_ref", "")
+        self.declare_parameter("mock_cloud_state_path", "")
 
         self.host = str(self.get_parameter("host").value)
         self.port = int(self.get_parameter("port").value)
@@ -129,6 +130,9 @@ class OperatorGateway(Node):
         )
         self.hardware_proof_ref = os.path.expanduser(
             str(self.get_parameter("hardware_proof_ref").value)
+        )
+        self.mock_cloud_state_path = os.path.expanduser(
+            str(self.get_parameter("mock_cloud_state_path").value)
         )
 
         self._lock = threading.Lock()

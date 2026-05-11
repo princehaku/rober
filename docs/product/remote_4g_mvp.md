@@ -59,6 +59,29 @@ polling on `GET /robots/{robot_id}/commands/next`. Command `id` is the
 idempotency key; duplicate submits return the existing command instead of
 creating a second task.
 
+## Cursor And Restart Boundary
+
+`remote_bridge` polls with `last_ack_id` and can optionally persist the last
+terminal ACK cursor through `cursor_state_path`. The cursor state file stores
+only `robot_id`, `last_terminal_ack_id`, protocol version, and update time. It
+must not store bearer tokens, cloud URLs with credentials, serial devices,
+hardware parameters, or raw command payloads.
+
+On startup, a valid `cursor_state_path` takes precedence over the launch-time
+`last_ack_id` fallback. After a terminal ACK (`acked`, `failed`, or `ignored`)
+is successfully posted to the cloud, the bridge writes the new
+`last_terminal_ack_id` atomically. If ACK posting fails, the cursor is not
+advanced or persisted, so the bridge can retry the same command without
+pretending that the cloud accepted the terminal state.
+
+Unknown cursor behavior belongs to the cloud queue contract, not to robot-side
+string ordering. The bridge sends the restored `last_ack_id` exactly as an
+opaque cursor and never compares command IDs lexicographically. The current
+local mock cloud looks for an exact command-id match; if the cursor is unknown,
+it falls back to scanning from the beginning and returns the first unacked,
+unexpired command. A production cloud may use database offsets or ACK tables,
+but it must preserve the same opaque-cursor rule.
+
 ## Status Contract
 
 Robot status is posted by the robot and should be enough for a phone UI to render current state:
@@ -98,6 +121,12 @@ Allowed ack states:
 - `ignored`
 
 `acked` means the robot-side bridge accepted or submitted the command to the local behavior interface. It is not a final delivery result; the cloud UI must keep reading robot status for later `completed`, `needs_human_help`, or failure states.
+
+`failed` and `ignored` are also terminal ACK states for the remote command
+envelope. They explain why the bridge will not keep trying that command, but
+they still do not prove the physical robot delivered trash or reached a
+hardware-safe final pose. Phone-facing UX must treat ACK as command-processing
+state and status as the continuing delivery/result surface.
 
 The phone-safe read endpoint is
 `GET /robots/{robot_id}/commands/{command_id}/ack`. A missing ACK returns an

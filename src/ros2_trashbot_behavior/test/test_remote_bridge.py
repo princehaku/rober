@@ -1,6 +1,7 @@
 import json
 import pathlib
 import sys
+import tempfile
 import threading
 import time
 import unittest
@@ -276,6 +277,89 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertIn("last_ack_id=cmd-old", self.cloud.get_paths[0])
         self.assertIn("Bearer secret-token", self.cloud.auth_headers)
 
+    def test_cursor_state_path_restores_last_terminal_ack_id(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            state_path.write_text(
+                json.dumps({
+                    "robot_id": "robot-1",
+                    "last_terminal_ack_id": "cmd-restored",
+                    "updated_at": time.time(),
+                }),
+                encoding="utf-8",
+            )
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-fallback",
+                cursor_state_path=state_path,
+            )
+
+            self.assertFalse(worker.poll_once())
+
+            self.assertEqual(worker.last_ack_id, "cmd-restored")
+            self.assertIn("last_ack_id=cmd-restored", self.cloud.get_paths[-1])
+
+    def test_terminal_ack_persists_cursor_without_sensitive_data(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                cursor_state_path=state_path,
+            )
+            self.cloud.commands.append({
+                "id": "cmd-persisted",
+                "type": "collect",
+                "payload": {"target": "trash_station"},
+            })
+
+            self.assertTrue(worker.poll_once())
+
+            payload = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["last_terminal_ack_id"], "cmd-persisted")
+            self.assertEqual(payload["robot_id"], "robot-1")
+            self.assertIn("updated_at", payload)
+            self.assertNotIn("token", json.dumps(payload).lower())
+            self.assertNotIn("secret", json.dumps(payload).lower())
+
+    def test_ack_failure_does_not_persist_cursor_state(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                cursor_state_path=state_path,
+            )
+            self.cloud.commands.append({
+                "id": "cmd-ack-outage",
+                "type": "collect",
+                "payload": {"target": "trash_station"},
+            })
+            self.cloud.fail_ack_count = 1
+
+            with self.assertRaises(RuntimeError):
+                worker.poll_once()
+
+            self.assertFalse(state_path.exists())
+            self.assertEqual(worker.last_ack_id, "")
+
+    def test_unreadable_cursor_state_fails_explainably(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            state_path.write_text("{not-json", encoding="utf-8")
+
+            with self.assertRaisesRegex(RuntimeError, "cursor state unreadable"):
+                RemoteBridgeWorker(
+                    self.client,
+                    self.backend,
+                    "robot-1",
+                    cursor_state_path=state_path,
+                )
+
     def test_ack_failure_does_not_overwrite_successful_command_result(self):
         command = {
             "id": "cmd-ack-retry",
@@ -363,7 +447,15 @@ class RemoteBridgeStaticConfigTest(unittest.TestCase):
             source = pathlib.Path("src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_bridge.py")
         text = source.read_text(encoding="utf-8")
 
-        for parameter_name in ("robot_id", "cloud_base_url", "bearer_token", "auth_token", "poll_interval_sec", "last_ack_id"):
+        for parameter_name in (
+            "robot_id",
+            "cloud_base_url",
+            "bearer_token",
+            "auth_token",
+            "poll_interval_sec",
+            "last_ack_id",
+            "cursor_state_path",
+        ):
             self.assertIn(f'declare_parameter("{parameter_name}"', text)
 
 

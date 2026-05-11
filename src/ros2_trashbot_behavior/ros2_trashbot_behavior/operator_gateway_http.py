@@ -1,4 +1,6 @@
 import json
+import os
+import tempfile
 import threading
 import time
 import uuid
@@ -11,6 +13,8 @@ from ros2_trashbot_behavior.remote_bridge_protocol import parse_bool
 API_VERSION = "slice2.operator.v1"
 REMOTE_PROTOCOL_VERSION = "trashbot.remote.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
+REMOTE_STATUS_STALE_AFTER_SEC = 90.0
+REMOTE_PERSISTENCE_SCHEMA = "trashbot.mock_cloud_store.v1"
 ELEVATOR_ASSIST_SPEAKER_PROMPT = "你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,"
 
 ELEVATOR_ASSIST_PHASES = {
@@ -318,18 +322,66 @@ def normalize_remote_ack(robot_id, command_id, payload, *, now=None):
     }
 
 
-class MockCloudStore:
-    """In-memory `trashbot.remote.v1` cloud control-plane store.
+SENSITIVE_REMOTE_KEYS = {
+    "token",
+    "bearer",
+    "authorization",
+    "auth",
+    "secret",
+    "password",
+    "serial",
+    "serial_port",
+    "baudrate",
+    "ros_topic",
+    "topic",
+    "cmd_vel",
+    "hardware",
+}
 
-    This is deliberately process-local and dependency-free so Docker-only tests
-    can exercise phone submit, robot polling, status write, and ACK readback.
-    Production auth, persistence, 4G weak-network behavior, and OSS/CDN object
-    transfer stay outside this mock.
+
+def _remote_safe_value(value):
+    # mock cloud 的持久化文件会被拿来做 proof，所以这里默认做白名单式降噪。
+    if isinstance(value, dict):
+        safe = {}
+        for key, item in value.items():
+            key_text = str(key)
+            key_lc = key_text.lower()
+            if any(sensitive in key_lc for sensitive in SENSITIVE_REMOTE_KEYS):
+                continue
+            safe[key_text] = _remote_safe_value(item)
+        return safe
+    if isinstance(value, list):
+        return [_remote_safe_value(item) for item in value]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)
+
+
+def _default_remote_status(robot_key):
+    return {
+        "protocol_version": REMOTE_PROTOCOL_VERSION,
+        "robot_id": robot_key,
+        "state": "unknown",
+        "message": "robot has not posted status yet",
+        "updated_at": time.time(),
+        "diagnostics": {},
+    }
+
+
+class MockCloudStore:
+    """Mock `trashbot.remote.v1` cloud control-plane store.
+
+    默认仍是进程内存；传入 state_path 后才写本地 JSON proof。这个 proof
+    只保存 command queue、status、ack 和统计字段，不保存 token、串口、ROS topic
+    或硬件参数，避免把调试入口误当成生产云或硬件证据。
     """
 
-    def __init__(self):
+    def __init__(self, state_path=None):
         self._lock = threading.Lock()
         self._robots = {}
+        self.state_path = os.path.expanduser(str(state_path or "")).strip()
+        if self.state_path:
+            self._load()
 
     def _robot(self, robot_id):
         robot_key = str(robot_id or "").strip()
@@ -341,19 +393,135 @@ class MockCloudStore:
                 "commands": [],
                 "command_index": {},
                 "acks": {},
-                "status": {
-                    "protocol_version": REMOTE_PROTOCOL_VERSION,
-                    "robot_id": robot_key,
-                    "state": "unknown",
-                    "message": "robot has not posted status yet",
+                "status": _default_remote_status(robot_key),
+                "stats": {
+                    "created_at": time.time(),
                     "updated_at": time.time(),
-                    "diagnostics": {},
+                    "command_count": 0,
+                    "ack_count": 0,
+                    "status_count": 0,
                 },
             },
         )
 
+    def _load(self):
+        if not os.path.exists(self.state_path):
+            return
+        try:
+            with open(self.state_path, "r", encoding="utf-8") as state_file:
+                payload = json.load(state_file)
+        except (OSError, json.JSONDecodeError):
+            return
+        if not isinstance(payload, dict) or payload.get("schema") != REMOTE_PERSISTENCE_SCHEMA:
+            return
+        robots = payload.get("robots")
+        if not isinstance(robots, dict):
+            return
+        for robot_id, robot_payload in robots.items():
+            if not isinstance(robot_payload, dict):
+                continue
+            robot_key = str(robot_id or "").strip()
+            commands = robot_payload.get("commands") if isinstance(robot_payload.get("commands"), list) else []
+            acks = robot_payload.get("acks") if isinstance(robot_payload.get("acks"), dict) else {}
+            status = robot_payload.get("status") if isinstance(robot_payload.get("status"), dict) else {}
+            stats = robot_payload.get("stats") if isinstance(robot_payload.get("stats"), dict) else {}
+            safe_commands = [
+                dict(command)
+                for command in commands
+                if isinstance(command, dict) and str(command.get("id") or "").strip()
+            ]
+            self._robots[robot_key] = {
+                "commands": safe_commands,
+                "command_index": {str(command["id"]): command for command in safe_commands},
+                "acks": {
+                    str(command_id): dict(ack)
+                    for command_id, ack in acks.items()
+                    if isinstance(ack, dict)
+                },
+                "status": dict(status) if status else _default_remote_status(robot_key),
+                "stats": {
+                    "created_at": float(stats.get("created_at") or time.time()),
+                    "updated_at": float(stats.get("updated_at") or time.time()),
+                    "command_count": int(stats.get("command_count") or len(safe_commands)),
+                    "ack_count": int(stats.get("ack_count") or len(acks)),
+                    "status_count": int(stats.get("status_count") or 0),
+                },
+            }
+
+    def _persist_locked(self):
+        if not self.state_path:
+            return
+        state_dir = os.path.dirname(self.state_path) or "."
+        os.makedirs(state_dir, exist_ok=True)
+        robots = {}
+        for robot_id, robot in self._robots.items():
+            robots[robot_id] = {
+                "commands": robot.get("commands", []),
+                "acks": robot.get("acks", {}),
+                "status": robot.get("status", {}),
+                "stats": robot.get("stats", {}),
+            }
+        payload = {
+            "schema": REMOTE_PERSISTENCE_SCHEMA,
+            "updated_at": time.time(),
+            "robots": _remote_safe_value(robots),
+        }
+        fd, tmp_path = tempfile.mkstemp(prefix=".mock-cloud-", suffix=".json", dir=state_dir)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as tmp_file:
+                json.dump(payload, tmp_file, ensure_ascii=False, sort_keys=True)
+                tmp_file.write("\n")
+            os.replace(tmp_path, self.state_path)
+        finally:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+
+    def _touch_stats_locked(self, robot, field):
+        # 统计只用于手机 readiness 和 proof 复盘，不参与机器人行为判定。
+        stats = robot.setdefault("stats", {})
+        stats["updated_at"] = time.time()
+        stats[field] = int(stats.get(field, 0) or 0) + 1
+
+    def _latest_ack_locked(self, robot):
+        acks = [ack for ack in robot.get("acks", {}).values() if isinstance(ack, dict)]
+        if not acks:
+            return None
+        return max(acks, key=lambda ack: float(ack.get("updated_at") or 0.0))
+
+    def _readiness_locked(self, robot_id, robot):
+        now = time.time()
+        status = robot.get("status") if isinstance(robot.get("status"), dict) else _default_remote_status(robot_id)
+        status_updated_at = float(status.get("updated_at") or 0.0)
+        status_stale = status.get("state") == "unknown" or (now - status_updated_at) > REMOTE_STATUS_STALE_AFTER_SEC
+        latest_ack = self._latest_ack_locked(robot)
+        last_command_ack = ""
+        if latest_ack:
+            last_command_ack = str(latest_ack.get("command_id") or "")
+        retry_hint = "ok"
+        if status_stale:
+            retry_hint = "wait_for_robot_status"
+        elif not latest_ack and robot.get("commands"):
+            retry_hint = "wait_for_command_ack"
+        return {
+            "remote_ready": bool(not status_stale),
+            "cloud_reachable": True,
+            "last_command_ack": last_command_ack,
+            "status_stale": bool(status_stale),
+            "retry_hint": retry_hint,
+            "auth_state": "mock_not_required",
+            "status_age_sec": max(0.0, now - status_updated_at) if status_updated_at else None,
+            "pending_command_count": sum(
+                1
+                for command in robot.get("commands", [])
+                if isinstance(command, dict) and str(command.get("id") or "") not in robot.get("acks", {})
+            ),
+            "queue_persisted": bool(self.state_path),
+            "state_path_configured": bool(self.state_path),
+            "proof_schema": REMOTE_PERSISTENCE_SCHEMA if self.state_path else "",
+        }
+
     def submit_command(self, robot_id, payload):
-        command = normalize_remote_command(robot_id, payload)
+        command = _remote_safe_value(normalize_remote_command(robot_id, payload))
         with self._lock:
             robot = self._robot(robot_id)
             existing = robot["command_index"].get(command["id"])
@@ -361,6 +529,8 @@ class MockCloudStore:
                 return 200, {"ok": True, "command": dict(existing), "duplicate": True}
             robot["commands"].append(command)
             robot["command_index"][command["id"]] = command
+            self._touch_stats_locked(robot, "command_count")
+            self._persist_locked()
         return 201, {"ok": True, "command": dict(command), "duplicate": False}
 
     def next_command(self, robot_id, last_ack_id=""):
@@ -384,13 +554,21 @@ class MockCloudStore:
         status = normalize_remote_status(robot_id, payload)
         with self._lock:
             robot = self._robot(robot_id)
-            robot["status"] = status
-        return {"ok": True, "status": dict(status)}
+            robot["status"] = _remote_safe_value(status)
+            self._touch_stats_locked(robot, "status_count")
+            readiness = self._readiness_locked(str(robot_id or "").strip(), robot)
+            self._persist_locked()
+        phone_status = dict(_remote_safe_value(status))
+        phone_status["remote_readiness"] = readiness
+        return {"ok": True, "status": phone_status, "remote_readiness": readiness}
 
     def get_status(self, robot_id):
         with self._lock:
-            status = dict(self._robot(robot_id)["status"])
-        return {"ok": True, "status": status}
+            robot = self._robot(robot_id)
+            status = dict(robot["status"])
+            readiness = self._readiness_locked(str(robot_id or "").strip(), robot)
+        status["remote_readiness"] = readiness
+        return {"ok": True, "status": status, "remote_readiness": readiness}
 
     def post_ack(self, robot_id, command_id, payload):
         ack = normalize_remote_ack(robot_id, command_id, payload)
@@ -398,8 +576,11 @@ class MockCloudStore:
             raise ValueError("command_id is required")
         with self._lock:
             robot = self._robot(robot_id)
-            robot["acks"][ack["command_id"]] = ack
-        return {"ok": True, "ack": dict(ack)}
+            robot["acks"][ack["command_id"]] = _remote_safe_value(ack)
+            self._touch_stats_locked(robot, "ack_count")
+            readiness = self._readiness_locked(str(robot_id or "").strip(), robot)
+            self._persist_locked()
+        return {"ok": True, "ack": dict(_remote_safe_value(ack)), "remote_readiness": readiness}
 
     def get_ack(self, robot_id, command_id):
         with self._lock:
@@ -1470,7 +1651,12 @@ def _remote_route(path):
 def make_handler(gateway):
     mock_cloud = getattr(gateway, "mock_cloud", None)
     if mock_cloud is None:
-        mock_cloud = MockCloudStore()
+        state_path = (
+            getattr(gateway, "mock_cloud_state_path", "")
+            or getattr(gateway, "remote_mock_cloud_state_path", "")
+            or ""
+        )
+        mock_cloud = MockCloudStore(state_path=state_path)
         setattr(gateway, "mock_cloud", mock_cloud)
 
     class Handler(BaseHTTPRequestHandler):

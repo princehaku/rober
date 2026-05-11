@@ -119,6 +119,23 @@ The mock-cloud command set mirrors the local user journey:
 
 The robot posts status and command acknowledgements back to the cloud endpoint so the same flow can be tested offline before choosing a real cloud provider.
 
+The local mock cloud may be started with a configured persistence path such as `mock_cloud_state_path`. When this path is empty, the mock keeps the old in-memory behavior. When it is set, the mock writes only command queue, ACK, status and summary counters to a local JSON proof file. The proof file must not contain bearer tokens, serial device names, ROS topic names, baudrate values, WAVE ROVER parameters, or hardware configuration fields.
+
+Phone clients should treat the remote status payload as the user-facing source of truth for 4G readiness. `GET /robots/{robot_id}/status`, `POST /robots/{robot_id}/status`, and `POST /robots/{robot_id}/commands/{command_id}/ack` may include `remote_readiness` with these fields:
+
+| Field | Meaning for phone UI |
+| --- | --- |
+| `remote_ready` | true when the mock cloud is reachable and the latest robot status is fresh enough for the phone to continue. |
+| `cloud_reachable` | true when this local mock control-plane process handled the request; it does not prove real HTTPS, SIM, or production cloud reachability. |
+| `last_command_ack` | latest command id that has an ACK state, or empty when no command has been acknowledged. |
+| `status_stale` | true when the robot has not posted status or the status age exceeds the mock freshness window. |
+| `retry_hint` | phone-safe next action such as `wait_for_robot_status`, `wait_for_command_ack`, or `ok`. |
+| `auth_state` | mock authentication state; `mock_not_required` means no production bearer token was checked. |
+| `pending_command_count` | count of queued commands without ACK. |
+| `queue_persisted` | true when a local proof file is configured and queue/status/ACK can survive process restart. |
+
+These fields explain remote control readiness only. ACK means the robot bridge accepted, ignored, or failed a command submission; it does not mean trash delivery, Nav2/fixed-route motion, WAVE ROVER movement, or HIL validation succeeded.
+
 ## 4G Remote Product Path
 
 For a 4G robot, the formal phone path is cloud-mediated rather than phone-to-robot WiFi:
