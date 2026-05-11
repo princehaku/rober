@@ -7,19 +7,19 @@ to `source=hil_pass` after a real hardware run for the same `evidence_ref`.
 
 ## Run Metadata
 
-- Run ID (run_id): `run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30`
-- Date/time (UTC): `2026-05-11T09:30:00Z`（阻塞录制）
+- Run ID (run_id): `run_20260511T094018Z_hil_pass_speed0p050_dur0p30`
+- Date/time (UTC): `2026-05-11T09:40:18Z`（阻塞录制）
 - Operator: `Hardware Infra Engineer (local execution context)`
 - Robot: `WAVE ROVER`
 - Orange Pi OS: `Not available in this host`
 - Serial device (现场确认): `/dev/ttyUSB0`（命令行指定）
 - Baudrate: `115200`
 - Evidence ref (required):
-  - `run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30`
+  - `run_20260511T094018Z_hil_pass_speed0p050_dur0p30`
 - Git branch/commit: `master` / `38cdfb6`
-- Launch command: `python3 scripts/hardware_smoke_wave_rover.py --move-test --test-speed 0.05 --test-duration-s 0.3 --serial-port /dev/ttyUSB0 --baudrate 115200 --evidence-ref run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30`
+- Launch command: `python3 scripts/hardware_smoke_wave_rover.py --move-test --test-speed 0.05 --test-duration-s 0.3 --serial-port /dev/ttyUSB0 --baudrate 115200 --evidence-ref run_20260511T094018Z_hil_pass_speed0p050_dur0p30`
 - Smoke command: 同 launch command
-- Parameter lock JSON: `{"source":"hil_pass","evidence_ref":"run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30","serial_port":"/dev/ttyUSB0","baudrate":115200,"feedback_interval_ms":100,"feedback_timeout_s":5.0,"test_speed":0.05,"test_duration_s":0.3,"ros_angular_z":0.0,"turn_angular_z":0.3,"run_flags":["move-test"]}`
+- Parameter lock JSON: `{"source":"hil_pass","evidence_ref":"run_20260511T094018Z_hil_pass_speed0p050_dur0p30","serial_port":"/dev/ttyUSB0","baudrate":115200,"feedback_interval_ms":100,"feedback_timeout_s":5.0,"test_speed":0.05,"test_duration_s":0.3,"ros_angular_z":0.0,"turn_angular_z":0.3,"run_flags":["move-test"]}`
 
 ## Run Blocking Record
 
@@ -29,7 +29,7 @@ to `source=hil_pass` after a real hardware run for the same `evidence_ref`.
   - `pyserial` 先通过依赖检查恢复后再重试，阻塞仍在于设备路径/硬件环境
   - 严格 evidence_ref 统一写入 `command.txt`、`serial.log`、`feedback_T1001.log`、`odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl`
 
-## Latest Execution Record (2026-05-11T06:35:59Z)
+## Latest Execution Record (2026-05-11T09:40:18Z)
 
 - Run ID (run_id): `run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30`
 - Required command set:
@@ -48,6 +48,27 @@ to `source=hil_pass` after a real hardware run for the same `evidence_ref`.
 - Source boundary:
   - `source=software_proof`: confirmed for `--help/--status/py_compile`
   - `source=hil_pass`: blocked, cannot claim pass
+
+- Run ID (run_id): `run_20260511T094018Z_hil_pass_speed0p050_dur0p30`
+- Required command set:
+  - `python3 scripts/hardware_smoke_wave_rover.py --help` -> exit `0`
+  - `python3 scripts/hardware_smoke_wave_rover.py --status` -> exit `0`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile scripts/hardware_smoke_wave_rover.py` -> exit `0`
+  - `python3 scripts/hardware_smoke_wave_rover.py --move-test --test-speed 0.05 --test-duration-s 0.3 --serial-port /dev/ttyUSB0 --baudrate 115200 --evidence-ref run_20260511T094018Z_hil_pass_speed0p050_dur0p30` -> exit `1`
+- Blocked reason: `ERROR: serial failure: [Errno 2] could not open port /dev/ttyUSB0: [Errno 2] No such file or directory: '/dev/ttyUSB0'`
+- Evidence packet check (`evidence/<evidence_ref>/...`):
+  - `command.txt`: present
+  - `serial.log`: present
+  - `feedback_T1001.log`: present
+  - `odom_once.jsonl`: present
+  - `imu_once.jsonl`: present
+  - `battery_once.jsonl`: present
+- Environment check:
+  - `ls -l /dev/ttyUSB0`: `No such file or directory`
+  - `/dev/ttyUSB*`: `[]`
+- Source boundary:
+  - `source=software_proof`: confirmed for `--help/--status/py_compile`
+  - `source=hil_pass`: blocked by host device absence; cannot claim pass
 
 ## Vendor Sources Used
 

@@ -359,6 +359,104 @@ def normalize_evidence_source(value):
     return EVIDENCE_SOURCE_SOFTWARE
 
 
+def _extract_traceability_field(payload, field_name, *fallbacks):
+    """Read a traceability field using explicit ownership precedence.
+
+    Priority:
+    1) `payload` (authoritative task_record)
+    2) each fallback payload in order
+    """
+    if isinstance(payload, dict) and field_name in payload:
+        return payload.get(field_name)
+    for fallback_payload in fallbacks:
+        if isinstance(fallback_payload, dict) and field_name in fallback_payload:
+            return fallback_payload.get(field_name)
+    return None
+
+
+def coalesce_traceability_fields(latest_status, *, task_record=None, last_task=None):
+    """Return one canonical traceability bundle for diagnostics and gateway status."""
+    latest_status = latest_status if isinstance(latest_status, dict) else {}
+    last_task = last_task if isinstance(last_task, dict) else {}
+    if not isinstance(task_record, dict):
+        task_record = _read_task_record(latest_status.get("task_record_path"))
+
+    task_record_path = str(
+        latest_status.get("task_record_path")
+        or last_task.get("task_record_path")
+        or ""
+    ).strip()
+    result_path = str(
+        _extract_traceability_field(
+            task_record,
+            "result_path",
+            latest_status,
+            last_task,
+        )
+        or task_record_path
+        or ""
+    )
+    evidence_ref = str(
+        _extract_traceability_field(
+            task_record,
+            "evidence_ref",
+            latest_status,
+            last_task,
+        )
+        or result_path
+        or task_record_path
+        or ""
+    )
+    failure_code = str(
+        _extract_traceability_field(
+            task_record,
+            "failure_code",
+            latest_status,
+            last_task,
+        )
+        or _extract_traceability_field(latest_status, "error_code")
+        or _extract_traceability_field(last_task, "error_code")
+        or ""
+    )
+    if "human_intervention_required" in task_record:
+        human_intervention_required = bool(task_record.get("human_intervention_required"))
+    elif "human_intervention_required" in latest_status:
+        human_intervention_required = bool(latest_status.get("human_intervention_required"))
+    elif "human_intervention_required" in last_task:
+        human_intervention_required = bool(last_task.get("human_intervention_required"))
+    else:
+        human_intervention_required = False
+
+    state_transition_history = task_record.get("state_transition_history")
+    if not isinstance(state_transition_history, list):
+        state_transition_history = task_record.get("state_transitions")
+        if not isinstance(state_transition_history, list):
+            state_transition_history = _extract_traceability_field(
+                last_task,
+                "state_transition_history",
+                latest_status,
+            )
+            if not isinstance(state_transition_history, list):
+                state_transition_history = []
+    return {
+        "source": normalize_evidence_source(
+            _extract_traceability_field(
+                task_record,
+                "source",
+                latest_status,
+                last_task,
+            )
+            or ""
+        ),
+        "result_path": result_path,
+        "evidence_ref": evidence_ref,
+        "failure_code": failure_code,
+        "human_intervention_required": bool(human_intervention_required),
+        "state_transition_history": state_transition_history,
+        "task_record_path": task_record_path,
+    }
+
+
 def _elevator_assist_from_task_record(task_record):
     if not isinstance(task_record, dict):
         return None, ""
@@ -847,10 +945,9 @@ def build_diagnostics_payload(
 ):
     latest_status = dict(latest_status or {})
     last_task = dict(latest_status.get("last_task") or {})
-    task_record_path = (
+    task_record_path = str(
         latest_status.get("task_record_path")
         or last_task.get("task_record_path")
-        or last_task.get("evidence_ref", "")
         or ""
     )
     task_record = _read_task_record(task_record_path)
@@ -858,50 +955,28 @@ def build_diagnostics_payload(
     route_proof_status = classify_route_proof(route_proof_summary, source=route_proof_source)
     elevator_assist, elevator_assist_source = extract_elevator_assist(latest_status, last_task)
     elevator_assist_status = classify_elevator_assist(elevator_assist, source=elevator_assist_source)
-    result_path = str(
-        task_record.get("result_path")
-        or latest_status.get("result_path")
-        or last_task.get("result_path")
-        or latest_status.get("task_record_path")
-        or last_task.get("task_record_path")
-        or ""
+    traceability = coalesce_traceability_fields(
+        latest_status,
+        task_record=task_record,
+        last_task=last_task,
     )
-    evidence_ref = str(
-        task_record.get("evidence_ref")
-        or latest_status.get("evidence_ref")
-        or last_task.get("evidence_ref")
-        or result_path
-    )
-    source = normalize_evidence_source(task_record.get("source") or latest_status.get("source") or last_task.get("source"))
-    state_transition_history = task_record.get("state_transition_history")
-    if not isinstance(state_transition_history, list):
-        legacy_state_transitions = task_record.get("state_transitions")
-        state_transition_history = (
-            legacy_state_transitions if isinstance(legacy_state_transitions, list) else []
+    source = traceability["source"]
+    result_path = traceability["result_path"]
+    evidence_ref = traceability["evidence_ref"]
+    failure_code = traceability["failure_code"]
+    human_intervention_required = traceability["human_intervention_required"]
+    state_transition_history = traceability["state_transition_history"]
+    last_task["source"] = source
+    last_task["result_path"] = result_path
+    if "evidence_ref" in last_task:
+        last_task["evidence_ref"] = evidence_ref
+    else:
+        last_task["evidence_ref"] = (
+            str(task_record.get("result_path", "")).strip() or evidence_ref
         )
-    failure_code = (
-        task_record.get("failure_code")
-        or latest_status.get("failure_code")
-        or last_task.get("failure_code")
-        or latest_status.get("error_code")
-        or last_task.get("error_code", "")
-        or ""
-    )
-    human_intervention_required = bool(
-        task_record.get("human_intervention_required")
-        or latest_status.get("human_intervention_required")
-        or last_task.get("human_intervention_required")
-        or False
-    )
-    last_task.setdefault("source", source)
-    last_task.setdefault("result_path", result_path)
-    last_task.setdefault("evidence_ref", evidence_ref)
-    if not last_task.get("failure_code"):
-        last_task["failure_code"] = failure_code
-    if not last_task.get("state_transition_history"):
-        last_task["state_transition_history"] = state_transition_history
-    if "human_intervention_required" not in last_task:
-        last_task["human_intervention_required"] = human_intervention_required
+    last_task["failure_code"] = failure_code
+    last_task["state_transition_history"] = state_transition_history
+    last_task["human_intervention_required"] = human_intervention_required
     failure = {
         "state": latest_status.get("state", ""),
         "message": latest_status.get("message", ""),

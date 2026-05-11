@@ -25,7 +25,7 @@
 
 ## 0.5) Evidence Packet（单次 run）
 
-- 命名建议：`run_<YYYYMMDD_HHMMSS>`
+- 命名建议：`run_<YYYYMMDDTHHMMSS>Z_<serial>_hil_pass_speed<...>_dur<...>`
 - 每次 `hil_pass` 运行应产出证据目录并包含：
   - `command.txt`（完整命令与参数）
   - `serial.log`（脚本原始输出）
@@ -47,7 +47,7 @@
   - `evidence/run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30/imu_once.jsonl`
   - `evidence/run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30/battery_once.jsonl`
 
-## 0.7) Blocked Run Record
+## 0.6.1) Latest Blocked Run Record
 
 - evidence ref: `run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30`
 - command: `python3 scripts/hardware_smoke_wave_rover.py --move-test --test-speed 0.05 --test-duration-s 0.3 --serial-port /dev/ttyUSB0 --baudrate 115200`
@@ -65,6 +65,23 @@
   - `evidence/run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30/odom_once.jsonl` (missing)
   - `evidence/run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30/imu_once.jsonl` (missing)
   - `evidence/run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30/battery_once.jsonl` (missing)
+
+- evidence ref: `run_20260511T094018Z_hil_pass_speed0p050_dur0p30`（当前轮次）
+- command: `python3 scripts/hardware_smoke_wave_rover.py --move-test --test-speed 0.05 --test-duration-s 0.3 --serial-port /dev/ttyUSB0 --baudrate 115200 --evidence-ref run_20260511T094018Z_hil_pass_speed0p050_dur0p30`
+- source: `software_proof` 已完成；`hil_pass` 因串口路径缺失阻塞
+- 阻塞归因: `/dev/ttyUSB0` 不存在（host 无真实 `/dev/ttyUSB*`）
+- return:
+  - `--help`: `0`
+  - `--status`: `0`
+  - `py_compile`: `0`
+  - `--move-test`: `1`
+- 产物状态:
+  - `evidence/run_20260511T094018Z_hil_pass_speed0p050_dur0p30/command.txt`（已生成）
+  - `evidence/run_20260511T094018Z_hil_pass_speed0p050_dur0p30/serial.log`（已生成）
+  - `evidence/run_20260511T094018Z_hil_pass_speed0p050_dur0p30/feedback_T1001.log`（已生成）
+  - `evidence/run_20260511T094018Z_hil_pass_speed0p050_dur0p30/odom_once.jsonl`（已生成）
+  - `evidence/run_20260511T094018Z_hil_pass_speed0p050_dur0p30/imu_once.jsonl`（已生成）
+  - `evidence/run_20260511T094018Z_hil_pass_speed0p050_dur0p30/battery_once.jsonl`（已生成）
 
 ## 1) Parameter Lock
 

@@ -19,6 +19,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     REVIEW_DECISION_VALUES,
     build_diagnostics_payload,
     extract_elevator_assist,
+    coalesce_traceability_fields,
     load_review_decision_log,
     normalize_log_refs,
     summarize_vision_manifest,
@@ -60,41 +61,19 @@ def _read_task_record(path):
 def _task_record_support_fields(task_record_path, latest_state_payload):
     record = _read_task_record(task_record_path)
     latest_state_payload = latest_state_payload if isinstance(latest_state_payload, dict) else {}
-    result_path = str(
-        record.get("result_path")
-        or latest_state_payload.get("result_path", "")
-        or latest_state_payload.get("task_record_path", "")
+    traceability = coalesce_traceability_fields(
+        latest_state_payload,
+        task_record=record,
+        last_task=latest_state_payload,
     )
     support = {
-        "source": _normalize_task_source(
-            record.get("source")
-            or latest_state_payload.get("source")
-            or latest_state_payload.get("task_record_source", "")
-        ),
-        "evidence_ref": str(
-            record.get("evidence_ref")
-            or latest_state_payload.get("evidence_ref", "")
-            or result_path
-            or latest_state_payload.get("task_record_path", "")
-        ),
-        "result_path": result_path,
-        "failure_code": str(
-            record.get("failure_code")
-            or latest_state_payload.get("failure_code", "")
-            or latest_state_payload.get("error_code", "")
-        ),
-        "human_intervention_required": bool(
-            record.get("human_intervention_required")
-            or latest_state_payload.get("human_intervention_required", False)
-        ),
+        "source": traceability["source"],
+        "evidence_ref": traceability["evidence_ref"],
+        "result_path": traceability["result_path"],
+        "failure_code": traceability["failure_code"],
+        "human_intervention_required": traceability["human_intervention_required"],
+        "state_transition_history": traceability["state_transition_history"],
     }
-    state_transition_history = record.get("state_transition_history")
-    if not isinstance(state_transition_history, list):
-        legacy_state_transition_history = record.get("state_transitions")
-        state_transition_history = (
-            legacy_state_transition_history if isinstance(legacy_state_transition_history, list) else []
-        )
-    support["state_transition_history"] = state_transition_history
     return support
 
 

@@ -10,6 +10,10 @@
 - Run `python3 scripts/hardware_smoke_wave_rover.py --status` first; require no pyserial for this step.
 - If `pyserial` is missing or `serial` open fails, record `Blocked` and capture repro steps; do not claim `hil_pass`.
 - 当前本轮状态：`Blocked`（`/dev/ttyUSB0` 不存在，host 无串口设备）
+- 本轮上机尝试：`run_20260511T094018Z_hil_pass_speed0p050_dur0p30`
+- 本轮阻塞重现：
+  - `ls -l /dev/ttyUSB0` -> `No such file or directory`
+  - `python3` 结果：`serial_paths: []`（`glob('/dev/ttyUSB*')`）
 
 ## Evidence Source Boundaries
 
@@ -87,3 +91,4 @@ bash scripts/docker_humble_build.sh
 - Save hardware smoke output, including serial device, feedback frame, and final stop confirmation.
 - Save any photos/video used to prove wheel direction, stop behavior, or turn direction.
 - Save camera samples when visual debug is enabled.
+- Run-level `hil_pass` 结果引用：`evidence/run_20260511T094018Z_hil_pass_speed0p050_dur0p30`
