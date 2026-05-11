@@ -45,6 +45,7 @@ class FixedRouteAutonomy(Node):
         self.declare_parameter('keyframe_dir', '~/.ros/trashbot_maps/keyframes')
         self.declare_parameter('dry_run', False)
         self.declare_parameter('debug_status_file', '/tmp/trashbot_fixed_route_status.json')
+        self.declare_parameter('evidence_ref', '')
         self.declare_parameter('navigation_timeout_sec', 0.0)
 
         self.route_file = os.path.expanduser(self.get_parameter('route_file').value)
@@ -54,6 +55,7 @@ class FixedRouteAutonomy(Node):
         self.keyframe_dir = os.path.expanduser(self.get_parameter('keyframe_dir').value)
         self.dry_run = bool(self.get_parameter('dry_run').value)
         self.debug_status_file = self.get_parameter('debug_status_file').value
+        self.route_progress_evidence_ref = str(self.get_parameter('evidence_ref').value).strip() or self.debug_status_file
         self.navigation_timeout_sec = float(self.get_parameter('navigation_timeout_sec').value)
         self.route_id = build_route_id(self.route_file)
         self.source = 'fixed_route'
@@ -113,7 +115,7 @@ class FixedRouteAutonomy(Node):
             self._set_failure(f'checkpoint {checkpoint} failed', code)
             self.last_nav_result = str(result)
 
-    def _mark_checkpoint_progress(self, state: str):
+    def _mark_checkpoint_progress(self, state: str, current_target: dict | None = None):
         target_payload = build_route_checkpoint_payload(
             self.route_file,
             self.debug_status_file,
@@ -121,14 +123,17 @@ class FixedRouteAutonomy(Node):
             len(self.route_poses),
             route_id=self.route_id,
             failure_code=self.failure_code,
+            evidence_ref=self.route_progress_evidence_ref,
         )
         target_payload['route_contract_version'] = ROUTE_CONTRACT_VERSION
         target_payload['source'] = self.source
-        target_payload['evidence_ref'] = self.debug_status_file
+        target_payload['evidence_ref'] = self.route_progress_evidence_ref
         target_payload['checkpoint_id'] = build_checkpoint_id(
             target_payload['route_id'],
             target_payload['checkpoint'],
         )
+        target_payload['current_index'] = target_payload['checkpoint']
+        target_payload['target'] = current_target
         if self.navigation_started_at is not None and state in ('running', 'waiting_visual_gate'):
             elapsed = time.monotonic() - self.navigation_started_at
             target_payload['navigation_elapsed_sec'] = max(0.0, round(elapsed, 4))
@@ -361,8 +366,7 @@ class FixedRouteAutonomy(Node):
         if state != self.state:
             self.last_transition = f'{self.state}->{state}'
             self.state = state
-        route_progress = self._mark_checkpoint_progress(state)
-        checkpoint = int(route_progress.get('checkpoint', self.current_index))
+        checkpoint = self.current_index
         if checkpoint < 0:
             checkpoint = 0
         elif checkpoint > len(self.route_poses):
@@ -380,6 +384,7 @@ class FixedRouteAutonomy(Node):
                 'qz': pose.orientation.z,
                 'qw': pose.orientation.w,
             }
+        route_progress = self._mark_checkpoint_progress(state, current_target=current_target)
         route_proof_summary = build_route_proof_summary(
             total_checkpoints=len(self.route_poses),
             covered_checkpoints=self.current_index,

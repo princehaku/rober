@@ -51,13 +51,14 @@ def build_route_checkpoint_payload(
     *,
     route_id: str | None = None,
     failure_code: str | None = None,
+    evidence_ref: str | None = None,
 ):
     """Build route-layer progress identifiers used by diagnostics/task_record.
 
     The payload is intentionally narrow and stable:
     - route_id: route basename stem
     - checkpoint_id: semantic keypoint key
-    - evidence_ref: status file path used as run anchor
+    - evidence_ref: run anchor used for task replay
     - failure_code: latest navigation/automation failure for replay
     """
     normalized_route_id = (route_id or build_route_id(route_file)).strip() or 'fixed_route'
@@ -80,10 +81,11 @@ def build_route_checkpoint_payload(
         'route_id': normalized_route_id,
         'route_file_basename': Path(str(route_file or '').strip() or 'fixed_route').name,
         'checkpoint_id': build_checkpoint_id(normalized_route_id, index),
-        'evidence_ref': str(debug_status_file or '').strip(),
+        'evidence_ref': str(evidence_ref if evidence_ref is not None else debug_status_file or '').strip(),
         'checkpoint': index,
         'total_checkpoints': total,
         'failure_code': str(failure_code or '').strip(),
+        'target': None,
     }
 
 _ELEVATOR_EVIDENCE_PROFILES = {
@@ -333,4 +335,3 @@ def load_waypoints_from_csv(input_csv: str, fallback_frame_id: str = 'map'):
                 raise ValueError(f'Invalid numeric value in {input_csv} line {line_number}: {row}') from exc
             waypoints.append(waypoint)
     return validate_waypoints(waypoints, input_csv)
-

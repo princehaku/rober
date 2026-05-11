@@ -17,7 +17,7 @@
 ## O3 对照
 
 - PRD 要求：run 级 route replay 产生 `checkpoint/current_index/target/failure_code/evidence_ref`。
-- 本轮结果：dry-run/静态校验通过（12 tests、py_compile），但未有新实跑/回放样本。
+- 本轮结果：dry-run/静态校验通过（13 tests、py_compile），并补齐了 `route_progress` 在 `checkpoint/current_index/target/failure_code/evidence_ref` 维度的一致性；未有新实跑/回放样本。
 - 对照：可重放性停留在静态测试层，缺少与 task_record 级联的实跑 `evidence_ref`。
 - 结论：验收不通过（未满足“新增实跑复现”）。
 

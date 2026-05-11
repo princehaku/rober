@@ -152,6 +152,8 @@ When `enable_visual_gate:=true`, dry-run preflights keyframe coverage for the fu
 - `checkpoint_id`: `route_id:NNN` 格式
 - `evidence_ref`: status 文件路径
 - `checkpoint`: 当前索引
+- `current_index`: 与 `checkpoint` 一致的索引副本
+- `target`: 当前目标位姿（若已覆盖该 checkpoint）
 - `total_checkpoints`: 路线总 checkpoint
 - `route_contract_version`
 - `source`
@@ -179,6 +181,8 @@ When `enable_visual_gate:=true`, dry-run preflights keyframe coverage for the fu
     "checkpoint_id": "fixed_route:001",
     "evidence_ref": "/tmp/trashbot_fixed_route_status.json",
     "checkpoint": 1,
+    "current_index": 1,
+    "target": null,
     "total_checkpoints": 2,
     "route_contract_version": "fixed_route.v1",
     "source": "fixed_route",
@@ -256,6 +260,36 @@ jq '.state,.failure_code,.failure_reason,.keyframe_preflight,.route_progress' /t
   - `_poll_nav_result`
   - `_set_navigation_error`
   - `_write_debug_status`
+
+### 5.3 同一 `evidence_ref` 的复盘回放（受控环境）
+
+固定路线与任务复盘要在同一 run 上聚合时，可通过固定 `evidence_ref` 覆盖 status 记录：
+
+```bash
+ROUTE_STATUS=/tmp/trashbot_fixed_route_status.json
+ROUTE_REPLAY_EVIDENCE=/tmp/route_replay_evidence.json
+pytest -q src/ros2_trashbot_nav/test/test_fixed_route_dry_run_offline.py::FixedRouteDryRunOfflineTest.test_dry_run_evidence_ref_syncs_to_route_progress
+
+ros2 run ros2_trashbot_nav fixed_route_autonomy \
+  --ros-args \
+  -p route_file:=/tmp/replay_route.yaml \
+  -p keyframe_dir:=/tmp/replay_keyframes \
+  -p debug_status_file:=$ROUTE_STATUS \
+  -p evidence_ref:=$ROUTE_REPLAY_EVIDENCE \
+  -p dry_run:=true
+
+jq '.state,.checkpoint,.current_index,.failure_code,.evidence_ref,.route_progress | {checkpoint, current_index, failure_code, evidence_ref, target: .target, current_index_in_progress: .current_index}' \
+  $ROUTE_STATUS
+```
+
+检查清单：
+
+- `route_progress.checkpoint == payload.current_index == payload.checkpoint`
+- `route_progress.target == payload.target`
+- `route_progress.current_index == payload.current_index`
+- `route_progress.failure_code == payload.failure_code`
+- `route_progress.evidence_ref == payload.evidence_ref`
+- 受控 replay 场景用 `route_progress.evidence_ref` 查 task record 的同名证据文件。
 
 ## 6. Debug Web
 

@@ -3,9 +3,9 @@
 ## 状态
 
 - 阶段：tech-done completed
-- 时间：2026-05-11 06:34 Asia/Shanghai
+- 时间：2026-05-11 22:30 Asia/Shanghai
 - Owner：`product-okr-owner`
-- 结论：本轮未形成可交付 `hil_pass` 实机证据包；已完成围栏命令可执行复核与字段契约一致性核对，进入 Blocked 收口。
+- 结论：本轮未形成可交付 `hil_pass` 实机证据包；已完成 O3 route replay 复盘字段修补并可执行静态复现，进入 Blocked 收口。
 
 ## 本轮实际变更与执行结果
 
@@ -22,11 +22,11 @@
 
 ### O3 `autonomy-engineer`
 
-- 在既有文档与代码边界内执行 dry-run 与静态校验：
+- 在既有文档与代码边界内补齐 route replay 一致性并执行 dry-run 与静态校验：
   - `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest src/ros2_trashbot_nav/test/test_fixed_route_dry_run_offline.py src/ros2_trashbot_nav/test/test_fixed_route_status_static.py`
   - `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile src/ros2_trashbot_nav/ros2_trashbot_nav/fixed_route_autonomy.py src/ros2_trashbot_nav/ros2_trashbot_nav/route_utils.py`
-- 结果：12 tests OK；py_compile pass。
-- 结论：软件层 route_progress 契约保持，但未产生新的 route replay 实车 run 产物，`checkpoint/current_index/target/failure_code/evidence_ref` 无新 run 级样本。
+- 结果：13 tests OK；py_compile pass。
+- 结论：软件层 route_progress 已对齐 `checkpoint/current_index/target/failure_code/evidence_ref` 到 task 复盘字段口径，并新增可配置 `evidence_ref` 覆盖；未产生新的 route replay 实车 run 产物，故不构成 O3 全链路验收通过。
 
 ### O2 `robot-software-engineer`
 

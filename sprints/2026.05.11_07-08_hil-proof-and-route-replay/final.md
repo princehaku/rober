@@ -8,8 +8,9 @@
   1. `scripts/hardware_smoke_wave_rover.py --help`、`--status` 可执行；`py_compile` 通过。
   2. `hardware --move-test` 因 `/dev/ttyUSB0` 不存在失败：`ERROR: serial failure: [Errno 2] could not open port /dev/ttyUSB0`。
   3. `fixed_route` dry-run + `route_utils` py_compile 通过。
-  4. `task_orchestrator/task_record` 测试与编译通过。
-  5. 未产出 `command.txt / serial.log / feedback_T1001.log / odom_once.jsonl / imu_once.jsonl / battery_once.jsonl`。
+  4. `route_progress` 已补齐 `checkpoint/current_index/target/failure_code/evidence_ref` 一致性并支持 `evidence_ref` 覆盖复盘。
+  5. `task_orchestrator/task_record` 测试与编译通过。
+  6. 未产出 `command.txt / serial.log / feedback_T1001.log / odom_once.jsonl / imu_once.jsonl / battery_once.jsonl`。
 
 ## 阻塞项
 
@@ -19,6 +20,7 @@
 
 2. **run-level 跑数缺失**
    - 同一 `evidence_ref` 下未形成 O1+O3+O2 一致闭环数据。
+   - dry-run 阶段已完成 `route_progress` 字段一致性复盘，实车 run 复盘仍待补齐。
 
 3. **验收边界未达成**
    - `source` 虽可枚举，但未出现成功 `hil_pass` 的实机样本。

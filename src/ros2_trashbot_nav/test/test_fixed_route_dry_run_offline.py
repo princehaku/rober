@@ -232,6 +232,8 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["route_progress"]["checkpoint"], payload["checkpoint"])
             self.assertEqual(payload["route_progress"]["evidence_ref"], payload["evidence_ref"])
             self.assertEqual(payload["route_progress"]["failure_code"], payload["failure_code"])
+            self.assertEqual(payload["route_progress"]["current_index"], payload["current_index"])
+            self.assertEqual(payload["route_progress"]["target"], payload["target"])
             self.assertIn("checkpoint", payload)
             self.assertIn("target", payload)
             self.assertEqual(payload["checkpoint"], payload["current_index"])
@@ -308,6 +310,8 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["route_progress"]["checkpoint"], payload["checkpoint"])
             self.assertEqual(payload["route_progress"]["evidence_ref"], payload["evidence_ref"])
             self.assertEqual(payload["route_progress"]["failure_code"], payload["failure_code"])
+            self.assertEqual(payload["route_progress"]["current_index"], payload["current_index"])
+            self.assertEqual(payload["route_progress"]["target"], payload["target"])
             self.assertEqual(payload["last_nav_result"], "")
             self.assertIn("missing keyframes: [0]", payload["last_error"])
             self.assertIn("missing keyframes: [0]", payload["failure_reason"])
@@ -536,6 +540,46 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["last_nav_result"], "nav_failed")
             self.assertEqual(payload["route_progress"]["checkpoint"], payload["current_index"])
             self.assertEqual(payload["route_progress"]["failure_code"], payload["failure_code"])
+            self.assertEqual(payload["route_progress"]["current_index"], payload["current_index"])
+            self.assertEqual(payload["route_progress"]["target"], payload["target"])
+
+    def test_dry_run_evidence_ref_syncs_to_route_progress(self):
+        with tempfile.TemporaryDirectory() as td:
+            route_file = Path(td) / "fixed_route.yaml"
+            status_file = Path(td) / "status.json"
+            evidence_file = Path(td) / "replay-ref.json"
+            route_file.write_text(
+                "waypoints:\n"
+                "  - frame_id: map\n"
+                "    x: 1.0\n"
+                "    y: 2.0\n"
+                "    qw: 1.0\n",
+                encoding="utf-8",
+            )
+            basic_navigator_calls = []
+            install_ros_stubs(
+                {
+                    "route_file": str(route_file),
+                    "keyframe_dir": str(Path(td) / "keyframes"),
+                    "dry_run": True,
+                    "enable_visual_gate": False,
+                    "debug_status_file": str(status_file),
+                    "evidence_ref": str(evidence_file),
+                },
+                basic_navigator_calls,
+            )
+            sys.modules.pop("ros2_trashbot_nav.fixed_route_autonomy", None)
+            module = importlib.import_module("ros2_trashbot_nav.fixed_route_autonomy")
+
+            node = module.FixedRouteAutonomy()
+            node._run_route()
+
+            payload = json.loads(status_file.read_text(encoding="utf-8"))
+            self.assertEqual(payload["evidence_ref"], str(evidence_file))
+            self.assertEqual(payload["route_progress"]["evidence_ref"], str(evidence_file))
+            self.assertEqual(payload["route_progress"]["checkpoint"], payload["checkpoint"])
+            self.assertEqual(payload["route_progress"]["current_index"], payload["current_index"])
+            self.assertEqual(payload["route_progress"]["target"], payload["target"])
 
 
 if __name__ == "__main__":
