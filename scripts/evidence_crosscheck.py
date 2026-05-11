@@ -4,6 +4,7 @@
 Checks fields from:
 - fixed-route status payload (`route_progress` + `software_proof` replay)
 - optional task_record file (e.g. task orchestrator output)
+- optional HIL evidence packet gate output for real-run alignment
 
 The script is non-mutating and only reads JSON/jsonl input files.
 """
@@ -106,6 +107,20 @@ def _select_task_record_payload(path: str, task_record_dir: str, evidence_ref: s
             f"task_record_dir: no matching task_record for evidence_ref/result_path {evidence_ref!r}",
         )
     return {}, "", ""
+
+
+def _select_hil_gate_payload(path: str) -> tuple[dict[str, Any], str]:
+    if not path:
+        return {}, ""
+    try:
+        payload = _load_json(path, "hil_gate_output")
+    except FileNotFoundError as exc:
+        return {}, f"hil_gate_output: {exc}"
+    except json.JSONDecodeError as exc:
+        return {}, f"hil_gate_output: invalid JSON: {exc}"
+    if not isinstance(payload, dict):
+        return {}, "hil_gate_output: payload is not a JSON object"
+    return payload, ""
 
 
 def _print_kv(label: str, value: Any):
@@ -214,6 +229,59 @@ def _compare_task_record(
         print("FAIL task_record.nav_results[-1].evidence.route_progress: missing")
 
 
+def _compare_hil_gate_output(
+    hil_gate_output: dict[str, Any],
+    gate_load_mismatch: str,
+    gate_path: str,
+    evidence_ref: str,
+    mismatches: list[str],
+):
+    print("\nHIL gate -> run alignment")
+    if not gate_path:
+        print("INFO hil_gate_output not provided: route/task alignment remains software proof only")
+        return
+
+    print(f"hil_gate_output: {gate_path}")
+    if gate_load_mismatch:
+        mismatches.append(gate_load_mismatch)
+        print(f"FAIL {gate_load_mismatch}")
+        return
+
+    status = str(hil_gate_output.get("status", "")).strip()
+    gate_evidence_ref = str(hil_gate_output.get("evidence_ref") or "").strip()
+    blocked_reason = str(hil_gate_output.get("blocked_reason") or "").strip()
+    failures = hil_gate_output.get("failures")
+    failure_detail = failures if isinstance(failures, list) else []
+
+    if not status:
+        mismatches.append("hil_gate_output.status: missing")
+        print("FAIL hil_gate_output.status: missing")
+    elif status == "hil_pass":
+        print("PASS hil_gate_output.status: 'hil_pass'")
+    elif status == "blocked":
+        detail = blocked_reason or ", ".join(str(item) for item in failure_detail) or "blocked"
+        mismatches.append(f"hil_gate_output.status: blocked ({detail})")
+        print(f"FAIL hil_gate_output.status: blocked ({detail})")
+    elif status == "software_proof":
+        detail = blocked_reason or "software proof only; not real HIL"
+        mismatches.append(f"hil_gate_output.status: software proof only ({detail})")
+        print(f"FAIL hil_gate_output.status: software proof only ({detail})")
+    else:
+        mismatches.append(f"hil_gate_output.status: unsupported {status!r}")
+        print(f"FAIL hil_gate_output.status: unsupported {status!r}")
+
+    if not gate_evidence_ref:
+        mismatches.append("hil_gate_output.evidence_ref: missing")
+        print("FAIL hil_gate_output.evidence_ref: missing")
+        return
+
+    _compare(
+        "hil_gate_output.evidence_ref == run evidence_ref",
+        gate_evidence_ref,
+        evidence_ref,
+        mismatches,
+    )
+
 
 def _derive_replay_path(status_payload: dict[str, Any]) -> str:
     if isinstance(status_payload, dict):
@@ -233,6 +301,7 @@ def run_crosscheck(
     task_record: str,
     task_record_dir: str,
     expected_evidence_ref: str,
+    hil_gate_output: str,
 ) -> int:
     mismatches: list[str] = []
     status_payload = _load_json(route_status_file, "route_status")
@@ -298,6 +367,15 @@ def run_crosscheck(
         print(f"FAIL {task_record_lookup_mismatch}")
     _compare_task_record(task_payload, status_payload, status_fields, mismatches)
 
+    gate_payload, gate_load_mismatch = _select_hil_gate_payload(hil_gate_output)
+    _compare_hil_gate_output(
+        gate_payload,
+        gate_load_mismatch,
+        hil_gate_output,
+        evidence_ref,
+        mismatches,
+    )
+
     print(f"\nCHECK summary: mismatches={len(mismatches)}")
     if mismatches:
         print("\nMismatch detail:")
@@ -318,6 +396,11 @@ def main() -> int:
         help="folder to auto-pick task_record by evidence_ref/result_path when --task-record is absent",
     )
     parser.add_argument("--evidence-ref", default="", help="expected evidence_ref override for run-level alignment")
+    parser.add_argument(
+        "--hil-gate-output",
+        default="",
+        help="hil_evidence_packet_gate.py JSON output file for real-run HIL alignment",
+    )
     args = parser.parse_args()
 
     task_record_path = args.task_record
@@ -330,6 +413,7 @@ def main() -> int:
         task_record_path,
         task_record_dir,
         args.evidence_ref,
+        str(Path(args.hil_gate_output).expanduser()) if args.hil_gate_output else "",
     )
 
 
