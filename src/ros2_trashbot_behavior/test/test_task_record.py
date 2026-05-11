@@ -202,6 +202,62 @@ class TaskRecordTest(unittest.TestCase):
         self.assertIn("task_record:", result.stdout)
         self.assertIn("CHECK summary: mismatches=0", result.stdout)
 
+    def test_evidence_crosscheck_task_record_dir_matches_nav_route_progress_ref(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            evidence_ref = "run-nav-ref-only"
+            replay_path = root / "route_replay.jsonl"
+            status_path = root / "status.json"
+            task_record_dir = root / "tasks"
+            task_record_dir.mkdir()
+            route_progress = {
+                "checkpoint": "cp-3",
+                "current_index": 3,
+                "target": {"name": "trash_station"},
+                "failure_code": "",
+                "evidence_ref": evidence_ref,
+            }
+            replay_path.write_text(json.dumps(route_progress) + "\n", encoding="utf-8")
+            status_path.write_text(
+                json.dumps(
+                    {
+                        "status": "completed",
+                        "route_progress": route_progress,
+                        "evidence_ref": evidence_ref,
+                        "software_proof": {"artifact_path": str(replay_path)},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (task_record_dir / "task.json").write_text(
+                json.dumps(
+                    {
+                        "task_id": "task-dir-nav-ref",
+                        "nav_results": [{"evidence": {"route_progress": route_progress}}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(REPO_ROOT / "scripts" / "evidence_crosscheck.py"),
+                    str(status_path),
+                    "--task-record-dir",
+                    str(task_record_dir),
+                    "--evidence-ref",
+                    evidence_ref,
+                ],
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("task_record.nav_results[-1].evidence.route_progress.evidence_ref", result.stdout)
+
     def test_evidence_crosscheck_fails_when_task_record_dir_has_no_match(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

@@ -57,6 +57,30 @@ def _find_task_record_by_evidence_ref(root: Path, evidence_ref: str):
     needle = evidence_ref.strip()
     if not needle:
         return ""
+
+    def matches_ref(payload: dict[str, Any]) -> bool:
+        if str(payload.get("evidence_ref", "")).strip() == needle:
+            return True
+        if str(payload.get("result_path", "")).strip() == needle:
+            return True
+        route_progress = payload.get("route_progress")
+        if isinstance(route_progress, dict):
+            if str(route_progress.get("evidence_ref", "")).strip() == needle:
+                return True
+        nav_results = payload.get("nav_results")
+        if isinstance(nav_results, list):
+            for nav_result in reversed(nav_results):
+                if not isinstance(nav_result, dict):
+                    continue
+                evidence = nav_result.get("evidence")
+                if not isinstance(evidence, dict):
+                    continue
+                route_progress = evidence.get("route_progress")
+                if isinstance(route_progress, dict):
+                    if str(route_progress.get("evidence_ref", "")).strip() == needle:
+                        return True
+        return False
+
     for candidate in root.glob("*.json"):
         try:
             payload = json.loads(candidate.read_text(encoding="utf-8"))
@@ -64,9 +88,7 @@ def _find_task_record_by_evidence_ref(root: Path, evidence_ref: str):
             continue
         if not isinstance(payload, dict):
             continue
-        if str(payload.get("evidence_ref", "")).strip() == needle:
-            return str(candidate)
-        if str(payload.get("result_path", "")).strip() == needle:
+        if matches_ref(payload):
             return str(candidate)
     return ""
 
@@ -83,11 +105,6 @@ def _select_task_record_payload(path: str, task_record_dir: str, evidence_ref: s
             "",
             f"task_record_dir: no matching task_record for evidence_ref/result_path {evidence_ref!r}",
         )
-    if evidence_ref:
-        task_dir = Path.home() / ".ros" / "trashbot_tasks"
-        found = _find_task_record_by_evidence_ref(task_dir, evidence_ref)
-        if found:
-            return _load_json(found, "task_record"), found, ""
     return {}, "", ""
 
 

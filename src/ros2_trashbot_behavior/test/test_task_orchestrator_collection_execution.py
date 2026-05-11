@@ -406,6 +406,9 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
             evidence_file = Path(td) / "route-progress-only.jsonl"
             route_progress = {
                 "source": "software_proof",
+                "route_contract_version": "fixed_route.v1",
+                "route_id": "dock-route",
+                "checkpoint_id": "dock-route:002",
                 "checkpoint": "cp-2",
                 "current_index": 2,
                 "target": {"name": "trash_station"},
@@ -436,6 +439,9 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         nav_evidence = payload["nav_results"][0]["evidence"]
         self.assertEqual(nav_evidence["evidence_ref"], str(evidence_file))
         self.assertEqual(nav_evidence["source"], "software_proof")
+        self.assertEqual(nav_evidence["route_contract_version"], "fixed_route.v1")
+        self.assertEqual(nav_evidence["route_id"], "dock-route")
+        self.assertEqual(nav_evidence["checkpoint_id"], "dock-route:002")
         self.assertEqual(nav_evidence["checkpoint"], "cp-2")
         self.assertEqual(nav_evidence["current_index"], 2)
         self.assertEqual(nav_evidence["target"], {"name": "trash_station"})
