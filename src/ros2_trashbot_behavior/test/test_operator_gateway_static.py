@@ -52,9 +52,12 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("make_handler(self)", source)
         self.assertIn("status_payload", source)
         self.assertIn("OPERATOR_PROMPTS", http_source)
+        self.assertIn("ELEVATOR_ASSIST_SPEAKER_PROMPT", http_source)
+        self.assertIn("normalize_elevator_assist", http_source)
         self.assertIn("operator_prompt_for_state", http_source)
         self.assertIn('"phone_copy": prompt["phone_copy"]', http_source)
         self.assertIn('"speaker_prompt": prompt["speaker_prompt"]', http_source)
+        self.assertIn('"elevator_assist": elevator_assist', http_source)
         self.assertIn("gateway.diagnostics()", http_source)
         self.assertNotIn("flask", source.lower())
         self.assertNotIn("aiohttp", source.lower())
@@ -86,6 +89,7 @@ class OperatorGatewayStaticTest(unittest.TestCase):
 
         self.assertIn('latest_status.get("error_code") or last_task.get("error_code", "")', diagnostics_block)
         self.assertIn('latest_status.get("final_state") or last_task.get("final_state", "")', diagnostics_block)
+        self.assertIn("normalize_evidence_source", diagnostics_block)
         self.assertIn("summarize_vision_manifest", diagnostics_source)
         self.assertIn("load_review_decision_log", diagnostics_source)
         self.assertIn("summarize_hardware_proof", diagnostics_source)
@@ -98,6 +102,15 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn('"decision_distribution"', diagnostics_source)
         self.assertIn('"next_pending_sample"', diagnostics_source)
         self.assertIn("hardware_proof=summarize_hardware_proof(hardware_proof_ref)", diagnostics_block)
+        self.assertIn("extract_elevator_assist", diagnostics_source)
+        self.assertIn("classify_elevator_assist", diagnostics_source)
+        self.assertIn("elevator_assist=elevator_assist", diagnostics_block)
+        self.assertIn("elevator_assist_status=elevator_assist_status", diagnostics_block)
+        self.assertIn("source=", diagnostics_block)
+        self.assertIn("evidence_ref=", diagnostics_block)
+        self.assertIn("failure_code=", diagnostics_block)
+        self.assertIn("human_intervention_required=", diagnostics_block)
+        self.assertIn("state_transition_history=", diagnostics_block)
         self.assertIn(
             'latest_status.get("task_record_path") or last_task.get("task_record_path", "")',
             diagnostics_block,
@@ -113,6 +126,13 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "diagHardwareProofSummary",
             "diagHardwareProofNextStep",
             "diagHardwareProofReasons",
+            "diagSource",
+            "diagFailureCode",
+            "diagEvidenceRef",
+            "diagHumanIntervention",
+            "diagStateTransitionHistory",
+            "diagStateTransitionHistoryList",
+            "diagRecoveryHint",
             "hardwareProofView",
             "renderHardwareProof",
             "hardware_proof",
@@ -129,6 +149,16 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "diagRouteProofSource",
             "route_proof_summary",
             "route_proof_status",
+            "diagElevatorAssistState",
+            "diagElevatorAssistPrompt",
+            "diagElevatorAssistEvidence",
+            "diagElevatorAssistNextStep",
+            "elevator_assist",
+            "elevator_assist_status",
+            "requesting_floor_help",
+            "waiting_target_floor",
+            "target_floor_unconfirmed",
+            "你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,",
             "reviewJumpPendingButton",
             "jumpToNextPending",
             "applyReviewProgress",
@@ -202,6 +232,8 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("final_state=result.final_state", result_block)
         self.assertIn('"error_code": result.error_code', result_block)
         self.assertIn('"final_state": result.final_state', result_block)
+        self.assertIn("extract_elevator_assist", result_block)
+        self.assertIn('"elevator_assist": elevator_assist', result_block)
 
 
 if __name__ == "__main__":

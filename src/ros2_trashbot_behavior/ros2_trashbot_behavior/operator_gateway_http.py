@@ -7,6 +7,82 @@ from ros2_trashbot_behavior.remote_bridge_protocol import parse_bool
 
 
 API_VERSION = "slice2.operator.v1"
+ELEVATOR_ASSIST_SPEAKER_PROMPT = "你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,"
+
+ELEVATOR_ASSIST_PHASES = {
+    "approaching_elevator",
+    "waiting_elevator_open",
+    "entering_elevator",
+    "requesting_floor_help",
+    "waiting_target_floor",
+    "exiting_elevator",
+    "resume_delivery",
+}
+
+ELEVATOR_ASSIST_HELP_STATES = {
+    "door_timeout",
+    "door_closed_or_unknown",
+    "target_floor_unconfirmed",
+    "target_floor_evidence_unreliable",
+    "unsafe_to_enter",
+    "unsafe_to_exit",
+    "manual_takeover_required",
+}
+
+ELEVATOR_ASSIST_COPY = {
+    "approaching_elevator": {
+        "phone_copy": "正在前往电梯厅。",
+        "speaker_prompt": "前往电梯厅。",
+    },
+    "waiting_elevator_open": {
+        "phone_copy": "已到电梯厅，等待电梯开门。",
+        "speaker_prompt": "等待电梯开门。",
+    },
+    "entering_elevator": {
+        "phone_copy": "正在进入电梯，请保持通道安全。",
+        "speaker_prompt": "正在进入电梯。",
+    },
+    "requesting_floor_help": {
+        "phone_copy": "已进入电梯，正在请求帮忙按楼层。",
+        "speaker_prompt": ELEVATOR_ASSIST_SPEAKER_PROMPT,
+    },
+    "waiting_target_floor": {
+        "phone_copy": "正在等待目标楼层，请保持通道安全。",
+        "speaker_prompt": "正在等待目标楼层。",
+    },
+    "exiting_elevator": {
+        "phone_copy": "已到目标楼层，准备驶出。",
+        "speaker_prompt": "到达目标楼层，准备驶出。",
+    },
+    "resume_delivery": {
+        "phone_copy": "已驶出电梯，继续送往垃圾站。",
+        "speaker_prompt": "已驶出电梯，继续送垃圾。",
+    },
+    "door_timeout": {
+        "phone_copy": "电梯未开门，需要人工协助。",
+        "speaker_prompt": "需要人工协助。",
+    },
+    "door_closed_or_unknown": {
+        "phone_copy": "电梯门未确认打开，需要人工协助。",
+        "speaker_prompt": "需要人工协助。",
+    },
+    "target_floor_unconfirmed": {
+        "phone_copy": "未确认目标楼层，请人工确认。",
+        "speaker_prompt": "未确认目标楼层，需要人工协助。",
+    },
+    "target_floor_evidence_unreliable": {
+        "phone_copy": "目标楼层证据不可靠，请人工确认。",
+        "speaker_prompt": "未确认目标楼层，需要人工协助。",
+    },
+    "unsafe_to_exit": {
+        "phone_copy": "目标楼层出口不安全，需要人工接管。",
+        "speaker_prompt": "需要人工协助。",
+    },
+    "manual_takeover_required": {
+        "phone_copy": "需要人工接管电梯段任务。",
+        "speaker_prompt": "需要人工协助。",
+    },
+}
 
 OPERATOR_PROMPTS = {
     "waiting_for_trash": {
@@ -56,7 +132,89 @@ OPERATOR_PROMPTS = {
 }
 
 
-def operator_prompt_for_state(state):
+def _elevator_copy_key(elevator_assist):
+    if not isinstance(elevator_assist, dict):
+        return ""
+    for key in ("state", "phase", "reason"):
+        value = str(elevator_assist.get(key) or "").strip()
+        if value in ELEVATOR_ASSIST_COPY:
+            return value
+    return ""
+
+
+def default_elevator_assist():
+    return {
+        "enabled": False,
+        "mode": "",
+        "state": "disabled",
+        "phase": "",
+        "requires_human_help": False,
+        "reason": "",
+        "target_floor": "",
+        "phone_copy": "",
+        "speaker_prompt": "",
+        "evidence": {},
+        "events": [],
+    }
+
+
+def normalize_elevator_assist(value=None, *, state="", message=""):
+    """Return a stable, phone-safe elevator_assist object.
+
+    The behavior layer owns the robot contract; this helper only keeps older
+    status payloads compatible while letting new task records pass through the
+    same machine-readable shape.
+    """
+    raw = dict(value) if isinstance(value, dict) else {}
+    state_text = str(state or "").strip()
+    inferred_phase = state_text if state_text in ELEVATOR_ASSIST_PHASES else ""
+    inferred_state = state_text if state_text in ELEVATOR_ASSIST_HELP_STATES else ""
+
+    normalized = default_elevator_assist()
+    normalized.update(raw)
+    phase = str(raw.get("phase") or inferred_phase or "").strip()
+    assist_state = str(raw.get("state") or inferred_state or phase or "").strip()
+    reason = str(raw.get("reason") or message or "").strip()
+    enabled = bool(raw.get("enabled", False) or phase or assist_state in ELEVATOR_ASSIST_HELP_STATES)
+    requires_human_help = bool(
+        raw.get("requires_human_help", False)
+        or assist_state in ELEVATOR_ASSIST_HELP_STATES
+        or phase in ELEVATOR_ASSIST_HELP_STATES
+    )
+
+    normalized.update(
+        {
+            "enabled": enabled,
+            "mode": str(raw.get("mode") or ("dry_run" if enabled else "")).strip(),
+            "state": assist_state or ("active" if enabled else "disabled"),
+            "phase": phase,
+            "requires_human_help": requires_human_help,
+            "reason": reason,
+            "target_floor": str(raw.get("target_floor") or "").strip(),
+            "evidence": raw.get("evidence") if isinstance(raw.get("evidence"), dict) else {},
+            "events": raw.get("events") if isinstance(raw.get("events"), list) else [],
+        }
+    )
+
+    copy_key = _elevator_copy_key(normalized)
+    copy = dict(ELEVATOR_ASSIST_COPY.get(copy_key, {}))
+    if not copy and enabled:
+        copy = {
+            "phone_copy": "电梯协助流程进行中，请在手机端关注下一步提示。",
+            "speaker_prompt": "电梯协助流程进行中。",
+        }
+    normalized["phone_copy"] = str(raw.get("phone_copy") or copy.get("phone_copy", "")).strip()
+    normalized["speaker_prompt"] = str(raw.get("speaker_prompt") or copy.get("speaker_prompt", "")).strip()
+    return normalized
+
+
+def operator_prompt_for_state(state, elevator_assist=None):
+    elevator_assist = elevator_assist if isinstance(elevator_assist, dict) else {}
+    if elevator_assist.get("enabled") and elevator_assist.get("phone_copy"):
+        return {
+            "phone_copy": elevator_assist.get("phone_copy", ""),
+            "speaker_prompt": elevator_assist.get("speaker_prompt", ""),
+        }
     return dict(OPERATOR_PROMPTS.get(str(state or ""), OPERATOR_PROMPTS["needs_human_help"]))
 
 HTML = """<!doctype html>
@@ -347,8 +505,13 @@ HTML = """<!doctype html>
         <div class="metric"><span>Map</span><strong id="diagMap">-</strong></div>
         <div class="metric"><span>Route</span><strong id="diagRoute">-</strong></div>
         <div class="metric"><span>Failure</span><strong id="diagFailure">-</strong></div>
+        <div class="metric"><span>Source</span><strong id="diagSource">-</strong></div>
+        <div class="metric"><span>Failure code</span><strong id="diagFailureCode">-</strong></div>
+        <div class="metric"><span>Evidence ref</span><strong id="diagEvidenceRef">-</strong></div>
+        <div class="metric"><span>Human takeover</span><strong id="diagHumanIntervention">-</strong></div>
         <div class="metric"><span>Task record</span><strong id="diagTask">-</strong></div>
         <div class="metric"><span>Status file</span><strong id="diagStatusFile">-</strong></div>
+        <div class="metric"><span>State transitions</span><strong id="diagStateTransitionHistory">-</strong></div>
         <div class="metric"><span>Vision samples</span><strong id="diagVisionSamples">-</strong></div>
         <div class="metric"><span>Latest vision sample</span><strong id="diagLatestVisionSample">-</strong></div>
         <div class="metric"><span>Review queue</span><strong id="diagReviewQueue">-</strong></div>
@@ -357,7 +520,13 @@ HTML = """<!doctype html>
         <div class="metric"><span>Route proof summary</span><strong id="diagRouteProofSummary">-</strong></div>
         <div class="metric"><span>Route proof reason</span><strong id="diagRouteProofReason">-</strong></div>
         <div class="metric"><span>Route proof source</span><strong id="diagRouteProofSource">-</strong></div>
+        <div class="metric"><span>Elevator assist</span><strong id="diagElevatorAssistState">-</strong></div>
+        <div class="metric"><span>Elevator prompt</span><strong id="diagElevatorAssistPrompt">-</strong></div>
+        <div class="metric"><span>Elevator evidence</span><strong id="diagElevatorAssistEvidence">-</strong></div>
+        <div class="metric"><span>Elevator next step</span><strong id="diagElevatorAssistNextStep">-</strong></div>
       </div>
+      <p id="diagRecoveryHint" class="message">No manual takeover required.</p>
+      <ul id="diagStateTransitionHistoryList" class="supportList"></ul>
       <div id="diagVisionIntegrity" class="integrityCard">
         <div class="integrityHeader">
           <h2>Vision evidence chain</h2>
@@ -439,9 +608,17 @@ const STATE_COPY = {
   canceled: ['Canceled', 'The robot is stopped or returning to standby.', 'completed'],
   failed: ['Needs help', 'Task failed. Open diagnostics or request help.', 'dropoff'],
   needs_human_help: ['Needs help', 'Human help is required. Follow the shown instruction.', 'dropoff'],
+  approaching_elevator: ['Elevator assist', '正在前往电梯厅。', 'delivering'],
+  waiting_elevator_open: ['Elevator assist', '已到电梯厅，等待电梯开门。', 'delivering'],
+  entering_elevator: ['Elevator assist', '正在进入电梯，请保持通道安全。', 'delivering'],
+  requesting_floor_help: ['Elevator assist', '已进入电梯，正在请求帮忙按楼层。', 'delivering'],
+  waiting_target_floor: ['Elevator assist', '正在等待目标楼层，请保持通道安全。', 'delivering'],
+  exiting_elevator: ['Elevator assist', '已到目标楼层，准备驶出。', 'delivering'],
+  resume_delivery: ['Delivering', '已驶出电梯，继续送往垃圾站。', 'delivering'],
   network_error: ['Connection issue', 'The phone cannot reach the robot control page.', 'waiting']
 };
 const STEP_ORDER = ['waiting', 'delivering', 'dropoff', 'returning', 'completed'];
+const ELEVATOR_ASSIST_SPEAKER_PROMPT = '你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,';
 let reviewQueueSnapshot = null;
 function fmt(value) {
   return Number.isFinite(value) ? value.toFixed(2) : '-';
@@ -663,6 +840,21 @@ function routeProofSummaryText(routeProofSummary) {
   const missingText = missing.length ? missing.join(', ') : 'none';
   return `coverage ${coverageText} | checkpoints ${countText} | gate ${gateStatus} | missing ${missingText}`;
 }
+function elevatorEvidenceText(elevatorAssist) {
+  const evidence = elevatorAssist && typeof elevatorAssist.evidence === 'object' ? elevatorAssist.evidence : {};
+  const keys = Object.keys(evidence);
+  if (!keys.length) return 'not reported';
+  return keys.map((key) => `${key}: ${JSON.stringify(evidence[key])}`).join(' | ');
+}
+function stateTransitionSummary(item) {
+  if (!item || typeof item !== 'object') return 'unknown transition';
+  return `${text(item.from_state, 'unknown')} -> ${text(item.to_state, 'unknown')} (${text(item.event, 'transition')}) @ ${text(item.timestamp, '-')}`;
+}
+function stateTransitionHistoryText(items) {
+  const transitionHistory = Array.isArray(items) ? items : [];
+  if (!transitionHistory.length) return 'no transition history';
+  return `${Number(transitionHistory.length)} transition(s)`;
+}
 function applyReviewProgress(queuePayload) {
   const progressSummary = queuePayload && typeof queuePayload === 'object'
     ? queuePayload.progress_summary
@@ -845,16 +1037,41 @@ function showDiagnostics(payload) {
   const routeProofSummary = payload.route_proof_summary || {};
   const routeProofStatus = payload.route_proof_status || {};
   const hardwareProof = payload.hardware_proof || {};
+  const elevatorAssist = payload.elevator_assist || {};
+  const elevatorAssistStatus = payload.elevator_assist_status || {};
   const refs = Array.isArray(payload.log_refs) ? payload.log_refs : [];
   const taskRecord = failure.task_record_path || (payload.last_task || {}).task_record_path || latest.task_record_path || '';
+  const humanIntervention = Boolean(
+    failure.human_intervention_required
+    || payload.human_intervention_required
+    || failure.message === 'manual takeover required'
+  );
+  const transitionHistory = Array.isArray(payload.state_transition_history)
+    ? payload.state_transition_history
+    : (Array.isArray(failure.state_transition_history) ? failure.state_transition_history : []);
+  const source = text(
+    failure.source || payload.source || (payload.last_task || {}).source || latest.source,
+    'simulated'
+  );
   renderVisionIntegrity(visionSamples);
   renderHardwareProof(hardwareProof);
   document.getElementById('diagSoftware').textContent = text(payload.software_version, 'not reported');
   document.getElementById('diagMap').textContent = text(payload.map_version, 'not reported');
   document.getElementById('diagRoute').textContent = text(payload.route_version, 'not reported');
   document.getElementById('diagFailure').textContent = text(failure.error_code || failure.message, 'none reported');
+  document.getElementById('diagSource').textContent = source;
+  document.getElementById('diagFailureCode').textContent = text(
+    failure.failure_code || failure.error_code,
+    'not reported'
+  );
+  document.getElementById('diagEvidenceRef').textContent = text(
+    failure.evidence_ref || payload.evidence_ref || taskRecord,
+    'not reported'
+  );
+  document.getElementById('diagHumanIntervention').textContent = humanIntervention ? 'Required' : 'No';
   document.getElementById('diagTask').textContent = text(taskRecord, 'not reported');
   document.getElementById('diagStatusFile').textContent = text(payload.operator_status_file, 'not reported');
+  document.getElementById('diagStateTransitionHistory').textContent = stateTransitionHistoryText(transitionHistory);
   document.getElementById('diagVisionSamples').textContent = visionSamples.read_error
     ? visionSamples.read_error
     : `${Number(visionSamples.sample_count || 0)} samples`;
@@ -880,6 +1097,35 @@ function showDiagnostics(payload) {
     'not reported'
   );
   document.getElementById('diagRouteProofSource').textContent = text(routeProofStatus.source, 'not reported');
+  document.getElementById('diagElevatorAssistState').textContent = text(
+    `${text(elevatorAssistStatus.state, 'unknown')} / ${text(elevatorAssist.phase || elevatorAssist.state, 'none')}`,
+    'unknown'
+  );
+  document.getElementById('diagElevatorAssistPrompt').textContent = text(
+    elevatorAssist.speaker_prompt || elevatorAssist.phone_copy,
+    'not reported'
+  );
+  document.getElementById('diagElevatorAssistEvidence').textContent = elevatorEvidenceText(elevatorAssist);
+  document.getElementById('diagElevatorAssistNextStep').textContent = text(
+    elevatorAssistStatus.next_step || elevatorAssistStatus.reason,
+    'not reported'
+  );
+  document.getElementById('diagRecoveryHint').textContent = humanIntervention
+    ? 'Manual takeover required: keep task in safe mode,复位现场阻塞后，可重新发起任务。'
+    : 'No manual takeover required.';
+  const transitionHistoryList = document.getElementById('diagStateTransitionHistoryList');
+  transitionHistoryList.innerHTML = '';
+  if (!transitionHistory.length) {
+    const item = document.createElement('li');
+    item.textContent = 'No transition history reported.';
+    transitionHistoryList.appendChild(item);
+  } else {
+    transitionHistory.slice(-5).forEach((transition) => {
+      const item = document.createElement('li');
+      item.textContent = stateTransitionSummary(transition);
+      transitionHistoryList.appendChild(item);
+    });
+  }
   renderReviewQueue({
     review_queue_count: visionSamples.review_queue_count,
     review_queue: reviewQueue,
@@ -981,16 +1227,25 @@ loadReviewQueue();
 
 
 def status_payload(state, message="", **extra):
-    prompt = operator_prompt_for_state(state)
+    elevator_assist = normalize_elevator_assist(
+        extra.pop("elevator_assist", None),
+        state=state,
+        message=message,
+    )
+    prompt = operator_prompt_for_state(state, elevator_assist=elevator_assist)
     payload = {
         "api_version": API_VERSION,
         "state": state,
         "message": message,
         "phone_copy": prompt["phone_copy"],
         "speaker_prompt": prompt["speaker_prompt"],
+        "elevator_assist": elevator_assist,
         "updated_at": time.time(),
     }
     payload.update(extra)
+    if elevator_assist.get("enabled"):
+        payload["phone_copy"] = elevator_assist.get("phone_copy") or payload["phone_copy"]
+        payload["speaker_prompt"] = elevator_assist.get("speaker_prompt") or payload["speaker_prompt"]
     return payload
 
 

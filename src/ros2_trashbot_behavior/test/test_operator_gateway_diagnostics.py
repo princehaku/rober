@@ -12,10 +12,13 @@ sys.path.insert(0, str(VISION_PACKAGE_ROOT))
 
 from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     build_diagnostics_payload,
+    classify_elevator_assist,
+    extract_elevator_assist,
     normalize_log_refs,
     summarize_hardware_proof,
     summarize_vision_manifest,
 )
+from ros2_trashbot_behavior.operator_gateway_http import ELEVATOR_ASSIST_SPEAKER_PROMPT
 
 
 class OperatorGatewayDiagnosticsTest(unittest.TestCase):
@@ -51,6 +54,85 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["route_proof_status"]["state"], "ready")
         self.assertEqual(payload["route_proof_status"]["source"], "latest_status.route_proof_summary")
         self.assertEqual(payload["route_proof_status"]["blocking_reason"], "")
+
+    def test_elevator_assist_passthrough_and_request_floor_help_prompt(self):
+        payload = self._base_build_payload(
+            {
+                "state": "requesting_floor_help",
+                "elevator_assist": {
+                    "enabled": True,
+                    "mode": "dry_run",
+                    "phase": "requesting_floor_help",
+                    "requires_human_help": True,
+                    "target_floor": "1",
+                    "evidence": {"inside_elevator": True},
+                    "events": [{"phase": "entering_elevator"}, {"phase": "requesting_floor_help"}],
+                },
+            }
+        )
+
+        self.assertEqual(payload["elevator_assist"]["phase"], "requesting_floor_help")
+        self.assertEqual(payload["elevator_assist"]["target_floor"], "1")
+        self.assertEqual(payload["elevator_assist"]["speaker_prompt"], ELEVATOR_ASSIST_SPEAKER_PROMPT)
+        self.assertEqual(payload["elevator_assist_status"]["state"], "needs_human_help")
+        self.assertEqual(payload["elevator_assist_status"]["source"], "latest_status.elevator_assist")
+
+    def test_elevator_assist_diagnostics_explains_unreliable_target_floor(self):
+        summary = classify_elevator_assist(
+            {
+                "enabled": True,
+                "mode": "dry_run",
+                "state": "target_floor_evidence_unreliable",
+                "phase": "waiting_target_floor",
+                "requires_human_help": True,
+                "reason": "target_floor_unconfirmed",
+                "evidence": {"target_floor_unconfirmed": True},
+            },
+            source="last_task.elevator_assist",
+        )
+
+        self.assertEqual(summary["state"], "needs_human_help")
+        self.assertIn("target_floor_unconfirmed", summary["reason"])
+        self.assertIn("operator", summary["next_step"])
+        self.assertEqual(summary["source"], "last_task.elevator_assist")
+
+    def test_elevator_assist_can_be_read_from_task_record_events(self):
+        with tempfile.TemporaryDirectory() as td:
+            task_record_path = Path(td) / "task.json"
+            task_record_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "delivery-elevator-1",
+                        "elevator_assist_events": [
+                            {
+                                "phase": "waiting_elevator_open",
+                                "reason": "door_closed_or_unknown",
+                                "evidence": {"door_closed_or_unknown": True},
+                            },
+                            {
+                                "phase": "waiting_target_floor",
+                                "state": "target_floor_unconfirmed",
+                                "requires_human_help": True,
+                                "target_floor": "1",
+                                "reason": "target_floor_unconfirmed",
+                                "evidence": {"target_floor_unconfirmed": True},
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            elevator_assist, source = extract_elevator_assist(
+                {"task_record_path": str(task_record_path)},
+                {},
+            )
+
+        self.assertEqual(source, "task_record.elevator_assist_events")
+        self.assertEqual(elevator_assist["phase"], "waiting_target_floor")
+        self.assertEqual(elevator_assist["state"], "target_floor_unconfirmed")
+        self.assertTrue(elevator_assist["requires_human_help"])
+        self.assertEqual(elevator_assist["target_floor"], "1")
+        self.assertEqual(elevator_assist["evidence"]["target_floor_unconfirmed"], True)
 
     def test_route_proof_summary_missing_fields_downgrades_to_unknown(self):
         payload = self._base_build_payload(
@@ -162,6 +244,94 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         )
         self.assertEqual(payload["route_proof_summary"]["missing_checkpoints"], ["checkpoint_2"])
 
+    def test_diagnostics_includes_traceability_fields_from_task_record(self):
+        with tempfile.TemporaryDirectory() as td:
+            task_record_path = Path(td) / "task.json"
+            task_record_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "delivery-123",
+                        "source": "hil_pass",
+                        "result_path": "/tmp/task_records/task-123.bin",
+                        "evidence_ref": "/tmp/evidence_refs/task-123.ref.json",
+                        "failure_code": "NAV_TIMEOUT",
+                        "human_intervention_required": True,
+                        "route_progress": {
+                            "checkpoint": "cp-timeout",
+                            "current_index": 2,
+                            "target": {"name": "trash_station"},
+                            "failure_code": "NAV_TIMEOUT",
+                            "evidence_ref": "/tmp/evidence_refs/task-123.ref.json",
+                            "source": "hil_pass",
+                        },
+                        "state_transition_history": [
+                            {
+                                "timestamp": 1710000000.0,
+                                "event": "nav_timeout",
+                                "from_state": "navigating",
+                                "to_state": "error",
+                                "message": "timeout waiting for gate",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            payload = self._base_build_payload(
+                {
+                    "state": "failed",
+                    "task_record_path": str(task_record_path),
+                    "error_code": "old_error",
+                }
+            )
+
+        self.assertEqual(payload["source"], "hil_pass")
+        self.assertEqual(payload["result_path"], "/tmp/task_records/task-123.bin")
+        self.assertEqual(payload["evidence_ref"], "/tmp/evidence_refs/task-123.ref.json")
+        self.assertEqual(payload["failure_code"], "NAV_TIMEOUT")
+        self.assertTrue(payload["human_intervention_required"])
+        self.assertEqual(payload["failure"]["result_path"], "/tmp/task_records/task-123.bin")
+        self.assertEqual(payload["failure"]["evidence_ref"], "/tmp/evidence_refs/task-123.ref.json")
+        self.assertEqual(payload["failure"]["failure_code"], "NAV_TIMEOUT")
+        self.assertTrue(payload["failure"]["human_intervention_required"])
+        self.assertEqual(payload["route_progress"]["checkpoint"], "cp-timeout")
+        self.assertEqual(payload["failure"]["route_progress"]["current_index"], 2)
+        self.assertEqual(payload["last_task"]["route_progress"]["target"], {"name": "trash_station"})
+        self.assertEqual(payload["failure"]["source"], "hil_pass")
+        self.assertEqual(payload["last_task"]["source"], "hil_pass")
+        self.assertEqual(payload["last_task"]["evidence_ref"], "/tmp/task_records/task-123.bin")
+        self.assertEqual(payload["last_task"]["failure_code"], "NAV_TIMEOUT")
+        self.assertTrue(payload["last_task"]["human_intervention_required"])
+        self.assertEqual(len(payload["failure"]["state_transition_history"]), 1)
+        self.assertEqual(payload["failure"]["state_transition_history"][0]["event"], "nav_timeout")
+        self.assertEqual(payload["last_task"]["state_transition_history"], payload["failure"]["state_transition_history"])
+
+    def test_diagnostics_uses_nav_route_progress_when_top_level_empty(self):
+        route_progress = {
+            "checkpoint": "cp-nav",
+            "current_index": 5,
+            "target": {"name": "trash_station"},
+            "failure_code": "",
+            "evidence_ref": "/tmp/nav-route-progress.ref",
+        }
+        payload = self._base_build_payload(
+            {
+                "state": "failed",
+                "route_progress": {},
+                "nav_results": [
+                    {
+                        "evidence": {
+                            "route_progress": route_progress,
+                        }
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(payload["route_progress"], route_progress)
+        self.assertEqual(payload["failure"]["route_progress"], route_progress)
+        self.assertEqual(payload["last_task"]["route_progress"], route_progress)
+
     def test_diagnostics_prefers_latest_status_terminal_fields(self):
         payload = build_diagnostics_payload(
             {
@@ -212,6 +382,17 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                     "error_code": "timed_out",
                     "final_state": "dropoff",
                     "task_record_path": "/tmp/task.json",
+                    "source": "task_orchestrator",
+                    "failure_code": "TASK_CANCEL",
+                    "human_intervention_required": True,
+                    "state_transition_history": [
+                        {
+                            "timestamp": 1710000000.0,
+                            "event": "user_cancel",
+                            "from_state": "navigating",
+                            "to_state": "canceled",
+                        }
+                    ],
                 },
             },
             software_version="",
@@ -226,6 +407,13 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["failure"]["error_code"], "timed_out")
         self.assertEqual(payload["failure"]["final_state"], "dropoff")
         self.assertEqual(payload["failure"]["task_record_path"], "/tmp/task.json")
+        self.assertEqual(payload["source"], "software_proof")
+        self.assertEqual(payload["evidence_ref"], "/tmp/task.json")
+        self.assertEqual(payload["failure_code"], "TASK_CANCEL")
+        self.assertEqual(payload["human_intervention_required"], True)
+        self.assertEqual(payload["failure"]["source"], "software_proof")
+        self.assertEqual(payload["failure"]["failure_code"], "TASK_CANCEL")
+        self.assertEqual(payload["failure"]["human_intervention_required"], True)
         self.assertEqual(payload["map_version"], "map-a")
         self.assertEqual(payload["route_version"], "route-a")
         self.assertEqual(payload["log_refs"], ["/tmp/robot.log"])
@@ -233,6 +421,167 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["vision_samples"]["integrity_error_count"], 1)
         self.assertEqual(payload["hardware_proof"]["status"], "read_error")
         self.assertEqual(payload["review_decision_log"]["status"], "not_configured")
+
+    def test_diagnostics_prefers_task_record_fields_over_last_task_evidence_fallback(self):
+        with tempfile.TemporaryDirectory() as td:
+            task_record_path = Path(td) / "task_record.json"
+            task_record_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "delivery-456",
+                        "result_path": "/tmp/task_record_result.bin",
+                        "evidence_ref": "/tmp/task_record_evidence.ref.json",
+                        "source": "hil_pass",
+                        "failure_code": "NAV_FAIL",
+                        "human_intervention_required": True,
+                        "state_transition_history": [
+                            {
+                                "timestamp": 1710000001.0,
+                                "event": "navigation_failed",
+                                "from_state": "navigating",
+                                "to_state": "error",
+                                "message": "navigation failed from task record",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            payload = self._base_build_payload(
+                {
+                    "state": "failed",
+                    "task_record_path": str(task_record_path),
+                    "last_task": {
+                        "task_record_path": str(task_record_path),
+                        "result_path": "/tmp/legacy_result.bin",
+                        "evidence_ref": "/tmp/legacy_evidence.ref.json",
+                        "failure_code": "LEGACY_FAIL",
+                        "human_intervention_required": False,
+                    },
+                }
+            )
+
+        self.assertEqual(payload["result_path"], "/tmp/task_record_result.bin")
+        self.assertEqual(payload["evidence_ref"], "/tmp/task_record_evidence.ref.json")
+        self.assertEqual(payload["source"], "hil_pass")
+        self.assertEqual(payload["failure_code"], "NAV_FAIL")
+        self.assertTrue(payload["human_intervention_required"])
+        self.assertEqual(payload["failure"]["result_path"], "/tmp/task_record_result.bin")
+        self.assertEqual(payload["failure"]["evidence_ref"], "/tmp/task_record_evidence.ref.json")
+        self.assertEqual(payload["last_task"]["result_path"], "/tmp/task_record_result.bin")
+        self.assertEqual(payload["last_task"]["evidence_ref"], "/tmp/task_record_evidence.ref.json")
+
+    def test_diagnostics_prefers_task_record_trace_fields(self):
+        with tempfile.TemporaryDirectory() as td:
+            task_record_path = Path(td) / "task.json"
+            task_record_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "delivery-999",
+                        "result_path": "/tmp/task_record_result.bin",
+                        "evidence_ref": "/tmp/task_record_evidence.ref",
+                        "source": "hil_pass",
+                        "failure_code": "NAV_FAIL",
+                        "human_intervention_required": True,
+                        "state_transition_history": [
+                            {
+                                "timestamp": 1710000003.0,
+                                "event": "navigation_failed",
+                                "from_state": "navigating",
+                                "to_state": "error",
+                                "message": "task record history",
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            payload = self._base_build_payload(
+                {
+                    "state": "failed",
+                    "task_record_path": str(task_record_path),
+                    "result_path": "/tmp/latest-result.bin",
+                    "evidence_ref": "/tmp/outer-evidence.bin",
+                    "source": "software_proof",
+                    "failure_code": "TASK_CANCEL",
+                    "human_intervention_required": False,
+                    "state_transition_history": [
+                        {
+                            "timestamp": 1710000000.0,
+                            "event": "latest_status",
+                            "from_state": "loaded",
+                            "to_state": "error",
+                        }
+                    ],
+                }
+            )
+
+        self.assertEqual(payload["source"], "hil_pass")
+        self.assertEqual(payload["result_path"], "/tmp/task_record_result.bin")
+        self.assertEqual(payload["evidence_ref"], "/tmp/task_record_evidence.ref")
+        self.assertEqual(payload["failure_code"], "NAV_FAIL")
+        self.assertTrue(payload["human_intervention_required"])
+        self.assertEqual(
+            payload["failure"]["state_transition_history"][0]["event"],
+            "navigation_failed",
+        )
+        self.assertEqual(
+            payload["last_task"]["state_transition_history"][0]["event"],
+            "navigation_failed",
+        )
+
+    def test_diagnostics_reuses_last_task_state_transition_when_task_record_unreadable(self):
+        with tempfile.TemporaryDirectory() as td:
+            task_record_path = Path(td) / "corrupt_task.json"
+            task_record_path.write_text("{bad json", encoding="utf-8")
+            payload = build_diagnostics_payload(
+                {
+                    "state": "failed",
+                    "task_record_path": str(task_record_path),
+                    "result_path": "/tmp/latest-result.bin",
+                    "evidence_ref": "/tmp/outer-evidence.bin",
+                    "source": "software_proof",
+                    "failure_code": "TASK_CANCEL",
+                    "human_intervention_required": True,
+                    "state_transition_history": [
+                        {
+                            "timestamp": 1710000001.0,
+                            "event": "latest_state_transition",
+                            "from_state": "navigating",
+                            "to_state": "error",
+                        }
+                    ],
+                    "last_task": {
+                        "result_path": "/tmp/legacy.bin",
+                        "evidence_ref": "/tmp/legacy-evidence.bin",
+                        "failure_code": "NAV_TIMEOUT",
+                        "human_intervention_required": False,
+                        "state_transition_history": [
+                            {
+                                "timestamp": 1710000002.0,
+                                "event": "legacy_history",
+                                "from_state": "delivering",
+                                "to_state": "error",
+                            }
+                        ],
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )
+
+        self.assertEqual(payload["source"], "software_proof")
+        self.assertEqual(payload["result_path"], "/tmp/latest-result.bin")
+        self.assertEqual(payload["evidence_ref"], "/tmp/outer-evidence.bin")
+        self.assertEqual(payload["failure_code"], "TASK_CANCEL")
+        self.assertTrue(payload["human_intervention_required"])
+        self.assertEqual(payload["failure"]["state_transition_history"][0]["event"], "legacy_history")
+        self.assertEqual(payload["last_task"]["state_transition_history"][0]["event"], "legacy_history")
 
     def test_hardware_proof_ready_with_hil_risk_maps_to_needs_hil(self):
         with tempfile.TemporaryDirectory() as td:

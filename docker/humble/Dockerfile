@@ -1,4 +1,5 @@
-FROM osrf/ros:humble-desktop
+ARG ROS_HUMBLE_BASE_IMAGE=osrf/ros:humble-desktop
+FROM ${ROS_HUMBLE_BASE_IMAGE}
 
 ARG UBUNTU_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 ARG ROS_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ros2/ubuntu

@@ -1,7 +1,7 @@
 import json
 import os
 
-from ros2_trashbot_behavior.operator_gateway_http import status_payload
+from ros2_trashbot_behavior.operator_gateway_http import normalize_elevator_assist, status_payload
 
 # Diagnostics must stay available even when the optional vision package is not
 # installed in a minimal operator-gateway environment.
@@ -14,6 +14,9 @@ except ImportError:
 REVIEW_QUEUE_LIMIT = 5
 LOW_CONFIDENCE_REVIEW_THRESHOLD = 75
 HARDWARE_PROOF_STATUSES = {"software_proof", "needs_hil", "invalid_config", "read_error"}
+EVIDENCE_SOURCE_SOFTWARE = "software_proof"
+EVIDENCE_SOURCE_HIL = "hil_pass"
+VALID_EVIDENCE_SOURCES = {EVIDENCE_SOURCE_SOFTWARE, EVIDENCE_SOURCE_HIL}
 REVIEW_DECISION_VALUES = {"approved", "rejected", "needs_retry"}
 REVIEW_DECISION_ORDER = ("approved", "rejected", "needs_retry")
 ROUTE_PROOF_REQUIRED_FIELDS = (
@@ -37,6 +40,15 @@ ROUTE_PROOF_WAITING_GATE_STATUSES = {
     "insufficient_matches",
 }
 ROUTE_PROOF_READY_GATE_STATUSES = {"passed", "ready", "ok"}
+ELEVATOR_ASSIST_HELP_REASONS = {
+    "door_timeout",
+    "door_closed_or_unknown",
+    "target_floor_unconfirmed",
+    "target_floor_evidence_unreliable",
+    "unsafe_to_enter",
+    "unsafe_to_exit",
+    "manual_takeover_required",
+}
 
 
 def _default_hardware_proof_summary(path, status="read_error", read_error=""):
@@ -318,6 +330,269 @@ def _extract_route_proof_summary(latest_status, last_task):
     if isinstance(summary, dict):
         return dict(summary), source
     return {}, ""
+
+
+def normalize_evidence_source(value):
+    """Normalize evidence provenance to user-facing contracts.
+
+    Source tags are intentionally limited to two values so O2/O3 users can
+    clearly distinguish offline replay evidence from real hardware-in-loop evidence:
+    - hil_pass: evidence is robot-side validated with HIL/real hardware artifacts.
+    - software_proof: software-only proof is available but HIL is still required.
+    """
+    normalized = str(value or "").strip().lower().replace("-", "_")
+    if normalized in VALID_EVIDENCE_SOURCES:
+        return normalized
+    if normalized in {
+        "task_orchestrator",
+        "dry_run",
+        "robot_sim",
+        "simulated",
+        "software",
+        "software_proof",
+    }:
+        if normalized == "software":
+            return EVIDENCE_SOURCE_SOFTWARE
+        return EVIDENCE_SOURCE_SOFTWARE
+    if normalized == "hil":
+        return EVIDENCE_SOURCE_HIL
+    return EVIDENCE_SOURCE_SOFTWARE
+
+
+def _extract_traceability_field(payload, field_name, *fallbacks):
+    """Read a traceability field using explicit ownership precedence.
+
+    Priority:
+    1) `payload` (authoritative task_record)
+    2) each fallback payload in order
+    """
+    if isinstance(payload, dict) and field_name in payload:
+        return payload.get(field_name)
+    for fallback_payload in fallbacks:
+        if isinstance(fallback_payload, dict) and field_name in fallback_payload:
+            return fallback_payload.get(field_name)
+    return None
+
+
+def _extract_route_progress(payload, *fallbacks):
+    for candidate_payload in (payload, *fallbacks):
+        if not isinstance(candidate_payload, dict):
+            continue
+        route_progress = candidate_payload.get("route_progress")
+        if isinstance(route_progress, dict) and route_progress:
+            return dict(route_progress)
+        nav_results = candidate_payload.get("nav_results")
+        if not isinstance(nav_results, list):
+            continue
+        for nav_result in reversed(nav_results):
+            if not isinstance(nav_result, dict):
+                continue
+            evidence = nav_result.get("evidence")
+            if not isinstance(evidence, dict):
+                continue
+            route_progress = evidence.get("route_progress")
+            if isinstance(route_progress, dict) and route_progress:
+                return dict(route_progress)
+    return {}
+
+
+def coalesce_traceability_fields(latest_status, *, task_record=None, last_task=None):
+    """Return one canonical traceability bundle for diagnostics and gateway status."""
+    latest_status = latest_status if isinstance(latest_status, dict) else {}
+    last_task = last_task if isinstance(last_task, dict) else {}
+    if not isinstance(task_record, dict):
+        task_record = _read_task_record(latest_status.get("task_record_path"))
+
+    task_record_path = str(
+        latest_status.get("task_record_path")
+        or last_task.get("task_record_path")
+        or ""
+    ).strip()
+    result_path = str(
+        _extract_traceability_field(
+            task_record,
+            "result_path",
+            latest_status,
+            last_task,
+        )
+        or task_record_path
+        or ""
+    )
+    evidence_ref = str(
+        _extract_traceability_field(
+            task_record,
+            "evidence_ref",
+            latest_status,
+            last_task,
+        )
+        or result_path
+        or task_record_path
+        or ""
+    )
+    failure_code = str(
+        _extract_traceability_field(
+            task_record,
+            "failure_code",
+            latest_status,
+            last_task,
+        )
+        or _extract_traceability_field(latest_status, "error_code")
+        or _extract_traceability_field(last_task, "error_code")
+        or ""
+    )
+    if "human_intervention_required" in task_record:
+        human_intervention_required = bool(task_record.get("human_intervention_required"))
+    elif "human_intervention_required" in latest_status:
+        human_intervention_required = bool(latest_status.get("human_intervention_required"))
+    elif "human_intervention_required" in last_task:
+        human_intervention_required = bool(last_task.get("human_intervention_required"))
+    else:
+        human_intervention_required = False
+
+    state_transition_history = task_record.get("state_transition_history")
+    if not isinstance(state_transition_history, list):
+        state_transition_history = task_record.get("state_transitions")
+        if not isinstance(state_transition_history, list):
+            state_transition_history = _extract_traceability_field(
+                last_task,
+                "state_transition_history",
+                latest_status,
+            )
+            if not isinstance(state_transition_history, list):
+                state_transition_history = []
+    return {
+        "source": normalize_evidence_source(
+            _extract_traceability_field(
+                task_record,
+                "source",
+                latest_status,
+                last_task,
+            )
+            or ""
+        ),
+        "result_path": result_path,
+        "evidence_ref": evidence_ref,
+        "failure_code": failure_code,
+        "human_intervention_required": bool(human_intervention_required),
+        "state_transition_history": state_transition_history,
+        "task_record_path": task_record_path,
+        "route_progress": _extract_route_progress(task_record, latest_status, last_task),
+    }
+
+
+def _elevator_assist_from_task_record(task_record):
+    if not isinstance(task_record, dict):
+        return None, ""
+    direct = task_record.get("elevator_assist")
+    if isinstance(direct, dict):
+        return direct, "task_record.elevator_assist"
+    events = task_record.get("elevator_assist_events")
+    if isinstance(events, list) and events:
+        latest_event = events[-1] if isinstance(events[-1], dict) else {}
+        return {
+            "enabled": True,
+            "mode": "dry_run",
+            "state": latest_event.get("state") or latest_event.get("phase") or "",
+            "phase": latest_event.get("phase") or latest_event.get("state") or "",
+            "requires_human_help": bool(latest_event.get("requires_human_help", False)),
+            "reason": latest_event.get("reason", ""),
+            "target_floor": latest_event.get("target_floor", ""),
+            "evidence": latest_event.get("evidence") if isinstance(latest_event.get("evidence"), dict) else {},
+            "events": events,
+        }, "task_record.elevator_assist_events"
+    nav_results = task_record.get("nav_results")
+    if not isinstance(nav_results, list):
+        return None, ""
+    for nav_result in reversed(nav_results):
+        if not isinstance(nav_result, dict):
+            continue
+        candidate = nav_result.get("elevator_assist")
+        if isinstance(candidate, dict):
+            return candidate, "task_record.nav_results.elevator_assist"
+        evidence = nav_result.get("evidence")
+        if isinstance(evidence, dict) and isinstance(evidence.get("elevator_assist"), dict):
+            return evidence.get("elevator_assist"), "task_record.nav_results.evidence.elevator_assist"
+    return None, ""
+
+
+def extract_elevator_assist(latest_status, last_task):
+    latest_status = latest_status if isinstance(latest_status, dict) else {}
+    last_task = last_task if isinstance(last_task, dict) else {}
+    for candidate, source in (
+        (latest_status.get("elevator_assist"), "latest_status.elevator_assist"),
+        (last_task.get("elevator_assist"), "last_task.elevator_assist"),
+    ):
+        if isinstance(candidate, dict):
+            return normalize_elevator_assist(candidate), source
+
+    task_record_path = latest_status.get("task_record_path") or last_task.get("task_record_path") or ""
+    candidate, source = _elevator_assist_from_task_record(_read_task_record(task_record_path))
+    if isinstance(candidate, dict):
+        return normalize_elevator_assist(candidate), source
+    return normalize_elevator_assist({}), ""
+
+
+def classify_elevator_assist(elevator_assist, source=""):
+    elevator_assist = normalize_elevator_assist(elevator_assist)
+    source_text = str(source or "")
+    if not elevator_assist.get("enabled"):
+        return {
+            "state": "disabled",
+            "reason": "elevator assisted delivery is not active",
+            "next_step": "Continue the normal trash delivery flow.",
+            "source": source_text,
+        }
+
+    phase = str(elevator_assist.get("phase") or elevator_assist.get("state") or "").strip()
+    reason = str(elevator_assist.get("reason") or "").strip()
+    if elevator_assist.get("requires_human_help") or phase in ELEVATOR_ASSIST_HELP_REASONS:
+        return {
+            "state": "needs_human_help",
+            "reason": reason or elevator_assist.get("phone_copy") or "elevator assist requires human help",
+            "next_step": "Ask an operator to confirm the elevator door, target floor, or safe takeover path.",
+            "source": source_text,
+        }
+    if phase == "waiting_elevator_open":
+        return {
+            "state": "waiting_elevator_open",
+            "reason": "waiting for the elevator door to open",
+            "next_step": "Wait for door_open evidence or ask for help if the door does not open.",
+            "source": source_text,
+        }
+    if phase == "requesting_floor_help":
+        return {
+            "state": "requesting_floor_help",
+            "reason": "robot is asking a nearby person to press the target floor",
+            "next_step": elevator_assist.get("speaker_prompt", ""),
+            "source": source_text,
+        }
+    if phase == "waiting_target_floor":
+        return {
+            "state": "waiting_target_floor",
+            "reason": "waiting for target floor arrival evidence",
+            "next_step": "Keep the path clear and wait for target_floor_confirmed plus door_open evidence.",
+            "source": source_text,
+        }
+    if phase == "exiting_elevator":
+        return {
+            "state": "exiting_elevator",
+            "reason": "target floor evidence is ready and the robot is preparing to exit",
+            "next_step": "Monitor safe_to_exit evidence while the robot leaves the elevator.",
+            "source": source_text,
+        }
+    if phase == "resume_delivery":
+        return {
+            "state": "resume_delivery",
+            "reason": "elevator segment is complete",
+            "next_step": "Continue delivery to the trash station.",
+            "source": source_text,
+        }
+    return {
+        "state": "active",
+        "reason": reason or elevator_assist.get("phone_copy") or "elevator assist is active",
+        "next_step": elevator_assist.get("speaker_prompt", ""),
+        "source": source_text,
+    }
 
 
 def _route_proof_missing_fields(route_proof_summary):
@@ -693,14 +968,53 @@ def build_diagnostics_payload(
 ):
     latest_status = dict(latest_status or {})
     last_task = dict(latest_status.get("last_task") or {})
+    task_record_path = str(
+        latest_status.get("task_record_path")
+        or last_task.get("task_record_path")
+        or ""
+    )
+    task_record = _read_task_record(task_record_path)
     route_proof_summary, route_proof_source = _extract_route_proof_summary(latest_status, last_task)
     route_proof_status = classify_route_proof(route_proof_summary, source=route_proof_source)
+    elevator_assist, elevator_assist_source = extract_elevator_assist(latest_status, last_task)
+    elevator_assist_status = classify_elevator_assist(elevator_assist, source=elevator_assist_source)
+    traceability = coalesce_traceability_fields(
+        latest_status,
+        task_record=task_record,
+        last_task=last_task,
+    )
+    source = traceability["source"]
+    result_path = traceability["result_path"]
+    evidence_ref = traceability["evidence_ref"]
+    failure_code = traceability["failure_code"]
+    human_intervention_required = traceability["human_intervention_required"]
+    state_transition_history = traceability["state_transition_history"]
+    route_progress = traceability["route_progress"]
+    last_task["source"] = source
+    last_task["result_path"] = result_path
+    if "evidence_ref" in last_task:
+        last_task["evidence_ref"] = evidence_ref
+    else:
+        last_task["evidence_ref"] = (
+            str(task_record.get("result_path", "")).strip() or evidence_ref
+        )
+    last_task["failure_code"] = failure_code
+    last_task["state_transition_history"] = state_transition_history
+    last_task["human_intervention_required"] = human_intervention_required
+    last_task["route_progress"] = route_progress
     failure = {
         "state": latest_status.get("state", ""),
         "message": latest_status.get("message", ""),
         "error_code": latest_status.get("error_code") or last_task.get("error_code", ""),
         "final_state": latest_status.get("final_state") or last_task.get("final_state", ""),
         "task_record_path": latest_status.get("task_record_path") or last_task.get("task_record_path", ""),
+        "result_path": result_path,
+        "source": source,
+        "evidence_ref": evidence_ref,
+        "failure_code": failure_code,
+        "human_intervention_required": human_intervention_required,
+        "state_transition_history": state_transition_history,
+        "route_progress": route_progress,
     }
     review_decision_log, decision_index = load_review_decision_log(review_decision_log_ref)
     return status_payload(
@@ -711,6 +1025,13 @@ def build_diagnostics_payload(
         route_version=str(route_version or ""),
         latest_status=latest_status,
         last_task=last_task,
+        source=source,
+        result_path=result_path,
+        evidence_ref=evidence_ref,
+        failure_code=failure_code,
+        human_intervention_required=human_intervention_required,
+        state_transition_history=state_transition_history,
+        route_progress=route_progress,
         failure=failure,
         log_refs=normalize_log_refs(log_refs),
         vision_sample_manifest_ref=str(vision_sample_manifest_ref or ""),
@@ -722,6 +1043,8 @@ def build_diagnostics_payload(
         ),
         route_proof_summary=route_proof_summary,
         route_proof_status=route_proof_status,
+        elevator_assist=elevator_assist,
+        elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),
         operator_status_file=str(operator_status_file or ""),
     )

@@ -6,6 +6,26 @@
 - Confirm WAVE ROVER UART JSON references before changing driver behavior.
 - Confirm Orange Pi serial device on the actual robot.
 - Confirm `115200` baud with the loaded ESP32 firmware.
+- Confirm evidence source policy: `source=software_proof` for template checks, `source=hil_pass` for real UART verification.
+- Run `python3 scripts/hardware_smoke_wave_rover.py --status` first; require no pyserial for this step.
+- Before upgrading any archived evidence run to HIL, run
+  `python3 scripts/hil_evidence_packet_gate.py --packet-dir evidence/<evidence_ref>`.
+- If `pyserial` is missing or `serial` open fails, record `Blocked` and capture repro steps; do not claim `hil_pass`.
+- On a Docker-only host with no `/dev/ttyUSB*`, record `readiness_blocked`
+  or `source=software_proof` only. Do not convert Docker image success,
+  `--status`, or missing-serial evidence into `source=hil_pass`.
+- 当前本轮状态：`Blocked`（`/dev/ttyUSB0` 不存在，host 无串口设备）
+- 本轮上机尝试：`run_20260511T094018Z_hil_pass_speed0p050_dur0p30`
+- 本轮阻塞重现：
+  - `ls -l /dev/ttyUSB0` -> `No such file or directory`
+  - `python3` 结果：`serial_paths: []`（`glob('/dev/ttyUSB*')`）
+
+## Evidence Source Boundaries
+
+- `source=software_proof`：只用于离线核验（help/status/参数模板）。
+- `source=hil_pass`：必须基于真实 UART 串口交互、反馈采样、运行日志与任务记录。
+- 运行脚本时使用 `--evidence-ref run_<YYYYMMDDTHHMMSS>Z_<serial>_hil_pass_speed<...>_dur<...>`，并在 evidence 文档中复用同一 `evidence_ref`。
+- Gate source boundary：`scripts/hil_evidence_packet_gate.py` 默认把缺文件、空文件、串口打开失败、无 `T=1001`、topic JSONL 缺样本、`source=software_proof/simulated/legacy` 或 `evidence_ref` 冲突判为 `blocked` 并返回非 0。只有完整 packet 输出 `status=hil_pass` 才可进入 O1/O2/O3 同一 `evidence_ref` 复账。
 
 ## Desktop ROS2 Build Check
 
@@ -17,20 +37,42 @@
 bash scripts/docker_humble_build.sh
 ```
 
+- Docker image-only preflight:
+
+```bash
+SKIP_COLCON=1 bash scripts/docker_humble_build.sh
+```
+
+- If Docker fails, use the emitted `Docker build failure classification` and
+  preserve its key log snippet in the sprint `tech-done.md`:
+  - `Docker daemon`: Docker Desktop/Engine/context is unavailable.
+  - `Docker builder`: BuildKit/buildx builder is missing or unhealthy.
+  - `base image`: `osrf/ros:humble-desktop` metadata or manifest cannot be resolved.
+  - `registry mirror/proxy`: a mirror/proxy returned HTML or wrong content for image metadata/layers.
+  - `proxy`: DNS/proxy/certificate/auth prevents registry traffic.
+  - `cache`: local builder cache or layer extraction is corrupt.
+  - `unknown`: preserve full log and rerun on another Docker host/network.
 - Confirm all six ROS2 packages build: interfaces, nav, vision, hardware, behavior, bringup.
+- Docker success on a host with no serial device is only container readiness;
+  HIL remains pending until a real device is passed into the container, for example:
+  `EXTRA_DOCKER_ARGS="--device=<real_serial_device>" bash scripts/docker_humble_dev.sh`.
 
 ## Serial And Base Safety
 
 - Open the configured serial device.
 - Record the exact `serial_port`, `serial_baudrate`, `command_mode`, `track_width_m`, `max_wheel_speed_mps`, `feedback_interval_ms`, and `odom_publish_hz` used for the run.
 - Capture bridge startup logs showing vendor newline-delimited JSON protocol, selected command mode, and `/odom` source.
+- 标注 `source=hil_pass` 在真实硬件采集时，`source=software_proof` 仅用于模板/离线验证。
 - Send stop command and verify wheels do not move.
 - Confirm startup configuration frames were sent: `T=143` echo off, `T=142` feedback interval, `T=131` feedback flow on.
 - Send low-speed `T=1` forward command and verify direction.
 - Send low-speed `T=1` reverse command and verify direction.
 - Send low-speed turn command and verify left/right mapping.
 - Return to stop command after every movement check.
-- If using `scripts/hardware_smoke_wave_rover.py`, save the terminal output and the exact command line.
+- 如任一步骤缺少反馈、方向不符或出现 timeout，停止推进并在 `wave_rover_hil_evidence.md` 标注 blocked 原因与复现条件。
+- If using `scripts/hardware_smoke_wave_rover.py`, run `python3 scripts/hardware_smoke_wave_rover.py --status` first (software proof), then save terminal output and the exact command line for `source=hil_pass` runs.
+- 本轮证据回填：`run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30`
+- 最新一次执行：`run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30`（`--help`/`--status`/`py_compile` 通过，`--move-test` 因 `/dev/ttyUSB0` 缺失阻塞）
 
 ## Feedback
 
@@ -39,10 +81,12 @@ bash scripts/docker_humble_build.sh
 - Confirm battery voltage is plausible.
 - Confirm IMU yaw units before relying on orientation.
 - Record whether `/odom` is command-integrated or measured.
-- Capture one sample `T=1001` JSON line with `L`, `R`, `r`, `p`, `y`, and `v`.
+- Capture one sample `T=1001` JSON line with `L`, `R`, `r`, `p`, `y`, and `v` and mark field completeness as evidence.
+- 采样至少两帧并记录平均间隔（`feedback_interval_ms` 验证），标注为 `source=hil_pass`。
 - Capture one `ros2 topic echo /battery --once` sample and verify it only claims voltage-level data.
 - Capture one `ros2 topic echo /imu/data --once` sample and verify the current contract is yaw-only orientation.
 - Capture one `ros2 topic echo /odom --once` sample and label it command-integrated unless encoder validation has been completed.
+- 若 `T=1001` 字段缺失或 `feedback_interval_ms` 偏离大幅，记录阻塞原因并在下一轮修复前停止推进。
 
 ## Navigation
 
@@ -71,3 +115,5 @@ bash scripts/docker_humble_build.sh
 - Save hardware smoke output, including serial device, feedback frame, and final stop confirmation.
 - Save any photos/video used to prove wheel direction, stop behavior, or turn direction.
 - Save camera samples when visual debug is enabled.
+- Run `python3 scripts/hil_evidence_packet_gate.py --packet-dir evidence/<evidence_ref>` and attach the JSON output. Synthetic fixture gate success is only software validation, not real hardware proof.
+- Run-level `hil_pass` 结果引用：`evidence/run_20260511T094018Z_hil_pass_speed0p050_dur0p30`

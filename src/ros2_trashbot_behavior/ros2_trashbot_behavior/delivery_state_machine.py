@@ -23,7 +23,13 @@ class DeliveryEvent(Enum):
     RETURN_FAILED = "return_failed"
     TIMED_OUT = "timed_out"
     CANCELED = "canceled"
+    ELEVATOR_PHASE = "elevator_phase"
+    ELEVATOR_FAILED = "elevator_failed"
+    ELEVATOR_COMPLETED = "elevator_completed"
     INVALID_TRANSITION = "invalid_transition"
+    NAV_FAIL = "NAV_FAIL"
+    NAV_TIMEOUT = "NAV_TIMEOUT"
+    TASK_CANCEL = "TASK_CANCEL"
 
 
 @dataclass
@@ -40,6 +46,7 @@ class DeliveryStateMachine:
     state: DeliveryState = DeliveryState.IDLE
     target: str = ""
     error_message: str = ""
+    failure_code: str = ""
     events: list[StateTransition] = field(default_factory=list)
 
     def _transition(self, event: DeliveryEvent, to_state: DeliveryState, message: str = ""):
@@ -53,6 +60,7 @@ class DeliveryStateMachine:
             f"invalid transition {event.value} from {self.state.value}; "
             f"expected one of: {allowed_names}"
         )
+        self.failure_code = "INVALID_TRANSITION"
         self._transition(DeliveryEvent.INVALID_TRANSITION, DeliveryState.ERROR, self.error_message)
         return False
 
@@ -87,11 +95,36 @@ class DeliveryStateMachine:
             return
         self._transition(DeliveryEvent.NAVIGATION_SUCCEEDED, DeliveryState.DROPOFF)
 
-    def navigation_failed(self, message: str):
+    def navigation_failed(self, message: str, failure_code: str = "NAV_FAIL"):
         if not self._require_state(DeliveryEvent.NAVIGATION_FAILED, DeliveryState.DELIVERING):
             return
+        self.failure_code = failure_code
         self.error_message = message or "navigation failed"
-        self._transition(DeliveryEvent.NAVIGATION_FAILED, DeliveryState.ERROR, self.error_message)
+        self._transition(DeliveryEvent.NAVIGATION_FAILED, DeliveryState.ERROR, message)
+
+    def elevator_phase(self, phase: str, message: str = ""):
+        if not self._require_state(DeliveryEvent.ELEVATOR_PHASE, DeliveryState.DELIVERING):
+            return
+        phase = (phase or "").strip()
+        if not phase:
+            self.error_message = "elevator phase is required"
+            self._transition(DeliveryEvent.ELEVATOR_FAILED, DeliveryState.ERROR, self.error_message)
+            return
+        # Keep the main delivery state in DELIVERING while recording the finer
+        # grained elevator dry-run phase in the transition message for replay.
+        detail = message or phase
+        self._transition(DeliveryEvent.ELEVATOR_PHASE, DeliveryState.DELIVERING, detail)
+
+    def elevator_failed(self, reason: str):
+        if not self._require_state(DeliveryEvent.ELEVATOR_FAILED, DeliveryState.DELIVERING):
+            return
+        self.error_message = reason or "elevator assisted delivery failed"
+        self._transition(DeliveryEvent.ELEVATOR_FAILED, DeliveryState.ERROR, self.error_message)
+
+    def elevator_completed(self, message: str = "resume delivery"):
+        if not self._require_state(DeliveryEvent.ELEVATOR_COMPLETED, DeliveryState.DELIVERING):
+            return
+        self._transition(DeliveryEvent.ELEVATOR_COMPLETED, DeliveryState.DELIVERING, message)
 
     def dropoff_confirmed(self):
         if not self._require_state(DeliveryEvent.DROPOFF_CONFIRMED, DeliveryState.DROPOFF):
@@ -101,6 +134,7 @@ class DeliveryStateMachine:
     def dropoff_failed(self, message: str):
         if not self._require_state(DeliveryEvent.DROPOFF_FAILED, DeliveryState.DROPOFF):
             return
+        self.failure_code = "dropoff_failed"
         self.error_message = message or "dropoff failed"
         self._transition(DeliveryEvent.DROPOFF_FAILED, DeliveryState.ERROR, self.error_message)
 
@@ -112,10 +146,11 @@ class DeliveryStateMachine:
     def return_failed(self, message: str):
         if not self._require_state(DeliveryEvent.RETURN_FAILED, DeliveryState.RETURNING):
             return
+        self.failure_code = "NAV_FAIL"
         self.error_message = message or "return failed"
         self._transition(DeliveryEvent.RETURN_FAILED, DeliveryState.ERROR, self.error_message)
 
-    def timed_out(self, message: str):
+    def timed_out(self, message: str, failure_code: str = "NAV_TIMEOUT"):
         if not self._require_state(
             DeliveryEvent.TIMED_OUT,
             DeliveryState.DELIVERING,
@@ -123,10 +158,11 @@ class DeliveryStateMachine:
             DeliveryState.RETURNING,
         ):
             return
+        self.failure_code = failure_code
         self.error_message = message or "delivery timed out"
-        self._transition(DeliveryEvent.TIMED_OUT, DeliveryState.ERROR, self.error_message)
+        self._transition(DeliveryEvent.TIMED_OUT, DeliveryState.ERROR, message)
 
-    def cancel(self, message: str):
+    def cancel(self, message: str, failure_code: str = "TASK_CANCEL"):
         if not self._require_state(
             DeliveryEvent.CANCELED,
             DeliveryState.LOADED,
@@ -135,4 +171,5 @@ class DeliveryStateMachine:
             DeliveryState.RETURNING,
         ):
             return
+        self.failure_code = failure_code
         self._transition(DeliveryEvent.CANCELED, DeliveryState.IDLE, message)

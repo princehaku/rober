@@ -70,6 +70,32 @@ class DeliveryStateMachineTest(unittest.TestCase):
         self.assertEqual(machine.error_message, "navigation timed out")
         self.assertEqual(machine.events[-1].event, DeliveryEvent.TIMED_OUT)
 
+    def test_elevator_phases_record_without_leaving_delivery(self):
+        machine = DeliveryStateMachine()
+        machine.confirm_loaded("bin_a")
+        machine.start_delivery()
+
+        machine.elevator_phase("approaching_elevator")
+        machine.elevator_phase("waiting_elevator_open")
+        machine.elevator_completed()
+
+        self.assertEqual(machine.state, DeliveryState.DELIVERING)
+        self.assertEqual(machine.error_message, "")
+        self.assertEqual(machine.events[-3].event, DeliveryEvent.ELEVATOR_PHASE)
+        self.assertEqual(machine.events[-3].message, "approaching_elevator")
+        self.assertEqual(machine.events[-1].event, DeliveryEvent.ELEVATOR_COMPLETED)
+
+    def test_elevator_failure_enters_error(self):
+        machine = DeliveryStateMachine()
+        machine.confirm_loaded("bin_a")
+        machine.start_delivery()
+
+        machine.elevator_failed("target floor was not confirmed")
+
+        self.assertEqual(machine.state, DeliveryState.ERROR)
+        self.assertEqual(machine.error_message, "target floor was not confirmed")
+        self.assertEqual(machine.events[-1].event, DeliveryEvent.ELEVATOR_FAILED)
+
     def test_dropoff_failure_enters_error(self):
         machine = DeliveryStateMachine()
         machine.confirm_loaded("bin_a")

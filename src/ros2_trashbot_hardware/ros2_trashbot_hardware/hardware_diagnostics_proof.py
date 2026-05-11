@@ -39,6 +39,11 @@ VENDOR_SOURCES = [
     "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
     "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h",
 ]
+PROOF_SOURCE = "software_proof"
+ASSUMPTIONS = {
+    "serial_port": "Orange Pi 串口路径需由现场确认，不使用 Raspberry Pi 示例路径代替",
+    "feedback_interval_validation": "feedback_interval_ms 为目标上报周期参数；实际采样频率需通过 HIL 多帧 T=1001 样本确认",
+}
 
 DEFAULT_CONFIG = {
     "serial_port": "/dev/ttyUSB0",
@@ -261,6 +266,7 @@ def build_hardware_diagnostics_proof(
             status = "feedback_parse_failed"
 
     proof = {
+        "source": PROOF_SOURCE,
         "status": status,
         "vendor_sources": list(VENDOR_SOURCES),
         "config": proof_config,
@@ -268,6 +274,7 @@ def build_hardware_diagnostics_proof(
         "startup_commands": startup_commands,
         "cmd_vel_examples": cmd_vel_examples,
         "feedback_sample": feedback,
+        "assumptions": ASSUMPTIONS,
         "risk_flags": _risk_flags(proof_config),
         "hil_recipe": _hil_recipe(proof_config),
     }
