@@ -71,19 +71,24 @@ def _find_task_record_by_evidence_ref(root: Path, evidence_ref: str):
     return ""
 
 
-def _select_task_record_payload(path: str, task_record_dir: str, evidence_ref: str) -> tuple[dict[str, Any], str]:
+def _select_task_record_payload(path: str, task_record_dir: str, evidence_ref: str) -> tuple[dict[str, Any], str, str]:
     if path:
-        return _load_json(path, "task_record"), str(path)
+        return _load_json(path, "task_record"), str(path), ""
     if evidence_ref and task_record_dir:
         found = _find_task_record_by_evidence_ref(Path(task_record_dir), evidence_ref)
         if found:
-            return _load_json(found, "task_record"), found
+            return _load_json(found, "task_record"), found, ""
+        return (
+            {},
+            "",
+            f"task_record_dir: no matching task_record for evidence_ref/result_path {evidence_ref!r}",
+        )
     if evidence_ref:
         task_dir = Path.home() / ".ros" / "trashbot_tasks"
         found = _find_task_record_by_evidence_ref(task_dir, evidence_ref)
         if found:
-            return _load_json(found, "task_record"), found
-    return {}, ""
+            return _load_json(found, "task_record"), found, ""
+    return {}, "", ""
 
 
 def _print_kv(label: str, value: Any):
@@ -265,8 +270,15 @@ def run_crosscheck(
             mismatches,
         )
 
-    task_payload, resolved_task_record = _select_task_record_payload(task_record, task_record_dir, evidence_ref)
+    task_payload, resolved_task_record, task_record_lookup_mismatch = _select_task_record_payload(
+        task_record,
+        task_record_dir,
+        evidence_ref,
+    )
     print(f"\ntask_record: {resolved_task_record or 'not provided'}")
+    if task_record_lookup_mismatch:
+        mismatches.append(task_record_lookup_mismatch)
+        print(f"FAIL {task_record_lookup_mismatch}")
     _compare_task_record(task_payload, status_payload, status_fields, mismatches)
 
     print(f"\nCHECK summary: mismatches={len(mismatches)}")

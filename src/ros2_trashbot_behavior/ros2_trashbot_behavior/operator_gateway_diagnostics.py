@@ -379,7 +379,7 @@ def _extract_route_progress(payload, *fallbacks):
         if not isinstance(candidate_payload, dict):
             continue
         route_progress = candidate_payload.get("route_progress")
-        if isinstance(route_progress, dict):
+        if isinstance(route_progress, dict) and route_progress:
             return dict(route_progress)
         nav_results = candidate_payload.get("nav_results")
         if not isinstance(nav_results, list):
@@ -391,7 +391,7 @@ def _extract_route_progress(payload, *fallbacks):
             if not isinstance(evidence, dict):
                 continue
             route_progress = evidence.get("route_progress")
-            if isinstance(route_progress, dict):
+            if isinstance(route_progress, dict) and route_progress:
                 return dict(route_progress)
     return {}
 

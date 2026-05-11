@@ -869,6 +869,10 @@ class TaskOrchestrator(Node):
         route_progress = payload.get("route_progress")
         if isinstance(route_progress, dict):
             evidence["route_progress"] = dict(route_progress)
+            for key in ("source", "checkpoint", "current_index", "target", "evidence_ref", "failure_code"):
+                value = route_progress.get(key)
+                if key not in evidence and value is not None:
+                    evidence[key] = value
         else:
             progress = {
                 key: payload[key]

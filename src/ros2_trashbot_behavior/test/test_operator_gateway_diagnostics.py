@@ -306,6 +306,32 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["failure"]["state_transition_history"][0]["event"], "nav_timeout")
         self.assertEqual(payload["last_task"]["state_transition_history"], payload["failure"]["state_transition_history"])
 
+    def test_diagnostics_uses_nav_route_progress_when_top_level_empty(self):
+        route_progress = {
+            "checkpoint": "cp-nav",
+            "current_index": 5,
+            "target": {"name": "trash_station"},
+            "failure_code": "",
+            "evidence_ref": "/tmp/nav-route-progress.ref",
+        }
+        payload = self._base_build_payload(
+            {
+                "state": "failed",
+                "route_progress": {},
+                "nav_results": [
+                    {
+                        "evidence": {
+                            "route_progress": route_progress,
+                        }
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(payload["route_progress"], route_progress)
+        self.assertEqual(payload["failure"]["route_progress"], route_progress)
+        self.assertEqual(payload["last_task"]["route_progress"], route_progress)
+
     def test_diagnostics_prefers_latest_status_terminal_fields(self):
         payload = build_diagnostics_payload(
             {
