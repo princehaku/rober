@@ -1,10 +1,12 @@
 import argparse
 import json
 import os
+import sqlite3
 import tempfile
 import threading
 import time
 import uuid
+from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -15,6 +17,7 @@ COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 TERMINAL_ACK_STATES = {"acked", "failed", "ignored"}
 STATUS_STALE_AFTER_SEC = 90.0
 PREFLIGHT_EVIDENCE_BOUNDARY = "software_proof_docker_preflight_gate"
+SQLITE_EVIDENCE_BOUNDARY = "software_proof_docker_sqlite_state_store"
 DEPLOY_EVIDENCE_BOUNDARY = "software_proof_docker_deploy"
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
@@ -192,6 +195,15 @@ def _safe_enum(value, allowed, default="invalid_or_unsupported"):
     return text if text in allowed else default
 
 
+def _state_backend_from_env(env):
+    # backend 是 proof 边界的一部分，未知值必须降级，避免把任意 env 文本回显给手机。
+    return _safe_enum(
+        _env_value(env, "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND", "file"),
+        {"file", "sqlite", "postgres", "mysql", "managed_queue", "production_db"},
+        "file",
+    )
+
+
 def production_preflight_payload(env=None):
     """生成生产上线前 gate 结果；只证明 Docker/local 配置检查，不触碰真实云资源。"""
     env = os.environ if env is None else env
@@ -206,11 +218,10 @@ def production_preflight_payload(env=None):
     cdn_base_url = _env_value(env, "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL")
     oss_credential_mode = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE", "placeholder")
     state_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_STATE")
-    state_backend = _env_value(env, "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND", "file")
+    state_backend_safe = _state_backend_from_env(env)
     tls_mode_safe = _safe_enum(tls_mode, {"future_reverse_proxy", "terminated", "managed", "reverse_proxy"})
     ingress_mode_safe = _safe_enum(ingress_mode, {"missing", "private_only", "public_https"})
     oss_credential_mode_safe = _safe_enum(oss_credential_mode, {"placeholder", "sts", "restricted_ak", "managed_identity"})
-    state_backend_safe = _safe_enum(state_backend, {"file", "postgres", "mysql", "managed_queue", "production_db"}, "file")
 
     if _is_placeholder(token):
         checks.append(
@@ -310,7 +321,7 @@ def production_preflight_payload(env=None):
             )
         )
 
-    store = FileBackedRelayStore(state_path)
+    store = build_relay_store(state_path, state_backend_safe)
     state_writable = store.state_store_writable()
     if not state_writable:
         checks.append(
@@ -321,6 +332,24 @@ def production_preflight_payload(env=None):
                 "relay proof state store 不可写，无法证明 command/status/ack 可恢复。",
                 "修正容器挂载或 state path 权限后重跑。",
                 {"backend": state_backend_safe, "writable": False},
+            )
+        )
+    elif state_backend_safe == "sqlite":
+        checks.append(
+            _check(
+                "state_store",
+                "warning",
+                "sqlite_state_store_proof_only",
+                "SQLite-backed store 可写并可用于单机恢复 proof，但仍不是生产 DB/队列。",
+                "补充生产 DB/queue、多实例一致性、备份恢复和灾备演练证据。",
+                {
+                    "backend": "sqlite",
+                    "writable": True,
+                    "production_durable": False,
+                    "single_instance_only": True,
+                    "backup_restore_probe_performed": False,
+                    "disaster_recovery_probe_performed": False,
+                },
             )
         )
     elif state_backend_safe not in {"postgres", "mysql", "managed_queue", "production_db"}:
@@ -380,7 +409,7 @@ def production_preflight_payload(env=None):
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
         "protocol_version": PROTOCOL_VERSION,
-        "evidence_boundary": PREFLIGHT_EVIDENCE_BOUNDARY,
+        "evidence_boundary": SQLITE_EVIDENCE_BOUNDARY if state_backend_safe == "sqlite" else PREFLIGHT_EVIDENCE_BOUNDARY,
         "overall_status": overall,
         "safe_summary": safe_summary,
         "retry_hint": retry_hint,
@@ -395,6 +424,9 @@ def production_preflight_payload(env=None):
             "oss_upload",
             "cdn_origin",
             "production_db_or_queue",
+            "multi_instance_consistency",
+            "backup_restore",
+            "disaster_recovery",
             "nav2_or_fixed_route",
             "wave_rover_hil",
         ],
@@ -688,6 +720,287 @@ class FileBackedRelayStore:
         return 200, {"ok": True, "ack": dict(ack)}
 
 
+class SQLiteRelayStore:
+    """SQLite proof store；只证明单实例可恢复，不声明生产高可用。"""
+
+    def __init__(self, state_path):
+        self.state_path = os.path.expanduser(str(state_path or "")).strip()
+        self._lock = threading.Lock()
+        self._init_error = None
+        # 初始化失败只记录为 phone-safe 状态，避免把本机路径或底层 sqlite 错误打到 HTTP 输出。
+        if self.state_path:
+            try:
+                self._ensure_schema()
+            except sqlite3.Error:
+                self._init_error = "sqlite_state_store_unavailable"
+            except OSError:
+                self._init_error = "sqlite_state_store_unavailable"
+
+    def _connect(self):
+        if not self.state_path:
+            raise sqlite3.OperationalError("sqlite state path is required")
+        # timeout 防止 Docker/local smoke 中短暂锁冲突直接失败；单机 proof 不做多实例并发承诺。
+        connection = sqlite3.connect(self.state_path, timeout=5.0)
+        connection.row_factory = sqlite3.Row
+        return connection
+
+    @contextmanager
+    def _session(self):
+        # 所有 SQLite 调用都走这个入口，便于统一 commit/rollback/close 的生命周期。
+        connection = self._connect()
+        try:
+            # sqlite3 的 connection context 只管 commit/rollback，不会自动 close，所以外层显式关闭。
+            with connection:
+                yield connection
+        finally:
+            connection.close()
+
+    def _ensure_schema(self):
+        state_dir = os.path.dirname(self.state_path) or "."
+        os.makedirs(state_dir, exist_ok=True)
+        with self._session() as connection:
+            # schema 保持简单 JSON envelope，确保 HTTP API shape 仍由 normalize_* 控制。
+            connection.execute("PRAGMA journal_mode=WAL")
+            # robots 表只存最近 status 和 proof 统计，避免 ACK 或 command 状态被错误解读为任务结果。
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS robots (
+                    robot_id TEXT PRIMARY KEY,
+                    status_json TEXT,
+                    stats_json TEXT NOT NULL DEFAULT '{}',
+                    updated_at REAL NOT NULL
+                )
+                """
+            )
+            # commands 表保留原始 normalized command JSON，idempotency 由 (robot_id, command_id) 保证。
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS commands (
+                    robot_id TEXT NOT NULL,
+                    command_id TEXT NOT NULL,
+                    command_json TEXT NOT NULL,
+                    created_at REAL NOT NULL,
+                    expires_at REAL NOT NULL,
+                    PRIMARY KEY (robot_id, command_id)
+                )
+                """
+            )
+            # acks 表只保存 terminal envelope ACK，不保存真实送达结果，手机仍需继续读 status。
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS acks (
+                    robot_id TEXT NOT NULL,
+                    command_id TEXT NOT NULL,
+                    ack_json TEXT NOT NULL,
+                    updated_at REAL NOT NULL,
+                    PRIMARY KEY (robot_id, command_id)
+                )
+                """
+            )
+
+    def _ensure_ready(self):
+        # 业务读写前再检查一次，保证初始化失败能转成统一 phone-safe 错误。
+        if self._init_error or not self.state_path:
+            raise ValueError("sqlite state store is not ready")
+        try:
+            self._ensure_schema()
+        except (sqlite3.Error, OSError) as exc:
+            self._init_error = "sqlite_state_store_unavailable"
+            raise ValueError("sqlite state store is not ready") from exc
+
+    def _touch(self, connection, robot_id, field):
+        # stats 只支撑 proof 复盘，不参与 command/status/ack 的业务契约。
+        now = _now()
+        row = connection.execute("SELECT stats_json FROM robots WHERE robot_id = ?", (robot_id,)).fetchone()
+        stats = {}
+        if row and row["stats_json"]:
+            try:
+                # stats 损坏不能影响主路径恢复，最多丢弃 proof 计数重新累计。
+                stats = json.loads(row["stats_json"])
+            except json.JSONDecodeError:
+                stats = {}
+        stats["updated_at"] = now
+        stats[field] = int(stats.get(field, 0) or 0) + 1
+        connection.execute(
+            """
+            INSERT INTO robots (robot_id, status_json, stats_json, updated_at)
+            VALUES (?, NULL, ?, ?)
+            ON CONFLICT(robot_id) DO UPDATE SET stats_json = excluded.stats_json, updated_at = excluded.updated_at
+            """,
+            (robot_id, json.dumps(safe_value(stats), ensure_ascii=False, sort_keys=True), now),
+        )
+
+    def state_store_writable(self):
+        # preflight/readyz 只返回布尔，不泄露 sqlite 文件路径或底层异常。
+        if not self.state_path:
+            return False
+        try:
+            with self._lock:
+                self._ensure_schema()
+                with self._session() as connection:
+                    # 写入再删除探针可以覆盖目录权限、数据库文件权限和事务提交路径。
+                    connection.execute("CREATE TABLE IF NOT EXISTS relay_write_probe (id INTEGER PRIMARY KEY)")
+                    connection.execute("INSERT INTO relay_write_probe DEFAULT VALUES")
+                    connection.execute("DELETE FROM relay_write_probe")
+            self._init_error = None
+            return True
+        except (sqlite3.Error, OSError):
+            self._init_error = "sqlite_state_store_unavailable"
+            return False
+
+    def submit_command(self, robot_id, payload):
+        command = normalize_command(robot_id, payload)
+        robot_key = command["robot_id"]
+        with self._lock:
+            self._ensure_ready()
+            with self._session() as connection:
+                # 先查幂等键，保持 file store 和 HTTP response 的 duplicate 语义一致。
+                row = connection.execute(
+                    "SELECT command_json FROM commands WHERE robot_id = ? AND command_id = ?",
+                    (robot_key, command["id"]),
+                ).fetchone()
+                if row:
+                    return 200, {"ok": True, "command": json.loads(row["command_json"]), "duplicate": True}
+                # command JSON 已在 normalize_command 内脱敏，SQLite 不额外保存原始请求体。
+                connection.execute(
+                    """
+                    INSERT INTO commands (robot_id, command_id, command_json, created_at, expires_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        robot_key,
+                        command["id"],
+                        json.dumps(command, ensure_ascii=False, sort_keys=True),
+                        float(command.get("created_at") or _now()),
+                        float(command.get("expires_at") or 0.0),
+                    ),
+                )
+                self._touch(connection, robot_key, "command_count")
+        return 201, {"ok": True, "command": dict(command), "duplicate": False}
+
+    def next_command(self, robot_id, last_ack_id=""):
+        robot_key = _robot_key(robot_id)
+        last_ack_id = str(last_ack_id or "").strip()
+        now = _now()
+        with self._lock:
+            self._ensure_ready()
+            with self._session() as connection:
+                # command 顺序按 created_at 保持 robot polling 的队列体验，command_id 只做稳定兜底排序。
+                rows = connection.execute(
+                    """
+                    SELECT command_id, command_json, expires_at
+                    FROM commands
+                    WHERE robot_id = ?
+                    ORDER BY created_at ASC, command_id ASC
+                    """,
+                    (robot_key,),
+                ).fetchall()
+                start_index = 0
+                if last_ack_id:
+                    # last_ack_id 是 opaque cursor；找不到时沿用 file store 语义从头扫描未 ACK 命令。
+                    for index, row in enumerate(rows):
+                        if row["command_id"] == last_ack_id:
+                            start_index = index + 1
+                            break
+                for row in rows[start_index:]:
+                    # 已有 terminal ACK 的 command 不再返回，避免 robot 重复执行已收口 envelope。
+                    ack_row = connection.execute(
+                        "SELECT 1 FROM acks WHERE robot_id = ? AND command_id = ?",
+                        (robot_key, row["command_id"]),
+                    ).fetchone()
+                    if ack_row or float(row["expires_at"] or 0.0) < now:
+                        # 过期 command 保留在 proof 历史里，但不能再作为 next executable command。
+                        continue
+                    return {"ok": True, "command": json.loads(row["command_json"])}
+        return {"ok": True, "command": None}
+
+    def post_status(self, robot_id, payload):
+        status = normalize_status(robot_id, payload)
+        robot_key = status["robot_id"]
+        with self._lock:
+            self._ensure_ready()
+            with self._session() as connection:
+                # 先 touch 能保证 robot 行存在，再只更新 status_json，避免清空既有 command/ack。
+                self._touch(connection, robot_key, "status_count")
+                connection.execute(
+                    """
+                    UPDATE robots
+                    SET status_json = ?, updated_at = ?
+                    WHERE robot_id = ?
+                    """,
+                    (json.dumps(status, ensure_ascii=False, sort_keys=True), _now(), robot_key),
+                )
+        return {"ok": True, "status": dict(status)}
+
+    def get_status(self, robot_id):
+        robot_key = _robot_key(robot_id)
+        with self._lock:
+            self._ensure_ready()
+            with self._session() as connection:
+                # status 是手机持续展示 surface；缺失时返回 status_missing 而不是伪造健康状态。
+                row = connection.execute(
+                    "SELECT status_json FROM robots WHERE robot_id = ?",
+                    (robot_key,),
+                ).fetchone()
+        status = json.loads(row["status_json"]) if row and row["status_json"] else None
+        if not status:
+            return 404, phone_error("status_missing", "robot has not posted status yet")
+        age = max(0.0, _now() - float(status.get("updated_at") or 0.0))
+        if age > STATUS_STALE_AFTER_SEC:
+            # stale status 带回最后安全状态，方便手机解释“状态过期”而不是隐藏上下文。
+            status["status_age_sec"] = age
+            return 409, phone_error("status_stale", "robot status is stale", status=status)
+        return 200, {"ok": True, "status": status}
+
+    def post_ack(self, robot_id, command_id, payload):
+        ack = normalize_ack(robot_id, command_id, payload)
+        robot_key = ack["robot_id"]
+        with self._lock:
+            self._ensure_ready()
+            with self._session() as connection:
+                # ACK 可被同一 terminal command 覆盖，支持 robot retry 期间的幂等上报。
+                connection.execute(
+                    """
+                    INSERT INTO acks (robot_id, command_id, ack_json, updated_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(robot_id, command_id) DO UPDATE SET
+                        ack_json = excluded.ack_json,
+                        updated_at = excluded.updated_at
+                    """,
+                    (
+                        robot_key,
+                        ack["command_id"],
+                        json.dumps(ack, ensure_ascii=False, sort_keys=True),
+                        float(ack.get("updated_at") or _now()),
+                    ),
+                )
+                self._touch(connection, robot_key, "ack_count")
+        return {"ok": True, "ack": dict(ack)}
+
+    def get_ack(self, robot_id, command_id):
+        robot_key = _robot_key(robot_id)
+        command_key = str(command_id or "").strip()
+        with self._lock:
+            self._ensure_ready()
+            with self._session() as connection:
+                # 读取 ACK 不做 delivery 推断；调用方必须继续依赖 status 判断任务进展。
+                row = connection.execute(
+                    "SELECT ack_json FROM acks WHERE robot_id = ? AND command_id = ?",
+                    (robot_key, command_key),
+                ).fetchone()
+        if not row:
+            return 404, phone_error("not_found", "ack not found")
+        return 200, {"ok": True, "ack": json.loads(row["ack_json"])}
+
+
+def build_relay_store(state_path, state_backend="file"):
+    # HTTP handler 只依赖 store protocol；backend 切换不得影响外部 response shape。
+    backend = str(state_backend or "file").strip()
+    if backend == "sqlite":
+        return SQLiteRelayStore(state_path)
+    return FileBackedRelayStore(state_path)
+
+
 def readiness_payload(store, expected_token):
     # 这里的字段面向编排和未来手机 UI，避免输出 host/path/token 等部署细节。
     checks = {
@@ -865,8 +1178,8 @@ def make_handler(store, bearer_token):
     return RelayHandler
 
 
-def build_server(host, port, state_path, bearer_token):
-    store = FileBackedRelayStore(state_path)
+def build_server(host, port, state_path, bearer_token, state_backend="file"):
+    store = build_relay_store(state_path, state_backend)
     return ThreadingHTTPServer((host, int(port)), make_handler(store, bearer_token))
 
 
@@ -877,6 +1190,12 @@ def main(argv=None):
     parser.add_argument(
         "--state-path",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_STATE", "remote_cloud_relay_state.json"),
+    )
+    parser.add_argument(
+        "--state-backend",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_STATE_BACKEND", "file"),
+        choices=("file", "sqlite"),
+        help="single-node proof state backend; production DB/queue is still out of scope",
     )
     parser.add_argument("--bearer-token", default=os.environ.get("TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN", ""))
     parser.add_argument(
@@ -890,7 +1209,7 @@ def main(argv=None):
         payload = production_preflight_payload()
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") else 2
-    server = build_server(args.host, args.port, args.state_path, args.bearer_token)
+    server = build_server(args.host, args.port, args.state_path, args.bearer_token, args.state_backend)
     try:
         server.serve_forever()
     finally:

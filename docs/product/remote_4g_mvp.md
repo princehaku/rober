@@ -28,9 +28,10 @@ The Docker/local proof now has two control-plane surfaces:
 - Local fallback: `operator_gateway` still embeds a mock cloud for local
   debugging and degraded operator workflows.
 - Independent relay: `ros2_trashbot_behavior.remote_cloud_relay` is a separate
-  HTTP service module with bearer auth, file-backed persistence, health/readiness
-  checks, and phone-safe JSON errors. It can run in local Python or Docker
-  without ROS2 runtime and without the `operator_gateway` process.
+  HTTP service module with bearer auth, file-backed or SQLite-backed proof
+  persistence, health/readiness checks, and phone-safe JSON errors. It can run
+  in local Python or Docker without ROS2 runtime and without the
+  `operator_gateway` process.
 
 Both surfaces preserve `trashbot.remote.v1` command/status/ack semantics and do
 not expose `/cmd_vel`, serial ports, baudrate, WAVE ROVER parameters, or raw
@@ -57,6 +58,13 @@ file-backed store, missing production DB/queue, and unwritable state paths must
 remain blocked or warning states. A blocked preflight is not a robot delivery
 failure; it is an上线前配置 gate telling the phone/cloud team what to fix next.
 
+When `TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite`, the same preflight uses
+`evidence_boundary=software_proof_docker_sqlite_state_store`. That boundary
+means the relay can prove single-node command/status/ack recovery across store
+reopen or relay restart. It still must not claim production DB/queue,
+multi-instance consistency, backup/restore, disaster recovery, real cloud, real
+4G/SIM, OSS/CDN traffic, Nav2/fixed-route delivery, WAVE ROVER movement, or HIL.
+
 Example local proof launch:
 
 ```bash
@@ -66,6 +74,19 @@ python3 -m ros2_trashbot_behavior.remote_cloud_relay \
   --host 127.0.0.1 \
   --port 8088 \
   --state-path /tmp/trashbot_remote_cloud_relay.json
+```
+
+Example SQLite state proof launch:
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-token \
+TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --host 127.0.0.1 \
+  --port 8088 \
+  --state-path /tmp/trashbot_remote_cloud_relay.sqlite \
+  --state-backend sqlite
 ```
 
 Example Docker deploy proof:
@@ -164,11 +185,13 @@ failure must not advance `last_terminal_ack_id`, must not persist a terminal
 cursor, and must not pretend the cloud accepted a terminal command state. A
 malformed command response must not trigger a local action goal.
 
-The independent relay stores commands/status/acks in a single local JSON state
-file and writes through a temporary file plus atomic replace. This is sufficient
-for Docker/local restart proof only. A production cloud still needs a database
-or queue for concurrency, backups, multi-instance consistency, and disaster
-recovery.
+The independent relay stores commands/status/acks in either a single local JSON
+state file or a single local SQLite file. JSON writes through a temporary file
+plus atomic replace; SQLite uses a simple table-per-envelope proof schema while
+preserving the same `trashbot.remote.v1` HTTP response shape. Both backends are
+sufficient for Docker/local restart proof only. A production cloud still needs a
+database or queue for concurrency, backups, multi-instance consistency, and
+disaster recovery.
 
 ## Status Contract
 
@@ -235,6 +258,12 @@ not as a trash delivery failure, navigation failure, 4G success, OSS upload
 success, or hardware/HIL result. The JSON must not expose bearer tokens,
 Authorization headers, OSS secrets, root passwords, serial devices, baudrate,
 WAVE ROVER parameters, ROS topic names, or `/cmd_vel`.
+
+SQLite path missing, unwritable, or initialization failures must also render as
+phone-safe state-store readiness failures. The UI should show cloud setup
+blocked and a retry hint, not raw filesystem paths, sqlite stack traces, bearer
+tokens, ROS topics, serial devices, baudrate, WAVE ROVER parameters, or
+`/cmd_vel`.
 
 ## Ack Contract
 

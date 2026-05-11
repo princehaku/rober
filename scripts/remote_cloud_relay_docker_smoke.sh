@@ -12,7 +12,12 @@ export TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN="${TOKEN}"
 export TRASHBOT_REMOTE_CLOUD_PUBLISHED_PORT="${PORT}"
 export TRASHBOT_REMOTE_CLOUD_PORT="${TRASHBOT_REMOTE_CLOUD_PORT:-8088}"
 export TRASHBOT_REMOTE_CLOUD_HOST="${TRASHBOT_REMOTE_CLOUD_HOST:-0.0.0.0}"
-export TRASHBOT_REMOTE_CLOUD_STATE="${TRASHBOT_REMOTE_CLOUD_STATE:-/data/remote_cloud_relay_state.json}"
+export TRASHBOT_REMOTE_CLOUD_STATE_BACKEND="${TRASHBOT_REMOTE_CLOUD_STATE_BACKEND:-sqlite}"
+if [ "${TRASHBOT_REMOTE_CLOUD_STATE_BACKEND}" = "sqlite" ]; then
+  export TRASHBOT_REMOTE_CLOUD_STATE="${TRASHBOT_REMOTE_CLOUD_STATE:-/data/remote_cloud_relay_state.sqlite}"
+else
+  export TRASHBOT_REMOTE_CLOUD_STATE="${TRASHBOT_REMOTE_CLOUD_STATE:-/data/remote_cloud_relay_state.json}"
+fi
 export TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL="${TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL:-http://127.0.0.1:${PORT}}"
 export TRASHBOT_REMOTE_CLOUD_TLS_MODE="${TRASHBOT_REMOTE_CLOUD_TLS_MODE:-future_reverse_proxy}"
 export TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS="${TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS:-missing}"
@@ -21,7 +26,6 @@ export TRASHBOT_REMOTE_CLOUD_OSS_REGION="${TRASHBOT_REMOTE_CLOUD_OSS_REGION:-oss
 export TRASHBOT_REMOTE_CLOUD_OSS_PREFIX="${TRASHBOT_REMOTE_CLOUD_OSS_PREFIX:-rober/<robot_id>/<date>/<task_id>/}"
 export TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL="${TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL:-https://cdn.bytegallop.com/rober/}"
 export TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE="${TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE:-placeholder}"
-export TRASHBOT_REMOTE_CLOUD_STATE_BACKEND="${TRASHBOT_REMOTE_CLOUD_STATE_BACKEND:-file}"
 
 cleanup() {
   # 保留 docker logs 输出在调用方日志中，最后清理容器避免影响后续 sprint。
@@ -73,10 +77,15 @@ import sys
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
 encoded = json.dumps(payload, ensure_ascii=False)
 required = (
-    "software_proof_docker_preflight_gate",
+    "software_proof_docker_sqlite_state_store",
     "missing_or_placeholder_credential",
     "https_public_ingress_missing",
     "oss_cdn_not_production_ready",
+    "sqlite_state_store_proof_only",
+    "production_db_or_queue",
+    "multi_instance_consistency",
+    "backup_restore",
+    "disaster_recovery",
 )
 for marker in required:
     if marker not in encoded:
@@ -109,7 +118,7 @@ payload = json.load(open(sys.argv[1], encoding="utf-8"))
 checks = {check["name"]: check for check in payload.get("checks", [])}
 if checks.get("state_store", {}).get("code") != "state_store_not_writable":
     raise SystemExit("unwritable state store was not reported as blocked")
-if payload.get("evidence_boundary") != "software_proof_docker_preflight_gate":
+if payload.get("evidence_boundary") != "software_proof_docker_sqlite_state_store":
     raise SystemExit("wrong evidence boundary")
 PY
 
@@ -159,3 +168,56 @@ curl -fsS \
   -H "Authorization: Bearer ${TOKEN}" \
   "${BASE_URL}/robots/trashbot-001/status"
 echo
+
+echo "== restart relay and verify sqlite-backed state recovery =="
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" restart remote-cloud-relay
+READY_OK=0
+for _ in $(seq 1 20); do
+  if curl -fsS "${BASE_URL}/readyz" >/tmp/remote_cloud_relay_readyz_after_restart.json; then
+    cat /tmp/remote_cloud_relay_readyz_after_restart.json
+    echo
+    READY_OK=1
+    break
+  fi
+  sleep 1
+done
+if [ "${READY_OK}" != "1" ]; then
+  echo "readyz did not recover after restart" >&2
+  exit 1
+fi
+
+curl -fsS \
+  -H "Authorization: Bearer ${TOKEN}" \
+  "${BASE_URL}/robots/trashbot-001/commands/cmd-docker-smoke-1/ack" \
+  >/tmp/remote_cloud_relay_ack_after_restart.json
+cat /tmp/remote_cloud_relay_ack_after_restart.json
+echo
+
+curl -fsS \
+  -H "Authorization: Bearer ${TOKEN}" \
+  "${BASE_URL}/robots/trashbot-001/status" \
+  >/tmp/remote_cloud_relay_status_after_restart.json
+cat /tmp/remote_cloud_relay_status_after_restart.json
+echo
+
+curl -fsS \
+  -H "Authorization: Bearer ${TOKEN}" \
+  "${BASE_URL}/robots/trashbot-001/commands/next?last_ack_id=cmd-docker-smoke-1" \
+  >/tmp/remote_cloud_relay_next_after_restart.json
+cat /tmp/remote_cloud_relay_next_after_restart.json
+echo
+
+python3 - /tmp/remote_cloud_relay_ack_after_restart.json /tmp/remote_cloud_relay_status_after_restart.json /tmp/remote_cloud_relay_next_after_restart.json <<'PY'
+import json
+import sys
+
+ack = json.load(open(sys.argv[1], encoding="utf-8"))
+status = json.load(open(sys.argv[2], encoding="utf-8"))
+next_command = json.load(open(sys.argv[3], encoding="utf-8"))
+if ack.get("ack", {}).get("state") != "acked":
+    raise SystemExit("ack was not recovered after restart")
+if status.get("status", {}).get("state") != "idle":
+    raise SystemExit("status was not recovered after restart")
+if next_command.get("command") is not None:
+    raise SystemExit("terminal ack cursor semantics changed after restart")
+PY
