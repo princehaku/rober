@@ -2,10 +2,10 @@
 
 ## 状态
 
-- 阶段：final draft
+- 阶段：final blocked (evidence-gating ready)
 - 时间：2026-05-11 16:47 Asia/Shanghai
 - Owner：`autonomy-engineer`
-- 结论：软件复盘闭环通过；硬件 run-level 复核仍待补
+- 结论：O1→O2→O3 顺序仍有效；O1 `hil_pass` blocked，O2/O3 目前仅保留 software proof，不予 closed
 
 ## 本轮结论
 
@@ -22,6 +22,7 @@
 - 缺少同一 run 的真实 task_record 文件，`evidence_ref` 联动仍需上机回放完成后补齐。
 - 本轮新增 O1 风险：`/dev/ttyUSB0` 在当前执行宿主机不可见，导致 `source=hil_pass` 证据无法升级为真实串口交互样本。
 - task_record 读取失败场景下，可追溯字段依赖 `latest_status/last_task` fallback；若 last_task 也缺失，应在真实 HIL 回放中补齐 task_record 以避免历史链条断层。
+- O1 阻塞是 `hil_pass` 的强约束门；O2（失败恢复）与 O3（route replay）不能先于其解除进入实机通过状态。
 
 ## 下一步
 

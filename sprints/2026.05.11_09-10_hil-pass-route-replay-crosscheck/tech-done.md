@@ -2,10 +2,17 @@
 
 ## 状态
 
-- 阶段：tech-done in-progress
+- 阶段：tech-done review-ready（blocked by hil_pass）
 - 时间：2026-05-11 16:47 Asia/Shanghai
 - Owner：`hardware-engineer`
 - 范围：O1 WAVE ROVER 真实串口 move-test 上车前准入与 evidence_ref 闭环准备
+
+## O1→O2→O3 序列审定
+
+- O1：`hil_pass` 仍为首要门禁，当前证据停留在 `software_proof`；`/dev/ttyUSB0` 不可见导致该目标 blocked。
+- O2：`failure_code` / `human_intervention_required` / `state_transition_history` 的 run-level 串联可复用，但未形成新真实任务复盘样本，不能关闭。
+- O3：`checkpoint/current_index/target/failure_code/evidence_ref` 对账通过 dry-run 与离线样本，但 run-level `route replay + task_record + status` 同 run 未齐备，未闭环。
+- 本轮前提结论：必须先解除 O1 `hil_pass` 阻塞并补齐同一 `evidence_ref` 的真实四要素样本，方可启动 O2/O3 关闭。
 
 ## 任务目标
 
@@ -58,13 +65,14 @@
 - 严格根因：
   - `ls -l /dev/ttyUSB0`：`No such file or directory`
   - `/dev/ttyUSB*`：`[]`
-- 已输出 run-level 证据占位（阻塞）：
+- 已生成但仍属阻塞性占位样本（非实机 run-level 证据）：
   - `evidence/run_20260511T094018Z_hil_pass_speed0p050_dur0p30/command.txt`
   - `.../serial.log`
   - `.../feedback_T1001.log`
   - `.../odom_once.jsonl`
   - `.../imu_once.jsonl`
   - `.../battery_once.jsonl`
+- 该占位不应作为 `hil_pass` 闭环依据，必须以同 evidence_ref 的真实写入样本取代。
 - O2/O3 串联说明：
   - 本轮未形成 `source=hil_pass` 的真实 `feedback`/`odom`/`imu`/`battery` 样本，`O2/O3` 的 `fixed-route` run-level 复核链路仍待上车补齐。
 
@@ -107,3 +115,12 @@
   - 失败（退出码 `1`，`FileNotFoundError: /dev/ttyUSB0`）
 - `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile scripts/hardware_smoke_wave_rover.py`
   - 通过（退出码 `0`）
+
+## 下轮执行前提（交付门控）
+
+- 恢复真实串口采集后，统一采集：
+  - `hardware_smoke_wave_rover.py --move-test --evidence-ref <new_ref> --serial-port /dev/ttyUSB0 --baudrate 115200`
+  - `command.txt` / `serial.log` / `feedback_T1001.log`
+  - `odom_once.jsonl` / `imu_once.jsonl` / `battery_once.jsonl`
+  - 固定路线 `task_record`（`evidence_ref` 与 status/replay 同值）
+- 复核 `python3 scripts/evidence_crosscheck.py` 后，O1 从 blocked 切换到 `hil_pass`，再评审 O2/O3 的 closed 资格。

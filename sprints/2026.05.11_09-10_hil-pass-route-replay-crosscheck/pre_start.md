@@ -26,6 +26,7 @@
 2. 本轮只做阶段文档修复+验收边界对齐，不新增底层硬件/路径策略重构，不新增测试面。
 3. 本轮验收顺序严格为 O1→O2→O3，未满足前序不得在 `side2side/final` 写 `closed`。
 4. 任何 `evidence_ref` 对账都必须标注 `software_proof` 与 `hil_pass` 的边界，不可混淆。
+5. O1/O2/O3 顺序在本轮保持 `O1 -> O2 -> O3`，任何缺失 run-level 硬件证据时不得先行落地 O2/O3 结论。
 
 ## 上轮遗留与阻塞
 
@@ -60,3 +61,4 @@ CEO -> Product Manager / OKR Owner -> Engineers
 
 - 证据边界和优先级已经按 O1→O2→O3 定义，允许进入 `prd.md`。
 - `pre_start`、`prd`、`tech-plan` 均与现有 `tech-done/side2side/final` 的内容兼容，不新增本 sprint 外任务承诺。
+- O1 运行级 `hil_pass` 仍是首要未闭环项（`/dev/ttyUSB0` 不可见）；本轮结论先保持 `blocked`，用于约束 O2/O3 不能先闭环。
