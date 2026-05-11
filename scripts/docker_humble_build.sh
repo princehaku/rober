@@ -5,16 +5,28 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 image="${ROS_HUMBLE_IMAGE:-ros-rbs-humble:dev}"
 dockerfile="$repo_root/docker/humble/Dockerfile"
-base_image="$(awk 'toupper($1) == "FROM" {print $2; exit}' "$dockerfile")"
+dockerfile_base_default="$(awk -F= '/^ARG[[:space:]]+ROS_HUMBLE_BASE_IMAGE=/{print $2; exit}' "$dockerfile")"
+dockerfile_base_default="${dockerfile_base_default:-osrf/ros:humble-desktop}"
+base_image="${ROS_HUMBLE_BASE_IMAGE:-$dockerfile_base_default}"
+base_image_override="default"
 ubuntu_apt_mirror="${UBUNTU_APT_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/ubuntu}"
 ros_apt_mirror="${ROS_APT_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/ros2/ubuntu}"
 pip_index_url="${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
 rosdep_source_mirror="${ROSDEP_SOURCE_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/github-raw/ros/rosdistro/master/rosdep}"
 rosdistro_index_url="${ROSDISTRO_INDEX_URL:-https://mirrors.tuna.tsinghua.edu.cn/rosdistro/index-v4.yaml}"
 skip_colcon="${SKIP_COLCON:-0}"
+skip_docker_build="${SKIP_DOCKER_BUILD:-0}"
 build_progress="${DOCKER_BUILD_PROGRESS:-plain}"
 
 docker_diag_log=""
+
+if [ -n "${ROS_HUMBLE_BASE_IMAGE+x}" ]; then
+    if [ -z "$ROS_HUMBLE_BASE_IMAGE" ]; then
+        echo "ERROR: ROS_HUMBLE_BASE_IMAGE is set but empty. Provide a base image, or unset it to use $dockerfile_base_default." >&2
+        exit 2
+    fi
+    base_image_override="env"
+fi
 
 cleanup() {
     if [ -n "$docker_diag_log" ] && [ -f "$docker_diag_log" ]; then
@@ -36,13 +48,72 @@ print_proxy_state() {
     done
 }
 
+target_image_present() {
+    docker image inspect "$image" >/dev/null 2>&1
+}
+
+print_skip_build_missing_image_help() {
+    cat <<EOF
+ERROR: SKIP_DOCKER_BUILD=1 was requested, but target image '$image' is not present locally.
+
+To continue on this Docker-only host, choose one:
+  docker pull $image
+  docker load -i /path/to/ros-rbs-humble-dev.tar
+  unset SKIP_DOCKER_BUILD and rerun this script to build from base image '$base_image'
+
+evidence_scope=software_proof_docker_only
+EOF
+}
+
+print_skip_build_unusable_image_help() {
+    cat <<EOF
+ERROR: SKIP_DOCKER_BUILD=1 found target image '$image', but it is not runnable as a ROS Humble build image.
+
+The local tag may point to an incomplete, corrupt, or wrong-platform image. Replace it with one valid target image:
+  docker pull $image
+  docker load -i /path/to/ros-rbs-humble-dev.tar
+  unset SKIP_DOCKER_BUILD and rerun this script to rebuild from base image '$base_image'
+
+evidence_scope=software_proof_docker_only
+EOF
+}
+
+validate_target_image_for_reuse() {
+    # SKIP_DOCKER_BUILD is only useful if the local tag can actually start a
+    # Humble build container. A tag can pass docker image inspect while still
+    # pointing at an incomplete manifest, so run a tiny container-side probe.
+    docker run --rm --entrypoint /bin/bash "$image" -lc 'test -f /opt/ros/humble/setup.bash' >/dev/null
+}
+
 print_docker_preflight() {
+    local local_target_image_present="unknown"
+    local local_image_reuse="disabled"
+
+    if target_image_present; then
+        local_target_image_present="yes"
+        if [ "$skip_docker_build" = "1" ]; then
+            local_image_reuse="inspect_present_validation_pending"
+        else
+            local_image_reuse="available_for_explicit_skip_validation_pending"
+        fi
+    else
+        local_target_image_present="no"
+        if [ "$skip_docker_build" = "1" ]; then
+            local_image_reuse="missing"
+        fi
+    fi
+
     echo "== Docker/Humble preflight =="
+    echo "evidence_scope=software_proof_docker_only"
     echo "repo_root=$repo_root"
     echo "dockerfile=$dockerfile"
     echo "target_image=$image"
     echo "base_image=$base_image"
+    echo "base_image_override=$base_image_override"
+    echo "skip_docker_build=$skip_docker_build"
     echo "skip_colcon=$skip_colcon"
+    echo "local_target_image_present=$local_target_image_present"
+    echo "local_image_reuse=$local_image_reuse"
     echo "build_progress=$build_progress"
     echo "-- docker version --"
     docker version || true
@@ -94,26 +165,41 @@ classify_build_failure() {
 
 print_docker_preflight
 
-docker_diag_log="$(mktemp -t ros_rbs_humble_build.XXXXXX.log)"
-set +e
-docker build \
-    --progress="$build_progress" \
-    --build-arg "UBUNTU_APT_MIRROR=$ubuntu_apt_mirror" \
-    --build-arg "ROS_APT_MIRROR=$ros_apt_mirror" \
-    --build-arg "PIP_INDEX_URL=$pip_index_url" \
-    --build-arg "ROSDEP_SOURCE_MIRROR=$rosdep_source_mirror" \
-    --build-arg "ROSDISTRO_INDEX_URL=$rosdistro_index_url" \
-    -t "$image" \
-    "$repo_root/docker/humble" 2>&1 | tee "$docker_diag_log"
-build_rc=${PIPESTATUS[0]}
-set -e
-if [ "$build_rc" -ne 0 ]; then
-    classify_build_failure "$docker_diag_log"
-    exit "$build_rc"
+if [ "$skip_docker_build" = "1" ]; then
+    if ! target_image_present; then
+        print_skip_build_missing_image_help
+        exit 3
+    fi
+    if ! validate_target_image_for_reuse; then
+        print_skip_build_unusable_image_help
+        exit 4
+    fi
+    echo "local_image_reuse=validated_runnable"
+    echo "SKIP_DOCKER_BUILD=1: reusing local Docker image: $image"
+else
+    docker_diag_log="$(mktemp -t ros_rbs_humble_build.XXXXXX.log)"
+    set +e
+    docker build \
+        --progress="$build_progress" \
+        --build-arg "ROS_HUMBLE_BASE_IMAGE=$base_image" \
+        --build-arg "UBUNTU_APT_MIRROR=$ubuntu_apt_mirror" \
+        --build-arg "ROS_APT_MIRROR=$ros_apt_mirror" \
+        --build-arg "PIP_INDEX_URL=$pip_index_url" \
+        --build-arg "ROSDEP_SOURCE_MIRROR=$rosdep_source_mirror" \
+        --build-arg "ROSDISTRO_INDEX_URL=$rosdistro_index_url" \
+        -t "$image" \
+        "$repo_root/docker/humble" 2>&1 | tee "$docker_diag_log"
+    build_rc=${PIPESTATUS[0]}
+    set -e
+    if [ "$build_rc" -ne 0 ]; then
+        classify_build_failure "$docker_diag_log"
+        exit "$build_rc"
+    fi
 fi
 
 if [ "$skip_colcon" = "1" ]; then
     echo "Docker image is ready: $image"
+    echo "evidence_scope=software_proof_docker_only"
     exit 0
 fi
 
