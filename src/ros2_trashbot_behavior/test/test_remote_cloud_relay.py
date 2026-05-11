@@ -13,13 +13,18 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "ros2_trashbot_behavior"))
 
 from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
+    BACKUP_RESTORE_EVIDENCE_BOUNDARY,
     FileBackedRelayStore,
     PREFLIGHT_EVIDENCE_BOUNDARY,
     PROTOCOL_VERSION,
     SQLITE_EVIDENCE_BOUNDARY,
     SQLiteRelayStore,
+    backup_artifact_summary,
+    backup_restore_drill_payload,
     build_server,
+    create_sqlite_backup_artifact,
     production_preflight_payload,
+    restore_sqlite_backup_artifact,
 )
 
 
@@ -446,6 +451,129 @@ class RemoteCloudRelayStoreTest(unittest.TestCase):
                 restarted.server_close()
                 restarted_thread.join(timeout=1.0)
 
+    def test_sqlite_backup_restore_drill_preserves_http_shapes_and_cursor_semantics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = pathlib.Path(tmp) / "relay_state.sqlite"
+            artifact_path = pathlib.Path(tmp) / "relay_backup.json"
+            restore_path = pathlib.Path(tmp) / "relay_restored.sqlite"
+            store = SQLiteRelayStore(state_path)
+            now = time.time()
+
+            store.submit_command(
+                "trashbot-001",
+                {
+                    "protocol_version": PROTOCOL_VERSION,
+                    "id": "cmd-restore-acked",
+                    "type": "collect",
+                    "expires_at": now + 300.0,
+                    "payload": {"target": "trash_station", "trash_type": 0},
+                },
+            )
+            store.submit_command(
+                "trashbot-001",
+                {
+                    "protocol_version": PROTOCOL_VERSION,
+                    "id": "cmd-restore-pending",
+                    "type": "confirm_dropoff",
+                    "expires_at": now + 300.0,
+                    "payload": {},
+                },
+            )
+            store.post_status(
+                "trashbot-001",
+                {
+                    "protocol_version": PROTOCOL_VERSION,
+                    "state": "delivering",
+                    "message": "backup restore source status",
+                    "updated_at": now,
+                    "diagnostics": {"network": "sqlite_backup_restore_proof"},
+                },
+            )
+            store.post_ack(
+                "trashbot-001",
+                "cmd-restore-acked",
+                {
+                    "protocol_version": PROTOCOL_VERSION,
+                    "state": "acked",
+                    "message": "backup restore source ack",
+                    "updated_at": now,
+                    "result": {"bridge": "submitted"},
+                },
+            )
+
+            drill = backup_restore_drill_payload(state_path, artifact_path, restore_path)
+            encoded = json.dumps(drill, ensure_ascii=False)
+            self.assertTrue(drill["ok"])
+            self.assertEqual(drill["evidence_boundary"], BACKUP_RESTORE_EVIDENCE_BOUNDARY)
+            self.assertTrue(drill["checks"]["artifact_checksum"])
+            self.assertTrue(drill["checks"]["restored_command_http_shape"])
+            self.assertTrue(drill["checks"]["restored_status_http_shape"])
+            self.assertTrue(drill["checks"]["restored_ack_http_shape"])
+            self.assertTrue(drill["checks"]["cursor_ack_conservative"])
+            for forbidden in (
+                str(state_path),
+                str(restore_path),
+                "Authorization",
+                "Bearer",
+                "/cmd_vel",
+                "ttyUSB",
+                "baudrate",
+                "WAVE ROVER",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+            restored = build_server("127.0.0.1", 0, restore_path, "phone-token", "sqlite")
+            restored_thread = threading.Thread(target=restored.serve_forever, daemon=True)
+            restored_thread.start()
+            client = RelayHttpClient(f"http://127.0.0.1:{restored.server_address[1]}")
+            try:
+                status, payload = client.request("GET", "/robots/trashbot-001/status")
+                self.assertEqual(status, 200)
+                self.assertEqual(payload["status"]["state"], "delivering")
+                status, payload = client.request("GET", "/robots/trashbot-001/commands/cmd-restore-acked/ack")
+                self.assertEqual(status, 200)
+                self.assertEqual(payload["ack"]["state"], "acked")
+                status, payload = client.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=")
+                self.assertEqual(status, 200)
+                self.assertEqual(payload["command"]["id"], "cmd-restore-pending")
+                status, payload = client.request(
+                    "GET",
+                    "/robots/trashbot-001/commands/next?last_ack_id=cmd-restore-acked",
+                )
+                self.assertEqual(status, 200)
+                self.assertEqual(payload["command"]["id"], "cmd-restore-pending")
+            finally:
+                restored.shutdown()
+                restored.server_close()
+                restored_thread.join(timeout=1.0)
+
+    def test_sqlite_backup_restore_fails_closed_on_checksum_mismatch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = pathlib.Path(tmp) / "relay_state.sqlite"
+            artifact_path = pathlib.Path(tmp) / "relay_backup.json"
+            restore_path = pathlib.Path(tmp) / "relay_restored.sqlite"
+            store = SQLiteRelayStore(state_path)
+            store.submit_command(
+                "trashbot-001",
+                {
+                    "protocol_version": PROTOCOL_VERSION,
+                    "id": "cmd-checksum",
+                    "type": "collect",
+                    "expires_at": time.time() + 300.0,
+                    "payload": {"target": "trash_station"},
+                },
+            )
+            create_sqlite_backup_artifact(state_path, artifact_path)
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            artifact["metadata"]["command_count"] = 99
+            artifact_path.write_text(json.dumps(artifact, ensure_ascii=False), encoding="utf-8")
+
+            summary = backup_artifact_summary(artifact_path)
+            self.assertFalse(summary["ok"])
+            self.assertEqual(summary["reason_code"], "artifact_invalid")
+            with self.assertRaisesRegex(ValueError, "checksum mismatch"):
+                restore_sqlite_backup_artifact(artifact_path, restore_path)
+
     def test_sqlite_unwritable_path_is_phone_safe(self):
         store = SQLiteRelayStore("/dev/null/relay_state.sqlite")
         self.assertFalse(store.state_store_writable())
@@ -481,6 +609,7 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             self.assertEqual(checks["tls_public_ingress"]["status"], "blocked")
             self.assertEqual(checks["oss_cdn"]["status"], "blocked")
             self.assertEqual(checks["state_store"]["status"], "warning")
+            self.assertEqual(checks["backup_restore_drill"]["status"], "warning")
             self.assertEqual(checks["phone_safe_output"]["status"], "pass")
             self.assertIn("software_proof_docker_preflight_gate", encoded)
             for forbidden in (
@@ -585,10 +714,12 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             self.assertEqual(payload["evidence_boundary"], SQLITE_EVIDENCE_BOUNDARY)
             self.assertEqual(checks["state_store"]["status"], "warning")
             self.assertEqual(checks["state_store"]["code"], "sqlite_state_store_proof_only")
+            self.assertEqual(checks["backup_restore_drill"]["code"], "backup_restore_drill_not_run")
             self.assertIn("production_db_or_queue", payload["not_proven"])
             self.assertIn("multi_instance_consistency", payload["not_proven"])
             self.assertIn("backup_restore", payload["not_proven"])
-            self.assertIn("disaster_recovery", payload["not_proven"])
+            self.assertIn("production_backup_policy", payload["not_proven"])
+            self.assertIn("real_disaster_recovery", payload["not_proven"])
             for forbidden in (
                 "production-token-value",
                 "Authorization",
@@ -599,6 +730,68 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
                 "OSS secret",
                 "root password",
                 "ros topic",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_preflight_accepts_local_backup_restore_artifact_without_production_dr_claim(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = pathlib.Path(tmp) / "relay_state.sqlite"
+            artifact_path = pathlib.Path(tmp) / "relay_backup.json"
+            store = SQLiteRelayStore(state_path)
+            now = time.time()
+            store.submit_command(
+                "trashbot-001",
+                {
+                    "protocol_version": PROTOCOL_VERSION,
+                    "id": "cmd-preflight-backup",
+                    "type": "collect",
+                    "expires_at": now + 300.0,
+                    "payload": {"target": "trash_station"},
+                },
+            )
+            store.post_status(
+                "trashbot-001",
+                {
+                    "protocol_version": PROTOCOL_VERSION,
+                    "state": "idle",
+                    "updated_at": now,
+                },
+            )
+            create_sqlite_backup_artifact(state_path, artifact_path)
+            env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "production-token-value",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "terminated",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https",
+                "TRASHBOT_REMOTE_CLOUD_OSS_BUCKET": "bytegallop",
+                "TRASHBOT_REMOTE_CLOUD_OSS_REGION": "oss-cn-hangzhou",
+                "TRASHBOT_REMOTE_CLOUD_OSS_PREFIX": "rober/prod/date/task/",
+                "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL": "https://cdn.bytegallop.com/rober/",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE": "sts",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(state_path),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                "TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT": str(artifact_path),
+            }
+
+            payload = production_preflight_payload(env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps(payload, ensure_ascii=False)
+
+            self.assertEqual(payload["evidence_boundary"], BACKUP_RESTORE_EVIDENCE_BOUNDARY)
+            self.assertEqual(checks["backup_restore_drill"]["status"], "pass")
+            self.assertEqual(checks["backup_restore_drill"]["details"]["command_count"], 1)
+            self.assertNotIn("backup_restore", payload["not_proven"])
+            self.assertIn("production_backup_policy", payload["not_proven"])
+            self.assertIn("real_disaster_recovery", payload["not_proven"])
+            for forbidden in (
+                str(state_path),
+                str(artifact_path),
+                "production-token-value",
+                "Authorization",
+                "Bearer",
+                "/cmd_vel",
+                "ttyUSB",
+                "baudrate",
             ):
                 self.assertNotIn(forbidden, encoded)
 

@@ -169,6 +169,104 @@ curl -fsS \
   "${BASE_URL}/robots/trashbot-001/status"
 echo
 
+echo "== enqueue pending command for backup restore drill =="
+curl -fsS \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"protocol_version":"trashbot.remote.v1","id":"cmd-docker-smoke-restore-pending","type":"confirm_dropoff","expires_at":2778256300.0,"payload":{}}' \
+  "${BASE_URL}/robots/trashbot-001/commands"
+echo
+
+echo "== sqlite backup restore drill =="
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  rm -f /tmp/remote_cloud_relay_backup.json /tmp/remote_cloud_relay_restored.sqlite
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  python -m ros2_trashbot_behavior.remote_cloud_relay \
+    --state-backend sqlite \
+    --state-path "${TRASHBOT_REMOTE_CLOUD_STATE}" \
+    --backup-state-to /tmp/remote_cloud_relay_backup.json \
+    --restore-state-path /tmp/remote_cloud_relay_restored.sqlite \
+    --backup-restore-drill \
+    >/tmp/remote_cloud_relay_backup_restore_drill.json
+cat /tmp/remote_cloud_relay_backup_restore_drill.json
+echo
+python3 - /tmp/remote_cloud_relay_backup_restore_drill.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+encoded = json.dumps(payload, ensure_ascii=False)
+if not payload.get("ok"):
+    raise SystemExit("backup restore drill did not pass")
+if payload.get("evidence_boundary") != "software_proof_docker_backup_restore_drill":
+    raise SystemExit("wrong backup restore evidence boundary")
+checks = payload.get("checks", {})
+required_checks = (
+    "artifact_checksum",
+    "restored_command_http_shape",
+    "restored_status_http_shape",
+    "restored_ack_http_shape",
+    "cursor_ack_conservative",
+    "phone_safe_output",
+)
+for check in required_checks:
+    if not checks.get(check):
+        raise SystemExit(f"backup restore check failed: {check}")
+for marker in (
+    "production_backup_policy",
+    "real_disaster_recovery",
+    "production_db_or_queue",
+    "multi_instance_consistency",
+):
+    if marker not in encoded:
+        raise SystemExit(f"missing backup restore boundary marker: {marker}")
+for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate", "WAVE ROVER", "/tmp/remote_cloud"):
+    if forbidden in encoded:
+        raise SystemExit(f"backup restore drill leaked forbidden marker: {forbidden}")
+PY
+
+echo "== production preflight CLI recognizes local backup artifact without production DR claim =="
+set +e
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T \
+  -e TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT=/tmp/remote_cloud_relay_backup.json \
+  remote-cloud-relay \
+  python -m ros2_trashbot_behavior.remote_cloud_relay --preflight \
+  >/tmp/remote_cloud_relay_preflight_backup_drill.json
+PREFLIGHT_BACKUP_CLI_STATUS="$?"
+set -e
+cat /tmp/remote_cloud_relay_preflight_backup_drill.json
+echo
+if [ "${PREFLIGHT_BACKUP_CLI_STATUS}" != "2" ]; then
+  echo "backup drill preflight CLI unexpectedly returned ${PREFLIGHT_BACKUP_CLI_STATUS}" >&2
+  exit 1
+fi
+python3 - /tmp/remote_cloud_relay_preflight_backup_drill.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+checks = {check["name"]: check for check in payload.get("checks", [])}
+encoded = json.dumps(payload, ensure_ascii=False)
+if payload.get("evidence_boundary") != "software_proof_docker_backup_restore_drill":
+    raise SystemExit("preflight did not report backup restore drill boundary")
+if checks.get("backup_restore_drill", {}).get("status") != "pass":
+    raise SystemExit("preflight did not recognize backup restore drill artifact")
+for marker in ("production_backup_policy", "real_disaster_recovery", "production_db_or_queue"):
+    if marker not in encoded:
+        raise SystemExit(f"missing production boundary marker: {marker}")
+for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate", "WAVE ROVER", "/tmp/remote_cloud"):
+    if forbidden in encoded:
+        raise SystemExit(f"preflight backup drill leaked forbidden marker: {forbidden}")
+PY
+
+echo "== ack pending command after backup restore drill =="
+curl -fsS \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"protocol_version":"trashbot.remote.v1","state":"acked","message":"docker smoke pending ack","updated_at":'"${NOW}"',"result":{"bridge":"submitted"}}' \
+  "${BASE_URL}/robots/trashbot-001/commands/cmd-docker-smoke-restore-pending/ack"
+echo
+
 echo "== restart relay and verify sqlite-backed state recovery =="
 docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" restart remote-cloud-relay
 READY_OK=0

@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import os
 import sqlite3
@@ -18,7 +19,10 @@ TERMINAL_ACK_STATES = {"acked", "failed", "ignored"}
 STATUS_STALE_AFTER_SEC = 90.0
 PREFLIGHT_EVIDENCE_BOUNDARY = "software_proof_docker_preflight_gate"
 SQLITE_EVIDENCE_BOUNDARY = "software_proof_docker_sqlite_state_store"
+BACKUP_RESTORE_EVIDENCE_BOUNDARY = "software_proof_docker_backup_restore_drill"
 DEPLOY_EVIDENCE_BOUNDARY = "software_proof_docker_deploy"
+BACKUP_ARTIFACT_SCHEMA = "trashbot.remote_cloud_relay_backup.v1"
+BACKUP_ARTIFACT_VERSION = 1
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -30,6 +34,7 @@ PHONE_COPY = {
     "status_stale": "小车状态已过期，请等待小车重新联网或检查网络。",
     "malformed_json": "请求格式异常，请检查客户端版本后重试。",
     "preflight_blocked": "云端上线前检查未通过，请先补齐生产入口、凭证和存储配置。",
+    "backup_restore_blocked": "云端状态备份恢复演练未通过，请重新生成备份后再恢复。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -108,6 +113,26 @@ def safe_value(value):
     if isinstance(value, (int, float, bool)) or value is None:
         return value
     return _safe_text(value)
+
+
+def _canonical_json_bytes(payload):
+    # checksum 必须跨 Python/Docker 环境稳定，排序和紧凑分隔符避免空白差异。
+    return json.dumps(
+        safe_value(payload),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def _sha256_checksum(payload):
+    # artifact 校验只覆盖业务数据和 metadata，不覆盖 checksum 字段本身。
+    return "sha256:" + hashlib.sha256(_canonical_json_bytes(payload)).hexdigest()
+
+
+def _safe_error_reason(exc):
+    # CLI 失败原因可以给手机或 operator 看，不能包含路径、token、串口或 traceback。
+    return _safe_text(str(exc) or "backup restore drill failed")
 
 
 def phone_error(code, message="", *, status=None, details=None):
@@ -219,6 +244,7 @@ def production_preflight_payload(env=None):
     oss_credential_mode = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE", "placeholder")
     state_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_STATE")
     state_backend_safe = _state_backend_from_env(env)
+    backup_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT")
     tls_mode_safe = _safe_enum(tls_mode, {"future_reverse_proxy", "terminated", "managed", "reverse_proxy"})
     ingress_mode_safe = _safe_enum(ingress_mode, {"missing", "private_only", "public_https"})
     oss_credential_mode_safe = _safe_enum(oss_credential_mode, {"placeholder", "sts", "restricted_ak", "managed_identity"})
@@ -375,6 +401,61 @@ def production_preflight_payload(env=None):
             )
         )
 
+    if backup_artifact_path:
+        # preflight 只验证 artifact 形态和 checksum，不恢复到生产 state，避免旁路修改主路径。
+        backup_summary = backup_artifact_summary(backup_artifact_path)
+        if backup_summary.get("ok"):
+            checks.append(
+                _check(
+                    "backup_restore_drill",
+                    "pass",
+                    "local_backup_restore_drill_artifact_valid",
+                    "已找到通过 checksum 校验的本地备份恢复演练 artifact。",
+                    "继续执行 remote bridge compatibility acceptance；生产备份策略仍需单独验收。",
+                    {
+                        "drill_performed": True,
+                        "artifact_schema": BACKUP_ARTIFACT_SCHEMA,
+                        "source_backend": backup_summary.get("source_backend"),
+                        "command_count": backup_summary.get("command_count"),
+                        "status_count": backup_summary.get("status_count"),
+                        "ack_count": backup_summary.get("ack_count"),
+                        "production_backup_policy": False,
+                        "real_disaster_recovery": False,
+                    },
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "backup_restore_drill",
+                    "blocked",
+                    "backup_restore_drill_artifact_invalid",
+                    "本地备份恢复演练 artifact 缺失、schema 不匹配或 checksum 校验失败。",
+                    "重新生成 artifact 并完成 restore drill 后再重跑 preflight。",
+                    {
+                        "drill_performed": False,
+                        "reason_code": backup_summary.get("reason_code", "artifact_invalid"),
+                        "production_backup_policy": False,
+                        "real_disaster_recovery": False,
+                    },
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "backup_restore_drill",
+                "warning",
+                "backup_restore_drill_not_run",
+                "尚未提供本地备份恢复演练 artifact，不能声明 backup/restore 软件证明。",
+                "运行 SQLite backup -> restore drill，并把 artifact 传给 preflight 后复核。",
+                {
+                    "drill_performed": False,
+                    "production_backup_policy": False,
+                    "real_disaster_recovery": False,
+                },
+            )
+        )
+
     if _phone_safe_failure_ready():
         checks.append(
             _check(
@@ -404,32 +485,43 @@ def production_preflight_payload(env=None):
         if production_ready
         else "当前仅为 Docker/local 软件 proof，仍缺生产云、TLS、公网、OSS/CDN 或生产 state 证据。"
     )
+    local_backup_drill_ok = any(
+        check["name"] == "backup_restore_drill" and check["status"] == "pass"
+        for check in checks
+    )
+    not_proven = [
+        "real_cloud",
+        "real_4g",
+        "external_tls",
+        "public_ingress",
+        "oss_upload",
+        "cdn_origin",
+        "production_db_or_queue",
+        "multi_instance_consistency",
+        "production_backup_policy",
+        "real_disaster_recovery",
+        "nav2_or_fixed_route",
+        "wave_rover_hil",
+    ]
+    if not local_backup_drill_ok:
+        not_proven.insert(8, "backup_restore")
     payload = {
         "ok": production_ready,
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
         "protocol_version": PROTOCOL_VERSION,
-        "evidence_boundary": SQLITE_EVIDENCE_BOUNDARY if state_backend_safe == "sqlite" else PREFLIGHT_EVIDENCE_BOUNDARY,
+        "evidence_boundary": (
+            BACKUP_RESTORE_EVIDENCE_BOUNDARY
+            if local_backup_drill_ok
+            else SQLITE_EVIDENCE_BOUNDARY if state_backend_safe == "sqlite" else PREFLIGHT_EVIDENCE_BOUNDARY
+        ),
         "overall_status": overall,
         "safe_summary": safe_summary,
         "retry_hint": retry_hint,
         "checks": checks,
         "blocked_count": sum(1 for check in checks if check["status"] == "blocked"),
         "warning_count": sum(1 for check in checks if check["status"] == "warning"),
-        "not_proven": [
-            "real_cloud",
-            "real_4g",
-            "external_tls",
-            "public_ingress",
-            "oss_upload",
-            "cdn_origin",
-            "production_db_or_queue",
-            "multi_instance_consistency",
-            "backup_restore",
-            "disaster_recovery",
-            "nav2_or_fixed_route",
-            "wave_rover_hil",
-        ],
+        "not_proven": not_proven,
     }
     if not production_ready:
         payload["error"] = phone_error("preflight_blocked", "production preflight is not ready")["error"]
@@ -992,6 +1084,139 @@ class SQLiteRelayStore:
             return 404, phone_error("not_found", "ack not found")
         return 200, {"ok": True, "ack": json.loads(row["ack_json"])}
 
+    def export_backup_data(self):
+        # backup artifact 复用 normalized envelope，不导出 sqlite 文件路径或底层 WAL 细节。
+        with self._lock:
+            self._ensure_ready()
+            with self._session() as connection:
+                robot_ids = set()
+                for table in ("robots", "commands", "acks"):
+                    rows = connection.execute(f"SELECT DISTINCT robot_id FROM {table}").fetchall()
+                    robot_ids.update(str(row["robot_id"]) for row in rows if row["robot_id"])
+
+                robots = []
+                command_count = 0
+                status_count = 0
+                ack_count = 0
+                for robot_id in sorted(robot_ids):
+                    robot_row = connection.execute(
+                        "SELECT status_json FROM robots WHERE robot_id = ?",
+                        (robot_id,),
+                    ).fetchone()
+                    status = json.loads(robot_row["status_json"]) if robot_row and robot_row["status_json"] else None
+                    if status:
+                        status_count += 1
+                    command_rows = connection.execute(
+                        """
+                        SELECT command_json
+                        FROM commands
+                        WHERE robot_id = ?
+                        ORDER BY created_at ASC, command_id ASC
+                        """,
+                        (robot_id,),
+                    ).fetchall()
+                    commands = [json.loads(row["command_json"]) for row in command_rows]
+                    ack_rows = connection.execute(
+                        """
+                        SELECT ack_json
+                        FROM acks
+                        WHERE robot_id = ?
+                        ORDER BY updated_at ASC, command_id ASC
+                        """,
+                        (robot_id,),
+                    ).fetchall()
+                    acks = [json.loads(row["ack_json"]) for row in ack_rows]
+                    command_count += len(commands)
+                    ack_count += len(acks)
+                    robots.append(
+                        {
+                            "robot_id": robot_id,
+                            "commands": commands,
+                            "status": status,
+                            "acks": acks,
+                        }
+                    )
+
+        return safe_value(
+            {
+                "robots": robots,
+                "counts": {
+                    "robot_count": len(robots),
+                    "command_count": command_count,
+                    "status_count": status_count,
+                    "ack_count": ack_count,
+                },
+            }
+        )
+
+    def import_backup_data(self, backup_data):
+        # restore 只接受本模块生成的 JSON envelope；失败时由上层转成 phone-safe reason。
+        if not isinstance(backup_data, dict):
+            raise ValueError("backup data must be an object")
+        robots = backup_data.get("robots")
+        if not isinstance(robots, list):
+            raise ValueError("backup data robots must be a list")
+        with self._lock:
+            self._ensure_ready()
+            with self._session() as connection:
+                # fresh restore path 正常为空；清表让重复演练在临时库内可重跑，不碰生产 state。
+                connection.execute("DELETE FROM acks")
+                connection.execute("DELETE FROM commands")
+                connection.execute("DELETE FROM robots")
+                for robot in robots:
+                    if not isinstance(robot, dict):
+                        raise ValueError("backup robot entry must be an object")
+                    robot_id = _robot_key(robot.get("robot_id"))
+                    status = robot.get("status") if isinstance(robot.get("status"), dict) else None
+                    commands = robot.get("commands") if isinstance(robot.get("commands"), list) else []
+                    acks = robot.get("acks") if isinstance(robot.get("acks"), list) else []
+                    updated_at = _now()
+                    connection.execute(
+                        """
+                        INSERT INTO robots (robot_id, status_json, stats_json, updated_at)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (
+                            robot_id,
+                            json.dumps(safe_value(status), ensure_ascii=False, sort_keys=True) if status else None,
+                            json.dumps({"restored_at": updated_at}, ensure_ascii=False, sort_keys=True),
+                            updated_at,
+                        ),
+                    )
+                    for command in commands:
+                        if not isinstance(command, dict) or not str(command.get("id") or "").strip():
+                            raise ValueError("backup command entry is invalid")
+                        # command envelope 已脱敏，restore 保持原 id/created_at/expires_at 以验证 cursor 语义。
+                        connection.execute(
+                            """
+                            INSERT INTO commands (robot_id, command_id, command_json, created_at, expires_at)
+                            VALUES (?, ?, ?, ?, ?)
+                            """,
+                            (
+                                robot_id,
+                                str(command["id"]),
+                                json.dumps(safe_value(command), ensure_ascii=False, sort_keys=True),
+                                float(command.get("created_at") or updated_at),
+                                float(command.get("expires_at") or 0.0),
+                            ),
+                        )
+                    for ack in acks:
+                        if not isinstance(ack, dict) or not str(ack.get("command_id") or "").strip():
+                            raise ValueError("backup ack entry is invalid")
+                        # ACK 仍只是 command envelope terminal state，restore 不把它升级成 delivery result。
+                        connection.execute(
+                            """
+                            INSERT INTO acks (robot_id, command_id, ack_json, updated_at)
+                            VALUES (?, ?, ?, ?)
+                            """,
+                            (
+                                robot_id,
+                                str(ack["command_id"]),
+                                json.dumps(safe_value(ack), ensure_ascii=False, sort_keys=True),
+                                float(ack.get("updated_at") or updated_at),
+                            ),
+                        )
+
 
 def build_relay_store(state_path, state_backend="file"):
     # HTTP handler 只依赖 store protocol；backend 切换不得影响外部 response shape。
@@ -999,6 +1224,266 @@ def build_relay_store(state_path, state_backend="file"):
     if backend == "sqlite":
         return SQLiteRelayStore(state_path)
     return FileBackedRelayStore(state_path)
+
+
+def _write_json_artifact(artifact_path, payload):
+    # artifact 写入也走临时文件 + replace，避免半写文件被误当成可恢复证据。
+    artifact_path = os.path.expanduser(str(artifact_path or "")).strip()
+    if not artifact_path:
+        raise ValueError("backup artifact path is required")
+    artifact_dir = os.path.dirname(artifact_path) or "."
+    os.makedirs(artifact_dir, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(prefix=".remote-cloud-backup-", suffix=".json", dir=artifact_dir)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as tmp_file:
+            json.dump(payload, tmp_file, ensure_ascii=False, sort_keys=True)
+            tmp_file.write("\n")
+            tmp_file.flush()
+            os.fsync(tmp_file.fileno())
+        os.replace(tmp_path, artifact_path)
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def create_sqlite_backup_artifact(state_path, artifact_path):
+    # 本 helper 只支持 SQLite proof store；生产 DB/queue 备份策略必须另行验证。
+    store = SQLiteRelayStore(state_path)
+    backup_data = store.export_backup_data()
+    counts = backup_data.get("counts", {})
+    body = {
+        "schema": BACKUP_ARTIFACT_SCHEMA,
+        "version": BACKUP_ARTIFACT_VERSION,
+        "protocol_version": PROTOCOL_VERSION,
+        "evidence_boundary": BACKUP_RESTORE_EVIDENCE_BOUNDARY,
+        "metadata": {
+            "created_at": _now(),
+            "source_backend": "sqlite",
+            "robot_count": int(counts.get("robot_count", 0) or 0),
+            "command_count": int(counts.get("command_count", 0) or 0),
+            "status_count": int(counts.get("status_count", 0) or 0),
+            "ack_count": int(counts.get("ack_count", 0) or 0),
+            "phone_safe": True,
+            "production_backup_policy": False,
+            "real_disaster_recovery": False,
+        },
+        "data": backup_data,
+    }
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    _write_json_artifact(artifact_path, safe_value(artifact))
+    return {
+        "ok": True,
+        "backup_status": "passed",
+        "evidence_boundary": BACKUP_RESTORE_EVIDENCE_BOUNDARY,
+        "safe_summary": "SQLite relay state backup artifact generated for Docker/local drill.",
+        "retry_hint": "restore_artifact_into_fresh_sqlite_state",
+        "artifact": {
+            "schema": BACKUP_ARTIFACT_SCHEMA,
+            "version": BACKUP_ARTIFACT_VERSION,
+            "checksum": artifact["checksum"],
+            "source_backend": "sqlite",
+            "command_count": body["metadata"]["command_count"],
+            "status_count": body["metadata"]["status_count"],
+            "ack_count": body["metadata"]["ack_count"],
+        },
+        "not_proven": [
+            "production_backup_policy",
+            "real_disaster_recovery",
+            "production_db_or_queue",
+            "multi_instance_consistency",
+            "real_cloud",
+            "real_4g",
+        ],
+    }
+
+
+def _load_backup_artifact(artifact_path):
+    try:
+        with open(os.path.expanduser(str(artifact_path or "")), "r", encoding="utf-8") as artifact_file:
+            artifact = json.load(artifact_file)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("backup artifact could not be read") from exc
+    if not isinstance(artifact, dict):
+        raise ValueError("backup artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != BACKUP_ARTIFACT_SCHEMA:
+        raise ValueError("backup artifact schema mismatch")
+    if artifact.get("version") != BACKUP_ARTIFACT_VERSION:
+        raise ValueError("backup artifact version mismatch")
+    if artifact.get("protocol_version") != PROTOCOL_VERSION:
+        raise ValueError("backup artifact protocol mismatch")
+    if artifact.get("evidence_boundary") != BACKUP_RESTORE_EVIDENCE_BOUNDARY:
+        raise ValueError("backup artifact evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("backup artifact checksum mismatch")
+    data = artifact.get("data")
+    if not isinstance(data, dict):
+        raise ValueError("backup artifact data missing")
+    return safe_value(artifact)
+
+
+def backup_artifact_summary(artifact_path):
+    # preflight 需要安全摘要而不是完整 artifact，避免把内部记录全部打到 readiness 输出。
+    try:
+        artifact = _load_backup_artifact(artifact_path)
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "reason_code": "artifact_invalid",
+            "safe_summary": _safe_error_reason(exc),
+        }
+    metadata = artifact.get("metadata", {})
+    return {
+        "ok": True,
+        "source_backend": metadata.get("source_backend"),
+        "command_count": int(metadata.get("command_count", 0) or 0),
+        "status_count": int(metadata.get("status_count", 0) or 0),
+        "ack_count": int(metadata.get("ack_count", 0) or 0),
+        "evidence_boundary": artifact.get("evidence_boundary"),
+    }
+
+
+def restore_sqlite_backup_artifact(artifact_path, restore_state_path, *, overwrite=False):
+    # restore 目标默认必须是 fresh path，避免 CLI 误覆盖生产 proof state。
+    restore_state_path = os.path.expanduser(str(restore_state_path or "")).strip()
+    if not restore_state_path:
+        raise ValueError("restore state path is required")
+    if os.path.exists(restore_state_path):
+        if not overwrite:
+            raise ValueError("restore state path must be fresh")
+        os.unlink(restore_state_path)
+    artifact = _load_backup_artifact(artifact_path)
+    restore_store = SQLiteRelayStore(restore_state_path)
+    restore_store.import_backup_data(artifact["data"])
+    metadata = artifact.get("metadata", {})
+    return {
+        "ok": True,
+        "restore_status": "passed",
+        "evidence_boundary": BACKUP_RESTORE_EVIDENCE_BOUNDARY,
+        "safe_summary": "Backup artifact restored into a fresh SQLite proof state.",
+        "retry_hint": "run_restore_drill_validation",
+        "restored": {
+            "source_backend": metadata.get("source_backend"),
+            "target_backend": "sqlite",
+            "command_count": int(metadata.get("command_count", 0) or 0),
+            "status_count": int(metadata.get("status_count", 0) or 0),
+            "ack_count": int(metadata.get("ack_count", 0) or 0),
+        },
+        "not_proven": [
+            "production_backup_policy",
+            "real_disaster_recovery",
+            "production_db_or_queue",
+            "multi_instance_consistency",
+            "real_cloud",
+            "real_4g",
+        ],
+    }
+
+
+def backup_restore_drill_payload(
+    source_state_path,
+    artifact_path,
+    restore_state_path,
+    *,
+    robot_id="trashbot-001",
+    overwrite=False,
+):
+    try:
+        backup_result = create_sqlite_backup_artifact(source_state_path, artifact_path)
+        restore_result = restore_sqlite_backup_artifact(artifact_path, restore_state_path, overwrite=overwrite)
+        restored_store = SQLiteRelayStore(restore_state_path)
+        status_code, status_payload = restored_store.get_status(robot_id)
+        artifact = _load_backup_artifact(artifact_path)
+        commands = []
+        acks = []
+        for robot in artifact.get("data", {}).get("robots", []):
+            if robot.get("robot_id") == robot_id:
+                commands = robot.get("commands", []) if isinstance(robot.get("commands"), list) else []
+                acks = robot.get("acks", []) if isinstance(robot.get("acks"), list) else []
+                break
+        ack_ids = {str(ack.get("command_id")) for ack in acks if isinstance(ack, dict)}
+        pending_command_id = next(
+            (str(command.get("id")) for command in commands if str(command.get("id")) not in ack_ids),
+            "",
+        )
+        acked_command_id = next(
+            (str(ack.get("command_id")) for ack in acks if isinstance(ack, dict) and str(ack.get("command_id"))),
+            "",
+        )
+        next_payload = restored_store.next_command(robot_id, "")
+        if pending_command_id and next_payload.get("command", {}).get("id") != pending_command_id:
+            raise ValueError("restored command cursor shape mismatch")
+        if status_code != 200 or not status_payload.get("status"):
+            raise ValueError("restored status shape mismatch")
+        if acked_command_id:
+            ack_code, ack_payload = restored_store.get_ack(robot_id, acked_command_id)
+            if ack_code != 200 or ack_payload.get("ack", {}).get("command_id") != acked_command_id:
+                raise ValueError("restored ack shape mismatch")
+            cursor_payload = restored_store.next_command(robot_id, acked_command_id)
+            if pending_command_id and cursor_payload.get("command", {}).get("id") != pending_command_id:
+                raise ValueError("restored cursor semantics mismatch")
+        return safe_value(
+            {
+                "ok": True,
+                "backup_status": backup_result["backup_status"],
+                "restore_status": restore_result["restore_status"],
+                "drill_status": "passed",
+                "service": "remote_cloud_relay",
+                "protocol_version": PROTOCOL_VERSION,
+                "evidence_boundary": BACKUP_RESTORE_EVIDENCE_BOUNDARY,
+                "safe_summary": (
+                    "SQLite backup/restore Docker/local drill passed; production backup policy "
+                    "and real disaster recovery are still not proven."
+                ),
+                "retry_hint": "pass_to_remote_bridge_compatibility_acceptance",
+                "checks": {
+                    "artifact_checksum": True,
+                    "restored_command_http_shape": bool(next_payload.get("ok")),
+                    "restored_status_http_shape": status_code == 200,
+                    "restored_ack_http_shape": bool(not acked_command_id or ack_payload.get("ok")),
+                    "cursor_ack_conservative": True,
+                    "phone_safe_output": _phone_safe_failure_ready(),
+                },
+                "counts": restore_result["restored"],
+                "not_proven": [
+                    "production_backup_policy",
+                    "real_disaster_recovery",
+                    "production_db_or_queue",
+                    "multi_instance_consistency",
+                    "real_cloud",
+                    "real_4g",
+                    "oss_upload",
+                    "cdn_origin",
+                    "formal_phone_ui",
+                    "nav2_or_fixed_route",
+                    "wave_rover_hil",
+                ],
+            }
+        )
+    except (ValueError, OSError, sqlite3.Error) as exc:
+        return {
+            "ok": False,
+            "backup_status": "blocked",
+            "restore_status": "blocked",
+            "drill_status": "blocked",
+            "service": "remote_cloud_relay",
+            "protocol_version": PROTOCOL_VERSION,
+            "evidence_boundary": BACKUP_RESTORE_EVIDENCE_BOUNDARY,
+            "safe_summary": PHONE_COPY["backup_restore_blocked"],
+            "retry_hint": "regenerate_backup_artifact_and_restore_to_fresh_sqlite_state",
+            "error": phone_error("backup_restore_blocked", _safe_error_reason(exc))["error"],
+            "not_proven": [
+                "backup_restore",
+                "production_backup_policy",
+                "real_disaster_recovery",
+                "production_db_or_queue",
+                "multi_instance_consistency",
+                "real_cloud",
+                "real_4g",
+            ],
+        }
 
 
 def readiness_payload(store, expected_token):
@@ -1203,12 +1688,71 @@ def main(argv=None):
         action="store_true",
         help="run production preflight gate as machine-readable JSON and exit",
     )
+    parser.add_argument(
+        "--backup-state-to",
+        default="",
+        help="write a phone-safe SQLite backup artifact JSON and exit",
+    )
+    parser.add_argument(
+        "--restore-backup-from",
+        default="",
+        help="restore a backup artifact into --restore-state-path and exit",
+    )
+    parser.add_argument(
+        "--restore-state-path",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_RESTORE_STATE", ""),
+        help="fresh SQLite state path used by restore or backup/restore drill",
+    )
+    parser.add_argument(
+        "--backup-restore-drill",
+        action="store_true",
+        help="run SQLite backup -> restore -> shape validation as JSON and exit",
+    )
+    parser.add_argument(
+        "--drill-robot-id",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_DRILL_ROBOT_ID", "trashbot-001"),
+        help="robot id to validate after restore; output remains phone-safe",
+    )
+    parser.add_argument(
+        "--overwrite-restore-state",
+        action="store_true",
+        help="delete the restore proof state before restoring; only for temp drill paths",
+    )
     args = parser.parse_args(argv)
     if args.preflight:
         # CLI gate 用当前进程 env 评估 Docker/local production readiness，不启动 HTTP server。
         payload = production_preflight_payload()
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") else 2
+    if args.backup_restore_drill:
+        # Drill 是 Docker/local 软件证明；它不启动 HTTP server，也不触碰真实云资源。
+        payload = backup_restore_drill_payload(
+            args.state_path,
+            args.backup_state_to,
+            args.restore_state_path,
+            robot_id=args.drill_robot_id,
+            overwrite=args.overwrite_restore_state,
+        )
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
+    if args.backup_state_to:
+        try:
+            payload = create_sqlite_backup_artifact(args.state_path, args.backup_state_to)
+        except (ValueError, OSError, sqlite3.Error) as exc:
+            payload = phone_error("backup_restore_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
+    if args.restore_backup_from:
+        try:
+            payload = restore_sqlite_backup_artifact(
+                args.restore_backup_from,
+                args.restore_state_path,
+                overwrite=args.overwrite_restore_state,
+            )
+        except (ValueError, OSError, sqlite3.Error) as exc:
+            payload = phone_error("backup_restore_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     server = build_server(args.host, args.port, args.state_path, args.bearer_token, args.state_backend)
     try:
         server.serve_forever()

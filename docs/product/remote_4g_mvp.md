@@ -65,6 +65,16 @@ reopen or relay restart. It still must not claim production DB/queue,
 multi-instance consistency, backup/restore, disaster recovery, real cloud, real
 4G/SIM, OSS/CDN traffic, Nav2/fixed-route delivery, WAVE ROVER movement, or HIL.
 
+The SQLite relay also supports a Docker/local backup/restore drill with
+`evidence_boundary=software_proof_docker_backup_restore_drill`. The drill
+generates a JSON artifact with schema/version/metadata/checksum, restores that
+artifact into a fresh SQLite state path, and validates the restored
+command/status/ack envelopes plus conservative ACK cursor behavior. This is a
+software proof only: production backup policy, production DB/queue,
+multi-instance consistency, real disaster recovery, real cloud, real 4G/SIM,
+OSS/CDN traffic, formal phone UI, Nav2/fixed-route delivery, WAVE ROVER, and
+HIL remain unproven.
+
 Example local proof launch:
 
 ```bash
@@ -88,6 +98,26 @@ python3 -m ros2_trashbot_behavior.remote_cloud_relay \
   --state-path /tmp/trashbot_remote_cloud_relay.sqlite \
   --state-backend sqlite
 ```
+
+Example backup/restore drill:
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --state-backend sqlite \
+  --state-path /tmp/trashbot_remote_cloud_relay.sqlite \
+  --backup-state-to /tmp/trashbot_remote_cloud_relay_backup.json \
+  --restore-state-path /tmp/trashbot_remote_cloud_relay_restored.sqlite \
+  --backup-restore-drill
+```
+
+The drill output is intended for future phone/operator diagnostics. It reports
+`backup_status`, `restore_status`, `drill_status`, `safe_summary`,
+`retry_hint`, `evidence_boundary`, and `not_proven`. It must not expose bearer
+tokens, Authorization headers, OSS secrets, root passwords, raw state paths,
+ROS topic names, serial ports, baudrate, WAVE ROVER parameters, `/cmd_vel`, or
+tracebacks.
 
 Example Docker deploy proof:
 
@@ -192,6 +222,13 @@ preserving the same `trashbot.remote.v1` HTTP response shape. Both backends are
 sufficient for Docker/local restart proof only. A production cloud still needs a
 database or queue for concurrency, backups, multi-instance consistency, and
 disaster recovery.
+
+SQLite backup artifacts store sanitized command/status/ack envelopes rather
+than raw database pages. Restore rebuilds a fresh SQLite proof state from those
+normalized envelopes and fails closed on schema, version, protocol, evidence
+boundary, or checksum mismatch. A successful restore does not convert an ACK
+into a trash delivery result; phones must still read status for delivery
+progress and failure explanation.
 
 ## Status Contract
 
@@ -315,7 +352,8 @@ processed the command yet.
 - No SIM or carrier network test has been run.
 - The local mock-cloud tests validate protocol behavior only.
 - The independent relay tests validate local HTTP, bearer auth, file persistence,
-  health/readiness, Docker deploy startup, and phone-safe error behavior only.
+  health/readiness, Docker deploy startup, SQLite backup/restore drill, and
+  phone-safe error behavior only.
 - Bearer auth gate is covered by local/mock software proof only; production identity, provisioning, rotation, permissions, HTTPS/TLS, and public cloud ingress are not implemented.
 - Remote bridge degradation/cursor safety is covered by local/mock software proof only; it does not prove weak-network recovery on a carrier 4G link.
 - OSS/CDN upload, STS credentials, CDN read path, Nav2/fixed-route delivery,
