@@ -8,6 +8,8 @@
 - Confirm `115200` baud with the loaded ESP32 firmware.
 - Confirm evidence source policy: `source=software_proof` for template checks, `source=hil_pass` for real UART verification.
 - Run `python3 scripts/hardware_smoke_wave_rover.py --status` first; require no pyserial for this step.
+- Before upgrading any archived evidence run to HIL, run
+  `python3 scripts/hil_evidence_packet_gate.py --packet-dir evidence/<evidence_ref>`.
 - If `pyserial` is missing or `serial` open fails, record `Blocked` and capture repro steps; do not claim `hil_pass`.
 - On a Docker-only host with no `/dev/ttyUSB*`, record `readiness_blocked`
   or `source=software_proof` only. Do not convert Docker image success,
@@ -23,6 +25,7 @@
 - `source=software_proof`：只用于离线核验（help/status/参数模板）。
 - `source=hil_pass`：必须基于真实 UART 串口交互、反馈采样、运行日志与任务记录。
 - 运行脚本时使用 `--evidence-ref run_<YYYYMMDDTHHMMSS>Z_<serial>_hil_pass_speed<...>_dur<...>`，并在 evidence 文档中复用同一 `evidence_ref`。
+- Gate source boundary：`scripts/hil_evidence_packet_gate.py` 默认把缺文件、空文件、串口打开失败、无 `T=1001`、topic JSONL 缺样本、`source=software_proof/simulated/legacy` 或 `evidence_ref` 冲突判为 `blocked` 并返回非 0。只有完整 packet 输出 `status=hil_pass` 才可进入 O1/O2/O3 同一 `evidence_ref` 复账。
 
 ## Desktop ROS2 Build Check
 
@@ -112,4 +115,5 @@ SKIP_COLCON=1 bash scripts/docker_humble_build.sh
 - Save hardware smoke output, including serial device, feedback frame, and final stop confirmation.
 - Save any photos/video used to prove wheel direction, stop behavior, or turn direction.
 - Save camera samples when visual debug is enabled.
+- Run `python3 scripts/hil_evidence_packet_gate.py --packet-dir evidence/<evidence_ref>` and attach the JSON output. Synthetic fixture gate success is only software validation, not real hardware proof.
 - Run-level `hil_pass` 结果引用：`evidence/run_20260511T094018Z_hil_pass_speed0p050_dur0p30`

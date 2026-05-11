@@ -108,6 +108,12 @@ to `source=hil_pass` after a real hardware run for the same `evidence_ref`.
   - `evidence/<evidence_ref>/command.txt`
   - `evidence/<evidence_ref>/serial.log`
   - `evidence/<evidence_ref>/feedback_T1001.log`
+- 归档 packet 必须通过 gate：
+  `python3 scripts/hil_evidence_packet_gate.py --packet-dir evidence/<evidence_ref>`。
+- Gate 只做文件层判定：必需文件非空、`T=1001` 可解析、`/odom`/`/imu/data`/`/battery`
+  JSONL 样本可解析、`serial.log` 不是串口失败/blocked 文本、`command.txt`
+  可追踪 smoke 或 move-test 命令、同一 packet 内 `evidence_ref` 不矛盾。
+- Gate 输出 `status=hil_pass` 且 exit 0 只是证据包合规；在本机合成 fixture 中通过时只能证明 gate 逻辑，不能替代真实 WAVE ROVER 上车证据。
 - 若 HIL 遭遇环境阻塞，`Blocked` 条目需完整记录：
   - 缺依赖（如 pyserial）
   - 缺串口权限/设备
@@ -121,6 +127,7 @@ to `source=hil_pass` after a real hardware run for the same `evidence_ref`.
 | Smoke command template可复用 | `software_proof` | 运行命令行记录：`python3 scripts/hardware_smoke_wave_rover.py --help` |
 | 脚本访问前后参数与串口约定确认 | `software_proof` | `docs/acceptance/robot_bringup_checklist.md` 与 `docs/acceptance/hil_runbook.md` |
 | 首轮 evidence packet 产物归档 | `hil_pass` | `evidence/<evidence_ref>/command.txt`、`serial.log`、`feedback_T1001.log` |
+| Evidence packet gate 通过 | `hil_pass` | `python3 scripts/hil_evidence_packet_gate.py --packet-dir evidence/<evidence_ref>` 输出 `status=hil_pass` |
 | 真实设备串口打开（115200 或记录覆盖值） | `hil_pass` | `HIL Smoke` 终端日志中的 `Opened <serial> @ <baud>` |
 | 停止命令覆盖运动并前后成立 | `hil_pass` | 运动段前后 `T=1,L=0,R=0` 命令与最终轮停确认 |
 | 下发启动命令（`T=143`,`T=142`,`T=131`） | `hil_pass` | 启动日志含三条 startup frame |

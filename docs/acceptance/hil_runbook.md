@@ -61,6 +61,27 @@
 - `--status` 输出中的 `required_evidence_files` 是证据包清单模板，`source=software_proof`；
   只有同一个 `evidence_ref` 下实际写入文件并采到硬件反馈后，才可登记为 `source=hil_pass`。
 
+### 0.5.1) Evidence Packet Gate
+
+在归档或升级 O1 证据前，必须运行文件层 gate：
+
+```bash
+python3 scripts/hil_evidence_packet_gate.py --packet-dir evidence/<evidence_ref>
+```
+
+Gate 不打开串口、不依赖 ROS2、不导入 pyserial，可在 Docker-only 环境运行。它只检查归档文件是否满足真实 HIL 证据最低门槛：
+
+- 必需文件非空：`command.txt`、`serial.log`、`feedback_T1001.log`、`odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl`。
+- `feedback_T1001.log` 至少有一条可解析 JSON 且 `T=1001`。
+- 三个 topic JSONL 文件各至少有一条可解析 JSON object。
+- `serial.log` 不能只是串口打开失败、无串口候选、`No such file`、`pyserial` 缺失或 blocked 记录。
+- `command.txt` 必须能追踪到 `hardware_smoke_wave_rover.py` smoke 或 move-test 命令。
+- 同一 packet 内 `evidence_ref` 不得互相矛盾；`source=software_proof`、`simulated`、`legacy`、`run_template` 或 dry-run 来源不得通过 `hil_pass`。
+
+Gate 输出 JSON 字段包含 `status`、`source`、`evidence_ref`、`blocked_reason`、`failures`、`checks`、`vendor_sources`。默认只有 `status=hil_pass` 返回 exit 0。模板或 status-only packet 如需记录为软件证据，必须显式加 `--allow-software-proof`；该模式仍返回非 0，不能作为真实 HIL 通过。
+
+本 gate 的 vendor 来源为 `docs/vendor/VENDOR_INDEX.md`、`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、`docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`、`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`、`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`。
+
 ## 0.6) Blocked Run Record
 
 - evidence ref: `run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30`
