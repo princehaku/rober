@@ -284,8 +284,13 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["failure"]["failure_code"], "NAV_TIMEOUT")
         self.assertTrue(payload["failure"]["human_intervention_required"])
         self.assertEqual(payload["failure"]["source"], "hil_pass")
+        self.assertEqual(payload["last_task"]["source"], "hil_pass")
+        self.assertEqual(payload["last_task"]["evidence_ref"], "/tmp/task_records/task-123.bin")
+        self.assertEqual(payload["last_task"]["failure_code"], "NAV_TIMEOUT")
+        self.assertTrue(payload["last_task"]["human_intervention_required"])
         self.assertEqual(len(payload["failure"]["state_transition_history"]), 1)
         self.assertEqual(payload["failure"]["state_transition_history"][0]["event"], "nav_timeout")
+        self.assertEqual(payload["last_task"]["state_transition_history"], payload["failure"]["state_transition_history"])
 
     def test_diagnostics_prefers_latest_status_terminal_fields(self):
         payload = build_diagnostics_payload(
@@ -362,11 +367,11 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["failure"]["error_code"], "timed_out")
         self.assertEqual(payload["failure"]["final_state"], "dropoff")
         self.assertEqual(payload["failure"]["task_record_path"], "/tmp/task.json")
-        self.assertEqual(payload["source"], "simulated")
+        self.assertEqual(payload["source"], "software_proof")
         self.assertEqual(payload["evidence_ref"], "/tmp/task.json")
         self.assertEqual(payload["failure_code"], "TASK_CANCEL")
         self.assertEqual(payload["human_intervention_required"], True)
-        self.assertEqual(payload["failure"]["source"], "simulated")
+        self.assertEqual(payload["failure"]["source"], "software_proof")
         self.assertEqual(payload["failure"]["failure_code"], "TASK_CANCEL")
         self.assertEqual(payload["failure"]["human_intervention_required"], True)
         self.assertEqual(payload["map_version"], "map-a")

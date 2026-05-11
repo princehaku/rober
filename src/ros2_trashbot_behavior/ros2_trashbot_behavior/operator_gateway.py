@@ -29,20 +29,20 @@ from ros2_trashbot_behavior.operator_gateway_http import make_handler, status_pa
 TERMINAL_STATES = {"completed", "failed", "canceled", "rejected"}
 
 
-TASK_GATEWAY_VALID_SOURCES = {"hil_pass", "software_proof", "simulated"}
+TASK_GATEWAY_VALID_SOURCES = {"hil_pass", "software_proof"}
 
 
 def _normalize_task_source(value):
     source = str(value or "").strip().lower().replace("-", "_")
     if source in TASK_GATEWAY_VALID_SOURCES:
         return source
-    if source in {"task_orchestrator", "dry_run", "robot_sim", "simulated", "software"}:
-        return "simulated"
+    if source in {"task_orchestrator", "dry_run", "robot_sim", "software"}:
+        return "software_proof"
     if source in {"hil", "hil_pass"}:
         return "hil_pass"
     if source in {"software_proof", "software-proof", "proof"}:
         return "software_proof"
-    return "simulated"
+    return "software_proof"
 
 
 def _read_task_record(path):
@@ -435,7 +435,7 @@ class OperatorGateway(Node):
                     "error_code": result.error_code,
                     "failure_code": result.error_code,
                     "human_intervention_required": not bool(result.success),
-                    "source": "task_orchestrator",
+                    "source": "software_proof",
                 },
             )
             failure_code = str(task_record_fields.get("failure_code") or result.error_code or "")

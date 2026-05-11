@@ -326,7 +326,7 @@ class TaskOrchestrator(Node):
         nav_results = []
         dropoff_result = {}
         elevator_assist = self._elevator_assist_disabled_status()
-        task_source = "task_orchestrator"
+        task_source = "software_proof"
         record_config = {
             "delivery_mode": self.delivery_mode,
             "navigation_timeout_sec": self.navigation_timeout_sec,
@@ -607,7 +607,7 @@ class TaskOrchestrator(Node):
         elevator_assist,
         config,
         *,
-        source="task_orchestrator",
+        source="software_proof",
     ):
         failure_code = "" if final_status == "success" else self._derive_failure_code(machine)
         result_path = self._derive_result_path(nav_results)
@@ -689,7 +689,7 @@ class TaskOrchestrator(Node):
                     "elevator_assist_target_floor": self.elevator_assist_target_floor,
                     "elevator_assist_dry_run_failure": self.elevator_assist_dry_run_failure,
                 },
-                source="task_orchestrator",
+                source="software_proof",
             )
         )
         self._clear_collection_active()
@@ -862,7 +862,7 @@ class TaskOrchestrator(Node):
                 "success": False,
                 "result_code": "unsupported_dropoff_mode",
                 "message": f"Unsupported dropoff_mode: {self.dropoff_mode}",
-                "source": "task_orchestrator",
+                "source": "software_proof",
                 "elapsed_sec": 0.0,
             }
         self.dropoff_gate.begin(task_id)

@@ -3,6 +3,20 @@ from pathlib import Path
 import time
 
 
+VALID_TASK_RECORD_SOURCES = {"software_proof", "hil_pass"}
+
+
+def _normalize_task_record_source(value):
+    source = str(value or "").strip().lower().replace("-", "_")
+    if source in VALID_TASK_RECORD_SOURCES:
+        return source
+    if source in {"task_orchestrator", "dry_run", "robot_sim", "simulated", "software", "software_proof"}:
+        return "software_proof"
+    if source == "hil":
+        return "hil_pass"
+    return "software_proof"
+
+
 def write_task_record(
     output_dir,
     task_id,
@@ -21,7 +35,7 @@ def write_task_record(
     config=None,
     error_code=None,
     final_state=None,
-    source="task_orchestrator",
+    source="software_proof",
     result_path="",
     evidence_ref="",
     failure_code="",
@@ -73,7 +87,7 @@ def write_task_record(
         ),
         "error_message": error_message,
         "final_state": final_state if final_state is not None else machine.state.value,
-        "source": source,
+        "source": _normalize_task_record_source(source),
         "result_path": str(result_path),
         # evidence_ref is the durable anchor consumed by diagnostics/operator contracts.
         # Keep it explicit even when it equals result_path to avoid implicit inference.

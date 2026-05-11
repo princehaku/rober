@@ -181,7 +181,7 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["dropoff_result"]["result_code"], "dry_run")
         self.assertEqual(payload["elevator_assist"]["enabled"], False)
         self.assertEqual(payload["elevator_assist"]["phase"], "disabled")
-        self.assertEqual(payload["source"], "task_orchestrator")
+        self.assertEqual(payload["source"], "software_proof")
         self.assertEqual(payload["evidence_ref"], "")
         self.assertEqual(payload["failure_code"], "")
         self.assertEqual(payload["human_intervention_required"], False)

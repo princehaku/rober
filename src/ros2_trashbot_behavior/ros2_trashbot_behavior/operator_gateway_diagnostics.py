@@ -14,10 +14,9 @@ except ImportError:
 REVIEW_QUEUE_LIMIT = 5
 LOW_CONFIDENCE_REVIEW_THRESHOLD = 75
 HARDWARE_PROOF_STATUSES = {"software_proof", "needs_hil", "invalid_config", "read_error"}
-EVIDENCE_SOURCE_SIMULATED = "simulated"
 EVIDENCE_SOURCE_SOFTWARE = "software_proof"
 EVIDENCE_SOURCE_HIL = "hil_pass"
-VALID_EVIDENCE_SOURCES = {EVIDENCE_SOURCE_SIMULATED, EVIDENCE_SOURCE_SOFTWARE, EVIDENCE_SOURCE_HIL}
+VALID_EVIDENCE_SOURCES = {EVIDENCE_SOURCE_SOFTWARE, EVIDENCE_SOURCE_HIL}
 REVIEW_DECISION_VALUES = {"approved", "rejected", "needs_retry"}
 REVIEW_DECISION_ORDER = ("approved", "rejected", "needs_retry")
 ROUTE_PROOF_REQUIRED_FIELDS = (
@@ -336,22 +335,28 @@ def _extract_route_proof_summary(latest_status, last_task):
 def normalize_evidence_source(value):
     """Normalize evidence provenance to user-facing contracts.
 
-    Source tags are intentionally limited to three values so O2/O3 users can
+    Source tags are intentionally limited to two values so O2/O3 users can
     clearly distinguish offline replay evidence from real hardware-in-loop evidence:
     - hil_pass: evidence is robot-side validated with HIL/real hardware artifacts.
     - software_proof: software-only proof is available but HIL is still required.
-    - simulated: fallback for dry-run, offline, or unknown runtime sources.
     """
     normalized = str(value or "").strip().lower().replace("-", "_")
     if normalized in VALID_EVIDENCE_SOURCES:
         return normalized
-    if normalized in {"task_orchestrator", "dry_run", "robot_sim", "simulated", "software", "software_proof"}:
+    if normalized in {
+        "task_orchestrator",
+        "dry_run",
+        "robot_sim",
+        "simulated",
+        "software",
+        "software_proof",
+    }:
         if normalized == "software":
             return EVIDENCE_SOURCE_SOFTWARE
-        return EVIDENCE_SOURCE_SIMULATED
+        return EVIDENCE_SOURCE_SOFTWARE
     if normalized == "hil":
         return EVIDENCE_SOURCE_HIL
-    return EVIDENCE_SOURCE_SIMULATED
+    return EVIDENCE_SOURCE_SOFTWARE
 
 
 def _elevator_assist_from_task_record(task_record):
