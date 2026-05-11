@@ -13,12 +13,21 @@ The real 4G product path is not phone-to-robot WiFi. A 4G robot should initiate 
 ## MVP Cloud API
 
 ```text
+POST /robots/{robot_id}/commands
 GET  /robots/{robot_id}/commands/next?last_ack_id=<id>
 POST /robots/{robot_id}/status
+GET  /robots/{robot_id}/status
 POST /robots/{robot_id}/commands/{command_id}/ack
+GET  /robots/{robot_id}/commands/{command_id}/ack
 ```
 
 The first implementation uses HTTP polling so it is testable without a real 4G SIM or cloud account. A future MQTT or WebSocket transport must preserve the same command/status/ack semantics.
+
+The Docker-only local mock cloud is implemented inside the operator HTTP gateway
+as an in-memory control-plane store. It is a phone-safe entry for submit command,
+read current status, and read command ACK during local development. It does not
+expose `/cmd_vel`, serial ports, baudrate, WAVE ROVER parameters, or raw ROS2
+topic names to ordinary phone users.
 
 ## Command Contract
 
@@ -43,6 +52,13 @@ Allowed command types:
 
 Unknown command types, missing `id`, non-object payloads, and expired commands must not execute.
 
+The local mock cloud accepts phone-created commands on
+`POST /robots/{robot_id}/commands`, stores the normalized
+`trashbot.remote.v1` object, and returns the same object for robot outbound
+polling on `GET /robots/{robot_id}/commands/next`. Command `id` is the
+idempotency key; duplicate submits return the existing command instead of
+creating a second task.
+
 ## Status Contract
 
 Robot status is posted by the robot and should be enough for a phone UI to render current state:
@@ -56,6 +72,10 @@ Robot status is posted by the robot and should be enough for a phone UI to rende
   "updated_at": 1778256012.0
 }
 ```
+
+The phone-safe read endpoint is `GET /robots/{robot_id}/status`. A missing robot
+status returns `state = "unknown"` with a message that the robot has not posted
+status yet, rather than inventing a successful or failed robot state.
 
 ## Ack Contract
 
@@ -78,6 +98,11 @@ Allowed ack states:
 - `ignored`
 
 `acked` means the robot-side bridge accepted or submitted the command to the local behavior interface. It is not a final delivery result; the cloud UI must keep reading robot status for later `completed`, `needs_human_help`, or failure states.
+
+The phone-safe read endpoint is
+`GET /robots/{robot_id}/commands/{command_id}/ack`. A missing ACK returns an
+`ack_not_found` error so the UI can keep polling or show that the robot has not
+processed the command yet.
 
 ## Safety Rules
 
