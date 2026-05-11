@@ -25,6 +25,11 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             '"/api/collect"',
             '"/api/dropoff/confirm"',
             '"/api/cancel"',
+            '"robots"',
+            '"commands"',
+            '"commands_next"',
+            '"status"',
+            '"ack"',
         ):
             self.assertIn(route, http_source)
 
@@ -55,12 +60,35 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("ELEVATOR_ASSIST_SPEAKER_PROMPT", http_source)
         self.assertIn("normalize_elevator_assist", http_source)
         self.assertIn("operator_prompt_for_state", http_source)
+        self.assertIn("REMOTE_PROTOCOL_VERSION", http_source)
+        self.assertIn("trashbot.remote.v1", http_source)
+        self.assertIn("MockCloudStore", http_source)
+        self.assertIn("normalize_remote_command", http_source)
+        self.assertIn("normalize_remote_status", http_source)
+        self.assertIn("normalize_remote_ack", http_source)
+        self.assertIn("mock_cloud.next_command", http_source)
+        self.assertIn("mock_cloud.submit_command", http_source)
+        self.assertIn("mock_cloud.post_status", http_source)
+        self.assertIn("mock_cloud.post_ack", http_source)
+        self.assertIn("mock_cloud.get_ack", http_source)
         self.assertIn('"phone_copy": prompt["phone_copy"]', http_source)
         self.assertIn('"speaker_prompt": prompt["speaker_prompt"]', http_source)
         self.assertIn('"elevator_assist": elevator_assist', http_source)
         self.assertIn("gateway.diagnostics()", http_source)
         self.assertNotIn("flask", source.lower())
         self.assertNotIn("aiohttp", source.lower())
+
+        remote_source = http_source[
+            http_source.index("def normalize_remote_command"):
+            http_source.index("class MockCloudStore")
+        ]
+        self.assertIn("REMOTE_COMMAND_TYPES", remote_source)
+        self.assertIn('"collect"', http_source)
+        self.assertIn('"confirm_dropoff"', http_source)
+        self.assertIn('"cancel"', http_source)
+        self.assertNotIn("/cmd_vel", remote_source)
+        self.assertNotIn("serial_port", remote_source)
+        self.assertNotIn("baudrate", remote_source)
 
     def test_gateway_diagnostics_exposes_minimum_remote_support_package(self):
         source = GATEWAY.read_text(encoding="utf-8")

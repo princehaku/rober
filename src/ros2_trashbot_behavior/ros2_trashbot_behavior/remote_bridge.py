@@ -36,13 +36,18 @@ def _snapshot_status(robot_id, snapshot):
 
 
 class RemoteBridgeWorker:
-    """Pure-Python HTTP polling worker for the outbound 4G bridge."""
+    """Pure-Python HTTP polling worker for the outbound 4G bridge.
 
-    def __init__(self, cloud_client, operator_backend, robot_id, max_command_results=200):
+    The worker accepts only the behavior-level remote contract. It never exposes
+    raw ROS topics such as /cmd_vel and never maps a cloud payload directly to
+    wheel or base velocity commands.
+    """
+
+    def __init__(self, cloud_client, operator_backend, robot_id, max_command_results=200, last_ack_id=""):
         self.cloud = cloud_client
         self.operator_backend = operator_backend
         self.robot_id = robot_id
-        self.last_ack_id = ""
+        self.last_ack_id = str(last_ack_id or "")
         self.command_results = {}
         self.max_command_results = int(max_command_results)
 
@@ -56,36 +61,26 @@ class RemoteBridgeWorker:
             command_id = str(command.get("id") or "").strip()
             if not command_id:
                 raise
-            ack = {
-                "state": "failed",
-                "message": str(exc),
-                "result": {"operator_status": status},
-            }
-            self._remember_command_result(command_id, ack)
-            self.cloud.post_ack(command_id, ack["state"], ack["message"], ack["result"])
-            self.last_ack_id = command_id
+            ack = self._make_ack("failed", f"malformed command: {exc}", status)
+            self._post_terminal_ack(command_id, ack)
             return True
         if command is None:
             return False
         if command["id"] in self.command_results:
             ack = self.command_results[command["id"]]
-            self.cloud.post_ack(command["id"], ack["state"], ack["message"], ack["result"])
-            self.last_ack_id = command["id"]
+            self._post_terminal_ack(command["id"], ack, remember=False)
             return True
         if command_expired(command):
-            ack = {
-                "state": "ignored",
-                "message": "command expired",
-                "result": {"operator_status": status},
-            }
-            self._remember_command_result(command["id"], ack)
-            self.cloud.post_ack(command["id"], ack["state"], ack["message"], ack["result"])
-            self.last_ack_id = command["id"]
+            ack = self._make_ack("ignored", "command expired before robot polling", status)
+            self._post_terminal_ack(command["id"], ack)
             return True
 
         try:
             http_status, payload = self._execute_command(command)
-            ack_state = "acked" if 200 <= int(http_status) < 300 else "failed"
+            if command["type"] == "collect" and int(http_status) == 409:
+                ack_state = "ignored"
+            else:
+                ack_state = "acked" if 200 <= int(http_status) < 300 else "failed"
             message = str((payload or {}).get("message") or command["type"])
             result = {
                 "http_status": int(http_status),
@@ -100,13 +95,36 @@ class RemoteBridgeWorker:
             result = {"operator_status": status}
             ack = {
                 "state": "failed",
-                "message": str(exc),
+                "message": f"command failed: {exc}",
                 "result": result,
             }
-        self._remember_command_result(command["id"], ack)
-        self.cloud.post_ack(command["id"], ack["state"], ack["message"], ack["result"])
-        self.last_ack_id = command["id"]
+        self._post_terminal_ack(command["id"], ack)
         return True
+
+    def _make_ack(self, state, message, operator_status):
+        return {
+            "state": state,
+            "message": message,
+            "result": {"operator_status": operator_status},
+        }
+
+    def _post_terminal_ack(self, command_id, ack, remember=True):
+        if remember:
+            self._remember_command_result(command_id, ack)
+        self.cloud.post_ack(command_id, ack["state"], ack["message"], ack["result"])
+        self.last_ack_id = command_id
+        self._post_status_from_ack(ack)
+
+    def _post_status_from_ack(self, ack):
+        status = (ack.get("result") or {}).get("operator_status")
+        if not isinstance(status, dict):
+            return
+        try:
+            self.cloud.post_status(_snapshot_status(self.robot_id, status))
+        except Exception:
+            # A post-ack status refresh is best-effort. A cloud outage must not
+            # cancel or stop an already accepted local behavior task.
+            pass
 
     def _remember_command_result(self, command_id, ack):
         self.command_results[command_id] = ack
@@ -140,8 +158,10 @@ class RemoteBridge(Node):
         self.declare_parameter("enabled", False)
         self.declare_parameter("cloud_base_url", "")
         self.declare_parameter("robot_id", "trashbot-001")
+        self.declare_parameter("bearer_token", "")
         self.declare_parameter("auth_token", "")
         self.declare_parameter("poll_interval_sec", 2.0)
+        self.declare_parameter("last_ack_id", "")
         self.declare_parameter("request_timeout_sec", 5.0)
         self.declare_parameter("collect_action_name", "/trashbot/collect_trash")
         self.declare_parameter("dropoff_service_name", "/trashbot/confirm_dropoff")
@@ -150,6 +170,9 @@ class RemoteBridge(Node):
         self.cloud_base_url = str(self.get_parameter("cloud_base_url").value).strip()
         self.robot_id = str(self.get_parameter("robot_id").value)
         self.poll_interval_sec = float(self.get_parameter("poll_interval_sec").value)
+        bearer_token = str(self.get_parameter("bearer_token").value).strip()
+        auth_token = str(self.get_parameter("auth_token").value).strip()
+        token = bearer_token or auth_token
         self.last_status = make_status(self.robot_id, "offline", "remote bridge initializing")
         self.active_goal_handle = None
         self.collect_pending = False
@@ -170,10 +193,15 @@ class RemoteBridge(Node):
             self.cloud = RemoteCloudClient(
                 self.cloud_base_url,
                 self.robot_id,
-                str(self.get_parameter("auth_token").value),
+                token,
                 float(self.get_parameter("request_timeout_sec").value),
             )
-            self.worker = RemoteBridgeWorker(self.cloud, self, self.robot_id)
+            self.worker = RemoteBridgeWorker(
+                self.cloud,
+                self,
+                self.robot_id,
+                last_ack_id=str(self.get_parameter("last_ack_id").value),
+            )
         self.timer = self.create_timer(max(0.2, self.poll_interval_sec), self._poll_once)
         self.get_logger().info(
             f"RemoteBridge ready enabled={self.enabled} cloud={self.cloud_base_url or '<unset>'}"

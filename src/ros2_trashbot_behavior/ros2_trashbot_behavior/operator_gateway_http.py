@@ -1,5 +1,7 @@
 import json
+import threading
 import time
+import uuid
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
@@ -7,6 +9,8 @@ from ros2_trashbot_behavior.remote_bridge_protocol import parse_bool
 
 
 API_VERSION = "slice2.operator.v1"
+REMOTE_PROTOCOL_VERSION = "trashbot.remote.v1"
+REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 ELEVATOR_ASSIST_SPEAKER_PROMPT = "你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,"
 
 ELEVATOR_ASSIST_PHASES = {
@@ -216,6 +220,193 @@ def operator_prompt_for_state(state, elevator_assist=None):
             "speaker_prompt": elevator_assist.get("speaker_prompt", ""),
         }
     return dict(OPERATOR_PROMPTS.get(str(state or ""), OPERATOR_PROMPTS["needs_human_help"]))
+
+
+def remote_error(code, message, *, details=None):
+    return {
+        "ok": False,
+        "error": {
+            "code": str(code),
+            "message": str(message),
+            "details": details if isinstance(details, dict) else {},
+        },
+    }
+
+
+def _remote_timestamp(value, field_name):
+    try:
+        timestamp = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{field_name} must be a unix timestamp") from exc
+    if timestamp <= 0:
+        raise ValueError(f"{field_name} must be positive")
+    return timestamp
+
+
+def normalize_remote_command(robot_id, payload, *, now=None):
+    """Normalize the cloud command contract without exposing robot internals.
+
+    The phone/cloud surface deals only in behavior-level commands. It does not
+    accept raw ROS topics, low-level transport settings, or velocity commands.
+    """
+    now = time.time() if now is None else float(now)
+    payload = payload if isinstance(payload, dict) else {}
+    command_type = str(payload.get("type") or "").strip()
+    command_payload = payload.get("payload", {})
+    command_id = str(payload.get("id") or f"cmd-{int(now * 1000)}-{uuid.uuid4().hex[:8]}").strip()
+    protocol_version = str(payload.get("protocol_version") or REMOTE_PROTOCOL_VERSION).strip()
+    expires_at = _remote_timestamp(payload.get("expires_at", now + 300.0), "expires_at")
+
+    if protocol_version != REMOTE_PROTOCOL_VERSION:
+        raise ValueError(f"protocol_version must be {REMOTE_PROTOCOL_VERSION}")
+    if not command_id:
+        raise ValueError("id is required")
+    if command_type not in REMOTE_COMMAND_TYPES:
+        raise ValueError("type must be one of cancel, collect, confirm_dropoff")
+    if not isinstance(command_payload, dict):
+        raise ValueError("payload must be an object")
+    if command_type == "collect" and not str(command_payload.get("target") or "").strip():
+        raise ValueError("collect payload.target is required")
+
+    return {
+        "protocol_version": REMOTE_PROTOCOL_VERSION,
+        "id": command_id,
+        "robot_id": str(robot_id or "").strip(),
+        "type": command_type,
+        "expires_at": expires_at,
+        "payload": dict(command_payload),
+        "created_at": now,
+    }
+
+
+def normalize_remote_status(robot_id, payload, *, now=None):
+    now = time.time() if now is None else float(now)
+    payload = payload if isinstance(payload, dict) else {}
+    state = str(payload.get("state") or "").strip()
+    protocol_version = str(payload.get("protocol_version") or REMOTE_PROTOCOL_VERSION)
+    if protocol_version != REMOTE_PROTOCOL_VERSION:
+        raise ValueError(f"protocol_version must be {REMOTE_PROTOCOL_VERSION}")
+    if not state:
+        raise ValueError("state is required")
+    return {
+        "protocol_version": protocol_version,
+        "robot_id": str(robot_id or "").strip(),
+        "state": state,
+        "message": str(payload.get("message") or "").strip(),
+        "updated_at": _remote_timestamp(payload.get("updated_at", now), "updated_at"),
+        "diagnostics": payload.get("diagnostics") if isinstance(payload.get("diagnostics"), dict) else {},
+    }
+
+
+def normalize_remote_ack(robot_id, command_id, payload, *, now=None):
+    now = time.time() if now is None else float(now)
+    payload = payload if isinstance(payload, dict) else {}
+    state = str(payload.get("state") or "").strip()
+    protocol_version = str(payload.get("protocol_version") or REMOTE_PROTOCOL_VERSION)
+    if protocol_version != REMOTE_PROTOCOL_VERSION:
+        raise ValueError(f"protocol_version must be {REMOTE_PROTOCOL_VERSION}")
+    if state not in {"acked", "failed", "ignored"}:
+        raise ValueError("state must be one of acked, failed, ignored")
+    return {
+        "protocol_version": protocol_version,
+        "robot_id": str(robot_id or "").strip(),
+        "command_id": str(command_id or "").strip(),
+        "state": state,
+        "message": str(payload.get("message") or "").strip(),
+        "updated_at": _remote_timestamp(payload.get("updated_at", now), "updated_at"),
+        "result": payload.get("result") if isinstance(payload.get("result"), dict) else {},
+    }
+
+
+class MockCloudStore:
+    """In-memory `trashbot.remote.v1` cloud control-plane store.
+
+    This is deliberately process-local and dependency-free so Docker-only tests
+    can exercise phone submit, robot polling, status write, and ACK readback.
+    Production auth, persistence, 4G weak-network behavior, and OSS/CDN object
+    transfer stay outside this mock.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._robots = {}
+
+    def _robot(self, robot_id):
+        robot_key = str(robot_id or "").strip()
+        if not robot_key:
+            raise ValueError("robot_id is required")
+        return self._robots.setdefault(
+            robot_key,
+            {
+                "commands": [],
+                "command_index": {},
+                "acks": {},
+                "status": {
+                    "protocol_version": REMOTE_PROTOCOL_VERSION,
+                    "robot_id": robot_key,
+                    "state": "unknown",
+                    "message": "robot has not posted status yet",
+                    "updated_at": time.time(),
+                    "diagnostics": {},
+                },
+            },
+        )
+
+    def submit_command(self, robot_id, payload):
+        command = normalize_remote_command(robot_id, payload)
+        with self._lock:
+            robot = self._robot(robot_id)
+            existing = robot["command_index"].get(command["id"])
+            if existing:
+                return 200, {"ok": True, "command": dict(existing), "duplicate": True}
+            robot["commands"].append(command)
+            robot["command_index"][command["id"]] = command
+        return 201, {"ok": True, "command": dict(command), "duplicate": False}
+
+    def next_command(self, robot_id, last_ack_id=""):
+        now = time.time()
+        last_ack_id = str(last_ack_id or "").strip()
+        with self._lock:
+            robot = self._robot(robot_id)
+            commands = robot["commands"]
+            start_index = 0
+            if last_ack_id:
+                for index, command in enumerate(commands):
+                    if command["id"] == last_ack_id:
+                        start_index = index + 1
+                        break
+            for command in commands[start_index:]:
+                if command["id"] not in robot["acks"] and float(command["expires_at"]) >= now:
+                    return {"ok": True, "command": dict(command)}
+        return {"ok": True, "command": None}
+
+    def post_status(self, robot_id, payload):
+        status = normalize_remote_status(robot_id, payload)
+        with self._lock:
+            robot = self._robot(robot_id)
+            robot["status"] = status
+        return {"ok": True, "status": dict(status)}
+
+    def get_status(self, robot_id):
+        with self._lock:
+            status = dict(self._robot(robot_id)["status"])
+        return {"ok": True, "status": status}
+
+    def post_ack(self, robot_id, command_id, payload):
+        ack = normalize_remote_ack(robot_id, command_id, payload)
+        if not ack["command_id"]:
+            raise ValueError("command_id is required")
+        with self._lock:
+            robot = self._robot(robot_id)
+            robot["acks"][ack["command_id"]] = ack
+        return {"ok": True, "ack": dict(ack)}
+
+    def get_ack(self, robot_id, command_id):
+        with self._lock:
+            ack = self._robot(robot_id)["acks"].get(str(command_id or "").strip())
+        if not ack:
+            return 404, remote_error("ack_not_found", f"ack not found for command_id: {command_id}")
+        return 200, {"ok": True, "ack": dict(ack)}
 
 HTML = """<!doctype html>
 <html>
@@ -1260,7 +1451,28 @@ def parse_json_body(handler):
     return json.loads(raw.decode("utf-8") or "{}")
 
 
+def _remote_route(path):
+    parts = [part for part in str(path or "").strip("/").split("/") if part]
+    if len(parts) < 3 or parts[0] != "robots":
+        return None
+    robot_id = parts[1]
+    if parts[2:] == ["commands"]:
+        return "commands", robot_id, ""
+    if parts[2:] == ["commands", "next"]:
+        return "commands_next", robot_id, ""
+    if parts[2:] == ["status"]:
+        return "status", robot_id, ""
+    if len(parts) == 5 and parts[2] == "commands" and parts[4] == "ack":
+        return "ack", robot_id, parts[3]
+    return None
+
+
 def make_handler(gateway):
+    mock_cloud = getattr(gateway, "mock_cloud", None)
+    if mock_cloud is None:
+        mock_cloud = MockCloudStore()
+        setattr(gateway, "mock_cloud", mock_cloud)
+
     class Handler(BaseHTTPRequestHandler):
         def _send_json(self, status, payload):
             data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -1271,7 +1483,9 @@ def make_handler(gateway):
             self.wfile.write(data)
 
         def do_GET(self):
-            path = urlparse(self.path).path
+            parsed = urlparse(self.path)
+            path = parsed.path
+            query = parse_qs(parsed.query)
             if path == "/" or path == "/index.html":
                 body = HTML.encode("utf-8")
                 self.send_response(200)
@@ -1289,6 +1503,27 @@ def make_handler(gateway):
             if path == "/api/vision/review-queue":
                 self._send_json(200, gateway.vision_review_queue())
                 return
+            remote_route = _remote_route(path)
+            if remote_route:
+                route_name, robot_id, command_id = remote_route
+                try:
+                    if route_name == "commands_next":
+                        payload = mock_cloud.next_command(
+                            robot_id,
+                            last_ack_id=next(iter(query.get("last_ack_id", [])), ""),
+                        )
+                        self._send_json(200, payload)
+                        return
+                    if route_name == "status":
+                        self._send_json(200, mock_cloud.get_status(robot_id))
+                        return
+                    if route_name == "ack":
+                        status, payload = mock_cloud.get_ack(robot_id, command_id)
+                        self._send_json(status, payload)
+                        return
+                except ValueError as exc:
+                    self._send_json(400, remote_error("bad_request", str(exc)))
+                    return
             self._send_json(404, status_payload("not_found", f"unknown path: {path}"))
 
         def do_POST(self):
@@ -1303,6 +1538,23 @@ def make_handler(gateway):
             if not isinstance(body, dict):
                 self._send_json(400, status_payload("bad_request", "JSON body must be an object"))
                 return
+            remote_route = _remote_route(path)
+            if remote_route:
+                route_name, robot_id, command_id = remote_route
+                try:
+                    if route_name == "commands":
+                        status, payload = mock_cloud.submit_command(robot_id, body)
+                        self._send_json(status, payload)
+                        return
+                    if route_name == "status":
+                        self._send_json(200, mock_cloud.post_status(robot_id, body))
+                        return
+                    if route_name == "ack":
+                        self._send_json(200, mock_cloud.post_ack(robot_id, command_id, body))
+                        return
+                except ValueError as exc:
+                    self._send_json(400, remote_error("bad_request", str(exc)))
+                    return
             if path == "/api/collect":
                 target = body.get("target") or next(iter(query.get("target", [])), "")
                 try:

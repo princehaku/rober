@@ -1,7 +1,13 @@
 import json
+import pathlib
+import sys
 import threading
+import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "ros2_trashbot_behavior"))
 
 from ros2_trashbot_behavior.remote_bridge import RemoteBridge, RemoteBridgeWorker
 from ros2_trashbot_behavior.remote_bridge_protocol import RemoteCloudClient
@@ -12,6 +18,8 @@ class MockCloud:
         self.commands = []
         self.status_posts = []
         self.ack_posts = []
+        self.auth_headers = []
+        self.get_paths = []
         self.fail_ack_count = 0
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), self._make_handler())
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -48,6 +56,8 @@ class MockCloud:
 
             def do_GET(self):
                 if self.path.startswith("/robots/robot-1/commands/next"):
+                    cloud.get_paths.append(self.path)
+                    cloud.auth_headers.append(self.headers.get("Authorization"))
                     command = cloud.commands.pop(0) if cloud.commands else None
                     self._json(200, {"command": command})
                     return
@@ -55,10 +65,12 @@ class MockCloud:
 
             def do_POST(self):
                 if self.path == "/robots/robot-1/status":
+                    cloud.auth_headers.append(self.headers.get("Authorization"))
                     cloud.status_posts.append(self._body())
                     self._json(200, {"ok": True})
                     return
                 if self.path.startswith("/robots/robot-1/commands/") and self.path.endswith("/ack"):
+                    cloud.auth_headers.append(self.headers.get("Authorization"))
                     if cloud.fail_ack_count > 0:
                         cloud.fail_ack_count -= 1
                         self._json(503, {"error": "temporary ack outage"})
@@ -75,14 +87,17 @@ class MockCloud:
 
 
 class FakeOperatorBackend:
-    def __init__(self):
+    def __init__(self, busy=False):
         self.calls = []
+        self.busy = busy
 
     def snapshot(self):
         return {"state": "waiting_for_trash", "message": "ready"}
 
     def start_collection(self, target, trash_type=0):
         self.calls.append(("collect", target, trash_type))
+        if self.busy:
+            return 409, {"state": "busy", "message": "collect command ignored because a task is active"}
         return 202, {"state": "loaded_and_ready", "target": target}
 
     def confirm_dropoff(self, accepted=True):
@@ -121,6 +136,7 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.ack_posts[0]["command_id"], "cmd-1")
         self.assertEqual(self.cloud.ack_posts[0]["state"], "acked")
         self.assertEqual(self.cloud.ack_posts[0]["result"]["http_status"], 202)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
 
     def test_poll_fails_collect_without_target(self):
         self.cloud.commands.append({
@@ -187,7 +203,78 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.backend.calls, [])
         self.assertEqual(self.cloud.ack_posts[0]["command_id"], "cmd-bad-type")
         self.assertEqual(self.cloud.ack_posts[0]["state"], "failed")
+        self.assertIn("malformed command", self.cloud.ack_posts[0]["message"])
         self.assertIn("unsupported command.type", self.cloud.ack_posts[0]["message"])
+
+    def test_poll_acks_malformed_payload_when_id_is_present(self):
+        self.cloud.commands.append({
+            "id": "cmd-bad-payload",
+            "type": "collect",
+            "payload": "raw cmd_vel must not pass",
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [])
+        self.assertEqual(self.cloud.ack_posts[0]["command_id"], "cmd-bad-payload")
+        self.assertEqual(self.cloud.ack_posts[0]["state"], "failed")
+        self.assertIn("malformed command", self.cloud.ack_posts[0]["message"])
+
+    def test_expired_command_is_ignored_without_backend_submission(self):
+        self.cloud.commands.append({
+            "id": "cmd-expired",
+            "type": "collect",
+            "expires_at": time.time() - 1,
+            "payload": {"target": "trash_station"},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [])
+        self.assertEqual(self.cloud.ack_posts[0]["command_id"], "cmd-expired")
+        self.assertEqual(self.cloud.ack_posts[0]["state"], "ignored")
+        self.assertIn("expired", self.cloud.ack_posts[0]["message"])
+
+    def test_duplicate_command_reuses_cached_ack_without_resubmitting_action(self):
+        command = {
+            "id": "cmd-duplicate",
+            "type": "collect",
+            "payload": {"target": "trash_station"},
+        }
+        self.cloud.commands.append(command)
+        self.assertTrue(self.worker.poll_once())
+
+        self.cloud.commands.append(command)
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual([ack["command_id"] for ack in self.cloud.ack_posts], ["cmd-duplicate", "cmd-duplicate"])
+        self.assertEqual([ack["state"] for ack in self.cloud.ack_posts], ["acked", "acked"])
+
+    def test_busy_collect_is_ignored_not_failed(self):
+        busy_backend = FakeOperatorBackend(busy=True)
+        worker = RemoteBridgeWorker(self.client, busy_backend, "robot-1")
+        self.cloud.commands.append({
+            "id": "cmd-busy",
+            "type": "collect",
+            "payload": {"target": "trash_station"},
+        })
+
+        self.assertTrue(worker.poll_once())
+
+        self.assertEqual(busy_backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.cloud.ack_posts[0]["command_id"], "cmd-busy")
+        self.assertEqual(self.cloud.ack_posts[0]["state"], "ignored")
+        self.assertEqual(self.cloud.ack_posts[0]["result"]["http_status"], 409)
+
+    def test_last_ack_id_and_bearer_token_are_used_for_outbound_polling(self):
+        client = RemoteCloudClient(self.cloud.base_url, "robot-1", token="secret-token", timeout_sec=2.0)
+        worker = RemoteBridgeWorker(client, self.backend, "robot-1", last_ack_id="cmd-old")
+
+        self.assertFalse(worker.poll_once())
+
+        self.assertIn("last_ack_id=cmd-old", self.cloud.get_paths[0])
+        self.assertIn("Bearer secret-token", self.cloud.auth_headers)
 
     def test_ack_failure_does_not_overwrite_successful_command_result(self):
         command = {
@@ -267,6 +354,17 @@ class RemoteBridgeActionResultTest(unittest.TestCase):
         self.assertEqual(bridge.last_status["task_record_path"], "/tmp/task.json")
         self.assertFalse(bridge.collect_pending)
         self.assertIsNone(bridge.active_goal_handle)
+
+
+class RemoteBridgeStaticConfigTest(unittest.TestCase):
+    def test_remote_bridge_declares_o6_polling_configuration(self):
+        source = pathlib.Path(RemoteBridge.__module__.replace(".", "/") + ".py")
+        if not source.exists():
+            source = pathlib.Path("src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_bridge.py")
+        text = source.read_text(encoding="utf-8")
+
+        for parameter_name in ("robot_id", "cloud_base_url", "bearer_token", "auth_token", "poll_interval_sec", "last_ack_id"):
+            self.assertIn(f'declare_parameter("{parameter_name}"', text)
 
 
 if __name__ == "__main__":

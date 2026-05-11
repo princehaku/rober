@@ -14,6 +14,7 @@ sys.path.insert(0, str(BEHAVIOR_PACKAGE_ROOT))
 from ros2_trashbot_behavior.operator_gateway_http import (
     ELEVATOR_ASSIST_SPEAKER_PROMPT,
     OPERATOR_PROMPTS,
+    REMOTE_PROTOCOL_VERSION,
     make_handler,
     normalize_elevator_assist,
     operator_prompt_for_state,
@@ -656,6 +657,146 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["decision"], "approved")
         self.assertEqual(self.gateway.last_review_decision["sample_id"], "route-001")
         self.assertEqual(self.gateway.last_review_decision["decision"], "approved")
+
+    def test_mock_cloud_command_status_and_ack_loop(self):
+        command = {
+            "protocol_version": REMOTE_PROTOCOL_VERSION,
+            "id": "cmd-0001",
+            "type": "collect",
+            "expires_at": 4102444800.0,
+            "payload": {"target": "trash_station", "trash_type": 0},
+        }
+
+        status, payload = self.request("POST", "/robots/trashbot-001/commands", command)
+        self.assertEqual(status, 201)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["command"]["protocol_version"], REMOTE_PROTOCOL_VERSION)
+        self.assertEqual(payload["command"]["id"], "cmd-0001")
+        self.assertEqual(payload["command"]["type"], "collect")
+        self.assertEqual(payload["command"]["payload"]["target"], "trash_station")
+        self.assertNotIn("/cmd_vel", json.dumps(payload))
+        self.assertNotIn("serial", json.dumps(payload).lower())
+        self.assertNotIn("baudrate", json.dumps(payload).lower())
+
+        status, payload = self.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["command"]["id"], "cmd-0001")
+
+        status, payload = self.request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "delivering",
+                "message": "remote collect command accepted",
+                "updated_at": 1778256012.0,
+                "diagnostics": {"network": "mock_cloud"},
+            },
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["status"]["state"], "delivering")
+        self.assertEqual(payload["status"]["robot_id"], "trashbot-001")
+
+        status, payload = self.request("GET", "/robots/trashbot-001/status")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["status"]["message"], "remote collect command accepted")
+
+        status, payload = self.request(
+            "POST",
+            "/robots/trashbot-001/commands/cmd-0001/ack",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "acked",
+                "message": "collect command submitted",
+                "updated_at": 1778256013.0,
+                "result": {"behavior": "submitted"},
+            },
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["ack"]["state"], "acked")
+        self.assertEqual(payload["ack"]["command_id"], "cmd-0001")
+
+        status, payload = self.request("GET", "/robots/trashbot-001/commands/cmd-0001/ack")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["ack"]["result"]["behavior"], "submitted")
+
+        status, payload = self.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=cmd-0001")
+        self.assertEqual(status, 200)
+        self.assertIsNone(payload["command"])
+
+    def test_mock_cloud_next_command_uses_queue_order_not_string_order(self):
+        for command_id in ("cmd-9", "cmd-10"):
+            status, payload = self.request(
+                "POST",
+                "/robots/trashbot-001/commands",
+                {
+                    "protocol_version": REMOTE_PROTOCOL_VERSION,
+                    "id": command_id,
+                    "type": "collect",
+                    "expires_at": 4102444800.0,
+                    "payload": {"target": "trash_station"},
+                },
+            )
+            self.assertEqual(status, 201)
+            self.assertEqual(payload["command"]["id"], command_id)
+
+        status, payload = self.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["command"]["id"], "cmd-9")
+
+        status, payload = self.request(
+            "POST",
+            "/robots/trashbot-001/commands/cmd-9/ack",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "acked",
+                "message": "first command submitted",
+                "updated_at": 1778256013.0,
+                "result": {"behavior": "submitted"},
+            },
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["ack"]["command_id"], "cmd-9")
+
+        status, payload = self.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=cmd-9")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["command"]["id"], "cmd-10")
+
+    def test_mock_cloud_rejects_malformed_or_unsafe_commands(self):
+        status, payload = self.request(
+            "POST",
+            "/robots/trashbot-001/commands",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "id": "cmd-bad",
+                "type": "collect",
+                "expires_at": 4102444800.0,
+                "payload": {},
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(payload["error"]["code"], "bad_request")
+        self.assertIn("payload.target", payload["error"]["message"])
+
+        status, payload = self.request(
+            "POST",
+            "/robots/trashbot-001/commands",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "id": "cmd-raw",
+                "type": "cmd_vel",
+                "expires_at": 4102444800.0,
+                "payload": {"linear": 1.0},
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertIn("type must be one of", payload["error"]["message"])
+
+    def test_mock_cloud_ack_lookup_reports_missing_ack(self):
+        status, payload = self.request("GET", "/robots/trashbot-001/commands/missing/ack")
+
+        self.assertEqual(status, 404)
+        self.assertEqual(payload["error"]["code"], "ack_not_found")
 
     def test_malformed_json_returns_400(self):
         status, payload = self.request("POST", "/api/collect", b"{bad")

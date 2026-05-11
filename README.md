@@ -28,15 +28,9 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-### WSL Docker Humble 环境
+### Mac Docker Humble 环境
 
-在 WSL Ubuntu 中配置 Docker Hub 国内镜像：
-
-```bash
-bash scripts/setup_wsl_docker_mirrors.sh
-```
-
-如果你用的是 Docker Desktop，需要先在 Docker Desktop 里开启当前 WSL 发行版集成；如果你用的是 WSL 内部 Docker Engine，上面的脚本会写入 `/etc/docker/daemon.json` 并尝试重启 Docker。
+默认从 Mac 本地仓库路径启动 Docker Desktop/Engine，例如 `/Users/<user>/apps/rober`。不要在 Mac 目标流程里从 `/mnt/e/...` 或其他 WSL 挂载路径启动 Compose；这会把历史 WSL bind mount 路径带进 Docker 配置，容易出现 `/run/desktop/mnt/host/wsl/...` 这类不可用路径。
 
 构建本项目的 ROS2 Humble 镜像并顺手跑一次 `colcon build`：
 
@@ -50,9 +44,10 @@ bash scripts/docker_humble_build.sh
 SKIP_COLCON=1 bash scripts/docker_humble_build.sh
 ```
 
-需要切换镜像源时可覆盖环境变量：
+需要切换镜像源或 Humble base image 时可覆盖环境变量：
 
 ```bash
+ROS_HUMBLE_BASE_IMAGE=osrf/ros:humble-desktop \
 UBUNTU_APT_MIRROR=https://mirrors.aliyun.com/ubuntu \
 ROS_APT_MIRROR=https://mirrors.aliyun.com/ros2/ubuntu \
 PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple \
@@ -65,20 +60,33 @@ bash scripts/docker_humble_build.sh
 bash scripts/docker_humble_dev.sh
 ```
 
-如需把 WSL 串口设备透传给容器，可追加 Docker 参数：
+如需把串口设备透传给容器，可追加 Docker 参数。Mac 和 Linux 的设备路径不同，先用本机实际路径替换示例：
 
 ```bash
-EXTRA_DOCKER_ARGS="--device=/dev/ttyUSB0" bash scripts/docker_humble_dev.sh
+EXTRA_DOCKER_ARGS="--device=/dev/tty.usbserial-XXXX" bash scripts/docker_humble_dev.sh
 ```
 
-也可以用 Docker Compose：
+也可以用 Docker Compose。默认 Compose 服务不挂载 Linux X11 socket，适合 Mac Docker Desktop/Engine：
 
 ```bash
 docker compose -f docker-compose.humble.yml build
 docker compose -f docker-compose.humble.yml run --rm humble
 ```
 
-手动配置 Docker Hub 镜像时，可在 WSL/Linux Docker Engine 写入 `/etc/docker/daemon.json` 后重启 Docker：
+Linux/X11 图形显示是显式 opt-in 路径：
+
+```bash
+ROS_HUMBLE_ENABLE_X11=1 docker compose -f docker-compose.humble.yml --profile x11 run --rm humble-x11
+ROS_HUMBLE_ENABLE_X11=1 bash scripts/docker_humble_dev.sh
+```
+
+Linux/WSL 仍可作为非默认辅助路径。需要在 WSL Ubuntu 中配置 Docker Hub 国内镜像时：
+
+```bash
+bash scripts/setup_wsl_docker_mirrors.sh
+```
+
+如果使用 Docker Desktop + WSL，需要在 Docker Desktop 里开启对应 WSL 发行版集成；如果使用 WSL 内部 Docker Engine，上面的脚本会写入 `/etc/docker/daemon.json` 并尝试重启 Docker。手动配置 Docker Hub 镜像时，也可在 Linux/WSL Docker Engine 写入 `/etc/docker/daemon.json` 后重启 Docker：
 
 ```json
 {

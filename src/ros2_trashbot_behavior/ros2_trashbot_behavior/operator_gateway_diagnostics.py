@@ -983,7 +983,7 @@ def build_diagnostics_payload(
         task_record=task_record,
         last_task=last_task,
     )
-    source = traceability["source"]
+    source = normalize_evidence_source(traceability["source"])
     result_path = traceability["result_path"]
     evidence_ref = traceability["evidence_ref"]
     failure_code = traceability["failure_code"]

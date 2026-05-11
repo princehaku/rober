@@ -17,8 +17,31 @@ rosdistro_index_url="${ROSDISTRO_INDEX_URL:-https://mirrors.tuna.tsinghua.edu.cn
 skip_colcon="${SKIP_COLCON:-0}"
 skip_docker_build="${SKIP_DOCKER_BUILD:-0}"
 build_progress="${DOCKER_BUILD_PROGRESS:-plain}"
+image_tar=""
+image_tar_state="unset"
 
 docker_diag_log=""
+
+print_image_tar_operator_help() {
+    cat <<EOF
+Docker image tar reuse notes:
+  - The tar should come from a trusted machine that exported a runnable '$image' image.
+  - The tar's internal tag must match ROS_HUMBLE_IMAGE='$image'; docker load success alone is not enough.
+  - Docker daemon must be running before tar load or local image validation can succeed.
+  - If tar reuse is not intended, unset ROS_HUMBLE_IMAGE_TAR and remove SKIP_DOCKER_BUILD after fixing the registry mirror/proxy, then rebuild.
+EOF
+}
+
+print_image_tar_fast_fail_context() {
+    echo "evidence_scope=software_proof_docker_only" >&2
+    echo "target_image=$image" >&2
+    echo "skip_docker_build=$skip_docker_build" >&2
+    echo "image_tar_state=$image_tar_state" >&2
+    if [ -n "$image_tar" ]; then
+        echo "image_tar_path=$image_tar" >&2
+    fi
+    print_image_tar_operator_help >&2
+}
 
 if [ -n "${ROS_HUMBLE_BASE_IMAGE+x}" ]; then
     if [ -z "$ROS_HUMBLE_BASE_IMAGE" ]; then
@@ -26,6 +49,31 @@ if [ -n "${ROS_HUMBLE_BASE_IMAGE+x}" ]; then
         exit 2
     fi
     base_image_override="env"
+fi
+
+if [ -n "${ROS_HUMBLE_IMAGE_TAR+x}" ]; then
+    if [ -z "$ROS_HUMBLE_IMAGE_TAR" ]; then
+        image_tar_state="empty_error"
+        echo "ERROR: ROS_HUMBLE_IMAGE_TAR is set but empty. Provide a Docker image tar path, or unset it." >&2
+        print_image_tar_fast_fail_context
+        exit 2
+    fi
+
+    image_tar="$ROS_HUMBLE_IMAGE_TAR"
+    image_tar_state="provided"
+
+    if [ "$skip_docker_build" != "1" ]; then
+        echo "ERROR: ROS_HUMBLE_IMAGE_TAR requires SKIP_DOCKER_BUILD=1. Tar reuse is only allowed on the explicit local-image reuse path." >&2
+        print_image_tar_fast_fail_context
+        exit 2
+    fi
+
+    if [ ! -f "$image_tar" ]; then
+        image_tar_state="missing_error"
+        echo "ERROR: ROS_HUMBLE_IMAGE_TAR does not point to an existing file: $image_tar" >&2
+        print_image_tar_fast_fail_context
+        exit 2
+    fi
 fi
 
 cleanup() {
@@ -58,7 +106,7 @@ ERROR: SKIP_DOCKER_BUILD=1 was requested, but target image '$image' is not prese
 
 To continue on this Docker-only host, choose one:
   docker pull $image
-  docker load -i /path/to/ros-rbs-humble-dev.tar
+  ROS_HUMBLE_IMAGE_TAR=/path/to/ros-rbs-humble-dev.tar SKIP_DOCKER_BUILD=1 bash scripts/docker_humble_build.sh
   unset SKIP_DOCKER_BUILD and rerun this script to build from base image '$base_image'
 
 evidence_scope=software_proof_docker_only
@@ -71,7 +119,7 @@ ERROR: SKIP_DOCKER_BUILD=1 found target image '$image', but it is not runnable a
 
 The local tag may point to an incomplete, corrupt, or wrong-platform image. Replace it with one valid target image:
   docker pull $image
-  docker load -i /path/to/ros-rbs-humble-dev.tar
+  ROS_HUMBLE_IMAGE_TAR=/path/to/ros-rbs-humble-dev.tar SKIP_DOCKER_BUILD=1 bash scripts/docker_humble_build.sh
   unset SKIP_DOCKER_BUILD and rerun this script to rebuild from base image '$base_image'
 
 evidence_scope=software_proof_docker_only
@@ -112,9 +160,16 @@ print_docker_preflight() {
     echo "base_image_override=$base_image_override"
     echo "skip_docker_build=$skip_docker_build"
     echo "skip_colcon=$skip_colcon"
+    echo "image_tar_state=$image_tar_state"
+    if [ -n "$image_tar" ]; then
+        echo "image_tar_path=$image_tar"
+    fi
     echo "local_target_image_present=$local_target_image_present"
     echo "local_image_reuse=$local_image_reuse"
     echo "build_progress=$build_progress"
+    if [ -n "${ROS_HUMBLE_IMAGE_TAR+x}" ] || [ "$skip_docker_build" = "1" ]; then
+        print_image_tar_operator_help
+    fi
     echo "-- docker version --"
     docker version || true
     echo "-- docker context --"
@@ -137,6 +192,13 @@ classify_build_failure() {
     if grep -Eiq 'Cannot connect to the Docker daemon|Is the docker daemon running|error during connect|permission denied.*docker.sock|docker daemon is not running' "$log_file"; then
         category="Docker daemon"
         next_step="Start Docker Desktop/Engine, verify docker context, then rerun SKIP_COLCON=1 bash scripts/docker_humble_build.sh."
+    elif grep -Eiq 'failed size validation|failed precondition|unknown-sha256|failed commit on ref unknown-sha256|content store.*failed.*validation' "$log_file"; then
+        category="registry mirror/cache"
+        # These errors happen before the Dockerfile can run: BuildKit received
+        # bytes whose digest/size did not match the registry metadata. Treat it
+        # as a registry mirror/proxy or local content-store cache integrity
+        # problem, not as a ROS workspace or Dockerfile failure.
+        next_step="Disable or change Docker Desktop registry mirrors/proxy, restart Docker Desktop, clean the BuildKit builder cache, then verify docker pull ${base_image}. If registry traffic remains unreliable, load a trusted exported image tar and rerun with ROS_HUMBLE_IMAGE_TAR plus SKIP_DOCKER_BUILD=1."
     elif grep -Eiq 'buildx|BuildKit|builder.*inactive|no builder|failed to dial gRPC|context deadline exceeded.*builder' "$log_file"; then
         category="Docker builder"
         next_step="Run docker buildx ls, select or recreate a working builder, then rerun the preflight."
@@ -166,6 +228,10 @@ classify_build_failure() {
 print_docker_preflight
 
 if [ "$skip_docker_build" = "1" ]; then
+    if [ -n "$image_tar" ]; then
+        echo "ROS_HUMBLE_IMAGE_TAR: loading Docker image tar before local image reuse: $image_tar"
+        docker load -i "$image_tar"
+    fi
     if ! target_image_present; then
         print_skip_build_missing_image_help
         exit 3
