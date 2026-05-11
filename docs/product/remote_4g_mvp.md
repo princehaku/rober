@@ -23,11 +23,32 @@ GET  /robots/{robot_id}/commands/{command_id}/ack
 
 The first implementation uses HTTP polling so it is testable without a real 4G SIM or cloud account. A future MQTT or WebSocket transport must preserve the same command/status/ack semantics.
 
-The Docker-only local mock cloud is implemented inside the operator HTTP gateway
-as an in-memory control-plane store. It is a phone-safe entry for submit command,
-read current status, and read command ACK during local development. It does not
-expose `/cmd_vel`, serial ports, baudrate, WAVE ROVER parameters, or raw ROS2
-topic names to ordinary phone users.
+The Docker/local proof now has two control-plane surfaces:
+
+- Local fallback: `operator_gateway` still embeds a mock cloud for local
+  debugging and degraded operator workflows.
+- Independent relay: `ros2_trashbot_behavior.remote_cloud_relay` is a separate
+  HTTP service module with bearer auth, file-backed persistence, and phone-safe
+  JSON errors. It can run in local Python or Docker without ROS2 runtime and
+  without the `operator_gateway` process.
+
+Both surfaces preserve `trashbot.remote.v1` command/status/ack semantics and do
+not expose `/cmd_vel`, serial ports, baudrate, WAVE ROVER parameters, or raw
+ROS2 topic names to ordinary phone users. The independent relay is still
+`software_proof_docker_only`: it does not prove production cloud hosting,
+HTTPS/TLS, public ingress, real 4G/SIM, OSS/CDN, Nav2/fixed-route, WAVE ROVER,
+or HIL.
+
+Example local proof launch:
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-token \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --host 127.0.0.1 \
+  --port 8088 \
+  --state-path /tmp/trashbot_remote_cloud_relay.json
+```
 
 ## Bearer Auth Gate
 
@@ -37,9 +58,9 @@ endpoints require `Authorization: Bearer <token>` before command, status, or ACK
 payloads can be submitted or read. Missing or incorrect credentials return a
 phone-safe auth failure instead of raw server details.
 
-This gate proves only the local/mock control-plane behavior. It does not prove
-production identity, provisioning, token rotation, HTTPS/TLS, public ingress, or
-real 4G carrier connectivity.
+This gate proves only the local/mock or independent Docker relay control-plane
+behavior. It does not prove production identity, provisioning, token rotation,
+HTTPS/TLS, public ingress, or real 4G carrier connectivity.
 
 Phone and diagnostics payloads must not expose bearer tokens, Authorization
 headers, credential-bearing cloud URLs, serial devices, baudrate, WAVE ROVER
@@ -68,12 +89,13 @@ Allowed command types:
 
 Unknown command types, missing `id`, non-object payloads, and expired commands must not execute.
 
-The local mock cloud accepts phone-created commands on
-`POST /robots/{robot_id}/commands`, stores the normalized
-`trashbot.remote.v1` object, and returns the same object for robot outbound
-polling on `GET /robots/{robot_id}/commands/next`. Command `id` is the
-idempotency key; duplicate submits return the existing command instead of
-creating a second task.
+The local mock cloud and independent relay accept phone-created commands on
+`POST /robots/{robot_id}/commands`, store the normalized `trashbot.remote.v1`
+object, and return the same object for robot outbound polling on
+`GET /robots/{robot_id}/commands/next`. Command `id` is the idempotency key;
+duplicate submits return the existing command instead of creating a second
+task. Expired commands remain in proof history but are not returned as the next
+executable command.
 
 ## Cursor And Restart Boundary
 
@@ -104,6 +126,12 @@ failure must not advance `last_terminal_ack_id`, must not persist a terminal
 cursor, and must not pretend the cloud accepted a terminal command state. A
 malformed command response must not trigger a local action goal.
 
+The independent relay stores commands/status/acks in a single local JSON state
+file and writes through a temporary file plus atomic replace. This is sufficient
+for Docker/local restart proof only. A production cloud still needs a database
+or queue for concurrency, backups, multi-instance consistency, and disaster
+recovery.
+
 ## Status Contract
 
 Robot status is posted by the robot and should be enough for a phone UI to render current state:
@@ -118,9 +146,13 @@ Robot status is posted by the robot and should be enough for a phone UI to rende
 }
 ```
 
-The phone-safe read endpoint is `GET /robots/{robot_id}/status`. A missing robot
-status returns `state = "unknown"` with a message that the robot has not posted
-status yet, rather than inventing a successful or failed robot state.
+The phone-safe read endpoint is `GET /robots/{robot_id}/status`. In the
+operator fallback, a missing robot status returns `state = "unknown"` with a
+message that the robot has not posted status yet, rather than inventing a
+successful or failed robot state. In the independent relay, a missing status
+returns `status_missing`; a stale status returns `status_stale` with the last
+safe status payload. A phone UI must treat both as degraded states and wait for
+fresh robot status before implying that the task is healthy.
 
 ## Remote Readiness Contract
 
@@ -191,5 +223,9 @@ processed the command yet.
 - No real cloud account is configured.
 - No SIM or carrier network test has been run.
 - The local mock-cloud tests validate protocol behavior only.
+- The independent relay tests validate local HTTP, bearer auth, file persistence,
+  and phone-safe error behavior only.
 - Bearer auth gate is covered by local/mock software proof only; production identity, provisioning, rotation, permissions, HTTPS/TLS, and public cloud ingress are not implemented.
 - Remote bridge degradation/cursor safety is covered by local/mock software proof only; it does not prove weak-network recovery on a carrier 4G link.
+- OSS/CDN upload, STS credentials, CDN read path, Nav2/fixed-route delivery,
+  WAVE ROVER motion, and HIL remain unverified by this proof.

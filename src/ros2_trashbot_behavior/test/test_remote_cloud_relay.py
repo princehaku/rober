@@ -1,0 +1,277 @@
+import json
+import pathlib
+import sys
+import tempfile
+import threading
+import time
+import unittest
+import urllib.error
+import urllib.request
+
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "ros2_trashbot_behavior"))
+
+from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
+    FileBackedRelayStore,
+    PROTOCOL_VERSION,
+    build_server,
+)
+
+
+class RelayHttpClient:
+    def __init__(self, base_url, token="phone-token"):
+        self.base_url = base_url.rstrip("/")
+        self.token = token
+
+    def request(self, method, path, payload=None, token=None, raw_body=None):
+        data = None
+        headers = {"Accept": "application/json"}
+        active_token = self.token if token is None else token
+        if active_token:
+            headers["Authorization"] = f"Bearer {active_token}"
+        if raw_body is not None:
+            data = raw_body
+            headers["Content-Type"] = "application/json"
+        elif payload is not None:
+            data = json.dumps(payload).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+        request = urllib.request.Request(self.base_url + path, data=data, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(request, timeout=2.0) as response:
+                body = response.read().decode("utf-8") or "{}"
+                return response.status, json.loads(body)
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8") or "{}"
+            return exc.code, json.loads(body)
+
+
+class RemoteCloudRelayHttpTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.state_path = pathlib.Path(self.tmp.name) / "relay_state.json"
+        self.server = build_server("127.0.0.1", 0, self.state_path, "phone-token")
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.client = RelayHttpClient(f"http://127.0.0.1:{self.server.server_address[1]}")
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=1.0)
+        self.tmp.cleanup()
+
+    def command(self, command_id="cmd-0001", **extra):
+        payload = {
+            "protocol_version": PROTOCOL_VERSION,
+            "id": command_id,
+            "type": "collect",
+            "expires_at": time.time() + 300.0,
+            "payload": {"target": "trash_station", "trash_type": 0},
+        }
+        payload.update(extra)
+        return payload
+
+    def test_command_status_ack_contract_and_idempotency(self):
+        status, payload = self.client.request("POST", "/robots/trashbot-001/commands", self.command())
+        self.assertEqual(status, 201)
+        self.assertTrue(payload["ok"])
+        self.assertFalse(payload["duplicate"])
+        self.assertEqual(payload["command"]["protocol_version"], PROTOCOL_VERSION)
+        self.assertEqual(payload["command"]["id"], "cmd-0001")
+        self.assertEqual(payload["command"]["payload"]["target"], "trash_station")
+
+        status, payload = self.client.request("POST", "/robots/trashbot-001/commands", self.command())
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["duplicate"])
+
+        status, payload = self.client.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["command"]["id"], "cmd-0001")
+
+        status, payload = self.client.request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "delivering",
+                "message": "remote collect command accepted",
+                "updated_at": time.time(),
+                "diagnostics": {"network": "relay_proof"},
+            },
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["status"]["robot_id"], "trashbot-001")
+
+        status, payload = self.client.request("GET", "/robots/trashbot-001/status")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["status"]["state"], "delivering")
+
+        status, payload = self.client.request(
+            "POST",
+            "/robots/trashbot-001/commands/cmd-0001/ack",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "acked",
+                "message": "collect command submitted",
+                "updated_at": time.time(),
+                "result": {"behavior": "submitted"},
+            },
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["ack"]["command_id"], "cmd-0001")
+        self.assertEqual(payload["ack"]["state"], "acked")
+
+        status, payload = self.client.request("GET", "/robots/trashbot-001/commands/cmd-0001/ack")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["ack"]["result"]["behavior"], "submitted")
+
+        status, payload = self.client.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=cmd-0001")
+        self.assertEqual(status, 200)
+        self.assertIsNone(payload["command"])
+
+    def test_expired_command_is_not_returned_as_next(self):
+        status, payload = self.client.request(
+            "POST",
+            "/robots/trashbot-001/commands",
+            self.command("cmd-expired", expires_at=time.time() - 1.0),
+        )
+        self.assertEqual(status, 201)
+
+        status, payload = self.client.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=")
+        self.assertEqual(status, 200)
+        self.assertIsNone(payload["command"])
+
+    def test_bearer_auth_blocks_missing_and_wrong_token_without_leaks(self):
+        for token in ("", "wrong-token"):
+            status, payload = self.client.request("GET", "/robots/trashbot-001/status", token=token)
+            encoded = json.dumps(payload, ensure_ascii=False)
+            self.assertEqual(status, 401)
+            self.assertEqual(payload["error"]["code"], "auth_failed")
+            self.assertIn("手机登录已失效", payload["error"]["safe_phone_copy"])
+            self.assertNotIn("phone-token", encoded)
+            self.assertNotIn("Authorization", encoded)
+            self.assertNotIn("wrong-token", encoded)
+
+    def test_bad_requests_and_malformed_json_are_phone_safe(self):
+        status, payload = self.client.request(
+            "POST",
+            "/robots/trashbot-001/commands",
+            self.command("cmd-bad", payload={}),
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(payload["error"]["code"], "bad_request")
+        self.assertIn("payload.target", payload["error"]["message"])
+
+        status, payload = self.client.request(
+            "POST",
+            "/robots/trashbot-001/commands",
+            self.command("cmd-raw", type="cmd_vel", payload={"linear": 1.0}),
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(payload["error"]["code"], "bad_request")
+        self.assertNotIn("/cmd_vel", json.dumps(payload, ensure_ascii=False))
+
+        status, payload = self.client.request(
+            "POST",
+            "/robots/trashbot-001/status",
+            raw_body=b"{bad-json",
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(payload["error"]["code"], "malformed_json")
+        self.assertNotIn("Traceback", json.dumps(payload, ensure_ascii=False))
+
+    def test_status_missing_stale_and_missing_ack_have_distinct_errors(self):
+        status, payload = self.client.request("GET", "/robots/new-robot/status")
+        self.assertEqual(status, 404)
+        self.assertEqual(payload["error"]["code"], "status_missing")
+
+        status, payload = self.client.request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "delivering",
+                "message": "old status",
+                "updated_at": time.time() - 120.0,
+            },
+        )
+        self.assertEqual(status, 200)
+        status, payload = self.client.request("GET", "/robots/trashbot-001/status")
+        self.assertEqual(status, 409)
+        self.assertEqual(payload["error"]["code"], "status_stale")
+        self.assertEqual(payload["status"]["state"], "delivering")
+
+        status, payload = self.client.request("GET", "/robots/trashbot-001/commands/missing/ack")
+        self.assertEqual(status, 404)
+        self.assertEqual(payload["error"]["code"], "not_found")
+
+
+class RemoteCloudRelayStoreTest(unittest.TestCase):
+    def test_file_backed_store_persists_and_redacts_sensitive_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = pathlib.Path(tmp) / "relay_state.json"
+            store = FileBackedRelayStore(state_path)
+            store.submit_command(
+                "trashbot-001",
+                {
+                    "protocol_version": PROTOCOL_VERSION,
+                    "id": "cmd-persist-1",
+                    "type": "collect",
+                    "expires_at": time.time() + 300.0,
+                    "payload": {
+                        "target": "trash_station",
+                        "token": "must-not-persist",
+                        "note": "never expose /cmd_vel or Bearer phone-token",
+                        "serial_port": "/dev/ttyUSB0",
+                    },
+                },
+            )
+            store.post_status(
+                "trashbot-001",
+                {
+                    "protocol_version": PROTOCOL_VERSION,
+                    "state": "delivering",
+                    "message": "cloud URL https://user:secret@example.invalid",
+                    "updated_at": time.time(),
+                    "diagnostics": {"baudrate": 115200, "network": "relay_proof"},
+                },
+            )
+            store.post_ack(
+                "trashbot-001",
+                "cmd-persist-1",
+                {
+                    "protocol_version": PROTOCOL_VERSION,
+                    "state": "failed",
+                    "message": "Authorization header must not persist",
+                    "updated_at": time.time(),
+                    "result": {"authorization": "Bearer phone-token", "reason": "rejected"},
+                },
+            )
+
+            persisted = state_path.read_text(encoding="utf-8")
+            self.assertIn("trashbot.remote_cloud_relay_store.v1", persisted)
+            self.assertIn("cmd-persist-1", persisted)
+            for forbidden in (
+                "must-not-persist",
+                "phone-token",
+                "Authorization",
+                "/cmd_vel",
+                "ttyUSB",
+                "baudrate",
+                "https://user:secret@",
+            ):
+                self.assertNotIn(forbidden, persisted)
+
+            restored = FileBackedRelayStore(state_path)
+            status, status_payload = restored.get_status("trashbot-001")
+            self.assertEqual(status, 200)
+            self.assertEqual(status_payload["status"]["state"], "delivering")
+            status, ack_payload = restored.get_ack("trashbot-001", "cmd-persist-1")
+            self.assertEqual(status, 200)
+            self.assertEqual(ack_payload["ack"]["state"], "failed")
+            self.assertIsNone(restored.next_command("trashbot-001", "")["command"])
+
+
+if __name__ == "__main__":
+    unittest.main()

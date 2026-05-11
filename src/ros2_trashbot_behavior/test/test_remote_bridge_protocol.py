@@ -1,12 +1,23 @@
 import json
+import pathlib
+import sys
+import tempfile
 import threading
+import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlparse
 
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "ros2_trashbot_behavior"))
+
+from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
+    build_server,
+)
 from ros2_trashbot_behavior.remote_bridge_protocol import (
     InvalidRemoteCommand,
     PROTOCOL_VERSION,
+    RemoteCloudError,
     RemoteCloudClient,
     command_expired,
     make_status,
@@ -154,6 +165,71 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
 
         self.assertEqual(raised.exception.command["id"], "cmd-bad-type")
         self.assertIn("unsupported command.type", str(raised.exception))
+
+
+class RemoteCloudRelayCompatibilityTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.state_path = pathlib.Path(self.tmp.name) / "relay_state.json"
+        self.server = build_server("127.0.0.1", 0, self.state_path, "robot-token")
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.base_url = f"http://127.0.0.1:{self.server.server_address[1]}"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=1.0)
+        self.tmp.cleanup()
+
+    def _seed_collect_command(self, command_id="cmd-relay-1"):
+        phone_client = RemoteCloudClient(self.base_url, "trashbot-001", token="robot-token", timeout_sec=2)
+        phone_client._request_json(  # noqa: SLF001 - 这里按 relay HTTP 契约种入命令，避免绕过真实 shape。
+            "POST",
+            "/robots/trashbot-001/commands",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "id": command_id,
+                "type": "collect",
+                "expires_at": time.time() + 300.0,
+                "payload": {"target": "trash_station", "trash_type": 1},
+            },
+        )
+
+    def test_client_round_trips_status_command_and_ack_with_independent_relay(self):
+        self._seed_collect_command()
+        robot_client = RemoteCloudClient(self.base_url, "trashbot-001", token="robot-token", timeout_sec=2)
+
+        status_response = robot_client.post_status(make_status("trashbot-001", "waiting_for_trash", "ready"))
+        command = robot_client.get_next_command()
+        ack_response = robot_client.post_ack(
+            command["id"],
+            "acked",
+            "command envelope accepted",
+            {"operator_status": {"state": "loaded_and_ready"}},
+        )
+        next_command = robot_client.get_next_command("cmd-relay-1")
+
+        self.assertTrue(status_response["ok"])
+        self.assertEqual(status_response["status"]["state"], "waiting_for_trash")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"]["target"], "trash_station")
+        self.assertTrue(ack_response["ok"])
+        self.assertEqual(ack_response["ack"]["command_id"], "cmd-relay-1")
+        self.assertEqual(ack_response["ack"]["state"], "acked")
+        # ACK 只证明 command envelope 已处理，真实送达结果仍必须继续看 status/task record。
+        self.assertEqual(ack_response["ack"]["result"]["operator_status"]["state"], "loaded_and_ready")
+        self.assertIsNone(next_command)
+
+    def test_bearer_auth_failure_maps_to_phone_safe_cloud_error(self):
+        client = RemoteCloudClient(self.base_url, "trashbot-001", token="wrong-token", timeout_sec=2)
+
+        with self.assertRaises(RemoteCloudError) as raised:
+            client.get_next_command()
+
+        self.assertEqual(raised.exception.reason, "auth_failed")
+        self.assertEqual(raised.exception.retry_hint, "check_auth")
+        self.assertTrue(raised.exception.cloud_reachable)
 
 
 if __name__ == "__main__":
