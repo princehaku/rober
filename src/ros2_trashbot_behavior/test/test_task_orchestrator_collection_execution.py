@@ -182,6 +182,7 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["elevator_assist"]["enabled"], False)
         self.assertEqual(payload["elevator_assist"]["phase"], "disabled")
         self.assertEqual(payload["source"], "task_orchestrator")
+        self.assertEqual(payload["evidence_ref"], "")
         self.assertEqual(payload["failure_code"], "")
         self.assertEqual(payload["human_intervention_required"], False)
 
@@ -244,7 +245,55 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["elevator_assist"]["state"], "failed")
         self.assertEqual(payload["elevator_assist"]["phase"], "waiting_target_floor")
         self.assertEqual(payload["elevator_assist"]["evidence"]["failure"], "target_floor_unconfirmed")
+        self.assertEqual(payload["result_path"], "")
+        self.assertEqual(payload["evidence_ref"], "")
         self.assertIn("target floor", payload["error_message"])
+
+    def test_execute_collection_navigation_failure_records_nav_fail(self):
+        with tempfile.TemporaryDirectory() as td:
+            node = self.make_orchestrator(Path(td))
+            navigation_failure = self.module.NavigationResult(
+                False,
+                "failed",
+                "simulated nav failure",
+                0.1,
+            )
+            node._navigate_delivery_target = lambda *_args, **_kwargs: (1, [navigation_failure], navigation_failure)
+            goal = FakeGoalHandle()
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        self.assertFalse(result.success)
+        self.assertTrue(goal.aborted)
+        self.assertEqual(result.error_code, "navigation_failed")
+        self.assertEqual(result.final_state, "error")
+        self.assertEqual(payload["final_status"], "failed")
+        self.assertEqual(payload["error_code"], "navigation_failed")
+        self.assertEqual(payload["failure_code"], "NAV_FAIL")
+        self.assertEqual(payload["result_path"], "")
+        self.assertEqual(payload["evidence_ref"], "")
+        self.assertEqual(payload["human_intervention_required"], True)
+
+    def test_execute_collection_cancel_while_delivering_records_cancel_code(self):
+        with tempfile.TemporaryDirectory() as td:
+            node = self.make_orchestrator(Path(td))
+            goal = FakeGoalHandle()
+            goal.is_cancel_requested = True
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        self.assertFalse(result.success)
+        self.assertTrue(goal.canceled_called)
+        self.assertEqual(result.error_code, "canceled")
+        self.assertEqual(result.final_state, "idle")
+        self.assertEqual(payload["final_status"], "canceled")
+        self.assertEqual(payload["error_code"], "canceled")
+        self.assertEqual(payload["failure_code"], "TASK_CANCEL")
+        self.assertEqual(payload["evidence_ref"], "")
+        self.assertEqual(payload["result_path"], "")
+        self.assertEqual(payload["human_intervention_required"], True)
 
     def test_execute_collection_fixed_route_timeout_aborts_with_timeout_record(self):
         with tempfile.TemporaryDirectory() as td:
@@ -266,6 +315,7 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["error_code"], "timed_out")
         self.assertEqual(payload["failure_code"], "NAV_TIMEOUT")
         self.assertEqual(payload["result_path"], str(status_file))
+        self.assertEqual(payload["evidence_ref"], str(status_file))
         self.assertEqual(payload["final_state"], "error")
         self.assertEqual(payload["nav_results"][0]["result_code"], "timeout")
 
@@ -300,6 +350,7 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["delivery_mode"], "fixed_route")
         self.assertEqual(payload["final_status"], "success")
         self.assertEqual(payload["result_path"], "/tmp/routes/trash_station.json")
+        self.assertEqual(payload["evidence_ref"], str(status_file))
         self.assertEqual(payload["nav_results"][0]["result_code"], "fixed_route_completed")
         self.assertEqual(payload["nav_results"][0]["message"], "fixed_route completed")
         self.assertEqual(
@@ -336,6 +387,7 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["final_status"], "failed")
         self.assertEqual(payload["error_code"], "timed_out")
         self.assertEqual(payload["failure_code"], "NAV_TIMEOUT")
+        self.assertEqual(payload["result_path"], "")
         self.assertEqual(payload["human_intervention_required"], True)
         self.assertEqual(payload["final_state"], "error")
         self.assertEqual(payload["dropoff_result"]["result_code"], "manual_confirm_timeout")

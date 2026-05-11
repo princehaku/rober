@@ -58,6 +58,7 @@ class TaskRecordTest(unittest.TestCase):
                 final_state="idle",
                 source="task_orchestrator",
                 result_path="/tmp/routes/fixed_route.yaml",
+                evidence_ref="/tmp/routes/fixed_route.yaml",
                 failure_code="",
                 human_intervention_required=False,
             )
@@ -85,6 +86,7 @@ class TaskRecordTest(unittest.TestCase):
         self.assertEqual(payload["final_state"], "idle")
         self.assertEqual(payload["source"], "task_orchestrator")
         self.assertEqual(payload["result_path"], "/tmp/routes/fixed_route.yaml")
+        self.assertEqual(payload["evidence_ref"], "/tmp/routes/fixed_route.yaml")
         self.assertEqual(payload["failure_code"], "")
         self.assertEqual(payload["human_intervention_required"], False)
         self.assertEqual(payload["state_transition_history"], payload["state_transitions"])
@@ -121,6 +123,7 @@ class TaskRecordTest(unittest.TestCase):
                 },
                 source="task_orchestrator",
                 result_path="/tmp/trashbot_fixed_route_status.json",
+                evidence_ref="/tmp/trashbot_fixed_route_status.json",
                 failure_code="NAV_TIMEOUT",
                 human_intervention_required=True,
             )
@@ -135,6 +138,7 @@ class TaskRecordTest(unittest.TestCase):
         self.assertEqual(payload["config"]["fixed_route_status_file"], "/tmp/trashbot_fixed_route_status.json")
         self.assertEqual(payload["source"], "task_orchestrator")
         self.assertEqual(payload["result_path"], "/tmp/trashbot_fixed_route_status.json")
+        self.assertEqual(payload["evidence_ref"], "/tmp/trashbot_fixed_route_status.json")
         self.assertEqual(payload["failure_code"], "NAV_TIMEOUT")
         self.assertEqual(payload["human_intervention_required"], True)
 

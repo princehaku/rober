@@ -120,6 +120,7 @@ class FixedRouteAutonomy(Node):
             self.current_index,
             len(self.route_poses),
             route_id=self.route_id,
+            failure_code=self.failure_code,
         )
         target_payload['route_contract_version'] = ROUTE_CONTRACT_VERSION
         target_payload['source'] = self.source
@@ -360,16 +361,17 @@ class FixedRouteAutonomy(Node):
         if state != self.state:
             self.last_transition = f'{self.state}->{state}'
             self.state = state
-        checkpoint = self.current_index
+        route_progress = self._mark_checkpoint_progress(state)
+        checkpoint = int(route_progress.get('checkpoint', self.current_index))
         if checkpoint < 0:
             checkpoint = 0
         elif checkpoint > len(self.route_poses):
             checkpoint = len(self.route_poses)
         current_target = None
-        if self.current_index < len(self.route_poses):
-            pose = self.route_poses[self.current_index].pose
+        if checkpoint < len(self.route_poses):
+            pose = self.route_poses[checkpoint].pose
             current_target = {
-                'index': self.current_index,
+                'index': checkpoint,
                 'x': pose.position.x,
                 'y': pose.position.y,
                 'z': pose.position.z,
@@ -384,7 +386,6 @@ class FixedRouteAutonomy(Node):
             gate_status=self.visual_gate_status,
             last_block_reason=self.failure_reason or self.last_error,
         )
-        route_progress = self._mark_checkpoint_progress(state)
         # Fixed-route does not infer elevator semantics by default. The status
         # carries a normalized placeholder so behavior/operator layers can write
         # or display future dry-run evidence without depending on camera OCR.

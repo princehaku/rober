@@ -46,6 +46,7 @@ class DeliveryStateMachine:
     state: DeliveryState = DeliveryState.IDLE
     target: str = ""
     error_message: str = ""
+    failure_code: str = ""
     events: list[StateTransition] = field(default_factory=list)
 
     def _transition(self, event: DeliveryEvent, to_state: DeliveryState, message: str = ""):
@@ -59,6 +60,7 @@ class DeliveryStateMachine:
             f"invalid transition {event.value} from {self.state.value}; "
             f"expected one of: {allowed_names}"
         )
+        self.failure_code = "INVALID_TRANSITION"
         self._transition(DeliveryEvent.INVALID_TRANSITION, DeliveryState.ERROR, self.error_message)
         return False
 
@@ -96,8 +98,9 @@ class DeliveryStateMachine:
     def navigation_failed(self, message: str, failure_code: str = "NAV_FAIL"):
         if not self._require_state(DeliveryEvent.NAVIGATION_FAILED, DeliveryState.DELIVERING):
             return
+        self.failure_code = failure_code
         self.error_message = message or "navigation failed"
-        self._transition(DeliveryEvent.NAVIGATION_FAILED, DeliveryState.ERROR, failure_code)
+        self._transition(DeliveryEvent.NAVIGATION_FAILED, DeliveryState.ERROR, message)
 
     def elevator_phase(self, phase: str, message: str = ""):
         if not self._require_state(DeliveryEvent.ELEVATOR_PHASE, DeliveryState.DELIVERING):
@@ -131,6 +134,7 @@ class DeliveryStateMachine:
     def dropoff_failed(self, message: str):
         if not self._require_state(DeliveryEvent.DROPOFF_FAILED, DeliveryState.DROPOFF):
             return
+        self.failure_code = "dropoff_failed"
         self.error_message = message or "dropoff failed"
         self._transition(DeliveryEvent.DROPOFF_FAILED, DeliveryState.ERROR, self.error_message)
 
@@ -142,6 +146,7 @@ class DeliveryStateMachine:
     def return_failed(self, message: str):
         if not self._require_state(DeliveryEvent.RETURN_FAILED, DeliveryState.RETURNING):
             return
+        self.failure_code = "NAV_FAIL"
         self.error_message = message or "return failed"
         self._transition(DeliveryEvent.RETURN_FAILED, DeliveryState.ERROR, self.error_message)
 
@@ -153,8 +158,9 @@ class DeliveryStateMachine:
             DeliveryState.RETURNING,
         ):
             return
+        self.failure_code = failure_code
         self.error_message = message or "delivery timed out"
-        self._transition(DeliveryEvent.TIMED_OUT, DeliveryState.ERROR, failure_code)
+        self._transition(DeliveryEvent.TIMED_OUT, DeliveryState.ERROR, message)
 
     def cancel(self, message: str, failure_code: str = "TASK_CANCEL"):
         if not self._require_state(
@@ -165,4 +171,5 @@ class DeliveryStateMachine:
             DeliveryState.RETURNING,
         ):
             return
-        self._transition(DeliveryEvent.CANCELED, DeliveryState.IDLE, failure_code)
+        self.failure_code = failure_code
+        self._transition(DeliveryEvent.CANCELED, DeliveryState.IDLE, message)

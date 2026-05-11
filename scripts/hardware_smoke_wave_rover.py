@@ -15,8 +15,10 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from typing import Any
 import time
+from datetime import datetime, timezone
+from typing import Any
+from shlex import quote
 
 SCRIPT_VENDOR_SOURCES = [
     "docs/vendor/VENDOR_INDEX.md",
@@ -26,11 +28,58 @@ SCRIPT_VENDOR_SOURCES = [
 ]
 
 SOFTWARE_PROOF_SOURCE = "software_proof"
+HIL_SOURCE = "hil_pass"
 SERIAL_IMPORT_ERROR = (
     "ERROR: missing dependency pyserial.\n"
     "  Install once: python3 -m pip install pyserial\n"
     "  Then rerun the hardware command."
 )
+SERIAL_OPEN_ERROR_NOTE = (
+    "BLOCKED: serial dependency or device access blocked.\n"
+    "  Repro steps:\n"
+    "  1) PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile scripts/hardware_smoke_wave_rover.py\n"
+    "  2) python3 scripts/hardware_smoke_wave_rover.py --status\n"
+    "  3) python3 scripts/hardware_smoke_wave_rover.py --move-test --serial-port <device> --baudrate <baudrate>\n"
+    "  If pyserial is missing, install inside ros2-humble runtime as documented."
+)
+
+
+def build_run_evidence_ref(args: argparse.Namespace, source: str) -> str:
+    now_utc = datetime.now(timezone.utc)
+    serial_part = (args.serial_port or "noserial").replace("/", "-")
+    speed_part = f"speed{abs(float(args.test_speed)):.3f}".replace(".", "p")
+    duration_part = f"dur{args.test_duration_s:.2f}".replace(".", "p")
+    return (
+        f"run_{now_utc:%Y%m%dT%H%M%SZ}_"
+        f"{serial_part}_{source}_{speed_part}_{duration_part}"
+    )
+
+
+def build_hil_parameter_lock(args: argparse.Namespace, evidence_ref: str) -> dict[str, Any]:
+    return {
+        "source": HIL_SOURCE,
+        "evidence_ref": evidence_ref,
+        "serial_port": args.serial_port,
+        "baudrate": args.baudrate,
+        "feedback_interval_ms": args.feedback_interval_ms,
+        "feedback_timeout_s": args.feedback_timeout_s,
+        "test_speed": args.test_speed,
+        "test_duration_s": args.test_duration_s,
+        "ros_angular_z": args.ros_angular_z,
+        "turn_angular_z": args.turn_angular_z,
+        "run_flags": sorted(
+            flag
+            for flag in ("move-test" if args.move_test else "",
+                         "reverse-test" if args.reverse_test else "",
+                         "ros-mode-test" if args.ros_mode_test else "",
+                         "turn-test" if args.turn_test else "")
+            if flag
+        ),
+    }
+
+
+def print_command_template() -> str:
+    return " ".join(quote(p) for p in sys.argv)
 
 try:
     import serial
@@ -92,10 +141,12 @@ def read_feedback(
 
 def print_status() -> None:
     """Print a software-only smoke template status."""
+    template_ref = f"run_template_{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}"
     print(json.dumps(
         {
             "status": "ready",
             "source": SOFTWARE_PROOF_SOURCE,
+            "evidence_ref": template_ref,
             "script": "scripts/hardware_smoke_wave_rover.py",
             "vendor_sources": SCRIPT_VENDOR_SOURCES,
             "defaults": {
@@ -124,6 +175,7 @@ def print_status() -> None:
                 "--turn-test",
             ],
             "dependency_note": "pyserial required for hil commands",
+            "command_template": "python3 scripts/hardware_smoke_wave_rover.py --move-test --serial-port <device> --baudrate <baud> --test-speed <speed> --test-duration-s <duration>",
         },
         indent=2,
         sort_keys=True,
@@ -189,6 +241,7 @@ def main() -> int:
     parser.add_argument("--test-duration-s", type=float, default=0.3)
     parser.add_argument("--ros-angular-z", type=float, default=0.0)
     parser.add_argument("--turn-angular-z", type=float, default=0.3)
+    parser.add_argument("--evidence-ref", type=str, default="", help="Optional run-level evidence_ref override")
     args = parser.parse_args()
 
     if args.feedback_interval_ms < 0:
@@ -204,6 +257,11 @@ def main() -> int:
 
     ser: Any | None = None
     try:
+        evidence_ref = args.evidence_ref.strip() or build_run_evidence_ref(args, HIL_SOURCE)
+        run_parameters = build_hil_parameter_lock(args, evidence_ref)
+        command_signature = print_command_template()
+        print(json.dumps({"source": HIL_SOURCE, "command": command_signature, "parameters": run_parameters}, indent=2, sort_keys=True))
+
         ser = serial.Serial(args.serial_port, args.baudrate, timeout=0.2)  # type: ignore[arg-type]
         print(f"Opened {args.serial_port} @ {args.baudrate}")
         stop(ser)
@@ -228,12 +286,23 @@ def main() -> int:
                 f"T=1001 feedback rate: avg interval={avg_feedback_interval_ms:.2f}ms "
                 f"(~{1000/avg_feedback_interval_ms:.2f}Hz)",
             )
+        print(f"evidence_ref={evidence_ref}")
+        print(f"source={HIL_SOURCE}")
         print(f"T=1001 feedback sample: {feedback_samples[0]}")
         print(
             "Firmware feedback fields present: "
             f"{[key for key in ['L', 'R', 'r', 'p', 'y', 'v'] if key in feedback_samples[0]]}",
         )
-        print(f"source=hil_pass smoke template complete before action")
+        print(
+            json.dumps(
+                {
+                    "status": "hil_ready",
+                    "source": HIL_SOURCE,
+                    "evidence_ref": evidence_ref,
+                },
+                sort_keys=True,
+            )
+        )
 
         if not any([args.move_test, args.reverse_test, args.ros_mode_test, args.turn_test]):
             print("No movement flags set; smoke checks startup feedback only.")
@@ -252,6 +321,7 @@ def main() -> int:
         return 130
     except (OSError, SerialException) as exc:
         print(f"ERROR: serial failure: {exc}", file=sys.stderr)
+        print(SERIAL_OPEN_ERROR_NOTE, file=sys.stderr)
         return 1
     finally:
         if ser is not None:

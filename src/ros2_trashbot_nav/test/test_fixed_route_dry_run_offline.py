@@ -228,6 +228,10 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["route_contract_version"], "fixed_route.v1")
             self.assertEqual(payload["failure_reason"], "")
             self.assertEqual(payload["failure_code"], "")
+            self.assertEqual(payload["route_progress"]["checkpoint"], payload["current_index"])
+            self.assertEqual(payload["route_progress"]["checkpoint"], payload["checkpoint"])
+            self.assertEqual(payload["route_progress"]["evidence_ref"], payload["evidence_ref"])
+            self.assertEqual(payload["route_progress"]["failure_code"], payload["failure_code"])
             self.assertIn("checkpoint", payload)
             self.assertIn("target", payload)
             self.assertEqual(payload["checkpoint"], payload["current_index"])
@@ -301,6 +305,9 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             payload = json.loads(status_file.read_text(encoding="utf-8"))
             self.assertEqual(payload["state"], "waiting_visual_gate")
             self.assertEqual(payload["current_index"], 0)
+            self.assertEqual(payload["route_progress"]["checkpoint"], payload["checkpoint"])
+            self.assertEqual(payload["route_progress"]["evidence_ref"], payload["evidence_ref"])
+            self.assertEqual(payload["route_progress"]["failure_code"], payload["failure_code"])
             self.assertEqual(payload["last_nav_result"], "")
             self.assertIn("missing keyframes: [0]", payload["last_error"])
             self.assertIn("missing keyframes: [0]", payload["failure_reason"])
@@ -527,6 +534,8 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["failure_code"], "NAVIGATION_ABORT")
             self.assertIn("checkpoint 0 failed", payload["failure_reason"])
             self.assertEqual(payload["last_nav_result"], "nav_failed")
+            self.assertEqual(payload["route_progress"]["checkpoint"], payload["current_index"])
+            self.assertEqual(payload["route_progress"]["failure_code"], payload["failure_code"])
 
 
 if __name__ == "__main__":

@@ -154,6 +154,8 @@ When `enable_visual_gate:=true`, dry-run preflights keyframe coverage for the fu
 - `checkpoint`: 当前索引
 - `total_checkpoints`: 路线总 checkpoint
 - `route_contract_version`
+- `source`
+- `failure_code`: 与顶层 `failure_code` 一致，用于复盘回放
 
 示例状态片段：
 
@@ -179,7 +181,8 @@ When `enable_visual_gate:=true`, dry-run preflights keyframe coverage for the fu
     "checkpoint": 1,
     "total_checkpoints": 2,
     "route_contract_version": "fixed_route.v1",
-    "source": "fixed_route"
+    "source": "fixed_route",
+    "failure_code": ""
   },
   "navigation_timeout_sec": 0.0,
   "navigation_elapsed_sec": 0.24,
@@ -295,6 +298,7 @@ Switch from `fixed_route_dry_run:=true` to real fixed-route navigation only afte
 - The route YAML or CSV passes offline parsing and contains the expected checkpoint count.
 - Dry-run reaches `state: completed` with empty `failure_reason`.
 - `checkpoint/current_index/target` 与任务复盘 `evidence` 的 `current_index/target/evidence_ref` 可对齐。
+- `route_progress.checkpoint == checkpoint == current_index` 且 `route_progress.evidence_ref == evidence_ref`，`route_progress.failure_code == failure_code`。
 - `navigation_timeout_sec` and `navigation_elapsed_sec` 在出现异常时可用于复现与修复。
 - No waypoint patrol node is active at the same time; use `navigation_mode:=fixed_route`.
 

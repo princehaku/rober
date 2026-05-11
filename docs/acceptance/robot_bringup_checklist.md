@@ -8,7 +8,13 @@
 - Confirm `115200` baud with the loaded ESP32 firmware.
 - Confirm evidence source policy: `source=software_proof` for template checks, `source=hil_pass` for real UART verification.
 - Run `python3 scripts/hardware_smoke_wave_rover.py --status` first; require no pyserial for this step.
-- If `pyserial` is missing, record dependency-block status and do not claim hil gate complete.
+- If `pyserial` is missing or `serial` open fails, record `Blocked` and capture repro steps; do not claim `hil_pass`.
+
+## Evidence Source Boundaries
+
+- `source=software_proof`：只用于离线核验（help/status/参数模板）。
+- `source=hil_pass`：必须基于真实 UART 串口交互、反馈采样、运行日志与任务记录。
+- 运行脚本时使用 `--evidence-ref run_<YYYYMMDDTHHMMSS>Z_<serial>_hil_pass_speed<...>_dur<...>`，并在 evidence 文档中复用同一 `evidence_ref`。
 
 ## Desktop ROS2 Build Check
 
@@ -34,6 +40,7 @@ bash scripts/docker_humble_build.sh
 - Send low-speed `T=1` reverse command and verify direction.
 - Send low-speed turn command and verify left/right mapping.
 - Return to stop command after every movement check.
+- 如任一步骤缺少反馈、方向不符或出现 timeout，停止推进并在 `wave_rover_hil_evidence.md` 标注 blocked 原因与复现条件。
 - If using `scripts/hardware_smoke_wave_rover.py`, run `python3 scripts/hardware_smoke_wave_rover.py --status` first (software proof), then save terminal output and the exact command line for `source=hil_pass` runs.
 
 ## Feedback

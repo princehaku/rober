@@ -50,6 +50,7 @@ def build_route_checkpoint_payload(
     total_checkpoints: int,
     *,
     route_id: str | None = None,
+    failure_code: str | None = None,
 ):
     """Build route-layer progress identifiers used by diagnostics/task_record.
 
@@ -57,6 +58,7 @@ def build_route_checkpoint_payload(
     - route_id: route basename stem
     - checkpoint_id: semantic keypoint key
     - evidence_ref: status file path used as run anchor
+    - failure_code: latest navigation/automation failure for replay
     """
     normalized_route_id = (route_id or build_route_id(route_file)).strip() or 'fixed_route'
     try:
@@ -81,6 +83,7 @@ def build_route_checkpoint_payload(
         'evidence_ref': str(debug_status_file or '').strip(),
         'checkpoint': index,
         'total_checkpoints': total,
+        'failure_code': str(failure_code or '').strip(),
     }
 
 _ELEVATOR_EVIDENCE_PROFILES = {

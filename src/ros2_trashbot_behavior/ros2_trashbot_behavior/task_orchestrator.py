@@ -350,7 +350,14 @@ class TaskOrchestrator(Node):
             )
 
             if goal_handle.is_cancel_requested:
-                return self._cancel_collection(goal_handle, result, machine, start_time, task_id)
+                return self._cancel_collection(
+                    goal_handle,
+                    result,
+                    machine,
+                    start_time,
+                    task_id,
+                    elevator_assist=elevator_assist,
+                )
 
             machine.start_delivery()
             if machine.error_message:
@@ -365,7 +372,15 @@ class TaskOrchestrator(Node):
             )
             if goal_handle.is_cancel_requested:
                 return self._cancel_collection(
-                    goal_handle, result, machine, start_time, task_id, nav_attempts, nav_results
+                    goal_handle,
+                    result,
+                    machine,
+                    start_time,
+                    task_id,
+                    nav_attempts,
+                    nav_results,
+                    dropoff_result,
+                    elevator_assist,
                 )
             if not nav_result.success:
                 if nav_result.result_code == "timeout":
@@ -403,6 +418,7 @@ class TaskOrchestrator(Node):
                     nav_attempts,
                     nav_results,
                     dropoff_result,
+                    elevator_assist,
                 )
             if not dropoff_result["success"]:
                 if dropoff_result.get("result_code") == "manual_confirm_timeout":
@@ -440,6 +456,7 @@ class TaskOrchestrator(Node):
                         nav_attempts,
                         nav_results,
                         dropoff_result,
+                        elevator_assist,
                     )
                 if not return_result.success:
                     if return_result.result_code == "timeout":
@@ -594,6 +611,7 @@ class TaskOrchestrator(Node):
     ):
         failure_code = "" if final_status == "success" else self._derive_failure_code(machine)
         result_path = self._derive_result_path(nav_results)
+        evidence_ref = self._derive_evidence_ref(nav_results) or result_path
         human_intervention_required = bool(
             failure_code in ("NAV_FAIL", "NAV_TIMEOUT", "TASK_CANCEL")
             or (dropoff_result or {}).get("result_code") in ("manual_confirm_timeout", "unsupported_dropoff_mode")
@@ -620,6 +638,7 @@ class TaskOrchestrator(Node):
             final_state=machine.state.value,
             source=source,
             result_path=result_path,
+            evidence_ref=evidence_ref,
             failure_code=failure_code,
             human_intervention_required=human_intervention_required,
         )
@@ -634,7 +653,10 @@ class TaskOrchestrator(Node):
         nav_attempts=0,
         nav_results=None,
         dropoff_result=None,
+        elevator_assist=None,
     ):
+        if elevator_assist is None:
+            elevator_assist = self._elevator_assist_disabled_status()
         machine.cancel("user canceled", "TASK_CANCEL")
         goal_handle.canceled()
         self.state = RobotState.IDLE
@@ -653,7 +675,7 @@ class TaskOrchestrator(Node):
                 nav_attempts,
                 nav_results or [],
                 dropoff_result or {},
-                self._elevator_assist_disabled_status(),
+                elevator_assist,
                 {
                     "delivery_mode": self.delivery_mode,
                     "navigation_timeout_sec": self.navigation_timeout_sec,
@@ -683,7 +705,20 @@ class TaskOrchestrator(Node):
                 return str(candidate)
         return ""
 
+    def _derive_evidence_ref(self, nav_results):
+        for item in nav_results or []:
+            evidence = item.evidence if isinstance(item, NavigationResult) else item.get("evidence", {})
+            if not isinstance(evidence, dict):
+                continue
+            for key in ("evidence_ref", "fixed_route_status_file", "route_file"):
+                candidate = evidence.get(key)
+                if isinstance(candidate, str) and candidate.strip():
+                    return candidate.strip()
+        return ""
+
     def _derive_failure_code(self, machine):
+        if getattr(machine, "failure_code", ""):
+            return str(machine.failure_code)
         if not machine.events:
             return ""
         event = machine.events[-1].event.value

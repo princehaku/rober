@@ -17,6 +17,7 @@
 
 - `source=software_proof`：命令拼接、参数边界、文档与风险声明，仅作为实现前置依据。
 - `source=hil_pass`：真实串口上车验证，需补齐方向、反馈、IMU/Battery、`/odom` 声明及安全验证。
+- `evidence_ref` 建议使用 `run_<YYYYMMDDTHHMMSS>Z_<serial>_hil_pass_speed<speed>_dur<duration>`，同一次实机 run 在 checklist、脚本输出与 task record 中保持一致。
 
 ## UART Framing
 
@@ -43,6 +44,19 @@
 - `configure_feedback` 默认发送序列：`{"T":143,"cmd":0}` -> `{"T":142,"cmd":<interval_ms>}` -> `{"T":131,"cmd":1}`。
 - 建议在 `source=hil_pass` 下采样至少 2 帧 `T=1001`，确认采样间隔接近 `feedback_interval_ms`（例如 100ms 时约 10Hz）。
 - `v` 默认映射为电压；`r/p/y` 为欧拉角（厂商原始值按项目桥接代码按弧度发布 yaw）。
+
+### HIL 运行参数留存模板（与 run 级证据绑定）
+
+- 每次 `source=hil_pass` 运行前需记录参数快照：
+  - `serial_port`
+  - `baudrate`
+  - `feedback_interval_ms`
+  - `test_speed`
+  - `test_duration_s`
+  - `ros_angular_z`
+  - `turn_angular_z`
+  - `run_flags`
+- 同步写入脚本输出里的 `evidence_ref` 字段，作为该 run 的唯一入口。
 
 ## Command Modes
 

@@ -37,6 +37,7 @@ class FixedRouteStatusStaticTest(unittest.TestCase):
         self.assertIn("build_elevator_assist_evidence", source)
         self.assertIn("build_elevator_assist_status", source)
         self.assertIn("self.keyframe_preflight", source)
+        self.assertIn("failure_code", source)
 
     def test_elevator_evidence_schema_is_offline_and_explicit(self):
         route_utils = REPO_ROOT / "ros2_trashbot_nav" / "ros2_trashbot_nav" / "route_utils.py"
@@ -68,6 +69,12 @@ class FixedRouteStatusStaticTest(unittest.TestCase):
             "'keyframe_preflight_failed'",
         ):
             self.assertIn(field, source)
+
+    def test_route_progress_payload_includes_failure_code(self):
+        source = SOURCE.read_text(encoding="utf-8")
+
+        self.assertIn("build_route_checkpoint_payload(", source)
+        self.assertIn("failure_code=self.failure_code", source)
 
 
 if __name__ == "__main__":

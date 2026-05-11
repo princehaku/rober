@@ -23,6 +23,7 @@ def write_task_record(
     final_state=None,
     source="task_orchestrator",
     result_path="",
+    evidence_ref="",
     failure_code="",
     human_intervention_required=False,
 ):
@@ -73,7 +74,10 @@ def write_task_record(
         "error_message": error_message,
         "final_state": final_state if final_state is not None else machine.state.value,
         "source": source,
-        "result_path": result_path,
+        "result_path": str(result_path),
+        # evidence_ref is the durable anchor consumed by diagnostics/operator contracts.
+        # Keep it explicit even when it equals result_path to avoid implicit inference.
+        "evidence_ref": str(evidence_ref or result_path).strip(),
         "failure_code": failure_code,
         "human_intervention_required": bool(human_intervention_required),
         "duration": max(0.0, ended_at - started_at),
