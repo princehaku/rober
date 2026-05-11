@@ -192,6 +192,13 @@ classify_build_failure() {
     if grep -Eiq 'Cannot connect to the Docker daemon|Is the docker daemon running|error during connect|permission denied.*docker.sock|docker daemon is not running' "$log_file"; then
         category="Docker daemon"
         next_step="Start Docker Desktop/Engine, verify docker context, then rerun SKIP_COLCON=1 bash scripts/docker_humble_build.sh."
+    elif grep -Eiq 'failed size validation|failed precondition|unknown-sha256|failed commit on ref unknown-sha256|content store.*failed.*validation' "$log_file"; then
+        category="registry mirror/cache"
+        # These errors happen before the Dockerfile can run: BuildKit received
+        # bytes whose digest/size did not match the registry metadata. Treat it
+        # as a registry mirror/proxy or local content-store cache integrity
+        # problem, not as a ROS workspace or Dockerfile failure.
+        next_step="Disable or change Docker Desktop registry mirrors/proxy, restart Docker Desktop, clean the BuildKit builder cache, then verify docker pull ${base_image}. If registry traffic remains unreliable, load a trusted exported image tar and rerun with ROS_HUMBLE_IMAGE_TAR plus SKIP_DOCKER_BUILD=1."
     elif grep -Eiq 'buildx|BuildKit|builder.*inactive|no builder|failed to dial gRPC|context deadline exceeded.*builder' "$log_file"; then
         category="Docker builder"
         next_step="Run docker buildx ls, select or recreate a working builder, then rerun the preflight."

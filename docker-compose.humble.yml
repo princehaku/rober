@@ -4,6 +4,7 @@ services:
     build:
       context: ./docker/humble
       args:
+        ROS_HUMBLE_BASE_IMAGE: ${ROS_HUMBLE_BASE_IMAGE:-osrf/ros:humble-desktop}
         UBUNTU_APT_MIRROR: ${UBUNTU_APT_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/ubuntu}
         ROS_APT_MIRROR: ${ROS_APT_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/ros2/ubuntu}
         PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
@@ -13,11 +14,23 @@ services:
     ipc: host
     working_dir: /ws
     environment:
-      DISPLAY: ${DISPLAY:-}
-      QT_X11_NO_MITSHM: "1"
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
     volumes:
       - .:/ws
       - ./.ros_home:/root/.ros
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
     command: bash -l
+
+  humble-x11:
+    profiles:
+      - x11
+    extends:
+      service: humble
+    environment:
+      DISPLAY: ${DISPLAY:-}
+      QT_X11_NO_MITSHM: "1"
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+      ROS_HUMBLE_ENABLE_X11: ${ROS_HUMBLE_ENABLE_X11:-1}
+    volumes:
+      - .:/ws
+      - ./.ros_home:/root/.ros
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
