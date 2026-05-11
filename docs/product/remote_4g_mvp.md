@@ -29,6 +29,22 @@ read current status, and read command ACK during local development. It does not
 expose `/cmd_vel`, serial ports, baudrate, WAVE ROVER parameters, or raw ROS2
 topic names to ordinary phone users.
 
+## Bearer Auth Gate
+
+The local/mock cloud API now has a bearer auth gate for software proof before a
+real cloud account exists. When the gate is configured, protected remote
+endpoints require `Authorization: Bearer <token>` before command, status, or ACK
+payloads can be submitted or read. Missing or incorrect credentials return a
+phone-safe auth failure instead of raw server details.
+
+This gate proves only the local/mock control-plane behavior. It does not prove
+production identity, provisioning, token rotation, HTTPS/TLS, public ingress, or
+real 4G carrier connectivity.
+
+Phone and diagnostics payloads must not expose bearer tokens, Authorization
+headers, credential-bearing cloud URLs, serial devices, baudrate, WAVE ROVER
+parameters, `/cmd_vel`, raw ROS topic names, or hardware configuration fields.
+
 ## Command Contract
 
 ```json
@@ -82,6 +98,12 @@ it falls back to scanning from the beginning and returns the first unacked,
 unexpired command. A production cloud may use database offsets or ACK tables,
 but it must preserve the same opaque-cursor rule.
 
+Remote bridge failures are conservative around the same cursor contract. Cloud
+unreachable, auth failed, malformed command/status/ACK response, or ACK post
+failure must not advance `last_terminal_ack_id`, must not persist a terminal
+cursor, and must not pretend the cloud accepted a terminal command state. A
+malformed command response must not trigger a local action goal.
+
 ## Status Contract
 
 Robot status is posted by the robot and should be enough for a phone UI to render current state:
@@ -99,6 +121,26 @@ Robot status is posted by the robot and should be enough for a phone UI to rende
 The phone-safe read endpoint is `GET /robots/{robot_id}/status`. A missing robot
 status returns `state = "unknown"` with a message that the robot has not posted
 status yet, rather than inventing a successful or failed robot state.
+
+## Remote Readiness Contract
+
+Phone-facing local/mock status includes `remote_readiness` so a formal phone UI
+can render auth and degradation states without parsing raw exceptions or ROS
+details.
+
+| Field | Product meaning |
+| --- | --- |
+| `remote_ready` | `true` only means the current local/mock control-plane conditions allow the phone flow to continue; it is not real cloud, 4G, HIL, or delivery proof. |
+| `cloud_reachable` | Whether the configured local/mock control-plane is reachable from the caller's point of view. |
+| `auth_state` | Phone-safe auth state such as `mock_not_required`, `required`, `authorized`, or `auth_failed`. |
+| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `auth_failed`, `cloud_unreachable`, or `malformed_response`. |
+| `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `check_auth`, `retry_cloud`, or `contact_support`. |
+| `safe_phone_copy` | Plain-language UI copy that must not include raw JSON, ROS topic names, secrets, serial devices, or hardware parameters. |
+
+`auth_state=authorized` means the local/mock request passed the configured bearer
+gate. `degradation_state=ok` means the control-plane contract is healthy enough
+for the next software step. Neither value proves the robot delivered trash,
+reached a Nav2/fixed-route target, moved the WAVE ROVER base, or passed HIL.
 
 ## Ack Contract
 
@@ -149,4 +191,5 @@ processed the command yet.
 - No real cloud account is configured.
 - No SIM or carrier network test has been run.
 - The local mock-cloud tests validate protocol behavior only.
-- Authentication is represented by a bearer token field, but production identity, provisioning, rotation, and permissions are not implemented.
+- Bearer auth gate is covered by local/mock software proof only; production identity, provisioning, rotation, permissions, HTTPS/TLS, and public cloud ingress are not implemented.
+- Remote bridge degradation/cursor safety is covered by local/mock software proof only; it does not prove weak-network recovery on a carrier 4G link.

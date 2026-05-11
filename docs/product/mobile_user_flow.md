@@ -121,20 +121,33 @@ The robot posts status and command acknowledgements back to the cloud endpoint s
 
 The local mock cloud may be started with a configured persistence path such as `mock_cloud_state_path`. When this path is empty, the mock keeps the old in-memory behavior. When it is set, the mock writes only command queue, ACK, status and summary counters to a local JSON proof file. The proof file must not contain bearer tokens, serial device names, ROS topic names, baudrate values, WAVE ROVER parameters, or hardware configuration fields.
 
-Phone clients should treat the remote status payload as the user-facing source of truth for 4G readiness. `GET /robots/{robot_id}/status`, `POST /robots/{robot_id}/status`, and `POST /robots/{robot_id}/commands/{command_id}/ack` may include `remote_readiness` with these fields:
+Local/mock cloud endpoints can be protected with a bearer token. When the gate is enabled, the phone or robot bridge must send `Authorization: Bearer <token>`; missing or wrong tokens return a phone-safe `401` response with `auth_state=auth_failed`. The response never echoes the token, the Authorization header, raw cloud URL credentials, serial settings, hardware parameters, ROS topic names, or velocity-control details.
+
+Phone clients should treat the remote status payload as the user-facing source of truth for local/mock remote-control readiness. `remote_ready=true` only means the current local/mock control-plane conditions allow the phone flow to continue. It does not prove real cloud hosting, HTTPS, SIM/4G connectivity, HIL, WAVE ROVER movement, Nav2/fixed-route success, or trash delivery completion. `GET /robots/{robot_id}/status`, `POST /robots/{robot_id}/status`, `POST /robots/{robot_id}/commands`, and `POST /robots/{robot_id}/commands/{command_id}/ack` may include `remote_readiness` with these fields:
 
 | Field | Meaning for phone UI |
 | --- | --- |
-| `remote_ready` | true when the mock cloud is reachable and the latest robot status is fresh enough for the phone to continue. |
+| `remote_ready` | true when the local/mock cloud gate, robot status freshness, and pending command state allow the phone to continue. This is not real cloud/4G/HIL proof. |
 | `cloud_reachable` | true when this local mock control-plane process handled the request; it does not prove real HTTPS, SIM, or production cloud reachability. |
 | `last_command_ack` | latest command id that has an ACK state, or empty when no command has been acknowledged. |
 | `status_stale` | true when the robot has not posted status or the status age exceeds the mock freshness window. |
-| `retry_hint` | phone-safe next action such as `wait_for_robot_status`, `wait_for_command_ack`, or `ok`. |
-| `auth_state` | mock authentication state; `mock_not_required` means no production bearer token was checked. |
+| `retry_hint` | phone-safe next action: `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `check_auth`, `retry_cloud`, or `contact_support`. |
+| `auth_state` | mock authentication state: `mock_not_required`, `required`, `authorized`, or `auth_failed`. |
+| `degradation_state` | phone-safe readiness class: `ok`, `status_stale`, `command_pending`, `auth_failed`, `cloud_unreachable`, or `malformed_response`. |
+| `safe_phone_copy` | ordinary user-facing copy for the phone UI. It must not contain raw JSON, ROS names, hardware details, credentials, or cloud URL secrets. |
 | `pending_command_count` | count of queued commands without ACK. |
 | `queue_persisted` | true when a local proof file is configured and queue/status/ACK can survive process restart. |
 
 These fields explain remote control readiness only. ACK means the robot bridge accepted, ignored, or failed a command submission; it does not mean trash delivery, Nav2/fixed-route motion, WAVE ROVER movement, or HIL validation succeeded.
+
+Recommended phone handling:
+
+- `ok`: keep the main flow enabled.
+- `status_stale`: show "正在等待小车上报最新状态，请稍后再试。"
+- `command_pending`: keep destructive actions disabled until an ACK appears.
+- `auth_failed`: ask the user to sign in again or check the access code.
+- `cloud_unreachable`: ask the user to retry later or switch to local fallback when available.
+- `malformed_response`: ask the user to contact support and attach diagnostics.
 
 ## 4G Remote Product Path
 

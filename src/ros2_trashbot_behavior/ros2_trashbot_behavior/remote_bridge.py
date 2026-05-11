@@ -20,6 +20,7 @@ except ModuleNotFoundError:
 
 from ros2_trashbot_behavior.remote_bridge_protocol import (
     InvalidRemoteCommand,
+    RemoteCloudError,
     RemoteCloudClient,
     command_expired,
     make_status,
@@ -38,6 +39,34 @@ def _snapshot_status(robot_id, snapshot):
     snapshot.pop("robot_id", None)
     snapshot.pop("updated_at", None)
     return make_status(robot_id, state, message, **snapshot)
+
+
+def _phone_safe_degraded_status(robot_id, error):
+    reason = getattr(error, "reason", "cloud_unreachable")
+    retry_hint = getattr(error, "retry_hint", "retry_cloud")
+    cloud_reachable = bool(getattr(error, "cloud_reachable", False))
+    if reason == "auth_failed":
+        auth_state = "auth_failed"
+        safe_phone_copy = "远程鉴权失败，请检查登录或机器人云端授权。"
+    elif reason == "malformed_response":
+        auth_state = "unknown"
+        safe_phone_copy = "远程服务响应异常，请稍后重试或联系支持。"
+        cloud_reachable = True
+    else:
+        reason = "cloud_unreachable"
+        auth_state = "unknown"
+        safe_phone_copy = "远程服务暂时不可达，机器人会保留当前任务游标。"
+    return make_status(
+        robot_id,
+        "remote_degraded",
+        safe_phone_copy,
+        remote_ready=False,
+        cloud_reachable=cloud_reachable,
+        auth_state=auth_state,
+        degradation_state=reason,
+        retry_hint=retry_hint,
+        safe_phone_copy=safe_phone_copy,
+    )
 
 
 class RemoteBridgeWorker:
@@ -67,9 +96,19 @@ class RemoteBridgeWorker:
 
     def poll_once(self):
         status = _snapshot_status(self.robot_id, self.operator_backend.snapshot())
-        self.cloud.post_status(status)
+        try:
+            self.cloud.post_status(status)
+        except RemoteCloudError as exc:
+            # status 都提交不上时，本轮不能安全拉取新命令；保持游标不动，等下次轮询重试。
+            self._record_degraded_status(exc)
+            return False
         try:
             command = self.cloud.get_next_command(self.last_ack_id)
+        except RemoteCloudError as exc:
+            # 云端响应不可信或鉴权失败时，不解析 payload、不提交本地 action、不推进 cursor。
+            self._record_degraded_status(exc)
+            self._post_degraded_status_best_effort(exc)
+            return False
         except InvalidRemoteCommand as exc:
             command = exc.command if isinstance(exc.command, dict) else {}
             command_id = str(command.get("id") or "").strip()
@@ -125,10 +164,40 @@ class RemoteBridgeWorker:
     def _post_terminal_ack(self, command_id, ack, remember=True):
         if remember:
             self._remember_command_result(command_id, ack)
-        self.cloud.post_ack(command_id, ack["state"], ack["message"], ack["result"])
+        try:
+            self.cloud.post_ack(command_id, ack["state"], ack["message"], ack["result"])
+        except RemoteCloudError as exc:
+            # ACK 未进入云端就不是 terminal ACK，不能推进或落盘 last_terminal_ack_id。
+            self._record_degraded_status(exc)
+            return False
         self.last_ack_id = command_id
         self._persist_last_ack_id(command_id)
         self._post_status_from_ack(ack)
+        return True
+
+    def _record_degraded_status(self, error):
+        status = _phone_safe_degraded_status(self.robot_id, error)
+        if hasattr(self.operator_backend, "_set_status"):
+            self.operator_backend._set_status(  # noqa: SLF001 - worker 与 RemoteBridge 同模块协作。
+                status["state"],
+                status["message"],
+                remote_ready=status["remote_ready"],
+                cloud_reachable=status["cloud_reachable"],
+                auth_state=status["auth_state"],
+                degradation_state=status["degradation_state"],
+                retry_hint=status["retry_hint"],
+                safe_phone_copy=status["safe_phone_copy"],
+            )
+        elif hasattr(self.operator_backend, "last_status"):
+            self.operator_backend.last_status = status
+        return status
+
+    def _post_degraded_status_best_effort(self, error):
+        try:
+            self.cloud.post_status(_phone_safe_degraded_status(self.robot_id, error))
+        except Exception:
+            # 降级状态本身也是 best-effort；失败时仍然以“不执行命令、不推进游标”为准。
+            pass
 
     def _load_last_ack_id(self, fallback):
         if not self.cursor_state_path:
@@ -174,8 +243,7 @@ class RemoteBridgeWorker:
         try:
             self.cloud.post_status(_snapshot_status(self.robot_id, status))
         except Exception:
-            # A post-ack status refresh is best-effort. A cloud outage must not
-            # cancel or stop an already accepted local behavior task.
+            # ACK 后的状态刷新只是辅助手机显示；失败不能反向影响已提交的本地任务。
             pass
 
     def _remember_command_result(self, command_id, ack):

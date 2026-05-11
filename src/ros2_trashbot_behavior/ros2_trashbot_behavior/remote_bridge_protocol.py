@@ -18,6 +18,14 @@ class InvalidRemoteCommand(ValueError):
         self.command = command
 
 
+class RemoteCloudError(RuntimeError):
+    def __init__(self, reason, message, retry_hint="retry_cloud", cloud_reachable=False):
+        super().__init__(message)
+        self.reason = reason
+        self.retry_hint = retry_hint
+        self.cloud_reachable = bool(cloud_reachable)
+
+
 def make_status(robot_id, state, message="", **extra):
     payload = {
         "protocol_version": PROTOCOL_VERSION,
@@ -94,6 +102,13 @@ class RemoteCloudClient:
     def get_next_command(self, last_ack_id=""):
         query = urllib.parse.urlencode({"last_ack_id": last_ack_id or ""})
         payload = self._request_json("GET", f"/robots/{self.robot_id_path}/commands/next?{query}")
+        if not isinstance(payload, dict):
+            raise RemoteCloudError(
+                "malformed_response",
+                "cloud response was not a JSON object",
+                retry_hint="contact_support",
+                cloud_reachable=True,
+            )
         command = payload.get("command")
         try:
             return validate_command(command)
@@ -138,9 +153,33 @@ class RemoteCloudClient:
         try:
             with urllib.request.urlopen(request, timeout=self.timeout_sec) as response:
                 raw = response.read().decode("utf-8") or "{}"
-                return json.loads(raw)
+                try:
+                    return json.loads(raw)
+                except json.JSONDecodeError as exc:
+                    raise RemoteCloudError(
+                        "malformed_response",
+                        "cloud response was not valid JSON",
+                        retry_hint="contact_support",
+                        cloud_reachable=True,
+                    ) from exc
         except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"cloud HTTP {exc.code}: {body}") from exc
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-            raise RuntimeError(f"cloud request failed: {exc}") from exc
+            if int(exc.code) in (401, 403):
+                raise RemoteCloudError(
+                    "auth_failed",
+                    "cloud authorization failed",
+                    retry_hint="check_auth",
+                    cloud_reachable=True,
+                ) from exc
+            raise RemoteCloudError(
+                "cloud_unreachable",
+                f"cloud service returned HTTP {exc.code}",
+                retry_hint="retry_cloud",
+                cloud_reachable=False,
+            ) from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            raise RemoteCloudError(
+                "cloud_unreachable",
+                "cloud request failed",
+                retry_hint="retry_cloud",
+                cloud_reachable=False,
+            ) from exc

@@ -16,6 +16,26 @@ REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 REMOTE_STATUS_STALE_AFTER_SEC = 90.0
 REMOTE_PERSISTENCE_SCHEMA = "trashbot.mock_cloud_store.v1"
 ELEVATOR_ASSIST_SPEAKER_PROMPT = "你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,"
+# mock cloud 不是生产账号系统，但 token gate 能提前固定手机/小车的鉴权契约。
+REMOTE_AUTH_ENV_KEYS = ("TRASHBOT_MOCK_CLOUD_BEARER_TOKEN", "OPERATOR_GATEWAY_BEARER_TOKEN")
+# retry_hint 只面向手机 UI，避免让普通用户看到 HTTP、ROS 或硬件内部细节。
+REMOTE_RETRY_HINTS = {
+    "ok",
+    "wait_for_robot_status",
+    "wait_for_command_ack",
+    "check_auth",
+    "retry_cloud",
+    "contact_support",
+}
+# safe_phone_copy 是正式手机端可直接展示的中文文案，不能包含 raw JSON 或凭证。
+REMOTE_DEGRADATION_COPY = {
+    "ok": "手机远程控制通道可用，可以继续操作。",
+    "status_stale": "正在等待小车上报最新状态，请稍后再试。",
+    "command_pending": "指令已提交，正在等待小车确认。",
+    "auth_failed": "手机登录已失效，请重新登录或检查访问凭证。",
+    "cloud_unreachable": "远程控制通道暂不可用，请稍后重试。",
+    "malformed_response": "远程控制返回异常，请联系支持人员。",
+}
 
 ELEVATOR_ASSIST_PHASES = {
     "approaching_elevator",
@@ -336,6 +356,9 @@ SENSITIVE_REMOTE_KEYS = {
     "topic",
     "cmd_vel",
     "hardware",
+    # URL 里可能带 userinfo 或临时凭证，mock proof 中一律不持久化。
+    "url",
+    "cloud_url",
 }
 
 
@@ -376,10 +399,12 @@ class MockCloudStore:
     或硬件参数，避免把调试入口误当成生产云或硬件证据。
     """
 
-    def __init__(self, state_path=None):
+    def __init__(self, state_path=None, auth_required=False):
         self._lock = threading.Lock()
         self._robots = {}
         self.state_path = os.path.expanduser(str(state_path or "")).strip()
+        # auth_required 只影响 readiness 口径；真正的 header 校验在 HTTP handler 做。
+        self.auth_required = bool(auth_required)
         if self.state_path:
             self._load()
 
@@ -497,24 +522,34 @@ class MockCloudStore:
         last_command_ack = ""
         if latest_ack:
             last_command_ack = str(latest_ack.get("command_id") or "")
+        # command_pending 是手机侧降级态，不等同于任务失败或送达结果。
+        pending_command_count = sum(
+            1
+            for command in robot.get("commands", [])
+            if isinstance(command, dict) and str(command.get("id") or "") not in robot.get("acks", {})
+        )
         retry_hint = "ok"
+        degradation_state = "ok"
+        # readiness 优先保护状态新鲜度；状态过旧时不让手机继续下发主流程。
         if status_stale:
             retry_hint = "wait_for_robot_status"
-        elif not latest_ack and robot.get("commands"):
+            degradation_state = "status_stale"
+        elif pending_command_count:
+            # 有未 ACK 指令时继续等待，避免手机重复发车或误判任务已经开始。
             retry_hint = "wait_for_command_ack"
+            degradation_state = "command_pending"
         return {
             "remote_ready": bool(not status_stale),
             "cloud_reachable": True,
             "last_command_ack": last_command_ack,
             "status_stale": bool(status_stale),
             "retry_hint": retry_hint,
-            "auth_state": "mock_not_required",
+            # 无 token 时保持 mock_not_required，避免把本地 fallback 误说成生产鉴权。
+            "auth_state": "required" if self.auth_required else "mock_not_required",
+            "degradation_state": degradation_state,
+            "safe_phone_copy": REMOTE_DEGRADATION_COPY[degradation_state],
             "status_age_sec": max(0.0, now - status_updated_at) if status_updated_at else None,
-            "pending_command_count": sum(
-                1
-                for command in robot.get("commands", [])
-                if isinstance(command, dict) and str(command.get("id") or "") not in robot.get("acks", {})
-            ),
+            "pending_command_count": pending_command_count,
             "queue_persisted": bool(self.state_path),
             "state_path_configured": bool(self.state_path),
             "proof_schema": REMOTE_PERSISTENCE_SCHEMA if self.state_path else "",
@@ -526,12 +561,21 @@ class MockCloudStore:
             robot = self._robot(robot_id)
             existing = robot["command_index"].get(command["id"])
             if existing:
-                return 200, {"ok": True, "command": dict(existing), "duplicate": True}
+                # 幂等提交仍返回 readiness，手机端可同步刷新当前降级原因。
+                readiness = self._readiness_locked(str(robot_id or "").strip(), robot)
+                return 200, {
+                    "ok": True,
+                    "command": dict(existing),
+                    "duplicate": True,
+                    "remote_readiness": readiness,
+                }
             robot["commands"].append(command)
             robot["command_index"][command["id"]] = command
             self._touch_stats_locked(robot, "command_count")
+            # command 入队后立即计算 readiness，通常会进入 status_stale 或 command_pending。
+            readiness = self._readiness_locked(str(robot_id or "").strip(), robot)
             self._persist_locked()
-        return 201, {"ok": True, "command": dict(command), "duplicate": False}
+        return 201, {"ok": True, "command": dict(command), "duplicate": False, "remote_readiness": readiness}
 
     def next_command(self, robot_id, last_ack_id=""):
         now = time.time()
@@ -1648,6 +1692,88 @@ def _remote_route(path):
     return None
 
 
+def _remote_auth_token(gateway):
+    # 本地 mock cloud 允许用 gateway 属性或环境变量注入 token，避免把凭证写进仓库。
+    for attr in ("mock_cloud_bearer_token", "remote_mock_cloud_bearer_token", "remote_bearer_token"):
+        value = str(getattr(gateway, attr, "") or "").strip()
+        if value:
+            return value
+    for key in REMOTE_AUTH_ENV_KEYS:
+        value = str(os.environ.get(key, "") or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def _remote_auth_header(headers):
+    # 只接受标准 Bearer 格式；错误格式按 auth_failed 处理，不回显原 header。
+    value = str(headers.get("Authorization") or headers.get("authorization") or "").strip()
+    if not value:
+        return ""
+    prefix = "Bearer "
+    if not value.startswith(prefix):
+        return ""
+    return value[len(prefix):].strip()
+
+
+def _remote_readiness_for_auth_failure():
+    # 401 响应也返回 readiness，手机端不用解析底层错误就能给恢复建议。
+    return {
+        "remote_ready": False,
+        "cloud_reachable": True,
+        "last_command_ack": "",
+        "status_stale": True,
+        "retry_hint": "check_auth",
+        "auth_state": "auth_failed",
+        "degradation_state": "auth_failed",
+        "safe_phone_copy": REMOTE_DEGRADATION_COPY["auth_failed"],
+        "status_age_sec": None,
+        "pending_command_count": 0,
+        "queue_persisted": False,
+        "state_path_configured": False,
+        "proof_schema": "",
+    }
+
+
+def _remote_readiness_for_malformed_response():
+    # malformed_response 是 phone-safe 分类，不把异常栈或原始报文暴露给用户。
+    return {
+        "remote_ready": False,
+        "cloud_reachable": True,
+        "last_command_ack": "",
+        "status_stale": True,
+        "retry_hint": "contact_support",
+        "auth_state": "required",
+        "degradation_state": "malformed_response",
+        "safe_phone_copy": REMOTE_DEGRADATION_COPY["malformed_response"],
+        "status_age_sec": None,
+        "pending_command_count": 0,
+        "queue_persisted": False,
+        "state_path_configured": False,
+        "proof_schema": "",
+    }
+
+
+def _with_remote_auth_state(payload, auth_state):
+    # readiness 在成功请求里升级为 authorized；失败请求只给 phone-safe 原因。
+    if not isinstance(payload, dict):
+        return payload
+    for container in (payload, payload.get("status")):
+        if not isinstance(container, dict):
+            continue
+        readiness = container.get("remote_readiness")
+        if not isinstance(readiness, dict):
+            continue
+        readiness["auth_state"] = auth_state
+        if auth_state == "auth_failed":
+            # 失败态统一降级，避免局部字段仍显示可继续操作。
+            readiness["remote_ready"] = False
+            readiness["degradation_state"] = "auth_failed"
+            readiness["retry_hint"] = "check_auth"
+            readiness["safe_phone_copy"] = REMOTE_DEGRADATION_COPY["auth_failed"]
+    return payload
+
+
 def make_handler(gateway):
     mock_cloud = getattr(gateway, "mock_cloud", None)
     if mock_cloud is None:
@@ -1656,7 +1782,7 @@ def make_handler(gateway):
             or getattr(gateway, "remote_mock_cloud_state_path", "")
             or ""
         )
-        mock_cloud = MockCloudStore(state_path=state_path)
+        mock_cloud = MockCloudStore(state_path=state_path, auth_required=bool(_remote_auth_token(gateway)))
         setattr(gateway, "mock_cloud", mock_cloud)
 
     class Handler(BaseHTTPRequestHandler):
@@ -1667,6 +1793,23 @@ def make_handler(gateway):
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
+
+        def _remote_authorized(self):
+            expected_bearer_token = _remote_auth_token(gateway)
+            if hasattr(mock_cloud, "auth_required"):
+                mock_cloud.auth_required = bool(expected_bearer_token)
+            if not expected_bearer_token:
+                return True
+            return _remote_auth_header(self.headers) == expected_bearer_token
+
+        def _send_remote_unauthorized(self):
+            readiness = _remote_readiness_for_auth_failure()
+            payload = remote_error("unauthorized", "remote control authorization failed")
+            payload["remote_readiness"] = readiness
+            self._send_json(401, payload)
+
+        def _remote_auth_state(self):
+            return "authorized" if _remote_auth_token(gateway) else "mock_not_required"
 
         def do_GET(self):
             parsed = urlparse(self.path)
@@ -1691,6 +1834,9 @@ def make_handler(gateway):
                 return
             remote_route = _remote_route(path)
             if remote_route:
+                if not self._remote_authorized():
+                    self._send_remote_unauthorized()
+                    return
                 route_name, robot_id, command_id = remote_route
                 try:
                     if route_name == "commands_next":
@@ -1701,7 +1847,11 @@ def make_handler(gateway):
                         self._send_json(200, payload)
                         return
                     if route_name == "status":
-                        self._send_json(200, mock_cloud.get_status(robot_id))
+                        payload = _with_remote_auth_state(
+                            mock_cloud.get_status(robot_id),
+                            self._remote_auth_state(),
+                        )
+                        self._send_json(200, payload)
                         return
                     if route_name == "ack":
                         status, payload = mock_cloud.get_ack(robot_id, command_id)
@@ -1726,20 +1876,37 @@ def make_handler(gateway):
                 return
             remote_route = _remote_route(path)
             if remote_route:
+                if not self._remote_authorized():
+                    self._send_remote_unauthorized()
+                    return
                 route_name, robot_id, command_id = remote_route
                 try:
                     if route_name == "commands":
                         status, payload = mock_cloud.submit_command(robot_id, body)
+                        payload = _with_remote_auth_state(
+                            payload,
+                            self._remote_auth_state(),
+                        )
                         self._send_json(status, payload)
                         return
                     if route_name == "status":
-                        self._send_json(200, mock_cloud.post_status(robot_id, body))
+                        payload = _with_remote_auth_state(
+                            mock_cloud.post_status(robot_id, body),
+                            self._remote_auth_state(),
+                        )
+                        self._send_json(200, payload)
                         return
                     if route_name == "ack":
-                        self._send_json(200, mock_cloud.post_ack(robot_id, command_id, body))
+                        payload = _with_remote_auth_state(
+                            mock_cloud.post_ack(robot_id, command_id, body),
+                            self._remote_auth_state(),
+                        )
+                        self._send_json(200, payload)
                         return
                 except ValueError as exc:
-                    self._send_json(400, remote_error("bad_request", str(exc)))
+                    payload = remote_error("bad_request", str(exc))
+                    payload["remote_readiness"] = _remote_readiness_for_malformed_response()
+                    self._send_json(400, payload)
                     return
             if path == "/api/collect":
                 target = body.get("target") or next(iter(query.get("target", [])), "")

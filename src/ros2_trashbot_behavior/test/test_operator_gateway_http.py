@@ -27,6 +27,7 @@ from ros2_trashbot_behavior.operator_gateway_http import (
 
 class FakeGateway:
     def __init__(self):
+        self.mock_cloud_bearer_token = ""
         self.collect_status = 202
         self.collect_payload = {"state": "loaded_and_ready"}
         self.dropoff_status = 200
@@ -326,9 +327,9 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.server.server_close()
         self.thread.join(timeout=1.0)
 
-    def request(self, method, path, body=None):
+    def request(self, method, path, body=None, headers=None):
         conn = HTTPConnection("127.0.0.1", self.port, timeout=2)
-        headers = {}
+        headers = dict(headers or {})
         data = None
         if body is not None:
             data = json.dumps(body).encode("utf-8") if not isinstance(body, bytes) else body
@@ -338,6 +339,9 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         payload = json.loads(response.read().decode("utf-8"))
         conn.close()
         return response.status, payload
+
+    def auth_request(self, method, path, body=None, token="phone-token"):
+        return self.request(method, path, body, headers={"Authorization": f"Bearer {token}"})
 
     def test_status(self):
         status, payload = self.request("GET", "/api/status")
@@ -734,6 +738,84 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIsNone(payload["command"])
 
+    def test_mock_cloud_bearer_auth_gate_blocks_missing_or_wrong_token(self):
+        self.gateway.mock_cloud_bearer_token = "phone-token"
+
+        status, payload = self.request("GET", "/robots/trashbot-001/status")
+        self.assertEqual(status, 401)
+        self.assertEqual(payload["error"]["code"], "unauthorized")
+        self.assertEqual(payload["remote_readiness"]["auth_state"], "auth_failed")
+        self.assertEqual(payload["remote_readiness"]["degradation_state"], "auth_failed")
+        self.assertEqual(payload["remote_readiness"]["retry_hint"], "check_auth")
+        self.assertIn("手机登录已失效", payload["remote_readiness"]["safe_phone_copy"])
+        self.assertNotIn("phone-token", json.dumps(payload, ensure_ascii=False))
+        self.assertNotIn("Authorization", json.dumps(payload, ensure_ascii=False))
+
+        status, payload = self.request(
+            "POST",
+            "/robots/trashbot-001/commands",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "id": "cmd-auth-blocked",
+                "type": "collect",
+                "expires_at": 4102444800.0,
+                "payload": {"target": "trash_station"},
+            },
+            headers={"Authorization": "Bearer wrong-token"},
+        )
+        self.assertEqual(status, 401)
+        self.assertEqual(payload["remote_readiness"]["auth_state"], "auth_failed")
+
+    def test_mock_cloud_bearer_auth_gate_allows_authorized_phone_flow(self):
+        self.gateway.mock_cloud_bearer_token = "phone-token"
+        command = {
+            "protocol_version": REMOTE_PROTOCOL_VERSION,
+            "id": "cmd-auth-1",
+            "type": "collect",
+            "expires_at": 4102444800.0,
+            "payload": {"target": "trash_station"},
+        }
+
+        status, payload = self.auth_request("POST", "/robots/trashbot-001/commands", command)
+        self.assertEqual(status, 201)
+        self.assertEqual(payload["remote_readiness"]["auth_state"], "authorized")
+        self.assertEqual(payload["remote_readiness"]["degradation_state"], "status_stale")
+        self.assertEqual(payload["remote_readiness"]["retry_hint"], "wait_for_robot_status")
+
+        status, payload = self.auth_request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "delivering",
+                "message": "remote collect command accepted",
+                "updated_at": time.time(),
+                "diagnostics": {"cloud_url": "https://user:secret@example.invalid/control"},
+            },
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["remote_readiness"]["auth_state"], "authorized")
+        self.assertEqual(payload["remote_readiness"]["degradation_state"], "command_pending")
+        self.assertEqual(payload["remote_readiness"]["retry_hint"], "wait_for_command_ack")
+        self.assertNotIn("secret@example", json.dumps(payload, ensure_ascii=False))
+
+        status, payload = self.auth_request(
+            "POST",
+            "/robots/trashbot-001/commands/cmd-auth-1/ack",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "acked",
+                "message": "submitted",
+                "updated_at": time.time(),
+                "result": {"behavior": "submitted", "bearer": "must-not-leak"},
+            },
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["remote_readiness"]["auth_state"], "authorized")
+        self.assertEqual(payload["remote_readiness"]["degradation_state"], "ok")
+        self.assertEqual(payload["remote_readiness"]["safe_phone_copy"], "手机远程控制通道可用，可以继续操作。")
+        self.assertNotIn("must-not-leak", json.dumps(payload, ensure_ascii=False))
+
     def test_mock_cloud_persists_queue_status_ack_without_sensitive_fields(self):
         with tempfile.TemporaryDirectory() as td:
             state_path = Path(td) / "mock_cloud_state.json"
@@ -787,6 +869,8 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             self.assertNotIn("ttyUSB", persisted)
             self.assertNotIn("baudrate", persisted)
             self.assertNotIn("command_index", persisted)
+            self.assertNotIn("Authorization", persisted)
+            self.assertNotIn("https://user:secret@", persisted)
 
             restored = MockCloudStore(state_path=state_path)
             next_payload = restored.next_command("trashbot-001", last_ack_id="")

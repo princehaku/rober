@@ -21,7 +21,11 @@ class MockCloud:
         self.ack_posts = []
         self.auth_headers = []
         self.get_paths = []
+        self.fail_status_count = 0
+        self.fail_get_count = 0
         self.fail_ack_count = 0
+        self.malformed_get_count = 0
+        self.auth_fail_get_count = 0
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), self._make_handler())
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
 
@@ -59,6 +63,23 @@ class MockCloud:
                 if self.path.startswith("/robots/robot-1/commands/next"):
                     cloud.get_paths.append(self.path)
                     cloud.auth_headers.append(self.headers.get("Authorization"))
+                    if cloud.auth_fail_get_count > 0:
+                        cloud.auth_fail_get_count -= 1
+                        self._json(401, {"error": "unauthorized", "Authorization": "Bearer hidden"})
+                        return
+                    if cloud.fail_get_count > 0:
+                        cloud.fail_get_count -= 1
+                        self._json(503, {"error": "temporary command outage"})
+                        return
+                    if cloud.malformed_get_count > 0:
+                        cloud.malformed_get_count -= 1
+                        data = b"{not-json"
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.send_header("Content-Length", str(len(data)))
+                        self.end_headers()
+                        self.wfile.write(data)
+                        return
                     command = cloud.commands.pop(0) if cloud.commands else None
                     self._json(200, {"command": command})
                     return
@@ -67,6 +88,10 @@ class MockCloud:
             def do_POST(self):
                 if self.path == "/robots/robot-1/status":
                     cloud.auth_headers.append(self.headers.get("Authorization"))
+                    if cloud.fail_status_count > 0:
+                        cloud.fail_status_count -= 1
+                        self._json(503, {"error": "temporary status outage"})
+                        return
                     cloud.status_posts.append(self._body())
                     self._json(200, {"ok": True})
                     return
@@ -91,6 +116,7 @@ class FakeOperatorBackend:
     def __init__(self, busy=False):
         self.calls = []
         self.busy = busy
+        self.last_status = {}
 
     def snapshot(self):
         return {"state": "waiting_for_trash", "message": "ready"}
@@ -325,6 +351,65 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertNotIn("token", json.dumps(payload).lower())
             self.assertNotIn("secret", json.dumps(payload).lower())
 
+    def test_status_cloud_outage_does_not_poll_command_or_advance_cursor(self):
+        self.cloud.commands.append({
+            "id": "cmd-outage",
+            "type": "collect",
+            "payload": {"target": "trash_station"},
+        })
+        self.cloud.fail_status_count = 1
+
+        handled = self.worker.poll_once()
+
+        self.assertFalse(handled)
+        self.assertEqual(self.backend.calls, [])
+        self.assertEqual(self.cloud.ack_posts, [])
+        self.assertEqual(self.worker.last_ack_id, "")
+        self.assertEqual(self.cloud.get_paths, [])
+        self.assertEqual(self.backend.last_status["degradation_state"], "cloud_unreachable")
+        self.assertEqual(self.backend.last_status["retry_hint"], "retry_cloud")
+        self.assertFalse(self.backend.last_status["remote_ready"])
+
+    def test_auth_failed_get_posts_phone_safe_status_without_cursor_advance(self):
+        self.cloud.commands.append({
+            "id": "cmd-auth",
+            "type": "collect",
+            "payload": {"target": "trash_station"},
+        })
+        self.cloud.auth_fail_get_count = 1
+
+        handled = self.worker.poll_once()
+
+        self.assertFalse(handled)
+        self.assertEqual(self.backend.calls, [])
+        self.assertEqual(self.cloud.ack_posts, [])
+        self.assertEqual(self.worker.last_ack_id, "")
+        self.assertEqual(self.backend.last_status["auth_state"], "auth_failed")
+        self.assertEqual(self.backend.last_status["degradation_state"], "auth_failed")
+        self.assertEqual(self.backend.last_status["retry_hint"], "check_auth")
+        self.assertNotIn("Authorization", json.dumps(self.backend.last_status))
+        self.assertNotIn("Bearer", json.dumps(self.backend.last_status))
+        self.assertEqual(self.cloud.status_posts[-1]["degradation_state"], "auth_failed")
+
+    def test_malformed_cloud_response_does_not_start_action_or_advance_cursor(self):
+        self.cloud.commands.append({
+            "id": "cmd-malformed",
+            "type": "collect",
+            "payload": {"target": "trash_station"},
+        })
+        self.cloud.malformed_get_count = 1
+
+        handled = self.worker.poll_once()
+
+        self.assertFalse(handled)
+        self.assertEqual(self.backend.calls, [])
+        self.assertEqual(self.cloud.ack_posts, [])
+        self.assertEqual(self.worker.last_ack_id, "")
+        self.assertEqual(self.backend.last_status["degradation_state"], "malformed_response")
+        self.assertEqual(self.backend.last_status["retry_hint"], "contact_support")
+        self.assertTrue(self.backend.last_status["cloud_reachable"])
+        self.assertNotIn("/cmd_vel", json.dumps(self.backend.last_status))
+
     def test_ack_failure_does_not_persist_cursor_state(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
@@ -341,11 +426,11 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             })
             self.cloud.fail_ack_count = 1
 
-            with self.assertRaises(RuntimeError):
-                worker.poll_once()
+            self.assertTrue(worker.poll_once())
 
             self.assertFalse(state_path.exists())
             self.assertEqual(worker.last_ack_id, "")
+            self.assertEqual(worker.operator_backend.last_status["degradation_state"], "cloud_unreachable")
 
     def test_unreadable_cursor_state_fails_explainably(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -369,8 +454,7 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.cloud.commands.append(command)
         self.cloud.fail_ack_count = 1
 
-        with self.assertRaises(RuntimeError):
-            self.worker.poll_once()
+        self.assertTrue(self.worker.poll_once())
 
         self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
         self.assertEqual(self.worker.command_results["cmd-ack-retry"]["state"], "acked")

@@ -246,9 +246,11 @@ The optional `remote_bridge` node is the formal 4G-oriented remote MVP path. It 
 | `enabled` | `false` | Runtime guard; launch also keeps the node off by default. |
 | `cloud_base_url` | empty | Base URL for a mock or future cloud service. |
 | `robot_id` | `trashbot-001` | Robot identity included in status and ack payloads. |
-| `auth_token` | empty | Optional bearer token. |
+| `auth_token` | empty | Optional bearer token. When configured, robot-originated cloud requests use bearer auth; token values must never appear in status, diagnostics, ACK messages, or cursor state. |
 | `poll_interval_sec` | `2.0` | Periodic command polling interval. |
 | `request_timeout_sec` | `5.0` | HTTP request timeout. |
+| `cursor_state_path` | empty | Optional file for persisted `last_terminal_ack_id`. It stores cursor metadata only and must not store bearer tokens, command payloads, serial devices, hardware parameters, or ROS topic names. |
+| `last_ack_id` | empty | Launch-time fallback cursor used only when no valid `cursor_state_path` state is loaded. Treated as an opaque cloud cursor, not a sortable command id. |
 
 | Direction | Endpoint | Contract |
 | --- | --- | --- |
@@ -258,6 +260,35 @@ The optional `remote_bridge` node is the formal 4G-oriented remote MVP path. It 
 
 Allowed remote commands are `collect`, `confirm_dropoff`, and `cancel`. The bridge only calls behavior-layer ROS contracts and never exposes direct base velocity control.
 For `collect`, `acked` means the command was accepted/submitted locally; final delivery success or failure is reported through later status payloads.
+
+#### Remote readiness fields
+
+`operator_gateway` local/mock cloud status and `remote_bridge` degraded status use
+the same phone-safe readiness shape. These fields are a control-plane contract;
+they are not hardware, Nav2, fixed-route, or delivery success evidence.
+
+| Field | Contract |
+| --- | --- |
+| `remote_ready` | `true` only when the local/mock control-plane is healthy enough for the next phone step. It does not prove real cloud, 4G, HIL, or trash delivery. |
+| `cloud_reachable` | Whether the configured cloud/mock endpoint is reachable for the current operation. |
+| `auth_state` | One of the phone-safe auth states used by the current implementation, including `mock_not_required`, `required`, `authorized`, and `auth_failed`. |
+| `degradation_state` | One of the phone-safe degradation states used by the current implementation, including `ok`, `status_stale`, `command_pending`, `auth_failed`, `cloud_unreachable`, and `malformed_response`. |
+| `retry_hint` | Phone/operator recovery hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `check_auth`, `retry_cloud`, or `contact_support`. |
+| `safe_phone_copy` | Plain-language copy suitable for phone UI. It must not contain raw JSON, raw exceptions, bearer tokens, Authorization headers, `/cmd_vel`, ROS topic names, serial devices, baudrate, WAVE ROVER parameters, or cloud URLs with credentials. |
+
+#### Failure and cursor contract
+
+| Condition | Required behavior |
+| --- | --- |
+| Cloud unreachable while posting status or polling command | Publish or retain degraded status, do not execute a new local action from untrusted data, do not advance or persist terminal cursor. |
+| HTTP 401/403 auth failure | Map to `auth_state=auth_failed`, `degradation_state=auth_failed`, and a phone-safe retry hint. Do not leak tokens or raw headers. |
+| Malformed command/status/ACK response | Map to `degradation_state=malformed_response`; do not submit a local action goal, do not advance cursor, and do not fabricate successful ACK. |
+| Terminal ACK post failure | Keep the local command result available for retry, but do not update `last_terminal_ack_id` in memory or in `cursor_state_path`. |
+| Terminal ACK post success | Only then may the bridge advance `last_terminal_ack_id` and atomically persist cursor state. |
+
+ACK remains a command-envelope processing state. It is never a delivery result
+and must not be used to claim Nav2/fixed-route success, WAVE ROVER movement, or
+HIL pass.
 
 | Type | Payload | Local action |
 | --- | --- | --- |
