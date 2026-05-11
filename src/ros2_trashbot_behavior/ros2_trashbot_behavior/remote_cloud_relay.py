@@ -14,6 +14,8 @@ STORE_SCHEMA = "trashbot.remote_cloud_relay_store.v1"
 COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 TERMINAL_ACK_STATES = {"acked", "failed", "ignored"}
 STATUS_STALE_AFTER_SEC = 90.0
+PREFLIGHT_EVIDENCE_BOUNDARY = "software_proof_docker_preflight_gate"
+DEPLOY_EVIDENCE_BOUNDARY = "software_proof_docker_deploy"
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -24,6 +26,7 @@ PHONE_COPY = {
     "status_missing": "小车尚未上报状态，请等待小车联网后再试。",
     "status_stale": "小车状态已过期，请等待小车重新联网或检查网络。",
     "malformed_json": "请求格式异常，请检查客户端版本后重试。",
+    "preflight_blocked": "云端上线前检查未通过，请先补齐生产入口、凭证和存储配置。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -53,10 +56,18 @@ SENSITIVE_TEXT = (
     "token",
     "secret",
     "password",
+    "oss secret",
+    "root password",
     "://",
+    "/dev/",
     "/cmd_vel",
     "cmd_vel",
+    "serial_port",
     "ttyusb",
+    "ttyacm",
+    "/odom",
+    "/imu",
+    "/battery",
     "baudrate",
     "wave rover",
     "ros topic",
@@ -126,6 +137,271 @@ def _phone_safe_failure_ready():
     encoded = json.dumps(sample, ensure_ascii=False)
     forbidden = ("Bearer", "token", "/cmd_vel", "ttyUSB", "baudrate", "https://secret")
     return not any(marker in encoded for marker in forbidden)
+
+
+def _env_value(env, key, default=""):
+    return str(env.get(key, default) or "").strip()
+
+
+def _is_placeholder(value):
+    # 占位符可能来自 .env.example、compose 默认值或本地 smoke；统一按未生产化处理。
+    text = str(value or "").strip().lower()
+    if not text:
+        return True
+    markers = (
+        "replace",
+        "placeholder",
+        "example",
+        "changeme",
+        "change-me",
+        "dev-",
+        "local-",
+        "dummy",
+        "<",
+        ">",
+        "future_",
+    )
+    return any(marker in text for marker in markers)
+
+
+def _status_rank(status):
+    # overall 取最严重状态，避免 warning/blocked 被后续 pass 覆盖。
+    return {"pass": 0, "warning": 1, "blocked": 2}.get(status, 2)
+
+
+def _check(name, status, code, safe_summary, retry_hint, details=None):
+    # 每条检查都保持 phone-safe，机器可读字段和用户提示分离。
+    return {
+        "name": name,
+        "status": status,
+        "code": code,
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "details": safe_value(details if isinstance(details, dict) else {}),
+    }
+
+
+def _safe_scheme(value):
+    parsed = urlparse(str(value or ""))
+    return parsed.scheme.lower() if parsed.scheme else "missing"
+
+
+def _safe_enum(value, allowed, default="invalid_or_unsupported"):
+    # preflight 的 details 面向手机和运维，枚举值只能来自白名单，不能回显任意 env 字符串。
+    text = str(value or "").strip()
+    return text if text in allowed else default
+
+
+def production_preflight_payload(env=None):
+    """生成生产上线前 gate 结果；只证明 Docker/local 配置检查，不触碰真实云资源。"""
+    env = os.environ if env is None else env
+    checks = []
+    token = _env_value(env, "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN")
+    public_base_url = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL")
+    tls_mode = _env_value(env, "TRASHBOT_REMOTE_CLOUD_TLS_MODE", "future_reverse_proxy")
+    ingress_mode = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS", "missing")
+    oss_bucket = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_BUCKET")
+    oss_region = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_REGION")
+    oss_prefix = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_PREFIX")
+    cdn_base_url = _env_value(env, "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL")
+    oss_credential_mode = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE", "placeholder")
+    state_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_STATE")
+    state_backend = _env_value(env, "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND", "file")
+    tls_mode_safe = _safe_enum(tls_mode, {"future_reverse_proxy", "terminated", "managed", "reverse_proxy"})
+    ingress_mode_safe = _safe_enum(ingress_mode, {"missing", "private_only", "public_https"})
+    oss_credential_mode_safe = _safe_enum(oss_credential_mode, {"placeholder", "sts", "restricted_ak", "managed_identity"})
+    state_backend_safe = _safe_enum(state_backend, {"file", "postgres", "mysql", "managed_queue", "production_db"}, "file")
+
+    if _is_placeholder(token):
+        checks.append(
+            _check(
+                "credential_provisioning",
+                "blocked",
+                "missing_or_placeholder_credential",
+                "远程控制访问凭证仍是缺失或占位值。",
+                "通过安全环境变量注入生产访问凭证，并完成轮换预案。",
+                {"token_present": bool(token), "token_is_placeholder": True},
+            )
+        )
+    else:
+        checks.append(
+            _check(
+                "credential_provisioning",
+                "pass",
+                "credential_injected",
+                "远程控制访问凭证已通过环境变量注入。",
+                "继续确认生产密钥托管和 rotate 流程。",
+                {"token_present": True, "token_is_placeholder": False},
+            )
+        )
+
+    public_scheme = _safe_scheme(public_base_url)
+    if public_scheme != "https" or _is_placeholder(public_base_url):
+        checks.append(
+            _check(
+                "tls_public_ingress",
+                "blocked",
+                "https_public_ingress_missing",
+                "当前不是生产 HTTPS 公网入口，Docker/local HTTP 只能作为软件 proof。",
+                "配置公网域名、TLS 证书、反向代理和防火墙后重跑 preflight。",
+                {
+                    "public_base_url_scheme": public_scheme,
+                    "tls_mode": tls_mode_safe,
+                    "public_ingress": ingress_mode_safe,
+                    "docker_local_only": True,
+                },
+            )
+        )
+    else:
+        tls_ready = tls_mode_safe in {"terminated", "managed", "reverse_proxy"} and ingress_mode_safe == "public_https"
+        checks.append(
+            _check(
+                "tls_public_ingress",
+                "pass" if tls_ready else "warning",
+                "https_config_present" if tls_ready else "https_declared_but_unverified",
+                "已声明 HTTPS 公网入口配置，但本 gate 不发起真实公网探测。",
+                "用云端证书、防火墙和外网 curl 证据补齐生产验收。",
+                {
+                    "public_base_url_scheme": public_scheme,
+                    "tls_mode": tls_mode_safe,
+                    "public_ingress": ingress_mode_safe,
+                    "public_probe_performed": False,
+                },
+            )
+        )
+
+    oss_placeholder = any(_is_placeholder(value) for value in (oss_bucket, oss_region, oss_prefix, cdn_base_url))
+    cdn_https = _safe_scheme(cdn_base_url) == "https"
+    credential_ready = oss_credential_mode_safe in {"sts", "restricted_ak", "managed_identity"}
+    if oss_placeholder or not cdn_https or not credential_ready:
+        checks.append(
+            _check(
+                "oss_cdn",
+                "blocked",
+                "oss_cdn_not_production_ready",
+                "OSS/CDN 仍缺少可上线配置或受限凭证模式，未声明真实对象上传成功。",
+                "配置 bucket/region/prefix、HTTPS CDN 和 STS/受限 AK 后重跑。",
+                {
+                    "bucket_configured": bool(oss_bucket) and not _is_placeholder(oss_bucket),
+                    "region_configured": bool(oss_region) and not _is_placeholder(oss_region),
+                    "prefix_configured": bool(oss_prefix) and not _is_placeholder(oss_prefix),
+                    "cdn_scheme": _safe_scheme(cdn_base_url),
+                    "credential_mode": oss_credential_mode_safe,
+                    "object_upload_probe_performed": False,
+                },
+            )
+        )
+    else:
+        checks.append(
+            _check(
+                "oss_cdn",
+                "warning",
+                "oss_cdn_config_present_but_unverified",
+                "OSS/CDN 配置形态已齐，但本 gate 未进行真实上传或 CDN 回源验证。",
+                "补充 STS 签发、对象上传、CDN 访问和生命周期证据。",
+                {
+                    "bucket_configured": True,
+                    "region_configured": True,
+                    "prefix_configured": True,
+                    "cdn_scheme": "https",
+                    "credential_mode": oss_credential_mode_safe,
+                    "object_upload_probe_performed": False,
+                },
+            )
+        )
+
+    store = FileBackedRelayStore(state_path)
+    state_writable = store.state_store_writable()
+    if not state_writable:
+        checks.append(
+            _check(
+                "state_store",
+                "blocked",
+                "state_store_not_writable",
+                "relay proof state store 不可写，无法证明 command/status/ack 可恢复。",
+                "修正容器挂载或 state path 权限后重跑。",
+                {"backend": state_backend_safe, "writable": False},
+            )
+        )
+    elif state_backend_safe not in {"postgres", "mysql", "managed_queue", "production_db"}:
+        checks.append(
+            _check(
+                "state_store",
+                "warning",
+                "file_backed_store_only",
+                "本轮只证明 file-backed store 可写，不等于生产 DB/队列。",
+                "接入生产数据库或队列，并补充备份、并发和灾备证据。",
+                {"backend": state_backend_safe, "writable": True, "production_durable": False},
+            )
+        )
+    else:
+        checks.append(
+            _check(
+                "state_store",
+                "warning",
+                "production_store_declared_but_unverified",
+                "已声明生产 state backend，但本 gate 未连接真实 DB/队列。",
+                "用生产连接探测、迁移和恢复演练证据补齐验收。",
+                {"backend": state_backend_safe, "writable": True, "production_probe_performed": False},
+            )
+        )
+
+    if _phone_safe_failure_ready():
+        checks.append(
+            _check(
+                "phone_safe_output",
+                "pass",
+                "redaction_self_check_passed",
+                "错误和 preflight 输出已通过敏感字段脱敏自检。",
+                "后续新增字段时继续保持 phone-safe 自检。",
+            )
+        )
+    else:
+        checks.append(
+            _check(
+                "phone_safe_output",
+                "blocked",
+                "redaction_self_check_failed",
+                "错误输出脱敏自检失败，不能展示给手机用户。",
+                "先修复敏感字段过滤，再继续上线前检查。",
+            )
+        )
+
+    overall = max((check["status"] for check in checks), key=_status_rank)
+    production_ready = overall == "pass"
+    retry_hint = "ready_for_external_production_probe" if production_ready else "fix_blocked_preflight_items"
+    safe_summary = (
+        "生产上线前配置 gate 通过，可进入外网/TLS/OSS/DB 实证。"
+        if production_ready
+        else "当前仅为 Docker/local 软件 proof，仍缺生产云、TLS、公网、OSS/CDN 或生产 state 证据。"
+    )
+    payload = {
+        "ok": production_ready,
+        "production_ready": production_ready,
+        "service": "remote_cloud_relay",
+        "protocol_version": PROTOCOL_VERSION,
+        "evidence_boundary": PREFLIGHT_EVIDENCE_BOUNDARY,
+        "overall_status": overall,
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "checks": checks,
+        "blocked_count": sum(1 for check in checks if check["status"] == "blocked"),
+        "warning_count": sum(1 for check in checks if check["status"] == "warning"),
+        "not_proven": [
+            "real_cloud",
+            "real_4g",
+            "external_tls",
+            "public_ingress",
+            "oss_upload",
+            "cdn_origin",
+            "production_db_or_queue",
+            "nav2_or_fixed_route",
+            "wave_rover_hil",
+        ],
+    }
+    if not production_ready:
+        payload["error"] = phone_error("preflight_blocked", "production preflight is not ready")["error"]
+    return safe_value(payload)
 
 
 def _timestamp(value, field_name):
@@ -425,7 +701,7 @@ def readiness_payload(store, expected_token):
         "ok": ready,
         "service": "remote_cloud_relay",
         "protocol_version": PROTOCOL_VERSION,
-        "evidence_boundary": "software_proof_docker_deploy",
+        "evidence_boundary": DEPLOY_EVIDENCE_BOUNDARY,
         "checks": checks,
         "safe_phone_copy": "云端中转服务已就绪。" if ready else PHONE_COPY["not_ready"],
     }
@@ -512,13 +788,18 @@ def make_handler(store, bearer_token):
                         "ok": True,
                         "service": "remote_cloud_relay",
                         "protocol_version": PROTOCOL_VERSION,
-                        "evidence_boundary": "software_proof_docker_deploy",
+                        "evidence_boundary": DEPLOY_EVIDENCE_BOUNDARY,
                     },
                 )
                 return
             if parsed.path == "/readyz":
                 status_code, payload = readiness_payload(store, expected_token)
                 self._send_json(status_code, payload)
+                return
+            if parsed.path == "/preflightz":
+                # preflightz 是旁路 gate，不需要读取或修改 command/status/ack 主路径。
+                payload = production_preflight_payload()
+                self._send_json(200 if payload.get("production_ready") else 503, payload)
                 return
             route = _route(parsed.path)
             if not route:
@@ -598,7 +879,17 @@ def main(argv=None):
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_STATE", "remote_cloud_relay_state.json"),
     )
     parser.add_argument("--bearer-token", default=os.environ.get("TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN", ""))
+    parser.add_argument(
+        "--preflight",
+        action="store_true",
+        help="run production preflight gate as machine-readable JSON and exit",
+    )
     args = parser.parse_args(argv)
+    if args.preflight:
+        # CLI gate 用当前进程 env 评估 Docker/local production readiness，不启动 HTTP server。
+        payload = production_preflight_payload()
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("production_ready") else 2
     server = build_server(args.host, args.port, args.state_path, args.bearer_token)
     try:
         server.serve_forever()
@@ -607,4 +898,4 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -14,8 +14,10 @@ sys.path.insert(0, str(REPO_ROOT / "ros2_trashbot_behavior"))
 
 from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     FileBackedRelayStore,
+    PREFLIGHT_EVIDENCE_BOUNDARY,
     PROTOCOL_VERSION,
     build_server,
+    production_preflight_payload,
 )
 
 
@@ -146,6 +148,19 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertTrue(payload["checks"]["phone_safe_failure"])
 
         encoded = json.dumps(payload, ensure_ascii=False)
+        for forbidden in ("phone-token", "Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_preflight_endpoint_blocks_local_placeholders_without_leaks(self):
+        status, payload = self.client.request("GET", "/preflightz", token="")
+        encoded = json.dumps(payload, ensure_ascii=False)
+
+        self.assertEqual(status, 503)
+        self.assertFalse(payload["production_ready"])
+        self.assertEqual(payload["evidence_boundary"], PREFLIGHT_EVIDENCE_BOUNDARY)
+        self.assertGreaterEqual(payload["blocked_count"], 1)
+        self.assertIn("Docker/local 软件 proof", payload["safe_summary"])
+        self.assertIn("real_cloud", payload["not_proven"])
         for forbidden in ("phone-token", "Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate"):
             self.assertNotIn(forbidden, encoded)
 
@@ -307,6 +322,115 @@ class RemoteCloudRelayStoreTest(unittest.TestCase):
             self.assertEqual(status, 200)
             self.assertEqual(ack_payload["ack"]["state"], "failed")
             self.assertIsNone(restored.next_command("trashbot-001", "")["command"])
+
+
+class RemoteCloudRelayPreflightTest(unittest.TestCase):
+    def test_preflight_reports_local_http_secret_oss_and_file_store_boundary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "replace-with-local-dev-token",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "http://127.0.0.1:8088",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "future_reverse_proxy",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "missing",
+                "TRASHBOT_REMOTE_CLOUD_OSS_BUCKET": "bytegallop",
+                "TRASHBOT_REMOTE_CLOUD_OSS_REGION": "oss-cn-hangzhou",
+                "TRASHBOT_REMOTE_CLOUD_OSS_PREFIX": "rober/<robot_id>/<date>/<task_id>/",
+                "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL": "https://cdn.bytegallop.com/rober/",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE": "placeholder",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(pathlib.Path(tmp) / "relay_state.json"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "file",
+            }
+
+            payload = production_preflight_payload(env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps(payload, ensure_ascii=False)
+
+            self.assertFalse(payload["production_ready"])
+            self.assertEqual(payload["overall_status"], "blocked")
+            self.assertEqual(payload["evidence_boundary"], PREFLIGHT_EVIDENCE_BOUNDARY)
+            self.assertEqual(checks["credential_provisioning"]["status"], "blocked")
+            self.assertEqual(checks["tls_public_ingress"]["status"], "blocked")
+            self.assertEqual(checks["oss_cdn"]["status"], "blocked")
+            self.assertEqual(checks["state_store"]["status"], "warning")
+            self.assertEqual(checks["phone_safe_output"]["status"], "pass")
+            self.assertIn("software_proof_docker_preflight_gate", encoded)
+            for forbidden in (
+                "replace-with-local-dev-token",
+                "Authorization",
+                "Bearer",
+                "/cmd_vel",
+                "ttyUSB",
+                "baudrate",
+                "WAVE ROVER",
+                "ros topic",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_preflight_redacts_env_derived_hardware_and_ros_markers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "production-token-value",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "terminated /dev/ttyACM0 serial_port=/dev/cu.usbserial /odom",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https /imu/data /battery /trashbot/collect_trash",
+                "TRASHBOT_REMOTE_CLOUD_OSS_BUCKET": "bytegallop",
+                "TRASHBOT_REMOTE_CLOUD_OSS_REGION": "oss-cn-hangzhou",
+                "TRASHBOT_REMOTE_CLOUD_OSS_PREFIX": "rober/prod/date/task/",
+                "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL": "https://cdn.bytegallop.com/rober/",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE": "sts /cmd_vel baudrate WAVE ROVER Authorization",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(pathlib.Path(tmp) / "relay_state.json"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "postgres Bearer token root password OSS secret",
+            }
+
+            payload = production_preflight_payload(env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps(payload, ensure_ascii=False)
+
+            # env-derived detail 字段必须降级为白名单枚举，不能把硬件/ROS/凭证片段透传给手机。
+            self.assertEqual(checks["tls_public_ingress"]["details"]["tls_mode"], "invalid_or_unsupported")
+            self.assertEqual(checks["tls_public_ingress"]["details"]["public_ingress"], "invalid_or_unsupported")
+            self.assertEqual(checks["oss_cdn"]["details"]["credential_mode"], "invalid_or_unsupported")
+            self.assertEqual(checks["state_store"]["details"]["backend"], "file")
+            for forbidden in (
+                "/dev/ttyACM0",
+                "/dev/cu.usbserial",
+                "serial_port",
+                "/odom",
+                "/imu/data",
+                "/battery",
+                "/trashbot/collect_trash",
+                "/cmd_vel",
+                "baudrate",
+                "WAVE ROVER",
+                "Authorization",
+                "Bearer",
+                "token",
+                "root password",
+                "OSS secret",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_preflight_blocks_unwritable_state_store(self):
+        env = {
+            "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "production-token-value",
+            "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+            "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "terminated",
+            "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https",
+            "TRASHBOT_REMOTE_CLOUD_OSS_BUCKET": "bytegallop",
+            "TRASHBOT_REMOTE_CLOUD_OSS_REGION": "oss-cn-hangzhou",
+            "TRASHBOT_REMOTE_CLOUD_OSS_PREFIX": "rober/prod/date/task/",
+            "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL": "https://cdn.bytegallop.com/rober/",
+            "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE": "sts",
+            "TRASHBOT_REMOTE_CLOUD_STATE": "/dev/null/relay_state.json",
+            "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "file",
+        }
+
+        payload = production_preflight_payload(env)
+        checks = {check["name"]: check for check in payload["checks"]}
+
+        self.assertFalse(payload["production_ready"])
+        self.assertEqual(checks["state_store"]["status"], "blocked")
+        self.assertEqual(checks["state_store"]["code"], "state_store_not_writable")
 
 
 if __name__ == "__main__":

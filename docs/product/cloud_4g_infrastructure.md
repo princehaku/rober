@@ -4,7 +4,9 @@
 
 O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过 4G 主动 outbound polling 云端控制面。云端只承载轻量 JSON command/status/ack，不承载图片大对象，不暴露底层机器人控制入口，也不要求手机和小车处于同一 WiFi。
 
-本轮 `2026.05.12_06-07_remote-cloud-entry-docker-deploy` 将 independent relay 从 local Python proof 推进到 `software_proof_docker_deploy`：`remote_cloud_relay.py` 可通过专用 Dockerfile 和 compose service 启动，使用 env 注入 host/port/state path/bearer token，并提供 `/healthz` 与 `/readyz`。该 proof 不等于真实云、真实 4G、HTTPS/TLS、OSS/CDN、Nav2/fixed-route、WAVE ROVER 或 HIL。
+`2026.05.12_06-07_remote-cloud-entry-docker-deploy` 将 independent relay 从 local Python proof 推进到 `software_proof_docker_deploy`：`remote_cloud_relay.py` 可通过专用 Dockerfile 和 compose service 启动，使用 env 注入 host/port/state path/bearer token，并提供 `/healthz` 与 `/readyz`。
+
+本轮 `2026.05.12_07-08_remote-cloud-production-preflight` 在同一 relay 上新增 production preflight gate，证据边界是 `software_proof_docker_preflight_gate`。Gate 只做 Docker/local 可执行的上线前配置检查：凭证注入、HTTPS/公网入口、OSS/CDN、state store 和 phone-safe 输出。它会把本地 HTTP、缺真实 TLS、缺公网入口、OSS/CDN 占位、file-backed store 和生产 DB/队列缺失标成 blocked 或 warning，不等于真实云、真实 4G、OSS/CDN 实流量、Nav2/fixed-route、WAVE ROVER 或 HIL。
 
 ## 云端基线规格
 
@@ -17,6 +19,13 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 - 数据面：大对象走 OSS/CDN，云中转节点不做图片和视频大流量中转。
 
 本轮 proof 仅在本机 HTTP 中验证控制面语义，没有申请域名、没有配置 TLS 证书、没有开放公网入口，也没有做云主机防火墙实配。
+
+Production preflight 要求新增环境变量：
+
+- `TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL`：生产公网入口，必须是 HTTPS；本地 HTTP 会保持 blocked。
+- `TRASHBOT_REMOTE_CLOUD_TLS_MODE`：生产 TLS 终止方式，当前 Docker 默认 `future_reverse_proxy` 只代表未完成。
+- `TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS`：公网入口状态，生产期应明确为 `public_https` 并另附外网探测证据。
+- `TRASHBOT_REMOTE_CLOUD_STATE_BACKEND`：`file` 只代表 Docker proof，生产需要数据库或队列证据。
 
 ## 网络方向
 
@@ -76,6 +85,8 @@ phone diagnostics -> CDN or cloud API references
 
 本轮没有实现 OSS 上传、STS 签发、CDN 回源、图片生命周期回收或真实凭证 rotate。
 
+Production preflight 会检查 OSS/CDN 配置形态，但不会真实上传对象或探测 CDN 回源。`TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE` 只有 `sts`、`restricted_ak` 或 `managed_identity` 才可进入后续外部实证；`.env.example` 中的 `placeholder` 必须保持 blocked。即使 bucket、region、prefix 和 CDN URL 均配置齐全，缺真实上传、回源、生命周期和 rotate 证据时仍只能是 warning。
+
 ## 凭证边界
 
 服务端、CI 和上车机器人均通过环境变量或安全配置注入凭证：
@@ -87,6 +98,7 @@ phone diagnostics -> CDN or cloud API references
 - `.env` 不入仓库；`.env.example` 只能放占位符。
 - 错误响应和 state file 不得包含 bearer token、Authorization header、credential-bearing URL、串口设备、baudrate、WAVE ROVER 参数、底层速度控制入口或 raw ROS topic 名。
 - token rotate、账号分级、机器人 provisioning 和审计日志是后续真实云 sprint 的范围。
+- Production preflight 输出不得包含 bearer token、Authorization header、OSS secret、root password、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；输出只保留 `safe_summary`、`retry_hint`、check code 和布尔/枚举化细节。
 
 ## 本轮 Docker Deploy Proof
 
@@ -116,6 +128,19 @@ health/readiness：
 
 - `GET /healthz`：只证明进程存活、service 名称、protocol version 和 `software_proof_docker_deploy` evidence boundary。
 - `GET /readyz`：覆盖 protocol/version、credential gate 是否配置、state store 是否可写、phone-safe failure 脱敏自检。未配置 bearer token 或 state store 不可写时返回 503 和 `not_ready`，不回显 token、state path、credential URL、串口、baudrate、WAVE ROVER 参数、ROS topic、`/cmd_vel` 或 traceback。
+- `GET /preflightz`：返回 production preflight gate 的 machine-readable JSON，evidence boundary 为 `software_proof_docker_preflight_gate`。本地 HTTP、占位 token、缺 TLS/公网入口、OSS/CDN 占位、file-backed store 或 state path 不可写会返回 503，并用 phone-safe `safe_summary` / `retry_hint` 指导下一步。
+
+CLI gate：
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=replace-with-local-dev-token \
+TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL=http://127.0.0.1:8088 \
+TRASHBOT_REMOTE_CLOUD_STATE=/tmp/trashbot_remote_cloud_relay.json \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay --preflight
+```
+
+本地占位配置预期返回非 0，并输出 `production_ready=false`、`overall_status=blocked` 和 `evidence_boundary=software_proof_docker_preflight_gate`。这正是上线前 gate 的目标：真实生产入口、TLS、公网、防火墙、OSS/CDN 和生产 state store 未补齐前，不能把 Docker/local proof 包装成生产完成。
 
 proof 边界：
 

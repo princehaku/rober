@@ -13,6 +13,15 @@ export TRASHBOT_REMOTE_CLOUD_PUBLISHED_PORT="${PORT}"
 export TRASHBOT_REMOTE_CLOUD_PORT="${TRASHBOT_REMOTE_CLOUD_PORT:-8088}"
 export TRASHBOT_REMOTE_CLOUD_HOST="${TRASHBOT_REMOTE_CLOUD_HOST:-0.0.0.0}"
 export TRASHBOT_REMOTE_CLOUD_STATE="${TRASHBOT_REMOTE_CLOUD_STATE:-/data/remote_cloud_relay_state.json}"
+export TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL="${TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL:-http://127.0.0.1:${PORT}}"
+export TRASHBOT_REMOTE_CLOUD_TLS_MODE="${TRASHBOT_REMOTE_CLOUD_TLS_MODE:-future_reverse_proxy}"
+export TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS="${TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS:-missing}"
+export TRASHBOT_REMOTE_CLOUD_OSS_BUCKET="${TRASHBOT_REMOTE_CLOUD_OSS_BUCKET:-bytegallop}"
+export TRASHBOT_REMOTE_CLOUD_OSS_REGION="${TRASHBOT_REMOTE_CLOUD_OSS_REGION:-oss-cn-hangzhou}"
+export TRASHBOT_REMOTE_CLOUD_OSS_PREFIX="${TRASHBOT_REMOTE_CLOUD_OSS_PREFIX:-rober/<robot_id>/<date>/<task_id>/}"
+export TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL="${TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL:-https://cdn.bytegallop.com/rober/}"
+export TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE="${TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE:-placeholder}"
+export TRASHBOT_REMOTE_CLOUD_STATE_BACKEND="${TRASHBOT_REMOTE_CLOUD_STATE_BACKEND:-file}"
 
 cleanup() {
   # 保留 docker logs 输出在调用方日志中，最后清理容器避免影响后续 sprint。
@@ -46,6 +55,63 @@ fi
 echo "== healthz =="
 curl -fsS "${BASE_URL}/healthz"
 echo
+
+echo "== production preflight endpoint expects Docker/local blocked =="
+set +e
+PREFLIGHT_HTTP="$(curl -sS -o /tmp/remote_cloud_relay_preflightz.json -w "%{http_code}" "${BASE_URL}/preflightz")"
+set -e
+cat /tmp/remote_cloud_relay_preflightz.json
+echo
+if [ "${PREFLIGHT_HTTP}" != "503" ]; then
+  echo "preflightz unexpectedly returned ${PREFLIGHT_HTTP}" >&2
+  exit 1
+fi
+python3 - /tmp/remote_cloud_relay_preflightz.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+encoded = json.dumps(payload, ensure_ascii=False)
+required = (
+    "software_proof_docker_preflight_gate",
+    "missing_or_placeholder_credential",
+    "https_public_ingress_missing",
+    "oss_cdn_not_production_ready",
+)
+for marker in required:
+    if marker not in encoded:
+        raise SystemExit(f"missing preflight marker: {marker}")
+for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate", "WAVE ROVER"):
+    if forbidden in encoded:
+        raise SystemExit(f"preflight leaked forbidden marker: {forbidden}")
+if payload.get("production_ready"):
+    raise SystemExit("preflight must not pass for Docker/local placeholder config")
+PY
+
+echo "== production preflight CLI with unwritable state expects blocked =="
+set +e
+TRASHBOT_REMOTE_CLOUD_STATE=/dev/null/relay_state.json \
+PYTHONPATH=src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay --preflight >/tmp/remote_cloud_relay_preflight_cli.json
+PREFLIGHT_CLI_STATUS="$?"
+set -e
+cat /tmp/remote_cloud_relay_preflight_cli.json
+echo
+if [ "${PREFLIGHT_CLI_STATUS}" != "2" ]; then
+  echo "preflight CLI unexpectedly returned ${PREFLIGHT_CLI_STATUS}" >&2
+  exit 1
+fi
+python3 - /tmp/remote_cloud_relay_preflight_cli.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+checks = {check["name"]: check for check in payload.get("checks", [])}
+if checks.get("state_store", {}).get("code") != "state_store_not_writable":
+    raise SystemExit("unwritable state store was not reported as blocked")
+if payload.get("evidence_boundary") != "software_proof_docker_preflight_gate":
+    raise SystemExit("wrong evidence boundary")
+PY
 
 echo "== post status =="
 NOW="$(python3 - <<'PY'

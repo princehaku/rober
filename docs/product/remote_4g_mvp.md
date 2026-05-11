@@ -39,6 +39,24 @@ ROS2 topic names to ordinary phone users. The independent relay is still
 HTTPS/TLS, public ingress, real 4G/SIM, OSS/CDN, Nav2/fixed-route, WAVE ROVER,
 or HIL.
 
+The independent relay also has a production preflight gate for deployment
+readiness:
+
+```text
+GET /preflightz
+python3 -m ros2_trashbot_behavior.remote_cloud_relay --preflight
+```
+
+The preflight output is machine-readable JSON with
+`evidence_boundary=software_proof_docker_preflight_gate`, `production_ready`,
+`overall_status`, `safe_summary`, `retry_hint`, and per-check status records.
+It checks secret provisioning, HTTPS/public ingress, OSS/CDN configuration,
+state store writability, and phone-safe redaction. Docker/local HTTP, missing
+or placeholder secrets, missing TLS/public ingress, OSS/CDN placeholders,
+file-backed store, missing production DB/queue, and unwritable state paths must
+remain blocked or warning states. A blocked preflight is not a robot delivery
+failure; it is an上线前配置 gate telling the phone/cloud team what to fix next.
+
 Example local proof launch:
 
 ```bash
@@ -59,6 +77,7 @@ docker compose -f docker-compose.remote-cloud-relay.yml build remote-cloud-relay
 docker compose -f docker-compose.remote-cloud-relay.yml up -d remote-cloud-relay
 curl -fsS http://127.0.0.1:8088/healthz
 curl -fsS http://127.0.0.1:8088/readyz
+curl -fsS http://127.0.0.1:8088/preflightz || true
 ```
 
 For a fenced end-to-end Docker smoke:
@@ -208,6 +227,14 @@ redaction self-check passes. These endpoints are for deployment and future phone
 diagnostics; they must not expose bearer tokens, credential-bearing URLs, serial
 devices, baudrate, WAVE ROVER parameters, ROS topic names, `/cmd_vel`, or raw
 tracebacks.
+
+`/preflightz` is stricter than `/readyz`: it is allowed and expected to fail in
+Docker/local proof when production prerequisites are absent. A phone-safe
+preflight failure should render as cloud setup blocked or not production-ready,
+not as a trash delivery failure, navigation failure, 4G success, OSS upload
+success, or hardware/HIL result. The JSON must not expose bearer tokens,
+Authorization headers, OSS secrets, root passwords, serial devices, baudrate,
+WAVE ROVER parameters, ROS topic names, or `/cmd_vel`.
 
 ## Ack Contract
 
