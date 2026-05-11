@@ -60,6 +60,11 @@ def _read_task_record(path):
 def _task_record_support_fields(task_record_path, latest_state_payload):
     record = _read_task_record(task_record_path)
     latest_state_payload = latest_state_payload if isinstance(latest_state_payload, dict) else {}
+    result_path = str(
+        record.get("result_path")
+        or latest_state_payload.get("result_path", "")
+        or latest_state_payload.get("task_record_path", "")
+    )
     support = {
         "source": _normalize_task_source(
             record.get("source")
@@ -67,12 +72,12 @@ def _task_record_support_fields(task_record_path, latest_state_payload):
             or latest_state_payload.get("task_record_source", "")
         ),
         "evidence_ref": str(
-            record.get("result_path")
-            or record.get("evidence_ref")
+            record.get("evidence_ref")
             or latest_state_payload.get("evidence_ref", "")
+            or result_path
             or latest_state_payload.get("task_record_path", "")
-            or latest_state_payload.get("result_path", "")
         ),
+        "result_path": result_path,
         "failure_code": str(
             record.get("failure_code")
             or latest_state_payload.get("failure_code", "")
@@ -443,7 +448,8 @@ class OperatorGateway(Node):
                 task_record_fields.get("human_intervention_required")
                 or (not bool(result.success))
             )
-            evidence_ref = str(task_record_fields.get("evidence_ref") or result.task_record_path or "")
+            result_path = str(task_record_fields.get("result_path") or result.task_record_path or "")
+            evidence_ref = str(task_record_fields.get("evidence_ref") or result_path or result.task_record_path or "")
             state_transition_history = task_record_fields.get("state_transition_history") or []
             source = _normalize_task_source(task_record_fields.get("source"))
             self._set_status(status_payload(
@@ -455,7 +461,7 @@ class OperatorGateway(Node):
                 source=source,
                 failure_code=failure_code,
                 evidence_ref=evidence_ref,
-                result_path=result.task_record_path,
+                result_path=result_path,
                 human_intervention_required=human_intervention_required,
                 final_state=result.final_state,
                 elevator_assist=elevator_assist,
@@ -470,7 +476,7 @@ class OperatorGateway(Node):
                     "failure_code": failure_code,
                     "source": source,
                     "evidence_ref": evidence_ref,
-                    "result_path": result.task_record_path,
+                    "result_path": result_path,
                     "human_intervention_required": human_intervention_required,
                     "final_state": result.final_state,
                     "state_transition_history": state_transition_history,

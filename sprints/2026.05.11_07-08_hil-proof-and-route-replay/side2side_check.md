@@ -3,9 +3,17 @@
 ## 状态
 
 - 阶段：side2side check completed
-- 时间：2026-05-11 06:34 Asia/Shanghai
+- 时间：2026-05-11 14:47 Asia/Shanghai
 - Owner：`product-okr-owner`
 - 目的：以 PRD/Tech Plan 验收口径做 run-level 对照收口。
+
+## Completion classification
+
+- Sprint overall：**Blocked**
+- O1（HIL proof）：**Blocked**
+- O3（route replay）：**Partial**
+- O2（consistency replay）：**Partial**
+- 依据：`evidence/run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30/` 下 `battery_once.jsonl`、`imu_once.jsonl`、`odom_once.jsonl`、`feedback_T1001.log` 均为 `status=BLOCKED`，`serial.log` 明确 `/dev/ttyUSB0` 不存在。
 
 ## O1 对照
 

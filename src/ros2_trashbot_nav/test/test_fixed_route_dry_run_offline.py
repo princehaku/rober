@@ -238,6 +238,16 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertIn("target", payload)
             self.assertEqual(payload["checkpoint"], payload["current_index"])
             self.assertEqual(payload["target"], payload["current_target"])
+            self.assertEqual(payload["software_proof"]["type"], "route_replay")
+            self.assertEqual(payload["software_proof"]["artifact_format"], "jsonl")
+            self.assertEqual(
+                payload["software_proof"]["artifact_path"],
+                f"{status_file}.software_proof.route_replay.jsonl",
+            )
+            self.assertEqual(
+                payload["software_proof"]["evidence_ref"],
+                payload["evidence_ref"],
+            )
             self.assertEqual(payload["last_transition"], "running->completed")
             self.assertEqual(payload["current_index"], 1)
             self.assertEqual(payload["last_nav_result"], "dry_run_checkpoint_passed")
@@ -580,6 +590,21 @@ class FixedRouteDryRunOfflineTest(unittest.TestCase):
             self.assertEqual(payload["route_progress"]["checkpoint"], payload["checkpoint"])
             self.assertEqual(payload["route_progress"]["current_index"], payload["current_index"])
             self.assertEqual(payload["route_progress"]["target"], payload["target"])
+            self.assertEqual(payload["software_proof"]["evidence_ref"], str(evidence_file))
+            artifact_path = Path(payload["software_proof"]["artifact_path"])
+            replay_rows = [
+                json.loads(line)
+                for line in artifact_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            self.assertGreaterEqual(len(replay_rows), 1)
+            for row in replay_rows:
+                self.assertEqual(row["evidence_ref"], str(evidence_file))
+                self.assertIn("checkpoint", row)
+                self.assertIn("current_index", row)
+                self.assertIn("target", row)
+                self.assertIn("failure_code", row)
+                self.assertIn("checkpoint_id", row)
 
 
 if __name__ == "__main__":

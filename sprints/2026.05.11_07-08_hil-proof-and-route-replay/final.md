@@ -1,9 +1,24 @@
 # Sprint 2026.05.11 07-08 HIL proof and route replay - Final
 
+## 状态
+
+- 阶段：final completed
+- 时间：2026-05-11 14:47 Asia/Shanghai
+- Owner：`product-okr-owner`
+- 范围：仅收口当前 sprint 既有结果，不新增任务与文件范围。
+
 ## 结论
 
 - 本轮状态：**Blocked**
 - 主因：未完成 `hardware` 实机 `hil_pass` 采样，导致 O1/O3/O2 的 run-level 一致性复盘无法闭环。
+
+## Completion classification
+
+- Sprint overall：**Blocked**
+- O1（HIL proof）：**Blocked**
+- O3（route replay）：**Partial**（软件层一致性完成，缺 run-level 实跑回放）
+- O2（consistency replay）：**Partial**（字段契约完成，缺 run-level 失败/超时/取消样本）
+- 关键证据：`evidence/run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30/` 的 run 产物为 BLOCKED，不能视作 `hil_pass` 成功。
 - 核心结果：
   1. `scripts/hardware_smoke_wave_rover.py --help`、`--status` 可执行；`py_compile` 通过。
   2. `hardware --move-test` 因 `/dev/ttyUSB0` 不存在失败：`ERROR: serial failure: [Errno 2] could not open port /dev/ttyUSB0`。

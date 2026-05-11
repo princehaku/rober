@@ -21,6 +21,8 @@ from ros2_trashbot_nav.route_utils import (
     FAILURE_CODE_NO_ROUTE,
     build_checkpoint_id,
     build_route_checkpoint_payload,
+    build_route_replay_artifact_path,
+    build_route_replay_entry,
     build_route_id,
     build_elevator_assist_evidence,
     build_elevator_assist_status,
@@ -59,6 +61,7 @@ class FixedRouteAutonomy(Node):
         self.navigation_timeout_sec = float(self.get_parameter('navigation_timeout_sec').value)
         self.route_id = build_route_id(self.route_file)
         self.source = 'fixed_route'
+        self.route_replay_artifact_path = build_route_replay_artifact_path(self.debug_status_file)
 
         self.bridge = CvBridge()
         self.navigator = None if self.dry_run else BasicNavigator()
@@ -401,6 +404,15 @@ class FixedRouteAutonomy(Node):
             detail='fixed-route autonomy has no elevator evidence source enabled',
             checkpoint=self.current_index if self.route_poses else None,
         )
+        updated_at = time.time()
+        route_replay_entry = build_route_replay_entry(
+            route_progress=route_progress,
+            state=state,
+            source=self.source,
+            route_contract_version=ROUTE_CONTRACT_VERSION,
+            navigation_elapsed_sec=round(self.navigation_elapsed_sec, 4),
+            updated_at=updated_at,
+        )
         payload = {
             'state': state,
             'mode': 'dry_run' if self.dry_run else 'nav2',
@@ -417,6 +429,20 @@ class FixedRouteAutonomy(Node):
             'evidence_ref': route_progress['evidence_ref'],
             'source': self.source,
             'route_progress': route_progress,
+            'software_proof': {
+                'type': 'route_replay',
+                'artifact_format': 'jsonl',
+                'artifact_path': self.route_replay_artifact_path,
+                'evidence_ref': route_progress['evidence_ref'],
+                'fields': [
+                    'checkpoint',
+                    'current_index',
+                    'target',
+                    'failure_code',
+                    'evidence_ref',
+                    'checkpoint_id',
+                ],
+            },
             'total': len(self.route_poses),
             'dry_run': self.dry_run,
             'enable_visual_gate': self.enable_visual_gate,
@@ -437,12 +463,17 @@ class FixedRouteAutonomy(Node):
             'failure_code': self.failure_code,
             'last_transition': self.last_transition,
             'last_nav_result': self.last_nav_result,
-            'updated_at': time.time(),
+            'updated_at': updated_at,
         }
         try:
             status_dir = os.path.dirname(self.debug_status_file)
             if status_dir:
                 os.makedirs(status_dir, exist_ok=True)
+            replay_dir = os.path.dirname(self.route_replay_artifact_path)
+            if replay_dir:
+                os.makedirs(replay_dir, exist_ok=True)
+            with open(self.route_replay_artifact_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(route_replay_entry, ensure_ascii=False) + '\n')
             temp_file = f'{self.debug_status_file}.tmp'
             with open(temp_file, 'w', encoding='utf-8') as f:
                 json.dump(payload, f, ensure_ascii=False, indent=2)

@@ -7,20 +7,47 @@ to `source=hil_pass` after a real hardware run for the same `evidence_ref`.
 
 ## Run Metadata
 
-- Run ID (run_id):
-- Date/time (UTC):
-- Operator:
-- Robot:
-- Orange Pi OS:
-- Serial device (现场确认):
-- Baudrate:
+- Run ID (run_id): `run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30`
+- Date/time (UTC): `2026-05-11T09:30:00Z`（阻塞录制）
+- Operator: `Hardware Infra Engineer (local execution context)`
+- Robot: `WAVE ROVER`
+- Orange Pi OS: `Not available in this host`
+- Serial device (现场确认): `/dev/ttyUSB0`（命令行指定）
+- Baudrate: `115200`
 - Evidence ref (required):
-  - 命名建议：`run_<YYYYMMDDTHHMMSS>Z_<serial>-<source>_<speed><duration>`
-  - 示例：`run_20260511T081530Z_ttyUSB0_hil_pass_speed0p050_dur0p30`
-- Git branch/commit:
-- Launch command:
-- Smoke command:
-- Parameter lock JSON:
+  - `run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30`
+- Git branch/commit: `master` / `38cdfb6`
+- Launch command: `python3 scripts/hardware_smoke_wave_rover.py --move-test --test-speed 0.05 --test-duration-s 0.3 --serial-port /dev/ttyUSB0 --baudrate 115200 --evidence-ref run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30`
+- Smoke command: 同 launch command
+- Parameter lock JSON: `{"source":"hil_pass","evidence_ref":"run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30","serial_port":"/dev/ttyUSB0","baudrate":115200,"feedback_interval_ms":100,"feedback_timeout_s":5.0,"test_speed":0.05,"test_duration_s":0.3,"ros_angular_z":0.0,"turn_angular_z":0.3,"run_flags":["move-test"]}`
+
+## Run Blocking Record
+
+- Run status: `Blocked`
+- Blocked reason: 串口路径不存在（`FileNotFoundError: /dev/ttyUSB0`）
+- Notes:
+  - `pyserial` 先通过依赖检查恢复后再重试，阻塞仍在于设备路径/硬件环境
+  - 严格 evidence_ref 统一写入 `command.txt`、`serial.log`、`feedback_T1001.log`、`odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl`
+
+## Latest Execution Record (2026-05-11T06:35:59Z)
+
+- Run ID (run_id): `run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30`
+- Required command set:
+  - `python3 scripts/hardware_smoke_wave_rover.py --help` -> exit `0`
+  - `python3 scripts/hardware_smoke_wave_rover.py --status` -> exit `0`
+  - `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile scripts/hardware_smoke_wave_rover.py` -> exit `0`
+  - `python3 scripts/hardware_smoke_wave_rover.py --move-test --test-speed 0.05 --test-duration-s 0.3 --serial-port /dev/ttyUSB0 --baudrate 115200` -> exit `1`
+- Blocked reason: `ERROR: serial failure: [Errno 2] could not open port /dev/ttyUSB0`
+- Evidence packet check (`evidence/<evidence_ref>/...`):
+  - `command.txt`: missing
+  - `serial.log`: missing
+  - `feedback_T1001.log`: missing
+  - `odom_once.jsonl`: missing
+  - `imu_once.jsonl`: missing
+  - `battery_once.jsonl`: missing
+- Source boundary:
+  - `source=software_proof`: confirmed for `--help/--status/py_compile`
+  - `source=hil_pass`: blocked, cannot claim pass
 
 ## Vendor Sources Used
 

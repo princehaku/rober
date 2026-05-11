@@ -33,6 +33,39 @@
   - `odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl`
   - 回填 `evidence_ref`（回链到 task record / diagnostics）
 
+## 0.6) Blocked Run Record
+
+- evidence ref: `run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30`
+- command: `python3 scripts/hardware_smoke_wave_rover.py --move-test --test-speed 0.05 --test-duration-s 0.3 --serial-port /dev/ttyUSB0 --baudrate 115200 --evidence-ref run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30`
+- source: `software_proof` 已完成；`hil_pass` 因串口路径缺失阻塞
+- 阻塞归因: `/dev/ttyUSB0` 不存在（host 无可见串口）
+- 产物:
+  - `evidence/run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30/command.txt`
+  - `evidence/run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30/serial.log`
+  - `evidence/run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30/feedback_T1001.log`
+  - `evidence/run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30/odom_once.jsonl`
+  - `evidence/run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30/imu_once.jsonl`
+  - `evidence/run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30/battery_once.jsonl`
+
+## 0.7) Blocked Run Record
+
+- evidence ref: `run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30`
+- command: `python3 scripts/hardware_smoke_wave_rover.py --move-test --test-speed 0.05 --test-duration-s 0.3 --serial-port /dev/ttyUSB0 --baudrate 115200`
+- source: `software_proof` 已完成（`--help`、`--status`、`py_compile`）；`hil_pass` 阶段阻塞
+- return code:
+  - `--help`: `0`
+  - `--status`: `0`
+  - `py_compile`: `0`
+  - `--move-test`: `1`
+- 阻塞归因: `ERROR: serial failure: [Errno 2] could not open port /dev/ttyUSB0`
+- 产物状态:
+  - `evidence/run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30/command.txt` (missing)
+  - `evidence/run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30/serial.log` (missing)
+  - `evidence/run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30/feedback_T1001.log` (missing)
+  - `evidence/run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30/odom_once.jsonl` (missing)
+  - `evidence/run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30/imu_once.jsonl` (missing)
+  - `evidence/run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30/battery_once.jsonl` (missing)
+
 ## 1) Parameter Lock
 
 确认以下参数并记录到 evidence `Run Metadata`（默认值仅作起点）：

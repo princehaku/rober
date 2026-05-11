@@ -696,14 +696,7 @@ class TaskOrchestrator(Node):
         return result
 
     def _derive_result_path(self, nav_results):
-        for item in nav_results or []:
-            evidence = item.evidence if isinstance(item, NavigationResult) else item.get("evidence", {})
-            if not isinstance(evidence, dict):
-                continue
-            candidate = evidence.get("route_file") or evidence.get("fixed_route_status_file")
-            if candidate:
-                return str(candidate)
-        return ""
+        return self._derive_evidence_ref(nav_results)
 
     def _derive_evidence_ref(self, nav_results):
         for item in nav_results or []:

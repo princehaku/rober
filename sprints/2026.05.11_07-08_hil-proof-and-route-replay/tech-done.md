@@ -49,3 +49,19 @@
 2. O3：未形成新 run replay 记录，无法给 O3 的 route replay 验收加码。
 3. O2：缺 run-level 失败/超时/取消样本，`failure_code/state_transition_history/human_intervention_required` 的 run 交叉复盘未闭环。
 4. 运行后续动作：在可用硬件环境（支持 `/dev/ttyUSB0`）下重跑 `hil_pass`，并与 route replay 使用同一 `evidence_ref`。
+
+## O2 consistency close patch（追加）
+
+- 目的：收敛 `task_orchestrator -> task_record -> operator diagnostics` 的 `evidence_ref/source/failure` 复盘字段一致性。
+- 代码更新：
+  - `src/ros2_trashbot_behavior/ros2_trashbot_behavior/task_orchestrator.py`
+    - `_derive_result_path()` 改为复用 `_derive_evidence_ref()`，避免 `result_path` 与 `evidence_ref` 在同一 run 内分叉。
+  - `src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway.py`
+    - `_task_record_support_fields()` 优先读取显式 `evidence_ref`，并单独保留 `result_path`。
+    - `_on_collect_result()` 状态透传改为优先使用 task record 支持字段中的 `result_path/evidence_ref/failure_code`。
+  - `src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`
+    - `build_diagnostics_payload()` 优先 `evidence_ref`，同时透传 `result_path` 到 top-level、`last_task` 与 `failure`。
+- 受影响测试（已同步断言口径）：
+  - `src/ros2_trashbot_behavior/test/test_task_orchestrator_collection_execution.py`
+  - `src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py`
+- 本追加仅做字段口径对齐，不新增业务状态机分支。

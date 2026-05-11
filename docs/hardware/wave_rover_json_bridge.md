@@ -19,6 +19,10 @@
 - `source=hil_pass`：真实串口上车验证，需补齐方向、反馈、IMU/Battery、`/odom` 声明及安全验证。
 - `evidence_ref` 建议使用 `run_<YYYYMMDDTHHMMSS>Z_<serial>_hil_pass_speed<speed>_dur<duration>`，同一次实机 run 在 checklist、脚本输出与 task record 中保持一致。
 
+- 阻塞标记（本轮）：
+  - `run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30` 因 `/dev/ttyUSB0` 不存在未能完成 `T=143/142/131` 与 `T=1001` 采样
+  - `run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30` required command set executed; `--move-test` blocked at serial open and未产出 run packet 文件
+
 ## UART Framing
 
 官方 WAVE ROVER ESP32 固件使用一行 JSON（UTF-8）并以 `\n` 结束。

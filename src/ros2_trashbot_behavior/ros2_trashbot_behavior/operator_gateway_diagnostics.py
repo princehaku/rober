@@ -858,14 +858,19 @@ def build_diagnostics_payload(
     route_proof_status = classify_route_proof(route_proof_summary, source=route_proof_source)
     elevator_assist, elevator_assist_source = extract_elevator_assist(latest_status, last_task)
     elevator_assist_status = classify_elevator_assist(elevator_assist, source=elevator_assist_source)
-    evidence_ref = str(
+    result_path = str(
         task_record.get("result_path")
-        or task_record.get("evidence_ref")
-        or latest_status.get("evidence_ref")
-        or last_task.get("evidence_ref")
+        or latest_status.get("result_path")
+        or last_task.get("result_path")
         or latest_status.get("task_record_path")
         or last_task.get("task_record_path")
         or ""
+    )
+    evidence_ref = str(
+        task_record.get("evidence_ref")
+        or latest_status.get("evidence_ref")
+        or last_task.get("evidence_ref")
+        or result_path
     )
     source = normalize_evidence_source(task_record.get("source") or latest_status.get("source") or last_task.get("source"))
     state_transition_history = task_record.get("state_transition_history")
@@ -889,6 +894,7 @@ def build_diagnostics_payload(
         or False
     )
     last_task.setdefault("source", source)
+    last_task.setdefault("result_path", result_path)
     last_task.setdefault("evidence_ref", evidence_ref)
     if not last_task.get("failure_code"):
         last_task["failure_code"] = failure_code
@@ -902,6 +908,7 @@ def build_diagnostics_payload(
         "error_code": latest_status.get("error_code") or last_task.get("error_code", ""),
         "final_state": latest_status.get("final_state") or last_task.get("final_state", ""),
         "task_record_path": latest_status.get("task_record_path") or last_task.get("task_record_path", ""),
+        "result_path": result_path,
         "source": source,
         "evidence_ref": evidence_ref,
         "failure_code": failure_code,
@@ -918,6 +925,7 @@ def build_diagnostics_payload(
         latest_status=latest_status,
         last_task=last_task,
         source=source,
+        result_path=result_path,
         evidence_ref=evidence_ref,
         failure_code=failure_code,
         human_intervention_required=human_intervention_required,

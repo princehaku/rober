@@ -349,7 +349,7 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertEqual(payload["delivery_mode"], "fixed_route")
         self.assertEqual(payload["final_status"], "success")
-        self.assertEqual(payload["result_path"], "/tmp/routes/trash_station.json")
+        self.assertEqual(payload["result_path"], str(status_file))
         self.assertEqual(payload["evidence_ref"], str(status_file))
         self.assertEqual(payload["nav_results"][0]["result_code"], "fixed_route_completed")
         self.assertEqual(payload["nav_results"][0]["message"], "fixed_route completed")

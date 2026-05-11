@@ -88,6 +88,46 @@ def build_route_checkpoint_payload(
         'target': None,
     }
 
+
+def build_route_replay_artifact_path(debug_status_file: str) -> str:
+    """Build a stable software-proof replay artifact path.
+
+    Replay entries are stored as JSON lines near debug_status_file so dry-run
+    workflows always have a filesystem-backed artifact without requiring HIL.
+    """
+    base = str(debug_status_file or '').strip() or '/tmp/trashbot_fixed_route_status.json'
+    return f'{base}.software_proof.route_replay.jsonl'
+
+
+def build_route_replay_entry(
+    *,
+    route_progress: dict,
+    state: str,
+    source: str,
+    route_contract_version: str,
+    navigation_elapsed_sec: float,
+    updated_at: float,
+):
+    """Build one replay row under a single evidence_ref for route consistency.
+
+    Keep the row narrow and contract-oriented so one run-level evidence_ref can
+    replay checkpoint progression without widening to hardware assertions.
+    """
+    return {
+        'state': str(state),
+        'route_contract_version': str(route_contract_version),
+        'source': str(source),
+        'route_id': route_progress.get('route_id'),
+        'checkpoint_id': route_progress.get('checkpoint_id'),
+        'evidence_ref': route_progress.get('evidence_ref'),
+        'checkpoint': route_progress.get('checkpoint'),
+        'current_index': route_progress.get('current_index'),
+        'target': route_progress.get('target'),
+        'failure_code': route_progress.get('failure_code'),
+        'navigation_elapsed_sec': float(navigation_elapsed_sec),
+        'updated_at': float(updated_at),
+    }
+
 _ELEVATOR_EVIDENCE_PROFILES = {
     'door_open': {
         'robot_readable': 'elevator door is open',

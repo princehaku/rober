@@ -1,5 +1,12 @@
 # Sprint 2026.05.11 07-08 HIL proof and route replay - PRD
 
+## 状态
+
+- 阶段：prd completed
+- 时间：2026-05-11 14:47 Asia/Shanghai
+- Owner：`product-okr-owner`
+- 收口说明：验收口径已在 `side2side_check.md` 与 `final.md` 完成逐条对照与分类，不扩展新需求范围。
+
 ## 用户价值与北极星
 
 把“普通手机用户一键发起送垃圾任务”从离线逻辑说明升级为“可复现、可交付、可追溯”的实机闭环能力：同一任务 run 必须能在证据链中回答“是否真实到达、为何失败、如何恢复”。

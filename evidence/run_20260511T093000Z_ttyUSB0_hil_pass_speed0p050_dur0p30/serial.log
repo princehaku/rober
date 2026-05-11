@@ -1,0 +1,26 @@
+ERROR: serial failure: [Errno 2] could not open port /dev/ttyUSB0: [Errno 2] No such file or directory: '/dev/ttyUSB0'
+BLOCKED: serial dependency or device access blocked.
+  Repro steps:
+  1) PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile scripts/hardware_smoke_wave_rover.py
+  2) python3 scripts/hardware_smoke_wave_rover.py --status
+  3) python3 scripts/hardware_smoke_wave_rover.py --move-test --serial-port <device> --baudrate <baudrate>
+  If pyserial is missing, install inside ros2-humble runtime as documented.
+{
+  "command": "scripts/hardware_smoke_wave_rover.py --move-test --test-speed 0.05 --test-duration-s 0.3 --serial-port /dev/ttyUSB0 --baudrate 115200 --evidence-ref run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30",
+  "parameters": {
+    "baudrate": 115200,
+    "evidence_ref": "run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30",
+    "feedback_interval_ms": 100,
+    "feedback_timeout_s": 5.0,
+    "ros_angular_z": 0.0,
+    "run_flags": [
+      "move-test"
+    ],
+    "serial_port": "/dev/ttyUSB0",
+    "source": "hil_pass",
+    "test_duration_s": 0.3,
+    "test_speed": 0.05,
+    "turn_angular_z": 0.3
+  },
+  "source": "hil_pass"
+}

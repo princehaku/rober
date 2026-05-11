@@ -2,10 +2,15 @@
 
 ## 状态
 
-- 阶段：tech-plan started
+- 阶段：tech-plan completed
 - 时间：2026-05-11 11:20 Asia/Shanghai
 - Owner：`product-okr-owner`
 - 目标：本轮只做 O1/O3 路径的执行与收口，沿用 O2 字段消费链路，不扩大面向范围。
+
+## 阶段收口
+
+- 计划项已由 `tech-done.md` 执行结果逐项回填。
+- 本轮按既定验收命令口径收口，不追加新实现或新验证任务。
 
 ## 技术目标（与 evidence 对齐）
 

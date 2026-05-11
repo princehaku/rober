@@ -9,6 +9,7 @@
 - Confirm evidence source policy: `source=software_proof` for template checks, `source=hil_pass` for real UART verification.
 - Run `python3 scripts/hardware_smoke_wave_rover.py --status` first; require no pyserial for this step.
 - If `pyserial` is missing or `serial` open fails, record `Blocked` and capture repro steps; do not claim `hil_pass`.
+- 当前本轮状态：`Blocked`（`/dev/ttyUSB0` 不存在，host 无串口设备）
 
 ## Evidence Source Boundaries
 
@@ -42,6 +43,8 @@ bash scripts/docker_humble_build.sh
 - Return to stop command after every movement check.
 - 如任一步骤缺少反馈、方向不符或出现 timeout，停止推进并在 `wave_rover_hil_evidence.md` 标注 blocked 原因与复现条件。
 - If using `scripts/hardware_smoke_wave_rover.py`, run `python3 scripts/hardware_smoke_wave_rover.py --status` first (software proof), then save terminal output and the exact command line for `source=hil_pass` runs.
+- 本轮证据回填：`run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30`
+- 最新一次执行：`run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30`（`--help`/`--status`/`py_compile` 通过，`--move-test` 因 `/dev/ttyUSB0` 缺失阻塞）
 
 ## Feedback
 

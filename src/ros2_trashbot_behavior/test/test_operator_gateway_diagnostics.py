@@ -253,6 +253,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                         "task_id": "delivery-123",
                         "source": "hil_pass",
                         "result_path": "/tmp/task_records/task-123.bin",
+                        "evidence_ref": "/tmp/evidence_refs/task-123.ref.json",
                         "failure_code": "NAV_TIMEOUT",
                         "human_intervention_required": True,
                         "state_transition_history": [
@@ -277,10 +278,12 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             )
 
         self.assertEqual(payload["source"], "hil_pass")
-        self.assertEqual(payload["evidence_ref"], "/tmp/task_records/task-123.bin")
+        self.assertEqual(payload["result_path"], "/tmp/task_records/task-123.bin")
+        self.assertEqual(payload["evidence_ref"], "/tmp/evidence_refs/task-123.ref.json")
         self.assertEqual(payload["failure_code"], "NAV_TIMEOUT")
         self.assertTrue(payload["human_intervention_required"])
-        self.assertEqual(payload["failure"]["evidence_ref"], "/tmp/task_records/task-123.bin")
+        self.assertEqual(payload["failure"]["result_path"], "/tmp/task_records/task-123.bin")
+        self.assertEqual(payload["failure"]["evidence_ref"], "/tmp/evidence_refs/task-123.ref.json")
         self.assertEqual(payload["failure"]["failure_code"], "NAV_TIMEOUT")
         self.assertTrue(payload["failure"]["human_intervention_required"])
         self.assertEqual(payload["failure"]["source"], "hil_pass")

@@ -120,6 +120,7 @@ When `enable_visual_gate:=true`, dry-run preflights keyframe coverage for the fu
 - `route_file_basename`
 - `route_id`
 - `route_progress`
+- `software_proof`
 - `checkpoint`
 - `current_index`
 - `target`
@@ -159,6 +160,16 @@ When `enable_visual_gate:=true`, dry-run preflights keyframe coverage for the fu
 - `source`
 - `failure_code`: 与顶层 `failure_code` 一致，用于复盘回放
 
+`software_proof` 提供最小 route replay 证据落盘路径（软件证据，不代表 HIL）：
+
+- `type`: 固定为 `route_replay`
+- `artifact_format`: 固定为 `jsonl`
+- `artifact_path`: 默认 `${debug_status_file}.software_proof.route_replay.jsonl`
+- `evidence_ref`: 与顶层 `evidence_ref` 保持一致
+- `fields`: 回放时必须关注的最小字段集合（`checkpoint/current_index/target/failure_code/evidence_ref/checkpoint_id`）
+
+`artifact_path` 中每一行都是一次状态写入的 replay 记录，所有行复用同一个 `evidence_ref`，用于单次 run 的一致性回放（O3 software proof）。
+
 示例状态片段：
 
 ```json
@@ -187,6 +198,20 @@ When `enable_visual_gate:=true`, dry-run preflights keyframe coverage for the fu
     "route_contract_version": "fixed_route.v1",
     "source": "fixed_route",
     "failure_code": ""
+  },
+  "software_proof": {
+    "type": "route_replay",
+    "artifact_format": "jsonl",
+    "artifact_path": "/tmp/trashbot_fixed_route_status.json.software_proof.route_replay.jsonl",
+    "evidence_ref": "/tmp/trashbot_fixed_route_status.json",
+    "fields": [
+      "checkpoint",
+      "current_index",
+      "target",
+      "failure_code",
+      "evidence_ref",
+      "checkpoint_id"
+    ]
   },
   "navigation_timeout_sec": 0.0,
   "navigation_elapsed_sec": 0.24,

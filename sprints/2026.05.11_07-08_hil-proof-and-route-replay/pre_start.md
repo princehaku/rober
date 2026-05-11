@@ -2,11 +2,16 @@
 
 ## 状态
 
-- 阶段：pre-start started
+- 阶段：pre-start completed
 - 时间：2026-05-11 11:20 Asia/Shanghai
 - 目录：`sprints/2026.05.11_07-08_hil-proof-and-route-replay/`
 - Owner：`product-okr-owner`
 - 本轮目标：对齐 06-07 收口结论，将 OKR 低完成度主线（O1/O3）推进到实机证据面，避免再次把软证据误当 HIL 完成度。
+
+## 阶段收口
+
+- pre-start 输入已被 PRD/Tech Plan/Tech Done/Side2Side/Final 全链路消费。
+- 本阶段按“已启动并已完成交接”收口，不新增范围。
 
 ## 启动依据（证据驱动）
 
