@@ -127,10 +127,9 @@ class FixedRouteAutonomy(Node):
             route_id=self.route_id,
             failure_code=self.failure_code,
             evidence_ref=self.route_progress_evidence_ref,
+            source=self.source,
+            route_contract_version=ROUTE_CONTRACT_VERSION,
         )
-        target_payload['route_contract_version'] = ROUTE_CONTRACT_VERSION
-        target_payload['source'] = self.source
-        target_payload['evidence_ref'] = self.route_progress_evidence_ref
         target_payload['checkpoint_id'] = build_checkpoint_id(
             target_payload['route_id'],
             target_payload['checkpoint'],

@@ -52,6 +52,8 @@ def build_route_checkpoint_payload(
     route_id: str | None = None,
     failure_code: str | None = None,
     evidence_ref: str | None = None,
+    source: str = 'fixed_route',
+    route_contract_version: str = ROUTE_CONTRACT_VERSION,
 ):
     """Build route-layer progress identifiers used by diagnostics/task_record.
 
@@ -60,6 +62,7 @@ def build_route_checkpoint_payload(
     - checkpoint_id: semantic keypoint key
     - evidence_ref: run anchor used for task replay
     - failure_code: latest navigation/automation failure for replay
+    - route_contract_version/source: minimal traceability fields for run-level merge
     """
     normalized_route_id = (route_id or build_route_id(route_file)).strip() or 'fixed_route'
     try:
@@ -81,10 +84,12 @@ def build_route_checkpoint_payload(
         'route_id': normalized_route_id,
         'route_file_basename': Path(str(route_file or '').strip() or 'fixed_route').name,
         'checkpoint_id': build_checkpoint_id(normalized_route_id, index),
+        'route_contract_version': str(route_contract_version).strip() or ROUTE_CONTRACT_VERSION,
         'evidence_ref': str(evidence_ref if evidence_ref is not None else debug_status_file or '').strip(),
         'checkpoint': index,
         'total_checkpoints': total,
         'failure_code': str(failure_code or '').strip(),
+        'source': str(source or 'fixed_route'),
         'target': None,
     }
 

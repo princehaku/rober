@@ -336,6 +336,30 @@ jq '.state,.checkpoint,.current_index,.failure_code,.evidence_ref,.route_progres
 - `route_replay` 的 JSONL 每行都应含 `state/checkpoint/current_index/target/failure_code/evidence_ref/checkpoint_id`。
 - 受控 replay 场景可用 `route_progress.evidence_ref` 查 task record 的同名证据文件。
 
+### 5.4 run-level 复账脚本（只读）
+
+新增只读复账脚本（不改动 payload）：
+
+```bash
+python3 scripts/evidence_crosscheck.py \
+  /tmp/trashbot_fixed_route_status.json \
+  --evidence-ref /tmp/route_replay_evidence.json \
+  --task-record-dir ~/.ros/trashbot_tasks
+```
+
+当 task_record 同 run 不存在时，脚本会明确提示：
+
+- `task_record not provided: cross-check skipped`（仅在 status/replay 可核验）
+- `task_record route_progress not found`（说明 behavior 端暂未持久化该 run 的 route_progress）
+- `FAIL` 明细中的字段不一致（用于复盘定位）
+
+脚本要求：
+
+- `route_status` 必须是 `fixed_route_autonomy` 的 status 输出路径（可用于 `evidence_ref` 定位）。
+- `--evidence-ref` 为可选；不传时默认用 `status.evidence_ref`。
+- `--task-record-dir` 在 `task_record` 为空时可用于按 `evidence_ref` 自动检索同 run 文件。
+- 脚本始终是 read-only，无副作用。
+
 ## 6. Debug Web
 
 Start the debug page:
