@@ -27,6 +27,8 @@ PHONE_COMMAND_SAFETY_EVIDENCE_BOUNDARY = "software_proof_docker_phone_command_sa
 PHONE_TASK_FLOW_SCHEMA = "trashbot.phone_task_flow_readiness.v1"
 PHONE_SUPPORT_BUNDLE_SCHEMA = "trashbot.phone_support_bundle.v1"
 PHONE_SUPPORT_BUNDLE_EVIDENCE_BOUNDARY = "software_proof_docker_phone_support_bundle_gate"
+VOICE_PROMPT_READINESS_SCHEMA = "trashbot.voice_prompt_readiness.v1"
+VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_voice_prompt_readiness_gate"
 PHONE_PWA_EVIDENCE_BOUNDARY = "software_proof_docker_phone_pwa_installability_gate"
 COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
@@ -157,6 +159,52 @@ PHONE_SUPPORT_BUNDLE_FORBIDDEN_MARKERS = (
     "http://",
     "https://",
 )
+
+VOICE_PROMPT_FORBIDDEN_MARKERS = (
+    # voice prompt 会出现在首屏和 diagnostics，必须比普通状态文本更严格地过滤。
+    "token",
+    "authorization",
+    "bearer",
+    "oss ak",
+    "oss sk",
+    "access_key",
+    "secret",
+    "password",
+    "root password",
+    "database url",
+    "db url",
+    "queue url",
+    "ros topic",
+    "/cmd_vel",
+    "serial",
+    "baudrate",
+    "wave rover",
+    "traceback",
+    "checksum",
+    "artifact",
+    "/tmp/",
+    "/users/",
+    "/home/",
+    "http://",
+    "https://",
+)
+
+VOICE_PROMPT_TRIGGER_REASONS = {
+    "waiting_for_trash": "等待用户放入垃圾并在手机上确认。",
+    "loaded_and_ready": "垃圾已确认放入，等待用户发车。",
+    "delivering": "小车正在送往垃圾站。",
+    "navigating": "小车正在导航或沿路线移动。",
+    "waiting_elevator_open": "小车已到电梯厅，正在等待电梯开门。",
+    "requesting_floor_help": "小车已进入电梯，需要旁人帮忙按目标楼层。",
+    "waiting_target_floor": "小车正在等待目标楼层。",
+    "target_floor_unconfirmed": "目标楼层尚未确认，需要人工确认。",
+    "unsafe_to_exit": "目标楼层出口不安全，需要人工接管。",
+    "arrived_at_station": "小车已到垃圾站，等待用户确认投放。",
+    "returning": "投放确认后，小车正在返回或等待下一次任务。",
+    "completed": "任务已完成。",
+    "failed": "任务失败，需要查看诊断或请求帮助。",
+    "needs_human_help": "当前流程需要人工接管。",
+}
 
 PHONE_SUPPORT_BUNDLE_SAFE_KEYS = {
     "schema",
@@ -1213,6 +1261,15 @@ HTML = """<!doctype html>
         <input id="target" value="trash_station" autocomplete="off">
       </label>
     </section>
+    <section id="voicePromptReadinessPanel" class="panel">
+      <h2>Voice Prompt Readiness</h2>
+      <p class="message">Current prompt: <strong id="voicePromptCurrent">等待提示计算。</strong></p>
+      <p class="message">Trigger: <strong id="voicePromptTrigger">not reported</strong></p>
+      <p class="message">Human help: <strong id="voicePromptHumanHelp">not reported</strong></p>
+      <p class="message">Playback ready: <strong id="voicePromptPlayback">false</strong></p>
+      <p class="message">Copy: <strong id="voicePromptSafeCopy">voice prompt readiness 不是实际播放证明。</strong></p>
+      <p class="message">Not proven: <strong id="voicePromptNotProven">real speaker, TTS, HIL</strong></p>
+    </section>
     <section class="panel">
       <div class="steps" id="journeySteps">
         <div class="step" data-step="connection_ready">1. 连接就绪</div>
@@ -1276,6 +1333,8 @@ HTML = """<!doctype html>
         <div class="metric"><span>Elevator next step</span><strong id="diagElevatorAssistNextStep">-</strong></div>
         <div class="metric"><span>Phone task flow</span><strong id="diagPhoneTaskFlow">-</strong></div>
         <div class="metric"><span>Phone next step</span><strong id="diagPhoneTaskFlowNext">-</strong></div>
+        <div class="metric"><span>Voice prompt</span><strong id="diagVoicePromptCurrent">-</strong></div>
+        <div class="metric"><span>Voice trigger</span><strong id="diagVoicePromptTrigger">-</strong></div>
         <div class="metric"><span>Support bundle</span><strong id="diagSupportBundleId">-</strong></div>
         <div class="metric"><span>Support level</span><strong id="diagSupportLevel">-</strong></div>
       </div>
@@ -1893,6 +1952,35 @@ function renderPhoneReadiness(phoneReadiness) {
     : {};
   renderSupportBundleSummary(supportBundle);
 }
+function voicePromptFromPayload(payload) {
+  if (payload.voice_prompt_readiness && typeof payload.voice_prompt_readiness === 'object') {
+    return payload.voice_prompt_readiness;
+  }
+  const readiness = payload.phone_readiness && typeof payload.phone_readiness === 'object'
+    ? payload.phone_readiness
+    : {};
+  return readiness.voice_prompt_readiness && typeof readiness.voice_prompt_readiness === 'object'
+    ? readiness.voice_prompt_readiness
+    : {};
+}
+function renderVoicePromptReadiness(voicePrompt) {
+  const prompt = voicePrompt && typeof voicePrompt === 'object' ? voicePrompt : {};
+  document.getElementById('voicePromptCurrent').textContent = text(
+    prompt.current_prompt,
+    '请查看手机状态，需要时请求人工帮助。'
+  );
+  document.getElementById('voicePromptTrigger').textContent = text(prompt.trigger_state, 'not reported');
+  document.getElementById('voicePromptHumanHelp').textContent = String(Boolean(prompt.requires_human_help));
+  document.getElementById('voicePromptPlayback').textContent = String(Boolean(prompt.playback_ready));
+  document.getElementById('voicePromptSafeCopy').textContent = text(
+    prompt.safe_phone_copy,
+    'voice prompt readiness 不是实际播放证明。'
+  );
+  const notProven = Array.isArray(prompt.not_proven) ? prompt.not_proven.slice(0, 5) : [];
+  document.getElementById('voicePromptNotProven').textContent = notProven.length
+    ? notProven.join(', ')
+    : 'real speaker, TTS, HIL';
+}
 function commandAction(commandSafety, actionName) {
   const safety = commandSafety && typeof commandSafety === 'object' ? commandSafety : {};
   const actions = safety.actions && typeof safety.actions === 'object' ? safety.actions : {};
@@ -2003,6 +2091,7 @@ function showStatus(payload) {
   // raw status 只保留给开发者临时排障，默认隐藏，避免手机用户看到 JSON/ROS 内部字段。
   document.getElementById('status').textContent = JSON.stringify(payload, null, 2);
   renderPhoneReadiness(payload.phone_readiness);
+  renderVoicePromptReadiness(voicePromptFromPayload(payload));
   updateJourney(payload);
   renderTaskFlow(taskFlowFromPayload(payload));
   showTelemetry(payload);
@@ -2021,6 +2110,7 @@ function showDiagnostics(payload) {
   const elevatorAssistStatus = payload.elevator_assist_status || {};
   const ossCdnManifest = payload.oss_cdn_manifest || {};
   const phoneSupportBundle = payload.phone_support_bundle || {};
+  const voicePromptReadiness = payload.voice_prompt_readiness || voicePromptFromPayload(latest);
   const phoneTaskFlow = payload.phone_task_flow_readiness && typeof payload.phone_task_flow_readiness === 'object'
     ? payload.phone_task_flow_readiness
     : taskFlowFromPayload(latest);
@@ -2103,6 +2193,14 @@ function showDiagnostics(payload) {
   );
   document.getElementById('diagPhoneTaskFlowNext').textContent = text(
     phoneTaskFlow.next_action,
+    'not reported'
+  );
+  document.getElementById('diagVoicePromptCurrent').textContent = text(
+    voicePromptReadiness.current_prompt,
+    'not reported'
+  );
+  document.getElementById('diagVoicePromptTrigger').textContent = text(
+    voicePromptReadiness.trigger_state,
     'not reported'
   );
   document.getElementById('diagRecoveryHint').textContent = humanIntervention
@@ -2795,6 +2893,111 @@ def build_phone_support_bundle(status, phone_readiness=None, diagnostics=None, *
     }
 
 
+def _voice_prompt_safe_text(value, fallback):
+    # 提示词可能来自 status 文件或 task record；自由文本进入手机前必须脱敏。
+    text_value = str(value or "").strip()
+    if not text_value:
+        return fallback
+    lowered = text_value.lower()
+    if any(marker in lowered for marker in VOICE_PROMPT_FORBIDDEN_MARKERS):
+        return fallback
+    return text_value
+
+
+def _voice_prompt_trigger(status):
+    # 电梯 assist 是跨楼层提示的更精确来源；普通状态只作为回退。
+    status = status if isinstance(status, dict) else {}
+    elevator_assist = status.get("elevator_assist") if isinstance(status.get("elevator_assist"), dict) else {}
+    if elevator_assist.get("enabled"):
+        for key in ("phase", "state", "reason"):
+            value = str(elevator_assist.get(key) or "").strip()
+            if value and value != "active":
+                return value
+    return str(status.get("state") or "unknown").strip() or "unknown"
+
+
+def _voice_prompt_requires_help(status, trigger_state):
+    # 人工接管判定复用已有状态和 elevator_assist，避免 UI 自己发明机器人语义。
+    status = status if isinstance(status, dict) else {}
+    elevator_assist = status.get("elevator_assist") if isinstance(status.get("elevator_assist"), dict) else {}
+    return bool(
+        status.get("human_intervention_required")
+        or status.get("requires_human_help")
+        or status.get("state") in {"failed", "needs_human_help"}
+        or elevator_assist.get("requires_human_help")
+        or trigger_state in ELEVATOR_ASSIST_HELP_STATES
+    )
+
+
+def _voice_prompt_support_refs(status, command_safety=None, phone_support_bundle=None):
+    # support_refs 只保留短枚举和业务状态，禁止把路径、topic、checksum 或完整 artifact 带给用户。
+    status = status if isinstance(status, dict) else {}
+    command_safety = command_safety if isinstance(command_safety, dict) else {}
+    phone_support_bundle = phone_support_bundle if isinstance(phone_support_bundle, dict) else {}
+    refs = {
+        "state": _voice_prompt_safe_text(status.get("state"), ""),
+        "failure_code": _voice_prompt_safe_text(status.get("failure_code") or status.get("error_code"), ""),
+        "command_block_reason": _voice_prompt_safe_text(command_safety.get("global_block_reason"), ""),
+        "support_level": _voice_prompt_safe_text(phone_support_bundle.get("support_level"), ""),
+    }
+    return {key: value for key, value in refs.items() if value}
+
+
+def build_voice_prompt_readiness(status, phone_readiness=None, phone_support_bundle=None):
+    """Build the phone-safe voice prompt readiness summary.
+
+    这个 gate 只证明提示语义可被手机/API 复现；本地 operator 不播放音频，
+    所以 playback_ready 固定为 false，不能被上层解读为真实喇叭或 TTS 证明。
+    """
+    status = status if isinstance(status, dict) else {}
+    phone_readiness = phone_readiness if isinstance(phone_readiness, dict) else {}
+    phone_support_bundle = phone_support_bundle if isinstance(phone_support_bundle, dict) else {}
+    command_safety = phone_readiness.get("command_safety") if isinstance(phone_readiness.get("command_safety"), dict) else {}
+    trigger_state = _voice_prompt_trigger(status)
+    current_prompt = _voice_prompt_safe_text(
+        status.get("speaker_prompt"),
+        "请查看手机状态，需要时请求人工帮助。",
+    )
+    trigger_reason = VOICE_PROMPT_TRIGGER_REASONS.get(
+        trigger_state,
+        _voice_prompt_safe_text(status.get("phone_copy") or status.get("message"), "当前状态需要查看手机提示。"),
+    )
+    requires_human_help = _voice_prompt_requires_help(status, trigger_state)
+    safe_phone_copy = (
+        f"当前应播报：{current_prompt} 触发原因：{trigger_reason} "
+        "ACK 只代表指令 accepted/processing evidence，不是送达成功；"
+        "voice prompt readiness 不是实际喇叭或 TTS 播放证明。"
+    )
+    return {
+        "schema": VOICE_PROMPT_READINESS_SCHEMA,
+        "schema_version": 1,
+        "api_version": API_VERSION,
+        "evidence_boundary": VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY,
+        "current_prompt": current_prompt,
+        "prompt_language": "zh-CN" if any("\u4e00" <= char <= "\u9fff" for char in current_prompt) else "en-US",
+        "trigger_state": trigger_state,
+        "trigger_reason": trigger_reason,
+        "requires_human_help": requires_human_help,
+        "playback_ready": False,
+        "safe_phone_copy": _voice_prompt_safe_text(safe_phone_copy, "当前提示已过滤；请打开 Diagnostics 请求支持。"),
+        "ack_semantics": COMMAND_SAFETY_ACK_COPY + " voice prompt readiness 也不代表提示已真实播放。",
+        "support_refs": _voice_prompt_support_refs(status, command_safety, phone_support_bundle),
+        "not_proven": [
+            "real_speaker_playback",
+            "tts_playback",
+            "microphone_wake_word",
+            "real_phone_device_browser",
+            "production_phone_app",
+            "real_cloud_4g",
+            "oss_cdn_live_traffic",
+            "nav2_or_fixed_route_delivery",
+            "wave_rover_motion",
+            "hil_pass",
+            "delivery_success",
+        ],
+    }
+
+
 def build_phone_readiness(
     status,
     *,
@@ -3051,8 +3254,15 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         transaction_isolation=transaction_isolation,
     )
     phone_support_bundle = build_phone_support_bundle(payload, payload["phone_readiness"])
+    voice_prompt_readiness = build_voice_prompt_readiness(
+        payload,
+        payload["phone_readiness"],
+        phone_support_bundle,
+    )
     payload["phone_support_bundle"] = phone_support_bundle
     payload["phone_readiness"]["phone_support_bundle"] = dict(phone_support_bundle)
+    payload["voice_prompt_readiness"] = voice_prompt_readiness
+    payload["phone_readiness"]["voice_prompt_readiness"] = dict(voice_prompt_readiness)
     payload["phone_task_flow_readiness"] = dict(payload["phone_readiness"]["phone_task_flow_readiness"])
     return payload
 
@@ -3064,8 +3274,10 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
     task_flow = dict(status.get("phone_task_flow_readiness", {}))
     phone_readiness = status.get("phone_readiness") if isinstance(status.get("phone_readiness"), dict) else {}
     phone_support_bundle = build_phone_support_bundle(status, phone_readiness, diagnostics_payload)
+    voice_prompt_readiness = build_voice_prompt_readiness(status, phone_readiness, phone_support_bundle)
     diagnostics_payload["phone_task_flow_readiness"] = task_flow
     diagnostics_payload["phone_support_bundle"] = phone_support_bundle
+    diagnostics_payload["voice_prompt_readiness"] = voice_prompt_readiness
     # HTTP diagnostics 复用 status 里的同一份摘要，避免 status/diagnostics 对 transaction gate 给出两套口径。
     if isinstance(phone_readiness.get("transaction_isolation"), dict):
         diagnostics_payload["transaction_isolation"] = dict(phone_readiness["transaction_isolation"])
@@ -3073,6 +3285,7 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
     if isinstance(latest_status, dict):
         latest_status.setdefault("phone_task_flow_readiness", task_flow)
         latest_status.setdefault("phone_support_bundle", phone_support_bundle)
+        latest_status.setdefault("voice_prompt_readiness", voice_prompt_readiness)
     return diagnostics_payload
 
 

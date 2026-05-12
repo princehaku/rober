@@ -17,3 +17,19 @@ PHONE_SUPPORT_HANDOFF_COPY = (
     # ACK 语义放在静态锚点中，防止后续 UI 改文案时误把 ACK 写成送达成功。
     "支持交接摘要用于失败或 blocked 复现；ACK 不代表送达成功。"
 )
+
+VOICE_PROMPT_READINESS_ENTRY_IDS = (
+    # voice prompt 区域是手机首屏能力，不应只存在于动态 JSON 里。
+    "voicePromptReadinessPanel",
+    "voicePromptCurrent",
+    "voicePromptTrigger",
+    "voicePromptHumanHelp",
+    "voicePromptPlayback",
+    "voicePromptSafeCopy",
+    "voicePromptNotProven",
+)
+
+VOICE_PROMPT_READINESS_COPY = (
+    # 本地 fallback 只证明提示 contract 可复现，不证明真实喇叭或 TTS 播放。
+    "voice prompt readiness 不是实际播放证明；ACK 不代表送达成功。"
+)

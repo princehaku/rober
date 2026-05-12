@@ -1109,6 +1109,39 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         # diagnostics core payload 不信任 latest_status 内既有 bundle；HTTP wrapper 负责重新生成脱敏版本。
         self.assertNotIn("phone_support_bundle", payload)
 
+    def test_diagnostics_payload_does_not_forward_preexisting_voice_prompt_readiness(self):
+        payload = build_diagnostics_payload(
+            {
+                "state": "remote_degraded",
+                "voice_prompt_readiness": {
+                    "schema": "trashbot.voice_prompt_readiness.v1",
+                    "current_prompt": "raw prompt with /cmd_vel and secret-token",
+                    "support_refs": {
+                        "raw_ros_topic": "/cmd_vel",
+                        "serial": "/dev/ttyUSB0",
+                        "baudrate": 115200,
+                        "token": "secret-token",
+                        "Authorization": "Bearer secret-token",
+                        "queue_url": "postgres://robot:secret@db.local/queue",
+                        "local_path": "/tmp/robot/status.json",
+                    },
+                    "ack_semantics": "delivery_success",
+                    "playback_ready": True,
+                    "delivery_success": True,
+                },
+            },
+            software_version="",
+            map_version="",
+            route_version="",
+            log_refs=[],
+            vision_sample_manifest_ref="",
+            review_decision_log_ref="",
+            operator_status_file="/tmp/status.json",
+        )
+
+        # diagnostics core 不信任 latest_status 中的预置 voice metadata；HTTP wrapper 负责生成脱敏版本。
+        self.assertNotIn("voice_prompt_readiness", payload)
+
     def test_log_refs_are_normalized_without_claiming_file_existence(self):
         self.assertEqual(normalize_log_refs(None), [])
         self.assertEqual(normalize_log_refs(""), [])

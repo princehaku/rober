@@ -228,9 +228,22 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "phoneReadinessNotProven",
             "phone_task_flow_readiness",
             "phone_support_bundle",
+            "voice_prompt_readiness",
             "trashbot.phone_support_bundle.v1",
+            "trashbot.voice_prompt_readiness.v1",
             "PHONE_SUPPORT_BUNDLE_EVIDENCE_BOUNDARY",
+            "VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY",
             "software_proof_docker_phone_support_bundle_gate",
+            "software_proof_docker_phone_voice_prompt_readiness_gate",
+            "voicePromptReadinessPanel",
+            "voicePromptCurrent",
+            "voicePromptTrigger",
+            "voicePromptHumanHelp",
+            "voicePromptPlayback",
+            "voicePromptSafeCopy",
+            "voicePromptNotProven",
+            "renderVoicePromptReadiness",
+            "build_voice_prompt_readiness",
             "supportHandoffButton",
             "supportBundlePanel",
             "supportBundleSafeCopy",
@@ -279,6 +292,10 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("PHONE_SUPPORT_HANDOFF_ENTRY_IDS", static_source)
         self.assertIn("supportHandoffButton", static_source)
         self.assertIn("supportBundleSafeCopy", static_source)
+        self.assertIn("VOICE_PROMPT_READINESS_ENTRY_IDS", static_source)
+        self.assertIn("voicePromptReadinessPanel", static_source)
+        self.assertIn("voicePromptSafeCopy", static_source)
+        self.assertIn("voice prompt readiness 不是实际播放证明", static_source)
         self.assertIn("ACK 不代表送达成功", static_source)
         self.assertNotIn("/cmd_vel", static_source)
         self.assertNotIn("baudrate", static_source.lower())

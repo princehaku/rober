@@ -24,8 +24,11 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     PHONE_SUPPORT_BUNDLE_EVIDENCE_BOUNDARY,
     PHONE_SUPPORT_BUNDLE_SCHEMA,
     REMOTE_PROTOCOL_VERSION,
+    VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY,
+    VOICE_PROMPT_READINESS_SCHEMA,
     build_phone_readiness,
     build_phone_support_bundle,
+    build_voice_prompt_readiness,
     make_handler,
     normalize_elevator_assist,
     operator_prompt_for_state,
@@ -459,6 +462,17 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("ACK 只表示", support_bundle["safe_copy"])
         self.assertIn("不能代表送达成功", support_bundle["ack_semantics"])
         self.assertIn("current_step", support_bundle["support_refs"])
+        voice_prompt = payload["voice_prompt_readiness"]
+        self.assertEqual(voice_prompt["schema"], VOICE_PROMPT_READINESS_SCHEMA)
+        self.assertEqual(voice_prompt["evidence_boundary"], VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY)
+        self.assertEqual(payload["phone_readiness"]["voice_prompt_readiness"], voice_prompt)
+        self.assertEqual(voice_prompt["current_prompt"], "Please place trash on the robot.")
+        self.assertEqual(voice_prompt["trigger_state"], "waiting_for_trash")
+        self.assertFalse(voice_prompt["requires_human_help"])
+        self.assertFalse(voice_prompt["playback_ready"])
+        self.assertIn("不是实际喇叭或 TTS 播放证明", voice_prompt["safe_phone_copy"])
+        self.assertIn("不能代表送达成功", voice_prompt["ack_semantics"])
+        self.assertIn("real_speaker_playback", voice_prompt["not_proven"])
         task_flow = payload["phone_task_flow_readiness"]
         self.assertEqual(task_flow["schema"], PHONE_TASK_FLOW_SCHEMA)
         self.assertEqual(task_flow["evidence_boundary"], "software_proof_docker_phone_task_flow_readiness_gate")
@@ -582,6 +596,24 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             "/tmp/",
         ):
             self.assertNotIn(forbidden, encoded_support_bundle)
+        encoded_voice_prompt = json.dumps(voice_prompt, ensure_ascii=False).lower()
+        for forbidden in (
+            "authorization",
+            "oss ak",
+            "oss sk",
+            "root password",
+            "db url",
+            "queue url",
+            "ros topic",
+            "/cmd_vel",
+            "serial device",
+            "baudrate",
+            "traceback",
+            "checksum",
+            "/tmp/",
+            "artifact",
+        ):
+            self.assertNotIn(forbidden, encoded_voice_prompt)
 
     def test_status_payload_exposes_phone_and_speaker_copy_for_documented_states(self):
         for state, expected in OPERATOR_PROMPTS.items():
@@ -623,6 +655,66 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             normalize_elevator_assist({"state": "target_floor_unconfirmed"})["requires_human_help"],
             True,
         )
+
+    def test_voice_prompt_readiness_covers_elevator_help_without_playback_claim(self):
+        status = status_payload(
+            "requesting_floor_help",
+            "entered elevator",
+            elevator_assist={
+                "enabled": True,
+                "mode": "dry_run",
+                "phase": "requesting_floor_help",
+                "requires_human_help": True,
+                "target_floor": "1",
+            },
+        )
+        readiness = build_phone_readiness(
+            status,
+            remote_readiness={"degradation_state": "ok", "retry_hint": "ok"},
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        bundle = build_phone_support_bundle(status, readiness, None, now=1778357000.0)
+        voice_prompt = build_voice_prompt_readiness(status, readiness, bundle)
+
+        self.assertEqual(voice_prompt["schema"], VOICE_PROMPT_READINESS_SCHEMA)
+        self.assertEqual(voice_prompt["current_prompt"], ELEVATOR_ASSIST_SPEAKER_PROMPT)
+        self.assertEqual(voice_prompt["trigger_state"], "requesting_floor_help")
+        self.assertTrue(voice_prompt["requires_human_help"])
+        self.assertFalse(voice_prompt["playback_ready"])
+        self.assertIn("旁人帮忙按目标楼层", voice_prompt["trigger_reason"])
+        self.assertIn("ACK 只代表", voice_prompt["safe_phone_copy"])
+        self.assertIn("不是实际喇叭或 TTS 播放证明", voice_prompt["safe_phone_copy"])
+
+    def test_voice_prompt_readiness_filters_sensitive_status_text(self):
+        status = status_payload(
+            "failed",
+            "Traceback /tmp/robot.log token=secret",
+            can_collect=False,
+            can_confirm_dropoff=False,
+            can_cancel=False,
+        )
+        status["speaker_prompt"] = "Authorization Bearer secret /cmd_vel serial device baudrate checksum artifact"
+        readiness = build_phone_readiness(
+            status,
+            remote_readiness={"degradation_state": "malformed_response", "safe_phone_copy": "phone-safe"},
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        voice_prompt = build_voice_prompt_readiness(status, readiness)
+
+        self.assertEqual(voice_prompt["current_prompt"], "请查看手机状态，需要时请求人工帮助。")
+        encoded = json.dumps(voice_prompt, ensure_ascii=False).lower()
+        for forbidden in (
+            "authorization",
+            "bearer",
+            "/cmd_vel",
+            "serial device",
+            "baudrate",
+            "checksum",
+            "artifact",
+            "/tmp/",
+            "traceback",
+        ):
+            self.assertNotIn(forbidden, encoded)
 
     def test_phone_readiness_classifies_remote_degradation_without_delivery_claims(self):
         local_status = status_payload(
@@ -921,6 +1013,20 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["phone_support_bundle"]["schema"], PHONE_SUPPORT_BUNDLE_SCHEMA)
         self.assertEqual(payload["latest_status"]["phone_support_bundle"]["schema"], PHONE_SUPPORT_BUNDLE_SCHEMA)
         self.assertIn("ACK 只表示", payload["phone_support_bundle"]["safe_copy"])
+        self.assertEqual(payload["voice_prompt_readiness"]["schema"], VOICE_PROMPT_READINESS_SCHEMA)
+        self.assertEqual(
+            payload["voice_prompt_readiness"]["evidence_boundary"],
+            VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY,
+        )
+        self.assertEqual(
+            payload["latest_status"]["voice_prompt_readiness"]["schema"],
+            VOICE_PROMPT_READINESS_SCHEMA,
+        )
+        self.assertFalse(payload["voice_prompt_readiness"]["playback_ready"])
+        self.assertIn("real_speaker_playback", payload["voice_prompt_readiness"]["not_proven"])
+        encoded_voice_prompt = json.dumps(payload["voice_prompt_readiness"], ensure_ascii=False).lower()
+        for forbidden in ("authorization", "token", "/cmd_vel", "baudrate", "traceback", "checksum", "/tmp/"):
+            self.assertNotIn(forbidden, encoded_voice_prompt)
         encoded_support_bundle = json.dumps(payload["phone_support_bundle"], ensure_ascii=False).lower()
         for forbidden in ("authorization", "token", "/cmd_vel", "baudrate", "traceback", "checksum", "/tmp/"):
             self.assertNotIn(forbidden, encoded_support_bundle)
@@ -979,6 +1085,20 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("copySupportBundle", body)
         self.assertIn("openSupportHandoff", body)
         self.assertIn("phone_support_bundle", body)
+        self.assertIn("voice_prompt_readiness", body)
+        self.assertIn("Voice Prompt Readiness", body)
+        self.assertIn("voicePromptReadinessPanel", body)
+        self.assertIn("voicePromptCurrent", body)
+        self.assertIn("voicePromptTrigger", body)
+        self.assertIn("voicePromptHumanHelp", body)
+        self.assertIn("voicePromptPlayback", body)
+        self.assertIn("voicePromptSafeCopy", body)
+        self.assertIn("voicePromptNotProven", body)
+        self.assertIn("renderVoicePromptReadiness", body)
+        self.assertIn("voicePromptFromPayload", body)
+        self.assertIn("diagVoicePromptCurrent", body)
+        self.assertIn("diagVoicePromptTrigger", body)
+        self.assertIn("voice prompt readiness 不是实际播放证明", body)
         self.assertIn("ACK 不代表送达成功", body)
         self.assertIn("Phone control for trash delivery", body)
         self.assertIn("journeySteps", body)
