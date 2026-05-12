@@ -16,6 +16,12 @@ const SAFE_EMPTY = "等待后端提供安全摘要。";
 
 let latestStatus = null;
 let latestDiagnostics = null;
+let latestStartGate = {
+  destination: null,
+  destinationReady: false,
+  loadConfirmed: false,
+  blockedReason: "等待状态刷新。",
+};
 
 function $(id) {
   return document.getElementById(id);
@@ -83,6 +89,122 @@ function commandSafetyFromReadiness(readiness) {
 function taskFlowFromReadiness(status, readiness) {
   const taskFlow = status?.phone_task_flow_readiness || readiness?.phone_task_flow_readiness || {};
   return Array.isArray(taskFlow.steps) ? taskFlow.steps : [];
+}
+
+function taskFlowObjectFromStatus(status, readiness) {
+  // destination 只能来自后端 phone-safe 任务摘要；缺字段时 Start 必须 fail closed。
+  const direct = status?.phone_task_flow_readiness;
+  if (direct && typeof direct === "object") {
+    return direct;
+  }
+  const nested = readiness?.phone_task_flow_readiness;
+  return nested && typeof nested === "object" ? nested : {};
+}
+
+function safeDestinationFromValue(value) {
+  // 目的地只允许展示和提交短文本/安全摘要，避免把完整 artifact 或硬件细节传回控制口。
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+  if (value && typeof value === "object") {
+    return (
+      safeDestinationFromValue(value.label) ||
+      safeDestinationFromValue(value.name) ||
+      safeDestinationFromValue(value.station) ||
+      safeDestinationFromValue(value.destination) ||
+      safeDestinationFromValue(value.safe_phone_copy)
+    );
+  }
+  return "";
+}
+
+function destinationFromStatus(status, readiness) {
+  const taskFlow = taskFlowObjectFromStatus(status, readiness);
+  const steps = Array.isArray(taskFlow.steps) ? taskFlow.steps : [];
+  const destinationStep = steps.find((step) => (
+    step &&
+    (step.step === "destination_confirmed" || step.id === "destination_confirmed") &&
+    (step.confirmed === true || step.ready === true || step.state === "confirmed")
+  ));
+  const destination = (
+    safeDestinationFromValue(taskFlow.destination_summary) ||
+    safeDestinationFromValue(destinationStep?.destination_summary) ||
+    safeDestinationFromValue(destinationStep?.destination) ||
+    safeDestinationFromValue(destinationStep?.safe_phone_copy) ||
+    safeDestinationFromValue(readiness?.destination) ||
+    safeDestinationFromValue(status?.destination)
+  );
+  const ready = Boolean(destination) && (
+    taskFlow.destination_confirmed === true ||
+    taskFlow.destination_ready === true ||
+    destinationStep !== undefined ||
+    Boolean(taskFlow.destination_summary || readiness?.destination || status?.destination)
+  );
+  return {
+    value: destination,
+    ready,
+    source: destinationStep ? "phone_task_flow_readiness.steps.destination_confirmed" : "phone_safe_destination",
+  };
+}
+
+function loadConfirmationChecked() {
+  const checkbox = $("trashLoadedCheckbox");
+  return checkbox ? checkbox.checked === true : false;
+}
+
+function startGateFromStatus(status) {
+  const readiness = readinessFromStatus(status);
+  const commandSafety = commandSafetyFromReadiness(readiness);
+  const actions = commandSafety.actions && typeof commandSafety.actions === "object" ? commandSafety.actions : {};
+  const startGate = actions.start && typeof actions.start === "object" ? actions.start : {};
+  const destination = destinationFromStatus(status, readiness);
+  const permitted = actionPermission(status, readiness, "start");
+  const hasCommandSafety = commandSafety.schema === "trashbot.command_safety.v1" || Boolean(commandSafety.actions);
+  const loadConfirmed = loadConfirmationChecked();
+  const blockers = [];
+
+  if (!hasCommandSafety) {
+    blockers.push("缺少 command_safety，Start 安全关闭。");
+  }
+  if (startGate.enabled !== true) {
+    blockers.push(safeText(startGate.blocking_reason || commandSafety.global_block_reason, "command_safety 未放行。"));
+  }
+  if (permitted !== true) {
+    blockers.push("旧权限 can_collect 未放行。");
+  }
+  if (!destination.ready) {
+    blockers.push("缺少后端 phone-safe 目标垃圾站。");
+  }
+  if (!loadConfirmed) {
+    blockers.push("请先显式确认垃圾已放入。");
+  }
+
+  return {
+    destination: destination.value,
+    destinationReady: destination.ready,
+    loadConfirmed,
+    startEnabled: blockers.length === 0,
+    blockedReason: blockers.join("；") || "可以提交发车请求。",
+    commandSafetyAck: safeText(commandSafety.ack_semantics, "ACK 只表示指令受理或处理中，不代表送达成功。"),
+    evidenceBoundary: "software_proof_docker_mobile_task_start_confirmation_gate",
+    destinationSource: destination.source,
+  };
+}
+
+function renderStartConfirmation(status) {
+  latestStartGate = startGateFromStatus(status);
+  const badge = $("destinationGateBadge");
+  $("destinationSummary").textContent = latestStartGate.destination || "等待后端提供垃圾站。";
+  $("startBlockReason").textContent = latestStartGate.blockedReason;
+  $("startPayloadBoundary").textContent = `${latestStartGate.evidenceBoundary}；${latestStartGate.commandSafetyAck}`;
+  badge.className = "gate-badge";
+  if (latestStartGate.destinationReady) {
+    badge.classList.add("gate-ready");
+    badge.textContent = "目的地已确认";
+  } else {
+    badge.classList.add("gate-blocked");
+    badge.textContent = "未确认目的地";
+  }
 }
 
 function setBadge(state, copy) {
@@ -164,14 +286,17 @@ function renderCommandSafety(status) {
     const button = $(actionMeta.buttonId);
     const actionGate = actions[name] && typeof actions[name] === "object" ? actions[name] : {};
     const permitted = actionPermission(status, readiness, name);
-    const enabled = actionGate.enabled === true && permitted === true;
+    const startGate = name === "start" ? latestStartGate : null;
+    const enabled = actionGate.enabled === true && permitted === true && (startGate ? startGate.startEnabled : true);
     // blocked、离线、等待 ACK、人工接管都会通过 command_safety 关闭按钮。
     button.disabled = !enabled;
     button.dataset.endpoint = ENDPOINTS[name];
     button.title = safeText(actionGate.safe_phone_copy, "后端 gate 未放行。");
 
     const item = document.createElement("li");
-    const reason = safeText(actionGate.blocking_reason || commandSafety.global_block_reason, "blocked");
+    const reason = name === "start" && startGate
+      ? startGate.blockedReason
+      : safeText(actionGate.blocking_reason || commandSafety.global_block_reason, "blocked");
     item.textContent = `${actionMeta.label}：${enabled ? "可操作" : reason}`;
     reasons.appendChild(item);
   });
@@ -243,6 +368,10 @@ function renderOfflineFailure() {
   $("recoveryHint").textContent = "请恢复网络后刷新；离线壳不会发送或排队控制请求。";
   $("commandSafetyCopy").textContent = "离线状态下 Start、Confirm、Cancel 全部禁用。";
   $("offlineCopy").textContent = "离线壳只显示恢复提示，不缓存控制请求。";
+  $("destinationSummary").textContent = "离线，无法确认目标垃圾站。";
+  $("startBlockReason").textContent = "离线状态下 Start 安全关闭。";
+  $("destinationGateBadge").textContent = "未确认目的地";
+  $("destinationGateBadge").className = "gate-badge gate-blocked";
   Object.keys(ACTIONS).forEach((name) => {
     $(ACTIONS[name].buttonId).disabled = true;
   });
@@ -252,10 +381,39 @@ function renderStatus(status) {
   latestStatus = status;
   renderReadiness(status);
   renderTaskFlow(status);
+  renderStartConfirmation(status);
   renderCommandSafety(status);
   renderOfflineResume(status);
   renderVoicePrompt(status);
   renderSupport(status);
+}
+
+function buildStartPayload() {
+  // collect body 是手机确认 envelope，不是 ROS2 action result，也不证明送达成功。
+  return {
+    schema: "trashbot.mobile_task_start_confirmation.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    destination: latestStartGate.destination,
+    target: latestStartGate.destination,
+    destination_source: latestStartGate.destinationSource,
+    trash_loaded_confirmed: true,
+    client_timestamp: new Date().toISOString(),
+    client_reference: `mobile_web_${Date.now()}`,
+    evidence_boundary: latestStartGate.evidenceBoundary,
+    ack_semantics: "accepted_processing_only_not_delivery_success",
+  };
+}
+
+function requestOptionsForAction(actionName) {
+  if (actionName !== "start") {
+    return { method: "POST" };
+  }
+  return {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(buildStartPayload()),
+  };
 }
 
 async function refreshStatus() {
@@ -285,6 +443,15 @@ async function submitAction(actionName) {
   if (button.disabled) {
     return;
   }
+  if (actionName === "start") {
+    latestStartGate = startGateFromStatus(latestStatus || {});
+    renderStartConfirmation(latestStatus || {});
+    if (!latestStartGate.startEnabled) {
+      $("commandSafetyCopy").textContent = latestStartGate.blockedReason;
+      button.disabled = true;
+      return;
+    }
+  }
   // 控制动作需要人工确认；失败时只提示重试，不做本地重放。
   if (!window.confirm(`${action.label}？请确认现场安全。`)) {
     return;
@@ -292,7 +459,7 @@ async function submitAction(actionName) {
   button.disabled = true;
   button.textContent = "提交中";
   try {
-    await fetchJson(ENDPOINTS[actionName], { method: "POST" });
+    await fetchJson(ENDPOINTS[actionName], requestOptionsForAction(actionName));
     await refreshStatus();
   } catch (_error) {
     $("commandSafetyCopy").textContent = `${action.label} 提交失败，请打开诊断或稍后重试。`;
@@ -309,6 +476,12 @@ function wireEvents() {
   });
   Object.keys(ACTIONS).forEach((name) => {
     $(ACTIONS[name].buttonId).addEventListener("click", () => submitAction(name));
+  });
+  $("trashLoadedCheckbox").addEventListener("change", () => {
+    if (latestStatus) {
+      renderStartConfirmation(latestStatus);
+      renderCommandSafety(latestStatus);
+    }
   });
 }
 

@@ -393,7 +393,8 @@ The optional `remote_bridge` node is the formal 4G-oriented remote MVP path. It 
 
 Cloud responses may include optional status, preflight, diagnostics, queue,
 mobile-web-entrypoint, PWA-entrypoint, voice-prompt-readiness,
-production-recovery, or transaction-isolation metadata beside the
+production-recovery, transaction-isolation, or mobile task-start confirmation
+metadata beside the
 `trashbot.remote.v1` command/status/ACK envelope. Robot clients must treat those
 fields as ignorable diagnostics for forward compatibility. A metadata-only
 response with `command=null` or no command object must not start a robot action,
@@ -414,6 +415,16 @@ describe local Docker recovery gate state, `production_ready=false`, or
 `overall_status=blocked`, but it is not part of the remote command envelope, is
 safe for older robot clients to ignore, and must not trigger `collect`,
 `confirm_dropoff`, `cancel`, ACK emission, or cursor advancement on its own.
+Mobile task-start confirmation metadata, including
+`mobile_task_start_confirmation`,
+`mobile_task_start_confirmation_readiness`, and
+`task_start_confirmation_payload`, is the phone/UI API record that a user
+selected a destination and confirmed the trash was loaded before pressing Start
+Delivery. It is not a ROS2 action result, HIL result, WAVE ROVER feedback, or
+delivery success proof. The robot bridge must ignore those fields outside the
+`trashbot.remote.v1` command envelope; only a valid `command.id`,
+`command.type`, and `command.payload` may drive `collect`, `confirm_dropoff`, or
+`cancel`.
 
 Allowed remote commands are `collect`, `confirm_dropoff`, and `cancel`. The bridge only calls behavior-layer ROS contracts and never exposes direct base velocity control.
 For `collect`, `acked` means the command was accepted/submitted locally; final delivery success or failure is reported through later status payloads.

@@ -43,6 +43,29 @@
       </section>
 
       <section class="action-panel" aria-label="主操作">
+        <div class="start-confirmation" aria-labelledby="startGateTitle">
+          <div class="section-heading">
+            <h2 id="startGateTitle">发车确认</h2>
+            <span id="destinationGateBadge" class="gate-badge gate-blocked">未确认目的地</span>
+          </div>
+          <dl class="confirmation-grid">
+            <div>
+              <dt>目标垃圾站</dt>
+              <dd id="destinationSummary">等待后端提供垃圾站。</dd>
+            </div>
+            <div>
+              <dt>发车阻塞</dt>
+              <dd id="startBlockReason">等待状态刷新。</dd>
+            </div>
+          </dl>
+          <label class="load-confirmation" for="trashLoadedCheckbox">
+            <input id="trashLoadedCheckbox" type="checkbox">
+            <span>我确认垃圾已放入小车（不是自动载荷检测）</span>
+          </label>
+          <p id="startPayloadBoundary" class="hint">
+            Start Delivery 只会提交 phone-safe JSON；ACK 只代表 accepted/processing。
+          </p>
+        </div>
         <!-- 按钮默认禁用，JS 只能在 command_safety 和旧权限同时允许时打开。 -->
         <button id="startButton" class="primary-action" type="button" data-action="start" disabled>
           开始送达

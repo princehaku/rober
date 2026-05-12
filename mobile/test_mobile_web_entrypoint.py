@@ -45,8 +45,39 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("can_collect", app)
         self.assertIn("can_confirm_dropoff", app)
         self.assertIn("can_cancel", app)
+        self.assertIn("latestStartGate.startEnabled", app)
+        self.assertIn("缺少 command_safety", app)
+        self.assertIn("旧权限 can_collect", app)
+        self.assertIn("缺少后端 phone-safe 目标垃圾站", app)
+        self.assertIn("请先显式确认垃圾已放入", app)
         self.assertIn("renderOfflineFailure", app)
         self.assertIn("button.disabled = true", app)
+
+    def test_start_confirmation_panel_and_payload_are_phone_safe(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        self.assertIn("destinationSummary", index)
+        self.assertIn("trashLoadedCheckbox", index)
+        self.assertIn("不是自动载荷检测", index)
+        self.assertIn("trashbot.mobile_task_start_confirmation.v1", app)
+        self.assertIn('source: "mobile_web"', app)
+        self.assertIn("trash_loaded_confirmed: true", app)
+        self.assertIn("target: latestStartGate.destination", app)
+        self.assertIn("client_timestamp", app)
+        self.assertIn("client_reference", app)
+        self.assertIn("software_proof_docker_mobile_task_start_confirmation_gate", app)
+        self.assertIn("accepted_processing_only_not_delivery_success", app)
+        self.assertIn('"Content-Type": "application/json"', app)
+        self.assertNotRegex(app, r"fetchJson\\(ENDPOINTS\\[actionName\\], \\{ method: \"POST\" \\}\\)")
+
+        for compatible_field in (
+            "destination_summary",
+            "destination_confirmed",
+            "readiness?.destination",
+            "status?.destination",
+        ):
+            self.assertIn(compatible_field, app)
 
     def test_service_worker_bypasses_dynamic_control_routes(self):
         service_worker = self.read("service-worker.js")
@@ -84,6 +115,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("not live robot state", payload["fixture_note"])
         self.assertEqual(payload["phone_readiness"]["schema"], "trashbot.phone_readiness.v1")
         self.assertIn("trashbot.command_safety.v1", encoded)
+        self.assertIn("destination_summary", encoded)
+        self.assertIn("destination_confirmed", encoded)
+        self.assertIn("ack 只表示指令受理或处理中，不代表送达成功", encoded)
         for forbidden in (
             "authorization",
             "oss ak",
@@ -94,6 +128,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "baudrate",
             "wave rover",
             "checksum",
+            "artifact",
+            "serial device",
+            "local path",
         ):
             self.assertNotIn(forbidden, encoded)
 

@@ -3,6 +3,7 @@
   "fixture_note": "Static mobile smoke only; not live robot state.",
   "state": "waiting_for_trash",
   "phone_copy": "请放入垃圾，确认安全后再开始送达。",
+  "destination": "一号楼东侧垃圾站",
   "can_collect": true,
   "can_confirm_dropoff": false,
   "can_cancel": false,
@@ -45,8 +46,16 @@
     },
     "phone_task_flow_readiness": {
       "schema": "trashbot.phone_task_flow_readiness.v1",
+      "destination_summary": {
+        "label": "一号楼东侧垃圾站",
+        "safe_phone_copy": "目标垃圾站：一号楼东侧垃圾站"
+      },
+      "load_confirmation_required": true,
+      "ack_semantics": "ACK 只表示指令受理或处理中，不代表送达成功。",
       "steps": [
         {"step": "connection_ready", "label": "连接/就绪", "current": true, "safe_phone_copy": "手机入口已读取 fixture。"},
+        {"step": "destination_confirmed", "label": "确认垃圾站", "confirmed": true, "destination": "一号楼东侧垃圾站", "safe_phone_copy": "已确认一号楼东侧垃圾站。"},
+        {"step": "trash_loaded", "label": "放入垃圾", "safe_phone_copy": "需要用户勾选已放入垃圾；这不是自动载荷检测。"},
         {"step": "start_delivery", "label": "一键发车", "safe_phone_copy": "真实运行时由 command_safety 决定。"}
       ]
     },

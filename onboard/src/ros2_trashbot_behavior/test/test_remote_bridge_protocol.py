@@ -179,6 +179,45 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("cursor_override", encoded_command)
         self.assertNotIn("delivery_success", encoded_command)
 
+    def test_validate_command_ignores_mobile_task_start_confirmation_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-mobile-task-start-confirmation",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "mobile_task_start_confirmation": {
+                "schema": "trashbot.mobile_task_start_confirmation.v1",
+                "trash_loaded_confirmed": True,
+                "selected_destination": "trash_station",
+                "trigger_robot_action": "confirm_dropoff",
+                "delivery_success": True,
+            },
+            "mobile_task_start_confirmation_readiness": {
+                "schema": "trashbot.mobile_task_start_confirmation_readiness.v1",
+                "overall_status": "ready",
+                "ack_semantics": "delivery_success",
+                "cursor_override": "cmd-future",
+            },
+            "task_start_confirmation_payload": {
+                "source": "mobile/web",
+                "destination": "trash_station",
+                "trash_loaded_confirmed": True,
+                "raw_ros_topic": "/trashbot/collect_trash",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-mobile-task-start-confirmation")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 手机确认 payload 不是 robot command envelope，parser 只保留既有 id/type/payload 语义。
+        self.assertNotIn("mobile_task_start_confirmation", encoded_command)
+        self.assertNotIn("mobile_task_start_confirmation_readiness", encoded_command)
+        self.assertNotIn("task_start_confirmation_payload", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("/trashbot/collect_trash", encoded_command)
+
     def test_validate_command_ignores_deployment_readiness_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-deployment-readiness-metadata",

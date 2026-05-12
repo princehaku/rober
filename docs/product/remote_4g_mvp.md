@@ -560,6 +560,15 @@ delivery success. Deployment-readiness metadata such as
 `deployment_readiness`, `cloud_deployment_readiness`, or `preflight` follows
 the same robot-side rule: it is diagnostic cloud deployment evidence only, and
 must not be interpreted as a robot command or cursor instruction.
+Task-start confirmation fields such as `mobile_task_start_confirmation`,
+`mobile_task_start_confirmation_readiness`, and
+`task_start_confirmation_payload` are phone/API proof that the user selected a
+destination and explicitly confirmed trash loading before Start Delivery. They
+are not ROS2 action results, WAVE ROVER feedback, HIL, Nav2/fixed-route proof,
+or delivery success. If those fields appear beside `command` in a cloud
+response, the robot bridge ignores them; only a valid `trashbot.remote.v1`
+`command.id`, `command.type`, and `command.payload` can produce a backend call
+or terminal ACK.
 
 Important product boundary:
 

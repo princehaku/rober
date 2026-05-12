@@ -149,17 +149,17 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-05-13 04:20 Asia/Shanghai。最新 sprint：`2026.05.13_04-05_cloud-deployment-readiness-gate`。详细历史见 `docs/process/okr_progress_log.md`。
+更新时间：2026-05-13 05:11 Asia/Shanghai。最新 sprint：`2026.05.13_05-06_mobile-task-start-confirmation-gate`。详细历史见 `docs/process/okr_progress_log.md`。
 
 | Objective | 当前进度 | 本轮证据与边界 | 主要缺口 |
 | --- | --- | --- | --- |
 | Objective 1：硬件协议可信底盘 | 约 75% | 本轮未改硬件、WAVE ROVER、UART、Orange Pi、launch 参数或 HIL 证据；保留此前 Docker/Humble 与 hardware smoke 软件护栏。 | 仍缺真实 WAVE ROVER `hil_pass`、真实串口日志、`T=1001` feedback、`/odom`、`/imu/data`、`/battery` 实机样本。 |
 | Objective 2：可送垃圾任务完整闭环 | 约 77% | 本轮 robot compatibility fence 只确认 `deployment_readiness`、`cloud_deployment_readiness`、`preflight` metadata-only responses 不触发 robot backend call、不 POST ACK、不推进或持久化 cursor、不把 ACK 升级为 delivery success；不提升任务闭环完成度。 | 仍缺真实 Nav2/fixed-route 运行、同一 `evidence_ref` 的任务复盘、真实送达和失败恢复实测。 |
 | Objective 3：可验证导航与固定路线 | 约 77% | 本轮未改导航、route、keyframe 或 replay 工具；既有软件对账能力保持。 | 仍缺真实路线采集、Nav2 waypoint/fixed-route 实跑、关键帧实景证据与上车复账。 |
-| Objective 4：手机用户体验与低成本量产边界 | 约 56% | 本轮未改手机 production app、真实手机浏览器/设备或 PWA install 证据；保留 03-04 `software_proof_docker_mobile_web_entrypoint_gate` 进度。 | 仍缺 production app、真实手机浏览器/设备验收、真实 PWA install prompt、TTS/喇叭实放、量产实物验收。 |
+| Objective 4：手机用户体验与低成本量产边界 | 约 58% | `2026.05.13_05-06_mobile-task-start-confirmation-gate` 完成 `software_proof_docker_mobile_task_start_confirmation_gate`：`mobile/web` Start Delivery 前新增 destination confirmation、loaded confirmation、`command_safety`、`can_collect` 四重 gate，`POST /api/collect` 使用 phone-safe JSON body，并同时携带同值 `destination`/`target` 以兼容现有 collect 入口；robot compatibility fence 证明 phone confirmation metadata-only responses 不触发 backend action、不 POST ACK、不推进或持久化 cursor，protocol normalization 剥离 metadata。 | 仍缺 production app、真实手机浏览器/设备验收、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、TTS/喇叭实放、Nav2/fixed-route、WAVE ROVER、HIL、真实送达与量产实物验收。 |
 | Objective 5：云中转 + OSS/CDN 数据通路产品化（历史 O6） | 约 57% | `2026.05.13_04-05_cloud-deployment-readiness-gate` 完成 `software_proof_docker_cloud_deployment_readiness_gate`：新增 `trashbot.cloud_deployment_readiness` schema_version=1，Docker/local preflight 暴露部署 readiness gate 且保持 `production_ready=false`、`overall_status=blocked`；覆盖 public URL/TLS/ingress、healthcheck、bearer placeholder、state backend、production DB/queue、OSS/CDN、4G/SIM、runbook/smoke presence，并有 robot metadata-only compatibility fence。 | 仍没有真实云、真实 HTTPS/TLS、公网入口、真实 4G/SIM、OSS/CDN live traffic、production DB/queue、多实例一致性、production disaster recovery、real phone app/device、HIL、Nav2/fixed-route、WAVE ROVER 或 real delivery。 |
 
-本轮 OKR 口径：Objective 5 因 cloud deployment readiness artifact/preflight/Docker smoke 与 robot metadata compatibility fence 完成，从约 55% 保守上调到约 57%。证据边界是 `software_proof_docker_cloud_deployment_readiness_gate`；这不是 real cloud、real HTTPS/TLS、public ingress、real 4G/SIM、OSS/CDN live traffic、production DB/queue、multi-instance consistency、production disaster recovery、real phone app/device、HIL、Nav2/fixed-route、WAVE ROVER 或 real delivery 证据。Objective 1/2/3/4 完成度不调整。
+本轮 OKR 口径：Objective 4 因 mobile task start confirmation gate 与 robot compatibility fence 完成，从约 56% 保守上调到约 58%。证据边界是 `software_proof_docker_mobile_task_start_confirmation_gate`；这不是真实手机设备/浏览器、production app、真实云/4G、OSS/CDN live traffic、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达证据。"已放入垃圾"是用户显式确认，不是自动载荷检测。Objective 1/2/3/5 完成度不调整。
 
 ## 5. OKR完成路线
 

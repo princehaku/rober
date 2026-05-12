@@ -735,6 +735,53 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_mobile_task_start_confirmation_metadata_only_response_does_not_move_robot(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-confirmation-metadata",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras["command_response"] = {
+                "mobile_task_start_confirmation": {
+                    "schema": "trashbot.mobile_task_start_confirmation.v1",
+                    "trash_loaded_confirmed": True,
+                    "selected_destination": "trash_station",
+                    "trigger_robot_action": "collect",
+                    "delivery_success": True,
+                },
+                "mobile_task_start_confirmation_readiness": {
+                    "schema": "trashbot.mobile_task_start_confirmation_readiness.v1",
+                    "overall_status": "ready",
+                    "ack_semantics": "delivery_success",
+                    "cursor_override": "cmd-confirmed",
+                },
+                "task_start_confirmation_payload": {
+                    "source": "mobile/web",
+                    "target": "trash_station",
+                    "trash_loaded_confirmed": True,
+                    "raw_ros_topic": "/trashbot/collect_trash",
+                },
+            }
+
+            handled = worker.poll_once()
+
+            self.assertFalse(handled)
+            self.assertEqual(self.backend.calls, [])
+            self.assertEqual(self.cloud.ack_posts, [])
+            self.assertEqual(worker.last_ack_id, "cmd-before-confirmation-metadata")
+            self.assertFalse(state_path.exists())
+            self.assertIn("last_ack_id=cmd-before-confirmation-metadata", self.cloud.get_paths[-1])
+            encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+            # 手机端确认字段只是 UI/API 层元数据；没有 command envelope 时不能触发 ACK 或游标推进。
+            self.assertNotIn("mobile_task_start_confirmation", encoded_status)
+            self.assertNotIn("task_start_confirmation_payload", encoded_status)
+            self.assertNotIn("delivery_success", encoded_status)
+            self.assertNotIn("/trashbot/collect_trash", encoded_status)
+
     def test_phone_offline_resume_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {
