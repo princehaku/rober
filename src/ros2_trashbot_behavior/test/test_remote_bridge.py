@@ -735,6 +735,63 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_phone_offline_resume_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "phone_offline_resume_readiness": {
+                    "schema": "trashbot.phone_offline_resume_readiness.v1",
+                    "connection_state": "offline",
+                    "can_resume": False,
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "phone_offline_resume_readiness": {
+                    "schema": "trashbot.phone_offline_resume_readiness.v1",
+                    "next_action": "confirm_dropoff",
+                    "trigger_robot_action": "cancel",
+                    "ack_semantics": "delivery_success",
+                    "cursor_override": "cmd-future",
+                    "delivery_success": True,
+                },
+            },
+            "ack_response": {
+                "phone_offline_resume_readiness": {
+                    "schema": "trashbot.phone_offline_resume_readiness.v1",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-phone-offline-resume-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-phone-offline-resume-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-phone-offline-resume-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        self.assertEqual(ack_payload["message"], "collect")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # offline/resume readiness 是手机端恢复摘要，不能让 robot ACK 变成送达成功或游标控制。
+        self.assertNotIn("phone_offline_resume_readiness", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("phone_offline_resume_readiness", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_phone_support_bundle_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {
@@ -1035,6 +1092,51 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertFalse(state_path.exists())
             self.assertEqual(len(self.cloud.status_posts), 1)
             self.assertNotIn("phone_task_flow_readiness", json.dumps(self.cloud.status_posts))
+
+    def test_metadata_only_phone_offline_resume_response_does_not_start_ack_or_persist_cursor(self):
+        for connection_state in ("offline", "recovering", "stale"):
+            with self.subTest(connection_state=connection_state):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.backend.calls.clear()
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-offline-resume-{connection_state}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        "phone_offline_resume_readiness": {
+                            "schema": "trashbot.phone_offline_resume_readiness.v1",
+                            "connection_state": connection_state,
+                            "can_resume": False,
+                            "primary_actions_enabled": False,
+                            "next_action": "collect",
+                            "trigger_robot_action": "collect",
+                            "ack_semantics": "delivery_success",
+                            "cursor_override": "cmd-future",
+                            "delivery_success": True,
+                        },
+                        "preflight": {"overall_status": "blocked", "production_ready": False},
+                    }
+
+                    handled = worker.poll_once()
+
+                    # 只有 offline/resume metadata、没有 command envelope 时，不能执行动作、ACK 或推进游标。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-offline-resume-{connection_state}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn("phone_offline_resume_readiness", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
 
     def test_metadata_only_phone_support_bundle_response_does_not_start_ack_or_persist_cursor(self):
         with tempfile.TemporaryDirectory() as tmpdir:

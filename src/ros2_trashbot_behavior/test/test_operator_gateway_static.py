@@ -229,12 +229,16 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "phone_task_flow_readiness",
             "phone_support_bundle",
             "voice_prompt_readiness",
+            "phone_offline_resume_readiness",
             "trashbot.phone_support_bundle.v1",
             "trashbot.voice_prompt_readiness.v1",
+            "trashbot.phone_offline_resume_readiness.v1",
             "PHONE_SUPPORT_BUNDLE_EVIDENCE_BOUNDARY",
             "VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY",
+            "PHONE_OFFLINE_RESUME_READINESS_EVIDENCE_BOUNDARY",
             "software_proof_docker_phone_support_bundle_gate",
             "software_proof_docker_phone_voice_prompt_readiness_gate",
+            "software_proof_docker_phone_offline_resume_gate",
             "voicePromptReadinessPanel",
             "voicePromptCurrent",
             "voicePromptTrigger",
@@ -244,6 +248,14 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "voicePromptNotProven",
             "renderVoicePromptReadiness",
             "build_voice_prompt_readiness",
+            "offlineResumeReadinessPanel",
+            "offlineResumeConnection",
+            "offlineResumeCanResume",
+            "offlineResumeHint",
+            "offlineResumeAck",
+            "offlineResumeNotProven",
+            "renderOfflineResumeReadiness",
+            "build_phone_offline_resume_readiness",
             "supportHandoffButton",
             "supportBundlePanel",
             "supportBundleSafeCopy",
@@ -296,6 +308,10 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("voicePromptReadinessPanel", static_source)
         self.assertIn("voicePromptSafeCopy", static_source)
         self.assertIn("voice prompt readiness 不是实际播放证明", static_source)
+        self.assertIn("PHONE_OFFLINE_RESUME_ENTRY_IDS", static_source)
+        self.assertIn("offlineResumeReadinessPanel", static_source)
+        self.assertIn("offlineResumeAck", static_source)
+        self.assertIn("phone offline resume gate", static_source)
         self.assertIn("ACK 不代表送达成功", static_source)
         self.assertNotIn("/cmd_vel", static_source)
         self.assertNotIn("baudrate", static_source.lower())
@@ -316,6 +332,9 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         for text in (
             "手机已断开，需要重新连接",
             "Start、Confirm Dropoff 和 Cancel 在离线状态保持不可用",
+            "software_proof_docker_phone_offline_resume_gate",
+            "stale 或 pending ACK",
+            "ACK 只代表 command accepted/processing evidence",
             'id="offlineStartButton" disabled',
             'id="offlineDropoffButton" disabled',
             'id="offlineCancelButton" disabled',

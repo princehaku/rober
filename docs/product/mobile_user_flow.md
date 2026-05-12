@@ -84,6 +84,29 @@ The first screen now also exposes a support handoff entry backed by `phone_suppo
 
 The first screen also exposes `voice_prompt_readiness` at top-level `/api/status`, nested under `phone_readiness.voice_prompt_readiness`, and in `GET /api/diagnostics`. The schema is `trashbot.voice_prompt_readiness.v1`, and the evidence boundary is `software_proof_docker_phone_voice_prompt_readiness_gate`. It shows the current prompt contract, trigger state, human-help requirement, playback readiness, safe phone copy, ACK semantics, and explicit `not_proven` boundaries. This is a prompt readiness gate only: `playback_ready=false` in the local/Docker proof, ACK is accepted/processing evidence only, and the object does not prove real speaker playback, TTS, microphone wake word, real phone device, production app, real cloud/4G, OSS/CDN live traffic, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or delivery success.
 
+The first screen and offline shell now also expose `phone_offline_resume_readiness` at top-level `/api/status`, nested under `phone_readiness.phone_offline_resume_readiness`, and in `GET /api/diagnostics`. The schema is `trashbot.phone_offline_resume_readiness.v1`, and the evidence boundary is `software_proof_docker_phone_offline_resume_gate`. This gate combines offline shell copy, reconnect/recovery hints, stale status, pending ACK, command safety, support handoff, voice prompt boundary, and ACK semantics into one phone-safe local/Docker contract. It does not cache, forge, or send Start/Confirm/Cancel control requests while offline. Start Delivery, Confirm Dropoff, and Cancel remain disabled in the offline shell; the live page still uses `command_safety` as the final button-level blocker. Diagnostics and Support Handoff remain accessible when primary actions are blocked, so users can recover or hand off a sanitized summary without making motion claims.
+
+`phone_offline_resume_readiness` fields:
+
+- `schema`: `trashbot.phone_offline_resume_readiness.v1`.
+- `schema_version`: integer version, currently `1`.
+- `evidence_boundary`: `software_proof_docker_phone_offline_resume_gate`.
+- `connection_state`: `offline`, `status_stale`, `pending_ack`, `blocked`, `manual_takeover`, `recovering`, or `online`.
+- `can_resume`: true only when connection state is online and command safety allows at least one primary action.
+- `primary_actions_enabled`: whether Start/Confirm/Cancel currently have any enabled action after command safety.
+- `support_entry_enabled`: whether Diagnostics or Support Handoff can still be opened.
+- `next_action`: recovery action such as `wait_reconnect`, `wait_for_robot_status`, `wait_for_command_ack`, `retry_cloud`, `manual_takeover`, or `continue_local_flow`.
+- `safe_phone_copy`: Chinese-first user copy for the first screen or offline/resume panel.
+- `recovery_hint`: user-facing recovery step.
+- `ack_semantics`: ACK remains accepted/processing evidence only and is not delivery success.
+- `support_handoff`: sanitized support-entry summary.
+- `voice_prompt`: prompt-readiness boundary summary; local/Docker proof does not prove real playback.
+- `command_safety`: compact summary of the final browser button gate.
+- `offline_shell`: confirms primary actions stay disabled and no control request cache is used.
+- `not_proven`: explicit non-claims including real phone device/browser, production app, real cloud/4G, OSS/CDN live traffic, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, and delivery success.
+
+The offline/resume summary must not expose tokens, Authorization headers, OSS AK/SK, root passwords, DB/queue URLs, raw ROS topic names, `/cmd_vel`, serial device names, baudrate values, local filesystem paths, checksums, or complete artifacts.
+
 `voice_prompt_readiness` must be Chinese-first when a Chinese prompt exists. For elevator assisted delivery, `trigger_state=requesting_floor_help` must surface:
 
 ```text
@@ -109,6 +132,7 @@ The voice prompt summary is phone-safe. It must not expose tokens, Authorization
 - `command_safety`: browser command gate with `schema=trashbot.command_safety.v1`, evidence boundary `software_proof_docker_phone_command_safety_browser_gate`, `global_block_reason`, `ack_semantics`, `safe_phone_copy`, and per-action entries for `start`, `confirm_dropoff`, `cancel`, and `diagnostics`. Each primary action combines the old `can_*` permission with remote readiness and manifest safety. `diagnostics.enabled` may stay true while its copy explains the block.
 - `phone_support_bundle`: phone-safe handoff package with `schema=trashbot.phone_support_bundle.v1` and evidence boundary `software_proof_docker_phone_support_bundle_gate`. `/api/status.phone_support_bundle`, `/api/status.phone_readiness.phone_support_bundle`, and `/api/diagnostics.phone_support_bundle` use the same builder and include `bundle_id`, `generated_at`, `support_level`, `status_summary`, `failure_summary`, `next_steps`, `ack_semantics`, `support_refs`, `safe_copy`, and `not_proven`. `safe_copy` is Chinese-first and must state that ACK means accepted/processing evidence only, not delivery success.
 - `voice_prompt_readiness`: phone-safe voice prompt readiness package with `schema=trashbot.voice_prompt_readiness.v1` and evidence boundary `software_proof_docker_phone_voice_prompt_readiness_gate`. `/api/status.voice_prompt_readiness`, `/api/status.phone_readiness.voice_prompt_readiness`, and `/api/diagnostics.voice_prompt_readiness` use the same summary and include `current_prompt`, `prompt_language`, `trigger_state`, `trigger_reason`, `requires_human_help`, `playback_ready=false`, `safe_phone_copy`, `ack_semantics`, `support_refs`, and `not_proven`.
+- `phone_offline_resume_readiness`: phone-safe offline/resume package with `schema=trashbot.phone_offline_resume_readiness.v1` and evidence boundary `software_proof_docker_phone_offline_resume_gate`. `/api/status.phone_offline_resume_readiness`, `/api/status.phone_readiness.phone_offline_resume_readiness`, and `/api/diagnostics.phone_offline_resume_readiness` use the same summary and include connection state, resume allowance, primary action gate, support-entry gate, next action, recovery hint, ACK semantics, offline shell boundary, and `not_proven`.
 - `remote_readiness`: current local/mock remote readiness object.
 - `cloud_preflight` / `backup_restore`: optional phone-safe gate summaries; missing artifacts remain `not_run` or `unknown`.
 - `oss_cdn_manifest`: phone-safe diagnostic object reference summary. It uses `schema=trashbot.oss_cdn_manifest`, `schema_version=1`, `evidence_boundary=software_proof_docker_phone_manifest_consumption`, `state=ready|missing|invalid|stale`, `object_count`, `cdn_url_rule`, `safe_summary`, `retry_hint`, `updated_at`, `staleness`, and `not_proven`. It must not expose the full artifact, object keys, checksums, local paths, credentials, ROS topics, or hardware details.

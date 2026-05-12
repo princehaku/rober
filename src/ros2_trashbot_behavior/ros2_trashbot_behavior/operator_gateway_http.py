@@ -30,6 +30,8 @@ PHONE_SUPPORT_BUNDLE_SCHEMA = "trashbot.phone_support_bundle.v1"
 PHONE_SUPPORT_BUNDLE_EVIDENCE_BOUNDARY = "software_proof_docker_phone_support_bundle_gate"
 VOICE_PROMPT_READINESS_SCHEMA = "trashbot.voice_prompt_readiness.v1"
 VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_voice_prompt_readiness_gate"
+PHONE_OFFLINE_RESUME_READINESS_SCHEMA = "trashbot.phone_offline_resume_readiness.v1"
+PHONE_OFFLINE_RESUME_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_offline_resume_gate"
 PHONE_PWA_EVIDENCE_BOUNDARY = "software_proof_docker_phone_pwa_installability_gate"
 COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
@@ -183,6 +185,36 @@ VOICE_PROMPT_FORBIDDEN_MARKERS = (
     "traceback",
     "checksum",
     "artifact",
+    "/tmp/",
+    "/users/",
+    "/home/",
+    "http://",
+    "https://",
+)
+
+PHONE_OFFLINE_RESUME_FORBIDDEN_MARKERS = (
+    # offline/resume copy 会出现在 service worker 离线壳层，过滤范围必须覆盖支持交接和接口文档的红线。
+    "token",
+    "authorization",
+    "bearer",
+    "oss ak",
+    "oss sk",
+    "access_key",
+    "secret",
+    "password",
+    "root password",
+    "database url",
+    "db url",
+    "queue url",
+    "ros topic",
+    "/cmd_vel",
+    "serial",
+    "baudrate",
+    "wave rover",
+    "traceback",
+    "checksum",
+    "artifact",
+    "complete artifact",
     "/tmp/",
     "/users/",
     "/home/",
@@ -908,6 +940,9 @@ OFFLINE_HTML = """<!doctype html>
       <h1>手机已断开，需要重新连接</h1>
       <p>当前只能查看离线壳层。重新连接到机器人本地页面后，才能刷新状态或下发控制指令。</p>
       <p>为避免误操作，Start、Confirm Dropoff 和 Cancel 在离线状态保持不可用。</p>
+      <p>恢复提示：网络恢复后请刷新状态；若仍显示 stale 或 pending ACK，请打开 Diagnostics 或 Support Handoff。</p>
+      <p>ACK 语义：ACK 只代表 command accepted/processing evidence，不代表送达成功。</p>
+      <p>边界：software_proof_docker_phone_offline_resume_gate，不证明真实手机、production app、真实云/4G、OSS/CDN 实流量、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。</p>
       <div class="row">
         <button id="offlineStartButton" disabled>Start Delivery</button>
         <button id="offlineDropoffButton" disabled>Confirm Dropoff</button>
@@ -1250,6 +1285,16 @@ HTML = """<!doctype html>
       <p class="message readinessMeta">诊断建议: <strong id="phoneManifestRetry">请刷新状态。</strong></p>
       <p class="message readinessMeta">Support: <strong id="phoneReadinessSupport">not reported</strong></p>
       <p class="message readinessMeta">Not proven: <strong id="phoneReadinessNotProven">real cloud, 4G, HIL</strong></p>
+    </section>
+    <section id="offlineResumeReadinessPanel" class="panel">
+      <h2>Offline Resume</h2>
+      <p class="message">Connection: <strong id="offlineResumeConnection">checking</strong></p>
+      <p class="message">Resume: <strong id="offlineResumeCanResume">false</strong></p>
+      <p class="message">Next: <strong id="offlineResumeNext">等待状态刷新。</strong></p>
+      <p class="message">Recovery: <strong id="offlineResumeHint">恢复连接后刷新状态。</strong></p>
+      <p class="message">ACK: <strong id="offlineResumeAck">ACK 只代表 accepted/processing evidence。</strong></p>
+      <p class="message">Boundary: <strong id="offlineResumeBoundary">software_proof_docker_phone_offline_resume_gate</strong></p>
+      <p class="message">Not proven: <strong id="offlineResumeNotProven">real phone, cloud, HIL</strong></p>
     </section>
     <section class="panel status">
       <div>
@@ -1953,6 +1998,42 @@ function renderPhoneReadiness(phoneReadiness) {
     : {};
   renderSupportBundleSummary(supportBundle);
 }
+function offlineResumeFromPayload(payload) {
+  if (payload.phone_offline_resume_readiness && typeof payload.phone_offline_resume_readiness === 'object') {
+    return payload.phone_offline_resume_readiness;
+  }
+  const readiness = payload.phone_readiness && typeof payload.phone_readiness === 'object'
+    ? payload.phone_readiness
+    : {};
+  return readiness.phone_offline_resume_readiness && typeof readiness.phone_offline_resume_readiness === 'object'
+    ? readiness.phone_offline_resume_readiness
+    : {};
+}
+function renderOfflineResumeReadiness(offlineResume) {
+  const summary = offlineResume && typeof offlineResume === 'object' ? offlineResume : {};
+  document.getElementById('offlineResumeConnection').textContent = text(summary.connection_state, 'unknown');
+  document.getElementById('offlineResumeCanResume').textContent = String(Boolean(summary.can_resume));
+  document.getElementById('offlineResumeNext').textContent = text(
+    summary.safe_phone_copy,
+    '手机恢复路径仍在等待状态刷新。'
+  );
+  document.getElementById('offlineResumeHint').textContent = text(
+    summary.recovery_hint,
+    '恢复连接后刷新状态；如仍被阻断，请打开 Diagnostics。'
+  );
+  document.getElementById('offlineResumeAck').textContent = text(
+    summary.ack_semantics,
+    'ACK 只代表 accepted/processing evidence，不代表送达成功。'
+  );
+  document.getElementById('offlineResumeBoundary').textContent = text(
+    summary.evidence_boundary,
+    'software_proof_docker_phone_offline_resume_gate'
+  );
+  const notProven = Array.isArray(summary.not_proven) ? summary.not_proven.slice(0, 6) : [];
+  document.getElementById('offlineResumeNotProven').textContent = notProven.length
+    ? notProven.join(', ')
+    : 'real phone, production app, cloud, HIL';
+}
 function voicePromptFromPayload(payload) {
   if (payload.voice_prompt_readiness && typeof payload.voice_prompt_readiness === 'object') {
     return payload.voice_prompt_readiness;
@@ -2092,6 +2173,7 @@ function showStatus(payload) {
   // raw status 只保留给开发者临时排障，默认隐藏，避免手机用户看到 JSON/ROS 内部字段。
   document.getElementById('status').textContent = JSON.stringify(payload, null, 2);
   renderPhoneReadiness(payload.phone_readiness);
+  renderOfflineResumeReadiness(offlineResumeFromPayload(payload));
   renderVoicePromptReadiness(voicePromptFromPayload(payload));
   updateJourney(payload);
   renderTaskFlow(taskFlowFromPayload(payload));
@@ -2112,6 +2194,7 @@ function showDiagnostics(payload) {
   const ossCdnManifest = payload.oss_cdn_manifest || {};
   const phoneSupportBundle = payload.phone_support_bundle || {};
   const voicePromptReadiness = payload.voice_prompt_readiness || voicePromptFromPayload(latest);
+  const offlineResumeReadiness = payload.phone_offline_resume_readiness || offlineResumeFromPayload(latest);
   const phoneTaskFlow = payload.phone_task_flow_readiness && typeof payload.phone_task_flow_readiness === 'object'
     ? payload.phone_task_flow_readiness
     : taskFlowFromPayload(latest);
@@ -2133,6 +2216,7 @@ function showDiagnostics(payload) {
   renderHardwareProof(hardwareProof);
   renderOssCdnManifest(ossCdnManifest);
   renderSupportBundle(phoneSupportBundle);
+  renderOfflineResumeReadiness(offlineResumeReadiness);
   document.getElementById('diagSoftware').textContent = text(payload.software_version, 'not reported');
   document.getElementById('diagMap').textContent = text(payload.map_version, 'not reported');
   document.getElementById('diagRoute').textContent = text(payload.route_version, 'not reported');
@@ -2999,6 +3083,160 @@ def build_voice_prompt_readiness(status, phone_readiness=None, phone_support_bun
     }
 
 
+def _offline_resume_safe_text(value, fallback):
+    # offline/resume summary 是首屏和离线壳层共同使用的用户文案，必须先过滤敏感工程细节。
+    text_value = str(value or "").strip()
+    if not text_value:
+        return fallback
+    lowered = text_value.lower()
+    if any(marker in lowered for marker in PHONE_OFFLINE_RESUME_FORBIDDEN_MARKERS):
+        return fallback
+    return text_value
+
+
+def _offline_resume_connection_state(primary_state, remote_state, command_safety):
+    # connection_state 只描述手机恢复路径，不把本地 mock 或 ACK 状态升级成真实云/4G。
+    if remote_state == "cloud_unreachable":
+        return "offline"
+    if remote_state == "status_stale":
+        return "status_stale"
+    if remote_state == "command_pending":
+        return "pending_ack"
+    if primary_state in {"login_required", "remote_response_invalid"}:
+        return "blocked"
+    if primary_state == "manual_takeover_required":
+        return "manual_takeover"
+    if str(command_safety.get("global_block_reason") or "") == "allowed":
+        return "online"
+    return "recovering"
+
+
+def build_phone_offline_resume_readiness(
+    status,
+    phone_readiness=None,
+    phone_support_bundle=None,
+    voice_prompt_readiness=None,
+):
+    """Build one phone-safe offline/resume gate from existing readiness objects.
+
+    这个 gate 只汇总 offline shell、恢复连接、stale status、pending ACK、command safety、
+    support handoff 和 voice/ACK 文案；它不缓存、不伪造、不发送控制请求。
+    """
+    status = status if isinstance(status, dict) else {}
+    phone_readiness = phone_readiness if isinstance(phone_readiness, dict) else {}
+    phone_support_bundle = phone_support_bundle if isinstance(phone_support_bundle, dict) else {}
+    voice_prompt_readiness = voice_prompt_readiness if isinstance(voice_prompt_readiness, dict) else {}
+    command_safety = (
+        phone_readiness.get("command_safety")
+        if isinstance(phone_readiness.get("command_safety"), dict)
+        else {}
+    )
+    actions = command_safety.get("actions") if isinstance(command_safety.get("actions"), dict) else {}
+    remote_readiness = (
+        phone_readiness.get("remote_readiness")
+        if isinstance(phone_readiness.get("remote_readiness"), dict)
+        else {}
+    )
+    primary_state = str(phone_readiness.get("primary_state") or "waiting_for_robot_status")
+    remote_state = _remote_degradation(remote_readiness)
+    connection_state = _offline_resume_connection_state(primary_state, remote_state, command_safety)
+    primary_actions_enabled = any(
+        bool((actions.get(name) or {}).get("enabled"))
+        for name in ("start", "confirm_dropoff", "cancel")
+    )
+    support_entry_enabled = bool(
+        (actions.get("diagnostics") or {}).get("enabled", True)
+        or phone_support_bundle.get("schema") == PHONE_SUPPORT_BUNDLE_SCHEMA
+    )
+    next_action = str(phone_readiness.get("next_action") or "wait_reconnect")
+    can_resume = bool(
+        connection_state == "online"
+        and primary_actions_enabled
+        and str(command_safety.get("global_block_reason") or "allowed") == "allowed"
+    )
+    if connection_state == "offline":
+        next_action = "wait_reconnect"
+        recovery_hint = "恢复网络后刷新状态；在状态更新前不要发车、确认投放或取消。"
+        safe_phone_copy = "手机当前离线，只能查看离线壳层，主操作保持不可用。"
+    elif connection_state == "status_stale":
+        recovery_hint = "等待小车上报最新状态；如持续 stale，请打开 Diagnostics 或 Support Handoff。"
+        safe_phone_copy = "状态已过期，Start/Confirm/Cancel 继续由 command safety 阻断。"
+    elif connection_state == "pending_ack":
+        recovery_hint = "等待上一条指令 ACK；不要重复发车，必要时复制支持交接摘要。"
+        safe_phone_copy = "指令正在等待 ACK，主操作暂不可用。"
+    elif connection_state == "manual_takeover":
+        recovery_hint = "保持现场安全，按手机提示人工接管，并打开 Support Handoff。"
+        safe_phone_copy = "当前需要人工接管，不能通过离线恢复直接继续任务。"
+    elif can_resume:
+        recovery_hint = _offline_resume_safe_text(
+            phone_readiness.get("recovery_hint"),
+            "连接已恢复；仍需按当前按钮状态继续。",
+        )
+        safe_phone_copy = "连接和 command safety 允许继续当前本地手机流程。"
+    else:
+        recovery_hint = _offline_resume_safe_text(
+            phone_readiness.get("recovery_hint") or (actions.get("diagnostics") or {}).get("safe_phone_copy"),
+            "恢复连接后刷新状态；如仍被阻断，请打开 Diagnostics。",
+        )
+        safe_phone_copy = _offline_resume_safe_text(
+            phone_readiness.get("safe_phone_copy"),
+            "手机恢复路径仍被阻断，主操作保持不可用。",
+        )
+
+    support_copy = _offline_resume_safe_text(
+        phone_support_bundle.get("status_summary") or phone_support_bundle.get("failure_summary"),
+        "Support Handoff 可复制脱敏摘要。",
+    )
+    voice_copy = _offline_resume_safe_text(
+        voice_prompt_readiness.get("safe_phone_copy"),
+        "voice prompt readiness 只是提示 contract，不证明真实播放。",
+    )
+    return {
+        "schema": PHONE_OFFLINE_RESUME_READINESS_SCHEMA,
+        "schema_version": 1,
+        "api_version": API_VERSION,
+        "evidence_boundary": PHONE_OFFLINE_RESUME_READINESS_EVIDENCE_BOUNDARY,
+        "connection_state": connection_state,
+        "can_resume": bool(can_resume),
+        "primary_actions_enabled": bool(primary_actions_enabled),
+        "support_entry_enabled": bool(support_entry_enabled),
+        "next_action": next_action,
+        "safe_phone_copy": _offline_resume_safe_text(safe_phone_copy, "手机恢复路径仍在等待状态刷新。"),
+        "recovery_hint": _offline_resume_safe_text(recovery_hint, "恢复连接后刷新状态；如仍被阻断，请打开 Diagnostics。"),
+        "ack_semantics": _offline_resume_safe_text(command_safety.get("ack_semantics"), COMMAND_SAFETY_ACK_COPY),
+        "support_handoff": {
+            "enabled": bool(support_entry_enabled),
+            "safe_phone_copy": support_copy,
+        },
+        "voice_prompt": {
+            "playback_ready": bool(voice_prompt_readiness.get("playback_ready")),
+            "safe_phone_copy": voice_copy,
+        },
+        "command_safety": {
+            "schema": COMMAND_SAFETY_SCHEMA,
+            "global_block_reason": str(command_safety.get("global_block_reason") or "allowed"),
+            "primary_actions_enabled": bool(primary_actions_enabled),
+            "diagnostics_enabled": bool((actions.get("diagnostics") or {}).get("enabled", True)),
+        },
+        "offline_shell": {
+            "primary_actions_disabled": True,
+            "control_request_cache": "disabled",
+            "safe_phone_copy": "离线壳层不缓存、不伪造、不发送 Start/Confirm/Cancel 控制请求。",
+        },
+        "not_proven": [
+            "real_phone_device_browser",
+            "production_phone_app",
+            "real_cloud_https_tls_public_ingress",
+            "real_4g_sim_carrier_network",
+            "oss_cdn_live_traffic",
+            "nav2_or_fixed_route_delivery",
+            "wave_rover_motion",
+            "hil_pass",
+            "delivery_success",
+        ],
+    }
+
+
 def build_phone_readiness(
     status,
     *,
@@ -3277,6 +3515,14 @@ def _status_with_phone_readiness(gateway, mock_cloud):
     payload["phone_readiness"]["phone_support_bundle"] = dict(phone_support_bundle)
     payload["voice_prompt_readiness"] = voice_prompt_readiness
     payload["phone_readiness"]["voice_prompt_readiness"] = dict(voice_prompt_readiness)
+    offline_resume_readiness = build_phone_offline_resume_readiness(
+        payload,
+        payload["phone_readiness"],
+        phone_support_bundle,
+        voice_prompt_readiness,
+    )
+    payload["phone_offline_resume_readiness"] = offline_resume_readiness
+    payload["phone_readiness"]["phone_offline_resume_readiness"] = dict(offline_resume_readiness)
     payload["phone_task_flow_readiness"] = dict(payload["phone_readiness"]["phone_task_flow_readiness"])
     return payload
 
@@ -3289,9 +3535,16 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
     phone_readiness = status.get("phone_readiness") if isinstance(status.get("phone_readiness"), dict) else {}
     phone_support_bundle = build_phone_support_bundle(status, phone_readiness, diagnostics_payload)
     voice_prompt_readiness = build_voice_prompt_readiness(status, phone_readiness, phone_support_bundle)
+    offline_resume_readiness = build_phone_offline_resume_readiness(
+        status,
+        phone_readiness,
+        phone_support_bundle,
+        voice_prompt_readiness,
+    )
     diagnostics_payload["phone_task_flow_readiness"] = task_flow
     diagnostics_payload["phone_support_bundle"] = phone_support_bundle
     diagnostics_payload["voice_prompt_readiness"] = voice_prompt_readiness
+    diagnostics_payload["phone_offline_resume_readiness"] = offline_resume_readiness
     # HTTP diagnostics 复用 status 里的同一份摘要，避免 status/diagnostics 对 transaction gate 给出两套口径。
     if isinstance(phone_readiness.get("transaction_isolation"), dict):
         diagnostics_payload["transaction_isolation"] = dict(phone_readiness["transaction_isolation"])
@@ -3299,9 +3552,11 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
         diagnostics_payload["production_recovery"] = dict(phone_readiness["production_recovery"])
     latest_status = diagnostics_payload.get("latest_status")
     if isinstance(latest_status, dict):
-        latest_status.setdefault("phone_task_flow_readiness", task_flow)
-        latest_status.setdefault("phone_support_bundle", phone_support_bundle)
-        latest_status.setdefault("voice_prompt_readiness", voice_prompt_readiness)
+        # diagnostics 不能信任 status 文件内预置的 phone metadata；这里统一覆盖成现算的脱敏摘要。
+        latest_status["phone_task_flow_readiness"] = task_flow
+        latest_status["phone_support_bundle"] = phone_support_bundle
+        latest_status["voice_prompt_readiness"] = voice_prompt_readiness
+        latest_status["phone_offline_resume_readiness"] = offline_resume_readiness
     return diagnostics_payload
 
 

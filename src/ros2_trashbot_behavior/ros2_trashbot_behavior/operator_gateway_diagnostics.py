@@ -985,6 +985,10 @@ def build_diagnostics_payload(
     production_recovery_artifact_ref="",
 ):
     latest_status = dict(latest_status or {})
+    # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
+    latest_status.pop("phone_support_bundle", None)
+    latest_status.pop("voice_prompt_readiness", None)
+    latest_status.pop("phone_offline_resume_readiness", None)
     last_task = dict(latest_status.get("last_task") or {})
     task_record_path = str(
         latest_status.get("task_record_path")

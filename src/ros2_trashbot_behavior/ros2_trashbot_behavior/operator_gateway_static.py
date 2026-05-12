@@ -33,3 +33,18 @@ VOICE_PROMPT_READINESS_COPY = (
     # 本地 fallback 只证明提示 contract 可复现，不证明真实喇叭或 TTS 播放。
     "voice prompt readiness 不是实际播放证明；ACK 不代表送达成功。"
 )
+
+PHONE_OFFLINE_RESUME_ENTRY_IDS = (
+    # offline/resume 首屏必须和 HTTP HTML 的 id 保持一致，确保静态测试能发现 UI 入口。
+    "offlineResumeReadinessPanel",
+    "offlineResumeConnection",
+    "offlineResumeCanResume",
+    "offlineResumeHint",
+    "offlineResumeAck",
+    "offlineResumeNotProven",
+)
+
+PHONE_OFFLINE_RESUME_COPY = (
+    # 离线壳层只允许展示恢复提示，不能缓存或发送任何控制请求。
+    "phone offline resume gate 保持 Start/Confirm/Cancel disabled；ACK 不代表送达成功。"
+)

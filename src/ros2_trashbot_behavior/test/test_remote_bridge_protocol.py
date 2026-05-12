@@ -123,6 +123,27 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("queue_ordering_drill", command)
         self.assertNotIn("ordering_status", command)
 
+    def test_validate_command_ignores_phone_offline_resume_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-offline-resume-metadata",
+            "type": "cancel",
+            "payload": {},
+            "phone_offline_resume_readiness": {
+                "schema": "trashbot.phone_offline_resume_readiness.v1",
+                "connection_state": "offline",
+                "trigger_robot_action": "collect",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-offline-resume-metadata")
+        self.assertEqual(command["type"], "cancel")
+        # phone offline/resume 是手机元数据，validate_command 只返回 robot command envelope。
+        self.assertNotIn("phone_offline_resume_readiness", command)
+        self.assertNotIn("trigger_robot_action", json.dumps(command))
+        self.assertNotIn("delivery_success", json.dumps(command))
+
     def test_validate_command_keeps_command_id_order_as_supplied(self):
         command = validate_command({
             "id": "cmd-10",

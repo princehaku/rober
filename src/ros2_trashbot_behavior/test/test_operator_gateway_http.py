@@ -18,6 +18,8 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     MockCloudStore,
     OPERATOR_PROMPTS,
     PHONE_TASK_FLOW_SCHEMA,
+    PHONE_OFFLINE_RESUME_READINESS_EVIDENCE_BOUNDARY,
+    PHONE_OFFLINE_RESUME_READINESS_SCHEMA,
     PHONE_PWA_EVIDENCE_BOUNDARY,
     PHONE_READINESS_EVIDENCE_BOUNDARY,
     PHONE_READINESS_SCHEMA,
@@ -26,6 +28,7 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     REMOTE_PROTOCOL_VERSION,
     VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY,
     VOICE_PROMPT_READINESS_SCHEMA,
+    build_phone_offline_resume_readiness,
     build_phone_readiness,
     build_phone_support_bundle,
     build_voice_prompt_readiness,
@@ -481,6 +484,21 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("不是实际喇叭或 TTS 播放证明", voice_prompt["safe_phone_copy"])
         self.assertIn("不能代表送达成功", voice_prompt["ack_semantics"])
         self.assertIn("real_speaker_playback", voice_prompt["not_proven"])
+        offline_resume = payload["phone_offline_resume_readiness"]
+        self.assertEqual(offline_resume["schema"], PHONE_OFFLINE_RESUME_READINESS_SCHEMA)
+        self.assertEqual(offline_resume["evidence_boundary"], PHONE_OFFLINE_RESUME_READINESS_EVIDENCE_BOUNDARY)
+        self.assertEqual(payload["phone_readiness"]["phone_offline_resume_readiness"], offline_resume)
+        self.assertEqual(offline_resume["connection_state"], "status_stale")
+        self.assertFalse(offline_resume["can_resume"])
+        self.assertFalse(offline_resume["primary_actions_enabled"])
+        self.assertTrue(offline_resume["support_entry_enabled"])
+        self.assertEqual(offline_resume["next_action"], "continue_local_or_wait_remote_status")
+        self.assertIn("状态已过期", offline_resume["safe_phone_copy"])
+        self.assertIn("等待小车上报最新状态", offline_resume["recovery_hint"])
+        self.assertIn("ACK 只表示", offline_resume["ack_semantics"])
+        self.assertTrue(offline_resume["offline_shell"]["primary_actions_disabled"])
+        self.assertEqual(offline_resume["offline_shell"]["control_request_cache"], "disabled")
+        self.assertIn("delivery_success", offline_resume["not_proven"])
         task_flow = payload["phone_task_flow_readiness"]
         self.assertEqual(task_flow["schema"], PHONE_TASK_FLOW_SCHEMA)
         self.assertEqual(task_flow["evidence_boundary"], "software_proof_docker_phone_task_flow_readiness_gate")
@@ -838,6 +856,66 @@ class OperatorGatewayHttpTest(unittest.TestCase):
                 self.assertFalse(readiness["command_safety"]["actions"]["start"]["enabled"])
                 self.assertTrue(readiness["command_safety"]["actions"]["diagnostics"]["enabled"])
 
+    def test_phone_offline_resume_gate_combines_resume_and_support_contracts(self):
+        status = {"state": "loaded_and_ready", "can_collect": True, "phone_copy": "Trash is loaded."}
+        readiness = build_phone_readiness(
+            status,
+            remote_readiness={"degradation_state": "cloud_unreachable"},
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        support_bundle = build_phone_support_bundle(status, readiness, {"failure": {"error_code": "blocked"}})
+        summary = build_phone_offline_resume_readiness(status, readiness, support_bundle, {})
+
+        self.assertEqual(summary["schema"], PHONE_OFFLINE_RESUME_READINESS_SCHEMA)
+        self.assertEqual(summary["connection_state"], "offline")
+        self.assertFalse(summary["can_resume"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertTrue(summary["support_entry_enabled"])
+        self.assertEqual(summary["next_action"], "wait_reconnect")
+        self.assertIn("手机当前离线", summary["safe_phone_copy"])
+        self.assertIn("不要发车", summary["recovery_hint"])
+        self.assertIn("ACK 只表示", summary["ack_semantics"])
+        self.assertTrue(summary["offline_shell"]["primary_actions_disabled"])
+        self.assertEqual(summary["command_safety"]["global_block_reason"], "cloud_unreachable")
+        encoded = json.dumps(summary, ensure_ascii=False).lower()
+        for forbidden in (
+            "authorization",
+            "token",
+            "oss ak",
+            "oss sk",
+            "root password",
+            "database url",
+            "queue url",
+            "ros topic",
+            "/cmd_vel",
+            "serial",
+            "baudrate",
+            "checksum",
+            "/tmp/",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_phone_offline_resume_gate_allows_resume_only_after_command_safety_allows(self):
+        status = {
+            "state": "loaded_and_ready",
+            "can_collect": True,
+            "can_confirm_dropoff": False,
+            "can_cancel": False,
+            "phone_copy": "Trash is loaded.",
+        }
+        readiness = build_phone_readiness(
+            status,
+            remote_readiness={"degradation_state": "ok"},
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        summary = build_phone_offline_resume_readiness(status, readiness, {}, {})
+
+        self.assertEqual(summary["connection_state"], "online")
+        self.assertTrue(summary["can_resume"])
+        self.assertTrue(summary["primary_actions_enabled"])
+        self.assertEqual(summary["command_safety"]["global_block_reason"], "allowed")
+        self.assertIn("command safety 允许继续", summary["safe_phone_copy"])
+
     def test_phone_readiness_blocks_when_manifest_summary_not_ready(self):
         local_status = status_payload(
             "loaded_and_ready",
@@ -1053,6 +1131,19 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         )
         self.assertFalse(payload["voice_prompt_readiness"]["playback_ready"])
         self.assertIn("real_speaker_playback", payload["voice_prompt_readiness"]["not_proven"])
+        self.assertEqual(payload["phone_offline_resume_readiness"]["schema"], PHONE_OFFLINE_RESUME_READINESS_SCHEMA)
+        self.assertEqual(
+            payload["phone_offline_resume_readiness"]["evidence_boundary"],
+            PHONE_OFFLINE_RESUME_READINESS_EVIDENCE_BOUNDARY,
+        )
+        self.assertEqual(
+            payload["latest_status"]["phone_offline_resume_readiness"]["schema"],
+            PHONE_OFFLINE_RESUME_READINESS_SCHEMA,
+        )
+        self.assertEqual(payload["phone_offline_resume_readiness"]["connection_state"], "status_stale")
+        self.assertFalse(payload["phone_offline_resume_readiness"]["primary_actions_enabled"])
+        self.assertTrue(payload["phone_offline_resume_readiness"]["support_entry_enabled"])
+        self.assertIn("不能代表送达成功", payload["phone_offline_resume_readiness"]["ack_semantics"])
         encoded_voice_prompt = json.dumps(payload["voice_prompt_readiness"], ensure_ascii=False).lower()
         for forbidden in ("authorization", "token", "/cmd_vel", "baudrate", "traceback", "checksum", "/tmp/"):
             self.assertNotIn(forbidden, encoded_voice_prompt)
@@ -1319,6 +1410,10 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn('id="offlineDropoffButton" disabled', body)
         self.assertIn('id="offlineCancelButton" disabled', body)
         self.assertIn("Reconnect", body)
+        self.assertIn("software_proof_docker_phone_offline_resume_gate", body)
+        self.assertIn("stale 或 pending ACK", body)
+        self.assertIn("ACK 只代表 command accepted/processing evidence", body)
+        self.assertIn("不证明真实手机", body)
         forbidden = [
             "raw JSON",
             "ROS topic",

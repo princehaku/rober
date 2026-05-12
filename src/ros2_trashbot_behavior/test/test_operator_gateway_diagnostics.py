@@ -1112,6 +1112,33 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, encoded)
 
+        offline_resume = payload["phone_offline_resume_readiness"]
+        latest_offline_resume = payload["latest_status"]["phone_offline_resume_readiness"]
+        self.assertEqual(offline_resume["schema"], "trashbot.phone_offline_resume_readiness.v1")
+        self.assertEqual(latest_offline_resume["schema"], "trashbot.phone_offline_resume_readiness.v1")
+        self.assertEqual(
+            offline_resume["evidence_boundary"],
+            "software_proof_docker_phone_offline_resume_gate",
+        )
+        self.assertFalse(offline_resume["primary_actions_enabled"])
+        self.assertTrue(offline_resume["support_entry_enabled"])
+        self.assertIn("ACK 只表示", offline_resume["ack_semantics"])
+        encoded_offline_resume = json.dumps(offline_resume, ensure_ascii=False)
+        for forbidden in (
+            "raw_ros_topic",
+            "/cmd_vel",
+            "/dev/ttyUSB0",
+            "baudrate",
+            "token",
+            "Authorization",
+            "Bearer",
+            "postgres://",
+            "queue_url",
+            "/tmp/robot/status.json",
+            "checksum",
+        ):
+            self.assertNotIn(forbidden, encoded_offline_resume)
+
     def test_diagnostics_payload_does_not_forward_preexisting_support_bundle(self):
         payload = build_diagnostics_payload(
             {
@@ -1176,6 +1203,30 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
 
         # diagnostics core 不信任 latest_status 中的预置 voice metadata；HTTP wrapper 负责生成脱敏版本。
         self.assertNotIn("voice_prompt_readiness", payload)
+
+    def test_diagnostics_payload_does_not_forward_preexisting_offline_resume_readiness(self):
+        payload = build_diagnostics_payload(
+            {
+                "state": "remote_degraded",
+                "phone_offline_resume_readiness": {
+                    "schema": "trashbot.phone_offline_resume_readiness.v1",
+                    "safe_phone_copy": "raw /cmd_vel token checksum /tmp/robot/status.json",
+                    "ack_semantics": "delivery_success",
+                    "can_resume": True,
+                    "delivery_success": True,
+                },
+            },
+            software_version="",
+            map_version="",
+            route_version="",
+            log_refs=[],
+            vision_sample_manifest_ref="",
+            review_decision_log_ref="",
+            operator_status_file="/tmp/status.json",
+        )
+
+        # diagnostics core 不信任 latest_status 中的预置 offline/resume metadata；HTTP wrapper 负责重新生成。
+        self.assertNotIn("phone_offline_resume_readiness", payload)
 
     def test_log_refs_are_normalized_without_claiming_file_existence(self):
         self.assertEqual(normalize_log_refs(None), [])
