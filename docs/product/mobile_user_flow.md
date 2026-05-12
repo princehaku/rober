@@ -65,6 +65,27 @@ The local page also shows live robot location when localization is publishing. `
 
 The local browser page is phone-first and uses the API fields directly: task state, `phone_copy`, `speaker_prompt`, action permissions, robot pose/path, and diagnostics. The page is still intentionally dependency-free HTML served by `operator_gateway`; it is a usable local control surface, not a production account system.
 
+The first screen now includes a phone readiness gate derived from `/api/status.phone_readiness`. This gate answers three user questions before raw diagnostics: can the phone continue, why not, and what should happen next. It aggregates local delivery state, action permissions, local/mock remote readiness, optional cloud preflight, and optional backup/restore drill summaries. It is a local/Docker software proof boundary only and must not be presented as production phone app, real cloud, real 4G, real OSS/CDN, Nav2/fixed-route delivery, WAVE ROVER motion, or HIL proof.
+
+`phone_readiness` fields:
+
+- `schema`: `trashbot.phone_readiness.v1`.
+- `schema_version`: integer version, currently `1`.
+- `evidence_boundary`: `software_proof_docker_local_phone_ui_readiness_gate`.
+- `primary_state`: phone-first state such as `ready`, `local_ready_remote_status_waiting`, `waiting_for_robot_status`, `waiting_for_command_ack`, `login_required`, `remote_unreachable`, `remote_response_invalid`, `manual_takeover_required`, or `monitoring`.
+- `can_continue`: whether the current phone journey has a safe next step.
+- `next_action`: machine-readable next action such as `continue_local_flow`, `continue_local_or_wait_remote_status`, `wait_for_robot_status`, `wait_for_command_ack`, `check_auth`, `retry_cloud`, `contact_support`, `manual_takeover`, or `watch_progress`.
+- `safe_phone_copy`: user-facing summary for the first screen.
+- `recovery_hint`: user-facing next-step copy.
+- `support_level`: support classification such as `phone_ready`, `local_fallback`, `remote_blocked`, `remote_waiting_ack`, or `support_required`.
+- `local_delivery`: current local state plus `phone_copy` and `speaker_prompt`.
+- `action_permissions`: copies `can_collect`, `can_confirm_dropoff`, and `can_cancel`.
+- `remote_readiness`: current local/mock remote readiness object.
+- `cloud_preflight` / `backup_restore`: optional phone-safe gate summaries; missing artifacts remain `not_run` or `unknown`.
+- `not_proven`: explicit list of product or hardware capabilities this local gate does not prove.
+
+ACK remains command processing evidence only. A remote ACK may make `remote_readiness.degradation_state=ok`, but the phone must keep reading delivery status for `completed`, `failed`, `needs_human_help`, or elevator-assist states.
+
 For H2 elevator assisted delivery dry-runs, `GET /api/status` and `GET /api/diagnostics` may include an `elevator_assist` object. Older clients can ignore it. New clients should treat it as the machine-readable source for elevator UI:
 
 - `enabled`: boolean; false means normal single-floor delivery UI.

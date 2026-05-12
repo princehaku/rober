@@ -86,6 +86,12 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn('"degradation_state"', http_source)
         self.assertIn('"safe_phone_copy"', http_source)
         self.assertIn("REMOTE_DEGRADATION_COPY", http_source)
+        self.assertIn("PHONE_READINESS_SCHEMA", http_source)
+        self.assertIn("PHONE_READINESS_EVIDENCE_BOUNDARY", http_source)
+        self.assertIn("build_phone_readiness", http_source)
+        self.assertIn("_status_with_phone_readiness", http_source)
+        self.assertIn('"phone_readiness"', http_source)
+        self.assertIn("software_proof_docker_local_phone_ui_readiness_gate", http_source)
         self.assertIn("mock_cloud_bearer_token", http_source)
         self.assertIn('"phone_copy": prompt["phone_copy"]', http_source)
         self.assertIn('"speaker_prompt": prompt["speaker_prompt"]', http_source)
@@ -209,6 +215,14 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "progress_summary",
             "decision_distribution",
             "next_pending_sample",
+            "phoneReadinessPanel",
+            "phoneReadinessBadge",
+            "phoneReadinessBoundary",
+            "phoneReadinessNotProven",
+            "renderPhoneReadiness",
+            "PHONE_READINESS_EVIDENCE_BOUNDARY",
+            "trashbot.phone_readiness.v1",
+            "software_proof_docker_local_phone_ui_readiness_gate",
         ):
             self.assertIn(text, http_source)
 

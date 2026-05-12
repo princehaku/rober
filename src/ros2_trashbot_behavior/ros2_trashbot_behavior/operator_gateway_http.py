@@ -12,6 +12,8 @@ from ros2_trashbot_behavior.remote_bridge_protocol import parse_bool
 
 API_VERSION = "slice2.operator.v1"
 REMOTE_PROTOCOL_VERSION = "trashbot.remote.v1"
+PHONE_READINESS_SCHEMA = "trashbot.phone_readiness.v1"
+PHONE_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_local_phone_ui_readiness_gate"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 REMOTE_STATUS_STALE_AFTER_SEC = 90.0
 REMOTE_PERSISTENCE_SCHEMA = "trashbot.mock_cloud_store.v1"
@@ -35,6 +37,40 @@ REMOTE_DEGRADATION_COPY = {
     "auth_failed": "手机登录已失效，请重新登录或检查访问凭证。",
     "cloud_unreachable": "远程控制通道暂不可用，请稍后重试。",
     "malformed_response": "远程控制返回异常，请联系支持人员。",
+}
+
+PHONE_READINESS_NOT_PROVEN = [
+    "production_phone_app",
+    "real_cloud_https_tls_public_ingress",
+    "real_4g_sim_carrier_network",
+    "oss_cdn_data_path",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_motion",
+    "hil_pass",
+]
+
+PHONE_READINESS_NEXT_ACTION_COPY = {
+    "continue_local_flow": "可以继续当前本地手机流程。",
+    "continue_local_or_wait_remote_status": "本地可继续；远程流程请等待小车上报新状态。",
+    "wait_for_robot_status": "等待小车上报最新状态后再继续。",
+    "wait_for_command_ack": "等待小车确认上一条指令，避免重复发车。",
+    "check_auth": "重新登录或检查访问码后再试。",
+    "retry_cloud": "稍后重试远程通道，必要时切到本地 fallback。",
+    "contact_support": "联系支持人员，并附带 diagnostics。",
+    "manual_takeover": "保持现场安全，按提示人工接管。",
+    "watch_progress": "继续观察任务状态，必要时取消。",
+}
+
+PHONE_READINESS_PRIMARY_COPY = {
+    "ready": "手机可以继续操作。",
+    "local_ready_remote_status_waiting": "本地可操作，远程状态仍在等待。",
+    "waiting_for_robot_status": "正在等待小车状态。",
+    "waiting_for_command_ack": "正在等待小车确认指令。",
+    "login_required": "手机登录或访问码需要处理。",
+    "remote_unreachable": "远程通道暂不可用。",
+    "remote_response_invalid": "远程通道返回异常。",
+    "manual_takeover_required": "需要人工接管。",
+    "monitoring": "任务进行中，请继续观察。",
 }
 
 ELEVATOR_ASSIST_PHASES = {
@@ -733,6 +769,24 @@ HTML = """<!doctype html>
       gap: 10px;
       grid-template-columns: minmax(0, 1fr) auto;
     }
+    .readinessHero {
+      border-left: 5px solid var(--accent);
+      display: grid;
+      gap: 10px;
+    }
+    .readinessHero.blocked { border-left-color: var(--danger); }
+    .readinessHero.waiting { border-left-color: var(--warn); }
+    .readinessMain {
+      align-items: center;
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+    }
+    .readinessHint {
+      color: var(--ink);
+      font-size: 15px;
+      margin: 0;
+    }
     .stateBadge {
       background: #edf7f5;
       border: 1px solid #c7e3dd;
@@ -876,6 +930,19 @@ HTML = """<!doctype html>
       </div>
       <span id="connectionState" class="stateBadge">loading</span>
     </header>
+    <section id="phoneReadinessPanel" class="panel readinessHero waiting">
+      <div class="readinessMain">
+        <div>
+          <span id="phoneReadinessBadge" class="stateBadge">checking</span>
+          <h2 id="phoneReadinessTitle">Checking phone readiness</h2>
+        </div>
+        <span id="phoneReadinessBoundary" class="stateBadge">local proof</span>
+      </div>
+      <p id="phoneReadinessCopy" class="readinessHint">正在判断手机现在能不能继续。</p>
+      <p class="message">Next: <strong id="phoneReadinessNext">等待状态刷新。</strong></p>
+      <p class="message">Support: <strong id="phoneReadinessSupport">not reported</strong></p>
+      <p class="message">Not proven: <strong id="phoneReadinessNotProven">real cloud, 4G, HIL</strong></p>
+    </section>
     <section class="panel status">
       <div>
         <span id="stateBadge" class="stateBadge">waiting</span>
@@ -1417,6 +1484,44 @@ function updateJourney(payload) {
     node.classList.toggle('done', activeIndex >= 0 && index < activeIndex);
   });
 }
+function readinessTone(phoneReadiness) {
+  const primaryState = text(phoneReadiness.primary_state, 'waiting_for_robot_status');
+  if (['login_required', 'remote_response_invalid', 'manual_takeover_required'].includes(primaryState)) return 'blocked';
+  if (['waiting_for_command_ack', 'waiting_for_robot_status', 'local_ready_remote_status_waiting', 'remote_unreachable'].includes(primaryState)) return 'waiting';
+  return 'ready';
+}
+function renderPhoneReadiness(phoneReadiness) {
+  const panel = document.getElementById('phoneReadinessPanel');
+  const readiness = phoneReadiness && typeof phoneReadiness === 'object' ? phoneReadiness : {};
+  const primaryState = text(readiness.primary_state, 'waiting_for_robot_status');
+  const tone = readinessTone(readiness);
+  panel.classList.toggle('blocked', tone === 'blocked');
+  panel.classList.toggle('waiting', tone === 'waiting');
+  const badge = document.getElementById('phoneReadinessBadge');
+  badge.textContent = readiness.can_continue ? 'can continue' : 'blocked';
+  badge.classList.toggle('problem', !readiness.can_continue);
+  document.getElementById('phoneReadinessTitle').textContent = primaryState.replaceAll('_', ' ');
+  document.getElementById('phoneReadinessCopy').textContent = text(
+    readiness.safe_phone_copy,
+    '手机入口仍在等待可用状态。'
+  );
+  document.getElementById('phoneReadinessNext').textContent = text(
+    readiness.recovery_hint,
+    '等待状态刷新。'
+  );
+  document.getElementById('phoneReadinessSupport').textContent = text(
+    readiness.support_level,
+    'not reported'
+  );
+  document.getElementById('phoneReadinessBoundary').textContent = text(
+    readiness.evidence_boundary,
+    'local proof'
+  );
+  const notProven = Array.isArray(readiness.not_proven) ? readiness.not_proven.slice(0, 4) : [];
+  document.getElementById('phoneReadinessNotProven').textContent = notProven.length
+    ? notProven.join(', ')
+    : 'not reported';
+}
 function showTelemetry(payload) {
   const location = payload.robot_location || payload.location;
   const pose = payload.robot_pose || location || null;
@@ -1435,6 +1540,7 @@ function showTelemetry(payload) {
 }
 function showStatus(payload) {
   document.getElementById('status').textContent = JSON.stringify(payload, null, 2);
+  renderPhoneReadiness(payload.phone_readiness);
   updateJourney(payload);
   showTelemetry(payload);
   const collectButton = document.getElementById('collectButton');
@@ -1774,6 +1880,175 @@ def _with_remote_auth_state(payload, auth_state):
     return payload
 
 
+def _unknown_gate(name, *, status="unknown", retry_hint="contact_support"):
+    # 这些 gate 在本地 operator 里可能没有产物；保守暴露 unknown/not_run，避免把缺证据写成通过。
+    return {
+        "name": name,
+        "status": status,
+        "retry_hint": retry_hint,
+        "safe_phone_copy": "本地页面尚未收到该上线前检查结果。",
+    }
+
+
+def _copy_gate(value, name):
+    # 只复制手机端需要的白名单字段，避免 preflight 或 drill 产物泄漏路径、凭证或栈信息。
+    if not isinstance(value, dict):
+        return _unknown_gate(name, status="not_run", retry_hint="contact_support")
+    return {
+        "name": name,
+        "status": str(value.get("overall_status") or value.get("status") or "unknown"),
+        "retry_hint": str(value.get("retry_hint") or "contact_support"),
+        "safe_phone_copy": str(
+            value.get("safe_summary")
+            or value.get("safe_phone_copy")
+            or value.get("summary")
+            or "上线前检查需要继续确认。"
+        ),
+        "evidence_boundary": str(value.get("evidence_boundary") or ""),
+        "not_proven": list(value.get("not_proven")) if isinstance(value.get("not_proven"), list) else [],
+    }
+
+
+def _remote_degradation(remote_readiness):
+    if not isinstance(remote_readiness, dict):
+        return "status_stale"
+    return str(remote_readiness.get("degradation_state") or "status_stale").strip() or "status_stale"
+
+
+def _local_action_permissions(status):
+    # 聚合只读已有 action permissions；按钮能否点击仍由原字段决定，避免破坏旧客户端。
+    status = status if isinstance(status, dict) else {}
+    return {
+        "can_collect": bool(status.get("can_collect")),
+        "can_confirm_dropoff": bool(status.get("can_confirm_dropoff")),
+        "can_cancel": bool(status.get("can_cancel")),
+    }
+
+
+def build_phone_readiness(status, *, remote_readiness=None, cloud_preflight=None, backup_restore=None):
+    """Build the phone-first readiness summary used by `/api/status`.
+
+    这个 helper 不创造机器人状态；它只把 local status、action permission、
+    remote_readiness 和可选上线前 gate 归类成手机能直接显示的恢复路径。
+    """
+    status = status if isinstance(status, dict) else {}
+    remote = remote_readiness if isinstance(remote_readiness, dict) else {}
+    permissions = _local_action_permissions(status)
+    state = str(status.get("state") or "unknown").strip() or "unknown"
+    remote_state = _remote_degradation(remote)
+    can_use_local_action = any(permissions.values())
+    primary_state = "ready"
+    next_action = "continue_local_flow"
+    can_continue = bool(can_use_local_action)
+    support_level = "local_fallback"
+
+    if state in {"failed", "needs_human_help"} or bool(
+        status.get("elevator_assist", {}).get("requires_human_help")
+        if isinstance(status.get("elevator_assist"), dict)
+        else False
+    ):
+        primary_state = "manual_takeover_required"
+        next_action = "manual_takeover"
+        can_continue = False
+        support_level = "human_takeover_required"
+    elif remote_state == "auth_failed":
+        primary_state = "login_required"
+        next_action = "check_auth"
+        can_continue = False
+        support_level = "remote_blocked_local_fallback_available" if can_use_local_action else "remote_blocked"
+    elif remote_state == "cloud_unreachable":
+        primary_state = "remote_unreachable"
+        next_action = "retry_cloud"
+        can_continue = bool(can_use_local_action)
+        support_level = "local_fallback_only" if can_use_local_action else "remote_blocked"
+    elif remote_state == "malformed_response":
+        primary_state = "remote_response_invalid"
+        next_action = "contact_support"
+        can_continue = False
+        support_level = "support_required"
+    elif remote_state == "command_pending":
+        primary_state = "waiting_for_command_ack"
+        next_action = "wait_for_command_ack"
+        can_continue = False
+        support_level = "remote_waiting_ack"
+    elif remote_state == "status_stale":
+        if can_use_local_action:
+            primary_state = "local_ready_remote_status_waiting"
+            next_action = "continue_local_or_wait_remote_status"
+            can_continue = True
+            support_level = "local_fallback"
+        else:
+            primary_state = "waiting_for_robot_status"
+            next_action = "wait_for_robot_status"
+            can_continue = False
+            support_level = "remote_waiting_status"
+    elif not can_use_local_action:
+        primary_state = "monitoring"
+        next_action = "watch_progress"
+        can_continue = True
+        support_level = "monitoring_only"
+    else:
+        support_level = "phone_ready"
+
+    recovery_hint = PHONE_READINESS_NEXT_ACTION_COPY[next_action]
+    safe_phone_copy = PHONE_READINESS_PRIMARY_COPY[primary_state]
+    if remote_state in REMOTE_DEGRADATION_COPY and remote_state != "ok":
+        safe_phone_copy = REMOTE_DEGRADATION_COPY[remote_state]
+    if primary_state == "local_ready_remote_status_waiting":
+        safe_phone_copy = "本地手机入口可继续；远程状态仍在等待小车上报。"
+
+    return {
+        "schema": PHONE_READINESS_SCHEMA,
+        "schema_version": 1,
+        "api_version": API_VERSION,
+        "evidence_boundary": PHONE_READINESS_EVIDENCE_BOUNDARY,
+        "primary_state": primary_state,
+        "can_continue": bool(can_continue),
+        "next_action": next_action,
+        "safe_phone_copy": safe_phone_copy,
+        "recovery_hint": recovery_hint,
+        "support_level": support_level,
+        "local_delivery": {
+            "state": state,
+            "phone_copy": str(status.get("phone_copy") or ""),
+            "speaker_prompt": str(status.get("speaker_prompt") or ""),
+        },
+        "action_permissions": permissions,
+        "remote_readiness": dict(remote),
+        "cloud_preflight": _copy_gate(cloud_preflight, "cloud_preflight"),
+        "backup_restore": _copy_gate(backup_restore, "backup_restore"),
+        "not_proven": list(PHONE_READINESS_NOT_PROVEN),
+    }
+
+
+def _robot_id_for_gateway(gateway):
+    # operator_gateway 目前没有强制 robot_id 参数；本地 mock 与 remote_bridge 文档默认 trashbot-001。
+    for attr in ("robot_id", "remote_robot_id", "mock_cloud_robot_id"):
+        value = str(getattr(gateway, attr, "") or "").strip()
+        if value:
+            return value
+    return "trashbot-001"
+
+
+def _status_with_phone_readiness(gateway, mock_cloud):
+    payload = dict(gateway.snapshot())
+    remote_readiness = payload.get("remote_readiness")
+    if not isinstance(remote_readiness, dict):
+        try:
+            remote_payload = mock_cloud.get_status(_robot_id_for_gateway(gateway))
+            remote_readiness = remote_payload.get("remote_readiness", {})
+        except ValueError:
+            remote_readiness = {}
+    # 可选 gate 字段只在调用方已提供时采纳；默认 not_run/unknown，不推断生产 readiness。
+    payload["phone_readiness"] = build_phone_readiness(
+        payload,
+        remote_readiness=remote_readiness,
+        cloud_preflight=payload.get("cloud_preflight") or payload.get("remote_preflight"),
+        backup_restore=payload.get("backup_restore") or payload.get("backup_restore_drill"),
+    )
+    return payload
+
+
 def make_handler(gateway):
     mock_cloud = getattr(gateway, "mock_cloud", None)
     if mock_cloud is None:
@@ -1824,7 +2099,7 @@ def make_handler(gateway):
                 self.wfile.write(body)
                 return
             if path == "/api/status":
-                self._send_json(200, gateway.snapshot())
+                self._send_json(200, _status_with_phone_readiness(gateway, mock_cloud))
                 return
             if path == "/api/diagnostics":
                 self._send_json(200, gateway.diagnostics())

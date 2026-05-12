@@ -17,7 +17,10 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     ELEVATOR_ASSIST_SPEAKER_PROMPT,
     MockCloudStore,
     OPERATOR_PROMPTS,
+    PHONE_READINESS_EVIDENCE_BOUNDARY,
+    PHONE_READINESS_SCHEMA,
     REMOTE_PROTOCOL_VERSION,
+    build_phone_readiness,
     make_handler,
     normalize_elevator_assist,
     operator_prompt_for_state,
@@ -350,6 +353,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["state"], "waiting_for_trash")
         self.assertEqual(payload["phone_copy"], self.gateway.snapshot_payload["phone_copy"])
         self.assertEqual(payload["speaker_prompt"], self.gateway.snapshot_payload["speaker_prompt"])
+        self.assertEqual(payload["phone_readiness"]["schema"], PHONE_READINESS_SCHEMA)
+        self.assertEqual(payload["phone_readiness"]["evidence_boundary"], PHONE_READINESS_EVIDENCE_BOUNDARY)
+        self.assertEqual(payload["phone_readiness"]["primary_state"], "local_ready_remote_status_waiting")
+        self.assertTrue(payload["phone_readiness"]["can_continue"])
+        self.assertEqual(payload["phone_readiness"]["next_action"], "continue_local_or_wait_remote_status")
+        self.assertIn("hil_pass", payload["phone_readiness"]["not_proven"])
 
     def test_status_payload_exposes_phone_and_speaker_copy_for_documented_states(self):
         for state, expected in OPERATOR_PROMPTS.items():
@@ -391,6 +400,79 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             normalize_elevator_assist({"state": "target_floor_unconfirmed"})["requires_human_help"],
             True,
         )
+
+    def test_phone_readiness_classifies_remote_degradation_without_delivery_claims(self):
+        local_status = status_payload(
+            "waiting_for_trash",
+            can_collect=True,
+            can_confirm_dropoff=False,
+            can_cancel=False,
+        )
+
+        stale = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "degradation_state": "status_stale",
+                "retry_hint": "wait_for_robot_status",
+                "safe_phone_copy": "正在等待小车上报最新状态，请稍后再试。",
+            },
+        )
+        self.assertEqual(stale["primary_state"], "local_ready_remote_status_waiting")
+        self.assertTrue(stale["can_continue"])
+        self.assertEqual(stale["support_level"], "local_fallback")
+
+        pending = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "degradation_state": "command_pending",
+                "retry_hint": "wait_for_command_ack",
+                "safe_phone_copy": "指令已提交，正在等待小车确认。",
+                "last_command_ack": "cmd-1",
+            },
+        )
+        self.assertEqual(pending["primary_state"], "waiting_for_command_ack")
+        self.assertFalse(pending["can_continue"])
+        self.assertEqual(pending["next_action"], "wait_for_command_ack")
+        self.assertEqual(pending["local_delivery"]["state"], "waiting_for_trash")
+
+        acked = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "degradation_state": "ok",
+                "retry_hint": "ok",
+                "safe_phone_copy": "手机远程控制通道可用，可以继续操作。",
+                "last_command_ack": "cmd-1",
+            },
+        )
+        self.assertEqual(acked["primary_state"], "ready")
+        self.assertNotEqual(acked["local_delivery"]["state"], "completed")
+        self.assertIn("nav2_or_fixed_route_delivery", acked["not_proven"])
+
+    def test_phone_readiness_blocks_auth_cloud_and_malformed_remote_states(self):
+        local_status = status_payload(
+            "loaded_and_ready",
+            can_collect=True,
+            can_confirm_dropoff=False,
+            can_cancel=False,
+        )
+        cases = {
+            "auth_failed": ("login_required", "check_auth", False),
+            "cloud_unreachable": ("remote_unreachable", "retry_cloud", True),
+            "malformed_response": ("remote_response_invalid", "contact_support", False),
+        }
+        for degradation_state, expected in cases.items():
+            with self.subTest(degradation_state=degradation_state):
+                readiness = build_phone_readiness(
+                    local_status,
+                    remote_readiness={
+                        "degradation_state": degradation_state,
+                        "safe_phone_copy": "phone-safe",
+                    },
+                )
+                self.assertEqual(readiness["primary_state"], expected[0])
+                self.assertEqual(readiness["next_action"], expected[1])
+                self.assertEqual(readiness["can_continue"], expected[2])
+                self.assertEqual(readiness["schema_version"], 1)
 
     def test_unknown_operator_state_falls_back_to_human_help_prompt(self):
         self.assertEqual(

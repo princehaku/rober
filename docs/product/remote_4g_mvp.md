@@ -252,6 +252,28 @@ returns `status_missing`; a stale status returns `status_stale` with the last
 safe status payload. A phone UI must treat both as degraded states and wait for
 fresh robot status before implying that the task is healthy.
 
+The local operator fallback also exposes `/api/status.phone_readiness` for the
+phone-first readiness gate. This is a UI aggregation of local delivery status,
+action permissions, local/mock remote readiness, optional preflight summaries,
+and optional backup/restore drill summaries. It uses
+`schema=trashbot.phone_readiness.v1`, `schema_version=1`, and
+`evidence_boundary=software_proof_docker_local_phone_ui_readiness_gate`.
+
+Important product boundary:
+
+- `primary_state=ready` means the phone has a safe next software step; it does
+  not mean trash delivery succeeded.
+- `primary_state=waiting_for_command_ack` means the phone should wait for the
+  bridge to process the command envelope; it must not resubmit blindly.
+- `primary_state=login_required`, `remote_unreachable`, or
+  `remote_response_invalid` explains cloud/control-plane recovery only, not a
+  robot navigation failure.
+- `cloud_preflight` and `backup_restore` are optional local/Docker proof
+  summaries. Missing output remains `not_run` or `unknown`.
+- `not_proven` must continue to include production phone app, real cloud,
+  real 4G/SIM, OSS/CDN, Nav2/fixed-route delivery, WAVE ROVER motion, and HIL
+  until those paths have separate evidence.
+
 ## Remote Readiness Contract
 
 Phone-facing local/mock status includes `remote_readiness` so a formal phone UI
