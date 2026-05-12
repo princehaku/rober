@@ -2,9 +2,17 @@
 
 面向室内或小区固定路线场景的 ROS2 自主导航扔垃圾小车项目。系统采用 Orange Pi + WAVE ROVER ESP32 上下位机架构：Orange Pi 运行 ROS2 Humble、Nav2、SLAM、视觉检测和任务编排；WAVE ROVER ESP32 负责底盘电机控制和 UART JSON 通信。编码器、超声波、蜂鸣器等能力不得按项目默认硬件假设书写，除非有 `docs/vendor/VENDOR_INDEX.md` 指向的本地资料或上车 HIL 证据支撑。
 
+## 仓库分层（部署面）
+
+- **`onboard/`**：Orange Pi 上车 ROS2 Humble 主链路（源码、Docker、构建与 smoke 脚本）。日常 `colcon build` 与容器开发均在此目录为工作区根挂载到容器 `/ws`。
+- **`cloud-relay/`**：4G 云中转 HTTP 服务独立镜像与 compose（与上车构建解耦）。
+- **`mobile/`**：用户手机 PWA / 触点资源占位（后续迭代）。
+- **`pc-tools/`**：PC 端路径学习、证据检查等开发工具占位（后续迭代）。
+- **`docs/`、`sprints/`**：文档与迭代留档。
+
 ## 架构
 
-项目由 6 个主要模块组成：
+项目由 6 个主要模块组成（源码位于 `onboard/src/ros2_trashbot_*`）：
 
 - `ros2_trashbot_interfaces`：自定义 msg、srv、action。
 - `ros2_trashbot_hardware`：ESP32 串口桥接，发布里程计和传感器状态，接收速度控制。
@@ -23,6 +31,7 @@
 ## 构建
 
 ```bash
+cd onboard
 source /opt/ros/humble/setup.bash
 colcon build --symlink-install
 source install/setup.bash
@@ -35,13 +44,13 @@ source install/setup.bash
 构建本项目的 ROS2 Humble 镜像并顺手跑一次 `colcon build`：
 
 ```bash
-bash scripts/docker_humble_build.sh
+bash onboard/scripts/docker_humble_build.sh
 ```
 
 脚本默认使用清华源加速 Ubuntu APT、ROS2 APT、rosdep、rosdistro index 和 pip。只想先构建镜像、不跑工作区编译：
 
 ```bash
-SKIP_COLCON=1 bash scripts/docker_humble_build.sh
+SKIP_COLCON=1 bash onboard/scripts/docker_humble_build.sh
 ```
 
 需要切换镜像源或 Humble base image 时可覆盖环境变量：
@@ -51,24 +60,25 @@ ROS_HUMBLE_BASE_IMAGE=osrf/ros:humble-desktop \
 UBUNTU_APT_MIRROR=https://mirrors.aliyun.com/ubuntu \
 ROS_APT_MIRROR=https://mirrors.aliyun.com/ros2/ubuntu \
 PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple \
-bash scripts/docker_humble_build.sh
+bash onboard/scripts/docker_humble_build.sh
 ```
 
 进入本地开发容器：
 
 ```bash
-bash scripts/docker_humble_dev.sh
+bash onboard/scripts/docker_humble_dev.sh
 ```
 
 如需把串口设备透传给容器，可追加 Docker 参数。Mac 和 Linux 的设备路径不同，先用本机实际路径替换示例：
 
 ```bash
-EXTRA_DOCKER_ARGS="--device=/dev/tty.usbserial-XXXX" bash scripts/docker_humble_dev.sh
+EXTRA_DOCKER_ARGS="--device=/dev/tty.usbserial-XXXX" bash onboard/scripts/docker_humble_dev.sh
 ```
 
-也可以用 Docker Compose。默认 Compose 服务不挂载 Linux X11 socket，适合 Mac Docker Desktop/Engine：
+也可以用 Docker Compose。默认 Compose 服务不挂载 Linux X11 socket，适合 Mac Docker Desktop/Engine（在 `onboard/` 目录执行，使挂载上下文为上车工作区）：
 
 ```bash
+cd onboard
 docker compose -f docker-compose.humble.yml build
 docker compose -f docker-compose.humble.yml run --rm humble
 ```
@@ -76,14 +86,17 @@ docker compose -f docker-compose.humble.yml run --rm humble
 Linux/X11 图形显示是显式 opt-in 路径：
 
 ```bash
+cd onboard
 ROS_HUMBLE_ENABLE_X11=1 docker compose -f docker-compose.humble.yml --profile x11 run --rm humble-x11
 ROS_HUMBLE_ENABLE_X11=1 bash scripts/docker_humble_dev.sh
 ```
 
+（上一段已 `cd onboard`，故 `scripts/` 即 `onboard/scripts/`。若在仓库根单条执行，请用 `bash onboard/scripts/docker_humble_dev.sh`。）
+
 Linux/WSL 仍可作为非默认辅助路径。需要在 WSL Ubuntu 中配置 Docker Hub 国内镜像时：
 
 ```bash
-bash scripts/setup_wsl_docker_mirrors.sh
+bash onboard/scripts/setup_wsl_docker_mirrors.sh
 ```
 
 如果使用 Docker Desktop + WSL，需要在 Docker Desktop 里开启对应 WSL 发行版集成；如果使用 WSL 内部 Docker Engine，上面的脚本会写入 `/etc/docker/daemon.json` 并尝试重启 Docker。手动配置 Docker Hub 镜像时，也可在 Linux/WSL Docker Engine 写入 `/etc/docker/daemon.json` 后重启 Docker：
@@ -100,7 +113,7 @@ bash scripts/setup_wsl_docker_mirrors.sh
 ESP32 固件使用 PlatformIO：
 
 ```bash
-cd src/esp32_firmware
+cd onboard/src/esp32_firmware
 pio run --target upload
 ```
 

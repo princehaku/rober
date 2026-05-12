@@ -50,13 +50,13 @@ source install/setup.bash
 
 - 当前开发主机是 macOS，本项目目标仍是 ROS2 Humble；不要再按 WSL `Ubuntu-24.04` 或 Windows 路径设计本地流程。
 - ROS2 Humble 构建验证优先使用 Mac 本地 Docker Desktop/Engine 的 Linux 容器挂载仓库到 `/ws` 后运行 `colcon build --symlink-install`。
-- 本项目已有本地 Docker/Humble 环境：`docker/humble/Dockerfile` 默认使用清华 Ubuntu APT、ROS2 APT、pip、rosdep/rosdistro 镜像源，适合 macOS + Docker Desktop/Engine。
-- 构建并验证工作区：`bash scripts/docker_humble_build.sh`。脚本会构建 `ros-rbs-humble:dev`，再在容器内清理 `build/ install/ log/` 并执行 `colcon build --symlink-install`。
-- 只构建镜像不跑 colcon：`SKIP_COLCON=1 bash scripts/docker_humble_build.sh`。需要换源时覆盖 `UBUNTU_APT_MIRROR`、`ROS_APT_MIRROR`、`PIP_INDEX_URL`、`ROSDEP_SOURCE_MIRROR`、`ROSDISTRO_INDEX_URL`。
-- 进入开发容器：`bash scripts/docker_humble_dev.sh`。容器挂载仓库到 `/ws`、持久化 `.ros_home` 到 `/root/.ros`、使用 `--network host`，登录 shell 会自动 source `/opt/ros/humble/setup.bash` 和 `/ws/install/setup.bash`。
-- 串口或图形参数通过 `EXTRA_DOCKER_ARGS` 传入，例如 `EXTRA_DOCKER_ARGS="--device=/dev/ttyUSB0" bash scripts/docker_humble_dev.sh`。
+- 本项目已有本地 Docker/Humble 环境：`onboard/docker/humble/Dockerfile` 默认使用清华 Ubuntu APT、ROS2 APT、pip、rosdep/rosdistro 镜像源，适合 macOS + Docker Desktop/Engine。
+- 构建并验证工作区：`bash onboard/scripts/docker_humble_build.sh`。脚本会构建 `ros-rbs-humble:dev`，再在容器内清理 `build/ install/ log/` 并执行 `colcon build --symlink-install`（工作区挂载为 `onboard/` → 容器内 `/ws`）。
+- 只构建镜像不跑 colcon：`SKIP_COLCON=1 bash onboard/scripts/docker_humble_build.sh`。需要换源时覆盖 `UBUNTU_APT_MIRROR`、`ROS_APT_MIRROR`、`PIP_INDEX_URL`、`ROSDEP_SOURCE_MIRROR`、`ROSDISTRO_INDEX_URL`。
+- 进入开发容器：`bash onboard/scripts/docker_humble_dev.sh`。容器挂载上车目录到 `/ws`、持久化仓库根 `.ros_home` 到 `/root/.ros`、使用 `--network host`，登录 shell 会自动 source `/opt/ros/humble/setup.bash` 和 `/ws/install/setup.bash`。
+- 串口或图形参数通过 `EXTRA_DOCKER_ARGS` 传入，例如 `EXTRA_DOCKER_ARGS="--device=/dev/ttyUSB0" bash onboard/scripts/docker_humble_dev.sh`。
 - Mac 上不应出现 `/run/desktop/mnt/host/wsl/docker-desktop-bind-mounts/Ubuntu-24.04/...` 这类 WSL bind mount 路径；若 Docker Compose 或脚本输出仍出现该路径，按环境口径漂移处理，优先修正 compose/script 的 Mac-first 挂载入口。
-- 最近验证：Mac-first Docker/Humble build 已恢复通过。Robot 证据为：`docker pull osrf/ros:humble-desktop` 通过，digest `sha256:49e87123022a2622a8a098eb3d71d6df8265469ad4d46c6dbde0326f8aa97bb3`；`docker compose -f docker-compose.humble.yml build --pull --no-cache humble` 通过并输出 `ros-rbs-humble:dev Built`；第一次 `colcon build` 失败于 `ros2_trashbot_bringup` 安装不存在的 `config` 目录，修复 `src/ros2_trashbot_bringup/CMakeLists.txt` 仅安装实际存在的 `launch` 目录后，`colcon build --symlink-install` 通过，输出 `Summary: 6 packages finished [32.4s]`；容器内 `ros2 pkg prefix ros2_trashbot_bringup` 输出 `/ws/install/ros2_trashbot_bringup`。该证据边界是 `software_proof_docker_only`，不等于 HIL、真实串口、WAVE ROVER feedback 或 OKR 完成度提升。
+- 最近验证：Mac-first Docker/Humble build 已恢复通过。Robot 证据为：`docker pull osrf/ros:humble-desktop` 通过，digest `sha256:49e87123022a2622a8a098eb3d71d6df8265469ad4d46c6dbde0326f8aa97bb3`；在 `onboard/` 下执行 `docker compose -f docker-compose.humble.yml build --pull --no-cache humble` 通过并输出 `ros-rbs-humble:dev Built`；第一次 `colcon build` 失败于 `ros2_trashbot_bringup` 安装不存在的 `config` 目录，修复 `onboard/src/ros2_trashbot_bringup/CMakeLists.txt` 仅安装实际存在的 `launch` 目录后，`colcon build --symlink-install` 通过，输出 `Summary: 6 packages finished [32.4s]`；容器内 `ros2 pkg prefix ros2_trashbot_bringup` 输出 `/ws/install/ros2_trashbot_bringup`。该证据边界是 `software_proof_docker_only`，不等于 HIL、真实串口、WAVE ROVER feedback 或 OKR 完成度提升。
 
 ## 执行优先与精简团队
 

@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# 本脚本位于 cloud-relay/scripts/；compose 与 Dockerfile 均在 cloud-relay/ 下，默认在此目录执行 docker compose。
+relay_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$relay_root"
+
 # 这个 smoke 只验证 Docker deploy proof，不声明真实云、4G、TLS、OSS/CDN 或 HIL。
 PROJECT_NAME="${PROJECT_NAME:-ros-rbs-remote-cloud-relay-smoke}"
 PORT="${TRASHBOT_REMOTE_CLOUD_PUBLISHED_PORT:-18088}"
 TOKEN="${TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN:-dev-smoke-token}"
 BASE_URL="http://127.0.0.1:${PORT}"
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.remote-cloud-relay.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 
 export TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN="${TOKEN}"
 export TRASHBOT_REMOTE_CLOUD_PUBLISHED_PORT="${PORT}"
@@ -99,8 +103,9 @@ PY
 
 echo "== production preflight CLI with unwritable state expects blocked =="
 set +e
+repo_ws="$(cd "$relay_root/.." && pwd)"
 TRASHBOT_REMOTE_CLOUD_STATE=/dev/null/relay_state.json \
-PYTHONPATH=src/ros2_trashbot_behavior \
+PYTHONPATH="$repo_ws/onboard/src/ros2_trashbot_behavior" \
 python3 -m ros2_trashbot_behavior.remote_cloud_relay --preflight >/tmp/remote_cloud_relay_preflight_cli.json
 PREFLIGHT_CLI_STATUS="$?"
 set -e

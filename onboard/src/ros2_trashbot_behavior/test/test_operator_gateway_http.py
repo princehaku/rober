@@ -332,7 +332,7 @@ class FakeGateway:
                         "detail": "Offline proof does not validate real UART, motion, IMU, or battery.",
                     }
                 ],
-                "hil_recipe": {"no_motion": "python3 scripts/hardware_smoke_wave_rover.py"},
+                "hil_recipe": {"no_motion": "python3 onboard/scripts/hardware_smoke_wave_rover.py"},
             },
             "oss_cdn_manifest": {
                 "state": "ready",

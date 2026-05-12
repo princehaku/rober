@@ -4,7 +4,19 @@ import unittest
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 MSG = PACKAGE_ROOT / "msg" / "TrashStatus.msg"
-CONTRACT = PACKAGE_ROOT.parents[1] / "docs" / "vision" / "trash_status_contract.md"
+
+
+def _workspace_root() -> Path:
+    """定位仓库根（含 docs/ 的目录）；兼容源码在 src/ 或 onboard/src/ 下的布局。"""
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        contract = parent / "docs" / "vision" / "trash_status_contract.md"
+        if contract.is_file():
+            return parent
+    raise RuntimeError("无法定位 docs/vision/trash_status_contract.md，请检查仓库结构。")
+
+
+CONTRACT = _workspace_root() / "docs" / "vision" / "trash_status_contract.md"
 
 
 class TrashStatusContractStaticTest(unittest.TestCase):

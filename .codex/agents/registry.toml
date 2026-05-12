@@ -120,7 +120,7 @@ prompt_field = "prompt"
 capabilities = ["ros2-integration", "interfaces", "behavior-state-machine", "bringup", "integration-verification"]
 tags = ["ros2", "integration", "bringup", "behavior", "interfaces", "delivery"]
 read_first = ["AGENTS.md", "OKR.md"]
-owner_paths = ["src/ros2_trashbot_interfaces/", "src/ros2_trashbot_behavior/", "src/ros2_trashbot_bringup/", "scripts/", "docs/"]
+owner_paths = ["onboard/src/ros2_trashbot_interfaces/", "onboard/src/ros2_trashbot_behavior/", "onboard/src/ros2_trashbot_bringup/", "onboard/scripts/", "scripts/", "docs/"]
 requires_vendor_source = false
 can_edit = true
 
@@ -139,7 +139,7 @@ prompt_field = "prompt"
 capabilities = ["vendor-source-verification", "uart", "wave-rover", "esp32", "orange-pi", "hardware-smoke"]
 tags = ["hardware", "wave-rover", "esp32", "orange-pi", "uart", "chassis"]
 read_first = ["AGENTS.md", "docs/vendor/VENDOR_INDEX.md"]
-owner_paths = ["src/ros2_trashbot_hardware/", "src/ros2_trashbot_bringup/", "docs/hardware/", "docs/vendor/"]
+owner_paths = ["onboard/src/ros2_trashbot_hardware/", "onboard/src/ros2_trashbot_bringup/", "docs/hardware/", "docs/vendor/"]
 requires_vendor_source = true
 can_edit = true
 
@@ -158,7 +158,7 @@ prompt_field = "prompt"
 capabilities = ["slam", "nav2", "waypoints", "patrol", "future-vision", "autonomy-dry-run"]
 tags = ["autonomy", "nav2", "slam", "vision", "patrol", "trash-detection"]
 read_first = ["AGENTS.md", "OKR.md"]
-owner_paths = ["src/ros2_trashbot_nav/", "src/ros2_trashbot_vision/", "src/ros2_trashbot_behavior/", "docs/navigation/", "docs/vision/"]
+owner_paths = ["onboard/src/ros2_trashbot_nav/", "onboard/src/ros2_trashbot_vision/", "onboard/src/ros2_trashbot_behavior/", "pc-tools/", "docs/navigation/", "docs/vision/"]
 requires_vendor_source = false
 can_edit = true
 
@@ -177,6 +177,6 @@ prompt_field = "prompt"
 capabilities = ["mobile-ui", "web-ui", "api", "remote-control", "status-display", "ros2-backend-integration"]
 tags = ["full-stack", "mobile", "web", "api", "ui", "ros2-integration"]
 read_first = ["AGENTS.md", "OKR.md"]
-owner_paths = ["src/", "docs/product/", "docs/interfaces/", "web/", "frontend/", "mobile/"]
+owner_paths = ["onboard/src/", "cloud-relay/", "pc-tools/", "docs/product/", "docs/interfaces/", "web/", "frontend/", "mobile/"]
 requires_vendor_source = false
 can_edit = true

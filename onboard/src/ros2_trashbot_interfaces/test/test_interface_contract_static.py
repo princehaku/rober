@@ -35,7 +35,7 @@ class InterfaceContractStaticTest(unittest.TestCase):
     def test_cmake_registers_every_interface_file_once(self):
         registered = _registered_interfaces()
         interface_files = sorted(
-            str(path.relative_to(PACKAGE_ROOT))
+            path.relative_to(PACKAGE_ROOT).as_posix()
             for folder in ("msg", "srv", "action")
             for path in (PACKAGE_ROOT / folder).glob(f"*.{folder}")
         )

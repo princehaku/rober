@@ -48,9 +48,9 @@ SERIAL_IMPORT_ERROR = (
 SERIAL_OPEN_ERROR_NOTE = (
     "BLOCKED: serial dependency or device access blocked.\n"
     "  Repro steps:\n"
-    "  1) PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile scripts/hardware_smoke_wave_rover.py\n"
-    "  2) python3 scripts/hardware_smoke_wave_rover.py --status\n"
-    "  3) python3 scripts/hardware_smoke_wave_rover.py --move-test --serial-port <device> --baudrate <baudrate>\n"
+    "  1) PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile onboard/scripts/hardware_smoke_wave_rover.py\n"
+    "  2) python3 onboard/scripts/hardware_smoke_wave_rover.py --status\n"
+    "  3) python3 onboard/scripts/hardware_smoke_wave_rover.py --move-test --serial-port <device> --baudrate <baudrate>\n"
     "  If pyserial is missing, install inside ros2-humble runtime as documented."
 )
 
@@ -177,7 +177,7 @@ def print_status() -> None:
             "status": "ready",
             "source": SOFTWARE_PROOF_SOURCE,
             "evidence_ref": template_ref,
-            "script": "scripts/hardware_smoke_wave_rover.py",
+            "script": "onboard/scripts/hardware_smoke_wave_rover.py",
             "vendor_sources": SCRIPT_VENDOR_SOURCES,
             "serial_candidate_globs": SERIAL_CANDIDATE_GLOBS,
             "serial_candidates": serial_candidates,
@@ -211,7 +211,7 @@ def print_status() -> None:
                 "--turn-test",
             ],
             "dependency_note": "pyserial required for hil commands",
-            "command_template": "python3 scripts/hardware_smoke_wave_rover.py --move-test --serial-port <device> --baudrate <baud> --test-speed <speed> --test-duration-s <duration>",
+            "command_template": "python3 onboard/scripts/hardware_smoke_wave_rover.py --move-test --serial-port <device> --baudrate <baud> --test-speed <speed> --test-duration-s <duration>",
             "source_boundary": {
                 "status": SOFTWARE_PROOF_SOURCE,
                 "hil_pass_requires": [

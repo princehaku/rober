@@ -116,7 +116,7 @@ class TaskOrchestratorStaticTest(unittest.TestCase):
         ast.parse(source)
 
         self.assertIn('nav_result.result_code == "timeout"', source)
-        self.assertIn("machine.timed_out(nav_result.message)", source)
+        self.assertIn("machine.timed_out(nav_result.message, \"NAV_TIMEOUT\")", source)
 
     def test_collection_result_sets_error_code_and_final_state(self):
         source = ORCHESTRATOR.read_text(encoding="utf-8")

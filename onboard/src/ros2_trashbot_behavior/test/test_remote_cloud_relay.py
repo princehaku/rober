@@ -12,6 +12,33 @@ import urllib.request
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "ros2_trashbot_behavior"))
 
+
+def _unwritable_sqlite_path() -> str:
+    """跨平台不可写路径：POSIX 用 /dev/null/…；Windows 用不存在父目录下的文件。"""
+    import platform
+
+    if platform.system() == "Windows":
+        return str(
+            pathlib.Path(tempfile.gettempdir())
+            / "__rober_unwritable_parent__"
+            / "__missing__"
+            / "relay_state.sqlite"
+        )
+    return "/dev/null/relay_state.sqlite"
+
+
+def _unwritable_json_state_path() -> str:
+    import platform
+
+    if platform.system() == "Windows":
+        return str(
+            pathlib.Path(tempfile.gettempdir())
+            / "__rober_unwritable_parent__"
+            / "__missing__"
+            / "relay_state.json"
+        )
+    return "/dev/null/relay_state.json"
+
 from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     BACKUP_RESTORE_EVIDENCE_BOUNDARY,
     CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY,
@@ -635,7 +662,7 @@ class RemoteCloudRelayStoreTest(unittest.TestCase):
                 restore_sqlite_backup_artifact(artifact_path, restore_path)
 
     def test_sqlite_unwritable_path_is_phone_safe(self):
-        store = SQLiteRelayStore("/dev/null/relay_state.sqlite")
+        store = SQLiteRelayStore(_unwritable_sqlite_path())
         self.assertFalse(store.state_store_writable())
         with self.assertRaisesRegex(ValueError, "sqlite state store is not ready"):
             store.next_command("trashbot-001", "")
@@ -825,7 +852,7 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             "TRASHBOT_REMOTE_CLOUD_OSS_PREFIX": "rober/prod/date/task/",
             "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL": "https://cdn.bytegallop.com/rober/",
             "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE": "sts",
-            "TRASHBOT_REMOTE_CLOUD_STATE": "/dev/null/relay_state.json",
+            "TRASHBOT_REMOTE_CLOUD_STATE": _unwritable_json_state_path(),
             "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "file",
         }
 

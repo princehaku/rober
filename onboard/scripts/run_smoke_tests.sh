@@ -3,6 +3,8 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# 统一以 onboard/ 为工作目录，避免从仓库根调用时 compileall 仍去扫已不存在的顶层 src/。
+cd "$repo_root"
 
 missing_test_packages=()
 

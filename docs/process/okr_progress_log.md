@@ -8,7 +8,11 @@
 
 ## 2026-05-13 系列
 
-更新时间：2026-05-13 00:33 Asia/Shanghai。本系列下"补充"段落原本写在 `OKR.md` §4.1，2026-05-13 00:00 之后迁入本日志。
+更新时间：2026-05-13（本系列持续追加）。本系列下"补充"段落原本写在 `OKR.md` §4.1，2026-05-13 00:00 之后迁入本日志。
+
+### 2026-05-13 01-02｜codebase-restructure-four-tier｜仓库四分层（结构治理，不调整 OKR %）
+
+`sprints/2026.05.13_01-02_codebase-restructure-four-tier`：将 ROS2 主代码与 Docker/Humble 脚本迁入 `onboard/`；云中转 compose/Dockerfile/smoke 迁入 `cloud-relay/`（构建 context 为仓库根，`COPY onboard/src/...`）；`evidence_crosscheck.py` 与 `phone_browser_acceptance_gate.py` 迁入 `pc-tools/evidence/`；根目录 `scripts/README.md` 说明新入口；更新 `README.md`、`AGENTS.md`、`.codex/agents` 与 `registry.toml` 的 `owner_paths`；并修正若干单测中的仓库根解析、Windows 路径与 `evidence_crosscheck` 路径。**CEO 指令本轮跳过测试与验证**，未留存 `run_smoke_tests` / Docker build 日志；**P5**（operator_gateway + relay 迁入 cloud-relay 源码树）未实施。证据边界：`structural_refactor_only`，O1–O6 完成度数字不变。
 
 ### 2026-05-13 00-01｜phone-offline-resume-gate｜O5 phone offline/resume readiness software proof，O5 由约 52% 上调到约 54%
 

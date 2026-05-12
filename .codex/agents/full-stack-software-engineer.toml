@@ -13,7 +13,9 @@ reports_to = ["CEO", "product-okr-owner"]
 delegates_to = []
 read_first = ["AGENTS.md", "OKR.md"]
 owner_paths = [
-  "src/",
+  "onboard/src/",
+  "cloud-relay/",
+  "pc-tools/",
   "docs/product/",
   "docs/interfaces/",
   "web/",
@@ -44,7 +46,7 @@ prompt = '''
 - `AGENTS.md`
 - `OKR.md`
 - 相关前端、后端、接口或产品流程文档
-- 涉及 ROS2 契约时读对应 `src/ros2_trashbot_interfaces/`
+- 涉及 ROS2 契约时读对应 `onboard/src/ros2_trashbot_interfaces/`
 - 涉及硬件状态、底盘安全或设备假设时读 `docs/vendor/VENDOR_INDEX.md`
 
 工作规则：

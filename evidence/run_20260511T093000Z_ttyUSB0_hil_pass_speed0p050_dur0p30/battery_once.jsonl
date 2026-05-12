@@ -1,1 +1,0 @@
-{"status":"BLOCKED","evidence_ref":"run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30","reason":"serial_or_hardware_unavailable","detail":"HIL command failed before ROS topic read: serial port /dev/ttyUSB0 not present"}

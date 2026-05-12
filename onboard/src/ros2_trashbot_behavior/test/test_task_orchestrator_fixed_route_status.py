@@ -136,6 +136,13 @@ class TaskOrchestratorFixedRouteStatusTest(unittest.TestCase):
                 "last_transition": "navigate_to_checkpoint",
                 "last_nav_result": "dry_run_checkpoint_passed",
                 "updated_at": "2026-05-10T12:00:00Z",
+                "route_progress": {
+                    "route_contract_version": "fixed_route.v1",
+                    "route_file": "/tmp/routes/trash_station.json",
+                    "current_index": 3,
+                    "current_target": "trash_station",
+                    "total": 4,
+                },
             },
         )
 

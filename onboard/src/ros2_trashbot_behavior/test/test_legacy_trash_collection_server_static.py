@@ -3,11 +3,19 @@ import unittest
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-BEHAVIOR_ROOT = REPO_ROOT / "ros2_trashbot_behavior"
+def _repo_root() -> Path:
+    """定位仓库根（含 AGENTS.md）；兼容 onboard/src/ 布局。"""
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "AGENTS.md").is_file() and (parent / "docs").is_dir():
+            return parent
+    raise RuntimeError("无法定位仓库根。")
+
+
+BEHAVIOR_ROOT = Path(__file__).resolve().parents[1]
 LEGACY_SERVER = BEHAVIOR_ROOT / "ros2_trashbot_behavior" / "trash_collection_server.py"
 SETUP_PY = BEHAVIOR_ROOT / "setup.py"
-ROS_CONTRACTS = REPO_ROOT.parent / "docs" / "interfaces" / "ros_contracts.md"
+ROS_CONTRACTS = _repo_root() / "docs" / "interfaces" / "ros_contracts.md"
 
 
 def _legacy_source():

@@ -7,7 +7,18 @@ import unittest
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _repo_root() -> Path:
+    """定位仓库根（含 AGENTS.md 与 docs/）；兼容 src/ 与 onboard/src/ 两种布局。"""
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "AGENTS.md").is_file() and (parent / "docs").is_dir():
+            return parent
+    raise RuntimeError("无法定位仓库根（缺少 AGENTS.md 或 docs/）。")
+
+
+REPO_ROOT = _repo_root()
 sys.path.insert(0, str(PACKAGE_ROOT))
 
 from ros2_trashbot_behavior.delivery_state_machine import DeliveryStateMachine
@@ -185,7 +196,7 @@ class TaskRecordTest(unittest.TestCase):
             result = subprocess.run(
                 [
                     sys.executable,
-                    str(REPO_ROOT / "scripts" / "evidence_crosscheck.py"),
+                    str(REPO_ROOT / "pc-tools" / "evidence" / "evidence_crosscheck.py"),
                     str(status_path),
                     "--task-record-dir",
                     str(task_record_dir),
@@ -242,7 +253,7 @@ class TaskRecordTest(unittest.TestCase):
             result = subprocess.run(
                 [
                     sys.executable,
-                    str(REPO_ROOT / "scripts" / "evidence_crosscheck.py"),
+                    str(REPO_ROOT / "pc-tools" / "evidence" / "evidence_crosscheck.py"),
                     str(status_path),
                     "--task-record-dir",
                     str(task_record_dir),
@@ -293,7 +304,7 @@ class TaskRecordTest(unittest.TestCase):
             result = subprocess.run(
                 [
                     sys.executable,
-                    str(REPO_ROOT / "scripts" / "evidence_crosscheck.py"),
+                    str(REPO_ROOT / "pc-tools" / "evidence" / "evidence_crosscheck.py"),
                     str(status_path),
                     "--task-record-dir",
                     str(task_record_dir),
@@ -350,7 +361,7 @@ class TaskRecordTest(unittest.TestCase):
             result = subprocess.run(
                 [
                     sys.executable,
-                    str(REPO_ROOT / "scripts" / "evidence_crosscheck.py"),
+                    str(REPO_ROOT / "pc-tools" / "evidence" / "evidence_crosscheck.py"),
                     str(status_path),
                     "--task-record",
                     str(task_record_path),

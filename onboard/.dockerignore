@@ -1,0 +1,17 @@
+# 与仓库根 .dockerignore 对齐；若将来以 onboard/ 为独立 build context，避免把 sibling 目录打进镜像。
+.git
+.idea
+.vscode
+.codex
+.ros_home
+build
+install
+log
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+*.bag
+*.db3
+*.log

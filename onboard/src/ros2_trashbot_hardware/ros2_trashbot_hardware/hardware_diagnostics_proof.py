@@ -217,17 +217,17 @@ def _hil_recipe(config: dict[str, Any]) -> dict[str, Any]:
             "T=1001 feedback parser expects L/R/r/p/y/v fields.",
         ],
         "no_motion": (
-            "python3 scripts/hardware_smoke_wave_rover.py "
+            "python3 onboard/scripts/hardware_smoke_wave_rover.py "
             f"--serial-port {config['serial_port']} --baudrate {config['serial_baudrate']} "
             f"--feedback-interval-ms {config['feedback_interval_ms']}"
         ),
         "low_speed_t1": (
-            "python3 scripts/hardware_smoke_wave_rover.py "
+            "python3 onboard/scripts/hardware_smoke_wave_rover.py "
             f"--serial-port {config['serial_port']} --baudrate {config['serial_baudrate']} "
             "--move-test --reverse-test --test-speed 0.08 --test-duration-s 0.5"
         ),
         "t13_ros_mode": (
-            "python3 scripts/hardware_smoke_wave_rover.py "
+            "python3 onboard/scripts/hardware_smoke_wave_rover.py "
             f"--serial-port {config['serial_port']} --baudrate {config['serial_baudrate']} "
             "--ros-mode-test --turn-test --test-speed 0.08 --test-duration-s 0.5"
         ),

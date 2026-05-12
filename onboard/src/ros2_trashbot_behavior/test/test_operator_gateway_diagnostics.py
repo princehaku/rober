@@ -612,7 +612,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                                 "detail": "Offline proof still needs hardware-in-loop.",
                             }
                         ],
-                        "hil_recipe": {"no_motion": "python3 scripts/hardware_smoke_wave_rover.py"},
+                        "hil_recipe": {"no_motion": "python3 onboard/scripts/hardware_smoke_wave_rover.py"},
                     }
                 ),
                 encoding="utf-8",
