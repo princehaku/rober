@@ -18,6 +18,7 @@
   - `/healthz` / `/readyz` 容器存活与就绪探针
   - `/preflightz` 生产就绪检查（HTTPS、OSS 凭证、DR backup 等还没就位时会显式 503）
   - `trashbot.cloud_deployment_readiness` artifact，汇总公网入口、TLS、healthcheck、凭证、state backend、生产 DB/queue、OSS/CDN、4G/SIM 和 runbook/smoke 缺口；证据边界固定为 `software_proof_docker_cloud_deployment_readiness_gate`
+  - `trashbot.cloud_external_probe_bundle` artifact，用 base URL 探测 `/healthz`、`/readyz`、`/preflightz` 并只记录 endpoint path、HTTP 状态、JSON 合同和脱敏状态；证据边界固定为 `software_proof_docker_cloud_external_probe_bundle_gate`，`production_ready=false` 必须保持
 
 ## 子目录
 
@@ -67,6 +68,27 @@ python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
 
 该 artifact 的 `schema=trashbot.cloud_deployment_readiness`、`schema_version=1`、`evidence_boundary=software_proof_docker_cloud_deployment_readiness_gate`。它必须保持 `production_ready=false`、`overall_status=blocked`，并列出 `not_proven`、`safe_summary`、`retry_hint`。本地占位配置不得被 Docker smoke 或 CLI preflight 判成生产 ready。
 
+生成 cloud external probe bundle artifact：
+
+```bash
+cd cloud-relay
+PYTHONPATH=src:../onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --write-cloud-external-probe-artifact /tmp/trashbot_cloud_external_probe.json \
+  --cloud-external-probe-base-url http://127.0.0.1:8088
+```
+
+Preflight 消费该 artifact：
+
+```bash
+cd cloud-relay
+PYTHONPATH=src:../onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_ARTIFACT=/tmp/trashbot_cloud_external_probe.json \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
+```
+
+该 bundle 的 `schema=trashbot.cloud_external_probe_bundle`、`schema_version=1`、`evidence_boundary=software_proof_docker_cloud_external_probe_bundle_gate`。它只证明本地或未来公网 base URL 的 `/healthz`、`/readyz`、`/preflightz` 合同可被探测并生成 phone-safe artifact；本轮 Docker smoke 只跑本地 relay，因此必须继续输出 `production_ready=false`、`overall_status=blocked` 和真实云、HTTPS/TLS、公网入口、4G/SIM、OSS/CDN live traffic、production DB/queue、HIL、真实送达等 `not_proven`。
+
 ## 运行时契约（Runtime contracts）
 
 - **与 `onboard/` 的契约**：
@@ -90,6 +112,7 @@ python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
 - **不允许变更已存在的 phone-safe schema 字段、值域、`evidence_boundary`**；如确需新增，新建 `.v2` 版本，保留 `.v1` 兼容。
 - 不允许向 phone-safe 输出泄漏 `Authorization` / `Bearer` / `/cmd_vel` / `ttyUSB` / `baudrate` / `WAVE ROVER` / 本地文件路径等敏感字段。
 - Deployment readiness / preflight 输出不得泄漏 bearer token、Authorization header、OSS secret、AK/SK、root password、DB URL、queue URL、credential-bearing URL、raw state path、串口、baudrate、WAVE ROVER 参数、ROS topic、`/cmd_vel` 或 traceback。
+- Cloud external probe bundle 不得写入 base URL、Authorization header、响应体、credential-bearing URL、本地 state path、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；只允许 endpoint path、HTTP status、JSON 合同状态和脱敏状态进入 artifact。
 - 修改 Docker / compose / scripts / Dockerfile 时必须更新本 README 的"标准入口"段落。
 - 中文注释比例 >20%，注释解释"为什么"而非"做什么"。
 

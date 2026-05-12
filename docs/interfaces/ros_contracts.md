@@ -393,12 +393,24 @@ The optional `remote_bridge` node is the formal 4G-oriented remote MVP path. It 
 
 Cloud responses may include optional status, preflight, diagnostics, queue,
 mobile-web-entrypoint, PWA-entrypoint, voice-prompt-readiness,
-production-recovery, transaction-isolation, or mobile task-start confirmation
-metadata beside the
+production-recovery, transaction-isolation, cloud external probe,
+deployment-readiness, or mobile task-start confirmation metadata beside the
 `trashbot.remote.v1` command/status/ACK envelope. Robot clients must treat those
 fields as ignorable diagnostics for forward compatibility. A metadata-only
 response with `command=null` or no command object must not start a robot action,
 must not emit ACK, and must not advance or persist `last_terminal_ack_id`.
+Cloud external probe metadata, including `cloud_external_probe` and
+`cloud_external_probe_bundle`, is diagnostic/deployment metadata for
+`/healthz`, `/readyz`, and `/preflightz` probe summaries. It is not a robot
+command, delivery result, HIL result, or WAVE ROVER feedback. It may report
+`production_ready=false`, `overall_status=blocked`, endpoint summaries, retry
+hints, or redacted safe summaries, but it must not trigger `collect`,
+`confirm_dropoff`, or `cancel`, post ACK, advance cursor state, persist
+`last_terminal_ack_id`, or turn ACK copy into delivery success.
+Deployment-readiness metadata, including `deployment_readiness`,
+`cloud_deployment_readiness`, and `preflight`, is also deployment diagnostics
+only; it is safe for older robot clients to ignore and cannot change
+`trashbot.remote.v1` command normalization.
 Mobile web entrypoint metadata, including `mobile_web_entrypoint`,
 `mobile_web_entrypoint_readiness`, and `pwa_entrypoint`, is a phone/UI consumer
 contract only. It may describe the static shell, installability, readiness, or

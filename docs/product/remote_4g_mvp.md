@@ -94,6 +94,39 @@ tokens, Authorization headers, OSS secrets, AK/SK, root passwords, DB URLs,
 queue URLs, credential-bearing URLs, raw state paths, serial ports, baudrate,
 WAVE ROVER parameters, ROS topic names, `/cmd_vel`, or tracebacks.
 
+The relay now also supports a cloud external probe bundle with
+`schema=trashbot.cloud_external_probe_bundle`, `schema_version=1`, and
+`evidence_boundary=software_proof_docker_cloud_external_probe_bundle_gate`.
+The CLI probes `/healthz`, `/readyz`, and `/preflightz` from a local or future
+public base URL, but the artifact only stores endpoint paths, HTTP status, JSON
+contract status, redaction status, safe summary, retry hint, and `not_proven`.
+It never stores the base URL, Authorization headers, tokens, response bodies,
+local paths, ROS topics, serial details, or hardware control names.
+
+Generate the local proof artifact:
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --write-cloud-external-probe-artifact /tmp/trashbot_cloud_external_probe.json \
+  --cloud-external-probe-base-url http://127.0.0.1:8088
+```
+
+Consume it in preflight:
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_ARTIFACT=/tmp/trashbot_cloud_external_probe.json \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
+```
+
+A valid bundle may set the preflight evidence boundary to
+`software_proof_docker_cloud_external_probe_bundle_gate`, but it must keep
+`production_ready=false` and `overall_status=blocked`. This gate proves only
+Docker/local endpoint contract and artifact validation in the current sprint;
+it is not proof of real HTTPS/TLS, public ingress, DNS, 4G/SIM, OSS/CDN live
+traffic, production DB/queue, HIL, Nav2/fixed-route delivery, or real delivery.
+
 When `TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite`, the same preflight uses
 `evidence_boundary=software_proof_docker_sqlite_state_store`. That boundary
 means the relay can prove single-node command/status/ack recovery across store

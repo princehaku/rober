@@ -30,6 +30,8 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 
 本轮 `2026.05.13_04-05_cloud-deployment-readiness-gate` 新增 cloud deployment readiness gate，证据边界是 `software_proof_docker_cloud_deployment_readiness_gate`。Artifact schema 为 `trashbot.cloud_deployment_readiness`、`schema_version=1`，检查公网 base URL/TLS/public ingress、healthcheck endpoint、bearer credential 占位、state backend、production DB/queue gap、OSS/CDN gap、4G/SIM gap、deployment runbook 或 Docker smoke 入口。该 gate 是 blocked-by-design：`production_ready=false`、`overall_status=blocked`、`not_proven`、`safe_summary` 和 `retry_hint` 必须保留；它不得声明真实云、真实 HTTPS/TLS、公网入口、真实 4G/SIM、OSS/CDN 实流量、生产 DB/queue、HIL 或真实送达。
 
+本轮 `2026.05.13_06-07_cloud-external-probe-bundle-gate` 新增 cloud external probe bundle gate，证据边界是 `software_proof_docker_cloud_external_probe_bundle_gate`。Artifact schema 为 `trashbot.cloud_external_probe_bundle`、`schema_version=1`，用本地或未来公网 base URL 探测 `/healthz`、`/readyz`、`/preflightz`，但 artifact 只保存 endpoint path、HTTP status、JSON 合同状态、`redaction_status`、`safe_summary`、`retry_hint` 和 `not_proven`，不保存 base URL、header、token、响应体或本地路径。本轮 Docker smoke 只证明本地 relay probe contract 和 artifact 校验，preflight 即使消费有效 bundle，也必须保持 `production_ready=false`、`overall_status=blocked`；它不得声明真实云、真实 HTTPS/TLS、公网入口、真实 4G/SIM、OSS/CDN live traffic、production DB/queue、HIL 或真实送达。
+
 ## 云端基线规格
 
 目标服务端基线：
@@ -161,6 +163,9 @@ Operator/API 消费 manifest artifact 时输出的是更小的 phone-safe summar
 - `TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT`：可选的本地 production recovery artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为真实生产 DB/queue、真实生产备份策略、真实灾备恢复、多实例一致性、真实云或真实 4G 证据。
 - `TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_RUNBOOK`：可选的部署 readiness runbook 标识，当前 `.env.example` 只允许 `local_docker_smoke` 这类占位，不得写入真实凭证或 credential-bearing URL。
 - `TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT`：可选的本地 cloud deployment readiness artifact 路径，只供 preflight 消费脱敏摘要；不得作为真实云、真实 HTTPS/TLS、公网入口、真实 4G/SIM、OSS/CDN 实流量或生产 DB/queue 证据。
+- `TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_BASE_URL`：可选的外部探测 base URL；`.env.example` 只能放本地占位，本字段不写入 artifact。
+- `TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_ARTIFACT`：可选的本地 cloud external probe bundle artifact 路径，只供 preflight 消费 endpoint 覆盖摘要；不得作为真实云、真实 HTTPS/TLS、公网入口、真实 4G/SIM、OSS/CDN 实流量或生产 DB/queue 证据。
+- `TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_TIMEOUT`：可选的 endpoint 探测超时秒数，仅影响本地/未来公网探测命令。
 - `.env` 不入仓库；`.env.example` 只能放占位符。
 - 错误响应和 state file 不得包含 bearer token、Authorization header、credential-bearing URL、串口设备、baudrate、WAVE ROVER 参数、底层速度控制入口或 raw ROS topic 名。
 - token rotate、账号分级、机器人 provisioning 和审计日志是后续真实云 sprint 的范围。

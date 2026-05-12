@@ -257,6 +257,43 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("Authorization", encoded_command)
         self.assertNotIn("credential_url", encoded_command)
 
+    def test_validate_command_ignores_cloud_external_probe_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-cloud-external-probe-metadata",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "cloud_external_probe": {
+                "schema": "trashbot.cloud_external_probe_bundle",
+                "schema_version": 1,
+                "endpoint_results": {
+                    "/healthz": {"status": "ok"},
+                    "/readyz": {"status": "blocked"},
+                    "/preflightz": {"status": "blocked"},
+                },
+                "production_ready": False,
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+            },
+            "cloud_external_probe_bundle": {
+                "schema": "trashbot.cloud_external_probe_bundle",
+                "overall_status": "blocked",
+                "Authorization": "Bearer must-not-leak",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-cloud-external-probe-metadata")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # cloud external probe 只描述云端探测摘要，不能进入 robot command envelope。
+        self.assertNotIn("cloud_external_probe", encoded_command)
+        self.assertNotIn("cloud_external_probe_bundle", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+
     def test_validate_command_keeps_command_id_order_as_supplied(self):
         command = validate_command({
             "id": "cmd-10",

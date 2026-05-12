@@ -1454,6 +1454,73 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertNotIn("Authorization", encoded_status)
             self.assertNotIn("credential_url", encoded_status)
 
+    def test_metadata_only_cloud_external_probe_response_does_not_start_ack_or_persist_cursor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-cloud-external-probe",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras["command_response"] = {
+                "cloud_external_probe": {
+                    "schema": "trashbot.cloud_external_probe_bundle",
+                    "schema_version": 1,
+                    "evidence_boundary": "software_proof_docker_cloud_external_probe_bundle_gate",
+                    "endpoint_results": {
+                        "/healthz": {"status": "ok", "delivery_success": True},
+                        "/readyz": {"status": "blocked", "next_action": "collect"},
+                        "/preflightz": {"status": "blocked", "trigger_robot_action": "cancel"},
+                    },
+                    "production_ready": False,
+                    "overall_status": "blocked",
+                    "cursor_override": "cmd-external-probe",
+                    "delivery_success": True,
+                    "Authorization": "Bearer must-not-leak",
+                },
+                "cloud_external_probe_bundle": {
+                    "schema": "trashbot.cloud_external_probe_bundle",
+                    "safe_summary": "external probe 只是部署诊断摘要。",
+                    "retry_hint": "configure_public_url",
+                    "trigger_robot_action": "collect",
+                    "delivery_success": True,
+                },
+                "deployment_readiness": {
+                    "schema": "trashbot.cloud_deployment_readiness",
+                    "production_ready": False,
+                    "overall_status": "blocked",
+                },
+                "cloud_deployment_readiness": {
+                    "schema": "trashbot.cloud_deployment_readiness",
+                    "production_ready": False,
+                    "overall_status": "blocked",
+                },
+                "preflight": {"production_ready": False, "overall_status": "blocked"},
+            }
+
+            handled = worker.poll_once()
+
+            # external probe bundle 是云部署诊断，不是 command；没有 envelope 时不能有 action/ACK/cursor 副作用。
+            self.assertFalse(handled)
+            self.assertEqual(self.backend.calls, [])
+            self.assertEqual(self.cloud.ack_posts, [])
+            self.assertEqual(worker.last_ack_id, "cmd-before-cloud-external-probe")
+            self.assertFalse(state_path.exists())
+            self.assertEqual(len(self.cloud.status_posts), 1)
+            self.assertIn("last_ack_id=cmd-before-cloud-external-probe", self.cloud.get_paths[-1])
+            encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+            self.assertNotIn("cloud_external_probe", encoded_status)
+            self.assertNotIn("cloud_external_probe_bundle", encoded_status)
+            self.assertNotIn("deployment_readiness", encoded_status)
+            self.assertNotIn("cloud_deployment_readiness", encoded_status)
+            self.assertNotIn("preflight", encoded_status)
+            self.assertNotIn("trigger_robot_action", encoded_status)
+            self.assertNotIn("cursor_override", encoded_status)
+            self.assertNotIn("delivery_success", encoded_status)
+            self.assertNotIn("Authorization", encoded_status)
+
     def test_transaction_isolation_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {

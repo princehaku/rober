@@ -12,6 +12,8 @@ import uuid
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
+import urllib.error
+import urllib.request
 
 
 PROTOCOL_VERSION = "trashbot.remote.v1"
@@ -39,6 +41,7 @@ TRANSACTION_ISOLATION_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_transacti
 PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY = "software_proof_docker_production_recovery_gate"
 PRODUCTION_RECOVERY_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_production_recovery_phone_consumption"
 CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_deployment_readiness_gate"
+CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_external_probe_bundle_gate"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -68,6 +71,8 @@ PRODUCTION_RECOVERY_SCHEMA = "trashbot.production_recovery_gate"
 PRODUCTION_RECOVERY_SCHEMA_VERSION = 1
 CLOUD_DEPLOYMENT_READINESS_SCHEMA = "trashbot.cloud_deployment_readiness"
 CLOUD_DEPLOYMENT_READINESS_SCHEMA_VERSION = 1
+CLOUD_EXTERNAL_PROBE_SCHEMA = "trashbot.cloud_external_probe_bundle"
+CLOUD_EXTERNAL_PROBE_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -193,6 +198,23 @@ CLOUD_DEPLOYMENT_READINESS_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+CLOUD_EXTERNAL_PROBE_NOT_PROVEN = [
+    "real_cloud",
+    "real_https_tls",
+    "public_ingress_external_probe",
+    "real_4g_sim",
+    "real_oss_upload",
+    "cdn_origin_fetch",
+    "sts_issuance",
+    "production_db_or_queue",
+    "multi_instance_consistency",
+    "production_queue_ordering",
+    "production_backup_policy",
+    "real_disaster_recovery",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -214,6 +236,7 @@ PHONE_COPY = {
     "transaction_isolation_blocked": "事务隔离演练软件证明未通过校验，请重新生成后再试。",
     "production_recovery_blocked": "生产备份/灾备恢复 gate 未通过校验，请重新生成后再试。",
     "cloud_deployment_readiness_blocked": "云部署就绪检查仍未通过，请补齐公网、TLS、4G 和生产存储证据。",
+    "cloud_external_probe_blocked": "云端外部探测 bundle 未通过校验，请重新生成后再试。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -1675,6 +1698,216 @@ def cloud_deployment_readiness_artifact_summary(artifact_path):
         }
 
 
+def _cloud_external_probe_forbidden_markers(payload):
+    # 外部探测 bundle 会被手机和 preflight 消费，只能保留路径和枚举状态，不能保留 base URL 或响应体。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "secret",
+        "password",
+        "postgres://",
+        "mysql://",
+        "redis://",
+        "amqp://",
+        "://",
+        "raw state path",
+        "state path",
+        "/tmp/",
+        "/dev/",
+        "serial",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+        "traceback",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def _probe_endpoint(base_url, endpoint, timeout_sec):
+    # 只记录可验收的机器字段；不保留 URL、header、response body，避免把公网或凭证信息写进 artifact。
+    target = f"{str(base_url).rstrip('/')}{endpoint}"
+    started = time.monotonic()
+    status_code = 0
+    body = b""
+    reachable = False
+    try:
+        with urllib.request.urlopen(target, timeout=float(timeout_sec)) as response:
+            status_code = int(response.status)
+            body = response.read(65536)
+            reachable = True
+    except urllib.error.HTTPError as exc:
+        status_code = int(exc.code)
+        body = exc.read(65536)
+        reachable = True
+    except (OSError, ValueError, TimeoutError):
+        return {
+            "endpoint": endpoint,
+            "status": "blocked",
+            "code": "endpoint_unreachable",
+            "http_status": 0,
+            "reachable": False,
+            "json_ok": False,
+            "expected_keys_present": False,
+            "latency_ms": int((time.monotonic() - started) * 1000),
+        }
+
+    json_ok = False
+    expected_keys_present = False
+    try:
+        payload = json.loads(body.decode("utf-8") or "{}")
+        json_ok = isinstance(payload, dict)
+        if endpoint == "/healthz":
+            expected_keys_present = all(key in payload for key in ("ok", "service", "protocol_version"))
+        elif endpoint == "/readyz":
+            expected_keys_present = all(key in payload for key in ("ok", "checks"))
+        elif endpoint == "/preflightz":
+            expected_keys_present = all(key in payload for key in ("production_ready", "overall_status", "checks"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        json_ok = False
+
+    http_expected = status_code == 200 if endpoint in {"/healthz", "/readyz"} else status_code in {200, 503}
+    passed = reachable and http_expected and json_ok and expected_keys_present
+    return {
+        "endpoint": endpoint,
+        "status": "pass" if passed else "blocked",
+        "code": "endpoint_contract_observed" if passed else "endpoint_contract_missing",
+        "http_status": status_code,
+        "reachable": reachable,
+        "json_ok": json_ok,
+        "expected_keys_present": expected_keys_present,
+        "latency_ms": int((time.monotonic() - started) * 1000),
+    }
+
+
+def build_cloud_external_probe_bundle_payload(base_url, *, generated_at=None, timeout_sec=2.0):
+    """探测 cloud relay 三个只读 gate，并生成 Docker/local 软件证明 artifact。"""
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    endpoints = ["/healthz", "/readyz", "/preflightz"]
+    results = [_probe_endpoint(base_url, endpoint, timeout_sec) for endpoint in endpoints]
+    endpoint_set = {result.get("endpoint") for result in results}
+    endpoints_covered = all(endpoint in endpoint_set for endpoint in endpoints)
+    endpoint_contract_ready = endpoints_covered and all(result.get("status") == "pass" for result in results)
+    body = {
+        "schema": CLOUD_EXTERNAL_PROBE_SCHEMA,
+        "schema_version": CLOUD_EXTERNAL_PROBE_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
+        "generated_at": generated_value,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "base_url_scheme": _safe_scheme(base_url),
+        "endpoint_results": safe_value(results),
+        "endpoint_contract_ready": bool(endpoint_contract_ready),
+        "not_proven": list(CLOUD_EXTERNAL_PROBE_NOT_PROVEN),
+        "safe_summary": "Cloud external probe bundle 已覆盖 health/ready/preflight 合同；当前仍只是 Docker/local software proof。",
+        "retry_hint": "rerun_probe_from_real_public_https_network_before_claiming_cloud_ready",
+        "redaction_status": {
+            "status": "pass",
+            "base_url_redacted": True,
+            "response_body_redacted": True,
+            "credential_headers_recorded": False,
+        },
+    }
+    forbidden = _cloud_external_probe_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("cloud external probe bundle contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_cloud_external_probe_bundle_payload(artifact):
+    # preflight 只需要合同摘要；完整 endpoint 结果可在 artifact 中留档，但不能夹带 URL 或响应体。
+    if not isinstance(artifact, dict):
+        raise ValueError("cloud external probe bundle must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != CLOUD_EXTERNAL_PROBE_SCHEMA:
+        raise ValueError("cloud external probe schema mismatch")
+    if artifact.get("schema_version") != CLOUD_EXTERNAL_PROBE_SCHEMA_VERSION:
+        raise ValueError("cloud external probe schema version mismatch")
+    if artifact.get("evidence_boundary") != CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY:
+        raise ValueError("cloud external probe evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("cloud external probe checksum mismatch")
+    if artifact.get("production_ready") is not False or artifact.get("overall_status") != "blocked":
+        raise ValueError("cloud external probe must stay production blocked")
+    results = artifact.get("endpoint_results")
+    if not isinstance(results, list):
+        raise ValueError("cloud external probe endpoint results must be a list")
+    result_by_endpoint = {str(result.get("endpoint") or ""): result for result in results if isinstance(result, dict)}
+    required = {"/healthz", "/readyz", "/preflightz"}
+    if set(result_by_endpoint) != required:
+        raise ValueError("cloud external probe endpoint coverage mismatch")
+    if not all(result_by_endpoint[endpoint].get("status") == "pass" for endpoint in required):
+        raise ValueError("cloud external probe endpoint contract did not pass")
+    redaction = artifact.get("redaction_status")
+    if not isinstance(redaction, dict) or redaction.get("status") != "pass":
+        raise ValueError("cloud external probe redaction status missing")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in CLOUD_EXTERNAL_PROBE_NOT_PROVEN if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("cloud external probe not_proven list is incomplete")
+    forbidden = _cloud_external_probe_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("cloud external probe bundle contains forbidden phone-unsafe markers")
+    return {
+        "ok": True,
+        "schema": CLOUD_EXTERNAL_PROBE_SCHEMA,
+        "schema_version": CLOUD_EXTERNAL_PROBE_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "endpoints_covered": sorted(result_by_endpoint),
+        "endpoint_count": len(results),
+        "endpoint_contract_ready": True,
+        "safe_summary": str(artifact.get("safe_summary") or ""),
+        "retry_hint": str(artifact.get("retry_hint") or ""),
+        "redaction_status": safe_value(redaction),
+        "not_proven": list(CLOUD_EXTERNAL_PROBE_NOT_PROVEN),
+    }
+
+
+def create_cloud_external_probe_bundle_artifact(artifact_path, base_url, *, timeout_sec=2.0):
+    # CLI 和 Docker smoke 使用同一个生成函数，避免本地 smoke 与 preflight 消费口径分叉。
+    artifact = build_cloud_external_probe_bundle_payload(base_url, timeout_sec=timeout_sec)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_cloud_external_probe_bundle_payload(artifact)
+    return {
+        "ok": True,
+        "cloud_external_probe_status": "blocked",
+        "evidence_boundary": CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(CLOUD_EXTERNAL_PROBE_NOT_PROVEN),
+    }
+
+
+def cloud_external_probe_bundle_summary(artifact_path):
+    # preflight 摘要不回显 artifact 路径、base URL 或响应体，只回显 endpoint 覆盖和软件证明边界。
+    try:
+        artifact = _load_json_file(artifact_path, "cloud external probe bundle artifact")
+        return validate_cloud_external_probe_bundle_payload(artifact)
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "cloud_external_probe_invalid",
+            "safe_summary": _safe_error_reason(exc),
+            "retry_hint": "重新生成 cloud external probe bundle artifact 后重跑 preflight。",
+            "not_proven": list(CLOUD_EXTERNAL_PROBE_NOT_PROVEN),
+        }
+
+
 def _production_store_queue_forbidden_markers(payload):
     # 该 artifact 会进入手机和 preflight，必须拒绝真实连接串、队列地址、路径和底层控制词。
     encoded = json.dumps(payload, ensure_ascii=False).lower()
@@ -3106,6 +3339,7 @@ def production_preflight_payload(env=None):
     queue_ordering_drill_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_ARTIFACT")
     transaction_isolation_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT")
     production_recovery_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT")
+    cloud_external_probe_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_ARTIFACT")
     cloud_deployment_readiness_artifact_path = _env_value(
         env,
         "TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT",
@@ -3167,6 +3401,53 @@ def production_preflight_payload(env=None):
                     "check_count": inline_deployment_summary.get("check_count"),
                     "software_proof_only": True,
                 },
+            )
+        )
+
+    if cloud_external_probe_artifact_path:
+        # 外部探测 artifact 只证明 health/ready/preflight 合同覆盖，不把本地 HTTP 成功升级成生产就绪。
+        probe_summary = cloud_external_probe_bundle_summary(cloud_external_probe_artifact_path)
+        if probe_summary.get("ok"):
+            checks.append(
+                _check(
+                    "cloud_external_probe_bundle",
+                    "pass",
+                    "local_cloud_external_probe_bundle_valid",
+                    "已找到通过 schema、checksum、endpoint 覆盖和脱敏校验的 cloud external probe bundle。",
+                    "继续从真实公网 HTTPS 网络重跑探测，再补齐 4G/SIM、OSS/CDN 和生产 DB/queue 证据。",
+                    {
+                        "artifact_schema": CLOUD_EXTERNAL_PROBE_SCHEMA,
+                        "schema_version": CLOUD_EXTERNAL_PROBE_SCHEMA_VERSION,
+                        "evidence_boundary": CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "endpoints_covered": probe_summary.get("endpoints_covered"),
+                        "endpoint_contract_ready": probe_summary.get("endpoint_contract_ready"),
+                        "redaction_status": probe_summary.get("redaction_status"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "cloud_external_probe_bundle",
+                    "blocked",
+                    "cloud_external_probe_artifact_invalid",
+                    str(probe_summary.get("safe_summary") or "Cloud external probe bundle artifact 不可用。"),
+                    str(probe_summary.get("retry_hint") or "重新生成 cloud external probe bundle artifact 后重跑 preflight。"),
+                    {"artifact_present": True, "software_proof_only": True},
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "cloud_external_probe_bundle",
+                "warning",
+                "cloud_external_probe_artifact_missing",
+                "尚未提供 cloud external probe bundle artifact，不能声明外部探测软件证明。",
+                "用本地或未来公网 base URL 生成 artifact，并通过 TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_ARTIFACT 传给 preflight。",
+                {"artifact_present": False, "software_proof_only": True},
             )
         )
 
@@ -3887,6 +4168,10 @@ def production_preflight_payload(env=None):
         check["name"] == "production_recovery" and check["status"] == "pass"
         for check in checks
     )
+    local_cloud_external_probe_ok = any(
+        check["name"] == "cloud_external_probe_bundle" and check["status"] == "pass"
+        for check in checks
+    )
     not_proven = [
         "production_credential_rotation",
         "production_robot_provisioning",
@@ -3927,6 +4212,8 @@ def production_preflight_payload(env=None):
         not_proven.insert(14, "transaction_isolation_drill")
     if not local_production_recovery_ok:
         not_proven.insert(15, "production_recovery_gate")
+    if not local_cloud_external_probe_ok:
+        not_proven.insert(16, "cloud_external_probe_bundle")
     payload = {
         "ok": production_ready,
         "software_proof_ready": bool(
@@ -3937,6 +4224,7 @@ def production_preflight_payload(env=None):
             or local_queue_ordering_drill_ok
             or local_transaction_isolation_ok
             or local_production_recovery_ok
+            or local_cloud_external_probe_ok
         ),
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
@@ -3944,6 +4232,8 @@ def production_preflight_payload(env=None):
         "evidence_boundary": (
             PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY
             if local_production_recovery_ok
+            else CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY
+            if local_cloud_external_probe_ok
             else TRANSACTION_ISOLATION_EVIDENCE_BOUNDARY
             if local_transaction_isolation_ok
             else QUEUE_ORDERING_DRILL_EVIDENCE_BOUNDARY
@@ -5181,6 +5471,11 @@ def main(argv=None):
         help="phone-safe cloud deployment readiness artifact consumed by preflight",
     )
     parser.add_argument(
+        "--cloud-external-probe-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_ARTIFACT", ""),
+        help="phone-safe cloud external probe bundle artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
@@ -5219,6 +5514,22 @@ def main(argv=None):
         "--write-cloud-deployment-readiness-artifact",
         default="",
         help="write a phone-safe cloud deployment readiness artifact JSON and exit",
+    )
+    parser.add_argument(
+        "--write-cloud-external-probe-artifact",
+        default="",
+        help="probe health/ready/preflight endpoints and write a phone-safe cloud external probe bundle artifact",
+    )
+    parser.add_argument(
+        "--cloud-external-probe-base-url",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_BASE_URL", ""),
+        help="base URL used only for live endpoint probing; it is not written into the artifact",
+    )
+    parser.add_argument(
+        "--cloud-external-probe-timeout",
+        type=float,
+        default=float(os.environ.get("TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_TIMEOUT", "2.0")),
+        help="per-endpoint probe timeout in seconds",
     )
     parser.add_argument(
         "--credential-rotation-robot-id",
@@ -5355,9 +5666,26 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT"] = (
                 args.cloud_deployment_readiness_artifact
             )
+        if args.cloud_external_probe_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_ARTIFACT"] = args.cloud_external_probe_artifact
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
+    if args.write_cloud_external_probe_artifact:
+        try:
+            base_url = args.cloud_external_probe_base_url or os.environ.get(
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL",
+                "",
+            )
+            payload = create_cloud_external_probe_bundle_artifact(
+                args.write_cloud_external_probe_artifact,
+                base_url,
+                timeout_sec=args.cloud_external_probe_timeout,
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error("cloud_external_probe_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     if args.write_cloud_deployment_readiness_artifact:
         try:
             payload = create_cloud_deployment_readiness_artifact(

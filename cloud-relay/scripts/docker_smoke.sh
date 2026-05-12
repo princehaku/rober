@@ -139,6 +139,88 @@ for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate", "
         raise SystemExit(f"deployment readiness leaked forbidden marker: {forbidden}")
 PY
 
+echo "== cloud external probe bundle covers health ready preflight without production claim =="
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  rm -f /tmp/trashbot_cloud_external_probe.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+    --write-cloud-external-probe-artifact /tmp/trashbot_cloud_external_probe.json \
+    --cloud-external-probe-base-url "http://127.0.0.1:${TRASHBOT_REMOTE_CLOUD_PORT}" \
+    >/tmp/trashbot_cloud_external_probe_result.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  cat /tmp/trashbot_cloud_external_probe.json \
+    >/tmp/trashbot_cloud_external_probe_artifact.json
+cat /tmp/trashbot_cloud_external_probe_artifact.json
+echo
+python3 - /tmp/trashbot_cloud_external_probe_artifact.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+encoded = json.dumps(payload, ensure_ascii=False)
+if payload.get("schema") != "trashbot.cloud_external_probe_bundle":
+    raise SystemExit("wrong cloud external probe schema")
+if payload.get("schema_version") != 1:
+    raise SystemExit("wrong cloud external probe schema version")
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_external_probe_bundle_gate":
+    raise SystemExit("wrong cloud external probe evidence boundary")
+if payload.get("production_ready"):
+    raise SystemExit("cloud external probe must not claim production_ready")
+if payload.get("overall_status") != "blocked":
+    raise SystemExit("cloud external probe must remain blocked by production boundary")
+endpoints = {item.get("endpoint"): item for item in payload.get("endpoint_results", [])}
+if set(endpoints) != {"/healthz", "/readyz", "/preflightz"}:
+    raise SystemExit(f"cloud external probe endpoint coverage mismatch: {sorted(endpoints)}")
+for endpoint, item in endpoints.items():
+    print(f"probe covered {endpoint} http_status={item.get('http_status')} status={item.get('status')}")
+    if item.get("status") != "pass":
+        raise SystemExit(f"cloud external probe endpoint did not pass: {endpoint}")
+if payload.get("redaction_status", {}).get("status") != "pass":
+    raise SystemExit("cloud external probe redaction status did not pass")
+for marker in ("real_cloud", "real_https_tls", "real_4g_sim", "production_db_or_queue"):
+    if marker not in encoded:
+        raise SystemExit(f"missing cloud external probe not_proven marker: {marker}")
+for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate", "WAVE ROVER", "http://127.0.0.1"):
+    if forbidden in encoded:
+        raise SystemExit(f"cloud external probe leaked forbidden marker: {forbidden}")
+PY
+
+echo "== production preflight CLI consumes cloud external probe without production ready =="
+set +e
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T \
+  -e TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_ARTIFACT=/tmp/trashbot_cloud_external_probe.json \
+  remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight \
+  >/tmp/remote_cloud_relay_preflight_external_probe.json
+PREFLIGHT_EXTERNAL_PROBE_STATUS="$?"
+set -e
+cat /tmp/remote_cloud_relay_preflight_external_probe.json
+echo
+if [ "${PREFLIGHT_EXTERNAL_PROBE_STATUS}" != "0" ]; then
+  echo "external probe preflight CLI unexpectedly returned ${PREFLIGHT_EXTERNAL_PROBE_STATUS}" >&2
+  exit 1
+fi
+python3 - /tmp/remote_cloud_relay_preflight_external_probe.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+checks = {check["name"]: check for check in payload.get("checks", [])}
+encoded = json.dumps(payload, ensure_ascii=False)
+if payload.get("production_ready"):
+    raise SystemExit("external probe preflight must not claim production_ready")
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_external_probe_bundle_gate":
+    raise SystemExit("preflight did not report cloud external probe boundary")
+if checks.get("cloud_external_probe_bundle", {}).get("status") != "pass":
+    raise SystemExit("preflight did not recognize cloud external probe artifact")
+for endpoint in ("/healthz", "/readyz", "/preflightz"):
+    if endpoint not in encoded:
+        raise SystemExit(f"preflight external probe missing endpoint: {endpoint}")
+for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate", "WAVE ROVER", "http://127.0.0.1"):
+    if forbidden in encoded:
+        raise SystemExit(f"preflight external probe leaked forbidden marker: {forbidden}")
+PY
+
 echo "== production preflight CLI with unwritable state expects blocked =="
 set +e
 repo_ws="$(cd "$relay_root/.." && pwd)"
