@@ -606,6 +606,52 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_phone_task_flow_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "phone_task_flow_readiness": {
+                    "schema": "trashbot.phone_task_flow_readiness.v1",
+                    "current_step": "start_delivery",
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "phone_task_flow_readiness": {
+                    "schema": "trashbot.phone_task_flow_readiness.v1",
+                    "next_action": "confirm_dropoff",
+                    "trigger_robot_action": "cancel",
+                },
+            },
+            "ack_response": {
+                "phone_task_flow_readiness": {
+                    "schema": "trashbot.phone_task_flow_readiness.v1",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-phone-task-flow-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-phone-task-flow-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-phone-task-flow-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        # phone task-flow 是手机/诊断元数据，robot ACK envelope 只能回传本地命令处理结果。
+        self.assertNotIn("phone_task_flow_readiness", ack_payload)
+        self.assertNotIn("phone_task_flow_readiness", json.dumps(ack_payload["result"]))
+        self.assertNotIn("trigger_robot_action", json.dumps(ack_payload["result"]))
+        self.assertNotIn("delivery_success", json.dumps(ack_payload["result"]))
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_metadata_only_preflight_blocked_response_does_not_start_ack_or_persist_cursor(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
@@ -668,6 +714,39 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertFalse(state_path.exists())
             self.assertEqual(len(self.cloud.status_posts), 1)
             self.assertNotIn("production_store_queue", json.dumps(self.cloud.status_posts))
+
+    def test_metadata_only_phone_task_flow_response_does_not_start_ack_or_persist_cursor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-phone-task-flow",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras["command_response"] = {
+                "phone_task_flow_readiness": {
+                    "schema": "trashbot.phone_task_flow_readiness.v1",
+                    "current_step": "start_delivery",
+                    "next_action": "confirm_dropoff",
+                    "trigger_robot_action": "collect",
+                    "delivery_success": True,
+                    "blocking_reasons": ["status_waiting"],
+                },
+                "preflight": {"overall_status": "blocked", "production_ready": False},
+            }
+
+            handled = worker.poll_once()
+
+            # 只有 task-flow metadata、没有 command envelope 时，不能推进 robot 侧任务或游标。
+            self.assertFalse(handled)
+            self.assertEqual(self.backend.calls, [])
+            self.assertEqual(self.cloud.ack_posts, [])
+            self.assertEqual(worker.last_ack_id, "cmd-before-phone-task-flow")
+            self.assertFalse(state_path.exists())
+            self.assertEqual(len(self.cloud.status_posts), 1)
+            self.assertNotIn("phone_task_flow_readiness", json.dumps(self.cloud.status_posts))
 
     def test_ack_failure_does_not_persist_cursor_state(self):
         with tempfile.TemporaryDirectory() as tmpdir:

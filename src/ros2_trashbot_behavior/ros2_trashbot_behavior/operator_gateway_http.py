@@ -20,7 +20,9 @@ from ros2_trashbot_behavior.remote_bridge_protocol import parse_bool
 API_VERSION = "slice2.operator.v1"
 REMOTE_PROTOCOL_VERSION = "trashbot.remote.v1"
 PHONE_READINESS_SCHEMA = "trashbot.phone_readiness.v1"
-PHONE_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_command_safety_browser_gate"
+PHONE_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_task_flow_readiness_gate"
+PHONE_COMMAND_SAFETY_EVIDENCE_BOUNDARY = "software_proof_docker_phone_command_safety_browser_gate"
+PHONE_TASK_FLOW_SCHEMA = "trashbot.phone_task_flow_readiness.v1"
 PHONE_PWA_EVIDENCE_BOUNDARY = "software_proof_docker_phone_pwa_installability_gate"
 COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
@@ -53,6 +55,7 @@ REMOTE_DEGRADATION_COPY = {
 
 PHONE_READINESS_NOT_PROVEN = [
     "production_phone_app",
+    "real_phone_device_browser",
     "real_cloud_https_tls_public_ingress",
     "real_4g_sim_carrier_network",
     "oss_cdn_data_path",
@@ -92,6 +95,36 @@ COMMAND_SAFETY_BLOCK_COPY = {
     "manual_takeover_required": "当前需要人工接管，主操作暂不可用。",
     "monitoring_only": "任务正在进行，请继续观察或按需取消。",
 }
+
+PHONE_TASK_FLOW_STEPS = (
+    "connection_ready",
+    "destination_confirmed",
+    "trash_loaded",
+    "start_delivery",
+    "status_explained",
+    "help_or_diagnostics",
+)
+
+PHONE_TASK_FLOW_LABELS = {
+    "connection_ready": "连接/就绪",
+    "destination_confirmed": "目的地",
+    "trash_loaded": "装载确认",
+    "start_delivery": "一键发车",
+    "status_explained": "状态解释",
+    "help_or_diagnostics": "求助/诊断",
+}
+
+PHONE_TASK_FLOW_FORBIDDEN_COPY_MARKERS = (
+    "ros topic",
+    "/cmd_vel",
+    "serial",
+    "baudrate",
+    "json payload",
+    "token",
+    "authorization",
+    "cloud secret",
+    "wave rover",
+)
 
 PHONE_READINESS_PRIMARY_COPY = {
     "ready": "手机可以继续操作。",
@@ -968,7 +1001,7 @@ HTML = """<!doctype html>
     .steps {
       display: grid;
       gap: 8px;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
     }
     .step {
       border-bottom: 3px solid var(--line);
@@ -983,6 +1016,7 @@ HTML = """<!doctype html>
       font-weight: 750;
     }
     .step.done { border-color: var(--ok); color: var(--ink); }
+    .step.blocked { border-color: var(--danger); color: var(--danger); font-weight: 750; }
     .telemetry, .diagnosticGrid {
       display: grid;
       gap: 8px;
@@ -1083,7 +1117,7 @@ HTML = """<!doctype html>
         white-space: normal;
       }
       .status { grid-template-columns: 1fr; }
-      .steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .step { font-size: 11px; min-height: 36px; overflow-wrap: anywhere; }
       .telemetry, .diagnosticGrid { grid-template-columns: 1fr; }
       .reviewGrid { grid-template-columns: 1fr; }
@@ -1128,12 +1162,15 @@ HTML = """<!doctype html>
     </section>
     <section class="panel">
       <div class="steps" id="journeySteps">
-        <div class="step" data-step="waiting">1. Load trash</div>
-        <div class="step" data-step="delivering">2. Deliver</div>
-        <div class="step" data-step="dropoff">3. Dropoff</div>
-        <div class="step" data-step="returning">4. Return</div>
-        <div class="step" data-step="completed">5. Complete</div>
+        <div class="step" data-step="connection_ready">1. 连接就绪</div>
+        <div class="step" data-step="destination_confirmed">2. 目的地</div>
+        <div class="step" data-step="trash_loaded">3. 已放入垃圾</div>
+        <div class="step" data-step="start_delivery">4. 一键发车</div>
+        <div class="step" data-step="status_explained">5. 状态解释</div>
+        <div class="step" data-step="help_or_diagnostics">6. 求助诊断</div>
       </div>
+      <p class="message">Task flow: <strong id="taskFlowNext">等待任务步骤计算。</strong></p>
+      <p class="message">Block reason: <strong id="taskFlowBlock">none</strong></p>
       <div class="row">
         <button id="collectButton" class="primary" onclick="collect()">Start Delivery</button>
         <button id="dropoffButton" onclick="confirmDropoff()">Confirm Dropoff</button>
@@ -1182,6 +1219,8 @@ HTML = """<!doctype html>
         <div class="metric"><span>Elevator prompt</span><strong id="diagElevatorAssistPrompt">-</strong></div>
         <div class="metric"><span>Elevator evidence</span><strong id="diagElevatorAssistEvidence">-</strong></div>
         <div class="metric"><span>Elevator next step</span><strong id="diagElevatorAssistNextStep">-</strong></div>
+        <div class="metric"><span>Phone task flow</span><strong id="diagPhoneTaskFlow">-</strong></div>
+        <div class="metric"><span>Phone next step</span><strong id="diagPhoneTaskFlowNext">-</strong></div>
       </div>
       <p id="diagRecoveryHint" class="message">No manual takeover required.</p>
       <ul id="diagStateTransitionHistoryList" class="supportList"></ul>
@@ -1285,6 +1324,14 @@ const STATE_COPY = {
   network_error: ['Connection issue', 'The phone cannot reach the robot control page.', 'waiting']
 };
 const STEP_ORDER = ['waiting', 'delivering', 'dropoff', 'returning', 'completed'];
+const TASK_FLOW_STEP_ORDER = [
+  'connection_ready',
+  'destination_confirmed',
+  'trash_loaded',
+  'start_delivery',
+  'status_explained',
+  'help_or_diagnostics'
+];
 const ELEVATOR_ASSIST_SPEAKER_PROMPT = '你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,';
 let reviewQueueSnapshot = null;
 function fmt(value) {
@@ -1687,6 +1734,41 @@ function updateJourney(payload) {
     node.classList.toggle('done', activeIndex >= 0 && index < activeIndex);
   });
 }
+function taskFlowFromPayload(payload) {
+  if (payload.phone_task_flow_readiness && typeof payload.phone_task_flow_readiness === 'object') {
+    return payload.phone_task_flow_readiness;
+  }
+  const readiness = payload.phone_readiness && typeof payload.phone_readiness === 'object'
+    ? payload.phone_readiness
+    : {};
+  return readiness.phone_task_flow_readiness && typeof readiness.phone_task_flow_readiness === 'object'
+    ? readiness.phone_task_flow_readiness
+    : {};
+}
+function renderTaskFlow(taskFlow) {
+  const flow = taskFlow && typeof taskFlow === 'object' ? taskFlow : {};
+  const steps = Array.isArray(flow.steps) ? flow.steps : [];
+  const byId = {};
+  steps.forEach((step) => {
+    if (step && typeof step === 'object') byId[text(step.id, '')] = step;
+  });
+  document.querySelectorAll('#journeySteps .step').forEach((node) => {
+    const step = byId[node.dataset.step] || {};
+    const state = text(step.state, 'waiting');
+    node.classList.toggle('active', state === 'current');
+    node.classList.toggle('done', state === 'done' || state === 'ready');
+    node.classList.toggle('blocked', state === 'blocked');
+    node.title = text(step.safe_phone_copy, '等待任务步骤更新。');
+  });
+  document.getElementById('taskFlowNext').textContent = text(
+    flow.next_action,
+    text(flow.current_step, '等待任务步骤更新。')
+  );
+  const reasons = Array.isArray(flow.blocking_reasons)
+    ? flow.blocking_reasons.map(item => String(item || '').trim()).filter(Boolean)
+    : [];
+  document.getElementById('taskFlowBlock').textContent = reasons.length ? reasons.join(', ') : 'none';
+}
 function readinessTone(phoneReadiness) {
   const primaryState = text(phoneReadiness.primary_state, 'waiting_for_robot_status');
   if (primaryState.startsWith('diagnostic_refs_')) return 'blocked';
@@ -1801,6 +1883,7 @@ function showStatus(payload) {
   document.getElementById('status').textContent = JSON.stringify(payload, null, 2);
   renderPhoneReadiness(payload.phone_readiness);
   updateJourney(payload);
+  renderTaskFlow(taskFlowFromPayload(payload));
   showTelemetry(payload);
   applyCommandSafety(payload);
 }
@@ -1816,6 +1899,9 @@ function showDiagnostics(payload) {
   const elevatorAssist = payload.elevator_assist || {};
   const elevatorAssistStatus = payload.elevator_assist_status || {};
   const ossCdnManifest = payload.oss_cdn_manifest || {};
+  const phoneTaskFlow = payload.phone_task_flow_readiness && typeof payload.phone_task_flow_readiness === 'object'
+    ? payload.phone_task_flow_readiness
+    : taskFlowFromPayload(latest);
   const refs = Array.isArray(payload.log_refs) ? payload.log_refs : [];
   const taskRecord = failure.task_record_path || (payload.last_task || {}).task_record_path || latest.task_record_path || '';
   const humanIntervention = Boolean(
@@ -1888,6 +1974,14 @@ function showDiagnostics(payload) {
     elevatorAssistStatus.next_step || elevatorAssistStatus.reason,
     'not reported'
   );
+  document.getElementById('diagPhoneTaskFlow').textContent = text(
+    phoneTaskFlow.current_step,
+    'not reported'
+  );
+  document.getElementById('diagPhoneTaskFlowNext').textContent = text(
+    phoneTaskFlow.next_action,
+    'not reported'
+  );
   document.getElementById('diagRecoveryHint').textContent = humanIntervention
     ? 'Manual takeover required: keep task in safe mode,复位现场阻塞后，可重新发起任务。'
     : 'No manual takeover required.';
@@ -1940,10 +2034,16 @@ async function api(path, options, updateStatus = true) {
 }
 async function refresh() { await api('/api/status'); }
 async function collect() {
+  const target = text(document.getElementById('target').value, '');
+  if (!target) {
+    document.getElementById('taskFlowBlock').textContent = 'destination_needs_confirmation';
+    document.getElementById('taskFlowNext').textContent = '请先确认目的地。';
+    return;
+  }
   await api('/api/collect', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({target: document.getElementById('target').value})
+    body: JSON.stringify({target})
   });
 }
 async function confirmDropoff() { await api('/api/dropoff/confirm', {method: 'POST'}); }
@@ -2257,11 +2357,193 @@ def build_command_safety(permissions, *, primary_state, remote_state, manifest_s
     return {
         "schema": COMMAND_SAFETY_SCHEMA,
         "schema_version": 1,
-        "evidence_boundary": PHONE_READINESS_EVIDENCE_BOUNDARY,
+        "evidence_boundary": PHONE_COMMAND_SAFETY_EVIDENCE_BOUNDARY,
         "global_block_reason": blocking_reason,
         "safe_phone_copy": COMMAND_SAFETY_BLOCK_COPY.get(blocking_reason, "主操作暂不可用。"),
         "ack_semantics": COMMAND_SAFETY_ACK_COPY,
         "actions": actions,
+    }
+
+
+def _phone_safe_user_text(value, fallback):
+    # 用户可见文案走最小清洗，避免状态文件里的工程词被直接带到手机首屏。
+    text_value = str(value or "").strip()
+    if not text_value:
+        return fallback
+    lowered = text_value.lower()
+    if any(marker in lowered for marker in PHONE_TASK_FLOW_FORBIDDEN_COPY_MARKERS):
+        return fallback
+    return text_value
+
+
+def _task_flow_destination(status):
+    # 目的地只取业务字段；没有字段时使用本地页面默认垃圾站口径，而不是暴露内部参数名。
+    status = status if isinstance(status, dict) else {}
+    for key in ("destination", "target", "station", "trash_station", "selected_destination"):
+        value = _phone_safe_user_text(status.get(key), "")
+        if value:
+            return value, "confirmed"
+    return "默认垃圾站", "needs_confirmation"
+
+
+def _task_flow_step(step_id, state, copy, *, blocking_reason="", next_action=""):
+    # step 对象只给手机 UI 消费，字段保持普通用户语言和可测状态。
+    return {
+        "id": step_id,
+        "label": PHONE_TASK_FLOW_LABELS[step_id],
+        "state": state,
+        "safe_phone_copy": copy,
+        "blocking_reason": blocking_reason,
+        "next_action": next_action,
+    }
+
+
+def build_phone_task_flow_readiness(
+    status,
+    *,
+    primary_state,
+    next_action,
+    support_level,
+    permissions,
+    command_safety,
+    manifest_state,
+):
+    """Return task-step metadata for the local phone first screen.
+
+    这个对象不发明机器人能力，只把现有 status、action permission 和 command_safety
+    组织成普通用户能理解的任务步骤；真实手机、真实送达和 HIL 仍在 not_proven 中。
+    """
+    status = status if isinstance(status, dict) else {}
+    permissions = permissions if isinstance(permissions, dict) else {}
+    command_safety = command_safety if isinstance(command_safety, dict) else {}
+    actions = command_safety.get("actions") if isinstance(command_safety.get("actions"), dict) else {}
+    state = str(status.get("state") or "unknown").strip() or "unknown"
+    destination, destination_state = _task_flow_destination(status)
+    blocking_reason = str(command_safety.get("global_block_reason") or "allowed")
+    start_enabled = bool((actions.get("start") or {}).get("enabled"))
+    diagnostics_enabled = bool((actions.get("diagnostics") or {}).get("enabled", True))
+    task_active_states = {
+        "delivering",
+        "navigating",
+        "approaching_elevator",
+        "waiting_elevator_open",
+        "entering_elevator",
+        "requesting_floor_help",
+        "waiting_target_floor",
+        "exiting_elevator",
+        "resume_delivery",
+        "arrived_at_station",
+        "returning",
+        "completed",
+        "failed",
+        "needs_human_help",
+    }
+    needs_help = primary_state == "manual_takeover_required" or state in {"failed", "needs_human_help"}
+
+    connection_state = "ready" if primary_state not in {
+        "waiting_for_robot_status",
+        "login_required",
+        "remote_response_invalid",
+        "diagnostic_refs_missing",
+        "diagnostic_refs_invalid",
+        "diagnostic_refs_stale",
+    } else "blocked"
+    destination_step_state = "ready" if destination_state == "confirmed" else "current"
+    load_step_state = "done" if state in task_active_states or bool(permissions.get("can_cancel")) else "current"
+    start_step_state = "ready" if start_enabled else ("done" if state in task_active_states else "blocked")
+    status_step_state = "current" if state in task_active_states else "waiting"
+    if state == "completed":
+        status_step_state = "done"
+    help_step_state = "current" if needs_help else ("ready" if diagnostics_enabled else "blocked")
+
+    steps = [
+        _task_flow_step(
+            "connection_ready",
+            connection_state,
+            "手机已连接到本地控制入口。" if connection_state == "ready" else "手机入口仍有阻塞，请先按提示处理。",
+            blocking_reason="" if connection_state == "ready" else primary_state,
+            next_action=next_action,
+        ),
+        _task_flow_step(
+            "destination_confirmed",
+            destination_step_state,
+            f"目的地：{destination}。请在发车前确认无误。",
+            blocking_reason="" if destination_step_state == "ready" else "destination_needs_confirmation",
+            next_action="confirm_destination",
+        ),
+        _task_flow_step(
+            "trash_loaded",
+            load_step_state,
+            "请确认垃圾已经放稳，再点击发车。" if load_step_state == "current" else "装载确认已进入任务流程。",
+            blocking_reason="" if load_step_state != "blocked" else "load_not_confirmed",
+            next_action="confirm_load",
+        ),
+        _task_flow_step(
+            "start_delivery",
+            start_step_state,
+            (actions.get("start") or {}).get("safe_phone_copy") or "发车按钮受安全 gate 控制。",
+            blocking_reason="" if start_step_state in {"ready", "done"} else blocking_reason,
+            next_action="start_delivery",
+        ),
+        _task_flow_step(
+            "status_explained",
+            status_step_state,
+            _phone_safe_user_text(status.get("phone_copy"), "继续观察任务状态。"),
+            blocking_reason="manual_takeover_required" if needs_help else "",
+            next_action="watch_progress",
+        ),
+        _task_flow_step(
+            "help_or_diagnostics",
+            help_step_state,
+            (actions.get("diagnostics") or {}).get("safe_phone_copy") or "诊断入口可用于求助和复现问题。",
+            blocking_reason="" if diagnostics_enabled else blocking_reason,
+            next_action="open_diagnostics",
+        ),
+    ]
+
+    current_step = next((step["id"] for step in steps if step["state"] in {"current", "blocked"}), steps[-1]["id"])
+    blocking_reasons = [
+        step["blocking_reason"]
+        for step in steps
+        if step.get("blocking_reason")
+    ]
+    return {
+        "schema": PHONE_TASK_FLOW_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": PHONE_READINESS_EVIDENCE_BOUNDARY,
+        "current_step": current_step,
+        "next_action": next_action,
+        "support_level": support_level,
+        "destination": {
+            "label": destination,
+            "state": destination_state,
+            "safe_phone_copy": f"当前目的地是 {destination}。",
+        },
+        "load_confirmation": {
+            "required": True,
+            "state": "confirmed" if load_step_state in {"done", "ready"} else "needs_user_confirmation",
+            "safe_phone_copy": "本轮不使用自动装载检测；需要用户在手机上确认垃圾已放入。",
+        },
+        "start_gate": {
+            "enabled": start_enabled,
+            "reason": (actions.get("start") or {}).get("reason") or blocking_reason,
+            "safe_phone_copy": (actions.get("start") or {}).get("safe_phone_copy") or "发车按钮暂不可用。",
+        },
+        "status_explanation": {
+            "state": state,
+            "safe_phone_copy": _phone_safe_user_text(status.get("phone_copy"), "继续观察任务状态。"),
+            "speaker_prompt": _phone_safe_user_text(status.get("speaker_prompt"), "请查看手机状态。"),
+        },
+        "help_entry": {
+            "diagnostics_enabled": diagnostics_enabled,
+            "manual_takeover_required": bool(needs_help),
+            "safe_phone_copy": (actions.get("diagnostics") or {}).get("safe_phone_copy") or "诊断入口可用于求助。",
+        },
+        "steps": steps,
+        "blocking_reasons": blocking_reasons,
+        "ack_semantics": COMMAND_SAFETY_ACK_COPY,
+        "not_proven": list(PHONE_READINESS_NOT_PROVEN),
+        "manifest_state": manifest_state,
     }
 
 
@@ -2403,6 +2685,15 @@ def build_phone_readiness(
         remote_state=remote_state,
         manifest_state=manifest_state,
     )
+    phone_task_flow_readiness = build_phone_task_flow_readiness(
+        status,
+        primary_state=primary_state,
+        next_action=next_action,
+        support_level=support_level,
+        permissions=permissions,
+        command_safety=command_safety,
+        manifest_state=manifest_state,
+    )
 
     return {
         "schema": PHONE_READINESS_SCHEMA,
@@ -2420,6 +2711,7 @@ def build_phone_readiness(
             "phone_copy": str(status.get("phone_copy") or ""),
             "speaker_prompt": str(status.get("speaker_prompt") or ""),
         },
+        "phone_task_flow_readiness": phone_task_flow_readiness,
         "action_permissions": permissions,
         "command_safety": command_safety,
         "remote_readiness": dict(remote),
@@ -2484,7 +2776,20 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         provisioning_audit=provisioning_audit,
         production_store_queue=production_store_queue,
     )
+    payload["phone_task_flow_readiness"] = dict(payload["phone_readiness"]["phone_task_flow_readiness"])
     return payload
+
+
+def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
+    # diagnostics 是支持入口；补同一份 task-flow 摘要，便于复现首屏阻塞但不改变任务状态。
+    diagnostics_payload = dict(gateway.diagnostics())
+    status = _status_with_phone_readiness(gateway, mock_cloud)
+    task_flow = dict(status.get("phone_task_flow_readiness", {}))
+    diagnostics_payload["phone_task_flow_readiness"] = task_flow
+    latest_status = diagnostics_payload.get("latest_status")
+    if isinstance(latest_status, dict):
+        latest_status.setdefault("phone_task_flow_readiness", task_flow)
+    return diagnostics_payload
 
 
 def make_handler(gateway):
@@ -2556,7 +2861,7 @@ def make_handler(gateway):
                 self._send_json(200, _status_with_phone_readiness(gateway, mock_cloud))
                 return
             if path == "/api/diagnostics":
-                self._send_json(200, gateway.diagnostics())
+                self._send_json(200, _diagnostics_with_phone_task_flow(gateway, mock_cloud))
                 return
             if path == "/api/vision/review-queue":
                 self._send_json(200, gateway.vision_review_queue())

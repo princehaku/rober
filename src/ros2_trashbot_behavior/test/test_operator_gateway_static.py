@@ -88,9 +88,12 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("REMOTE_DEGRADATION_COPY", http_source)
         self.assertIn("PHONE_READINESS_SCHEMA", http_source)
         self.assertIn("PHONE_READINESS_EVIDENCE_BOUNDARY", http_source)
+        self.assertIn("PHONE_TASK_FLOW_SCHEMA", http_source)
+        self.assertIn("build_phone_task_flow_readiness", http_source)
         self.assertIn("build_phone_readiness", http_source)
         self.assertIn("_status_with_phone_readiness", http_source)
         self.assertIn('"phone_readiness"', http_source)
+        self.assertIn("software_proof_docker_phone_task_flow_readiness_gate", http_source)
         self.assertIn("software_proof_docker_phone_command_safety_browser_gate", http_source)
         self.assertIn("mock_cloud_bearer_token", http_source)
         self.assertIn('"phone_copy": prompt["phone_copy"]', http_source)
@@ -219,9 +222,18 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "phoneReadinessBadge",
             "phoneReadinessBoundary",
             "phoneReadinessNotProven",
+            "phone_task_flow_readiness",
+            "trashbot.phone_task_flow_readiness.v1",
+            "renderTaskFlow",
+            "taskFlowNext",
+            "taskFlowBlock",
+            "diagPhoneTaskFlow",
+            "diagPhoneTaskFlowNext",
             "renderPhoneReadiness",
             "PHONE_READINESS_EVIDENCE_BOUNDARY",
             "trashbot.phone_readiness.v1",
+            "software_proof_docker_phone_task_flow_readiness_gate",
+            "PHONE_COMMAND_SAFETY_EVIDENCE_BOUNDARY",
             "software_proof_docker_phone_command_safety_browser_gate",
             "PHONE_PWA_EVIDENCE_BOUNDARY",
             "software_proof_docker_phone_pwa_installability_gate",

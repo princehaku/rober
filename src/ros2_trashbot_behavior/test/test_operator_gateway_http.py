@@ -17,6 +17,7 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     ELEVATOR_ASSIST_SPEAKER_PROMPT,
     MockCloudStore,
     OPERATOR_PROMPTS,
+    PHONE_TASK_FLOW_SCHEMA,
     PHONE_PWA_EVIDENCE_BOUNDARY,
     PHONE_READINESS_EVIDENCE_BOUNDARY,
     PHONE_READINESS_SCHEMA,
@@ -432,6 +433,16 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["speaker_prompt"], self.gateway.snapshot_payload["speaker_prompt"])
         self.assertEqual(payload["phone_readiness"]["schema"], PHONE_READINESS_SCHEMA)
         self.assertEqual(payload["phone_readiness"]["evidence_boundary"], PHONE_READINESS_EVIDENCE_BOUNDARY)
+        task_flow = payload["phone_task_flow_readiness"]
+        self.assertEqual(task_flow["schema"], PHONE_TASK_FLOW_SCHEMA)
+        self.assertEqual(task_flow["evidence_boundary"], "software_proof_docker_phone_task_flow_readiness_gate")
+        self.assertEqual(task_flow["current_step"], "destination_confirmed")
+        self.assertEqual(task_flow["destination"]["state"], "needs_confirmation")
+        self.assertTrue(task_flow["load_confirmation"]["required"])
+        self.assertFalse(task_flow["start_gate"]["enabled"])
+        self.assertTrue(task_flow["help_entry"]["diagnostics_enabled"])
+        self.assertIn("不能代表送达成功", task_flow["ack_semantics"])
+        self.assertEqual(payload["phone_readiness"]["phone_task_flow_readiness"]["schema"], PHONE_TASK_FLOW_SCHEMA)
         self.assertEqual(payload["phone_readiness"]["primary_state"], "local_ready_remote_status_waiting")
         self.assertTrue(payload["phone_readiness"]["can_continue"])
         self.assertEqual(payload["phone_readiness"]["next_action"], "continue_local_or_wait_remote_status")
@@ -489,6 +500,9 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertNotIn("checksum", encoded_store_queue)
         self.assertNotIn(self.gateway.production_store_queue_artifact_ref, encoded_store_queue)
         self.assertIn("hil_pass", payload["phone_readiness"]["not_proven"])
+        encoded_task_flow = json.dumps(task_flow, ensure_ascii=False).lower()
+        for forbidden in ("ros topic", "/cmd_vel", "baudrate", "authorization", "cloud secret"):
+            self.assertNotIn(forbidden, encoded_task_flow)
 
     def test_status_payload_exposes_phone_and_speaker_copy_for_documented_states(self):
         for state, expected in OPERATOR_PROMPTS.items():
@@ -571,7 +585,7 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertTrue(pending["command_safety"]["actions"]["diagnostics"]["enabled"])
 
         acked = build_phone_readiness(
-            local_status,
+            dict(local_status, target="Lobby trash station"),
             remote_readiness={
                 "degradation_state": "ok",
                 "retry_hint": "ok",
@@ -587,6 +601,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertTrue(acked["command_safety"]["actions"]["start"]["enabled"])
         self.assertFalse(acked["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
         self.assertIn("不能代表送达成功", acked["command_safety"]["ack_semantics"])
+        task_flow = acked["phone_task_flow_readiness"]
+        self.assertEqual(task_flow["destination"]["label"], "Lobby trash station")
+        self.assertEqual(task_flow["destination"]["state"], "confirmed")
+        self.assertEqual(task_flow["start_gate"]["enabled"], True)
+        self.assertEqual(task_flow["steps"][0]["id"], "connection_ready")
+        self.assertEqual(task_flow["steps"][-1]["id"], "help_or_diagnostics")
 
     def test_phone_readiness_blocks_auth_cloud_and_malformed_remote_states(self):
         local_status = status_payload(
@@ -759,6 +779,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["hardware_proof"]["risk_flags"][0]["id"], "hil_required")
         self.assertEqual(payload["elevator_assist"]["state"], "disabled")
         self.assertEqual(payload["elevator_assist_status"]["state"], "disabled")
+        self.assertEqual(payload["phone_task_flow_readiness"]["schema"], PHONE_TASK_FLOW_SCHEMA)
+        self.assertEqual(
+            payload["latest_status"]["phone_task_flow_readiness"]["schema"],
+            PHONE_TASK_FLOW_SCHEMA,
+        )
+        self.assertEqual(payload["phone_task_flow_readiness"]["evidence_boundary"], PHONE_READINESS_EVIDENCE_BOUNDARY)
         self.assertEqual(payload["oss_cdn_manifest"]["state"], "ready")
         self.assertEqual(
             payload["oss_cdn_manifest"]["evidence_boundary"],
@@ -803,6 +829,16 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("Diagnostics", body)
         self.assertIn("Phone control for trash delivery", body)
         self.assertIn("journeySteps", body)
+        self.assertIn("连接就绪", body)
+        self.assertIn("目的地", body)
+        self.assertIn("已放入垃圾", body)
+        self.assertIn("一键发车", body)
+        self.assertIn("状态解释", body)
+        self.assertIn("求助诊断", body)
+        self.assertIn("taskFlowNext", body)
+        self.assertIn("taskFlowBlock", body)
+        self.assertIn("phone_task_flow_readiness", body)
+        self.assertIn("renderTaskFlow", body)
         self.assertIn("Support Diagnostics", body)
         self.assertIn("phone_copy", body)
         self.assertIn("speaker_prompt", body)
@@ -835,6 +871,8 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("diagElevatorAssistPrompt", body)
         self.assertIn("diagElevatorAssistEvidence", body)
         self.assertIn("diagElevatorAssistNextStep", body)
+        self.assertIn("diagPhoneTaskFlow", body)
+        self.assertIn("diagPhoneTaskFlowNext", body)
         self.assertIn("diagVisionIntegrity", body)
         self.assertIn("diagVisionIntegrityBadge", body)
         self.assertIn("diagVisionIntegritySummary", body)
