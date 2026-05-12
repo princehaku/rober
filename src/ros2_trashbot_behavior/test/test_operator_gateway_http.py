@@ -401,6 +401,10 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["phone_readiness"]["primary_state"], "local_ready_remote_status_waiting")
         self.assertTrue(payload["phone_readiness"]["can_continue"])
         self.assertEqual(payload["phone_readiness"]["next_action"], "continue_local_or_wait_remote_status")
+        self.assertEqual(payload["phone_readiness"]["command_safety"]["global_block_reason"], "status_stale")
+        self.assertFalse(payload["phone_readiness"]["command_safety"]["actions"]["start"]["enabled"])
+        self.assertTrue(payload["phone_readiness"]["command_safety"]["actions"]["diagnostics"]["enabled"])
+        self.assertIn("ACK 只表示", payload["phone_readiness"]["command_safety"]["ack_semantics"])
         self.assertEqual(payload["phone_readiness"]["oss_cdn_manifest"]["state"], "ready")
         self.assertEqual(
             payload["phone_readiness"]["oss_cdn_manifest"]["evidence_boundary"],
@@ -485,6 +489,9 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertFalse(pending["can_continue"])
         self.assertEqual(pending["next_action"], "wait_for_command_ack")
         self.assertEqual(pending["local_delivery"]["state"], "waiting_for_trash")
+        self.assertEqual(pending["command_safety"]["global_block_reason"], "command_pending")
+        self.assertFalse(pending["command_safety"]["actions"]["start"]["enabled"])
+        self.assertTrue(pending["command_safety"]["actions"]["diagnostics"]["enabled"])
 
         acked = build_phone_readiness(
             local_status,
@@ -499,6 +506,10 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(acked["primary_state"], "ready")
         self.assertNotEqual(acked["local_delivery"]["state"], "completed")
         self.assertIn("nav2_or_fixed_route_delivery", acked["not_proven"])
+        self.assertEqual(acked["command_safety"]["global_block_reason"], "allowed")
+        self.assertTrue(acked["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(acked["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertIn("不能代表送达成功", acked["command_safety"]["ack_semantics"])
 
     def test_phone_readiness_blocks_auth_cloud_and_malformed_remote_states(self):
         local_status = status_payload(
@@ -526,6 +537,9 @@ class OperatorGatewayHttpTest(unittest.TestCase):
                 self.assertEqual(readiness["next_action"], expected[1])
                 self.assertEqual(readiness["can_continue"], expected[2])
                 self.assertEqual(readiness["schema_version"], 1)
+                self.assertEqual(readiness["command_safety"]["global_block_reason"], degradation_state)
+                self.assertFalse(readiness["command_safety"]["actions"]["start"]["enabled"])
+                self.assertTrue(readiness["command_safety"]["actions"]["diagnostics"]["enabled"])
 
     def test_phone_readiness_blocks_when_manifest_summary_not_ready(self):
         local_status = status_payload(
@@ -564,6 +578,47 @@ class OperatorGatewayHttpTest(unittest.TestCase):
                 self.assertEqual(readiness["next_action"], "refresh_diagnostics_ref")
                 self.assertEqual(readiness["oss_cdn_manifest"]["state"], state)
                 self.assertIn("诊断对象引用", readiness["safe_phone_copy"])
+                self.assertEqual(readiness["command_safety"]["global_block_reason"], primary_state)
+                self.assertFalse(readiness["command_safety"]["actions"]["start"]["enabled"])
+
+    def test_command_safety_combines_ready_permissions_and_button_actions(self):
+        ready = build_phone_readiness(
+            status_payload(
+                "arrived_at_station",
+                can_collect=False,
+                can_confirm_dropoff=True,
+                can_cancel=True,
+            ),
+            remote_readiness={"degradation_state": "ok", "retry_hint": "ok"},
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+
+        actions = ready["command_safety"]["actions"]
+        self.assertEqual(ready["command_safety"]["global_block_reason"], "allowed")
+        self.assertFalse(actions["start"]["enabled"])
+        self.assertEqual(actions["start"]["reason"], "not_permitted_by_local_state")
+        self.assertTrue(actions["confirm_dropoff"]["enabled"])
+        self.assertTrue(actions["cancel"]["enabled"])
+        self.assertTrue(actions["diagnostics"]["enabled"])
+
+    def test_command_safety_blocks_manual_takeover_even_when_local_permission_is_true(self):
+        readiness = build_phone_readiness(
+            status_payload(
+                "needs_human_help",
+                can_collect=True,
+                can_confirm_dropoff=True,
+                can_cancel=True,
+            ),
+            remote_readiness={"degradation_state": "ok", "retry_hint": "ok"},
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+
+        self.assertEqual(readiness["primary_state"], "manual_takeover_required")
+        self.assertEqual(readiness["command_safety"]["global_block_reason"], "manual_takeover_required")
+        self.assertFalse(readiness["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(readiness["command_safety"]["actions"]["diagnostics"]["enabled"])
 
     def test_unknown_operator_state_falls_back_to_human_help_prompt(self):
         self.assertEqual(
@@ -676,6 +731,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("speaker_prompt", body)
         self.assertIn("phoneManifestCopy", body)
         self.assertIn("phoneManifestRetry", body)
+        self.assertIn("commandSafetyCopy", body)
+        self.assertIn("commandSafetyAck", body)
+        self.assertIn("diagnosticsGateCopy", body)
+        self.assertIn("command_safety", body)
+        self.assertIn("applyCommandSafety", body)
+        self.assertIn("ACK 只表示", body)
         self.assertIn("showDiagnostics", body)
         self.assertIn("diagSoftware", body)
         self.assertIn("diagFailure", body)
@@ -759,9 +820,10 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("applyReviewProgress", body)
         self.assertIn("loadReviewQueue", body)
         self.assertIn("submitReviewDecision", body)
-        self.assertIn("collectButton.disabled = !Boolean(payload.can_collect)", body)
-        self.assertIn("dropoffButton.disabled = !Boolean(payload.can_confirm_dropoff)", body)
-        self.assertIn("cancelButton.disabled = !Boolean(payload.can_cancel)", body)
+        self.assertIn("collectButton.disabled = !Boolean(startAction.enabled)", body)
+        self.assertIn("dropoffButton.disabled = !Boolean(dropoffAction.enabled)", body)
+        self.assertIn("cancelButton.disabled = !Boolean(cancelAction.enabled)", body)
+        self.assertIn("diagnosticsButton.disabled = !Boolean(diagnosticsAction.enabled)", body)
         self.assertIn("catch (error)", body)
         self.assertIn('id="locationPanel"', body)
         self.assertIn('id="locationFrame"', body)

@@ -185,6 +185,17 @@ does not prove real OSS upload, STS issuance, CDN origin fetch, real cloud, real
 4G/SIM, production DB/queue, Nav2/fixed-route delivery, WAVE ROVER, HIL, or
 delivery success.
 
+The operator browser now exposes `phone_readiness.command_safety` as the
+button-level gate for local/fallback phone control. Start Delivery, Confirm
+Dropoff, and Cancel are enabled only when the legacy local action permission and
+the command safety gate both allow the action. The gate blocks primary commands
+for stale robot status, pending ACK, auth failure, cloud unreachable, malformed
+remote response, missing/invalid/stale manifest summary, and manual takeover.
+Diagnostics remains available with a phone-safe blocking explanation so support
+can still reproduce the issue. ACK text must stay conservative: an ACK is only
+command accepted/processing evidence and does not prove delivery success, real
+4G/cloud, OSS/CDN traffic, WAVE ROVER motion, or HIL.
+
 Example Docker deploy proof:
 
 ```bash

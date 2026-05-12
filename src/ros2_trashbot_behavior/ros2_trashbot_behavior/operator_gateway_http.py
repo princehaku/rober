@@ -14,7 +14,8 @@ from ros2_trashbot_behavior.remote_bridge_protocol import parse_bool
 API_VERSION = "slice2.operator.v1"
 REMOTE_PROTOCOL_VERSION = "trashbot.remote.v1"
 PHONE_READINESS_SCHEMA = "trashbot.phone_readiness.v1"
-PHONE_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_local_phone_ui_readiness_gate"
+PHONE_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_command_safety_browser_gate"
+COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 REMOTE_STATUS_STALE_AFTER_SEC = 90.0
 REMOTE_PERSISTENCE_SCHEMA = "trashbot.mock_cloud_store.v1"
@@ -61,6 +62,25 @@ PHONE_READINESS_NEXT_ACTION_COPY = {
     "manual_takeover": "保持现场安全，按提示人工接管。",
     "watch_progress": "继续观察任务状态，必要时取消。",
     "refresh_diagnostics_ref": "刷新状态；如果仍不可用，请重新生成诊断引用。",
+}
+
+COMMAND_SAFETY_ACK_COPY = (
+    "ACK 只表示指令已被小车侧 bridge 受理或处理，不能代表送达成功、真实运动、HIL 或真实云成功。"
+)
+
+COMMAND_SAFETY_BLOCK_COPY = {
+    "allowed": "当前状态允许这个操作。",
+    "not_permitted_by_local_state": "当前机器人状态不允许这个操作。",
+    "status_stale": "正在等待小车上报最新状态，主操作暂不可用。",
+    "command_pending": "上一条指令仍在等待 ACK，暂不重复下发。",
+    "auth_failed": "手机登录或访问码未通过，主操作暂不可用。",
+    "cloud_unreachable": "远程控制通道暂不可用，主操作暂不可用。",
+    "malformed_response": "远程控制返回异常，主操作暂不可用。",
+    "diagnostic_refs_missing": "诊断对象引用缺失，主操作暂不可用。",
+    "diagnostic_refs_invalid": "诊断对象引用损坏，主操作暂不可用。",
+    "diagnostic_refs_stale": "诊断对象引用已过期，主操作暂不可用。",
+    "manual_takeover_required": "当前需要人工接管，主操作暂不可用。",
+    "monitoring_only": "任务正在进行，请继续观察或按需取消。",
 }
 
 PHONE_READINESS_PRIMARY_COPY = {
@@ -975,6 +995,9 @@ HTML = """<!doctype html>
         <button id="cancelButton" class="danger" onclick="cancelTask()">Cancel</button>
         <button id="diagnosticsButton" onclick="diagnostics()">Diagnostics</button>
       </div>
+      <p class="message">Command gate: <strong id="commandSafetyCopy">等待 command safety 计算。</strong></p>
+      <p class="message">ACK: <strong id="commandSafetyAck">ACK 只表示指令已被小车侧 bridge 受理或处理。</strong></p>
+      <p class="message">Diagnostics: <strong id="diagnosticsGateCopy">Diagnostics 可进入，但不代表主操作可用。</strong></p>
     </section>
     <section class="panel">
       <h2>Robot Location</h2>
@@ -1569,6 +1592,49 @@ function renderPhoneReadiness(phoneReadiness) {
     ? notProven.join(', ')
     : 'not reported';
 }
+function commandAction(commandSafety, actionName) {
+  const safety = commandSafety && typeof commandSafety === 'object' ? commandSafety : {};
+  const actions = safety.actions && typeof safety.actions === 'object' ? safety.actions : {};
+  const action = actions[actionName] && typeof actions[actionName] === 'object' ? actions[actionName] : {};
+  return action;
+}
+function applyCommandSafety(payload) {
+  const readiness = payload.phone_readiness && typeof payload.phone_readiness === 'object'
+    ? payload.phone_readiness
+    : {};
+  const commandSafety = readiness.command_safety && typeof readiness.command_safety === 'object'
+    ? readiness.command_safety
+    : {};
+  const startAction = commandAction(commandSafety, 'start');
+  const dropoffAction = commandAction(commandSafety, 'confirm_dropoff');
+  const cancelAction = commandAction(commandSafety, 'cancel');
+  const diagnosticsAction = commandAction(commandSafety, 'diagnostics');
+  const collectButton = document.getElementById('collectButton');
+  const dropoffButton = document.getElementById('dropoffButton');
+  const cancelButton = document.getElementById('cancelButton');
+  const diagnosticsButton = document.getElementById('diagnosticsButton');
+  // 浏览器按钮只消费后端派生出的 command_safety；raw can_* 只是后端 gate 的输入。
+  collectButton.disabled = !Boolean(startAction.enabled);
+  dropoffButton.disabled = !Boolean(dropoffAction.enabled);
+  cancelButton.disabled = !Boolean(cancelAction.enabled);
+  diagnosticsButton.disabled = !Boolean(diagnosticsAction.enabled);
+  collectButton.title = text(startAction.safe_phone_copy, '当前不能开始任务。');
+  dropoffButton.title = text(dropoffAction.safe_phone_copy, '当前不能确认投放。');
+  cancelButton.title = text(cancelAction.safe_phone_copy, '当前不能取消任务。');
+  diagnosticsButton.title = text(diagnosticsAction.safe_phone_copy, 'Diagnostics 可进入。');
+  document.getElementById('commandSafetyCopy').textContent = text(
+    commandSafety.safe_phone_copy,
+    '主操作暂不可用。'
+  );
+  document.getElementById('commandSafetyAck').textContent = text(
+    commandSafety.ack_semantics,
+    'ACK 只表示指令已被受理，不代表送达成功。'
+  );
+  document.getElementById('diagnosticsGateCopy').textContent = text(
+    diagnosticsAction.safe_phone_copy,
+    'Diagnostics 可进入，但不代表主操作可用。'
+  );
+}
 function showTelemetry(payload) {
   const location = payload.robot_location || payload.location;
   const pose = payload.robot_pose || location || null;
@@ -1590,12 +1656,7 @@ function showStatus(payload) {
   renderPhoneReadiness(payload.phone_readiness);
   updateJourney(payload);
   showTelemetry(payload);
-  const collectButton = document.getElementById('collectButton');
-  const dropoffButton = document.getElementById('dropoffButton');
-  const cancelButton = document.getElementById('cancelButton');
-  collectButton.disabled = !Boolean(payload.can_collect);
-  dropoffButton.disabled = !Boolean(payload.can_confirm_dropoff);
-  cancelButton.disabled = !Boolean(payload.can_cancel);
+  applyCommandSafety(payload);
 }
 function showDiagnostics(payload) {
   const panel = document.getElementById('diagnosticsPanel');
@@ -1974,6 +2035,84 @@ def _local_action_permissions(status):
     }
 
 
+def _command_safety_block_reason(primary_state, remote_state, manifest_state):
+    # command_safety 是浏览器按钮 gate；它比 phone_readiness.can_continue 更严格。
+    # 例如本地 fallback 可以继续看状态，但主操作仍要等待新状态，避免 stale/pending 时重复发车。
+    if primary_state == "manual_takeover_required":
+        return "manual_takeover_required"
+    if remote_state in {
+        "status_stale",
+        "command_pending",
+        "auth_failed",
+        "cloud_unreachable",
+        "malformed_response",
+    }:
+        return remote_state
+    if manifest_state != "ready":
+        return {
+            "invalid": "diagnostic_refs_invalid",
+            "stale": "diagnostic_refs_stale",
+        }.get(manifest_state, "diagnostic_refs_missing")
+    if primary_state == "monitoring":
+        return "monitoring_only"
+    return "allowed"
+
+
+def _command_safety_action(name, permitted, blocking_reason):
+    # 每个按钮都同时消费 local permission 和全局安全阻断原因；旧 can_* 字段只作为输入。
+    if not permitted:
+        reason = "not_permitted_by_local_state"
+    elif blocking_reason != "allowed":
+        reason = blocking_reason
+    else:
+        reason = "allowed"
+    return {
+        "name": name,
+        "enabled": bool(reason == "allowed"),
+        "reason": reason,
+        "safe_phone_copy": COMMAND_SAFETY_BLOCK_COPY.get(reason, COMMAND_SAFETY_BLOCK_COPY["not_permitted_by_local_state"]),
+    }
+
+
+def build_command_safety(permissions, *, primary_state, remote_state, manifest_state):
+    """Return the browser command gate consumed by the first-screen buttons.
+
+    这里不判断任务是否真的送达成功；ACK 只是 command accepted/processing 证据。
+    local permission、remote readiness 和 manifest summary 都通过后，主操作才会变为可点。
+    diagnostics 始终可进入，但会带上阻断解释，方便用户把错误原因交给支持人员复现。
+    """
+    permissions = permissions if isinstance(permissions, dict) else {}
+    blocking_reason = _command_safety_block_reason(primary_state, remote_state, manifest_state)
+    actions = {
+        "start": _command_safety_action("start", permissions.get("can_collect"), blocking_reason),
+        "confirm_dropoff": _command_safety_action(
+            "confirm_dropoff",
+            permissions.get("can_confirm_dropoff"),
+            blocking_reason,
+        ),
+        "cancel": _command_safety_action("cancel", permissions.get("can_cancel"), blocking_reason),
+        "diagnostics": {
+            "name": "diagnostics",
+            "enabled": True,
+            "reason": blocking_reason,
+            "safe_phone_copy": (
+                "Diagnostics 可进入；请先处理阻断原因。"
+                if blocking_reason != "allowed"
+                else "Diagnostics 可进入，用于复查当前软件证据。"
+            ),
+        },
+    }
+    return {
+        "schema": COMMAND_SAFETY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": PHONE_READINESS_EVIDENCE_BOUNDARY,
+        "global_block_reason": blocking_reason,
+        "safe_phone_copy": COMMAND_SAFETY_BLOCK_COPY.get(blocking_reason, "主操作暂不可用。"),
+        "ack_semantics": COMMAND_SAFETY_ACK_COPY,
+        "actions": actions,
+    }
+
+
 def build_phone_readiness(
     status,
     *,
@@ -2078,6 +2217,13 @@ def build_phone_readiness(
             or PHONE_READINESS_NEXT_ACTION_COPY[next_action]
         )
 
+    command_safety = build_command_safety(
+        permissions,
+        primary_state=primary_state,
+        remote_state=remote_state,
+        manifest_state=manifest_state,
+    )
+
     return {
         "schema": PHONE_READINESS_SCHEMA,
         "schema_version": 1,
@@ -2095,6 +2241,7 @@ def build_phone_readiness(
             "speaker_prompt": str(status.get("speaker_prompt") or ""),
         },
         "action_permissions": permissions,
+        "command_safety": command_safety,
         "remote_readiness": dict(remote),
         "cloud_preflight": _copy_gate(cloud_preflight, "cloud_preflight"),
         "backup_restore": _copy_gate(backup_restore, "backup_restore"),

@@ -67,11 +67,13 @@ The local browser page is phone-first and uses the API fields directly: task sta
 
 The first screen now includes a phone readiness gate derived from `/api/status.phone_readiness`. This gate answers three user questions before raw diagnostics: can the phone continue, why not, and what should happen next. It aggregates local delivery state, action permissions, local/mock remote readiness, optional cloud preflight, optional backup/restore drill summaries, and the `oss_cdn_manifest` diagnostic object reference summary. It is a local/Docker software proof boundary only and must not be presented as production phone app, real cloud, real 4G, real OSS/CDN, Nav2/fixed-route delivery, WAVE ROVER motion, or HIL proof.
 
+The same object now includes `command_safety`, a stricter browser button gate for Start Delivery, Confirm Dropoff, Cancel, and Diagnostics. `phone_readiness.can_continue` may still indicate that a user can continue observing the local fallback page, but Start/Confirm/Cancel must remain disabled when the command gate sees stale status, a pending command ACK, auth failure, cloud unreachable, malformed remote response, missing/invalid/stale diagnostic references, or a manual takeover state. Diagnostics remains accessible so support data can be collected, but the page must explain the blocking reason and must not make Start/Confirm appear green just because Diagnostics can open.
+
 `phone_readiness` fields:
 
 - `schema`: `trashbot.phone_readiness.v1`.
 - `schema_version`: integer version, currently `1`.
-- `evidence_boundary`: `software_proof_docker_local_phone_ui_readiness_gate`.
+- `evidence_boundary`: `software_proof_docker_phone_command_safety_browser_gate`.
 - `primary_state`: phone-first state such as `ready`, `local_ready_remote_status_waiting`, `waiting_for_robot_status`, `waiting_for_command_ack`, `login_required`, `remote_unreachable`, `remote_response_invalid`, `manual_takeover_required`, or `monitoring`.
 - `can_continue`: whether the current phone journey has a safe next step.
 - `next_action`: machine-readable next action such as `continue_local_flow`, `continue_local_or_wait_remote_status`, `wait_for_robot_status`, `wait_for_command_ack`, `check_auth`, `retry_cloud`, `contact_support`, `manual_takeover`, or `watch_progress`.
@@ -80,6 +82,7 @@ The first screen now includes a phone readiness gate derived from `/api/status.p
 - `support_level`: support classification such as `phone_ready`, `local_fallback`, `remote_blocked`, `remote_waiting_ack`, or `support_required`.
 - `local_delivery`: current local state plus `phone_copy` and `speaker_prompt`.
 - `action_permissions`: copies `can_collect`, `can_confirm_dropoff`, and `can_cancel`.
+- `command_safety`: browser command gate with `schema=trashbot.command_safety.v1`, `global_block_reason`, `ack_semantics`, `safe_phone_copy`, and per-action entries for `start`, `confirm_dropoff`, `cancel`, and `diagnostics`. Each primary action combines the old `can_*` permission with remote readiness and manifest safety. `diagnostics.enabled` may stay true while its copy explains the block.
 - `remote_readiness`: current local/mock remote readiness object.
 - `cloud_preflight` / `backup_restore`: optional phone-safe gate summaries; missing artifacts remain `not_run` or `unknown`.
 - `oss_cdn_manifest`: phone-safe diagnostic object reference summary. It uses `schema=trashbot.oss_cdn_manifest`, `schema_version=1`, `evidence_boundary=software_proof_docker_phone_manifest_consumption`, `state=ready|missing|invalid|stale`, `object_count`, `cdn_url_rule`, `safe_summary`, `retry_hint`, `updated_at`, `staleness`, and `not_proven`. It must not expose the full artifact, object keys, checksums, local paths, credentials, ROS topics, or hardware details.
@@ -87,7 +90,7 @@ The first screen now includes a phone readiness gate derived from `/api/status.p
 
 `oss_cdn_manifest.state=ready` only means the phone/API can consume a sanitized diagnostic reference summary generated from a local manifest artifact. It does not prove real OSS upload, STS issuance, CDN origin fetch, real cloud, real 4G/SIM, Nav2/fixed-route delivery, WAVE ROVER motion, delivery success, or HIL. `missing`, `invalid`, and `stale` must keep the first screen out of a green ready state and show ordinary user copy such as "诊断对象引用缺失。", "诊断对象引用损坏。", or "诊断对象引用已过期。" plus a retry hint to refresh or regenerate references.
 
-ACK remains command processing evidence only. A remote ACK may make `remote_readiness.degradation_state=ok`, but the phone must keep reading delivery status for `completed`, `failed`, `needs_human_help`, or elevator-assist states.
+ACK remains command processing evidence only. A remote ACK may make `remote_readiness.degradation_state=ok`, but the phone must keep reading delivery status for `completed`, `failed`, `needs_human_help`, or elevator-assist states. The UI text must explain that ACK means command accepted or processing evidence only; it does not prove delivery success, Nav2/fixed-route success, WAVE ROVER movement, real cloud/4G, or HIL.
 
 For H2 elevator assisted delivery dry-runs, `GET /api/status` and `GET /api/diagnostics` may include an `elevator_assist` object. Older clients can ignore it. New clients should treat it as the machine-readable source for elevator UI:
 
