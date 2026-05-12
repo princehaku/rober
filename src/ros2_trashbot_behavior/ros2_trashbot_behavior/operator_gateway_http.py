@@ -20,10 +20,14 @@ API_VERSION = "slice2.operator.v1"
 REMOTE_PROTOCOL_VERSION = "trashbot.remote.v1"
 PHONE_READINESS_SCHEMA = "trashbot.phone_readiness.v1"
 PHONE_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_command_safety_browser_gate"
+PHONE_PWA_EVIDENCE_BOUNDARY = "software_proof_docker_phone_pwa_installability_gate"
 COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 REMOTE_STATUS_STALE_AFTER_SEC = 90.0
 REMOTE_PERSISTENCE_SCHEMA = "trashbot.mock_cloud_store.v1"
+PWA_THEME_COLOR = "#126b5f"
+PWA_BACKGROUND_COLOR = "#f5f7f8"
+PWA_ICON_SIZES = ("192x192", "512x512")
 ELEVATOR_ASSIST_SPEAKER_PROMPT = "你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,"
 # mock cloud 不是生产账号系统，但 token gate 能提前固定手机/小车的鉴权契约。
 REMOTE_AUTH_ENV_KEYS = ("TRASHBOT_MOCK_CLOUD_BEARER_TOKEN", "OPERATOR_GATEWAY_BEARER_TOKEN")
@@ -699,11 +703,134 @@ class MockCloudStore:
             return 404, remote_error("ack_not_found", f"ack not found for command_id: {command_id}")
         return 200, {"ok": True, "ack": dict(ack)}
 
+
+def build_pwa_manifest():
+    # manifest 只描述本地 operator shell；start_url/scope 不允许落到 API 或远程命令面。
+    return {
+        "name": "Trashbot Operator Local Fallback",
+        "short_name": "Trashbot",
+        "description": "Local phone fallback for checking robot status and safe command gates.",
+        "start_url": "/?source=pwa",
+        "scope": "/",
+        "display": "standalone",
+        "theme_color": PWA_THEME_COLOR,
+        "background_color": PWA_BACKGROUND_COLOR,
+        "icons": [
+            {
+                "src": f"/pwa-icon-{size}.svg",
+                "sizes": size,
+                "type": "image/svg+xml",
+                "purpose": "any maskable",
+            }
+            for size in PWA_ICON_SIZES
+        ],
+        "evidence_boundary": PHONE_PWA_EVIDENCE_BOUNDARY,
+    }
+
+
+def build_pwa_icon(size):
+    # SVG 图标没有机器人硬件细节，只提供 installability gate 所需的安全 shell 图标。
+    try:
+        side = int(str(size).split("x", 1)[0])
+    except (TypeError, ValueError):
+        side = 192
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{side}" height="{side}" viewBox="0 0 192 192" role="img" aria-label="Trashbot">
+  <rect width="192" height="192" rx="32" fill="{PWA_THEME_COLOR}"/>
+  <rect x="46" y="64" width="100" height="82" rx="18" fill="#ffffff"/>
+  <circle cx="76" cy="100" r="10" fill="{PWA_THEME_COLOR}"/>
+  <circle cx="116" cy="100" r="10" fill="{PWA_THEME_COLOR}"/>
+  <path d="M72 128h48" stroke="{PWA_THEME_COLOR}" stroke-width="10" stroke-linecap="round"/>
+</svg>"""
+
+
+OFFLINE_HTML = """<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#126b5f">
+  <meta name="description" content="Trashbot offline fallback shell.">
+  <title>Trashbot Offline</title>
+  <style>
+    :root { color-scheme: light; --bg: #f5f7f8; --ink: #172026; --muted: #60707c; --line: #d7dee3; --accent: #126b5f; }
+    * { box-sizing: border-box; }
+    body { background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, Segoe UI, sans-serif; margin: 0; }
+    main { display: grid; gap: 14px; margin: 0 auto; max-width: 640px; padding: 16px; }
+    h1 { font-size: 22px; margin: 0; }
+    p { color: var(--muted); line-height: 1.45; margin: 0; }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 12px; padding: 16px; }
+    .badge { background: #fff7e6; border: 1px solid #f0cf8a; border-radius: 999px; color: #9a5b00; font-size: 12px; font-weight: 700; padding: 6px 10px; width: fit-content; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; }
+    button { border: 1px solid var(--line); border-radius: 8px; font: inherit; font-weight: 650; min-height: 44px; padding: 10px 12px; }
+    button:disabled { color: #7b878f; cursor: not-allowed; opacity: 0.55; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="panel">
+      <span class="badge">offline shell</span>
+      <h1>手机已断开，需要重新连接</h1>
+      <p>当前只能查看离线壳层。重新连接到机器人本地页面后，才能刷新状态或下发控制指令。</p>
+      <p>为避免误操作，Start、Confirm Dropoff 和 Cancel 在离线状态保持不可用。</p>
+      <div class="row">
+        <button id="offlineStartButton" disabled>Start Delivery</button>
+        <button id="offlineDropoffButton" disabled>Confirm Dropoff</button>
+        <button id="offlineCancelButton" disabled>Cancel</button>
+        <button id="offlineRefreshButton" onclick="location.reload()">Reconnect</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>"""
+
+
+SERVICE_WORKER_JS = """const CACHE_NAME = 'trashbot-operator-shell-v1';
+const SHELL_URLS = ['/', '/index.html', '/offline.html', '/manifest.webmanifest'];
+const API_PREFIXES = ['/api/', '/robots/'];
+
+function isDynamicControlRequest(request) {
+  const url = new URL(request.url);
+  if (request.method !== 'GET') return true;
+  if (API_PREFIXES.some(prefix => url.pathname.startsWith(prefix))) return true;
+  if (url.pathname.includes('/commands') || url.pathname.endsWith('/ack')) return true;
+  return false;
+}
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL_URLS)));
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+  );
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', (event) => {
+  if (isDynamicControlRequest(event.request)) {
+    event.respondWith(fetch(event.request, {cache: 'no-store'}));
+    return;
+  }
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request).catch(() => caches.match('/offline.html')));
+    return;
+  }
+  event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));
+});"""
+
 HTML = """<!doctype html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#126b5f">
+  <meta name="description" content="Trashbot local phone fallback for status, diagnostics, and safe command gates.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Trashbot">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="/manifest.webmanifest">
   <title>Trashbot Operator</title>
   <style>
     :root {
@@ -1869,6 +1996,11 @@ async function diagnostics() {
   if (payload) showDiagnostics(payload);
 }
 document.getElementById('reviewSampleSelect').addEventListener('change', updateSelectedReviewSummary);
+if ('serviceWorker' in navigator) {
+  // service worker 只负责静态 shell；API、commands 和 ACK 由脚本内部 network-only bypass。
+  navigator.serviceWorker.register('/service-worker.js', {scope: '/'})
+    .catch(() => {});
+}
 setInterval(refresh, 1000);
 refresh();
 loadReviewQueue();
@@ -2361,6 +2493,14 @@ def make_handler(gateway):
             self.end_headers()
             self.wfile.write(data)
 
+        def _send_text(self, status, body, content_type):
+            data = str(body).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
         def _remote_authorized(self):
             expected_bearer_token = _remote_auth_token(gateway)
             if hasattr(mock_cloud, "auth_required"):
@@ -2383,12 +2523,20 @@ def make_handler(gateway):
             path = parsed.path
             query = parse_qs(parsed.query)
             if path == "/" or path == "/index.html":
-                body = HTML.encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
+                self._send_text(200, HTML, "text/html; charset=utf-8")
+                return
+            if path == "/offline.html":
+                self._send_text(200, OFFLINE_HTML, "text/html; charset=utf-8")
+                return
+            if path == "/service-worker.js":
+                self._send_text(200, SERVICE_WORKER_JS, "application/javascript; charset=utf-8")
+                return
+            if path == "/manifest.webmanifest":
+                self._send_json(200, build_pwa_manifest())
+                return
+            if path in {"/pwa-icon-192x192.svg", "/pwa-icon-512x512.svg"}:
+                icon_size = path.removeprefix("/pwa-icon-").removesuffix(".svg")
+                self._send_text(200, build_pwa_icon(icon_size), "image/svg+xml; charset=utf-8")
                 return
             if path == "/api/status":
                 self._send_json(200, _status_with_phone_readiness(gateway, mock_cloud))

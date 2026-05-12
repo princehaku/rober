@@ -223,11 +223,57 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "PHONE_READINESS_EVIDENCE_BOUNDARY",
             "trashbot.phone_readiness.v1",
             "software_proof_docker_phone_command_safety_browser_gate",
+            "PHONE_PWA_EVIDENCE_BOUNDARY",
+            "software_proof_docker_phone_pwa_installability_gate",
+            "build_pwa_manifest",
+            "OFFLINE_HTML",
+            "SERVICE_WORKER_JS",
+            '"/manifest.webmanifest"',
+            '"/service-worker.js"',
+            '"/offline.html"',
+            "navigator.serviceWorker.register",
+            "API_PREFIXES = ['/api/', '/robots/']",
+            "fetch(event.request, {cache: 'no-store'})",
+            "caches.match('/offline.html')",
+            "offlineStartButton",
+            "offlineDropoffButton",
+            "offlineCancelButton",
         ):
             self.assertIn(text, http_source)
 
         self.assertNotIn("hardware passed", http_source.lower())
         self.assertNotIn("hil passed", http_source.lower())
+
+    def test_pwa_static_shell_does_not_expose_robot_or_secret_details(self):
+        http_source = HTTP.read_text(encoding="utf-8")
+        ast.parse(http_source)
+        offline_block = http_source[
+            http_source.index("OFFLINE_HTML ="):
+            http_source.index("SERVICE_WORKER_JS =")
+        ]
+        service_worker_start = http_source.index("SERVICE_WORKER_JS =")
+        service_worker_block = http_source[
+            service_worker_start:
+            http_source.index("\nHTML =", service_worker_start)
+        ]
+
+        for text in (
+            "手机已断开，需要重新连接",
+            "Start、Confirm Dropoff 和 Cancel 在离线状态保持不可用",
+            'id="offlineStartButton" disabled',
+            'id="offlineDropoffButton" disabled',
+            'id="offlineCancelButton" disabled',
+        ):
+            self.assertIn(text, offline_block)
+
+        for forbidden in ("raw JSON", "ROS topic", "/cmd_vel", "serial", "baudrate", "token", "Authorization", "OSS secret"):
+            self.assertNotIn(forbidden, offline_block)
+
+        self.assertIn("if (request.method !== 'GET') return true", service_worker_block)
+        self.assertIn("url.pathname.startsWith(prefix)", service_worker_block)
+        self.assertIn("url.pathname.includes('/commands')", service_worker_block)
+        self.assertIn("url.pathname.endsWith('/ack')", service_worker_block)
+        self.assertIn("fetch(event.request, {cache: 'no-store'})", service_worker_block)
 
     def test_gateway_has_console_entry_point(self):
         source = SETUP.read_text(encoding="utf-8")

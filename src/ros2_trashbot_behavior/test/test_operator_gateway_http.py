@@ -17,6 +17,7 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     ELEVATOR_ASSIST_SPEAKER_PROMPT,
     MockCloudStore,
     OPERATOR_PROMPTS,
+    PHONE_PWA_EVIDENCE_BOUNDARY,
     PHONE_READINESS_EVIDENCE_BOUNDARY,
     PHONE_READINESS_SCHEMA,
     REMOTE_PROTOCOL_VERSION,
@@ -890,6 +891,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn('id="locationYaw"', body)
         self.assertIn("const location = payload.robot_location || payload.location", body)
         self.assertIn("locationPanel.hidden = !location", body)
+        self.assertIn('<link rel="manifest" href="/manifest.webmanifest">', body)
+        self.assertIn('<meta name="theme-color" content="#126b5f">', body)
+        self.assertIn('name="apple-mobile-web-app-capable" content="yes"', body)
+        self.assertIn('name="apple-mobile-web-app-title" content="Trashbot"', body)
+        self.assertIn('name="apple-mobile-web-app-status-bar-style" content="default"', body)
+        self.assertIn("navigator.serviceWorker.register('/service-worker.js', {scope: '/'})", body)
 
     def test_index_html_route_serves_operator_page(self):
         response, body = self.get_text("/index.html")
@@ -897,6 +904,79 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(response.getheader("Content-Type"), "text/html; charset=utf-8")
         self.assertIn("Trashbot Operator", body)
+
+    def test_pwa_manifest_route_is_installable_without_api_start_url_or_scope(self):
+        status, manifest = self.request("GET", "/manifest.webmanifest")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(manifest["name"], "Trashbot Operator Local Fallback")
+        self.assertEqual(manifest["short_name"], "Trashbot")
+        self.assertEqual(manifest["display"], "standalone")
+        self.assertEqual(manifest["theme_color"], "#126b5f")
+        self.assertEqual(manifest["background_color"], "#f5f7f8")
+        self.assertEqual(manifest["evidence_boundary"], PHONE_PWA_EVIDENCE_BOUNDARY)
+        self.assertFalse(manifest["start_url"].startswith("/api/"))
+        self.assertFalse(manifest["scope"].startswith("/api/"))
+        self.assertGreaterEqual(len(manifest["icons"]), 2)
+        for icon in manifest["icons"]:
+            self.assertIn("src", icon)
+            self.assertIn("sizes", icon)
+            self.assertIn("type", icon)
+
+    def test_service_worker_bypasses_api_commands_diagnostics_and_ack(self):
+        response, body = self.get_text("/service-worker.js")
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.getheader("Content-Type"), "application/javascript; charset=utf-8")
+        self.assertIn("CACHE_NAME = 'trashbot-operator-shell-v1'", body)
+        self.assertIn("SHELL_URLS = ['/', '/index.html', '/offline.html', '/manifest.webmanifest']", body)
+        self.assertIn("API_PREFIXES = ['/api/', '/robots/']", body)
+        self.assertIn("if (request.method !== 'GET') return true", body)
+        self.assertIn("url.pathname.startsWith(prefix)", body)
+        self.assertIn("url.pathname.includes('/commands')", body)
+        self.assertIn("url.pathname.endsWith('/ack')", body)
+        self.assertIn("fetch(event.request, {cache: 'no-store'})", body)
+        self.assertIn("caches.match('/offline.html')", body)
+        self.assertNotIn("fetch('/api/status')", body)
+        self.assertNotIn("POST /api/collect", body)
+
+    def test_offline_shell_keeps_primary_actions_disabled_and_phone_safe(self):
+        response, body = self.get_text("/offline.html")
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.getheader("Content-Type"), "text/html; charset=utf-8")
+        self.assertIn("手机已断开，需要重新连接", body)
+        self.assertIn('id="offlineStartButton" disabled', body)
+        self.assertIn('id="offlineDropoffButton" disabled', body)
+        self.assertIn('id="offlineCancelButton" disabled', body)
+        self.assertIn("Reconnect", body)
+        forbidden = [
+            "raw JSON",
+            "ROS topic",
+            "/cmd_vel",
+            "serial",
+            "baudrate",
+            "token",
+            "Authorization",
+            "OSS secret",
+        ]
+        for text in forbidden:
+            self.assertNotIn(text, body)
+
+    def test_pwa_static_routes_do_not_regress_status_or_command_contracts(self):
+        _status, _manifest = self.request("GET", "/manifest.webmanifest")
+        _response, _sw = self.get_text("/service-worker.js")
+
+        status, payload = self.request("GET", "/api/status")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["api_version"], "slice2.operator.v1")
+        self.assertEqual(payload["phone_readiness"]["schema"], PHONE_READINESS_SCHEMA)
+        self.assertIn("command_safety", payload["phone_readiness"])
+
+        status, payload = self.request("POST", "/api/collect?target=trash_station")
+        self.assertEqual(status, 202)
+        self.assertEqual(payload["state"], "loaded_and_ready")
+        self.assertEqual(self.gateway.last_collect["target"], "trash_station")
 
     def test_collect_accepts_empty_body_and_query_target(self):
         status, _payload = self.request("POST", "/api/collect?target=trash_station")

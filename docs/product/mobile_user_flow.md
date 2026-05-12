@@ -104,6 +104,18 @@ The gate starts a lightweight local operator fixture, opens the served HTML in a
 
 This evidence boundary is `software_proof_docker_phone_browser_acceptance_gate`. It does not prove a production phone app, real iPhone/Android device behavior, real cloud/4G, OSS/CDN traffic, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or delivery success. The local page keeps raw JSON status hidden by default so ordinary phone users see readiness, command safety, ACK semantics, recovery hints, and Diagnostics entry copy instead of ROS or hardware internals.
 
+## Local PWA Installability Gate
+
+The local operator fallback page now exposes a minimal PWA shell for Docker/local software proof:
+
+- `GET /manifest.webmanifest` returns `name`, `short_name`, `start_url`, `scope`, `display`, `theme_color`, `background_color`, and icon entries. `start_url` and `scope` stay on the operator shell and do not point to `/api/*`.
+- The HTML head includes viewport, theme color, description, Apple mobile web app title/capable/status-bar meta, and a manifest link.
+- `GET /service-worker.js` registers a static shell cache for `/`, `/index.html`, `/offline.html`, and `/manifest.webmanifest` only.
+- The service worker treats `/api/*`, `/robots/*`, command routes, ACK routes, diagnostics, and every non-GET request as dynamic control traffic and fetches them with `cache: 'no-store'`.
+- `GET /offline.html` is a phone-safe offline shell. It says the phone is disconnected and reconnect is required; Start Delivery, Confirm Dropoff, and Cancel remain disabled.
+
+The evidence boundary is `software_proof_docker_phone_pwa_installability_gate`. It does not prove a production app, real iPhone/Android installation prompt, real phone device Safari/Chrome behavior, real cloud, real 4G/SIM, production account system, OSS/CDN traffic, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or delivery success.
+
 For H2 elevator assisted delivery dry-runs, `GET /api/status` and `GET /api/diagnostics` may include an `elevator_assist` object. Older clients can ignore it. New clients should treat it as the machine-readable source for elevator UI:
 
 - `enabled`: boolean; false means normal single-floor delivery UI.
