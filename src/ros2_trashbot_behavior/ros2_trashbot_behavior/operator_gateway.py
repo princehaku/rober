@@ -119,6 +119,11 @@ class OperatorGateway(Node):
             "production_store_queue_artifact_ref",
             os.environ.get("TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT", ""),
         )
+        # 该路径只进入手机 readiness/diagnostics 摘要；通过也不代表真实生产队列顺序。
+        self.declare_parameter(
+            "queue_ordering_drill_artifact_ref",
+            os.environ.get("TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_ARTIFACT", ""),
+        )
         self.declare_parameter("mock_cloud_state_path", "")
 
         self.host = str(self.get_parameter("host").value)
@@ -146,6 +151,9 @@ class OperatorGateway(Node):
         )
         self.production_store_queue_artifact_ref = os.path.expanduser(
             str(self.get_parameter("production_store_queue_artifact_ref").value)
+        )
+        self.queue_ordering_drill_artifact_ref = os.path.expanduser(
+            str(self.get_parameter("queue_ordering_drill_artifact_ref").value)
         )
         self.mock_cloud_state_path = os.path.expanduser(
             str(self.get_parameter("mock_cloud_state_path").value)
@@ -212,6 +220,7 @@ class OperatorGateway(Node):
             hardware_proof_ref=self.hardware_proof_ref,
             oss_cdn_manifest_artifact_ref=self.oss_cdn_manifest_artifact_ref,
             production_store_queue_artifact_ref=self.production_store_queue_artifact_ref,
+            queue_ordering_drill_artifact_ref=self.queue_ordering_drill_artifact_ref,
         )
 
     def vision_review_queue(self):

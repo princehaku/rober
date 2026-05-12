@@ -8,6 +8,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     build_phone_oss_cdn_manifest_summary,
     build_phone_production_store_queue_summary,
     build_phone_provisioning_audit_summary,
+    build_phone_queue_ordering_drill_summary,
 )
 
 # Diagnostics must stay available even when the optional vision package is not
@@ -977,6 +978,7 @@ def build_diagnostics_payload(
     credential_rotation_artifact_ref="",
     provisioning_audit_artifact_ref="",
     production_store_queue_artifact_ref="",
+    queue_ordering_drill_artifact_ref="",
 ):
     latest_status = dict(latest_status or {})
     last_task = dict(latest_status.get("last_task") or {})
@@ -1074,6 +1076,10 @@ def build_diagnostics_payload(
         production_store_queue=build_phone_production_store_queue_summary(
             production_store_queue_artifact_ref
             or os.environ.get("TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT", "")
+        ),
+        queue_ordering_drill=build_phone_queue_ordering_drill_summary(
+            queue_ordering_drill_artifact_ref
+            or os.environ.get("TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_ARTIFACT", "")
         ),
         operator_status_file=str(operator_status_file or ""),
     )

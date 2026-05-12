@@ -35,6 +35,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     create_oss_cdn_manifest_artifact,
     create_production_store_queue_artifact,
     create_provisioning_audit_artifact,
+    create_queue_ordering_drill_artifact,
 )
 
 
@@ -61,6 +62,7 @@ class FakeGateway:
         self.credential_rotation_artifact_ref = ""
         self.provisioning_audit_artifact_ref = ""
         self.production_store_queue_artifact_ref = ""
+        self.queue_ordering_drill_artifact_ref = ""
         self.collect_status = 202
         self.collect_payload = {"state": "loaded_and_ready"}
         self.dropoff_status = 200
@@ -397,6 +399,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             "robot-phone-ui",
         )
         self.gateway.production_store_queue_artifact_ref = str(production_store_queue_path)
+        queue_ordering_path = Path(self.tempdir.name) / "queue_ordering_drill.json"
+        create_queue_ordering_drill_artifact(
+            queue_ordering_path,
+            "robot-phone-ui",
+        )
+        self.gateway.queue_ordering_drill_artifact_ref = str(queue_ordering_path)
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(self.gateway))
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -499,6 +507,22 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         encoded_store_queue = json.dumps(payload["phone_readiness"]["production_store_queue"], ensure_ascii=False)
         self.assertNotIn("checksum", encoded_store_queue)
         self.assertNotIn(self.gateway.production_store_queue_artifact_ref, encoded_store_queue)
+        self.assertEqual(payload["phone_readiness"]["queue_ordering_drill"]["state"], "ready")
+        self.assertEqual(
+            payload["phone_readiness"]["queue_ordering_drill"]["evidence_boundary"],
+            "software_proof_docker_queue_ordering_phone_consumption",
+        )
+        self.assertEqual(
+            payload["phone_readiness"]["queue_ordering_drill"]["adjacent_command_ids"],
+            ["cmd-9", "cmd-10"],
+        )
+        self.assertIn(
+            "production_queue_ordering",
+            payload["phone_readiness"]["queue_ordering_drill"]["not_proven"],
+        )
+        encoded_queue_ordering = json.dumps(payload["phone_readiness"]["queue_ordering_drill"], ensure_ascii=False)
+        self.assertNotIn("checksum", encoded_queue_ordering)
+        self.assertNotIn(self.gateway.queue_ordering_drill_artifact_ref, encoded_queue_ordering)
         self.assertIn("hil_pass", payload["phone_readiness"]["not_proven"])
         encoded_task_flow = json.dumps(task_flow, ensure_ascii=False).lower()
         for forbidden in ("ros topic", "/cmd_vel", "baudrate", "authorization", "cloud secret"):

@@ -103,6 +103,37 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_command({"id": "1", "type": "collect", "payload": []})
 
+    def test_validate_command_ignores_queue_ordering_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-queue-metadata",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "queue_ordering_drill": {
+                "schema": "trashbot.queue_ordering_drill",
+                "status": "ready",
+                "delivery_success": True,
+            },
+            "ordering_status": "cmd_9_before_cmd_10_verified",
+        })
+
+        self.assertEqual(command["id"], "cmd-queue-metadata")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"]["target"], "trash_station")
+        # protocol helper 只返回 trashbot.remote.v1 command envelope，不把 drill 元数据转给 robot 执行层。
+        self.assertNotIn("queue_ordering_drill", command)
+        self.assertNotIn("ordering_status", command)
+
+    def test_validate_command_keeps_command_id_order_as_supplied(self):
+        command = validate_command({
+            "id": "cmd-10",
+            "type": "cancel",
+            "payload": {},
+            "queue_ordering_drill": {"candidate_command_ids": ["cmd-9", "cmd-10"]},
+        })
+
+        # command id 是 relay 已选中的游标标识，helper 不做字符串排序或队列推断。
+        self.assertEqual(command["id"], "cmd-10")
+
     def test_expired_command_detection(self):
         self.assertTrue(command_expired({"expires_at": 1.0}, now=2.0))
         self.assertFalse(command_expired({"expires_at": 3.0}, now=2.0))

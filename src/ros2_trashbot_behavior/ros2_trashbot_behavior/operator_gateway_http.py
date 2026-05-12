@@ -13,6 +13,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     build_phone_oss_cdn_manifest_summary,
     build_phone_production_store_queue_summary,
     build_phone_provisioning_audit_summary,
+    build_phone_queue_ordering_drill_summary,
 )
 from ros2_trashbot_behavior.remote_bridge_protocol import parse_bool
 
@@ -2558,6 +2559,7 @@ def build_phone_readiness(
     credential_rotation=None,
     provisioning_audit=None,
     production_store_queue=None,
+    queue_ordering_drill=None,
 ):
     """Build the phone-first readiness summary used by `/api/status`.
 
@@ -2595,6 +2597,12 @@ def build_phone_readiness(
         dict(production_store_queue)
         if isinstance(production_store_queue, dict)
         else build_phone_production_store_queue_summary("")
+    )
+    # queue ordering drill 是 O6 软件证明摘要；不能改变本地机器人状态或动作权限。
+    queue_ordering_gate = (
+        dict(queue_ordering_drill)
+        if isinstance(queue_ordering_drill, dict)
+        else build_phone_queue_ordering_drill_summary("")
     )
     permissions = _local_action_permissions(status)
     state = str(status.get("state") or "unknown").strip() or "unknown"
@@ -2722,6 +2730,7 @@ def build_phone_readiness(
         "credential_rotation": dict(credential_gate),
         "provisioning_audit": dict(provisioning_gate),
         "production_store_queue": dict(store_queue_gate),
+        "queue_ordering_drill": dict(queue_ordering_gate),
         "not_proven": list(PHONE_READINESS_NOT_PROVEN),
     }
 
@@ -2764,6 +2773,10 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         getattr(gateway, "production_store_queue_artifact_ref", "")
         or os.environ.get("TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT", "")
     )
+    queue_ordering_drill = build_phone_queue_ordering_drill_summary(
+        getattr(gateway, "queue_ordering_drill_artifact_ref", "")
+        or os.environ.get("TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_ARTIFACT", "")
+    )
     # 可选 gate 字段只在调用方已提供时采纳；默认 not_run/unknown，不推断生产 readiness。
     payload["phone_readiness"] = build_phone_readiness(
         payload,
@@ -2775,6 +2788,7 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         credential_rotation=credential_rotation,
         provisioning_audit=provisioning_audit,
         production_store_queue=production_store_queue,
+        queue_ordering_drill=queue_ordering_drill,
     )
     payload["phone_task_flow_readiness"] = dict(payload["phone_readiness"]["phone_task_flow_readiness"])
     return payload

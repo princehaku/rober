@@ -606,6 +606,89 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_queue_ordering_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "queue_ordering_drill": {
+                    "schema": "trashbot.queue_ordering_drill",
+                    "status": "ready",
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "queue_ordering_drill": {
+                    "schema": "trashbot.queue_ordering_drill",
+                    "status": "ready",
+                    "ordering_status": "cmd_9_before_cmd_10_verified",
+                    "next_action": "confirm_dropoff",
+                    "delivery_success": True,
+                },
+                "preflight": {"overall_status": "blocked", "production_ready": False},
+            },
+            "ack_response": {
+                "queue_ordering_drill": {
+                    "schema": "trashbot.queue_ordering_drill",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-queue-ordering-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-queue-ordering-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-queue-ordering-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        # queue ordering drill 只是云端/手机诊断元数据，ACK 不能变成送达成功或队列证明。
+        self.assertNotIn("queue_ordering_drill", ack_payload)
+        self.assertNotIn("queue_ordering_drill", json.dumps(ack_payload["result"]))
+        self.assertNotIn("ordering_status", json.dumps(ack_payload["result"]))
+        self.assertNotIn("delivery_success", json.dumps(ack_payload["result"]))
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
+    def test_queue_ordering_metadata_does_not_force_robot_side_string_sorting(self):
+        self.cloud.response_extras["command_response"] = {
+            "queue_ordering_drill": {
+                "schema": "trashbot.queue_ordering_drill",
+                "status": "ready",
+                "ordering_status": "server_supplied_order_only",
+                "candidate_command_ids": ["cmd-9", "cmd-10"],
+            },
+        }
+        self.cloud.commands.extend([
+            {
+                "id": "cmd-10",
+                "type": "collect",
+                "payload": {"target": "trash_station", "trash_type": 10},
+            },
+            {
+                "id": "cmd-9",
+                "type": "collect",
+                "payload": {"target": "trash_station", "trash_type": 9},
+            },
+        ])
+
+        self.assertTrue(self.worker.poll_once())
+        self.assertTrue(self.worker.poll_once())
+
+        # robot bridge 只消费 relay 给出的下一条 command envelope，不按字符串重排 command id。
+        self.assertEqual(self.backend.calls, [
+            ("collect", "trash_station", 10),
+            ("collect", "trash_station", 9),
+        ])
+        self.assertEqual([ack["command_id"] for ack in self.cloud.ack_posts], ["cmd-10", "cmd-9"])
+        self.assertIn("last_ack_id=cmd-10", self.cloud.get_paths[1])
+        self.assertEqual(self.worker.last_ack_id, "cmd-9")
+
     def test_phone_task_flow_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {
@@ -714,6 +797,46 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertFalse(state_path.exists())
             self.assertEqual(len(self.cloud.status_posts), 1)
             self.assertNotIn("production_store_queue", json.dumps(self.cloud.status_posts))
+
+    def test_metadata_only_queue_ordering_responses_do_not_start_ack_or_persist_cursor(self):
+        for drill_status in ("blocked", "invalid", "stale"):
+            with self.subTest(drill_status=drill_status):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.backend.calls.clear()
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-queue-{drill_status}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        "queue_ordering_drill": {
+                            "schema": "trashbot.queue_ordering_drill",
+                            "status": drill_status,
+                            "ordering_status": "metadata_only",
+                            "cursor_status": "must_not_advance",
+                            "delivery_success": True,
+                            "next_action": "collect",
+                        },
+                        "preflight": {"overall_status": "blocked", "production_ready": False},
+                    }
+
+                    handled = worker.poll_once()
+
+                    # metadata-only blocked/invalid/stale 响应没有 command envelope，必须保持本地 fail-closed。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-queue-{drill_status}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertNotIn("queue_ordering_drill", json.dumps(self.cloud.status_posts))
+                    self.assertNotIn("next_action", json.dumps(self.cloud.status_posts))
+                    self.assertNotIn("delivery_success", json.dumps(self.cloud.status_posts))
 
     def test_metadata_only_phone_task_flow_response_does_not_start_ack_or_persist_cursor(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -25,6 +25,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     create_oss_cdn_manifest_artifact,
     create_production_store_queue_artifact,
     create_provisioning_audit_artifact,
+    create_queue_ordering_drill_artifact,
 )
 
 
@@ -899,6 +900,40 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(payload["production_store_queue"]["overall_status"], "blocked")
         self.assertIn("production_db_or_queue", payload["production_store_queue"]["not_proven"])
         self.assertIn("multi_instance_consistency", payload["production_store_queue"]["not_proven"])
+        self.assertNotIn(str(artifact_path), encoded)
+        self.assertNotIn("robot-diagnostics", encoded)
+        self.assertNotIn("checksum", encoded)
+
+    def test_diagnostics_payload_includes_phone_safe_queue_ordering_drill_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_path = Path(td) / "queue_ordering_drill.json"
+            create_queue_ordering_drill_artifact(
+                artifact_path,
+                "robot-diagnostics",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                queue_ordering_drill_artifact_ref=str(artifact_path),
+            )
+            encoded = json.dumps(payload["queue_ordering_drill"], ensure_ascii=False)
+
+        self.assertEqual(payload["queue_ordering_drill"]["state"], "ready")
+        self.assertEqual(
+            payload["queue_ordering_drill"]["evidence_boundary"],
+            "software_proof_docker_queue_ordering_phone_consumption",
+        )
+        self.assertEqual(payload["queue_ordering_drill"]["adjacent_command_ids"], ["cmd-9", "cmd-10"])
+        self.assertFalse(payload["queue_ordering_drill"]["production_ready"])
+        self.assertIn("production_queue_ordering", payload["queue_ordering_drill"]["not_proven"])
+        self.assertIn("production_db_or_queue", payload["queue_ordering_drill"]["not_proven"])
         self.assertNotIn(str(artifact_path), encoded)
         self.assertNotIn("robot-diagnostics", encoded)
         self.assertNotIn("checksum", encoded)

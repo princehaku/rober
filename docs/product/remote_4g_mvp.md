@@ -313,6 +313,30 @@ This is not a real production DB/queue, multi-instance consistency, production
 backup policy, disaster recovery, real cloud, real 4G, Nav2/fixed-route delivery,
 WAVE ROVER, HIL, or delivery success.
 
+The queue ordering drill adds a narrower Docker/local artifact for command
+ordering invariants. Generate it with:
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --write-queue-ordering-drill-artifact /tmp/trashbot_queue_ordering_drill.json \
+  --queue-ordering-drill-robot-id robot-local-proof
+```
+
+Then pass it to preflight with
+`TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_ARTIFACT` or
+`--queue-ordering-drill-artifact`. The resulting evidence boundary is
+`software_proof_docker_queue_ordering_drill`; phone consumption uses
+`software_proof_docker_queue_ordering_phone_consumption`.
+
+The artifact fixes the local drill expectations for parallel submits,
+adjacent command ids, `cmd-9` before `cmd-10`, cursor advancement only after a
+terminal ACK, and ACK as command acceptance/processing evidence only. It covers
+`ready|missing|invalid|stale|failed` summaries for phone status and diagnostics.
+It is not a real production queue ordering, transaction isolation,
+multi-instance consistency, production DB/queue, real cloud, real 4G/SIM,
+Nav2/fixed-route delivery, WAVE ROVER/HIL, or delivery success proof.
+
 Phone and diagnostics payloads must not expose bearer tokens, Authorization
 headers, credential-bearing cloud URLs, serial devices, baudrate, WAVE ROVER
 parameters, `/cmd_vel`, raw ROS topic names, or hardware configuration fields.
@@ -454,6 +478,11 @@ Important product boundary:
   gate summary. `ready` means the Docker/local artifact is consumable only; it
   must still expose `production_ready=false`, `overall_status=blocked`, and
   `not_proven`.
+- `queue_ordering_drill` is the phone-safe Docker/local queue ordering drill
+  summary. It reports ordering, concurrency, cursor, and ACK invariants, but
+  keeps `production_ready=false` and lists production queue ordering,
+  transaction isolation, production DB/queue, multi-instance consistency, real
+  cloud, real 4G/SIM, WAVE ROVER/HIL, and delivery success as not proven.
 - `not_proven` must continue to include production phone app, real cloud,
   real 4G/SIM, OSS/CDN, Nav2/fixed-route delivery, WAVE ROVER motion, and HIL
   until those paths have separate evidence.
