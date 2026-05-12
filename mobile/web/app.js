@@ -81,6 +81,21 @@ function voicePromptFromStatus(status, readiness) {
   return {};
 }
 
+function operationLogFromStatus(status, readiness) {
+  // 后端显式日志优先；没有日志时才从已知 phone-safe readiness 派生最小事件。
+  const candidates = [
+    status?.operation_log,
+    status?.phone_operation_log,
+    readiness?.operation_log,
+    readiness?.phone_operation_log,
+  ];
+  const provided = candidates.find((value) => value && (Array.isArray(value) || typeof value === "object"));
+  if (provided) {
+    return { source: "operation_log", entries: normalizeOperationLogEntries(provided) };
+  }
+  return { source: "derived_phone_safe_fields", entries: deriveOperationLogEntries(status, readiness) };
+}
+
 function commandSafetyFromReadiness(readiness) {
   // 若 command_safety 缺失，前端必须 fail closed，不能用 UI 猜测状态。
   return readiness && typeof readiness.command_safety === "object" ? readiness.command_safety : {};
@@ -326,6 +341,93 @@ function renderVoicePrompt(status) {
   );
 }
 
+function normalizeOperationLogEntries(value) {
+  // 只识别显式事件数组或对象内 events/items；对象本身不作为原始 JSON 展示。
+  const events = Array.isArray(value)
+    ? value
+    : (Array.isArray(value.events) ? value.events : value.items);
+  if (!Array.isArray(events)) {
+    return [];
+  }
+  return events.slice(0, 6).map((event, index) => ({
+    title: safeText(event?.title || event?.label || event?.event_type || event?.state, `事件 ${index + 1}`),
+    copy: safeText(event?.safe_phone_copy || event?.summary || event?.status_copy, "等待后端提供事件说明。"),
+    hint: safeText(event?.recovery_hint || event?.next_step || event?.support_hint, "按页面提示继续或联系支持。"),
+    timestamp: safeText(event?.time || event?.timestamp || event?.generated_at, "最近"),
+  }));
+}
+
+function pushDerivedEvent(entries, title, source) {
+  if (!source || typeof source !== "object") {
+    return;
+  }
+  const copy = source.safe_phone_copy || source.status_summary || source.safe_copy || source.current_prompt;
+  const hint = source.recovery_hint || source.next_action || source.ack_semantics || source.support_level;
+  // 派生事件只能来自 phone-safe 字段；缺少可读文案时跳过，避免前端自行编造状态。
+  if (!copy && !hint) {
+    return;
+  }
+  entries.push({
+    title,
+    copy: safeText(copy, "等待后端提供事件说明。"),
+    hint: safeText(hint, "按页面提示继续或联系支持。"),
+    timestamp: safeText(source.generated_at || source.updated_at, "当前"),
+  });
+}
+
+function deriveOperationLogEntries(status, readiness) {
+  const entries = [];
+  pushDerivedEvent(entries, "手机就绪", readiness);
+  pushDerivedEvent(entries, "操作安全", commandSafetyFromReadiness(readiness));
+  pushDerivedEvent(entries, "任务流程", taskFlowObjectFromStatus(status, readiness));
+  pushDerivedEvent(entries, "离线恢复", offlineResumeFromStatus(status, readiness));
+  pushDerivedEvent(entries, "支持交接", status?.phone_support_bundle || readiness?.phone_support_bundle);
+  pushDerivedEvent(entries, "语音提示", voicePromptFromStatus(status, readiness));
+  return entries.slice(0, 6);
+}
+
+function renderOperationLog(status) {
+  const readiness = readinessFromStatus(status);
+  const operationLog = operationLogFromStatus(status, readiness);
+  const list = $("operationLogList");
+  list.textContent = "";
+
+  $("operationLogSource").className = "gate-badge gate-ready";
+  $("operationLogSource").textContent = operationLog.source === "operation_log" ? "后端日志" : "安全派生";
+  $("operationLogHint").textContent = operationLog.source === "operation_log"
+    ? "优先展示后端 operation_log / phone_operation_log。"
+    : "后端未提供日志时，仅从既有 phone-safe readiness 字段派生。";
+
+  if (!operationLog.entries.length) {
+    $("operationLogSource").className = "gate-badge gate-blocked";
+    $("operationLogSource").textContent = "暂无事件";
+    const item = document.createElement("li");
+    item.textContent = "暂无可展示的 phone-safe 操作事件；主操作继续由 command_safety 控制。";
+    list.appendChild(item);
+  } else {
+    operationLog.entries.forEach((event) => {
+      const item = document.createElement("li");
+      const meta = document.createElement("span");
+      const copy = document.createElement("span");
+      const hint = document.createElement("span");
+      meta.className = "event-meta";
+      copy.className = "event-copy";
+      hint.className = "event-hint";
+      meta.textContent = `${event.timestamp} / ${event.title}`;
+      copy.textContent = event.copy;
+      hint.textContent = `恢复提示：${event.hint}`;
+      item.append(meta, copy, hint);
+      list.appendChild(item);
+    });
+  }
+
+  const bundle = status?.phone_support_bundle || readiness.phone_support_bundle || {};
+  $("operationSupportEntry").textContent = safeText(
+    bundle.safe_copy || bundle.status_summary,
+    "支持交接入口保持可见；不会触发 Start、Confirm 或 Cancel。",
+  );
+}
+
 function renderSupport(status) {
   const readiness = readinessFromStatus(status);
   const bundle = status?.phone_support_bundle || readiness.phone_support_bundle || {};
@@ -368,6 +470,14 @@ function renderOfflineFailure() {
   $("recoveryHint").textContent = "请恢复网络后刷新；离线壳不会发送或排队控制请求。";
   $("commandSafetyCopy").textContent = "离线状态下 Start、Confirm、Cancel 全部禁用。";
   $("offlineCopy").textContent = "离线壳只显示恢复提示，不缓存控制请求。";
+  $("operationLogSource").textContent = "离线";
+  $("operationLogSource").className = "gate-badge gate-blocked";
+  $("operationLogHint").textContent = "离线时不派生新机器人状态，主操作保持禁用。";
+  $("operationLogList").textContent = "";
+  const offlineEvent = document.createElement("li");
+  offlineEvent.textContent = "无法读取后端 operation log；请恢复网络后刷新。";
+  $("operationLogList").appendChild(offlineEvent);
+  $("operationSupportEntry").textContent = "离线时可保留恢复提示，但不发送控制请求。";
   $("destinationSummary").textContent = "离线，无法确认目标垃圾站。";
   $("startBlockReason").textContent = "离线状态下 Start 安全关闭。";
   $("destinationGateBadge").textContent = "未确认目的地";
@@ -385,6 +495,7 @@ function renderStatus(status) {
   renderCommandSafety(status);
   renderOfflineResume(status);
   renderVoicePrompt(status);
+  renderOperationLog(status);
   renderSupport(status);
 }
 

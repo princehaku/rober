@@ -79,6 +79,12 @@ The Start button is enabled only when all four gates pass: `command_safety.actio
 
 The mobile PWA service worker caches only the static shell. It bypasses `/api/*`, `/robots/*`, command routes, ACK routes, diagnostics, and all non-GET requests with `no-store`. The offline shell does not cache, queue, or replay control requests; it shows recovery copy and keeps primary actions disabled.
 
+The mobile PWA now includes a read-only operation log panel. It first consumes `operation_log` or `phone_operation_log` when the status payload provides them. If neither field exists, it derives a minimal recent-event list only from existing phone-safe fields: `phone_readiness`, `command_safety`, `phone_task_flow_readiness`, `phone_offline_resume_readiness`, `phone_support_bundle`, and `voice_prompt_readiness`. The panel shows Chinese-first recent events, recovery hints, ACK wording, and support handoff copy, but it does not open Start Delivery, Confirm Dropoff, Cancel, ACK, cursor, or delivery-success paths.
+
+The operation log evidence boundary is `software_proof_docker_mobile_operation_log_gate`. This proves the local/static mobile page can render phone-safe recent events, recovery hints, and support handoff entry from fixture/status payloads while keeping Start/Confirm/Cancel fail-closed. It does not prove real phone device/browser behavior, a production app, a real PWA install prompt, real cloud/4G, OSS/CDN live traffic, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or real delivery.
+
+Operation log content must not expose tokens, Authorization headers, OSS AK/SK, root passwords, DB or queue URLs, raw ROS topic names, `/cmd_vel`, serial devices, baudrate values, WAVE ROVER parameters, local filesystem paths, tracebacks, checksums, full artifacts, or any wording that turns ACK into delivery success.
+
 Evidence boundary: `software_proof_docker_mobile_web_entrypoint_gate`. This proves the static entrypoint and smoke checks exist; it does not prove production app readiness, real iPhone/Android browser behavior, real service-worker install prompt, real cloud/4G, OSS/CDN live traffic, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or delivery success.
 
 The local page also shows live robot location when localization is publishing. `operator_gateway` subscribes to `/amcl_pose` by default and includes `robot_pose` plus recent `robot_path` points in `GET /api/status`; without AMCL data the controls still work, but the map panel waits for pose updates.

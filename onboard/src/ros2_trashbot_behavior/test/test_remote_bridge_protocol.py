@@ -218,6 +218,43 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("delivery_success", encoded_command)
         self.assertNotIn("/trashbot/collect_trash", encoded_command)
 
+    def test_validate_command_ignores_operation_log_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-operation-log-metadata",
+            "type": "cancel",
+            "payload": {},
+            "operation_log": {
+                "schema": "trashbot.phone_operation_log.v1",
+                "events": [
+                    {
+                        "kind": "pending_ack",
+                        "safe_phone_copy": "命令已提交，正在等待机器人处理。",
+                    },
+                ],
+                "trigger_robot_action": "collect",
+                "cursor_override": "cmd-future",
+                "ack_semantics": "delivery_success",
+                "delivery_success": True,
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "phone_operation_log": {
+                "schema": "trashbot.phone_operation_log.v1",
+                "support_handoff": {"next_action": "confirm_dropoff"},
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-operation-log-metadata")
+        self.assertEqual(command["type"], "cancel")
+        self.assertEqual(command["payload"], {})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # operation log 是手机/支持元数据，parser 只能保留 command envelope 的既有字段。
+        self.assertNotIn("operation_log", encoded_command)
+        self.assertNotIn("phone_operation_log", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+
     def test_validate_command_ignores_deployment_readiness_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-deployment-readiness-metadata",

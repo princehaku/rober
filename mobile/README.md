@@ -3,6 +3,8 @@
 本目录是 `ros_rbs` 的 **用户手机端部署单位**：把机器人能力产品化成手机能操作、能看状态的入口。
 
 > 当前状态：sprint `2026.05.13_03-04_mobile-web-entrypoint-gate` 已新增 `mobile/web/` dependency-free PWA 静态入口。证据边界是 `software_proof_docker_mobile_web_entrypoint_gate`，不等于真实手机设备、production app、真实云、4G、OSS/CDN、HIL 或真实送达。
+>
+> 当前增量：sprint `2026.05.13_07-08_mobile-operation-log-gate` 在静态入口中新增 operation log 面板。证据边界是 `software_proof_docker_mobile_operation_log_gate`，只证明 local/Docker fixture 与 static smoke 可展示 phone-safe 最近事件、恢复提示和支持交接入口；不等于真实手机设备/浏览器、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 
 ## 用途（What lives here）
 
@@ -46,8 +48,15 @@ python3 -m http.server 8088
 - `/api/status.phone_readiness`
 - `/api/status.phone_readiness.command_safety`
 - `/api/status.phone_offline_resume_readiness` 或 `/api/status.phone_readiness.phone_offline_resume_readiness`
-- 可选：`phone_task_flow_readiness`、`phone_support_bundle`、`voice_prompt_readiness`
+- 可选：`operation_log`、`phone_operation_log`、`phone_task_flow_readiness`、`phone_support_bundle`、`voice_prompt_readiness`
 - `/api/diagnostics` 的脱敏摘要字段
+
+operation log 规则：
+
+- 优先展示后端或 fixture 提供的 `operation_log` / `phone_operation_log`。
+- 缺少显式日志时，只从既有 phone-safe 字段派生最小事件：`phone_readiness`、`command_safety`、`phone_task_flow_readiness`、`phone_offline_resume_readiness`、`phone_support_bundle`、`voice_prompt_readiness`。
+- 派生事件只显示 `safe_phone_copy`、`recovery_hint`、`ack_semantics`、`next_action`、`support_level` 等安全摘要，不展示原始 JSON、ROS topic、硬件参数、凭证、路径、traceback、checksum 或完整 artifact。
+- operation log 面板是只读解释入口，不会启用 Start Delivery、Confirm Dropoff 或 Cancel，也不会发送 ACK、推进 cursor 或声明 delivery success。
 
 按钮安全规则：
 
@@ -84,5 +93,6 @@ PWA / offline 边界：
 | 本 sprint P2B（当前） | README 脚手架 |
 | cloud-relay gate | cloud-relay runtime 入口独立，mobile 继续只消费 phone-safe schema，不发明状态 |
 | 当前 mobile-web-entrypoint gate | `mobile/web/` dependency-free PWA 入口、offline shell、manifest、service worker、fixture smoke |
-| 下一个 sprint | 真实手机浏览器/设备验收、安装提示、弱网体验和操作日志面板 |
+| 当前 mobile-operation-log gate | `mobile/web/` operation log 面板、恢复提示、支持交接入口、fixture smoke |
+| 下一个 sprint | 真实手机浏览器/设备验收、安装提示和弱网体验 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |

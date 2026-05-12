@@ -149,17 +149,17 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-05-13 06:47 Asia/Shanghai。最新 sprint：`2026.05.13_06-07_cloud-external-probe-bundle-gate`。详细历史见 `docs/process/okr_progress_log.md`。
+更新时间：2026-05-13 07:14 Asia/Shanghai。最新 sprint：`2026.05.13_07-08_mobile-operation-log-gate`。详细历史见 `docs/process/okr_progress_log.md`。
 
 | Objective | 当前进度 | 本轮证据与边界 | 主要缺口 |
 | --- | --- | --- | --- |
 | Objective 1：硬件协议可信底盘 | 约 75% | 本轮未改硬件、WAVE ROVER、UART、Orange Pi、launch 参数或 HIL 证据；保留此前 Docker/Humble 与 hardware smoke 软件护栏。 | 仍缺真实 WAVE ROVER `hil_pass`、真实串口日志、`T=1001` feedback、`/odom`、`/imu/data`、`/battery` 实机样本。 |
-| Objective 2：可送垃圾任务完整闭环 | 约 77% | 本轮 robot compatibility fence 只确认 `deployment_readiness`、`cloud_deployment_readiness`、`preflight` metadata-only responses 不触发 robot backend call、不 POST ACK、不推进或持久化 cursor、不把 ACK 升级为 delivery success；不提升任务闭环完成度。 | 仍缺真实 Nav2/fixed-route 运行、同一 `evidence_ref` 的任务复盘、真实送达和失败恢复实测。 |
+| Objective 2：可送垃圾任务完整闭环 | 约 77% | 本轮 robot compatibility fence 只确认 `operation_log` / `phone_operation_log` metadata-only responses 不触发 robot backend call、不 POST ACK、不推进或持久化 cursor、不把 ACK 升级为 delivery success；不提升任务闭环完成度。 | 仍缺真实 Nav2/fixed-route 运行、同一 `evidence_ref` 的任务复盘、真实送达和失败恢复实测。 |
 | Objective 3：可验证导航与固定路线 | 约 77% | 本轮未改导航、route、keyframe 或 replay 工具；既有软件对账能力保持。 | 仍缺真实路线采集、Nav2 waypoint/fixed-route 实跑、关键帧实景证据与上车复账。 |
-| Objective 4：手机用户体验与低成本量产边界 | 约 58% | `2026.05.13_05-06_mobile-task-start-confirmation-gate` 完成 `software_proof_docker_mobile_task_start_confirmation_gate`：`mobile/web` Start Delivery 前新增 destination confirmation、loaded confirmation、`command_safety`、`can_collect` 四重 gate，`POST /api/collect` 使用 phone-safe JSON body，并同时携带同值 `destination`/`target` 以兼容现有 collect 入口；robot compatibility fence 证明 phone confirmation metadata-only responses 不触发 backend action、不 POST ACK、不推进或持久化 cursor，protocol normalization 剥离 metadata。 | 仍缺 production app、真实手机浏览器/设备验收、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、TTS/喇叭实放、Nav2/fixed-route、WAVE ROVER、HIL、真实送达与量产实物验收。 |
+| Objective 4：手机用户体验与低成本量产边界 | 约 60% | `2026.05.13_07-08_mobile-operation-log-gate` 完成 `software_proof_docker_mobile_operation_log_gate`：手机端新增只读 operation log 面板，优先展示 `operation_log` / `phone_operation_log`，缺失时仅从 phone-safe readiness/support 字段派生安全事件；展示最近事件、恢复提示和支持交接入口，不启用或触发 Start/Confirm/Cancel。robot compatibility fence 证明 operation-log metadata 不触发 backend action、不 POST ACK、不推进或持久化 cursor，protocol normalization 剥离 command envelope 外 metadata，ACK 仍只是 accepted/processing evidence。 | 仍缺 production app、真实手机浏览器/设备验收、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、production DB/queue、TTS/喇叭实放、Nav2/fixed-route、WAVE ROVER、HIL、真实送达与量产实物验收。 |
 | Objective 5：云中转 + OSS/CDN 数据通路产品化（历史 O6） | 约 59% | `2026.05.13_06-07_cloud-external-probe-bundle-gate` 完成 `software_proof_docker_cloud_external_probe_bundle_gate`：新增 `trashbot.cloud_external_probe_bundle` schema_version=1，Docker/local smoke 用 external probe 覆盖 `/healthz`、`/readyz`、`/preflightz`，artifact 和 preflight consumption 均保持 `production_ready=false`、`overall_status=blocked`；robot metadata-only compatibility fence 证明 external probe / deployment readiness / preflight responses 不触发 backend action、不 POST ACK、不推进或持久化 cursor，protocol normalization 剥离 command envelope 外的 probe metadata。 | 仍没有真实云、真实 HTTPS/TLS、公网入口、真实 4G/SIM、OSS/CDN live traffic、production DB/queue、多实例一致性、production disaster recovery、real phone app/device、HIL、Nav2/fixed-route、WAVE ROVER 或 real delivery。 |
 
-本轮 OKR 口径：Objective 5 因 cloud external probe bundle gate、Docker/local external probe smoke、preflight consumption 与 robot metadata-only compatibility fence 完成，从约 57% 保守上调到约 59%。证据边界是 `software_proof_docker_cloud_external_probe_bundle_gate`；这不是真实云、真实 HTTPS/TLS、公网入口、真实 4G/SIM、OSS/CDN live traffic、production DB/queue、HIL、Nav2/fixed-route、WAVE ROVER 或真实送达证据。Objective 1/2/3/4 完成度不调整。
+本轮 OKR 口径：Objective 4 因 mobile operation log gate、phone-safe 恢复提示/支持交接入口与 robot metadata-only compatibility fence 完成，从约 58% 保守上调到约 60%。证据边界是 `software_proof_docker_mobile_operation_log_gate`；这不是真实手机设备/browser、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达证据。ACK 仍只是 accepted/processing evidence，不是 delivery success。Objective 1/2/3/5 完成度不调整。
 
 ## 5. OKR完成路线
 

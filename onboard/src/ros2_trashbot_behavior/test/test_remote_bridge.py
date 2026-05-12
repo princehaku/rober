@@ -782,6 +782,68 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertNotIn("delivery_success", encoded_status)
             self.assertNotIn("/trashbot/collect_trash", encoded_status)
 
+    def test_operation_log_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "operation_log": {
+                    "schema": "trashbot.phone_operation_log.v1",
+                    "latest_event": "pending_ack",
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "operation_log": {
+                    "schema": "trashbot.phone_operation_log.v1",
+                    "events": [{"kind": "blocked", "safe_phone_copy": "等待机器人状态。"}],
+                    "trigger_robot_action": "confirm_dropoff",
+                    "cursor_override": "cmd-future",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                },
+                "phone_operation_log": {
+                    "schema": "trashbot.phone_operation_log.v1",
+                    "support_handoff": {"next_action": "cancel"},
+                },
+            },
+            "ack_response": {
+                "operation_log": {
+                    "schema": "trashbot.phone_operation_log.v1",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-operation-log-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-operation-log-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-operation-log-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        self.assertEqual(ack_payload["message"], "collect")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # operation log 是手机/支持摘要，ACK 只能表达 command envelope 的本地处理结果。
+        self.assertNotIn("operation_log", encoded_ack)
+        self.assertNotIn("phone_operation_log", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("operation_log", encoded_status)
+        self.assertNotIn("phone_operation_log", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_phone_offline_resume_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {
@@ -1453,6 +1515,61 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertNotIn("secret-token", encoded_status)
             self.assertNotIn("Authorization", encoded_status)
             self.assertNotIn("credential_url", encoded_status)
+
+    def test_metadata_only_operation_log_response_does_not_start_ack_or_persist_cursor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-operation-log",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras["command_response"] = {
+                "operation_log": {
+                    "schema": "trashbot.phone_operation_log.v1",
+                    "events": [
+                        {
+                            "kind": "manual_takeover",
+                            "safe_phone_copy": "需要人工接管，已准备支持摘要。",
+                        },
+                    ],
+                    "support_handoff": {"enabled": True, "next_action": "collect"},
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-operation-log",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/cmd_vel",
+                    "Authorization": "Bearer must-not-leak",
+                },
+                "phone_operation_log": {
+                    "schema": "trashbot.phone_operation_log.v1",
+                    "support_handoff": {"next_action": "cancel"},
+                    "delivery_success": True,
+                },
+                "preflight": {"production_ready": False, "overall_status": "blocked"},
+            }
+
+            handled = worker.poll_once()
+
+            # 只有 operation log metadata、没有 command envelope 时，不能驱动本地 action/ACK/cursor。
+            self.assertFalse(handled)
+            self.assertEqual(self.backend.calls, [])
+            self.assertEqual(self.cloud.ack_posts, [])
+            self.assertEqual(worker.last_ack_id, "cmd-before-operation-log")
+            self.assertFalse(state_path.exists())
+            self.assertEqual(len(self.cloud.status_posts), 1)
+            self.assertIn("last_ack_id=cmd-before-operation-log", self.cloud.get_paths[-1])
+            encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+            self.assertNotIn("operation_log", encoded_status)
+            self.assertNotIn("phone_operation_log", encoded_status)
+            self.assertNotIn("support_handoff", encoded_status)
+            self.assertNotIn("trigger_robot_action", encoded_status)
+            self.assertNotIn("cursor_override", encoded_status)
+            self.assertNotIn("delivery_success", encoded_status)
+            self.assertNotIn("/cmd_vel", encoded_status)
+            self.assertNotIn("Authorization", encoded_status)
 
     def test_metadata_only_cloud_external_probe_response_does_not_start_ack_or_persist_cursor(self):
         with tempfile.TemporaryDirectory() as tmpdir:

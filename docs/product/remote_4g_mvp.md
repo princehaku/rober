@@ -463,6 +463,25 @@ Phone and diagnostics payloads must not expose bearer tokens, Authorization
 headers, credential-bearing cloud URLs, serial devices, baudrate, WAVE ROVER
 parameters, `/cmd_vel`, raw ROS topic names, or hardware configuration fields.
 
+The mobile operation-log gate adds a phone/support metadata layer with
+`evidence_boundary=software_proof_docker_mobile_operation_log_gate`. Fields such
+as `operation_log` or `phone_operation_log` may summarize recent user actions,
+blocked reasons, pending ACK, offline/recovery states, manual takeover, and
+support handoff copy. They are not part of the `trashbot.remote.v1`
+command/status/ack envelope, and they must not be used by the robot bridge to
+start `collect`, `confirm_dropoff`, or `cancel`, POST ACK, advance or persist a
+cursor, or turn ACK wording into delivery success. ACK remains accepted or
+processing evidence only; phones and support tools must continue reading status
+and task records for actual progress, failure, cancellation, or handoff state.
+
+Operation-log metadata must stay phone-safe. It must not expose bearer tokens,
+Authorization headers, OSS secrets, AK/SK, root passwords, DB/queue URLs,
+credential-bearing URLs, raw ROS topic names, `/cmd_vel`, serial devices,
+baudrate, WAVE ROVER parameters, local filesystem paths, tracebacks, checksums,
+or complete artifacts. This gate does not prove a real phone device/browser,
+production app, real cloud/4G, OSS/CDN live traffic, production DB/queue,
+Nav2/fixed-route delivery, WAVE ROVER movement, HIL, or delivery success.
+
 ## Command Contract
 
 ```json

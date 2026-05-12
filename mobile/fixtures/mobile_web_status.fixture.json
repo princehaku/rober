@@ -7,6 +7,24 @@
   "can_collect": true,
   "can_confirm_dropoff": false,
   "can_cancel": false,
+  "operation_log": {
+    "schema": "trashbot.phone_operation_log.v1",
+    "evidence_boundary": "software_proof_docker_mobile_operation_log_gate",
+    "events": [
+      {
+        "timestamp": "2026-05-13T07:20:00+08:00",
+        "event_type": "status_explained",
+        "safe_phone_copy": "最近状态：等待用户确认垃圾已放入。",
+        "recovery_hint": "勾选已放入垃圾后再尝试开始送达。"
+      },
+      {
+        "timestamp": "2026-05-13T07:21:00+08:00",
+        "event_type": "support_handoff",
+        "safe_phone_copy": "支持交接：可复制脱敏摘要给支持人员。",
+        "recovery_hint": "打开 Support Handoff，不会触发机器人动作。"
+      }
+    ]
+  },
   "phone_readiness": {
     "schema": "trashbot.phone_readiness.v1",
     "schema_version": 1,

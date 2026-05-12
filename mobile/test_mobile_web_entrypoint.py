@@ -30,6 +30,8 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("phone_task_flow_readiness", app)
         self.assertIn("phone_support_bundle", app)
         self.assertIn("voice_prompt_readiness", app)
+        self.assertIn("operation_log", app)
+        self.assertIn("phone_operation_log", app)
         self.assertEqual(manifest["evidence_boundary"], "software_proof_docker_mobile_web_entrypoint_gate")
         self.assertIn("manifest.webmanifest", index)
 
@@ -52,6 +54,25 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("请先显式确认垃圾已放入", app)
         self.assertIn("renderOfflineFailure", app)
         self.assertIn("button.disabled = true", app)
+
+    def test_operation_log_panel_is_visible_and_read_only(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        self.assertIn("operationLogTitle", index)
+        self.assertIn("操作日志", index)
+        self.assertIn("operationLogList", index)
+        self.assertIn("operationSupportEntry", index)
+        self.assertIn("不会打开控制动作", index)
+        self.assertIn("operationLogFromStatus", app)
+        self.assertIn("deriveOperationLogEntries", app)
+        self.assertIn("phone_readiness", app)
+        self.assertIn("commandSafetyFromReadiness", app)
+        self.assertIn("phone_task_flow_readiness", app)
+        self.assertIn("phone_offline_resume_readiness", app)
+        self.assertIn("phone_support_bundle", app)
+        self.assertIn("voice_prompt_readiness", app)
+        self.assertNotRegex(app, r"operationLog.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
 
     def test_start_confirmation_panel_and_payload_are_phone_safe(self):
         app = self.read("app.js")
@@ -114,7 +135,15 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertTrue(payload["fixture"])
         self.assertIn("not live robot state", payload["fixture_note"])
         self.assertEqual(payload["phone_readiness"]["schema"], "trashbot.phone_readiness.v1")
+        self.assertEqual(payload["operation_log"]["schema"], "trashbot.phone_operation_log.v1")
+        self.assertEqual(
+            payload["operation_log"]["evidence_boundary"],
+            "software_proof_docker_mobile_operation_log_gate",
+        )
         self.assertIn("trashbot.command_safety.v1", encoded)
+        self.assertIn("最近状态：等待用户确认垃圾已放入", encoded)
+        self.assertIn("勾选已放入垃圾后再尝试开始送达", encoded)
+        self.assertIn("支持交接：可复制脱敏摘要给支持人员", encoded)
         self.assertIn("destination_summary", encoded)
         self.assertIn("destination_confirmed", encoded)
         self.assertIn("ack 只表示指令受理或处理中，不代表送达成功", encoded)

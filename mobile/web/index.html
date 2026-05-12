@@ -104,6 +104,18 @@
         <p id="voiceBoundary" class="hint">本地软件证明不代表真实喇叭或 TTS 播放。</p>
       </section>
 
+      <section class="operation-log-panel" aria-labelledby="operationLogTitle">
+        <div class="section-heading">
+          <h2 id="operationLogTitle">操作日志</h2>
+          <span id="operationLogSource" class="gate-badge gate-blocked">等待安全事件</span>
+        </div>
+        <p id="operationLogHint" class="hint">仅显示后端 phone-safe 事件；不会打开控制动作。</p>
+        <ol id="operationLogList" class="operation-log">
+          <li>等待后端返回 operation log 或 readiness 摘要。</li>
+        </ol>
+        <p id="operationSupportEntry" class="message">支持交接入口会保持可见，但不触发机器人动作。</p>
+      </section>
+
       <section class="support-panel" aria-labelledby="supportTitle">
         <div class="section-heading">
           <h2 id="supportTitle">诊断与求助</h2>
