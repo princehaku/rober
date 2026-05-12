@@ -362,6 +362,33 @@ transaction isolation, a production DB/queue, multi-instance consistency, real
 cloud, real 4G/SIM, Nav2/fixed-route delivery, WAVE ROVER/HIL, or delivery
 success proof.
 
+The production recovery gate adds the next Docker/local artifact for production
+backup and disaster recovery readiness gaps. Generate it with:
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --write-production-recovery-artifact /tmp/trashbot_production_recovery_gate.json \
+  --production-recovery-robot-id robot-local-proof
+```
+
+Then pass it to preflight with
+`TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT` or
+`--production-recovery-artifact`. The resulting evidence boundary is
+`software_proof_docker_production_recovery_gate`; phone consumption uses
+`software_proof_docker_production_recovery_phone_consumption`.
+
+The artifact fixes the local gate expectations for Docker/local
+backup/restore input, schema/checksum invariants, production backup policy and
+disaster recovery staying blocked, file/SQLite proof store boundaries,
+production DB/queue absence, multi-instance consistency absence, retention
+policy absence, RPO/RTO absence, and ACK as command accepted/processing
+evidence only. It covers `ready|missing|invalid|stale|failed|blocked`
+summaries for phone status and diagnostics. It is not real production DB/queue,
+real production backup policy, real disaster recovery, multi-instance
+consistency, real cloud, real 4G/SIM, OSS/CDN live traffic, Nav2/fixed-route
+delivery, WAVE ROVER/HIL, or delivery success proof.
+
 Phone and diagnostics payloads must not expose bearer tokens, Authorization
 headers, credential-bearing cloud URLs, serial devices, baudrate, WAVE ROVER
 parameters, `/cmd_vel`, raw ROS topic names, or hardware configuration fields.

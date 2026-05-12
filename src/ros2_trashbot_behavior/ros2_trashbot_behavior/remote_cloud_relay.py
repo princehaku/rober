@@ -36,6 +36,8 @@ QUEUE_ORDERING_DRILL_EVIDENCE_BOUNDARY = "software_proof_docker_queue_ordering_d
 QUEUE_ORDERING_DRILL_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_queue_ordering_phone_consumption"
 TRANSACTION_ISOLATION_EVIDENCE_BOUNDARY = "software_proof_docker_transaction_isolation_gate"
 TRANSACTION_ISOLATION_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_transaction_isolation_phone_consumption"
+PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY = "software_proof_docker_production_recovery_gate"
+PRODUCTION_RECOVERY_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_production_recovery_phone_consumption"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -43,6 +45,7 @@ PROVISIONING_AUDIT_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 PRODUCTION_STORE_QUEUE_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 QUEUE_ORDERING_DRILL_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 TRANSACTION_ISOLATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
+PRODUCTION_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 DEPLOY_EVIDENCE_BOUNDARY = "software_proof_docker_deploy"
 BACKUP_ARTIFACT_SCHEMA = "trashbot.remote_cloud_relay_backup.v1"
 BACKUP_ARTIFACT_VERSION = 1
@@ -60,6 +63,8 @@ QUEUE_ORDERING_DRILL_SCHEMA = "trashbot.queue_ordering_drill"
 QUEUE_ORDERING_DRILL_SCHEMA_VERSION = 1
 TRANSACTION_ISOLATION_SCHEMA = "trashbot.transaction_isolation_drill"
 TRANSACTION_ISOLATION_SCHEMA_VERSION = 1
+PRODUCTION_RECOVERY_SCHEMA = "trashbot.production_recovery_gate"
+PRODUCTION_RECOVERY_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -152,6 +157,22 @@ TRANSACTION_ISOLATION_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+PRODUCTION_RECOVERY_NOT_PROVEN = [
+    "production_db_or_queue",
+    "multi_instance_consistency",
+    "production_backup_policy",
+    "real_disaster_recovery",
+    "production_restore_runbook",
+    "production_rpo_rto_commitment",
+    "real_cloud",
+    "real_4g_sim",
+    "real_oss_upload",
+    "cdn_origin_fetch",
+    "https_tls_public_ingress",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -171,6 +192,7 @@ PHONE_COPY = {
     "production_store_queue_blocked": "生产 DB/queue 软件证明未通过校验，请重新生成后再试。",
     "queue_ordering_drill_blocked": "队列顺序演练软件证明未通过校验，请重新生成后再试。",
     "transaction_isolation_blocked": "事务隔离演练软件证明未通过校验，请重新生成后再试。",
+    "production_recovery_blocked": "生产备份/灾备恢复 gate 未通过校验，请重新生成后再试。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -2216,6 +2238,303 @@ def build_phone_transaction_isolation_summary(artifact_path, *, now=None, stale_
     return phone_summary
 
 
+def _production_recovery_forbidden_markers(payload):
+    # Production recovery artifact 会被手机和 preflight 消费，不能泄露真实 DB/queue、路径、凭证或底盘控制词。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "secret",
+        "password",
+        "postgres://",
+        "mysql://",
+        "redis://",
+        "amqp://",
+        "kafka://",
+        "queue url",
+        "queue_url",
+        "database url",
+        "database_url",
+        "backup path",
+        "restore path",
+        "raw state path",
+        "state path",
+        "/tmp/",
+        "/dev/",
+        "serial",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+        "traceback",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def build_production_recovery_artifact_payload(robot_id, *, generated_at=None, drill_status="passed"):
+    """生成 Docker/local production recovery gate；本地恢复演练不能等同真实生产灾备。"""
+    robot_key = _robot_key(robot_id)
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    status_value = _safe_enum(drill_status, {"passed", "failed"}, default="failed")
+    body = {
+        "schema": PRODUCTION_RECOVERY_SCHEMA,
+        "schema_version": PRODUCTION_RECOVERY_SCHEMA_VERSION,
+        "evidence_boundary": PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY,
+        "robot_id": robot_key,
+        "updated_at": generated_value,
+        "local_backup_restore_status": (
+            "docker_local_backup_restore_artifact_verified"
+            if status_value == "passed"
+            else "docker_local_backup_restore_artifact_failed"
+        ),
+        "recovery_drill_status": (
+            "schema_integrity_invariants_verified"
+            if status_value == "passed"
+            else "schema_integrity_invariants_failed"
+        ),
+        "production_backup_policy_status": "blocked_not_proven",
+        "disaster_recovery_status": "blocked_not_proven",
+        "state_backend_status": "file_or_sqlite_proof_store_only",
+        "db_queue_status": "production_db_queue_not_connected",
+        "multi_instance_status": "multi_instance_consistency_not_proven",
+        "retention_status": "production_retention_policy_not_proven",
+        "restore_objective_status": "production_rpo_rto_not_proven",
+        "ack_semantics": "command_accepted_or_processing_only_not_delivery_success",
+        "production_ready": False,
+        "overall_status": "blocked",
+        "not_proven": list(PRODUCTION_RECOVERY_NOT_PROVEN),
+        "safe_summary": (
+            "Production recovery gate 已生成 Docker/local software proof；真实生产备份/灾备仍未验证。"
+            if status_value == "passed"
+            else "Production recovery gate 未通过；不能声明本地恢复软件证明。"
+        ),
+        "retry_hint": (
+            "pass_production_recovery_artifact_to_preflight_and_keep_production_blocked"
+            if status_value == "passed"
+            else "rerun_production_recovery_gate_after_fixing_local_recovery_failure"
+        ),
+    }
+    forbidden = _production_recovery_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("production recovery artifact contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_production_recovery_artifact_payload(artifact, *, now=None, stale_after_sec=None):
+    # 校验只返回摘要；完整 artifact、robot_id 和 checksum 不进入手机输出，避免本地演练被误当生产灾备。
+    if not isinstance(artifact, dict):
+        raise ValueError("production recovery artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != PRODUCTION_RECOVERY_SCHEMA:
+        raise ValueError("production recovery schema mismatch")
+    if artifact.get("schema_version") != PRODUCTION_RECOVERY_SCHEMA_VERSION:
+        raise ValueError("production recovery schema version mismatch")
+    if artifact.get("evidence_boundary") != PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY:
+        raise ValueError("production recovery evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("production recovery checksum mismatch")
+    expected = {
+        "production_backup_policy_status": "blocked_not_proven",
+        "disaster_recovery_status": "blocked_not_proven",
+        "state_backend_status": "file_or_sqlite_proof_store_only",
+        "db_queue_status": "production_db_queue_not_connected",
+        "multi_instance_status": "multi_instance_consistency_not_proven",
+        "retention_status": "production_retention_policy_not_proven",
+        "restore_objective_status": "production_rpo_rto_not_proven",
+        "ack_semantics": "command_accepted_or_processing_only_not_delivery_success",
+    }
+    for field_name, expected_value in expected.items():
+        if artifact.get(field_name) != expected_value:
+            raise ValueError(f"production recovery {field_name} mismatch")
+    status_pair = (
+        str(artifact.get("local_backup_restore_status") or ""),
+        str(artifact.get("recovery_drill_status") or ""),
+    )
+    if status_pair not in {
+        ("docker_local_backup_restore_artifact_verified", "schema_integrity_invariants_verified"),
+        ("docker_local_backup_restore_artifact_failed", "schema_integrity_invariants_failed"),
+    }:
+        raise ValueError("production recovery local drill status mismatch")
+    if artifact.get("production_ready") is not False or artifact.get("overall_status") != "blocked":
+        raise ValueError("production recovery must stay production blocked")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    if [item for item in PRODUCTION_RECOVERY_NOT_PROVEN if item not in not_proven]:
+        raise ValueError("production recovery not_proven list is incomplete")
+    if not str(artifact.get("safe_summary") or "") or not str(artifact.get("retry_hint") or ""):
+        raise ValueError("production recovery phone copy missing")
+    forbidden = _production_recovery_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("production recovery artifact contains forbidden phone-unsafe markers")
+    updated_at = str(artifact.get("updated_at") or "").strip()
+    timestamp = _parse_manifest_time(updated_at)
+    stale_window = (
+        PRODUCTION_RECOVERY_ARTIFACT_STALE_AFTER_SEC
+        if stale_after_sec is None
+        else float(stale_after_sec)
+    )
+    now_value = _now() if now is None else float(now)
+    staleness = "fresh"
+    if timestamp is None or now_value - timestamp > stale_window:
+        staleness = "stale"
+    passed = status_pair[0].endswith("_verified") and status_pair[1].endswith("_verified")
+    return {
+        "ok": passed and staleness == "fresh",
+        "schema": PRODUCTION_RECOVERY_SCHEMA,
+        "schema_version": PRODUCTION_RECOVERY_SCHEMA_VERSION,
+        "evidence_boundary": PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY,
+        "local_backup_restore_status": status_pair[0],
+        "recovery_drill_status": status_pair[1],
+        "production_backup_policy_status": expected["production_backup_policy_status"],
+        "disaster_recovery_status": expected["disaster_recovery_status"],
+        "state_backend_status": expected["state_backend_status"],
+        "db_queue_status": expected["db_queue_status"],
+        "multi_instance_status": expected["multi_instance_status"],
+        "retention_status": expected["retention_status"],
+        "restore_objective_status": expected["restore_objective_status"],
+        "ack_semantics": expected["ack_semantics"],
+        "production_ready": False,
+        "overall_status": "blocked",
+        "safe_summary": str(artifact.get("safe_summary") or ""),
+        "retry_hint": str(artifact.get("retry_hint") or ""),
+        "updated_at": updated_at,
+        "staleness": staleness,
+        "checksum": checksum,
+        "not_proven": list(PRODUCTION_RECOVERY_NOT_PROVEN),
+    }
+
+
+def create_production_recovery_artifact(artifact_path, robot_id, *, drill_status="passed"):
+    # CLI、preflight 和手机摘要共用同一校验函数；本地恢复通过也必须保持 production_ready=false。
+    artifact = build_production_recovery_artifact_payload(robot_id, drill_status=drill_status)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_production_recovery_artifact_payload(artifact)
+    return {
+        "ok": summary.get("ok"),
+        "production_recovery_status": "passed" if summary.get("ok") else "failed",
+        "evidence_boundary": PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY,
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(PRODUCTION_RECOVERY_NOT_PROVEN),
+    }
+
+
+def production_recovery_artifact_summary(artifact_path, *, now=None, stale_after_sec=None):
+    # Preflight 只消费摘要和状态；路径、robot_id、checksum 不回显给手机或运维面板。
+    try:
+        artifact = _load_json_file(artifact_path, "production recovery artifact")
+        summary = validate_production_recovery_artifact_payload(
+            artifact,
+            now=now,
+            stale_after_sec=stale_after_sec,
+        )
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "production_recovery_invalid",
+            "safe_summary": "Production recovery gate 产物损坏。",
+            "retry_hint": "重新生成 production recovery artifact 后刷新 preflight。",
+            "evidence_boundary": PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY,
+            "not_proven": list(PRODUCTION_RECOVERY_NOT_PROVEN),
+            "debug_reason": _safe_error_reason(exc),
+        }
+    if summary.get("staleness") == "stale":
+        summary.update(
+            {
+                "ok": False,
+                "state": "stale",
+                "reason_code": "production_recovery_stale",
+                "safe_summary": "Production recovery gate 软件证明已过期。",
+                "retry_hint": "重新生成 production recovery artifact，避免手机消费旧证明。",
+            }
+        )
+        return summary
+    if summary.get("local_backup_restore_status", "").endswith("_failed"):
+        summary.update(
+            {
+                "ok": False,
+                "state": "failed",
+                "reason_code": "production_recovery_failed",
+            }
+        )
+        return summary
+    summary.update({"state": "ready", "reason_code": "production_recovery_passed"})
+    return summary
+
+
+def _phone_production_recovery_base(state, safe_summary, retry_hint):
+    # 手机端只显示上线前缺口摘要，不显示 artifact 原文、路径、checksum 或真实恢复基础设施信息。
+    return {
+        "state": state,
+        "schema": PRODUCTION_RECOVERY_SCHEMA,
+        "schema_version": PRODUCTION_RECOVERY_SCHEMA_VERSION,
+        "evidence_boundary": PRODUCTION_RECOVERY_PHONE_EVIDENCE_BOUNDARY,
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "local_backup_restore_status": "",
+        "recovery_drill_status": "",
+        "production_backup_policy_status": "blocked_not_proven",
+        "disaster_recovery_status": "blocked_not_proven",
+        "state_backend_status": "",
+        "db_queue_status": "production_db_queue_not_connected",
+        "multi_instance_status": "multi_instance_consistency_not_proven",
+        "retention_status": "production_retention_policy_not_proven",
+        "restore_objective_status": "production_rpo_rto_not_proven",
+        "ack_semantics": "command_accepted_or_processing_only_not_delivery_success",
+        "production_ready": False,
+        "overall_status": "blocked",
+        "updated_at": "",
+        "staleness": "unknown",
+        "not_proven": list(PRODUCTION_RECOVERY_NOT_PROVEN),
+    }
+
+
+def build_phone_production_recovery_summary(artifact_path, *, now=None, stale_after_sec=None):
+    """Return a phone-safe production recovery gate summary."""
+    artifact_ref = os.path.expanduser(str(artifact_path or "")).strip()
+    if not artifact_ref or not os.path.exists(artifact_ref):
+        return _phone_production_recovery_base(
+            "missing",
+            "尚未提供 production recovery artifact，不能声明生产备份/灾备软件证明。",
+            "请生成 production recovery artifact 后刷新状态。",
+        )
+    summary = production_recovery_artifact_summary(
+        artifact_ref,
+        now=now,
+        stale_after_sec=stale_after_sec,
+    )
+    if not summary.get("ok"):
+        return _phone_production_recovery_base(
+            str(summary.get("state") or "invalid"),
+            str(summary.get("safe_summary") or "Production recovery gate 产物不可用。"),
+            str(summary.get("retry_hint") or "重新生成 production recovery artifact 后刷新状态。"),
+        )
+    phone_summary = _phone_production_recovery_base(
+        "ready",
+        "Production recovery gate 软件证明已准备；这只是 Docker/local software proof，不是生产灾备完成。",
+        "继续补真实生产备份策略、灾备恢复、多实例和生产 DB/queue 证据。",
+    )
+    phone_summary.update(
+        {
+            "local_backup_restore_status": str(summary.get("local_backup_restore_status") or ""),
+            "recovery_drill_status": str(summary.get("recovery_drill_status") or ""),
+            "state_backend_status": str(summary.get("state_backend_status") or ""),
+            "updated_at": str(summary.get("updated_at") or ""),
+            "staleness": str(summary.get("staleness") or "fresh"),
+        }
+    )
+    return phone_summary
+
+
 def build_oss_cdn_manifest_payload(robot_id, task_id, date_text=None, objects=None, created_at=None):
     """生成 Docker/local OSS/CDN 对象引用 proof；不声明真实上传、回源或生产账号。"""
     robot_key = _robot_key(robot_id)
@@ -2516,6 +2835,7 @@ def production_preflight_payload(env=None):
     production_store_queue_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT")
     queue_ordering_drill_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_ARTIFACT")
     transaction_isolation_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT")
+    production_recovery_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT")
     tls_mode_safe = _safe_enum(tls_mode, {"future_reverse_proxy", "terminated", "managed", "reverse_proxy"})
     ingress_mode_safe = _safe_enum(ingress_mode, {"missing", "private_only", "public_https"})
     oss_credential_mode_safe = _safe_enum(oss_credential_mode, {"placeholder", "sts", "restricted_ak", "managed_identity"})
@@ -3111,6 +3431,67 @@ def production_preflight_payload(env=None):
             )
         )
 
+    if production_recovery_artifact_path:
+        # Production recovery gate 只校验 Docker/local artifact，不连接或修改真实生产备份/灾备资源。
+        recovery_gate_summary = production_recovery_artifact_summary(production_recovery_artifact_path)
+        if recovery_gate_summary.get("ok"):
+            checks.append(
+                _check(
+                    "production_recovery",
+                    "pass",
+                    "local_production_recovery_artifact_valid",
+                    "已找到通过 schema、checksum 和 phone-safe 校验的 production recovery artifact。",
+                    "继续补真实生产备份策略、灾备恢复、多实例和生产 DB/queue 证据。",
+                    {
+                        "artifact_schema": PRODUCTION_RECOVERY_SCHEMA,
+                        "schema_version": PRODUCTION_RECOVERY_SCHEMA_VERSION,
+                        "local_backup_restore_status": recovery_gate_summary.get("local_backup_restore_status"),
+                        "recovery_drill_status": recovery_gate_summary.get("recovery_drill_status"),
+                        "production_backup_policy_status": recovery_gate_summary.get(
+                            "production_backup_policy_status"
+                        ),
+                        "disaster_recovery_status": recovery_gate_summary.get("disaster_recovery_status"),
+                        "state_backend_status": recovery_gate_summary.get("state_backend_status"),
+                        "db_queue_status": recovery_gate_summary.get("db_queue_status"),
+                        "multi_instance_status": recovery_gate_summary.get("multi_instance_status"),
+                        "retention_status": recovery_gate_summary.get("retention_status"),
+                        "restore_objective_status": recovery_gate_summary.get("restore_objective_status"),
+                        "ack_semantics": recovery_gate_summary.get("ack_semantics"),
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "staleness": recovery_gate_summary.get("staleness"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            state = str(recovery_gate_summary.get("state") or "invalid")
+            checks.append(
+                _check(
+                    "production_recovery",
+                    "blocked",
+                    f"production_recovery_artifact_{state}",
+                    str(recovery_gate_summary.get("safe_summary") or "Production recovery gate 产物不可用。"),
+                    str(recovery_gate_summary.get("retry_hint") or "重新生成 production recovery artifact 后重跑 preflight。"),
+                    {
+                        "artifact_present": True,
+                        "reason_code": recovery_gate_summary.get("reason_code", "production_recovery_invalid"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "production_recovery",
+                "warning",
+                "production_recovery_artifact_missing",
+                "尚未提供 production recovery artifact，不能声明生产备份/灾备恢复软件证明。",
+                "生成 production recovery artifact，并用 TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT 传给 preflight。",
+                {"artifact_present": False, "software_proof_only": True},
+            )
+        )
+
     if _phone_safe_failure_ready():
         checks.append(
             _check(
@@ -3172,6 +3553,10 @@ def production_preflight_payload(env=None):
         check["name"] == "transaction_isolation" and check["status"] == "pass"
         for check in checks
     )
+    local_production_recovery_ok = any(
+        check["name"] == "production_recovery" and check["status"] == "pass"
+        for check in checks
+    )
     not_proven = [
         "production_credential_rotation",
         "production_robot_provisioning",
@@ -3209,6 +3594,8 @@ def production_preflight_payload(env=None):
         not_proven.insert(13, "queue_ordering_drill")
     if not local_transaction_isolation_ok:
         not_proven.insert(14, "transaction_isolation_drill")
+    if not local_production_recovery_ok:
+        not_proven.insert(15, "production_recovery_gate")
     payload = {
         "ok": production_ready,
         "software_proof_ready": bool(
@@ -3218,12 +3605,15 @@ def production_preflight_payload(env=None):
             or local_production_store_queue_ok
             or local_queue_ordering_drill_ok
             or local_transaction_isolation_ok
+            or local_production_recovery_ok
         ),
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
         "protocol_version": PROTOCOL_VERSION,
         "evidence_boundary": (
-            TRANSACTION_ISOLATION_EVIDENCE_BOUNDARY
+            PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY
+            if local_production_recovery_ok
+            else TRANSACTION_ISOLATION_EVIDENCE_BOUNDARY
             if local_transaction_isolation_ok
             else QUEUE_ORDERING_DRILL_EVIDENCE_BOUNDARY
             if local_queue_ordering_drill_ok
@@ -4450,6 +4840,11 @@ def main(argv=None):
         help="phone-safe transaction isolation drill artifact consumed by preflight",
     )
     parser.add_argument(
+        "--production-recovery-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT", ""),
+        help="phone-safe production recovery gate artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
@@ -4480,6 +4875,11 @@ def main(argv=None):
         help="write a phone-safe transaction isolation drill artifact JSON and exit",
     )
     parser.add_argument(
+        "--write-production-recovery-artifact",
+        default="",
+        help="write a phone-safe production recovery gate artifact JSON and exit",
+    )
+    parser.add_argument(
         "--credential-rotation-robot-id",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ROBOT_ID", "robot-local-proof"),
         help="robot id embedded in generated credential rotation proof",
@@ -4505,6 +4905,11 @@ def main(argv=None):
         help="robot id embedded in generated transaction isolation proof",
     )
     parser.add_argument(
+        "--production-recovery-robot-id",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ROBOT_ID", "robot-local-proof"),
+        help="robot id embedded in generated production recovery proof",
+    )
+    parser.add_argument(
         "--queue-ordering-drill-status",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_STATUS", "passed"),
         choices=("passed", "failed"),
@@ -4515,6 +4920,12 @@ def main(argv=None):
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_STATUS", "passed"),
         choices=("passed", "failed"),
         help="local drill status embedded in generated transaction isolation proof",
+    )
+    parser.add_argument(
+        "--production-recovery-status",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_STATUS", "passed"),
+        choices=("passed", "failed"),
+        help="local drill status embedded in generated production recovery proof",
     )
     parser.add_argument(
         "--manifest-robot-id",
@@ -4595,9 +5006,24 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT"] = (
                 args.transaction_isolation_artifact
             )
+        if args.production_recovery_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT"] = (
+                args.production_recovery_artifact
+            )
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
+    if args.write_production_recovery_artifact:
+        try:
+            payload = create_production_recovery_artifact(
+                args.write_production_recovery_artifact,
+                args.production_recovery_robot_id,
+                drill_status=args.production_recovery_status,
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error("production_recovery_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     if args.write_transaction_isolation_artifact:
         try:
             payload = create_transaction_isolation_artifact(

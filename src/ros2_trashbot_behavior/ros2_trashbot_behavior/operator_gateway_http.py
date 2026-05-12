@@ -12,6 +12,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     build_phone_network_recovery_summary,
     build_phone_oss_cdn_manifest_summary,
     build_phone_production_store_queue_summary,
+    build_phone_production_recovery_summary,
     build_phone_provisioning_audit_summary,
     build_phone_queue_ordering_drill_summary,
     build_phone_transaction_isolation_summary,
@@ -3011,6 +3012,7 @@ def build_phone_readiness(
     production_store_queue=None,
     queue_ordering_drill=None,
     transaction_isolation=None,
+    production_recovery=None,
 ):
     """Build the phone-first readiness summary used by `/api/status`.
 
@@ -3060,6 +3062,12 @@ def build_phone_readiness(
         dict(transaction_isolation)
         if isinstance(transaction_isolation, dict)
         else build_phone_transaction_isolation_summary("")
+    )
+    # production recovery 是 O6 上线前灾备缺口摘要；本地 artifact 不能改变任何动作权限。
+    production_recovery_gate = (
+        dict(production_recovery)
+        if isinstance(production_recovery, dict)
+        else build_phone_production_recovery_summary("")
     )
     permissions = _local_action_permissions(status)
     state = str(status.get("state") or "unknown").strip() or "unknown"
@@ -3189,6 +3197,7 @@ def build_phone_readiness(
         "production_store_queue": dict(store_queue_gate),
         "queue_ordering_drill": dict(queue_ordering_gate),
         "transaction_isolation": dict(transaction_isolation_gate),
+        "production_recovery": dict(production_recovery_gate),
         "not_proven": list(PHONE_READINESS_NOT_PROVEN),
     }
 
@@ -3239,6 +3248,10 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         getattr(gateway, "transaction_isolation_artifact_ref", "")
         or os.environ.get("TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT", "")
     )
+    production_recovery = build_phone_production_recovery_summary(
+        getattr(gateway, "production_recovery_artifact_ref", "")
+        or os.environ.get("TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT", "")
+    )
     # 可选 gate 字段只在调用方已提供时采纳；默认 not_run/unknown，不推断生产 readiness。
     payload["phone_readiness"] = build_phone_readiness(
         payload,
@@ -3252,6 +3265,7 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         production_store_queue=production_store_queue,
         queue_ordering_drill=queue_ordering_drill,
         transaction_isolation=transaction_isolation,
+        production_recovery=production_recovery,
     )
     phone_support_bundle = build_phone_support_bundle(payload, payload["phone_readiness"])
     voice_prompt_readiness = build_voice_prompt_readiness(
@@ -3281,6 +3295,8 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
     # HTTP diagnostics 复用 status 里的同一份摘要，避免 status/diagnostics 对 transaction gate 给出两套口径。
     if isinstance(phone_readiness.get("transaction_isolation"), dict):
         diagnostics_payload["transaction_isolation"] = dict(phone_readiness["transaction_isolation"])
+    if isinstance(phone_readiness.get("production_recovery"), dict):
+        diagnostics_payload["production_recovery"] = dict(phone_readiness["production_recovery"])
     latest_status = diagnostics_payload.get("latest_status")
     if isinstance(latest_status, dict):
         latest_status.setdefault("phone_task_flow_readiness", task_flow)

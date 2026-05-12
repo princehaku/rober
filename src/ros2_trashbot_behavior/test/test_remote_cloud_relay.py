@@ -32,6 +32,9 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     PRODUCTION_STORE_QUEUE_EVIDENCE_BOUNDARY,
     PRODUCTION_STORE_QUEUE_PHONE_EVIDENCE_BOUNDARY,
     PRODUCTION_STORE_QUEUE_SCHEMA,
+    PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY,
+    PRODUCTION_RECOVERY_PHONE_EVIDENCE_BOUNDARY,
+    PRODUCTION_RECOVERY_SCHEMA,
     PROVISIONING_AUDIT_EVIDENCE_BOUNDARY,
     PROVISIONING_AUDIT_PHONE_EVIDENCE_BOUNDARY,
     PROVISIONING_AUDIT_SCHEMA,
@@ -49,6 +52,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     build_credential_rotation_artifact_payload,
     build_phone_credential_rotation_summary,
     build_phone_production_store_queue_summary,
+    build_phone_production_recovery_summary,
     build_oss_cdn_manifest_payload,
     build_phone_network_recovery_summary,
     build_phone_oss_cdn_manifest_summary,
@@ -56,6 +60,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     build_phone_queue_ordering_drill_summary,
     build_phone_transaction_isolation_summary,
     build_production_store_queue_artifact_payload,
+    build_production_recovery_artifact_payload,
     build_provisioning_audit_artifact_payload,
     build_queue_ordering_drill_artifact_payload,
     build_transaction_isolation_artifact_payload,
@@ -65,6 +70,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     create_network_recovery_artifact,
     create_oss_cdn_manifest_artifact,
     create_production_store_queue_artifact,
+    create_production_recovery_artifact,
     create_provisioning_audit_artifact,
     create_queue_ordering_drill_artifact,
     create_sqlite_backup_artifact,
@@ -73,6 +79,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     network_recovery_drill_payload,
     oss_cdn_manifest_summary,
     production_preflight_payload,
+    production_recovery_artifact_summary,
     production_store_queue_artifact_summary,
     provisioning_audit_artifact_summary,
     queue_ordering_drill_artifact_summary,
@@ -2208,6 +2215,235 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             self.assertEqual(
                 failed_checks["transaction_isolation"]["code"],
                 "transaction_isolation_artifact_failed",
+            )
+
+    def test_production_recovery_artifact_generation_and_phone_summary_are_safe(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact_path = pathlib.Path(tmp) / "production_recovery.json"
+            result = create_production_recovery_artifact(artifact_path, "robot-local-proof")
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            summary = production_recovery_artifact_summary(artifact_path)
+            phone = build_phone_production_recovery_summary(artifact_path)
+            encoded_phone = json.dumps(phone, ensure_ascii=False)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(artifact["schema"], PRODUCTION_RECOVERY_SCHEMA)
+            self.assertEqual(artifact["evidence_boundary"], PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY)
+            self.assertFalse(artifact["production_ready"])
+            self.assertEqual(artifact["overall_status"], "blocked")
+            self.assertEqual(artifact["local_backup_restore_status"], "docker_local_backup_restore_artifact_verified")
+            self.assertEqual(artifact["production_backup_policy_status"], "blocked_not_proven")
+            self.assertEqual(artifact["disaster_recovery_status"], "blocked_not_proven")
+            self.assertEqual(summary["state"], "ready")
+            self.assertEqual(phone["state"], "ready")
+            self.assertEqual(phone["evidence_boundary"], PRODUCTION_RECOVERY_PHONE_EVIDENCE_BOUNDARY)
+            self.assertEqual(phone["recovery_drill_status"], "schema_integrity_invariants_verified")
+            self.assertFalse(phone["production_ready"])
+            self.assertEqual(phone["overall_status"], "blocked")
+            self.assertIn("production_backup_policy", phone["not_proven"])
+            self.assertIn("real_disaster_recovery", phone["not_proven"])
+            self.assertIn("production_db_or_queue", phone["not_proven"])
+            self.assertNotIn("checksum", encoded_phone)
+            self.assertNotIn(str(artifact_path), encoded_phone)
+            self.assertNotIn("robot-local-proof", encoded_phone)
+
+    def test_production_recovery_summary_fails_closed_for_invalid_stale_failed_blocked_and_hostile_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            ready_path = root / "ready_production_recovery.json"
+            invalid_path = root / "invalid_production_recovery.json"
+            stale_path = root / "stale_production_recovery.json"
+            failed_path = root / "failed_production_recovery.json"
+            blocked_path = root / "blocked_production_recovery.json"
+            hostile_path = root / "hostile_production_recovery.json"
+            ready = build_production_recovery_artifact_payload(
+                "robot-local-proof",
+                generated_at="2026-05-12T04:00:00Z",
+            )
+            ready_path.write_text(json.dumps(ready, ensure_ascii=False), encoding="utf-8")
+            invalid = dict(ready)
+            invalid["checksum"] = "bad"
+            invalid_path.write_text(json.dumps(invalid, ensure_ascii=False), encoding="utf-8")
+            stale = build_production_recovery_artifact_payload(
+                "robot-local-proof",
+                generated_at="2026-05-10T04:00:00Z",
+            )
+            stale_path.write_text(json.dumps(stale, ensure_ascii=False), encoding="utf-8")
+            failed = build_production_recovery_artifact_payload(
+                "robot-local-proof",
+                generated_at="2026-05-12T04:00:00Z",
+                drill_status="failed",
+            )
+            failed_path.write_text(json.dumps(failed, ensure_ascii=False), encoding="utf-8")
+            blocked = dict(ready)
+            blocked["production_ready"] = True
+            body = {key: value for key, value in blocked.items() if key != "checksum"}
+            blocked["checksum"] = _sha256_checksum(body)
+            blocked_path.write_text(json.dumps(blocked, ensure_ascii=False), encoding="utf-8")
+            hostile = dict(ready)
+            hostile["safe_summary"] = (
+                "Authorization Bearer token postgres://db secret queue URL backup path "
+                "/dev/ttyUSB0 serial baudrate WAVE ROVER ROS topic /cmd_vel"
+            )
+            body = {key: value for key, value in hostile.items() if key != "checksum"}
+            hostile["checksum"] = _sha256_checksum(body)
+            hostile_path.write_text(json.dumps(hostile, ensure_ascii=False), encoding="utf-8")
+
+            ok = build_phone_production_recovery_summary(ready_path, now=1778562000.0)
+            invalid_summary = build_phone_production_recovery_summary(invalid_path, now=1778562000.0)
+            stale_summary = build_phone_production_recovery_summary(stale_path, now=1778562000.0)
+            failed_summary = build_phone_production_recovery_summary(failed_path, now=1778562000.0)
+            blocked_summary = build_phone_production_recovery_summary(blocked_path, now=1778562000.0)
+            hostile_summary = build_phone_production_recovery_summary(hostile_path, now=1778562000.0)
+            missing_summary = build_phone_production_recovery_summary(root / "missing.json", now=1778562000.0)
+            encoded = json.dumps(
+                {
+                    "ok": ok,
+                    "invalid": invalid_summary,
+                    "stale": stale_summary,
+                    "failed": failed_summary,
+                    "blocked": blocked_summary,
+                    "hostile": hostile_summary,
+                    "missing": missing_summary,
+                },
+                ensure_ascii=False,
+            )
+
+            self.assertEqual(ok["state"], "ready")
+            self.assertEqual(invalid_summary["state"], "invalid")
+            self.assertEqual(stale_summary["state"], "stale")
+            self.assertEqual(failed_summary["state"], "failed")
+            self.assertEqual(blocked_summary["state"], "invalid")
+            self.assertEqual(hostile_summary["state"], "invalid")
+            self.assertEqual(missing_summary["state"], "missing")
+            for forbidden in (
+                "Authorization",
+                "Bearer",
+                "token",
+                "postgres://",
+                "secret",
+                "queue URL",
+                "backup path",
+                "/dev/ttyUSB0",
+                "serial",
+                "baudrate",
+                "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_preflight_consumes_valid_production_recovery_artifact_without_production_claims(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact_path = pathlib.Path(tmp) / "production_recovery.json"
+            create_production_recovery_artifact(artifact_path, "robot-local-proof")
+            env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "production-token-value",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "terminated",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https",
+                "TRASHBOT_REMOTE_CLOUD_OSS_BUCKET": "bytegallop",
+                "TRASHBOT_REMOTE_CLOUD_OSS_REGION": "oss-cn-hangzhou",
+                "TRASHBOT_REMOTE_CLOUD_OSS_PREFIX": "rober/robot-local-proof/2026-05-12/task-local-proof/",
+                "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL": "https://cdn.bytegallop.com/rober/",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE": "sts",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(pathlib.Path(tmp) / "relay_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                "TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT": str(artifact_path),
+            }
+
+            payload = production_preflight_payload(env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps(payload, ensure_ascii=False)
+
+            self.assertFalse(payload["production_ready"])
+            self.assertTrue(payload["software_proof_ready"])
+            self.assertEqual(payload["overall_status"], "blocked")
+            self.assertEqual(payload["evidence_boundary"], PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY)
+            self.assertEqual(checks["production_recovery"]["status"], "pass")
+            self.assertEqual(
+                checks["production_recovery"]["details"]["production_backup_policy_status"],
+                "blocked_not_proven",
+            )
+            self.assertEqual(
+                checks["production_recovery"]["details"]["disaster_recovery_status"],
+                "blocked_not_proven",
+            )
+            self.assertFalse(checks["production_recovery"]["details"]["production_ready"])
+            self.assertIn("production_backup_policy", payload["not_proven"])
+            self.assertIn("real_disaster_recovery", payload["not_proven"])
+            self.assertIn("production_db_or_queue", payload["not_proven"])
+            self.assertIn("multi_instance_consistency", payload["not_proven"])
+            self.assertIn("real_cloud", payload["not_proven"])
+            self.assertIn("real_4g_sim", payload["not_proven"])
+            self.assertIn("wave_rover_or_hil", payload["not_proven"])
+            for forbidden in (
+                str(artifact_path),
+                "production-token-value",
+                "Authorization",
+                "Bearer",
+                "postgres://",
+                "queue URL",
+                "backup path",
+                "/cmd_vel",
+                "ttyUSB",
+                "baudrate",
+                "WAVE ROVER",
+                "/trashbot/",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_preflight_warns_when_production_recovery_missing_and_blocks_invalid_or_failed_artifact(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base_env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "production-token-value",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "terminated",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https",
+                "TRASHBOT_REMOTE_CLOUD_OSS_BUCKET": "bytegallop",
+                "TRASHBOT_REMOTE_CLOUD_OSS_REGION": "oss-cn-hangzhou",
+                "TRASHBOT_REMOTE_CLOUD_OSS_PREFIX": "rober/robot-local-proof/2026-05-12/task-local-proof/",
+                "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL": "https://cdn.bytegallop.com/rober/",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE": "sts",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(pathlib.Path(tmp) / "relay_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+
+            missing_payload = production_preflight_payload(base_env)
+            missing_checks = {check["name"]: check for check in missing_payload["checks"]}
+            self.assertEqual(missing_checks["production_recovery"]["status"], "warning")
+            self.assertEqual(
+                missing_checks["production_recovery"]["code"],
+                "production_recovery_artifact_missing",
+            )
+
+            invalid_path = pathlib.Path(tmp) / "invalid_production_recovery.json"
+            invalid_path.write_text(json.dumps({"schema": "wrong"}, ensure_ascii=False), encoding="utf-8")
+            invalid_env = dict(base_env)
+            invalid_env["TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT"] = str(invalid_path)
+            invalid_payload = production_preflight_payload(invalid_env)
+            invalid_checks = {check["name"]: check for check in invalid_payload["checks"]}
+            encoded_invalid = json.dumps(invalid_payload, ensure_ascii=False)
+
+            self.assertEqual(invalid_checks["production_recovery"]["status"], "blocked")
+            self.assertEqual(
+                invalid_checks["production_recovery"]["code"],
+                "production_recovery_artifact_invalid",
+            )
+            self.assertNotIn(str(invalid_path), encoded_invalid)
+
+            failed_path = pathlib.Path(tmp) / "failed_production_recovery.json"
+            failed = build_production_recovery_artifact_payload("robot-local-proof", drill_status="failed")
+            failed_path.write_text(json.dumps(failed, ensure_ascii=False), encoding="utf-8")
+            failed_env = dict(base_env)
+            failed_env["TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT"] = str(failed_path)
+            failed_payload = production_preflight_payload(failed_env)
+            failed_checks = {check["name"]: check for check in failed_payload["checks"]}
+
+            self.assertEqual(failed_checks["production_recovery"]["status"], "blocked")
+            self.assertEqual(
+                failed_checks["production_recovery"]["code"],
+                "production_recovery_artifact_failed",
             )
 
 

@@ -840,6 +840,66 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_production_recovery_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "production_recovery": {
+                    "schema": "trashbot.production_recovery_gate",
+                    "evidence_boundary": "software_proof_docker_production_recovery_gate",
+                    "production_ready": False,
+                    "overall_status": "blocked",
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "production_recovery": {
+                    "schema": "trashbot.production_recovery_gate",
+                    "safe_summary": "本地恢复演练可读摘要只能给手机或支持同学展示。",
+                    "next_action": "confirm_dropoff",
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "production_ready": False,
+                    "overall_status": "blocked",
+                    "delivery_success": True,
+                },
+            },
+            "ack_response": {
+                "production_recovery": {
+                    "schema": "trashbot.production_recovery_gate",
+                    "ack_semantics": "delivery_success",
+                    "production_ready": True,
+                    "overall_status": "ready",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-production-recovery-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-production-recovery-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-production-recovery-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        self.assertEqual(ack_payload["message"], "collect")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # production recovery 是手机/支持元数据，ACK 只能表达 command envelope 的本地处理结果。
+        self.assertNotIn("production_recovery", encoded_ack)
+        self.assertNotIn("production_recovery_gate", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_metadata_only_preflight_blocked_response_does_not_start_ack_or_persist_cursor(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
@@ -1062,6 +1122,60 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertNotIn("/cmd_vel", encoded_status)
             self.assertNotIn("/dev/ttyUSB0", encoded_status)
             self.assertNotIn("secret-token", encoded_status)
+
+    def test_metadata_only_production_recovery_response_does_not_start_ack_or_persist_cursor(self):
+        for recovery_state in ("blocked", "invalid", "stale"):
+            with self.subTest(recovery_state=recovery_state):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.backend.calls.clear()
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-recovery-{recovery_state}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        "production_recovery": {
+                            "schema": "trashbot.production_recovery_gate",
+                            "schema_version": 1,
+                            "state": recovery_state,
+                            "evidence_boundary": "software_proof_docker_production_recovery_gate",
+                            "safe_summary": "生产恢复 gate 当前阻塞。",
+                            "retry_hint": "contact_support",
+                            "next_action": "collect",
+                            "trigger_robot_action": "collect",
+                            "cursor_override": "cmd-future",
+                            "production_ready": False,
+                            "overall_status": "blocked",
+                            "delivery_success": True,
+                            "not_proven": [
+                                "real_production_backup_policy",
+                                "real_disaster_recovery",
+                                "wave_rover_hil",
+                            ],
+                        },
+                        "preflight": {"overall_status": "blocked", "production_ready": False},
+                    }
+
+                    handled = worker.poll_once()
+
+                    # 只有 production recovery metadata、没有 command envelope 时，不能执行动作、ACK 或推进游标。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-recovery-{recovery_state}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn("production_recovery", encoded_status)
+                    self.assertNotIn("production_recovery_gate", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
 
     def test_transaction_isolation_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({

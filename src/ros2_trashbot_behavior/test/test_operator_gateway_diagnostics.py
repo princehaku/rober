@@ -28,6 +28,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     create_network_recovery_artifact,
     create_oss_cdn_manifest_artifact,
     create_production_store_queue_artifact,
+    create_production_recovery_artifact,
     create_provisioning_audit_artifact,
     create_queue_ordering_drill_artifact,
     create_transaction_isolation_artifact,
@@ -977,6 +978,40 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(payload["transaction_isolation"]["production_ready"])
         self.assertIn("production_transaction_isolation", payload["transaction_isolation"]["not_proven"])
         self.assertIn("production_db_or_queue", payload["transaction_isolation"]["not_proven"])
+        self.assertNotIn(str(artifact_path), encoded)
+        self.assertNotIn("robot-diagnostics", encoded)
+        self.assertNotIn("checksum", encoded)
+
+    def test_diagnostics_payload_includes_phone_safe_production_recovery_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_path = Path(td) / "production_recovery.json"
+            create_production_recovery_artifact(
+                artifact_path,
+                "robot-diagnostics",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                production_recovery_artifact_ref=str(artifact_path),
+            )
+            encoded = json.dumps(payload["production_recovery"], ensure_ascii=False)
+
+        self.assertEqual(payload["production_recovery"]["state"], "ready")
+        self.assertEqual(
+            payload["production_recovery"]["evidence_boundary"],
+            "software_proof_docker_production_recovery_phone_consumption",
+        )
+        self.assertFalse(payload["production_recovery"]["production_ready"])
+        self.assertEqual(payload["production_recovery"]["overall_status"], "blocked")
+        self.assertIn("production_backup_policy", payload["production_recovery"]["not_proven"])
+        self.assertIn("real_disaster_recovery", payload["production_recovery"]["not_proven"])
         self.assertNotIn(str(artifact_path), encoded)
         self.assertNotIn("robot-diagnostics", encoded)
         self.assertNotIn("checksum", encoded)
