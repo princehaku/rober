@@ -1,0 +1,435 @@
+# OKR 进度日志（详细历史）
+
+本文件留存所有 sprint 进度快照、阶段性 Objective % 调整证据和 sprint 引用。`OKR.md` 第 4.1 节只展示当前 6 个 Objective 的最新进度摘要表；详细历史和单 sprint 证据全部留档在此。
+
+按时间倒序：最新 sprint 在最上方。所有内容均直接来自历次 `OKR.md` 第 4.1 节"补充：sprint xx ..."与 §10-§29 进度快照原文，未对 Objective/KR 文字与完成度数字做改写。
+
+---
+
+## 2026-05-13 系列
+
+更新时间：2026-05-13 00:33 Asia/Shanghai。本系列下"补充"段落原本写在 `OKR.md` §4.1，2026-05-13 00:00 之后迁入本日志。
+
+### 2026-05-13 00-01｜phone-offline-resume-gate｜O5 phone offline/resume readiness software proof，O5 由约 52% 上调到约 54%
+
+`2026.05.13_00-01_phone-offline-resume-gate` 完成 O5 local/Docker phone offline/resume readiness software proof：Task A 新增 `trashbot.phone_offline_resume_readiness.v1`，并在 `/api/status.phone_offline_resume_readiness`、`/api/status.phone_readiness.phone_offline_resume_readiness`、`/api/diagnostics.phone_offline_resume_readiness` 同口径暴露；首屏/offline shell 展示恢复提示、ACK 语义和 not-proven boundary，Start/Confirm/Cancel 保持 disabled，Diagnostics/Support Handoff 可进入；`docs/product/mobile_user_flow.md` 与 `docs/interfaces/ros_contracts.md` 已同步。Task A 验证输出 operator gateway HTTP/static/diagnostics unittest `Ran 94 tests in 22.777s OK`、py_compile 通过、scoped diff check 通过。Task B remote bridge/protocol compatibility fence 输出 `Ran 57 tests in 28.160s OK`，确认 metadata-only `phone_offline_resume_readiness` 不触发 robot action、不污染 `trashbot.remote.v1` envelope、不 ACK、不推进 cursor、不把 ACK 解释成 delivery success。该证据只支持 O5 从约 52% 保守小幅上调到约 54%；O6 保持约 53%，O1/O2/O3/O4 不提升。本轮仍没有真实手机设备、production app、真实云/4G、OSS/CDN 实流量、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
+---
+
+## 2026-05-12 系列
+
+更新时间：2026-05-12 24:50 Asia/Shanghai（首条录入时间）。本系列下所有"补充"段落原本写在 `OKR.md` §4.1。
+
+### 2026-05-12 25-26｜remote-production-recovery-gate｜O6 production recovery gate software proof，O6 由约 51% 上调到约 53%
+
+`2026.05.12_25-26_remote-production-recovery-gate` 完成 O6 Docker/local production recovery gate：Task A 新增 `trashbot.production_recovery_gate` artifact builder/validator/checksum、writer CLI `--write-production-recovery-artifact`、preflight consumer `--production-recovery-artifact` / `TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT`，并在 `/api/status.phone_readiness.production_recovery` 与 `/api/diagnostics.production_recovery` 暴露同口径 phone-safe summary。Task A 验证输出 targeted unittest `Ran 133 tests in 28.079s OK`，py_compile 通过，artifact CLI 输出 `ok=true`、`production_recovery_status=passed`、`evidence_boundary=software_proof_docker_production_recovery_gate`，preflight smoke 输出 `software_proof_ready=true`、`production_ready=false`、`overall_status=blocked`、`production_recovery=pass`、`evidence_boundary=software_proof_docker_production_recovery_gate`，scoped diff check 通过；首轮 unittest 曾因 public summary 暴露 `checksum` 字样失败，已修正为 `schema_integrity` phone-safe wording，内部 checksum validation 保留。Task B remote bridge compatibility fence 输出 `Ran 44 tests in 21.928s OK`，确认 production recovery metadata 不污染 `trashbot.remote.v1` command/status/ack envelope，metadata-only blocked/invalid/stale response 不触发 robot action、不 ACK、不推进或持久化 cursor；无需修改生产 `remote_bridge.py`。`docs/product/cloud_4g_infrastructure.md`、`docs/product/remote_4g_mvp.md`、`docs/product/mobile_user_flow.md` 与 `docs/interfaces/ros_contracts.md` 已同步且路径存在。该证据只支持 O6 从约 51% 保守小幅上调到约 53%；O5 保持约 52%，O1/O2/O3/O4 不提升。本轮仍没有真实生产 DB/queue、真实生产备份/灾备、多实例一致性、真实云/4G/SIM、OSS/CDN 实流量、正式手机 app/真实手机设备、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
+### 2026-05-12 24-25｜phone-voice-prompt-readiness-gate｜O5 voice prompt readiness software proof，O5 由约 50% 上调到约 52%
+
+`2026.05.12_24-25_phone-voice-prompt-readiness-gate` 完成 O5 local/Docker phone voice prompt readiness software proof：Task A 新增 `trashbot.voice_prompt_readiness.v1`，并在 `/api/status.voice_prompt_readiness`、`/api/status.phone_readiness.voice_prompt_readiness`、`/api/diagnostics.voice_prompt_readiness` 同口径暴露；fallback HTML 首屏展示 current prompt、trigger、human help、`playback_ready=false`、safe copy 和 not_proven，覆盖电梯 `requesting_floor_help` 指定提示 `你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,`。Task A 验证输出 HTTP/static unittest `Ran 50 tests in 21.150s OK`、py_compile exit 0、scoped diff check exit 0。Task B remote bridge + diagnostics fence 输出 `Ran 82 tests in 20.943s OK`，确认 voice prompt metadata 不污染 `trashbot.remote.v1` command/status/ack envelope，metadata-only blocked response 不触发 robot action、不 ACK、不推进或持久化 cursor，ACK 不等于 delivery success，也不等于 voice prompt 已真实播放，diagnostics 不暴露 raw ROS topic、serial、baudrate、token、Authorization、OSS/DB/queue URL 或 local path。`docs/product/mobile_user_flow.md` 与 `docs/interfaces/ros_contracts.md` 已同步且路径存在。该证据只支持 O5 从约 50% 保守小幅上调到约 52%；O6 保持约 51%，O1/O2/O3/O4 不提升。本轮仍没有真实喇叭/TTS、真实手机设备、production app、真实云/4G、OSS/CDN 实流量、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
+### 2026-05-12 23-24｜remote-transaction-isolation-gate｜O6 transaction isolation gate，O6 由约 49% 上调到约 51%
+
+`2026.05.12_23-24_remote-transaction-isolation-gate` 完成 O6 Docker/local transaction isolation gate：Task A 新增 `trashbot.transaction_isolation_drill` artifact、checksum validator、CLI writer、preflight consumer、`/api/status.phone_readiness.transaction_isolation` 与 `/api/diagnostics.transaction_isolation` phone-safe 摘要；构造同一 robot 的 command/status/ACK interleaving，验证前序 command 未 terminal ACK 时，后续 terminal ACK 不会让 cursor 越过缺口，且 ACK 仍不是 delivery success。Task A 验证输出 targeted tests `Ran 125 tests in 26.988s OK`，artifact CLI 输出 `ok=true`、`transaction_isolation_status=passed`、`evidence_boundary=software_proof_docker_transaction_isolation_gate`、`delivery_success=false`、`production_ready=false`，preflight 输出 `software_proof_ready=True`、`production_ready=False`、`transaction_isolation=pass`、`overall_status=blocked`。Task B remote bridge compatibility fence 输出 `Ran 40 tests in 19.857s OK`，确认 transaction isolation metadata 不污染 `trashbot.remote.v1` command/status/ack envelope、不触发 robot action、不 ACK、不推进或持久化 cursor；无需修改生产 `remote_bridge.py`。该证据只支持 O6 从约 49% 保守小幅上调到约 51%；O5 保持约 50%，O1/O2/O3/O4 不提升。本轮仍没有真实生产 DB/queue、多实例一致性、真实生产 transaction isolation、真实云、HTTPS/TLS 公网入口、真实 4G/SIM、真实 OSS upload、CDN origin fetch、OSS/CDN 实流量、正式手机 app/真实手机设备、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
+### 2026-05-12 22-23｜phone-support-bundle-gate｜O5 phone support handoff software proof，O5 由约 48% 上调到约 50%
+
+`2026.05.12_22-23_phone-support-bundle-gate` 完成 O5 local/Docker phone support handoff software proof：Task A 新增 `trashbot.phone_support_bundle.v1`，并在 `/api/status.phone_support_bundle`、`/api/status.phone_readiness.phone_support_bundle`、`/api/diagnostics.phone_support_bundle` 暴露同口径 phone-safe support bundle；本地 fallback HTML 新增 Support Handoff 入口和中文优先 `safe_copy`，主操作被 command safety 阻断时 Diagnostics/Support Handoff 仍可打开。Task A 验证输出 operator gateway HTTP/static unittest `Ran 48 tests in 20.053s OK`，`operator_gateway_http.py`/`operator_gateway_static.py` py_compile exit 0，scoped diff check 通过；Task B remote bridge + diagnostics fence 输出 `Ran 76 tests in 18.878s OK`，确认 support metadata 不污染 `trashbot.remote.v1` command/status/ack envelope，metadata-only blocked response 不触发 robot action、不 ACK、不推进或持久化 cursor，diagnostics support bundle 不暴露 raw ROS topic、serial、baudrate、token、Authorization、DB/queue URL 或 local path，最终 zero skips。`docs/product/mobile_user_flow.md` 与 `docs/interfaces/ros_contracts.md` 已同步且路径存在。该证据只支持 O5 从约 48% 保守小幅上调到约 50%；O6 保持约 49%，O1/O2/O3/O4 不提升。本轮仍没有真实手机设备、production app、真实云/4G、OSS/CDN 实流量、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
+### 2026-05-12 21-22｜remote-queue-ordering-drill｜O6 queue ordering drill software proof，O6 由约 47% 上调到约 49%
+
+`2026.05.12_21-22_remote-queue-ordering-drill` 完成 O6 Docker/local queue ordering drill software proof：Task A 新增 `trashbot.queue_ordering_drill` artifact、CLI、preflight `queue_ordering_drill` check、`/api/status.phone_readiness.queue_ordering_drill` 和 `/api/diagnostics.queue_ordering_drill` phone-safe 摘要，覆盖并发提交、相邻 `cmd-9` / `cmd-10` 顺序、cursor invariant、ACK semantics、ready/missing/invalid/stale/failed，并保持 `production_ready=false`。Task A 验证输出 targeted tests `Ran 117 tests in 26.630s OK`，py_compile 和 scoped diff check 通过，CLI smoke 输出 `software_proof_ready=True production_ready=False boundary=software_proof_docker_queue_ordering_drill queue_ordering_drill=pass`。Task B remote bridge compatibility fence 输出 `Ran 46 tests in 23.041s OK`，确认 queue ordering metadata 不污染 `trashbot.remote.v1` envelope、不触发 action、不 ACK、不推进或持久化 cursor、不把 ACK 当 delivery success。该证据只支持 O6 从约 47% 保守小幅上调到约 49%；O5 保持约 48%，O1/O2/O3/O4 不提升。本轮仍没有真实生产 queue ordering、production DB/queue、多实例一致性、transaction isolation、生产备份/灾备、真实云、HTTPS/TLS 公网入口、真实 4G/SIM、真实 OSS upload、CDN origin fetch、OSS/CDN 实流量、正式手机 app/真实手机设备、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
+### 2026-05-12 20-21｜phone-task-flow-readiness-gate｜O5 phone task-flow readiness software proof，O5 由约 46% 上调到约 48%
+
+`2026.05.12_20-21_phone-task-flow-readiness-gate` 完成 O5 local/Docker phone task-flow readiness software proof：Task A 新增 `trashbot.phone_task_flow_readiness.v1`，`/api/status` 顶层、`phone_readiness.phone_task_flow_readiness` 和 `/api/diagnostics` 均暴露 phone-safe task-flow metadata；首屏围绕连接/就绪、目的地、装载确认、发车、状态解释、求助/诊断组织，ACK copy 继续说明只代表 command accepted/processing evidence，不等于 delivery success。Task A 验证输出 operator gateway HTTP/static unittest `Ran 46 tests in 20.115s OK`、`operator_gateway_http.py` py_compile exit 0、scoped diff check exit 0。Task B 新增 `test_remote_bridge.py` 兼容性围栏，确认 phone task-flow metadata 不污染 `trashbot.remote.v1` command/status/ack envelope、不把 ACK 升级为 delivery success、不触发额外 robot action、不推进/持久化 cursor，且 `remote_bridge.py` 未改生产行为；验证输出 `Ran 33 tests in 16.314s OK`、`remote_bridge.py` py_compile exit 0、scoped diff check exit 0。该证据只支持 O5 从约 46% 保守上调到约 48%；O6 保持约 47%，O1/O2/O3/O4 不提升。本轮仍没有真实手机设备、production app、真实云/4G、OSS/CDN 实流量、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
+### 2026-05-12 19-20｜remote-production-store-queue-gate｜O6 production store/queue gate，O6 由约 45% 上调到约 47%
+
+`2026.05.12_19-20_remote-production-store-queue-gate` 完成 O6 Docker/local production store/queue gate：Task A 新增 `trashbot.production_store_queue_gate` artifact、preflight `production_store_queue` check、`/api/status.phone_readiness.production_store_queue` 和 `/api/diagnostics.production_store_queue` phone-safe 摘要，覆盖 ready/missing/invalid/stale，并保持 `production_ready=false`、`overall_status=blocked` 与 `not_proven`；Full-stack targeted tests 输出 `Ran 112 tests in 26.526s OK`，py_compile 和 scoped diff check 通过。Task B robot compatibility fence 输出 `Ran 39 tests in 19.385s OK`，确认新增 production store/queue metadata 不改变 `trashbot.remote.v1` command/status/ack envelope，不把 ACK 升级为 delivery success，也不在 metadata-only blocked response 下触发本地 action、ACK 或 cursor 推进。该证据只支持 O6 从约 45% 保守小幅上调到约 47%；O5 保持约 46%，O1/O2/O3/O4 不提升。本轮仍没有真实生产 DB/queue、多实例一致性、生产 queue ordering、transaction isolation、生产备份/灾备、真实云、HTTPS/TLS 公网入口、真实 4G/SIM、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
+### 2026-05-12 18-19｜phone-pwa-installability-gate｜O5 PWA/installability software proof，O5 由约 43% 上调到约 46%
+
+`2026.05.12_18-19_phone-pwa-installability-gate` 完成 O5 本地 PWA/installability software proof：Task A 新增 `/manifest.webmanifest`、`/service-worker.js`、`/offline.html`、PWA icons、mobile/installability meta 和 service worker registration；service worker 明确 bypass `/api/*`、`/robots/*`、command routes、ACK routes、diagnostics 和所有非 GET 请求，并使用 `cache: 'no-store'`。Task A validation 输出 HTTP/static unittest `Ran 46 tests in 20.155s OK`，`operator_gateway_http.py` py_compile exit 0，scoped diff check exit 0，首轮测试锚点失败已修复并重跑通过。Task B robot compatibility fence 未改产品/测试代码，验证 `test_remote_bridge.py` `Ran 29 tests in 14.214s OK`、`test_operator_gateway_http.py` `Ran 37 tests in 20.025s OK`、`remote_bridge.py` 与 `operator_gateway_http.py` py_compile exit 0、scoped diff check exit 0。该证据只支持 O5 从约 43% 保守上调到约 46%；O6 只记录 phone-safe 状态素材并保持约 45%，O1/O2/O3/O4 不提升。本轮仍没有 production app、真实手机设备 Safari/Chrome install prompt、app-store/native install、真实 service worker runtime on physical phone、真实云、真实 4G/SIM、production account、真实 OSS/CDN traffic、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
+### 2026-05-12 17-18｜remote-provisioning-audit-gate｜O6 provisioning audit gate，O6 由约 43% 上调到约 45%
+
+`2026.05.12_17-18_remote-provisioning-audit-gate` 完成 O6 Docker/local provisioning audit gate：Task A 新增 `trashbot.provisioning_audit_gate`、`--write-provisioning-audit-artifact`、`TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT`/`--provisioning-audit-artifact` preflight 消费、`/api/status.phone_readiness.provisioning_audit` 和 `/api/diagnostics.provisioning_audit` phone-safe 摘要；Full-stack targeted tests 输出 `Ran 103 tests in 24.406s OK`，artifact CLI 输出 `ok=true`、`evidence_boundary=software_proof_docker_provisioning_audit_gate`，preflight 输出 `software_proof_ready=true`、`production_ready=false`、`overall_status=blocked`、`checks.provisioning_audit.status=pass`。Task B remote bridge compatibility fence 输出 `Ran 29 tests in 14.201s OK`，确认 provisioning/STS/audit metadata 不触发额外 action、不 ACK、不推进/持久化 cursor，且 ACK 仍不等于 delivery success。该证据只支持 O6 从约 43% 保守小幅上调到约 45%；O5 保持约 43%，O1/O2/O3/O4 不提升。本轮仍没有真实云、真实 4G/SIM、真实 OSS upload、真实 STS issuance、真实 audit log、production-ready、正式手机 app/真实手机设备、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
+### 2026-05-12 16-17｜remote-credential-rotation-gate｜O6 credential rotation gate，O6 由约 41% 上调到约 43%
+
+`2026.05.12_16-17_remote-credential-rotation-gate` 完成 O6 Docker/local credential rotation gate：Task A 新增 `trashbot.credential_rotation_gate` artifact、`--write-credential-rotation-artifact`、`TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT` preflight 消费、`/preflightz` credential rotation check，以及 `/api/status.phone_readiness.credential_rotation` / `/api/diagnostics.credential_rotation` phone-safe 摘要；Full-stack targeted tests 输出 `Ran 98 tests in 24.359s OK`，artifact CLI 输出 `ok=true`、`credential_rotation_status=passed`、`evidence_boundary=software_proof_docker_credential_rotation_gate`，preflight CLI 输出 `credential_rotation=pass`、`software_proof_ready=true`、`production_ready=false`、`overall_status=blocked`。Task B remote bridge compatibility fence 输出 `Ran 27 tests in 12.614s OK`，确认 credential/preflight/artifact metadata 不改变 command/status/ack envelope、GET outage 不触发本地 action、不 ACK、不推进或持久化 cursor，且 ACK 仍不等于 delivery success。该证据只支持 O6 从约 41% 保守小幅上调到约 43%；O5 保持约 43%，O1/O2/O3/O4 不提升。本轮仍没有真实云、真实 4G/SIM、真实 OSS upload、真实 STS issuance、CDN origin fetch、生产账号 provisioning、真实 audit log、production-ready、生产 DB/queue、正式手机 app/真实手机设备、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
+### 2026-05-12 15-16｜phone-browser-acceptance-gate｜O5 真实 Chrome browser acceptance gate，O5 由约 40% 上调到约 43%
+
+`2026.05.12_15-16_phone-browser-acceptance-gate` 完成 O5 本地真实 Chrome browser acceptance gate：`390x844` 与 `768x900` 两组 viewport 均输出 `hit_area_status=passed`、`overlap_status=passed`、`overflow_status=passed`、`ack_copy_visible=true`、`diagnostics_accessible=true`、`primary_actions_disabled=true`、`first_screen_buttons_visible=true`、`phone_safe_status=passed`，summary artifact `sprints/2026.05.12_15-16_phone-browser-acceptance-gate/evidence/phone_browser_acceptance_summary.json` 为 `ok=true`，browser 为 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`。Full-stack targeted tests 输出 `Ran 73 tests in 17.910s OK`，py_compile 与 scoped diff check 通过。该证据只支持 O5 从约 40% 保守上调到约 43%，因为 KR7 从 API/handler proof 推进到真实本地浏览器 proof；O6 保持约 41%，O1/O2/O3/O4 不提升。本轮仍没有真实手机设备 Safari/Chrome、正式 app、真实云/4G、OSS/CDN 实流量、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
+### 2026-05-12 14-15｜remote-network-recovery-drill｜O6 network recovery drill，O6 由约 39% 上调到约 41%
+
+`2026.05.12_14-15_remote-network-recovery-drill` 完成 O6 Docker/local network recovery drill：Task A relay/phone-safe 侧新增 network recovery drill artifact、preflight consumption、`/api/status.phone_readiness.network_recovery` 和 `/api/diagnostics.network_recovery_drill` 摘要，targeted tests 输出 `Ran 93 tests in 23.778s OK`，CLI drill 输出 `ok=true`、`network_recovery_status=passed`、`step_count=4`、`evidence_boundary=software_proof_docker_network_recovery_drill`，preflight consumption 输出 `network_recovery_drill=pass`、`software_proof_ready=true`、`production_ready=false`、`overall_status=blocked`；Task B robot compatibility fence 输出 `Ran 33 tests in 16.192s OK`，确认 malformed status/ACK response 和 ACK post failure 不触发本地 action、不推进/持久化 cursor，恢复后同一 command 只重发缓存 terminal ACK。该证据只支持 O6 从约 39% 保守上调到约 41%；O5 只记录 phone-safe network recovery 摘要支撑但不提升；O1/O2/O3/O4 不提升。本轮仍没有真实云部署、HTTPS/TLS、公网入口、真实 4G/SIM、生产鉴权/rotate、STS/受限 AK、真实 OSS upload、CDN origin fetch、生产 DB/queue、多实例一致性、正式手机 app/真实手机设备验收、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
+### 2026-05-12 13-14｜phone-command-safety-browser-gate｜O5/O6 command safety browser/API gate，O5 由约 38% 上调到约 40%、O6 由约 38% 上调到约 39%
+
+`2026.05.12_13-14_phone-command-safety-browser-gate` 完成 O5/O6 phone command safety browser/API gate：`/api/status.phone_readiness.command_safety` 新增 `trashbot.command_safety.v1`，operator 首屏 Start、Confirm dropoff、Cancel、Diagnostics 消费 `command_safety.actions.*.enabled`，覆盖 ready、status stale、command pending、auth failed、cloud unreachable、malformed response、manifest missing/invalid/stale 和 manual takeover；ACK 文案明确只代表 command accepted/processing evidence，不等于 delivery success。Full-stack targeted tests 输出 `Ran 64 tests in 17.299s OK`，Robot compatibility 输出 `Ran 31 tests in 15.230s OK`，py_compile 和 scoped diff check 通过。Browser/API fence 采用 HTTP handler/unit test 覆盖 HTML 按钮 wiring 和 API payload shape，没有真实浏览器/手机设备截图。该证据只支持 O5 从约 38% 保守上调到约 40%、O6 从约 38% 保守上调到约 39%；O1/O2/O3/O4 不提升。本轮仍没有真实手机 app、真实手机浏览器/设备验收、真实云、真实 4G/SIM、HTTPS/TLS 公网入口、真实 OSS upload、CDN origin fetch、生产 DB/queue、Nav2/fixed-route 送达、WAVE ROVER 或 HIL。
+
+### 2026-05-12 12-13｜remote-oss-cdn-phone-consumption-gate｜O6 phone/API manifest consumption gate，O6 由约 36% 上调到约 38%
+
+`2026.05.12_12-13_remote-oss-cdn-phone-consumption-gate` 完成 O6 phone/API manifest consumption gate：operator 首屏显示 phone-readable 诊断对象引用状态 `诊断对象引用已准备/缺失/损坏/过期` 和 retry hint，`/api/status.phone_readiness.oss_cdn_manifest` 与 `/api/diagnostics.oss_cdn_manifest` 共用 summary helper，覆盖 `ready/missing/invalid/stale`，并保留 `not_proven` 与 `software_proof_docker_phone_manifest_consumption` 边界。Full-stack targeted tests 输出 `Ran 62 tests in 16.283s OK`，remote cloud relay tests 输出 `Ran 24 tests in 6.374s OK`，py_compile 与 scoped diff check 通过；Robot compatibility fence 输出 `Ran 31 tests in 15.206s OK`，仅一次 `ResourceWarning` 不影响通过。该证据只支持 O6 从约 36% 保守小幅上调到约 38%；O1/O2/O3/O4/O5 不提升。本轮仍没有真实 OSS upload、STS issuance、CDN origin fetch、真实云、真实 4G/SIM、HTTPS/TLS 公网入口、生产 DB/queue、正式手机 app/真实手机浏览器验收、Nav2/fixed-route 送达、WAVE ROVER 或 HIL。
+
+### 2026-05-12 11-12｜remote-cloud-oss-cdn-manifest-proof｜O6 OSS/CDN manifest artifact，O6 由约 34% 上调到约 36%
+
+`2026.05.12_11-12_remote-cloud-oss-cdn-manifest-proof` 完成 O6 OSS/CDN manifest artifact software proof：manifest 可生成并校验 bucket `bytegallop`、region `oss-cn-hangzhou`、prefix `rober/<robot_id>/<date>/<task_id>/`、CDN base URL `https://cdn.bytegallop.com/rober/`、对象引用、checksum 和 phone-safe 输出；preflight 新增 `oss_cdn_manifest` check，有效 artifact 使 evidence boundary 到 `software_proof_docker_oss_cdn_manifest`，同时整体仍按生产缺口保持 blocked。Full-stack targeted tests 输出 `Ran 23 tests in 6.388s OK`，`remote_cloud_relay.py` py_compile 通过，CLI smoke 输出 manifest generate `ok=True`、preflight consume `oss_cdn_manifest=pass`，Robot compatibility 输出 `Ran 31 tests in 15.132s OK`，scoped diff check 通过。该证据只支持 O6 从约 34% 保守小幅上调到约 36%；O1/O2/O3/O4/O5 不提升。本轮仍没有真实 OSS upload、STS issuance、CDN origin fetch、lifecycle policy、production account、真实云、真实 4G/SIM、HTTPS/TLS 公网入口、生产 DB/queue、正式手机 UI 消费 manifest、Nav2/fixed-route、WAVE ROVER 或 HIL。
+
+### 2026-05-12 10-11｜phone-ui-readiness-gate｜O5 phone UI readiness gate，O5 由约 33% 上调到约 38%
+
+`2026.05.12_10-11_phone-ui-readiness-gate` 完成 O5 phone UI readiness gate 的本地/Docker software proof：`/api/status` 新增兼容字段 `phone_readiness`（`trashbot.phone_readiness.v1`），本地 operator 首屏聚合 local delivery、action permissions、local/mock `remote_readiness`、可选 preflight 和 backup/restore drill 摘要，覆盖 `status_stale`、`command_pending`、`auth_failed`、`cloud_unreachable`、`malformed_response` 与 ACK 不等于 delivery success 的用户解释。Full-stack targeted tests 输出 `Ran 68 tests in 15.452s OK`，`operator_gateway_http.py` py_compile 通过，scoped `git diff --check` 通过。该证据只支持 O5 从约 33% 保守上调到约 38%；O6 保持约 34%，O1/O2/O3/O4 不提升。本轮仍没有生产手机 app、真实手机设备/浏览器验收、真实云、真实 4G/SIM、HTTPS/TLS 公网入口、OSS/CDN 实流量、Nav2/fixed-route 送达、WAVE ROVER 或 HIL。
+
+### 2026-05-12 09-10｜remote-cloud-backup-restore-drill｜O6 SQLite backup/restore drill，O6 由约 32% 上调到约 34%
+
+`2026.05.12_09-10_remote-cloud-backup-restore-drill` 在 SQLite state store proof 之上完成 Docker/local backup/restore drill：新增 backup artifact、checksum、restore 到新 SQLite state path、CLI drill 和 preflight artifact check；Task A relay unit fence 输出 `Ran 19 tests ... OK`，Docker smoke 输出 `backup_status=passed`、`restore_status=passed`、`drill_status=passed` 与 `evidence_boundary=software_proof_docker_backup_restore_drill`，Task B robot compatibility 输出 `Ran 31 tests in 15.219s OK`，相关 `py_compile` 与 scoped `git diff --check` 通过。该证据只支持 O6 从约 32% 保守小幅上调到约 34%；O5/O1/O2/O3/O4 不提升。本轮仍没有真实云、真实 4G/SIM、HTTPS/TLS 公网入口、OSS/CDN 实流量、生产 DB/queue、多实例一致性、生产备份策略、真实灾备、正式手机 UI、Nav2/fixed-route、WAVE ROVER 或 HIL。
+
+### 2026-05-12 08-09｜remote-cloud-sqlite-state-proof｜O6 SQLite state store proof，O6 由约 30% 上调到约 32%
+
+`2026.05.12_08-09_remote-cloud-sqlite-state-proof` 将上一轮仍偏 file-backed/preflight 的 O6 状态层推进到 SQLite-backed state store software proof：`TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite` 下 command/status/ack 可跨 store reopen 或 relay/container restart 恢复，preflight 输出 `evidence_boundary=software_proof_docker_sqlite_state_store`，并继续阻断 production DB/queue、多实例一致性、backup/restore 与 disaster recovery 缺口。Task A relay tests 输出 `Ran 16 tests in 5.803s OK`，SQLite Docker smoke 通过；Task B remote bridge compatibility 输出 `Ran 31 tests in 15.221s OK`，确认 status-command-ack HTTP shape 与 cursor/ACK 保守语义未退化。该证据只支持 O6 从约 30% 保守小幅上调到约 32%；O5/O1/O2/O3/O4 不提升。本轮仍没有真实云、真实 4G/SIM、HTTPS/TLS 公网实证、OSS/CDN 实流量、生产 DB/queue、多实例、正式手机 UI、Nav2/fixed-route、WAVE ROVER 或 HIL。
+
+### 2026-05-12 07-08｜remote-cloud-production-preflight｜O6 production preflight gate，O6 上调到约 30%
+
+`2026.05.12_07-08_remote-cloud-production-preflight` 将 O6 从 Docker deploy/readiness 推进到 `software_proof_docker_preflight_gate`：新增 production preflight gate，能在 Docker/local 环境下以 blocked/warning/pass 方式暴露 credential provisioning、TLS/public ingress、OSS/CDN、state store 和 phone-safe output 缺口；Docker smoke 继续证明 command/status/ack 主路径可用，robot compatibility fence `Ran 31 tests in 15.218s OK`。该证据只支持 O6 小幅上调到约 30%；O5 仅获得 phone-safe readiness 支撑，不提升；O1/O2/O3/O4 不提升。本轮没有真实云、真实 4G/SIM、HTTPS/TLS 公网实证、OSS/CDN 实流量、生产 DB/queue、Nav2/fixed-route、WAVE ROVER 或 HIL。
+
+### 2026-05-12 06-07｜remote-cloud-entry-docker-deploy｜O6 Docker deploy/readiness 软证据
+
+`2026.05.12_06-07_remote-cloud-entry-docker-deploy` 将 independent relay 推进到 `software_proof_docker_deploy`：新增 Dockerfile/compose/env 入口、`/healthz`、`/readyz`、state store writable check、phone-safe failure redaction self-check 和 Docker smoke。Task A `test_remote_cloud_relay.py` 输出 `Ran 8 tests in 4.167s OK`，Task C `test_remote_bridge_protocol.py` + `test_remote_bridge.py` 输出 `Ran 31 tests in 15.223s OK`，相关 `py_compile`、Docker smoke 和 scoped `git diff --check` 通过。该证据只支持 O6 Docker deploy/readiness/robot compatibility 小幅进展，O5 只获得 phone-safe readiness 支撑；不等于真实云、HTTPS/TLS、公网、4G/SIM、OSS/CDN、正式手机 UI、Nav2/fixed-route、WAVE ROVER 或 HIL。
+
+### 2026-05-12 05-06｜remote-cloud-service-docker-proof｜O6 independent Docker/HTTP relay software proof
+
+`2026.05.12_05-06_remote-cloud-service-docker-proof` 完成 independent Docker/local HTTP relay service proof、file-backed persistence、bearer auth、phone-safe errors、robot client compatibility，并补齐 `docs/product/cloud_4g_infrastructure.md` 的云服务端基线、网络方向、OSS/CDN 目标和 Docker proof 边界。Task A relay tests `Ran 6 tests ... OK`，Task B robot compatibility tests `Ran 31 tests ... OK`，Task C merged integration fence `Ran 37 tests in 17.884s OK`，相关 `py_compile` 与 scoped `git diff --check` 通过。该证据边界仍是 `software_proof_docker_only`，不提升真实云、HTTPS/TLS、公网入口、真实 4G/SIM、OSS/CDN、生产 DB、真实送达、Nav2/fixed-route、WAVE ROVER 或 HIL。
+
+### 2026-05-12 04-05｜remote-auth-degradation-gate｜O6 bearer auth gate 与 phone-safe degradation
+
+`2026.05.12_04-05_remote-auth-degradation-gate` 完成 local/mock cloud bearer auth gate、`remote_readiness.auth_state/degradation_state/safe_phone_copy`、敏感字段过滤，以及 `remote_bridge` 对 cloud unreachable/auth failed/malformed response 的保守降级和 cursor safety。Task A targeted operator tests `Ran 66 tests ... OK`，Task B remote bridge tests `Ran 23 tests ... OK`，Task C 合并 smoke `Ran 89 tests in 25.691s OK`，相关 `py_compile` 与 scoped `git diff --check` 通过。该证据边界仍是 `software_proof_docker_only` / local mock cloud，不提升 O1/HIL、真实云、真实 4G、OSS/CDN 或真实送达完成度。
+
+---
+
+## 2026-05-11 系列
+
+更新时间：2026-05-11 21:14 Asia/Shanghai（首条录入时间）。
+
+### 2026-05-11 21-22｜o1-docker-humble-preflight-unblock｜Docker preflight 强化但 registry mirror blocked
+
+`2026.05.11_21-22_o1-docker-humble-preflight-unblock` 增强 Docker/Humble preflight 诊断，确认 Docker daemon 与 `desktop-linux` builder 可用，当前阻断归因为 registry mirror/proxy 对 `docker.io/osrf/ros:humble-desktop` metadata/layer 返回 `text/html`。本轮仍无真实串口设备，只记录 `software_proof` readiness/blocked evidence，不新增 `hil_pass`。
+
+进度判断（2026-05-11 21:14 Asia/Shanghai 时点）：
+
+| Objective | 当前进度 | 本轮新增证据 | 剩余关键缺口 |
+| --- | --- | --- | --- |
+| Objective 1 硬件协议可信底盘 | 约 75% | `sprints/2026.05.11_21-22_o1-docker-humble-preflight-unblock` 已增强 Docker preflight；`SKIP_COLCON=1 bash scripts/docker_humble_build.sh` 输出 Docker Desktop 4.45.0、Engine 28.3.3、`desktop-linux` builder 可用、registry mirrors 列表，并将 `osrf/ros:humble-desktop` 的 `encountered unknown type text/html` 归因为 `registry mirror/proxy`。`hardware_smoke_wave_rover.py --status` 继续输出 `pyserial_available=true`、`hil_ready=false`、`blocked_reason=no_serial_candidates_found` 与 required evidence files/source boundary。 | 仍缺本轮真实 WAVE ROVER `hil_pass` evidence packet（`command.txt`/`serial.log`/`feedback_T1001.log`）与 `/odom`、`/imu/data`、`/battery` 实机样本；还需 operator 关闭/更换 Docker registry mirror/proxy 或换网络/cache 后重建镜像，并接入真实串口设备。 |
+| Objective 2 可恢复送垃圾任务闭环 | 约 77% | `2026.05.11_10-11_o2-task-recovery-route-replay-docker-proof` 补强 O1 real run 后的 O2 消费链路：`task_record.route_progress` 顶层持久化，`nav_results[-1].evidence.route_progress`、`failure_code`、`state_transition_history`、`human_intervention_required`、`evidence_ref` 可严格对账；targeted behavior tests 为 `Ran 46 tests ... OK`。 | 仍缺真实 Nav2/fixed-route 运行下的任务复盘 evidence；O1 `hil_pass` 未解锁前，O2 不能声明实机 closed。 |
+| Objective 3 可验证导航与固定路线 | 约 77% | `scripts/evidence_crosscheck.py` 支持 `--task-record-dir` 按同一 `evidence_ref` 自动查找 task record，并在缺 route-level 字段时返回 mismatch；本轮软件样例输出 `CHECK summary: mismatches=0`，缺匹配 task record 样例返回非 0。 | 仍缺真实路线采集、Nav2 waypoint/fixed-route 实跑、关键帧实景证据，以及与 O1 HIL 同一 `evidence_ref` 的上车复账。 |
+| Objective 4 感知模块产品化 | 约 76% | 本轮补齐电梯场景 dry-run evidence schema：`door_open`、`door_closed_or_unknown`、`inside_elevator`、`target_floor_confirmed`、`target_floor_unconfirmed`、`safe_to_exit`、`unsafe_to_exit`；visual gate 只输出保守离线证据，即使 passed 也保持目标楼层未确认口径；Autonomy targeted `Ran 19 tests ... OK`，py_compile 和 scoped diff check 通过。此前 review progress metrics 已让视觉复核进度进入 operator/diagnostics | 仍未完成真实硬件/HIL、真实相机采集与上车验证；没有相机门识别、楼层 OCR、目标楼层到达或可驶出实景证据；当前证据是软件/离线环境，不等于实机闭环 |
+| Objective 5 手机体验与量产边界 | 约 80% | 本轮补齐 `elevator_assist` operator status/diagnostics 和手机可读状态：等待电梯、请求帮忙按楼层、等待目标楼层、目标楼层未确认、需要人工接管；speaker prompt contract 保留 `你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,`，Full-stack targeted `Ran 53 tests ... OK`，py_compile 和 scoped diff check 通过。此前 operator 页面与 diagnostics 已可观察人工复核进度 | 仍未完成真实硬件/HIL、真实相机/上车验证与普通用户实机验收；本轮只有 speaker prompt 字段 contract，没有真实 TTS/喇叭播放；跨楼层手机体验尚未经过用户侧实机验收 |
+
+### 2026-05-11 10-11｜hil-docker-preflight-to-real-run / o2-task-recovery-route-replay-docker-proof｜O1 docker preflight blocked，O2/O3 软件对账增强
+
+`2026.05.11_10-11_hil-docker-preflight-to-real-run` 继续执行 O1→O2→O3 顺序。O1 Docker preflight 因 `osrf/ros:humble-desktop` 拉取/解包异常 blocked，且本机仍无真实串口硬件；`2026.05.11_10-11_o2-task-recovery-route-replay-docker-proof` 只补强 O2/O3 same-`evidence_ref` 软件复盘支撑，不声明 `hil_pass`。
+
+### 2026-05-11 01-02｜elevator-assisted-delivery-okr｜H2 assisted delivery 进入 OKR
+
+原 `OKR.md` §29：本轮 `sprints/2026.05.11_01-02_elevator-assisted-delivery-okr/` 只做产品/OKR 纳入，不改代码、不改硬件、不跑 ROS2 构建。电梯 assisted delivery 被定位为 H2/受控场景：它服务于跨楼层 trash delivery，但当前只完成北极星、Objective/KR、风险、下一步建议和产品流程定义，不代表小车已经具备实机进出电梯能力。
+
+| Objective | 本轮映射 | 证据与边界 |
+| --- | --- | --- |
+| Objective 2：可恢复送垃圾任务闭环 | 新增 KR6，要求行为层未来覆盖等待开门、进入电梯、语音求助、等待目标楼层、目标楼层开门驶出 | 当前证据是产品 contract；未改 `task_orchestrator`，未完成状态机实现 |
+| Objective 4：感知模块产品化 | 新增 KR6，要求电梯门开/关、目标楼层到达和可驶出证据进入感知 contract | 当前未新增 detector、模型或真实相机证据 |
+| Objective 5：手机体验与量产边界 | 下调到30% | 新增 KR6，要求手机/语音体验解释人工协助边界和失败原因 | 当前未新增 TTS/喇叭实现、真实手机验收或量产实物验证 |
+
+责任 Engineer：后续行为状态机由 `robot-software-engineer` 主责；电梯门/楼层/驶出感知证据由 `autonomy-engineer` 主责；手机状态与语音触点由 `full-stack-software-engineer` 主责；若涉及 WAVE ROVER、ESP32、Orange Pi、UART、电气或安装变更，必须由 `hardware-engineer` 先按 `docs/vendor/VENDOR_INDEX.md` 做事实确认。
+
+### 2026-05-11 00-31｜route-proof-coverage｜missing_checkpoints 归一化
+
+原 `OKR.md` §28：本轮 `sprints/2026.05.10_23-24_route-proof-coverage/` 完成 route proof coverage 收口补强。核心变化是在既有 `route_proof_summary` contract 上新增 `missing_checkpoints` 归一化规则并补回归测试，配套更新 `docs/navigation/fixed_route_workflow.md` 与 behavior/operator 文档一致性复核；本轮 full-stack 未新增代码，仅补收口记录。证据基于两位工程子 agent 的实现与测试回传；本轮无 HIL/实机验证。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 保持不变（约 74%） | 本轮无硬件链路改动；仍无真实 WAVE ROVER HIL、真实 UART/反馈频率/IMU/电池实测证据。 |
+| Objective 2：送垃圾任务闭环 | 保持不变（约 74%） | 本轮未改任务状态机主链；仍缺真实 fixed-route/Nav2 行驶与学习到巡逻 E2E。 |
+| Objective 3：可验证导航与固定路线 | 保守小幅上调（约 76%） | `route_proof_summary` 在 coverage/阻塞语义之外补齐了 `missing_checkpoints` 归一化 contract，降低 coverage 与缺口点位自相矛盾风险；nav 与 behavior/operator 口径保持一致。测试证据为 nav `Ran 44 tests ... OK`、behavior/operator `Ran 48 tests ... OK`、smoke `Ran 128 tests ... OK` 与 `Ran 13 tests ... OK`。仍缺真实路线采集、真实相机输入和实车验证。 |
+| Objective 4：感知模块产品化 | 保持不变（约 75%） | 本轮未新增 detector/样本链主能力，仅保持既有不回归信号。 |
+| Objective 5：手机体验与量产边界 | 保守小幅上调（约 80%） | 仅因 operator 对 route-proof 可解释性增强（可读状态与阻塞原因更清晰）上调 +1pp；未新增真实手机实测、TTS/喇叭联动、量产实物验收。 |
+
+本轮结论边界：上述提升均为软件/离线证据，不代表 HIL 或实机闭环完成。
+
+---
+
+## 2026-05-10 系列
+
+### 2026-05-10 22-31｜review-progress-metrics｜O4 review progress metrics 切片
+
+原 `OKR.md` §27：本轮 `sprints/2026.05.10_21-22_review-progress-metrics/` 完成 Objective 4 的 review progress metrics 切片，Objective 5 小幅受益。新增证据聚焦复核统计可观测性：统一输出 `progress_summary`、`decision_distribution`、`next_pending_sample`，并在 operator 页面给出 `Jump To Next Pending`。本轮为软件侧闭环，不是 HIL/上车证据。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 无新增，仅护栏 | 本轮未改硬件协议/串口/launch 参数；硬件相关仅保持既有测试护栏。真实 WAVE ROVER HIL、真实 UART/IMU/电池证据仍缺。 |
+| Objective 2：送垃圾任务闭环 | 无新增，仅护栏 | 本轮未改任务状态机和送达路径；behavior 包 smoke 通过，作为不回归证据。真实 fixed-route/Nav2 行驶与 E2E 仍缺。 |
+| Objective 3：导航与固定路线 | 无新增，仅护栏 | 本轮未改 nav/route 逻辑；nav 包 smoke 通过，作为不回归证据。真实相机/路线采集与上车验证仍缺。 |
+| Objective 4：感知模块产品化（主） | 小幅推进 | `/api/vision/review-queue` 与 diagnostics 同口径输出 `progress_summary.total/decided/pending/coverage_rate`、`decision_distribution.approved|rejected|needs_retry.{count,ratio}`、`next_pending_sample`；operator 页面新增 Progress/Decision distribution/Next pending sample 和 `Jump To Next Pending`，提升复核覆盖率与 pending 压力可观测性。仍缺真实相机与上车链路验证。 |
+| Objective 5：手机体验与量产边界（次） | 小幅推进 | operator 本地触点从"能提 decision"扩展到"能看复核进度与分布并跳转下一条待处理样本"，提升售后/运营复盘效率；仍缺真实手机实测、真实 HIL 和量产实物验收。 |
+
+本轮验证证据：`test_*operator*py` 42 tests OK、`python3 -m py_compile` OK、`bash scripts/run_smoke_tests.sh` OK、scoped `git diff --check -- <allowed files>` OK；`test_*review*py` 因命名 pattern 无匹配返回 `NO TESTS RAN`，全量 `git diff --check` 受范围外 `README.md` trailing whitespace 影响失败。
+
+本轮仍未完成事项：真实硬件/HIL、真实相机采集与上车验证；`next_pending_sample` 在窗口外时仅提示不可直跳。
+
+### 2026-05-10 16-50｜route-debug-status-panel｜O3 fixed-route debug panel
+
+原 `OKR.md` §26：本轮 `sprints/2026.05.10_16-17_route-debug-status-panel/` 按完成度低优先推进 Objective 3。Autonomy Engineer 把 `route_debug_web.py` 从只显示 raw JSON 的页面升级为 fixed-route 可读 debug panel：现场打开页面后能看到 route state badge、checkpoint progress、current target、visual gate 状态、keyframe preflight 覆盖、failure reason、last nav result 和 recent task/task record 引用。页面仍保留 raw JSON，便于工程排查；`/api/status` 路径和 fixed-route status payload shape 不变。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 约 70% | 本轮未改硬件、UART、WAVE ROVER、Orange Pi 或 launch 参数；硬件实机/HIL 缺口不变。 |
+| Objective 2：送垃圾任务闭环 | 约 74% | 本轮未改 behavior action 或任务状态机；debug 页面能辅助 fixed-route 失败复盘，但真实 fixed-route/Nav2 行驶和 E2E 上车仍待补证。 |
+| Objective 3：导航与固定路线 | 约 71% | fixed-route debug 页面已覆盖当前位置、目标点、匹配/视觉门控状态、失败原因和最近任务引用；route debug web 目标测试 4 OK、nav 包 31 OK、完整 smoke 通过。仍缺真实 route/keyframe 采集、keyframe/live-frame 匹配样例和 Nav2 waypoint 实跑。 |
+| Objective 4：感知模块产品化 | 约 68% | 本轮未改 vision manifest 或 detector；视觉证据链诊断能力保持，仍缺真实 camera/odom manifest 上车验证和真实路线数据集闭环。 |
+| Objective 5：手机体验与量产边界 | 约 74% | 本轮主要是工程 debug 页面，不直接抬手机 operator 体验；手机本地诊断能力保持，真实手机浏览器截图、普通用户验收和喇叭/TTS 联动仍缺。 |
+
+### 2026-05-10 15-45｜integrity-status-ui｜O5 Vision evidence chain 诊断卡
+
+原 `OKR.md` §25：本轮 `sprints/2026.05.10_15-16_integrity-status-ui/` 完成产品收口：Full-Stack Engineer 已把 operator 页面 Support Diagnostics 从 raw diagnostics 展示推进为 Vision evidence chain 诊断卡片。用户或现场支持在手机本地页面上能看到视觉证据链状态、最多 3 条关键缺失/错误/警告原因、context coverage、file counts 和恢复建议。这不是新的视觉算法或上车闭环，而是把上一轮 manifest checker 的诊断结果变成普通用户触点可消费的信息。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 保持不变 | 本轮未改硬件、UART、WAVE ROVER、Orange Pi 或 launch 参数；硬件实机/HIL 缺口不变。 |
+| Objective 2：送垃圾任务闭环 | 保持不变 | 本轮未改 behavior action 或任务状态机；真实 fixed-route/Nav2 行驶和 E2E 上车仍待补证。 |
+| Objective 3：导航与固定路线 | 保持不变 | 本轮未改 nav、route 或 keyframe 逻辑；真实路线采集、Nav2 waypoint 实跑和 camera frame 匹配样例仍待补证。 |
+| Objective 4：感知模块产品化 | 约 68% | Vision evidence chain 诊断结果已从 `/api/diagnostics.vision_samples` 进入 operator 页面；仍没有真实 camera/odom manifest 上车验证，也没有真实路线数据集闭环。 |
+| Objective 5：手机体验与量产边界 | 约 74% | 手机本地 operator 页面已有视觉证据链诊断灯、原因和恢复建议；验证证据为 HTTP 页面测试 16 OK、py_compile OK、git diff --check OK、完整 smoke 通过。仍没有真实手机浏览器截图、普通用户验收或喇叭/TTS 联动证明。 |
+
+### 2026-05-10 14-35｜diagnostics-manifest-summary｜O5 diagnostics 接入 manifest checker
+
+原 `OKR.md` §24：本轮 hourly iteration 继续"功能往前走"，由 User Touchpoint Full-Stack Engineer 把上一轮 Objective 4 的离线 manifest checker 接入 `/api/diagnostics.vision_samples`。诊断包保留旧的 `manifest_ref`、latest sample、event counts 和 review queue 字段，同时新增 `integrity_summary`、`integrity_errors`、`integrity_warnings`、`missing_file_refs`、`context_field_coverage` 和 `file_counts`。手机/远程支持后续不需要人工翻目录，就能先判断视觉样本链是 `ok`、`warning`、`error`，以及缺的是 raw image、annotated image 还是 JSON。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 约 70% | 本轮未改硬件；未新增协议、串口、波特率或电气假设；WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 约 74% | 本轮未直接改行为闭环；legacy quarantine 和 task record 证据链保持，仍缺真实 fixed-route/Nav2 行驶和真实学习到巡逻 E2E。 |
+| Objective 3：导航与固定路线 | 约 68% | 本轮未直接改导航；route/keyframe/manifest 采集链保持，仍缺真实 `/odom` + `/camera/image_raw` 采集、Nav2 waypoint 实跑和 keyframe/live-frame 匹配样例。 |
+| Objective 4：感知模块 | 约 67% | manifest checker 已进入 diagnostics 消费链，能把样本完整性和上下文覆盖暴露给远程诊断；仍缺真实路线数据集、真实 ROS2 camera/odom 采集和持续标注闭环。 |
+| Objective 5：手机体验与量产边界 | 约 72% | `/api/diagnostics` 已能直接返回视觉证据链健康度、缺失文件和错误/warning 计数；真实手机浏览器、喇叭/TTS、量产实物验收和 UI 展示仍缺。 |
+
+本轮验证由 `full-stack-software-engineer` 完成：behavior diagnostics 目标测试 8 OK、vision manifest 目标测试 5 OK、`py_compile` OK、`git diff --check` OK、完整 smoke 全部 OK（interfaces 6 / hardware 14 / nav 27 / bringup 9 / behavior 111 / vision 13），结果见 `sprints/2026.05.10_14-15_diagnostics-manifest-summary/tech-done.md`。
+
+### 2026-05-10 13-35｜okr-function（vision_sample_manifest）｜O4 离线 manifest checker
+
+原 `OKR.md` §23：本轮功能迭代响应"继续13-14的迭代，代码编写多一点"，由 Autonomy Algorithm Engineer 推进 Objective 4：新增 `vision_sample_manifest.py` 离线检查/汇总能力和对应测试，让真实采集后的 vision sample manifest 能在无 ROS2 daemon、无硬件、无真实相机的环境里被解析、检查并输出结构化 summary。summary 覆盖样本数量、raw/annotated/json 文件引用完整性、route/task/checkpoint/event/anomaly 上下文覆盖、负样本/异常样本计数、缺失引用和 error/warning，为后续 diagnostics 接入和人工复盘补上前置护栏。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 约 70% | 本轮未改硬件；未新增协议、串口、波特率或电气假设；WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 约 74% | 本轮未直接改行为闭环；legacy quarantine 和 task record 证据链保持，仍缺真实 fixed-route/Nav2 行驶和真实学习到巡逻 E2E。 |
+| Objective 3：导航与固定路线 | 约 68% | 本轮未直接改导航；route/keyframe/manifest 采集链保持，仍缺真实 `/odom` + `/camera/image_raw` 采集、Nav2 waypoint 实跑和 keyframe/live-frame 匹配样例。 |
+| Objective 4：感知模块 | 约 66% | vision sample manifest 已能离线检查和汇总，目标测试 13 OK，full smoke 全包通过；仍缺真实路线数据集、真实 ROS2 camera/odom 采集、持续标注闭环和 diagnostics/API 消费。 |
+| Objective 5：手机体验与量产边界 | 约 70% | manifest summary 可作为手机 diagnostics/人工复盘前置检查输入，帮助远程支持判断样本证据链是否完整；真实手机浏览器、喇叭/TTS、量产实物验收和 API 展示仍缺。 |
+
+本轮验证：vision tests 13 OK、`py_compile` OK、`git diff --check` OK、完整 smoke 全部 OK（interfaces 6 / hardware 14 / nav 27 / bringup 9 / behavior 110 / vision 13），结果见 `sprints/2026.05.10_13-14_okr-function/tech-done.md`。
+
+### 2026-05-10 12-15｜trash_collection_server quarantine｜O2 legacy server 隔离
+
+原 `OKR.md` §22：本轮 hourly iteration 按 Objective 2 的剩余债务推进：Robot Platform Engineer 将 legacy `trash_collection_server.py` 从 sleep-demo action server 改为 quarantine 兼容入口。`legacy_trash_collection_server` console script 保留，但收到 `/trashbot/collect_trash` goal 时只发布失败反馈、`abort()` goal，并返回 `success=false`、`error_code=legacy_server_quarantined`、`final_state=error`，明确要求使用 `task_orchestrator`。旧的 `_navigate_to_trash()` / `_collect_trash()` / `_deliver_to_bin()` / `_sleep()` pipeline 已移除，避免它继续被误当作闭环完成证据。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 约 70% | 本轮未改硬件；未新增协议、串口、波特率或电气假设；WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 约 74% | legacy sleep-demo 已隔离，默认 product action entry 继续是 `task_orchestrator`；静态测试证明旧入口不再 `succeed()` 或 `asyncio.sleep()` 伪造成功。仍缺真实 fixed-route/Nav2 行驶和真实学习到巡逻 E2E。 |
+| Objective 3：导航与固定路线 | 约 68% | 本轮未直接改导航；fixed-route 证据链保持，仍缺真实 `/odom` + `/camera/image_raw` 采集、Nav2 waypoint 实跑和 keyframe/live-frame 匹配样例。 |
+| Objective 4：感知模块 | 约 63% | 本轮未直接改感知；route keyframe 样本 callback 证据链保持，仍缺真实路线数据集和持续标注闭环。 |
+| Objective 5：手机体验与量产边界 | 约 69% | 本轮未直接改手机体验；远程诊断链保持，真实手机浏览器、喇叭/TTS 和量产实物验收仍缺。 |
+
+本轮验证：legacy/action contract 目标测试、`py_compile`、完整 smoke 和 `git diff --check` 结果见 `sprints/2026.05.10_12-13/tech-done.md`。
+
+### 2026-05-10 11-34｜TrashCollection fixed-route evidence｜O2 task record 写入 fixed-route 结构化证据
+
+原 `OKR.md` §21：本轮 hourly iteration 按上一轮 handoff 推进 Objective 2。Robot Platform Engineer 把 `TrashCollection` 的 fixed-route 送达结果从简单 `NavigationResult` 扩展为带 `evidence` 的结构化记录：当 `delivery_mode=fixed_route` 消费 fixed-route status JSON 时，`nav_results` 和 task record 会保留 `route_contract_version=fixed_route.v1`、`route_file`、`current_index`、`current_target`、`total`、`visual_gate_status`、`visual_gate_detail`、`keyframe_preflight`、`last_nav_result`、`updated_at` 等字段。Autonomy Algorithm Engineer 只读复核确认这些字段对 fixed-route 复盘最关键。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 约 70% | 本轮未改硬件；未新增协议、串口、波特率或电气假设；WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 约 72% | fixed-route status JSON 已进入 `TrashCollection` task record，远程复盘能看到 route contract、checkpoint/index、visual gate 和 last nav result；legacy sleep server、真实 fixed-route/Nav2 行驶和真实学习到巡逻 E2E 仍缺。 |
+| Objective 3：导航与固定路线 | 约 68% | fixed-route 产出的状态 contract 被行为层保留消费；仍缺真实 `/odom` + `/camera/image_raw` 采集、Nav2 waypoint 实跑和 keyframe/live-frame 匹配样例。 |
+| Objective 4：感知模块 | 约 63% | 本轮未直接改动；route keyframe 样本 callback 证据链保持，仍缺真实路线数据集、真实 ROS2 camera/odom 采集和持续标注闭环。 |
+| Objective 5：手机体验与量产边界 | 约 69% | 手机/远程诊断链现在能通过 task record 看到 fixed-route 送达证据，不只看任务成败；真实手机浏览器、喇叭/TTS 和量产实物验收仍缺。 |
+
+本轮验证：行为目标测试、`py_compile`、完整 smoke 和 `git diff --check` 结果见 `sprints/2026.05.10_11-12/tech-done.md`。
+
+### 2026-05-10 10-16｜route_data_recorder runtime callback validation｜O4 route keyframe runtime-style file write
+
+原 `OKR.md` §20：本轮 hourly iteration 继续优先推进当前完成度最低的 Objective 4。Autonomy Algorithm Engineer 没有改 production recorder，而是补了 `route_data_recorder` 的 runtime-style callback 验证：测试用 fake image 和 fake odometry 直接驱动真实 `_on_image()` / `_on_odom()`，并检查 `route.csv`、`keyframes/000.jpg`、`keyframes/000.json` 和 `manifest.json` 都按 `trashbot.vision_samples.v1` 契约落盘。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 约 70% | 本轮未改硬件；未新增协议、串口、波特率或电气假设；WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 约 69% | 本轮未直接改动；Robot Platform 只读复查建议下一轮补 fixed-route status 到 `TrashCollection` action 的集成证明。 |
+| Objective 3：导航与固定路线 | 约 68% | route recorder callback 产物有软件级运行式验证；仍缺真实 `/odom` + `/camera/image_raw` 采集、Nav2 waypoint 实跑和 keyframe/live-frame 匹配样例。 |
+| Objective 4：感知模块 | 约 63% | route keyframe 样本链路从 helper 单测推进到真实 callback 路径文件写入证明；仍缺真实路线数据集、真实 ROS2 camera/odom 采集和持续标注闭环。 |
+| Objective 5：手机体验与量产边界 | 约 68% | 本轮未直接改动；手机诊断页和视觉 review queue 保持，真实手机浏览器、喇叭/TTS 和量产实物验收仍缺。 |
+
+本轮验证：route recorder manifest 目标测试、`py_compile`、完整 smoke、`git diff --check` 和 Docker/Humble 尝试结果见 `sprints/2026.05.10_10-11/tech-done.md`。
+
+### 2026-05-10 09-25｜vision review queue｜O4 review queue 进入 diagnostics
+
+原 `OKR.md` §19：本轮 hourly iteration 继续优先推进当前完成度最低的 Objective 4。`/api/diagnostics` 的 `vision_samples` 不再只给最新样本引用，现在会统计 manifest 内的 `event_type` 分布，并生成 bounded `review_queue`：优先放入 anomaly、route_keyframe、低置信度检测和未复核样本。手机诊断页同步展示复盘队列数量和下一条待复核样本，支持售后/调试直接从 manifest 判断"哪些图该先看"，而不是只知道"有多少张图"。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 约 70% | 本轮未改硬件；未新增协议、串口、波特率或电气假设；WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 约 69% | 本轮未直接改动；team 复查建议下一步补 fixed-route dry-run status 到 `TrashCollection` action 的集成证明。 |
+| Objective 3：导航与固定路线 | 约 68% | 本轮未直接改动；team 复查建议下一步补 `route_data_recorder` callback runtime-style 文件写入验证。 |
+| Objective 4：感知模块 | 约 61% | 视觉样本 manifest 已进入可复盘队列，诊断可输出 event 分布、待复核样本、复核理由和上下文；仍缺真实路线数据集、真实 runtime 文件写入验证和持续标注闭环。 |
+| Objective 5：手机体验与量产边界 | 约 68% | 手机诊断页能显示视觉 review queue 数量和下一条待复核样本；真实手机浏览器、喇叭/TTS 和量产实物验收仍缺。 |
+
+本轮验证：operator diagnostics/http 目标测试、`py_compile`、完整 smoke、`git diff --check` 和 Docker/Humble 尝试结果见 `sprints/2026.05.10_09-10/tech-done.md`。
+
+### 2026-05-10 08-18｜patrol learning proof-gated｜O2 patrol 学习阶段 proof-gated
+
+原 `OKR.md` §18：本轮 hourly iteration 按 team 复查建议推进 Objective 2。`task_orchestrator._execute_patrol()` 不再在 `use_saved_map=false` 时打印 fake learning drive 并直接递增 `learn_count`；现在必须能从 `waypoint_file` 读取到非空 waypoint proof，才把本次视为学习证据并进入巡逻导航。缺失、不可解析或空 waypoint 文件会让 patrol action abort，状态进入 `ERROR`，避免把未完成学习阶段伪装成成功巡逻。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 约 70% | 本轮未改硬件；未新增协议、串口、波特率或电气假设；WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 约 69% | patrol 学习阶段已 proof-gated，缺 waypoint 证据不能继续巡逻或自增学习次数；回归测试覆盖无证据 abort 和有证据继续巡逻。legacy server sleep demo 与真实学习到巡逻 E2E 仍缺。 |
+| Objective 3：导航与固定路线 | 约 68% | 本轮未抬进度；学习 launch、route/keyframe/manifest 证据链保持，仍缺真实 `/odom` + `/camera/image_raw` 采集和 Nav2 实跑。 |
+| Objective 4：感知模块 | 约 58% | 本轮未抬进度；route keyframe manifest 与 diagnostics 兼容性保持，仍缺真实路线样本集和现场 runtime 验证。 |
+| Objective 5：手机体验与量产边界 | 约 67% | 本轮未抬进度；手机操作台和诊断摘要保持，仍缺真实手机浏览器、喇叭/TTS 和量产实物验收。 |
+
+本轮验证：patrol execution 目标测试、`py_compile`、完整 smoke、`git diff --check` 和 Docker/Humble 尝试结果见 `sprints/2026.05.10_08-09/tech-done.md`。
+
+### 2026-05-10 07-07｜route keyframe manifest｜O4 route keyframe 进入 `trashbot.vision_samples.v1`
+
+原 `OKR.md` §17：本轮 hourly iteration 继续推进完成度较低的 Objective 4。`route_data_recorder` 在成功写入学习阶段 keyframe JPG 后，会同步生成 `keyframes/<index>.json` companion sample，并追加 `trashbot.vision_samples.v1` 的 `manifest.json`。样本上下文包含 `route_id`、`checkpoint_id`、`event_type=route_keyframe`，per-sample JSON 包含 `route_pose` 和空 `detections`，让 operator diagnostics 已有的 manifest summary 可以直接消费路线关键帧证据。`learn.launch.py` 同步新增 `route_id`、`route_sample_manifest_name`、`route_sample_manifest_max_entries` 参数，学习入口不需要额外手工脚本就能产出 route/keyframe/manifest 证据链。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 约 70% | 本轮未改硬件；未新增协议、串口、波特率或电气假设；WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 约 66% | 本轮未直接改动；Product/Robot Platform team 复查建议下一轮优先把 `use_saved_map=false` patrol 学习模拟成功改为 proof-gated。 |
+| Objective 3：导航与固定路线 | 约 68% | 学习阶段产物从 route CSV/keyframe JPG 扩展为 companion JSON + manifest，固定路线数据更可复盘；仍缺真实 `/odom` + `/camera/image_raw` 采集、keyframe/live frame 匹配样例和 Nav2 实跑。 |
+| Objective 4：感知模块 | 约 58% | route keyframe 现在进入 `trashbot.vision_samples.v1` manifest，并通过现有 diagnostics summary 验证兼容；仍缺真实路线样本集、持续标注流程和现场 runtime 验证。 |
+| Objective 5：手机体验与量产边界 | 约 67% | 远程诊断可读的数据类型从 detector 样本扩展到学习路线关键帧；真实手机浏览器、喇叭/TTS 和量产实物验收仍缺。 |
+
+本轮验证：route recorder manifest 测试、bringup launch contract 测试、`py_compile` 已通过；完整 smoke、`git diff --check` 和 Docker/Humble 尝试结果见 `sprints/2026.05.10_07-08/tech-done.md`。
+
+### 2026-05-10 06-17｜keyframe_preflight｜O3 fixed-route 路线级 keyframe coverage 预检
+
+原 `OKR.md` §16：本轮 hourly iteration 按 team 建议继续推进 Objective 3。`fixed_route_autonomy` 新增 `keyframe_preflight` 调试状态：视觉门控开启时，节点会在第一步 dry-run/导航推进前检查整条路线的关键帧覆盖，列出 `loaded_keyframes`、`missing_keyframes`、`invalid_keyframes` 和 `route_visual_ready`。如果后续 checkpoint 缺图或 keyframe 无法读取/无 descriptor，状态停在 `waiting_visual_gate`，不会先通过 checkpoint 0 再在后续点位暴露问题。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 约 70% | 本轮未改硬件；vendor 入口已按规则复读，hardware 软件 smoke 仍作为护栏；WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 约 66% | 本轮未直接改动；任务终态与诊断消费链保持稳定，仍需清理学习阶段模拟完成口径和 legacy sleep demo。 |
+| Objective 3：导航与固定路线 | 约 67% | fixed-route dry-run 现在具备路线级 keyframe coverage 预检，调试状态可提前暴露缺失/无效关键帧；仍缺真实 `/odom` + `/camera/image_raw` 采集、keyframe/live frame 匹配样例、Nav2 实跑和 Docker/Humble build。 |
+| Objective 4：感知模块 | 约 54% | 本轮未抬进度；Vision/User Touchpoint team 复查建议下一步把 `route_data_recorder` 输出接入 `trashbot.vision_samples.v1` manifest，让路线 keyframe 也进入 diagnostics。 |
+| Objective 5：手机体验与量产边界 | 约 67% | route debug/status 信息更适合远程诊断消费；真实手机浏览器、喇叭/TTS 和量产实物验收仍缺。 |
+
+本轮验证：目标 fixed-route 测试、nav 包测试、完整 smoke、`py_compile`、`git diff --check` 和 Docker/Humble 尝试结果见 `sprints/2026.05.10_06-07/tech-done.md`。
+
+### 2026-05-10 05-16｜route learning closure｜O3 learn.launch.py 接入 route_data_recorder
+
+原 `OKR.md` §15：本轮 hourly iteration 按 team 建议推进 Objective 3 route learning closure。`learn.launch.py` 新增 `route_recorder:=false` 安全默认开关，以及 `route_output_dir`、`route_camera_topic`、`route_odom_topic`、`route_min_distance_m`、`route_frame_id` 参数；启用后会在学习阶段同时启动 `route_data_recorder`，让 SLAM/人工驾驶/waypoint 学习和 fixed-route CSV/keyframe 采集进入同一标准入口。`docs/navigation/fixed_route_workflow.md` 已把一键学习采集命令写入流程，静态 launch contract 测试覆盖参数声明、条件启动和参数透传。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 软件侧中高，实机侧未 closed | 本轮未改硬件；hardware 软件 smoke 14 tests OK；WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 中高 | 本轮未直接改动；任务终态与诊断消费链保持稳定，仍需清理学习阶段模拟完成口径和 legacy sleep demo。 |
+| Objective 3：导航与固定路线 | 约 64% | 学习 launch 现在可显式启动 route/keyframe 采集；bringup launch contract 测试和完整 smoke 已覆盖入口契约。仍缺真实 `/odom` + `/camera/image_raw` 采集、keyframe/live frame 匹配样例、Nav2 实跑和 Docker/Humble build。 |
+| Objective 4：感知模块 | 约 54% | 本轮未抬进度；视觉样本 manifest/诊断链保持，仍缺真实路线数据集和 runtime 文件写入单测。 |
+| Objective 5：手机体验与量产边界 | 约 67% | 本轮未抬进度；手机操作台和诊断摘要保持，仍缺真实手机浏览器、喇叭/TTS 和量产实物验收。 |
+
+本轮验证：`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest src/ros2_trashbot_bringup/test/test_launch_contract_static.py` 通过，9 tests OK；`PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile src/ros2_trashbot_bringup/launch/learn.launch.py` 通过；`PYTHONDONTWRITEBYTECODE=1 bash scripts/run_smoke_tests.sh` 通过，覆盖 interfaces 6、hardware 14、nav 20、bringup 9、behavior 101、vision 8；`git diff --check` 通过。`bash scripts/docker_humble_build.sh` 已尝试，但当前 WSL 2 distro 未启用 Docker Desktop integration，docker 命令不可用，无法完成 Humble colcon build。
+
+### 2026-05-10 04-20｜vision_samples in diagnostics｜O5 视觉样本 manifest 接入 operator diagnostics
+
+原 `OKR.md` §14：本轮 hourly iteration 继续用 team 模式推进低完成度 OKR。Vision/User Touchpoint 侧选择把视觉样本 manifest 接入 operator diagnostics：`/api/diagnostics` 新增 `vision_samples` 摘要，能报告 manifest 是否存在、schema、样本数量、最新样本引用、最新上下文、检测数量、最高置信度和读取错误；手机诊断面板同步展示视觉样本数量和最新样本引用。Autonomy 侧复查确认下一轮高价值 Objective 3 任务是把 `learn.launch.py` 显式接入 `route_data_recorder`，让路线/keyframe 采集进入学习阶段标准流程。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 软件侧中高，实机侧未 closed | 本轮未改硬件；hardware 软件 smoke 14 tests OK，但 Docker/Humble 与 WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 中高 | 本轮未直接改动；任务终态与诊断消费链保持稳定，仍需清理学习阶段模拟完成口径和 legacy sleep demo。 |
+| Objective 3：导航与固定路线 | 中等偏高 | team 复查明确下一步：`learn.launch.py` 应通过显式参数启动 `route_data_recorder`，把固定路线采集纳入学习流程；真实 Nav2/摄像头验证仍缺。 |
+| Objective 4：感知模块 | 中等偏上 | manifest 不再只是文件产物，已进入远程诊断摘要；还缺真实路线样本集、runtime 文件写入单测和持续标注流程。 |
+| Objective 5：手机体验与量产边界 | 中高 | 手机诊断面板能显示视觉样本状态和最新样本引用；还缺真实手机浏览器、喇叭/TTS 和量产实物验收。 |
+
+本轮验证：目标 diagnostics/http/static tests 通过；完整 `scripts/run_smoke_tests.sh` 通过，覆盖 interfaces 6、hardware 14、nav 20、bringup 8、behavior 101、vision 8；`git diff --check` 通过。Docker/Humble colcon build 因当前 WSL distro 找不到 `docker` 命令未执行成功。
+
+### 2026-05-10 03-22｜operator_gateway phone-first｜O5 本地手机操作台
+
+原 `OKR.md` §13（重复编号，时间 03:22）：本轮 hourly iteration 继续优先推进完成度较低的 Objective 5。`operator_gateway` 的本地页面从极简按钮/JSON 面板升级为手机优先操作台，展示状态卡、五步送垃圾流程、主操作按钮、机器人位置和诊断摘要；同时把手机文案与喇叭提示下沉为 `status_payload()` 的稳定字段 `phone_copy` / `speaker_prompt`，让 `/api/status`、`/api/collect`、`/api/dropoff/confirm`、`/api/cancel`、`/api/diagnostics` 都能被手机 UI 或未来 speaker/TTS 层直接消费。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 软件侧中高，实机侧未 closed | 本轮未改硬件；hardware 软件 smoke 14 tests OK，但 Docker/Humble 与 WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 中高 | 本轮未直接改动；team 复查确认 `use_saved_map=false` 学习阶段仍需用真实 waypoint/route 文件证明完成，不能继续靠模拟成功口径。 |
+| Objective 3：导航与固定路线 | 中等偏高 | fixed-route visual gate 和 route 状态仍是现有证据；下一步高价值项是 learning waypoint proof 与真实 keyframe/live frame 样例。 |
+| Objective 4：感知模块 | 中等 | 本轮未直接改动；样本 manifest 和负样本入口仍保持，真实路线数据集仍缺。 |
+| Objective 5：手机体验与量产边界 | 中高 | 本地手机操作台、`phone_copy`、`speaker_prompt`、诊断摘要和流程 stepper 已落地；还缺真实手机浏览器、喇叭/TTS、生产账号体系和量产实物验收。 |
+
+本轮验证：`PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/ros2_trashbot_behavior python3 -m unittest src/ros2_trashbot_behavior/test/test_operator_gateway_http.py src/ros2_trashbot_behavior/test/test_operator_gateway_static.py src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py` 通过，26 tests OK；`PYTHONDONTWRITEBYTECODE=1 bash scripts/run_smoke_tests.sh` 通过，覆盖 interfaces 6、hardware 14、nav 20、bringup 8、behavior 98、vision 8。
+
+### 2026-05-10 19-59｜hardware-proof-diagnostics｜O5 hardware proof 接入 diagnostics
+
+原 `OKR.md` §13（重复编号，时间 19:59）：本轮 `sprints/2026.05.10_19-20_hardware-proof-diagnostics/` 收口 Objective 5 的远程/手机诊断能力：`/api/diagnostics` 总是包含 `hardware_proof`，operator 页面新增 Hardware proof 诊断卡，能把上一轮 hardware diagnostics software proof 以 `software_proof`、`needs_hil`、`invalid_config`、`read_error` 四类保守状态展示给手机/售后用户。产品判断上，O5 可从约 74% 上调到约 77%；O1 只小幅上调到约 74%，因为 software proof 已被产品化消费，但真实 HIL 仍没有发生。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 软件证据消费链更完整，实机侧仍未 closed | 19-20 已把 hardware proof 接入 diagnostics API 和 operator 页面，targeted tests、py_compile、full smoke、diff check OK；但没有真实 WAVE ROVER HIL，没有真实 UART、轮向、速度单位、反馈频率、IMU、电池证据，`operator_gateway.py` 也还没有 `hardware_proof_ref` ROS 参数入口。 |
+| Objective 2：送垃圾任务闭环 | 无直接上调 | full smoke 覆盖 behavior 118 tests OK，证明本轮 operator diagnostics 改动未明显回归行为包；真实 fixed-route/Nav2 行驶和学习到巡逻 E2E 仍缺。 |
+| Objective 3：导航与固定路线 | 无直接上调 | nav 39 tests OK 作为不回归证据；真实路线采集、真实 Nav2/fixed-route 实跑、真实相机接入仍缺。 |
+| Objective 4：感知模块 | 无直接上调 | vision 13 tests OK 作为不回归证据；真实 camera/odom manifest、数据集和上车验证仍缺。 |
+| Objective 5：手机体验与量产边界 | 明显推进到中高 | `/api/diagnostics.hardware_proof` 和 operator Hardware proof 卡片让手机/售后能看到硬件 proof 状态和下一步动作；仍缺真实手机浏览器截图、真实 HIL、喇叭/TTS、量产硬件约束实物验收。 |
+
+本轮验证：targeted diagnostics 14 tests OK、HTTP 16 tests OK、static 8 tests OK、`python3 -m py_compile` OK、完整 smoke 通过 interfaces 6、hardware 24、nav 39、bringup 9、behavior 118、vision 13 tests OK、`git diff --check` OK。
+
+### 2026-05-10 02-31｜diagnostics payload fallback testing｜O5 纯函数化与 O4 manifest 推进
+
+原 `OKR.md` §12：本轮 hourly iteration 继续用 team 模式推进低完成度功能：Objective 5 把 diagnostics payload 组装拆成无 ROS 依赖纯函数，并用单测覆盖最新 status 优先、last_task fallback、日志引用归一化和空 map/route 版本不伪造文件存在；Objective 4 把视觉样本从"单个 JSON/JPG"推进为 raw image、annotated image、JSON、bounded manifest、任务上下文和可选空检测负样本入口。修复了 `scripts/run_smoke_tests.sh` 的 CRLF 问题，恢复 WSL/Linux smoke gate。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 软件侧中高，实机侧未 closed | 本轮未改硬件事实；hardware 软件 smoke 14 tests OK，但 Docker/Humble 与 WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 中高 | 任务终态、error_code、task_record_path 已稳定进入 diagnostics 消费链；patrol 学习阶段模拟口径和 legacy server 债务仍在。 |
+| Objective 3：导航与固定路线 | 中等偏高 | fixed-route visual gate 状态可继续进入诊断链；真实 Nav2/摄像头验证仍缺。 |
+| Objective 4：感知模块 | 中等 | 样本 raw/annotated/json/manifest 证据链、delivery/anomaly 上下文和可选负样本入口已具备；还缺真实路线数据集、runtime 文件写入单测和持续标注流程。 |
+| Objective 5：手机体验与量产边界 | 中等偏高 | `/api/diagnostics`、payload fallback 测试、状态提示词合同已落地；还缺完整手机 UI、量产硬件约束表和普通用户实测。 |
+
+本轮验证：`PYTHONDONTWRITEBYTECODE=1 bash scripts/run_smoke_tests.sh` 通过，覆盖 interfaces 6、hardware 14、nav 20、bringup 8、behavior 96、vision 8。
+
+### 2026-05-10 01-58｜vision sample manifest extend｜O5 operator gateway 新增 /api/diagnostics
+
+原 `OKR.md` §11：本轮 hourly iteration 使用 team 模式推进两个低完成度方向：Objective 5 由本地实现加 worker 复查，新增 operator gateway `/api/diagnostics` 和手机/喇叭提示合同；Objective 4 由 vision worker 复查样本上下文改动，确认视觉样本 JSON 已能携带 task、route、checkpoint、event、anomaly 上下文。测试仍作为护栏，重点是把手机诊断和感知数据沉淀往可用功能推进。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 软件侧中高，实机侧未 closed | 本轮未改硬件；Docker/Humble 与 WAVE ROVER HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 中高 | 任务终态、error_code、task_record_path 可继续被 `/api/diagnostics` 消费；patrol 学习阶段模拟口径和 legacy server 债务仍在。 |
+| Objective 3：导航与固定路线 | 中等偏高 | fixed-route visual gate 状态可继续进入诊断链；真实 Nav2/摄像头验证仍缺。 |
+| Objective 4：感知模块 | 中等 | 样本落盘具备原图、标注图、检测 JSON 和 delivery/anomaly 上下文；还缺 manifest、无检测异常帧捕获和真实数据集。 |
+| Objective 5：手机体验与量产边界 | 中等偏高 | 本地手机/浏览器网关新增诊断包入口，文档定义状态提示词；还缺完整手机 UI、量产硬件约束表和普通用户实测。 |
+
+### 2026-05-10 01-14｜fixed-route visual gate｜O3 fixed-route visual gate dry-run
+
+原 `OKR.md` §10：本轮 hourly iteration 优先推进完成度较低的 Objective 3。`fixed_route_autonomy` 的 dry-run 不再绕过 visual gate；启用视觉门控时，缺 keyframe、缺 camera frame、缺 descriptor 或匹配不足都会停在 `waiting_visual_gate`，并在 debug status 中写出 `visual_gate_status`、`visual_gate_detail`、`visual_gate_checkpoint`。只有 visual gate 通过后，dry-run 才推进 checkpoint。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 软件侧中高，实机侧未 closed | smoke 覆盖硬件桥软件测试；Docker/Humble 与 HIL 仍未完成。 |
+| Objective 2：送垃圾任务闭环 | 中高 | action result、task record、timeout/cancel/failure 路径逐步可判定；patrol 仍有硬编码 5 waypoint 占位债务。 |
+| Objective 3：导航与固定路线 | 中等，今天明显推进 | fixed-route dry-run 已覆盖 visual gate 等待与通过路径；还缺 route-wide keyframe coverage 预检和真实 Nav2/摄像头验证。 |
+| Objective 4：感知模块 | 低到中 | 视觉状态已进入固定路线准入诊断；样本沉淀、检测 JSON、模型评估表仍未完成。 |
+| Objective 5：手机用户体验与量产边界 | 中 | 远程/手机可消费诊断字段增加；完整手机 UX、语音提示词和量产硬件约束表仍待落地。 |
+
+本轮验证：`PYTHONDONTWRITEBYTECODE=1 bash scripts/run_smoke_tests.sh` 通过，覆盖 interfaces 4、hardware 14、nav 20、bringup 7、behavior 91、vision 1。
+
+---
+
+## 录入规则与边界
+
+- 本日志只是 `OKR.md` 第 4.1 节迁移历史，不修改任何 Objective/KR 文字、不修改任何 Objective % 数字。
+- 每次新增 sprint 进度后，由对应 Engineer 子 agent 在结束 sprint 时把 `tech-done.md` / `final.md` 的进度摘要追加到本文件顶部对应日期段。
+- 若一个 sprint 同时影响多个 Objective，按"主受益 Objective"归档，不重复粘贴。
+- 本文件不替代 sprint 留档（`pre_start/prd/tech-plan/tech-done/side2side/final`）；只是把第 4.1 节的"补充"段落和 §10-§29 进度快照集中归档，方便 `OKR.md` 主体保持简短。
+- 证据边界由各 sprint final/tech-done 自行声明（如 `software_proof_docker_only`、`software_proof_docker_*` gate、`hil_pass` 等），本文件原文保留，不再二次解释。
