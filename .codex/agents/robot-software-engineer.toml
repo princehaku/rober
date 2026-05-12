@@ -13,11 +13,7 @@ reports_to = ["CEO", "product-okr-owner"]
 delegates_to = []
 read_first = ["AGENTS.md", "OKR.md"]
 owner_paths = [
-  "onboard/src/ros2_trashbot_interfaces/",
-  "onboard/src/ros2_trashbot_behavior/",
-  "onboard/src/ros2_trashbot_bringup/",
-  "onboard/scripts/",
-  "scripts/",
+  "onboard/",
   "docs/",
 ]
 can_edit = true

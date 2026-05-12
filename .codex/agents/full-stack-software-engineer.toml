@@ -13,14 +13,13 @@ reports_to = ["CEO", "product-okr-owner"]
 delegates_to = []
 read_first = ["AGENTS.md", "OKR.md"]
 owner_paths = [
-  "onboard/src/",
+  "onboard/",
   "cloud-relay/",
   "pc-tools/",
-  "docs/product/",
-  "docs/interfaces/",
   "web/",
   "frontend/",
   "mobile/",
+  "docs/",
 ]
 can_edit = true
 requires_vendor_source = false

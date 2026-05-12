@@ -13,10 +13,8 @@ reports_to = ["CEO", "product-okr-owner"]
 delegates_to = []
 read_first = ["AGENTS.md", "docs/vendor/VENDOR_INDEX.md"]
 owner_paths = [
-  "onboard/src/ros2_trashbot_hardware/",
-  "onboard/src/ros2_trashbot_bringup/",
-  "docs/hardware/",
-  "docs/vendor/",
+  "onboard/",
+  "docs/",
 ]
 can_edit = true
 requires_vendor_source = true
