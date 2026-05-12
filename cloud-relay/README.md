@@ -1,8 +1,8 @@
 # cloud-relay/ — 4G 云中转 / 公网部署单位
 
-本目录是 `ros_rbs` 的 **公网云中转服务部署单位**：把 onboard 上车机器人和手机用户在公网上撮合起来。**独立于 onboard、独立于 mobile，独立于 pc-tools**，可在任意 4C8G 公网 VM 上 `docker compose up` 起来。
+本目录是 `ros_rbs` 的 **公网云中转服务部署单位**：把 onboard 上车机器人和手机用户在公网上撮合起来。部署入口独立于 onboard/mobile/pc-tools；当前协议实现仍复用 onboard behavior 包中的纯 Python relay 模块，避免复制第二套 `trashbot.remote.v1` 语义。
 
-> **当前状态（本轮）**：Dockerfile / `docker-compose.yml` / `scripts/docker_smoke.sh` 已在本目录；镜像构建 **context 为仓库根 `..`**，Dockerfile `COPY onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/...`。Phase 5（operator_gateway 与 relay 源码迁入 `cloud-relay/src/`、缩小 build context）尚未实施。
+> **当前状态（本轮）**：`cloud-relay/src/ros2_trashbot_cloud_relay/` 已提供 Python runtime 入口；Dockerfile / `docker-compose.yml` / `scripts/docker_smoke.sh` 均从该入口启动。镜像构建 **context 为仓库根 `..`**，只为复用 onboard behavior 里的唯一 relay 协议实现；证据边界仍是 Docker/local software proof。
 
 ## 用途（What lives here）
 
@@ -22,11 +22,11 @@
 
 | 目录 | 用途 | 现状 |
 | --- | --- | --- |
-| `cloud-relay/src/` | Python 源码（`remote_cloud_relay.py` + `operator_gateway*.py`） | **占位**；当前实现仍在 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/`，由 Dockerfile COPY 进镜像 |
-| `cloud-relay/docker/` | Dockerfile | `COPY onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior` → `/app/ros2_trashbot_behavior` |
-| `cloud-relay/test/` | 单测 + 集成测试 | 占位（P5 把 `test_operator_gateway_*.py` + `test_remote_cloud_relay.py` 搬入） |
-| `cloud-relay/scripts/` | 部署脚本 | `cloud-relay/scripts/docker_smoke.sh`（P2A 已搬入） |
-| `cloud-relay/docker-compose.yml` | compose 入口（公网 8088 端口） | P2A 已搬入并改造 context |
+| `cloud-relay/src/` | Python runtime 入口 | `ros2_trashbot_cloud_relay.remote_cloud_relay` 包装 onboard relay 实现，保持协议单一来源 |
+| `cloud-relay/docker/` | Dockerfile | 复制 cloud-relay 入口和 onboard 纯 Python relay 模块，不拉入 ROS2/Humble 构建链路 |
+| `cloud-relay/test/` | 单测 + 集成测试 | 后续可迁入 cloud relay 专属测试；当前仍复用 onboard compatibility fence |
+| `cloud-relay/scripts/` | 部署脚本 | `cloud-relay/scripts/docker_smoke.sh` 以 cloud-relay runtime 为主入口 |
+| `cloud-relay/docker-compose.yml` | compose 入口（公网 8088 端口） | 在 `cloud-relay/` 下执行，使用仓库根 context 复用唯一协议实现 |
 
 ## 部署目标（Deployment target）
 
@@ -65,10 +65,11 @@ TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-smoke-token bash scripts/docker_smoke.sh
   - schema：`trashbot.phone_readiness.v1`、`trashbot.command_safety.v1`、`trashbot.phone_offline_resume_readiness.v1` 等版本号化字段
 - **与 `pc-tools/evidence/`**：phone_browser_acceptance_gate 等工具可消费 cloud-relay 的 phone-safe JSON 做交叉验证；只读、不回写。
 
-## 后续工作（P5，未在本轮完成）
+## 后续工作
 
-- 将 `remote_cloud_relay.py` 与 `operator_gateway*.py` 迁入 `cloud-relay/src/`，按需缩小 Docker build context。
-- 可选：启用 `cloud-relay/.dockerignore` 进一步减小镜像构建发送量。
+- 后续若要彻底缩小 Docker build context，需先由 robot/full-stack 共同确认 `remote_bridge`、operator fallback 与测试导入路径，再决定是否把实现模块迁入 `cloud-relay/src/`。
+- `operator_gateway` 仍属于 onboard local fallback；本轮没有把本地调试 UI 合并进 cloud relay server。
+- 可选：在实现完全迁移后启用 `cloud-relay/.dockerignore` 进一步减小镜像构建发送量。
 
 ## Agent 工作纪律
 
@@ -83,6 +84,6 @@ TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-smoke-token bash scripts/docker_smoke.sh
 | 阶段 | 工作 |
 | --- | --- |
 | 本 sprint P2A（已完成） | Dockerfile / compose / scripts 搬到本目录；context 改 `..`；过渡注释 |
-| 本 sprint P5 | 源码搬入 `cloud-relay/src/`、operator_gateway 集成到同一 HTTP server、context 切回 `./`、`.dockerignore` 激活 |
+| 本 sprint P5（当前） | 新增 `ros2_trashbot_cloud_relay` runtime；Docker/smoke 从 cloud-relay 入口启动，协议实现继续复用 onboard |
 | 下一个 sprint | TLS / 反向代理、生产 DB（PostgreSQL）、多实例一致性、灾备 backup 策略 |
 | 后续 | 真实 4G / 真实公网 / 真实 OSS / CDN 凭证、监控、告警 |

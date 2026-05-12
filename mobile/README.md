@@ -2,7 +2,7 @@
 
 本目录是 `ros_rbs` 的 **用户手机端部署单位**：把机器人能力产品化成手机能操作、能看状态的入口。
 
-> 当前状态：sprint `2026.05.13_01-02_codebase-restructure-four-tier` 的 Phase 2B 已建立脚手架；真正的前端资源（HTML/CSS/JS）会在 Phase 5 由 `full-stack-software-engineer` 从 `operator_gateway_static.py` 内嵌字符串里抽出来搬到这里。
+> 当前状态：sprint `2026.05.13_01-02_codebase-restructure-four-tier` 的 Phase 2B 已建立脚手架；`2026.05.13_02-03_cloud-relay-self-contained-gate` 先收敛 cloud-relay runtime 入口，尚未搬迁手机前端资源。
 
 ## 用途（What lives here）
 
@@ -33,7 +33,7 @@
 ## 当前 P1+P2B 状态
 
 - 仅创建 README 脚手架，**不搬任何前端代码**。
-- `operator_gateway_static.py` 内嵌的 HTML/CSS/JS 留在 onboard `ros2_trashbot_behavior` 包内，等 P5 完成 cloud-relay 整合后再抽出来。
+- `operator_gateway_static.py` 内嵌的 HTML/CSS/JS 仍留在 onboard `ros2_trashbot_behavior` 包内；本轮只完成 cloud-relay runtime 入口，不改变手机前端资源归属。
 - 手机端验收 gate：`pc-tools/evidence/phone_browser_acceptance_gate.py`（与本目录无 import 耦合，仅文档引用）。
 
 ## Agent 工作纪律
@@ -48,6 +48,7 @@
 | 阶段 | 工作 |
 | --- | --- |
 | 本 sprint P2B（当前） | README 脚手架 |
-| 本 sprint P5 | 从 `operator_gateway_static.py` 抽出 HTML/CSS/JS 到 `mobile/web/`；维持 phone-safe schema 不变 |
+| 当前 cloud-relay gate | cloud-relay runtime 入口独立，mobile 继续只消费 phone-safe schema，不发明状态 |
+| 后续 mobile sprint | 从 `operator_gateway_static.py` 抽出 HTML/CSS/JS 到 `mobile/web/`；维持 phone-safe schema 不变 |
 | 下一个 sprint | PWA 离线 service-worker、断网弱网体验优化、操作日志面板 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |

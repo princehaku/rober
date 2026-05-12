@@ -5,7 +5,7 @@
 ## 仓库分层（部署面）
 
 - **`onboard/`**：Orange Pi 上车 ROS2 Humble 主链路（源码、Docker、构建与 smoke 脚本）。日常 `colcon build` 与容器开发均在此目录为工作区根挂载到容器 `/ws`。
-- **`cloud-relay/`**：4G 云中转 HTTP 服务独立镜像与 compose（与上车构建解耦）。
+- **`cloud-relay/`**：4G 云中转 HTTP 服务独立 runtime、镜像与 compose；入口为 `ros2_trashbot_cloud_relay.remote_cloud_relay`，协议语义复用 onboard behavior 的唯一 relay 实现。
 - **`mobile/`**：用户手机 PWA / 触点资源占位（后续迭代）。
 - **`pc-tools/`**：PC 端路径学习、证据检查等开发工具占位（后续迭代）。
 - **`docs/`、`sprints/`**：文档与迭代留档。

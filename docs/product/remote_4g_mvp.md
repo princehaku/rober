@@ -27,11 +27,12 @@ The Docker/local proof now has two control-plane surfaces:
 
 - Local fallback: `operator_gateway` still embeds a mock cloud for local
   debugging and degraded operator workflows.
-- Independent relay: `ros2_trashbot_behavior.remote_cloud_relay` is a separate
+- Independent relay: `ros2_trashbot_cloud_relay.remote_cloud_relay` is a separate
   HTTP service module with bearer auth, file-backed or SQLite-backed proof
   persistence, health/readiness checks, and phone-safe JSON errors. It can run
   in local Python or Docker without ROS2 runtime and without the
-  `operator_gateway` process.
+  `operator_gateway` process. The cloud-relay entrypoint wraps the existing
+  onboard relay implementation so command/status/ack semantics stay single-source.
 
 Both surfaces preserve `trashbot.remote.v1` command/status/ack semantics and do
 not expose `/cmd_vel`, serial ports, baudrate, WAVE ROVER parameters, or raw
@@ -45,7 +46,7 @@ readiness:
 
 ```text
 GET /preflightz
-python3 -m ros2_trashbot_behavior.remote_cloud_relay --preflight
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 ```
 
 The preflight output is machine-readable JSON with
@@ -116,9 +117,9 @@ configuration.
 Example local proof launch:
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
 TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-token \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
   --host 127.0.0.1 \
   --port 8088 \
   --state-path /tmp/trashbot_remote_cloud_relay.json
@@ -127,10 +128,10 @@ python3 -m ros2_trashbot_behavior.remote_cloud_relay \
 Example SQLite state proof launch:
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
 TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-token \
 TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
   --host 127.0.0.1 \
   --port 8088 \
   --state-path /tmp/trashbot_remote_cloud_relay.sqlite \
@@ -140,9 +141,9 @@ python3 -m ros2_trashbot_behavior.remote_cloud_relay \
 Example backup/restore drill:
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
 TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
   --state-backend sqlite \
   --state-path /tmp/trashbot_remote_cloud_relay.sqlite \
   --backup-state-to /tmp/trashbot_remote_cloud_relay_backup.json \
@@ -160,8 +161,8 @@ tracebacks.
 Example network recovery drill:
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
   --network-recovery-drill \
   --state-backend sqlite \
   --state-path /tmp/trashbot_network_recovery.sqlite \
@@ -171,9 +172,9 @@ python3 -m ros2_trashbot_behavior.remote_cloud_relay \
 Preflight can consume the artifact:
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
 TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT=/tmp/trashbot_network_recovery_drill.json \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay --preflight
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 ```
 
 Missing artifacts stay warning, and invalid, stale, or failed artifacts stay
@@ -190,8 +191,8 @@ checksums.
 Example OSS/CDN manifest proof:
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
   --write-oss-cdn-manifest /tmp/trashbot_oss_cdn_manifest.json \
   --manifest-robot-id robot-local-proof \
   --manifest-task-id task-local-proof \
@@ -201,14 +202,14 @@ python3 -m ros2_trashbot_behavior.remote_cloud_relay \
 Preflight can consume the artifact by environment variable or CLI parameter:
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
 TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT=/tmp/trashbot_oss_cdn_manifest.json \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay --preflight
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 ```
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
   --preflight \
   --oss-cdn-manifest-artifact /tmp/trashbot_oss_cdn_manifest.json
 ```
@@ -245,10 +246,11 @@ command accepted/processing evidence and does not prove delivery success, real
 Example Docker deploy proof:
 
 ```bash
-cp .env.example .env
-# Set TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN to a local placeholder only.
-docker compose -f docker-compose.remote-cloud-relay.yml build remote-cloud-relay
-docker compose -f docker-compose.remote-cloud-relay.yml up -d remote-cloud-relay
+cd cloud-relay
+TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-placeholder \
+  docker compose -f docker-compose.yml build remote-cloud-relay
+TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-placeholder \
+  docker compose -f docker-compose.yml up -d remote-cloud-relay
 curl -fsS http://127.0.0.1:8088/healthz
 curl -fsS http://127.0.0.1:8088/readyz
 curl -fsS http://127.0.0.1:8088/preflightz || true
@@ -259,7 +261,7 @@ For a fenced end-to-end Docker smoke:
 ```bash
 TRASHBOT_REMOTE_CLOUD_PUBLISHED_PORT=18088 \
 TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-smoke-token \
-scripts/remote_cloud_relay_docker_smoke.sh
+bash scripts/docker_smoke.sh
 ```
 
 ## Bearer Auth Gate
@@ -279,8 +281,8 @@ provisioning, STS issuance boundary, and audit log contract consumption. Generat
 it with:
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
   --write-provisioning-audit-artifact /tmp/trashbot_provisioning_audit_gate.json \
   --provisioning-audit-robot-id robot-local-proof
 ```
@@ -297,8 +299,8 @@ The production store/queue gate adds a Docker/local artifact for the production
 DB/queue contract boundary. Generate it with:
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
   --write-production-store-queue-artifact /tmp/trashbot_production_store_queue_gate.json \
   --production-store-queue-robot-id robot-local-proof
 ```
@@ -317,8 +319,8 @@ The queue ordering drill adds a narrower Docker/local artifact for command
 ordering invariants. Generate it with:
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
   --write-queue-ordering-drill-artifact /tmp/trashbot_queue_ordering_drill.json \
   --queue-ordering-drill-robot-id robot-local-proof
 ```
@@ -341,8 +343,8 @@ The transaction isolation drill adds the next Docker/local artifact for
 interleaved command/status/ACK writes on one robot. Generate it with:
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
   --write-transaction-isolation-artifact /tmp/trashbot_transaction_isolation_drill.json \
   --transaction-isolation-robot-id robot-local-proof
 ```
@@ -366,8 +368,8 @@ The production recovery gate adds the next Docker/local artifact for production
 backup and disaster recovery readiness gaps. Generate it with:
 
 ```bash
-PYTHONPATH=src/ros2_trashbot_behavior \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
   --write-production-recovery-artifact /tmp/trashbot_production_recovery_gate.json \
   --production-recovery-robot-id robot-local-proof
 ```

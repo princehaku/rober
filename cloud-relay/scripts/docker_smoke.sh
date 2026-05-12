@@ -105,8 +105,8 @@ echo "== production preflight CLI with unwritable state expects blocked =="
 set +e
 repo_ws="$(cd "$relay_root/.." && pwd)"
 TRASHBOT_REMOTE_CLOUD_STATE=/dev/null/relay_state.json \
-PYTHONPATH="$repo_ws/onboard/src/ros2_trashbot_behavior" \
-python3 -m ros2_trashbot_behavior.remote_cloud_relay --preflight >/tmp/remote_cloud_relay_preflight_cli.json
+PYTHONPATH="$repo_ws/cloud-relay/src:$repo_ws/onboard/src/ros2_trashbot_behavior" \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight >/tmp/remote_cloud_relay_preflight_cli.json
 PREFLIGHT_CLI_STATUS="$?"
 set -e
 cat /tmp/remote_cloud_relay_preflight_cli.json
@@ -186,7 +186,7 @@ echo "== sqlite backup restore drill =="
 docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
   rm -f /tmp/remote_cloud_relay_backup.json /tmp/remote_cloud_relay_restored.sqlite
 docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
-  python -m ros2_trashbot_behavior.remote_cloud_relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay \
     --state-backend sqlite \
     --state-path "${TRASHBOT_REMOTE_CLOUD_STATE}" \
     --backup-state-to /tmp/remote_cloud_relay_backup.json \
@@ -235,7 +235,7 @@ set +e
 docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T \
   -e TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT=/tmp/remote_cloud_relay_backup.json \
   remote-cloud-relay \
-  python -m ros2_trashbot_behavior.remote_cloud_relay --preflight \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight \
   >/tmp/remote_cloud_relay_preflight_backup_drill.json
 PREFLIGHT_BACKUP_CLI_STATUS="$?"
 set -e

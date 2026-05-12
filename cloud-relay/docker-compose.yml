@@ -1,7 +1,7 @@
 services:
   remote-cloud-relay:
     build:
-      # 构建上下文为仓库根，便于 COPY onboard/src/... 下的 relay 源码，避免与 onboard Docker 构建上下文互相污染。
+      # 构建上下文为仓库根，便于 cloud-relay 入口复用 onboard 的唯一 relay 协议实现。
       context: ..
       dockerfile: cloud-relay/docker/Dockerfile
     image: ros-rbs-remote-cloud-relay:dev

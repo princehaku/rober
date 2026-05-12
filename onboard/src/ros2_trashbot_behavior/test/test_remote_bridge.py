@@ -1342,6 +1342,67 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_cloud_relay_runtime_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "cloud_relay_runtime": {
+                    "schema": "trashbot.cloud_relay_runtime.v1",
+                    "source": "cloud-relay/src/ros2_trashbot_cloud_relay",
+                    "production_ready": False,
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "cloud_relay_runtime": {
+                    "schema": "trashbot.cloud_relay_runtime.v1",
+                    "deployment_entrypoint": "cloud-relay/scripts/docker_smoke.sh",
+                    "self_contained": True,
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "delivery_success": True,
+                },
+                "preflight": {"overall_status": "blocked", "production_ready": False},
+            },
+            "ack_response": {
+                "cloud_relay_runtime": {
+                    "schema": "trashbot.cloud_relay_runtime.v1",
+                    "ack_semantics": "delivery_success",
+                    "production_ready": True,
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-cloud-relay-runtime-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-cloud-relay-runtime-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-cloud-relay-runtime-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        self.assertEqual(ack_payload["message"], "collect")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # cloud-relay 自包含 runtime 是部署元数据，robot ACK 只能表达本地 command envelope 处理结果。
+        self.assertNotIn("cloud_relay_runtime", encoded_ack)
+        self.assertNotIn("deployment_entrypoint", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("cloud_relay_runtime", encoded_status)
+        self.assertNotIn("deployment_entrypoint", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_metadata_only_transaction_isolation_response_does_not_start_ack_or_persist_cursor(self):
         for isolation_status in ("blocked", "invalid", "stale"):
             with self.subTest(isolation_status=isolation_status):
@@ -1543,9 +1604,7 @@ class RemoteBridgeActionResultTest(unittest.TestCase):
 
 class RemoteBridgeStaticConfigTest(unittest.TestCase):
     def test_remote_bridge_declares_o6_polling_configuration(self):
-        source = pathlib.Path(RemoteBridge.__module__.replace(".", "/") + ".py")
-        if not source.exists():
-            source = pathlib.Path("src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_bridge.py")
+        source = REPO_ROOT / "ros2_trashbot_behavior" / "ros2_trashbot_behavior" / "remote_bridge.py"
         text = source.read_text(encoding="utf-8")
 
         for parameter_name in (
