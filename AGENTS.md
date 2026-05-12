@@ -151,12 +151,48 @@ source install/setup.bash
 
 #### 并行启动强制规则
 
-- **tech-plan 有清晰文件范围且任务互不重叠时，必须在同一条消息里并行发起多个 Task / spawn_agent 调用**（每个角色一个子 agent，不序列化等待）。
-- 1 owner 任务（整个 sprint 只有一个工程师负责）也**必须派 1 个子agent**，不得主节点自己动手。
-- 2+ owner 且文件范围互不重叠时，必须并行派多个子agent。
-- 2+ owner 但接口耦合、共享文件或验收链路强相关时，指定 1 个主责 owner 负责实现和集成，其他 owner 只读咨询或补专业事实。
-- "单线闭环"的含义是：**一个子 agent 单线负责到底**，不是主节点自己写。
+总规则参见 `docs/process/iteration_velocity.md`，本节为 AGENTS.md 内的强制条款摘录：
+
+- **默认每个 sprint 启动 2-4 个并行子 agent**。tech-plan 有清晰文件范围且任务互不重叠时，必须在同一条消息里并行发起 2-4 个 Task / spawn_agent 调用（每个角色一个子 agent，不序列化等待）。
+- 1 owner 单线 sprint 仅在以下三种豁免情况下合法：
+  1. 硬件 blocker 锁死，没有可并行的软件工作（必须在 pre_start.md 写明哪个 blocker 锁死了哪些 Objective）；
+  2. 任务严格单文件、单 owner，并且与其他在跑 sprint 完全无接口耦合（必须在 tech-plan.md 列出文件路径并声明无耦合）；
+  3. CEO 明确要求 read-only 或单线（必须在 pre_start.md 引用 CEO 原话）。
+- 2+ owner 且文件范围互不重叠时，**必须**并行派多个子 agent，禁止序列化等待。
+- 2+ owner 但接口耦合、共享文件或验收链路强相关时，指定 1 个主责 owner 负责实现和集成，其他 owner 只读咨询或补专业事实；主责 owner 子 agent 必须并行启动咨询/事实补充任务，不得串行。
+- **降级为 1 个子 agent 完成 2+ owner sprint 视为流程违规**，sprint final.md 必须解释为何降级（如全员同步阻塞、运行时缺少子 agent 工具等）。
+- "单线闭环"的含义是：**一个子 agent 单线负责到底**，不是主节点自己写代码。
 - 主节点收到子 agent 返回后，只做：验收结果、更新 sprint 文档、决定是否需要重试或集成。
+
+#### Epic / Micro Sprint 分层
+
+总规则参见 `docs/process/iteration_velocity.md`，本节为 AGENTS.md 内的强制条款摘录：
+
+- 所有 sprint 必须在 `pre_start.md` 第一节显式标注 `sprint_type: epic` 或 `sprint_type: micro`，缺失视为流程违规。
+- **Epic Sprint**：跨 owner（2+）、预计 ≥ 2 小时、预计推动 OKR ≥ +3pp 或新增一个完整能力模块。必须走完整六文档：`pre_start.md → prd.md → tech-plan.md → tech-done.md → side2side_check.md → final.md`。
+- **Micro Sprint**：单 owner、< 1 小时、单一改动（修一个 bug、加一个测试、补一个文档段落、跑一次硬件 smoke 等）。必须创建 sprint 目录，但**只需 `tech-done.md`**，不必产出其他五个文档。
+- 误判 micro 为 epic 不算违规（只是多写了文档）；**误判 epic 为 micro**（事后发现需要 PRD/tech-plan）必须立即升级为 epic 并补齐缺失的五个文档，不得就地把 tech-done.md 扩成"事实上的全套文档"。
+- 既有 sprint 不追溯，新规则只对 2026-05-12 之后启动的 sprint 生效。
+- Micro sprint 不豁免 `tech-done.md` 的实际改动、验证结果、剩余风险三段；只是省去 pre_start/prd/tech-plan/side2side/final 五个文档。
+
+#### OKR 最低优先级软提醒
+
+- 每轮 Epic sprint 的 `tech-plan.md` 必须包含一节 `## OKR 最低优先级核对`，写明：
+  1. 当前 `OKR.md` 4.1 节里完成度最低的 Objective（按数字排序，含并列时一起列出）；
+  2. 本 sprint 是否针对该最低 Objective；
+  3. 如不针对，必须给出具体理由，例如：最低 Objective 当前无可推进的软件工作、依赖前置硬件 blocker 未解、CEO 明确指定其他优先级、并行 sprint 已覆盖最低 Objective 等。
+- Micro sprint 不强制此节（但鼓励在 `tech-done.md` 末尾用一句话说明）。
+- **这是软提醒，不阻塞实现**；但 `final.md` 收口时需要回顾该理由是否在本轮仍然成立。
+- 详细判定矩阵见 `docs/process/iteration_velocity.md`。
+
+#### 同一 Blocker 重复消费红线
+
+- **同一根因 blocker 最多消费 2 轮 sprint**。"消费"定义：该 sprint 的 `final.md` 主要结论是 blocked 在同一根因（如 Docker registry mirror、缺真实串口设备、CDN 不可达、OSS 无凭证等）。
+- 从第 3 轮起，必须二选一：
+  1. **切换 Objective**：本轮放弃该 blocker，转去做不依赖该 blocker 的低完成度 Objective，pre_start.md 必须写明切换原因和切换后的目标 Objective；
+  2. **升级 CEO 求决策**：在 sprint pre_start.md 新增"升级原因"段，明确告知 CEO 该 blocker 已连续 2 轮无法解决，请求方向决策（提供硬件、更换策略、暂停该 KR 等）。
+- 例外：CEO 在升级后明确"继续攻坚同一 blocker"，则计数重置但需要在 pre_start.md 引用 CEO 原话。
+- 主节点在派发新 sprint 前必须扫描最近 2 轮 sprint final.md 的 blocker 字段，避免无意识重复消费。
 
 ### 组织层级
 
@@ -180,38 +216,42 @@ source install/setup.bash
 
 ### Tech Plan 自动执行规则
 
-当当前 sprint 的 `tech-plan.md` 已完成，并且已经写清任务分工、文件范围、接口影响、验收命令和风险边界时，默认进入实现阶段，不再停留在计划阶段：
+当当前 sprint 的 `tech-plan.md` 已完成，并且已经写清任务分工、文件范围、接口影响、验收命令和风险边界时，默认进入实现阶段，不再停留在计划阶段。**总规则参见 `docs/process/iteration_velocity.md`**：
 
-- 1 owner 任务由主责 Engineer 子 agent 直接实现、验证并更新 `tech-done.md`。
-- 2+ owner 且文件范围互不重叠的任务必须并行启动对应 Engineer 子 agent；必须明确每个 Engineer 的文件范围、接口边界和验证命令。
-- 跨角色或接口耦合任务必须指定一个主责 owner 做最终集成验证，默认由 `Robot Platform Engineer` 承担 ROS2 主链路集成。
+- **1 owner 任务**仅在符合"并行启动强制规则"三条豁免之一时合法，否则必须拆解为 2+ owner 并行任务；豁免任务也必须派 1 个子 agent 实现、验证并更新 `tech-done.md`，主节点不得自己动手写代码。
+- 2+ owner 且文件范围互不重叠的任务必须**并行**启动对应 Engineer 子 agent（默认 2-4 个）；必须明确每个 Engineer 的文件范围、接口边界和验证命令。
+- 跨角色或接口耦合任务必须指定一个主责 owner 做最终集成验证，默认由 `Robot Platform Engineer` 承担 ROS2 主链路集成；其他 owner 以并行只读咨询/事实补充方式介入，不得串行等待主责 owner 收口。
 - 如果 `tech-plan.md` 缺少验收命令、文件范围或接口边界，先补齐计划再执行；不得用模糊计划触发并行改代码。
-- 只有用户明确要求“只做计划 / 不要实现 / 等我确认”时，才在 `tech-plan.md` 后暂停。
+- 如果是 Epic sprint，`tech-plan.md` 还必须包含"OKR 最低优先级核对"段（见上一节软提醒规则），缺失视为计划未完成。
+- 只有用户明确要求"只做计划 / 不要实现 / 等我确认"时，才在 `tech-plan.md` 后暂停。
 
 ### Sprint 留档原则
 
-Sprint 文档是项目迭代的主线，不允许因为“执行优先”就不写迭代。执行优先的含义是：先推进可验证结果，边做边更新必要记录，不能让写文档替代干活，也不能让干活脱离留档。
+Sprint 文档是项目迭代的主线，不允许因为"执行优先"就不写迭代。执行优先的含义是：先推进可验证结果，边做边更新必要记录，不能让写文档替代干活，也不能让干活脱离留档。
 
 所有任务必须归入当前活跃 sprint；如果没有活跃 sprint，必须先创建新的 `sprints/<round>/pre_start.md`，记录目标、owner、验收口径和风险后再推进。
 
-迭代文档顺序固定为：
+**按 Epic / Micro 分层留档**（详见上文"Epic / Micro Sprint 分层"小节与 `docs/process/iteration_velocity.md`）：
 
-- `pre_start.md`：上轮未完成项、阻塞、owner。
-- `prd.md`：需求、OKR 对齐、验收口径。
-- `tech-plan.md`：技术方案、接口、风险、验证计划。
-- `tech-done.md`：实际改动、验证结果、偏差。
-- `side2side_check.md`：用户验收或对照检查。
-- `final.md`：复盘、OKR 进度、技术遗留。
+- **Epic Sprint** 必须走完整六文档顺序：
+  - `pre_start.md`：上轮未完成项、阻塞、owner、本轮 `sprint_type: epic` 声明。
+  - `prd.md`：需求、OKR 对齐、验收口径。
+  - `tech-plan.md`：技术方案、接口、风险、验证计划、OKR 最低优先级核对。
+  - `tech-done.md`：实际改动、验证结果、偏差。
+  - `side2side_check.md`：用户验收或对照检查。
+  - `final.md`：复盘、OKR 进度、技术遗留。
+- **Micro Sprint** 仅强制 `tech-done.md`（含 `sprint_type: micro` 声明、实际改动、验证结果、剩余风险三段），其他五个文档可省略。
 
 文档契约：
 
-- 每个阶段写清状态后，再进入下一个阶段文档。
+- 每个阶段写清状态后，再进入下一个阶段文档（Epic 适用）。
 - 禁止一次性预生成整轮文档冒充进度。
 - 如果历史上已有后续文档草稿，在前置阶段完成前只能视为 draft，不得作为有效收口证据。
 - 代码、配置或文档实际改动完成后，必须把验证结果和剩余风险写入 `tech-done.md` 或当前阶段对应文档。
-- 验收或复盘任务必须更新 `side2side_check.md` / `final.md`，不能只在聊天里口头收口。
+- 验收或复盘任务必须更新 `side2side_check.md` / `final.md`（Epic 适用），不能只在聊天里口头收口。
+- Micro sprint 完成后，若事后发现需要复盘或验收对齐，必须立即升级为 Epic 并补齐缺失五个文档。
 
-- 所有代码、配置、文档、流程或 agent 变更，都必须至少更新当前 sprint 的 `tech-done.md`；涉及验收或风险状态变化时，同时更新 `side2side_check.md` 或 `final.md`。如果没有当前 sprint，必须先启动新迭代。
+- 所有代码、配置、文档、流程或 agent 变更，都必须至少更新当前 sprint 的 `tech-done.md`；涉及验收或风险状态变化（且 sprint 为 Epic）时，同时更新 `side2side_check.md` 或 `final.md`。如果没有当前 sprint，必须先启动新迭代。
 
 ### 组织链路与全员红线
 
