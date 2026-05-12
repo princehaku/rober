@@ -24,7 +24,9 @@ class MockCloud:
         self.fail_status_count = 0
         self.fail_get_count = 0
         self.fail_ack_count = 0
+        self.malformed_status_count = 0
         self.malformed_get_count = 0
+        self.malformed_ack_count = 0
         self.auth_fail_get_count = 0
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), self._make_handler())
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -92,6 +94,15 @@ class MockCloud:
                         cloud.fail_status_count -= 1
                         self._json(503, {"error": "temporary status outage"})
                         return
+                    if cloud.malformed_status_count > 0:
+                        cloud.malformed_status_count -= 1
+                        data = b"{not-json"
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.send_header("Content-Length", str(len(data)))
+                        self.end_headers()
+                        self.wfile.write(data)
+                        return
                     cloud.status_posts.append(self._body())
                     self._json(200, {"ok": True})
                     return
@@ -100,6 +111,15 @@ class MockCloud:
                     if cloud.fail_ack_count > 0:
                         cloud.fail_ack_count -= 1
                         self._json(503, {"error": "temporary ack outage"})
+                        return
+                    if cloud.malformed_ack_count > 0:
+                        cloud.malformed_ack_count -= 1
+                        data = b"{not-json"
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.send_header("Content-Length", str(len(data)))
+                        self.end_headers()
+                        self.wfile.write(data)
                         return
                     cloud.ack_posts.append(self._body())
                     self._json(200, {"ok": True})
@@ -370,6 +390,25 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.backend.last_status["retry_hint"], "retry_cloud")
         self.assertFalse(self.backend.last_status["remote_ready"])
 
+    def test_malformed_status_response_does_not_poll_command_or_advance_cursor(self):
+        self.cloud.commands.append({
+            "id": "cmd-bad-status-response",
+            "type": "collect",
+            "payload": {"target": "trash_station"},
+        })
+        self.cloud.malformed_status_count = 1
+
+        handled = self.worker.poll_once()
+
+        self.assertFalse(handled)
+        self.assertEqual(self.backend.calls, [])
+        self.assertEqual(self.cloud.ack_posts, [])
+        self.assertEqual(self.worker.last_ack_id, "")
+        self.assertEqual(self.cloud.get_paths, [])
+        self.assertEqual(self.backend.last_status["degradation_state"], "malformed_response")
+        self.assertEqual(self.backend.last_status["retry_hint"], "contact_support")
+        self.assertFalse(self.backend.last_status["remote_ready"])
+
     def test_auth_failed_get_posts_phone_safe_status_without_cursor_advance(self):
         self.cloud.commands.append({
             "id": "cmd-auth",
@@ -431,6 +470,42 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertFalse(state_path.exists())
             self.assertEqual(worker.last_ack_id, "")
             self.assertEqual(worker.operator_backend.last_status["degradation_state"], "cloud_unreachable")
+
+    def test_malformed_ack_response_retries_same_command_before_persisting_cursor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                cursor_state_path=state_path,
+            )
+            command = {
+                "id": "cmd-ack-malformed",
+                "type": "collect",
+                "payload": {"target": "trash_station", "trash_type": 0},
+            }
+            self.cloud.commands.append(command)
+            self.cloud.malformed_ack_count = 1
+
+            self.assertTrue(worker.poll_once())
+
+            self.assertFalse(state_path.exists())
+            self.assertEqual(worker.last_ack_id, "")
+            self.assertEqual(self.cloud.ack_posts, [])
+            self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+            self.assertEqual(worker.operator_backend.last_status["degradation_state"], "malformed_response")
+
+            # ACK 响应不可信时，只能重发已缓存的 terminal ACK，不能再次触发本地 action。
+            self.cloud.commands.append(command)
+            self.assertTrue(worker.poll_once())
+
+            payload = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["last_terminal_ack_id"], "cmd-ack-malformed")
+            self.assertEqual(worker.last_ack_id, "cmd-ack-malformed")
+            self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+            self.assertEqual(self.cloud.ack_posts[0]["command_id"], "cmd-ack-malformed")
+            self.assertEqual(self.cloud.ack_posts[0]["state"], "acked")
 
     def test_unreadable_cursor_state_fails_explainably(self):
         with tempfile.TemporaryDirectory() as tmpdir:

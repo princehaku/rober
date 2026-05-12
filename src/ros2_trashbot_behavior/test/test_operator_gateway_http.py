@@ -27,6 +27,7 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     status_payload,
 )
 from ros2_trashbot_behavior.remote_cloud_relay import (
+    create_network_recovery_artifact,
     build_phone_oss_cdn_manifest_summary,
     create_oss_cdn_manifest_artifact,
 )
@@ -51,6 +52,7 @@ class FakeGateway:
     def __init__(self):
         self.mock_cloud_bearer_token = ""
         self.oss_cdn_manifest_artifact_ref = ""
+        self.network_recovery_artifact_ref = ""
         self.collect_status = 202
         self.collect_payload = {"state": "loaded_and_ready"}
         self.dropoff_status = 200
@@ -362,6 +364,13 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             date_text="2026-05-12",
         )
         self.gateway.oss_cdn_manifest_artifact_ref = str(manifest_path)
+        network_recovery_path = Path(self.tempdir.name) / "network_recovery.json"
+        create_network_recovery_artifact(
+            network_recovery_path,
+            Path(self.tempdir.name) / "network_recovery.sqlite",
+            state_backend="sqlite",
+        )
+        self.gateway.network_recovery_artifact_ref = str(network_recovery_path)
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(self.gateway))
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -411,6 +420,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             "software_proof_docker_phone_manifest_consumption",
         )
         self.assertIn("real_oss_upload", payload["phone_readiness"]["oss_cdn_manifest"]["not_proven"])
+        self.assertEqual(payload["phone_readiness"]["network_recovery"]["state"], "ready")
+        self.assertEqual(
+            payload["phone_readiness"]["network_recovery"]["evidence_boundary"],
+            "software_proof_docker_network_recovery_phone_consumption",
+        )
+        self.assertIn("delivery_success", payload["phone_readiness"]["network_recovery"]["not_proven"])
         self.assertIn("hil_pass", payload["phone_readiness"]["not_proven"])
 
     def test_status_payload_exposes_phone_and_speaker_copy_for_documented_states(self):

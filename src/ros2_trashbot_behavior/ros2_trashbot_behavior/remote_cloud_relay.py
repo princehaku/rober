@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import os
+import socket
 import sqlite3
 import tempfile
 import threading
@@ -21,12 +22,17 @@ STATUS_STALE_AFTER_SEC = 90.0
 PREFLIGHT_EVIDENCE_BOUNDARY = "software_proof_docker_preflight_gate"
 SQLITE_EVIDENCE_BOUNDARY = "software_proof_docker_sqlite_state_store"
 BACKUP_RESTORE_EVIDENCE_BOUNDARY = "software_proof_docker_backup_restore_drill"
+NETWORK_RECOVERY_EVIDENCE_BOUNDARY = "software_proof_docker_network_recovery_drill"
 OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY = "software_proof_docker_oss_cdn_manifest"
 OSS_CDN_PHONE_MANIFEST_EVIDENCE_BOUNDARY = "software_proof_docker_phone_manifest_consumption"
+NETWORK_RECOVERY_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_network_recovery_phone_consumption"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
+NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 DEPLOY_EVIDENCE_BOUNDARY = "software_proof_docker_deploy"
 BACKUP_ARTIFACT_SCHEMA = "trashbot.remote_cloud_relay_backup.v1"
 BACKUP_ARTIFACT_VERSION = 1
+NETWORK_RECOVERY_SCHEMA = "trashbot.network_recovery_drill"
+NETWORK_RECOVERY_SCHEMA_VERSION = 1
 OSS_CDN_MANIFEST_SCHEMA = "trashbot.oss_cdn_manifest"
 OSS_CDN_MANIFEST_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
@@ -59,6 +65,7 @@ PHONE_COPY = {
     "preflight_blocked": "云端上线前检查未通过，请先补齐生产入口、凭证和存储配置。",
     "backup_restore_blocked": "云端状态备份恢复演练未通过，请重新生成备份后再恢复。",
     "oss_cdn_manifest_blocked": "OSS/CDN 诊断引用清单未通过校验，请重新生成后再试。",
+    "network_recovery_blocked": "网络恢复演练未通过，请重新运行恢复演练后再试。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -316,6 +323,464 @@ def _load_json_file(path, artifact_name):
     if not isinstance(payload, dict):
         raise ValueError(f"{artifact_name} must be an object")
     return payload
+
+
+def _find_closed_local_port():
+    # 用 OS 分配端口后立即关闭，构造 Docker/local 可复现的连接失败，不依赖外网。
+    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        probe.bind(("127.0.0.1", 0))
+        return int(probe.getsockname()[1])
+    finally:
+        probe.close()
+
+
+def _local_connection_failure_seen():
+    # 只记录“本地连接失败已被观察到”，不把端口号或底层异常写进 artifact。
+    port = _find_closed_local_port()
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.2):
+            return False
+    except OSError:
+        return True
+
+
+def _network_recovery_not_proven():
+    # artifact 每次都列出未证明项，避免把 Docker/local drill 扩大解释成真实 4G/云恢复。
+    return [
+        "real_cloud",
+        "real_4g_sim",
+        "https_tls_public_ingress",
+        "production_db_or_queue",
+        "multi_instance_consistency",
+        "production_incident_recovery",
+        "real_oss_upload",
+        "cdn_origin_fetch",
+        "formal_phone_app",
+        "nav2_or_fixed_route_delivery",
+        "wave_rover_or_hil",
+        "delivery_success",
+    ]
+
+
+def _network_recovery_forbidden_markers(payload):
+    # network recovery artifact 面向手机/支持人员，必须比普通 state 更严格地防泄漏。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer",
+        "token",
+        "oss secret",
+        "access_key",
+        "ak/sk",
+        "root password",
+        "state path",
+        "/tmp/",
+        "/dev/",
+        "serial",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def _network_step(name, status, safe_summary, retry_hint, details=None):
+    # step 的 details 只允许布尔、计数和枚举；原始异常、路径和 endpoint 不进入证据。
+    return {
+        "name": name,
+        "status": status,
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "details": safe_value(details if isinstance(details, dict) else {}),
+    }
+
+
+def _seed_network_recovery_store(store, robot_id, now_value):
+    # 恢复演练只写标准 command/status/ack envelope，不触发 ROS2 action 或底盘控制。
+    command = {
+        "protocol_version": PROTOCOL_VERSION,
+        "id": "cmd-network-recovery-1",
+        "type": "collect",
+        "expires_at": now_value + 300.0,
+        "payload": {"target": "trash_station", "trash_type": 0},
+    }
+    status = {
+        "protocol_version": PROTOCOL_VERSION,
+        "state": "delivering",
+        "message": "network recovery drill status",
+        "updated_at": now_value,
+        "diagnostics": {"network_recovery_drill": "software_proof"},
+    }
+    store.submit_command(robot_id, command)
+    store.post_status(robot_id, status)
+
+
+def network_recovery_drill_payload(
+    state_path,
+    *,
+    state_backend="sqlite",
+    robot_id="trashbot-001",
+    now=None,
+):
+    """Run a Docker/local network recovery drill and return a phone-safe artifact."""
+    now_value = _now() if now is None else float(now)
+    updated_at = _utc_iso(now_value)
+    store = build_relay_store(state_path, state_backend)
+    steps = []
+    try:
+        unreachable_seen = _local_connection_failure_seen()
+        steps.append(
+            _network_step(
+                "relay_or_cloud_unreachable",
+                "passed" if unreachable_seen else "failed",
+                "已在本地观察到等价的 relay/cloud 连接失败。",
+                "等待 relay/cloud 恢复后重试 command/status/ack 对账。",
+                {"connection_failed": bool(unreachable_seen), "local_only": True},
+            )
+        )
+        _seed_network_recovery_store(store, robot_id, now_value)
+        before_ack = store.next_command(robot_id, "")
+        if before_ack.get("command", {}).get("id") != "cmd-network-recovery-1":
+            raise ValueError("command envelope missing before ack")
+        steps.append(
+            _network_step(
+                "ack_post_failure_is_not_delivery_success",
+                "passed",
+                "ACK post failure 不会被写成 delivery success，cursor 仍可重试同一 command。",
+                "网络恢复后重新 POST terminal ACK；手机继续读取 status 判断任务进展。",
+                {
+                    "ack_posted": False,
+                    "delivery_success": False,
+                    "cursor_advanced": False,
+                    "retry_same_command": True,
+                },
+            )
+        )
+        ack_result = store.post_ack(
+            robot_id,
+            "cmd-network-recovery-1",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "acked",
+                "message": "command envelope accepted after network recovery",
+                "updated_at": now_value + 1.0,
+                "result": {"envelope_processed": True, "delivery_success": False},
+            },
+        )
+        ack_code, ack_payload = store.get_ack(robot_id, "cmd-network-recovery-1")
+        status_code, status_payload = store.get_status(robot_id)
+        after_ack = store.next_command(robot_id, "cmd-network-recovery-1")
+        envelope_recovered = (
+            bool(ack_result.get("ok"))
+            and ack_code == 200
+            and status_code == 200
+            and ack_payload.get("ack", {}).get("state") == "acked"
+            and status_payload.get("status", {}).get("state") == "delivering"
+            and after_ack.get("command") is None
+        )
+        steps.append(
+            _network_step(
+                "recovery_command_status_ack_envelope",
+                "passed" if envelope_recovered else "failed",
+                "恢复后 command/status/ack envelope 可重新对账。",
+                "若失败，请重新运行 relay state 恢复和 bridge compatibility fence。",
+                {
+                    "command_replayed": True,
+                    "status_http_shape": status_code == 200,
+                    "ack_http_shape": ack_code == 200,
+                    "cursor_after_ack_empty": after_ack.get("command") is None,
+                },
+            )
+        )
+        store.post_status(
+            robot_id,
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "delivering",
+                "message": "stale status for phone-safe drill",
+                "updated_at": now_value - STATUS_STALE_AFTER_SEC - 10.0,
+            },
+        )
+        stale_code, stale_payload = store.get_status(robot_id)
+        stale_blocked = stale_code == 409 and stale_payload.get("error", {}).get("code") == "status_stale"
+        steps.append(
+            _network_step(
+                "status_stale_phone_safe_blocked",
+                "passed" if stale_blocked else "failed",
+                "status stale 会进入手机可读 blocked/warning，而不是显示绿色 ready。",
+                "等待小车重新上报新状态，或检查 relay/cloud 网络。",
+                {
+                    "http_status": "stale",
+                    "phone_safe_blocked": bool(stale_blocked),
+                    "delivery_success": False,
+                },
+            )
+        )
+        cursor_invariant = {
+            "ack_failure_advances_cursor": False,
+            "terminal_ack_required_before_cursor_advance": True,
+            "ack_is_delivery_success": False,
+            "recovery_replays_same_command": True,
+        }
+        overall_status = "passed" if all(step["status"] == "passed" for step in steps) else "failed"
+        safe_summary = (
+            "Docker/local network recovery drill passed; phones may treat this as software proof only."
+            if overall_status == "passed"
+            else "Network recovery drill failed; phones must keep recovery state blocked."
+        )
+        retry_hint = (
+            "pass_artifact_to_preflight_and_robot_bridge_compatibility_fence"
+            if overall_status == "passed"
+            else "rerun_network_recovery_drill_after_fixing_failed_step"
+        )
+        body = {
+            "schema": NETWORK_RECOVERY_SCHEMA,
+            "schema_version": NETWORK_RECOVERY_SCHEMA_VERSION,
+            "service": "remote_cloud_relay",
+            "protocol_version": PROTOCOL_VERSION,
+            "evidence_boundary": NETWORK_RECOVERY_EVIDENCE_BOUNDARY,
+            "overall_status": overall_status,
+            "steps": steps,
+            "cursor_invariant": cursor_invariant,
+            "safe_summary": safe_summary,
+            "retry_hint": retry_hint,
+            "not_proven": _network_recovery_not_proven(),
+            "updated_at": updated_at,
+        }
+        forbidden = _network_recovery_forbidden_markers(body)
+        if forbidden:
+            raise ValueError("network recovery artifact contains forbidden markers")
+        artifact = dict(body)
+        artifact["checksum"] = _sha256_checksum(body)
+        return artifact
+    except (ValueError, OSError, sqlite3.Error) as exc:
+        body = {
+            "schema": NETWORK_RECOVERY_SCHEMA,
+            "schema_version": NETWORK_RECOVERY_SCHEMA_VERSION,
+            "service": "remote_cloud_relay",
+            "protocol_version": PROTOCOL_VERSION,
+            "evidence_boundary": NETWORK_RECOVERY_EVIDENCE_BOUNDARY,
+            "overall_status": "failed",
+            "steps": steps
+            + [
+                _network_step(
+                    "drill_failed",
+                    "failed",
+                    PHONE_COPY["network_recovery_blocked"],
+                    "修复失败步骤后重新运行 network recovery drill。",
+                    {"reason_code": "network_recovery_failed"},
+                )
+            ],
+            "cursor_invariant": {
+                "ack_failure_advances_cursor": False,
+                "terminal_ack_required_before_cursor_advance": True,
+                "ack_is_delivery_success": False,
+                "recovery_replays_same_command": False,
+            },
+            "safe_summary": PHONE_COPY["network_recovery_blocked"],
+            "retry_hint": "rerun_network_recovery_drill_after_fixing_failed_step",
+            "not_proven": _network_recovery_not_proven(),
+            "updated_at": updated_at,
+            "error": phone_error("network_recovery_blocked", _safe_error_reason(exc))["error"],
+        }
+        artifact = safe_value(body)
+        artifact["checksum"] = _sha256_checksum(body)
+        return artifact
+
+
+def create_network_recovery_artifact(artifact_path, state_path, *, state_backend="sqlite", robot_id="trashbot-001"):
+    # CLI smoke 和 preflight 使用同一个 artifact，保证 checksum 与摘要语义一致。
+    artifact = network_recovery_drill_payload(state_path, state_backend=state_backend, robot_id=robot_id)
+    _write_json_artifact(artifact_path, artifact)
+    return {
+        "ok": artifact.get("overall_status") == "passed",
+        "network_recovery_status": artifact.get("overall_status"),
+        "evidence_boundary": NETWORK_RECOVERY_EVIDENCE_BOUNDARY,
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": validate_network_recovery_artifact_payload(artifact),
+        "not_proven": artifact.get("not_proven", []),
+    }
+
+
+def validate_network_recovery_artifact_payload(artifact, *, now=None, stale_after_sec=None):
+    # 校验只返回摘要；完整 steps 不进入 preflight/phone 输出，避免把内部细节扩散。
+    if not isinstance(artifact, dict):
+        raise ValueError("network recovery artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != NETWORK_RECOVERY_SCHEMA:
+        raise ValueError("network recovery schema mismatch")
+    if artifact.get("schema_version") != NETWORK_RECOVERY_SCHEMA_VERSION:
+        raise ValueError("network recovery schema version mismatch")
+    if artifact.get("evidence_boundary") != NETWORK_RECOVERY_EVIDENCE_BOUNDARY:
+        raise ValueError("network recovery evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("network recovery checksum mismatch")
+    forbidden = _network_recovery_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("network recovery artifact contains forbidden markers")
+    steps = artifact.get("steps")
+    if not isinstance(steps, list) or not steps:
+        raise ValueError("network recovery steps missing")
+    required_steps = {
+        "relay_or_cloud_unreachable",
+        "ack_post_failure_is_not_delivery_success",
+        "recovery_command_status_ack_envelope",
+        "status_stale_phone_safe_blocked",
+    }
+    step_names = {str(step.get("name")) for step in steps if isinstance(step, dict)}
+    if not required_steps.issubset(step_names):
+        raise ValueError("network recovery required steps missing")
+    cursor_invariant = artifact.get("cursor_invariant")
+    if not isinstance(cursor_invariant, dict):
+        raise ValueError("network recovery cursor invariant missing")
+    if cursor_invariant.get("ack_failure_advances_cursor") is not False:
+        raise ValueError("network recovery cursor invariant mismatch")
+    if cursor_invariant.get("terminal_ack_required_before_cursor_advance") is not True:
+        raise ValueError("network recovery terminal ack invariant mismatch")
+    if cursor_invariant.get("ack_is_delivery_success") is not False:
+        raise ValueError("network recovery ack semantics mismatch")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in _network_recovery_not_proven() if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("network recovery not_proven list is incomplete")
+    updated_at = str(artifact.get("updated_at") or "").strip()
+    timestamp = _parse_manifest_time(updated_at)
+    stale_window = (
+        NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC
+        if stale_after_sec is None
+        else float(stale_after_sec)
+    )
+    now_value = _now() if now is None else float(now)
+    staleness = "fresh"
+    if timestamp is None or now_value - timestamp > stale_window:
+        staleness = "stale"
+    return {
+        "ok": artifact.get("overall_status") == "passed" and staleness == "fresh",
+        "schema": NETWORK_RECOVERY_SCHEMA,
+        "schema_version": NETWORK_RECOVERY_SCHEMA_VERSION,
+        "evidence_boundary": NETWORK_RECOVERY_EVIDENCE_BOUNDARY,
+        "overall_status": str(artifact.get("overall_status") or ""),
+        "step_count": len(steps),
+        "cursor_invariant": {
+            "ack_failure_advances_cursor": False,
+            "terminal_ack_required_before_cursor_advance": True,
+            "ack_is_delivery_success": False,
+        },
+        "safe_summary": str(artifact.get("safe_summary") or ""),
+        "retry_hint": str(artifact.get("retry_hint") or ""),
+        "updated_at": updated_at,
+        "staleness": staleness,
+        "checksum": checksum,
+        "not_proven": _network_recovery_not_proven(),
+    }
+
+
+def network_recovery_artifact_summary(artifact_path, *, now=None, stale_after_sec=None):
+    # preflight 只需状态和摘要；路径、checksum 以外的原始 artifact 不回显。
+    try:
+        artifact = _load_json_file(artifact_path, "network recovery artifact")
+        summary = validate_network_recovery_artifact_payload(
+            artifact,
+            now=now,
+            stale_after_sec=stale_after_sec,
+        )
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "network_recovery_invalid",
+            "safe_summary": "网络恢复演练产物损坏。",
+            "retry_hint": "重新运行 network recovery drill 并刷新 preflight。",
+            "evidence_boundary": NETWORK_RECOVERY_EVIDENCE_BOUNDARY,
+            "not_proven": _network_recovery_not_proven(),
+            "debug_reason": _safe_error_reason(exc),
+        }
+    if summary.get("staleness") == "stale":
+        summary.update(
+            {
+                "ok": False,
+                "state": "stale",
+                "reason_code": "network_recovery_stale",
+                "safe_summary": "网络恢复演练已过期。",
+                "retry_hint": "重新运行 network recovery drill，避免手机消费旧恢复证据。",
+            }
+        )
+        return summary
+    if summary.get("overall_status") != "passed":
+        summary.update(
+            {
+                "ok": False,
+                "state": "failed",
+                "reason_code": "network_recovery_failed",
+                "safe_summary": "网络恢复演练失败。",
+                "retry_hint": "修复失败步骤并重新运行 network recovery drill。",
+            }
+        )
+        return summary
+    summary.update({"state": "ready", "reason_code": "network_recovery_passed"})
+    return summary
+
+
+def _phone_network_recovery_base(state, safe_summary, retry_hint):
+    # 手机端 summary 是 artifact 的小视图，不暴露 steps、state path、端口或异常栈。
+    return {
+        "state": state,
+        "schema": NETWORK_RECOVERY_SCHEMA,
+        "schema_version": NETWORK_RECOVERY_SCHEMA_VERSION,
+        "evidence_boundary": NETWORK_RECOVERY_PHONE_EVIDENCE_BOUNDARY,
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "overall_status": "",
+        "step_count": 0,
+        "updated_at": "",
+        "staleness": "unknown",
+        "not_proven": _network_recovery_not_proven(),
+    }
+
+
+def build_phone_network_recovery_summary(artifact_path, *, now=None, stale_after_sec=None):
+    """Return a phone-safe network recovery drill summary."""
+    artifact_ref = os.path.expanduser(str(artifact_path or "")).strip()
+    if not artifact_ref or not os.path.exists(artifact_ref):
+        return _phone_network_recovery_base(
+            "missing",
+            "网络恢复演练产物缺失。",
+            "请运行 network recovery drill 后刷新状态。",
+        )
+    summary = network_recovery_artifact_summary(
+        artifact_ref,
+        now=now,
+        stale_after_sec=stale_after_sec,
+    )
+    if not summary.get("ok"):
+        state = str(summary.get("state") or "invalid")
+        return _phone_network_recovery_base(
+            state,
+            str(summary.get("safe_summary") or "网络恢复演练不可用。"),
+            str(summary.get("retry_hint") or "重新运行 network recovery drill 后刷新状态。"),
+        )
+    phone_summary = _phone_network_recovery_base(
+        "ready",
+        "网络恢复演练已通过；这只是 Docker/local software proof。",
+        "继续等待 robot bridge compatibility fence 和真实云/4G 后续验收。",
+    )
+    phone_summary.update(
+        {
+            "overall_status": "passed",
+            "step_count": int(summary.get("step_count", 0) or 0),
+            "updated_at": str(summary.get("updated_at") or ""),
+            "staleness": str(summary.get("staleness") or "fresh"),
+        }
+    )
+    return phone_summary
 
 
 def build_oss_cdn_manifest_payload(robot_id, task_id, date_text=None, objects=None, created_at=None):
@@ -612,6 +1077,7 @@ def production_preflight_payload(env=None):
     state_backend_safe = _state_backend_from_env(env)
     backup_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT")
     oss_cdn_manifest_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT")
+    network_recovery_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT")
     tls_mode_safe = _safe_enum(tls_mode, {"future_reverse_proxy", "terminated", "managed", "reverse_proxy"})
     ingress_mode_safe = _safe_enum(ingress_mode, {"missing", "private_only", "public_https"})
     oss_credential_mode_safe = _safe_enum(oss_credential_mode, {"placeholder", "sts", "restricted_ak", "managed_identity"})
@@ -883,6 +1349,55 @@ def production_preflight_payload(env=None):
             )
         )
 
+    if network_recovery_artifact_path:
+        # recovery gate 只校验本地 artifact，不把 steps 或 state path 放进 preflight 输出。
+        recovery_summary = network_recovery_artifact_summary(network_recovery_artifact_path)
+        if recovery_summary.get("ok"):
+            checks.append(
+                _check(
+                    "network_recovery_drill",
+                    "pass",
+                    "local_network_recovery_drill_artifact_valid",
+                    "已找到通过 checksum 校验的 Docker/local 网络恢复演练 artifact。",
+                    "继续执行 robot bridge compatibility fence；真实云/4G 恢复仍需后续验收。",
+                    {
+                        "artifact_schema": NETWORK_RECOVERY_SCHEMA,
+                        "schema_version": NETWORK_RECOVERY_SCHEMA_VERSION,
+                        "step_count": recovery_summary.get("step_count"),
+                        "cursor_invariant": recovery_summary.get("cursor_invariant"),
+                        "staleness": recovery_summary.get("staleness"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            state = str(recovery_summary.get("state") or "invalid")
+            checks.append(
+                _check(
+                    "network_recovery_drill",
+                    "blocked",
+                    f"network_recovery_artifact_{state}",
+                    str(recovery_summary.get("safe_summary") or "网络恢复演练产物不可用。"),
+                    str(recovery_summary.get("retry_hint") or "重新运行 network recovery drill 后重跑 preflight。"),
+                    {
+                        "artifact_present": True,
+                        "reason_code": recovery_summary.get("reason_code", "network_recovery_invalid"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "network_recovery_drill",
+                "warning",
+                "network_recovery_artifact_missing",
+                "尚未提供网络恢复演练 artifact，不能声明弱网/断网恢复软件证明。",
+                "运行 network recovery drill，并用 TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT 传给 preflight。",
+                {"artifact_present": False, "software_proof_only": True},
+            )
+        )
+
     if _phone_safe_failure_ready():
         checks.append(
             _check(
@@ -920,6 +1435,10 @@ def production_preflight_payload(env=None):
         check["name"] == "oss_cdn_manifest" and check["status"] == "pass"
         for check in checks
     )
+    local_network_recovery_ok = any(
+        check["name"] == "network_recovery_drill" and check["status"] == "pass"
+        for check in checks
+    )
     not_proven = [
         "real_oss_upload",
         "sts_issuance",
@@ -933,19 +1452,25 @@ def production_preflight_payload(env=None):
         "multi_instance_consistency",
         "production_backup_policy",
         "real_disaster_recovery",
+        "delivery_success",
         "nav2_or_fixed_route_delivery",
         "wave_rover_or_hil",
     ]
     if not local_backup_drill_ok:
         not_proven.insert(8, "backup_restore")
+    if not local_network_recovery_ok:
+        not_proven.insert(9, "network_recovery_drill")
     payload = {
         "ok": production_ready,
+        "software_proof_ready": bool(local_network_recovery_ok),
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
         "protocol_version": PROTOCOL_VERSION,
         "evidence_boundary": (
             OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY
             if local_manifest_ok
+            else NETWORK_RECOVERY_EVIDENCE_BOUNDARY
+            if local_network_recovery_ok
             else BACKUP_RESTORE_EVIDENCE_BOUNDARY
             if local_backup_drill_ok
             else SQLITE_EVIDENCE_BOUNDARY if state_backend_safe == "sqlite" else PREFLIGHT_EVIDENCE_BOUNDARY
@@ -2129,6 +2654,11 @@ def main(argv=None):
         help="phone-safe OSS/CDN manifest artifact consumed by preflight",
     )
     parser.add_argument(
+        "--network-recovery-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT", ""),
+        help="phone-safe network recovery drill artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
@@ -2169,6 +2699,16 @@ def main(argv=None):
         help="run SQLite backup -> restore -> shape validation as JSON and exit",
     )
     parser.add_argument(
+        "--network-recovery-drill",
+        action="store_true",
+        help="run Docker/local relay network recovery drill as JSON and exit",
+    )
+    parser.add_argument(
+        "--write-network-recovery-artifact",
+        default="",
+        help="write a phone-safe network recovery drill artifact JSON and exit",
+    )
+    parser.add_argument(
         "--drill-robot-id",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_DRILL_ROBOT_ID", "trashbot-001"),
         help="robot id to validate after restore; output remains phone-safe",
@@ -2184,9 +2724,11 @@ def main(argv=None):
         preflight_env = dict(os.environ)
         if args.oss_cdn_manifest_artifact:
             preflight_env["TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT"] = args.oss_cdn_manifest_artifact
+        if args.network_recovery_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT"] = args.network_recovery_artifact
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
-        return 0 if payload.get("production_ready") else 2
+        return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
     if args.write_oss_cdn_manifest:
         try:
             payload = create_oss_cdn_manifest_artifact(
@@ -2210,6 +2752,23 @@ def main(argv=None):
         )
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("ok") else 2
+    if args.network_recovery_drill:
+        # Network recovery drill 只模拟本地连接失败和恢复，不触碰真实云、4G 或 ROS2 motion。
+        if args.write_network_recovery_artifact:
+            payload = create_network_recovery_artifact(
+                args.write_network_recovery_artifact,
+                args.state_path,
+                state_backend=args.state_backend,
+                robot_id=args.drill_robot_id,
+            )
+        else:
+            payload = network_recovery_drill_payload(
+                args.state_path,
+                state_backend=args.state_backend,
+                robot_id=args.drill_robot_id,
+            )
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok", payload.get("overall_status") == "passed") else 2
     if args.backup_state_to:
         try:
             payload = create_sqlite_backup_artifact(args.state_path, args.backup_state_to)

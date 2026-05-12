@@ -7,7 +7,10 @@ import uuid
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
-from ros2_trashbot_behavior.remote_cloud_relay import build_phone_oss_cdn_manifest_summary
+from ros2_trashbot_behavior.remote_cloud_relay import (
+    build_phone_network_recovery_summary,
+    build_phone_oss_cdn_manifest_summary,
+)
 from ros2_trashbot_behavior.remote_bridge_protocol import parse_bool
 
 
@@ -2120,6 +2123,7 @@ def build_phone_readiness(
     cloud_preflight=None,
     backup_restore=None,
     oss_cdn_manifest=None,
+    network_recovery=None,
 ):
     """Build the phone-first readiness summary used by `/api/status`.
 
@@ -2133,6 +2137,12 @@ def build_phone_readiness(
         dict(oss_cdn_manifest)
         if isinstance(oss_cdn_manifest, dict)
         else build_phone_oss_cdn_manifest_summary("")
+    )
+    # network recovery 是远程弱网恢复的软件证明摘要；它不直接创造本地任务权限。
+    recovery_gate = (
+        dict(network_recovery)
+        if isinstance(network_recovery, dict)
+        else build_phone_network_recovery_summary("")
     )
     permissions = _local_action_permissions(status)
     state = str(status.get("state") or "unknown").strip() or "unknown"
@@ -2246,6 +2256,7 @@ def build_phone_readiness(
         "cloud_preflight": _copy_gate(cloud_preflight, "cloud_preflight"),
         "backup_restore": _copy_gate(backup_restore, "backup_restore"),
         "oss_cdn_manifest": dict(manifest_gate),
+        "network_recovery": dict(recovery_gate),
         "not_proven": list(PHONE_READINESS_NOT_PROVEN),
     }
 
@@ -2272,6 +2283,10 @@ def _status_with_phone_readiness(gateway, mock_cloud):
     oss_cdn_manifest = build_phone_oss_cdn_manifest_summary(
         getattr(gateway, "oss_cdn_manifest_artifact_ref", "")
     )
+    network_recovery = build_phone_network_recovery_summary(
+        getattr(gateway, "network_recovery_artifact_ref", "")
+        or os.environ.get("TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT", "")
+    )
     # 可选 gate 字段只在调用方已提供时采纳；默认 not_run/unknown，不推断生产 readiness。
     payload["phone_readiness"] = build_phone_readiness(
         payload,
@@ -2279,6 +2294,7 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         cloud_preflight=payload.get("cloud_preflight") or payload.get("remote_preflight"),
         backup_restore=payload.get("backup_restore") or payload.get("backup_restore_drill"),
         oss_cdn_manifest=oss_cdn_manifest,
+        network_recovery=network_recovery,
     )
     return payload
 

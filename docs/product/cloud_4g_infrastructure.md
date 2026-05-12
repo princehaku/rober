@@ -16,6 +16,8 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 
 本轮 `2026.05.12_12-13_remote-oss-cdn-phone-consumption-gate` 将上一轮 manifest artifact proof 接入本地 operator/API 消费面，新增 `software_proof_docker_phone_manifest_consumption` 边界。`/api/status.phone_readiness.oss_cdn_manifest` 和 `/api/diagnostics.oss_cdn_manifest` 共用同一 phone-safe summary helper，覆盖 `ready`、`missing`、`invalid`、`stale`，只显示普通用户文案和 retry hint，不返回 full artifact、object key、checksum、本地路径或任何凭证。`ready` 仍只表示手机/API 能消费对象引用摘要，不等于真实 OSS 上传、CDN 回源、真实云、真实 4G、送达成功或 HIL。
 
+本轮 `2026.05.12_14-15_remote-network-recovery-drill` 在 independent relay 上新增 Docker/local network recovery drill，证据边界是 `software_proof_docker_network_recovery_drill`。该 drill 会构造本地等价连接失败、验证 ACK post failure 不等于 delivery success、恢复后 command/status/ack envelope 可重新对账，并把 status stale 输出成 phone-safe blocked/warning 摘要。产物可被 `--preflight`、`/api/status.phone_readiness.network_recovery` 和 `/api/diagnostics.network_recovery_drill` 消费；missing、invalid、stale、failed 都不能显示绿色 ready，passed 也只能表示 software proof ready。它仍不是真实云、真实 4G/SIM、HTTPS/TLS 公网、生产 incident recovery、真实送达、Nav2/fixed-route、WAVE ROVER 或 HIL 证据。
+
 ## 云端基线规格
 
 目标服务端基线：
@@ -138,6 +140,7 @@ Operator/API 消费 manifest artifact 时输出的是更小的 phone-safe summar
 - `TRASHBOT_REMOTE_CLOUD_STATE_BACKEND`：`file` 或 `sqlite`。未知值会降级为 phone-safe 的 proof 口径，不回显原始 env 文本。
 - `TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT`：可选的本地 backup/restore drill artifact 路径，只供 preflight 验证 schema/checksum 和软件演练状态；不得作为生产备份策略或真实 DR 证据。
 - `TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT`：可选的本地 OSS/CDN manifest artifact 路径，只供 preflight 验证对象引用 schema、prefix、CDN URL 和 checksum；不得作为真实 OSS 上传、STS 或 CDN 回源证据。
+- `TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT`：可选的本地 network recovery drill artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为真实云、真实 4G、生产 incident recovery 或真实送达证据。
 - `.env` 不入仓库；`.env.example` 只能放占位符。
 - 错误响应和 state file 不得包含 bearer token、Authorization header、credential-bearing URL、串口设备、baudrate、WAVE ROVER 参数、底层速度控制入口或 raw ROS topic 名。
 - token rotate、账号分级、机器人 provisioning 和审计日志是后续真实云 sprint 的范围。
@@ -221,6 +224,34 @@ python3 -m ros2_trashbot_behavior.remote_cloud_relay --preflight
 ```
 
 如果 artifact schema、version 或 checksum 不匹配，preflight 必须返回 phone-safe blocked reason；如果 artifact 有效，preflight 只允许声明本地 backup/restore drill artifact 通过，不能声明生产 backup policy、真实 DR 或生产 DB/queue ready。
+
+Network recovery drill CLI 示例：
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --network-recovery-drill \
+  --state-backend sqlite \
+  --state-path /tmp/trashbot_network_recovery.sqlite \
+  --write-network-recovery-artifact /tmp/trashbot_network_recovery_drill.json
+```
+
+Preflight 可用 `TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT` 验证本地 artifact：
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT=/tmp/trashbot_network_recovery_drill.json \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay --preflight
+```
+
+有效 artifact 会新增 `network_recovery_drill=pass`，设置
+`software_proof_ready=true`，并把本地证据边界提升到
+`software_proof_docker_network_recovery_drill`。缺失 artifact 是 warning；
+schema、version、checksum、必需 steps、cursor invariant、stale 或
+phone-safe 校验失败是 blocked。无论 artifact 是否通过，preflight 都必须
+继续保留真实云、真实 4G/SIM、HTTPS/TLS 公网入口、生产 DB/queue、多实例
+一致性、真实 OSS/CDN 流量、生产 incident recovery、Nav2/fixed-route、
+WAVE ROVER/HIL 和 delivery success 等未证明项。
 
 proof 边界：
 

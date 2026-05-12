@@ -19,7 +19,10 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import ELEVATOR_ASSIST_SPEAKER_PROMPT
-from ros2_trashbot_behavior.remote_cloud_relay import create_oss_cdn_manifest_artifact
+from ros2_trashbot_behavior.remote_cloud_relay import (
+    create_network_recovery_artifact,
+    create_oss_cdn_manifest_artifact,
+)
 
 
 class OperatorGatewayDiagnosticsTest(unittest.TestCase):
@@ -766,6 +769,38 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("real_oss_upload", payload["oss_cdn_manifest"]["not_proven"])
         self.assertNotIn(str(manifest_path), encoded)
         self.assertNotIn("object_key", encoded)
+
+    def test_diagnostics_payload_includes_phone_safe_network_recovery_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_path = Path(td) / "network_recovery.json"
+            create_network_recovery_artifact(
+                artifact_path,
+                Path(td) / "network_recovery.sqlite",
+                state_backend="sqlite",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                network_recovery_artifact_ref=str(artifact_path),
+            )
+            encoded = json.dumps(payload["network_recovery_drill"], ensure_ascii=False)
+
+        self.assertEqual(payload["network_recovery_drill"]["state"], "ready")
+        self.assertEqual(
+            payload["network_recovery_drill"]["evidence_boundary"],
+            "software_proof_docker_network_recovery_phone_consumption",
+        )
+        self.assertIn("delivery_success", payload["network_recovery_drill"]["not_proven"])
+        self.assertNotIn(str(artifact_path), encoded)
+        self.assertNotIn("steps", encoded)
+        self.assertNotIn("checksum", encoded)
 
     def test_log_refs_are_normalized_without_claiming_file_existence(self):
         self.assertEqual(normalize_log_refs(None), [])

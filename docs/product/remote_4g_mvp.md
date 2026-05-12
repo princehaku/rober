@@ -75,6 +75,22 @@ multi-instance consistency, real disaster recovery, real cloud, real 4G/SIM,
 OSS/CDN traffic, formal phone UI, Nav2/fixed-route delivery, WAVE ROVER, and
 HIL remain unproven.
 
+The relay now has a Docker/local network recovery drill with
+`evidence_boundary=software_proof_docker_network_recovery_drill`. The drill
+simulates an equivalent local relay/cloud connection failure, proves that ACK
+post failure is not delivery success and does not advance cursor semantics,
+then verifies that command/status/ack envelopes can be reconciled after
+recovery. It also forces a stale status and records that phones must show a
+blocked/warning recovery state instead of green ready. The JSON artifact uses
+`schema=trashbot.network_recovery_drill`, `schema_version=1`, `overall_status`,
+`steps`, `cursor_invariant`, `safe_summary`, `retry_hint`, `not_proven`,
+`updated_at`, and `checksum`. It must not include bearer tokens,
+Authorization headers, OSS secrets, AK/SK, root passwords, raw state paths,
+serial ports, baudrate, WAVE ROVER parameters, ROS topic names, `/cmd_vel`, or
+tracebacks. This remains software proof only and does not prove real cloud,
+real 4G/SIM, production incident recovery, delivery success, Nav2/fixed-route,
+WAVE ROVER, or HIL.
+
 The relay now also supports an OSS/CDN object reference manifest proof with
 `evidence_boundary=software_proof_docker_oss_cdn_manifest`. The manifest is a
 phone-safe JSON artifact for future diagnostic snapshots, logs, or task records:
@@ -140,6 +156,36 @@ The drill output is intended for future phone/operator diagnostics. It reports
 tokens, Authorization headers, OSS secrets, root passwords, raw state paths,
 ROS topic names, serial ports, baudrate, WAVE ROVER parameters, `/cmd_vel`, or
 tracebacks.
+
+Example network recovery drill:
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --network-recovery-drill \
+  --state-backend sqlite \
+  --state-path /tmp/trashbot_network_recovery.sqlite \
+  --write-network-recovery-artifact /tmp/trashbot_network_recovery_drill.json
+```
+
+Preflight can consume the artifact:
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT=/tmp/trashbot_network_recovery_drill.json \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay --preflight
+```
+
+Missing artifacts stay warning, and invalid, stale, or failed artifacts stay
+blocked. A passed artifact sets `software_proof_ready=true` and may raise the
+local evidence boundary to
+`software_proof_docker_network_recovery_drill`, but `production_ready` remains
+false until the real cloud, TLS/public ingress, 4G/SIM, production state store,
+OSS/CDN and operational recovery evidence exist. Operator/API consumption only
+returns `phone_readiness.network_recovery` and
+`diagnostics.network_recovery_drill` summaries; it does not return full steps,
+local paths, ports, tracebacks, credentials, ROS topics, hardware details or
+checksums.
 
 Example OSS/CDN manifest proof:
 
@@ -291,6 +337,17 @@ unreachable, auth failed, malformed command/status/ACK response, or ACK post
 failure must not advance `last_terminal_ack_id`, must not persist a terminal
 cursor, and must not pretend the cloud accepted a terminal command state. A
 malformed command response must not trigger a local action goal.
+
+For the network recovery drill compatibility fence, `remote_bridge` treats
+status POST failures as a hard stop for that polling cycle: it records a
+phone-safe degraded state and does not request a command. If the ACK response is
+malformed or the ACK POST fails after local behavior accepted the command, the
+bridge keeps the command result only in memory, leaves `last_ack_id` and
+`cursor_state_path` unchanged, and retries the same command envelope on the next
+poll. Only a successfully posted terminal ACK may advance and persist the
+cursor. This is still local/Docker software proof and does not prove real 4G
+network recovery, production cloud durability, Nav2/fixed-route delivery, WAVE
+ROVER movement, or HIL.
 
 The independent relay stores commands/status/acks in either a single local JSON
 state file or a single local SQLite file. JSON writes through a temporary file

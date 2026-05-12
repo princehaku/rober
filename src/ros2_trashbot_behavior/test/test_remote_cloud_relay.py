@@ -15,6 +15,9 @@ sys.path.insert(0, str(REPO_ROOT / "ros2_trashbot_behavior"))
 from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     BACKUP_RESTORE_EVIDENCE_BOUNDARY,
     FileBackedRelayStore,
+    NETWORK_RECOVERY_EVIDENCE_BOUNDARY,
+    NETWORK_RECOVERY_PHONE_EVIDENCE_BOUNDARY,
+    NETWORK_RECOVERY_SCHEMA,
     OSS_CDN_BASE_URL,
     OSS_CDN_BUCKET,
     OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY,
@@ -25,13 +28,18 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     PROTOCOL_VERSION,
     SQLITE_EVIDENCE_BOUNDARY,
     SQLiteRelayStore,
+    _sha256_checksum,
     backup_artifact_summary,
     backup_restore_drill_payload,
     build_oss_cdn_manifest_payload,
+    build_phone_network_recovery_summary,
     build_phone_oss_cdn_manifest_summary,
     build_server,
+    create_network_recovery_artifact,
     create_oss_cdn_manifest_artifact,
     create_sqlite_backup_artifact,
+    network_recovery_artifact_summary,
+    network_recovery_drill_payload,
     oss_cdn_manifest_summary,
     production_preflight_payload,
     restore_sqlite_backup_artifact,
@@ -590,6 +598,92 @@ class RemoteCloudRelayStoreTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "sqlite state store is not ready"):
             store.next_command("trashbot-001", "")
 
+    def test_network_recovery_drill_artifact_preserves_cursor_and_phone_safe_boundary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = pathlib.Path(tmp) / "network_recovery.sqlite"
+            artifact_path = pathlib.Path(tmp) / "network_recovery.json"
+
+            result = create_network_recovery_artifact(
+                artifact_path,
+                state_path,
+                state_backend="sqlite",
+                robot_id="trashbot-001",
+            )
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            summary = network_recovery_artifact_summary(artifact_path)
+            encoded = json.dumps({"result": result, "artifact": artifact, "summary": summary}, ensure_ascii=False)
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(summary["ok"])
+            self.assertEqual(artifact["schema"], NETWORK_RECOVERY_SCHEMA)
+            self.assertEqual(artifact["schema_version"], 1)
+            self.assertEqual(artifact["evidence_boundary"], NETWORK_RECOVERY_EVIDENCE_BOUNDARY)
+            self.assertEqual(artifact["overall_status"], "passed")
+            self.assertEqual(summary["state"], "ready")
+            self.assertEqual(summary["step_count"], 4)
+            self.assertFalse(artifact["cursor_invariant"]["ack_failure_advances_cursor"])
+            self.assertTrue(artifact["cursor_invariant"]["terminal_ack_required_before_cursor_advance"])
+            self.assertFalse(artifact["cursor_invariant"]["ack_is_delivery_success"])
+            step_names = {step["name"] for step in artifact["steps"]}
+            self.assertIn("relay_or_cloud_unreachable", step_names)
+            self.assertIn("ack_post_failure_is_not_delivery_success", step_names)
+            self.assertIn("recovery_command_status_ack_envelope", step_names)
+            self.assertIn("status_stale_phone_safe_blocked", step_names)
+            self.assertIn("delivery_success", artifact["not_proven"])
+            self.assertIn("real_cloud", artifact["not_proven"])
+            self.assertIn("real_4g_sim", artifact["not_proven"])
+            for forbidden in (
+                str(state_path),
+                str(artifact_path),
+                "Authorization",
+                "Bearer",
+                "token",
+                "OSS secret",
+                "AK/SK",
+                "root password",
+                "/tmp/",
+                "/dev/",
+                "serial",
+                "baudrate",
+                "WAVE ROVER",
+                "ros topic",
+                "/cmd_vel",
+                "/trashbot/",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_network_recovery_summary_fails_closed_for_failed_stale_and_invalid_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            failed_path = root / "failed.json"
+            stale_path = root / "stale.json"
+            invalid_path = root / "invalid.json"
+
+            failed_artifact = network_recovery_drill_payload(root / "failed.sqlite", now=1778562000.0)
+            failed_artifact["overall_status"] = "failed"
+            failed_body = {key: value for key, value in failed_artifact.items() if key != "checksum"}
+            failed_artifact["checksum"] = _sha256_checksum(failed_body)
+            failed_path.write_text(json.dumps(failed_artifact, ensure_ascii=False), encoding="utf-8")
+            invalid_path.write_text(json.dumps({"schema": "wrong"}, ensure_ascii=False), encoding="utf-8")
+
+            stale_artifact = network_recovery_drill_payload(root / "stale.sqlite", now=1778562000.0)
+            stale_path.write_text(json.dumps(stale_artifact, ensure_ascii=False), encoding="utf-8")
+
+            missing = build_phone_network_recovery_summary(root / "missing.json", now=1778562000.0)
+            invalid = build_phone_network_recovery_summary(invalid_path, now=1778562000.0)
+            failed = build_phone_network_recovery_summary(failed_path, now=1778562000.0)
+            stale = build_phone_network_recovery_summary(stale_path, now=1778562000.0 + 48 * 60 * 60)
+            invalid_preflight = network_recovery_artifact_summary(invalid_path)
+
+            self.assertEqual(missing["state"], "missing")
+            self.assertEqual(invalid["state"], "invalid")
+            self.assertEqual(failed["state"], "failed")
+            self.assertEqual(stale["state"], "stale")
+            self.assertFalse(invalid_preflight["ok"])
+            self.assertEqual(invalid_preflight["reason_code"], "network_recovery_invalid")
+            self.assertEqual(missing["evidence_boundary"], NETWORK_RECOVERY_PHONE_EVIDENCE_BOUNDARY)
+            self.assertIn("delivery_success", missing["not_proven"])
+
 
 class RemoteCloudRelayPreflightTest(unittest.TestCase):
     def test_preflight_reports_local_http_secret_oss_and_file_store_boundary(self):
@@ -804,6 +898,81 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
                 "baudrate",
             ):
                 self.assertNotIn(forbidden, encoded)
+
+    def test_preflight_consumes_network_recovery_artifact_as_software_proof_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = pathlib.Path(tmp) / "network_recovery.sqlite"
+            artifact_path = pathlib.Path(tmp) / "network_recovery.json"
+            create_network_recovery_artifact(artifact_path, state_path, state_backend="sqlite")
+            env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "production-token-value",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "terminated",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https",
+                "TRASHBOT_REMOTE_CLOUD_OSS_BUCKET": "bytegallop",
+                "TRASHBOT_REMOTE_CLOUD_OSS_REGION": "oss-cn-hangzhou",
+                "TRASHBOT_REMOTE_CLOUD_OSS_PREFIX": "rober/prod/date/task/",
+                "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL": "https://cdn.bytegallop.com/rober/",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE": "sts",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(state_path),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                "TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT": str(artifact_path),
+            }
+
+            payload = production_preflight_payload(env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps(payload, ensure_ascii=False)
+
+            self.assertFalse(payload["production_ready"])
+            self.assertTrue(payload["software_proof_ready"])
+            self.assertEqual(payload["evidence_boundary"], NETWORK_RECOVERY_EVIDENCE_BOUNDARY)
+            self.assertEqual(checks["network_recovery_drill"]["status"], "pass")
+            self.assertEqual(checks["network_recovery_drill"]["details"]["step_count"], 4)
+            self.assertIn("real_cloud", payload["not_proven"])
+            self.assertIn("real_4g_sim", payload["not_proven"])
+            self.assertIn("delivery_success", payload["not_proven"])
+            for forbidden in (
+                str(state_path),
+                str(artifact_path),
+                "production-token-value",
+                "Authorization",
+                "Bearer",
+                "/cmd_vel",
+                "ttyUSB",
+                "baudrate",
+                "WAVE ROVER",
+                "/trashbot/",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_preflight_blocks_invalid_or_stale_network_recovery_artifact(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            base_env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "production-token-value",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "terminated",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https",
+                "TRASHBOT_REMOTE_CLOUD_OSS_BUCKET": "bytegallop",
+                "TRASHBOT_REMOTE_CLOUD_OSS_REGION": "oss-cn-hangzhou",
+                "TRASHBOT_REMOTE_CLOUD_OSS_PREFIX": "rober/prod/date/task/",
+                "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL": "https://cdn.bytegallop.com/rober/",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE": "sts",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "relay_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+            missing_payload = production_preflight_payload(base_env)
+            missing_checks = {check["name"]: check for check in missing_payload["checks"]}
+            self.assertEqual(missing_checks["network_recovery_drill"]["status"], "warning")
+
+            invalid_path = root / "invalid_network_recovery.json"
+            invalid_path.write_text(json.dumps({"schema": "wrong"}, ensure_ascii=False), encoding="utf-8")
+            invalid_env = dict(base_env)
+            invalid_env["TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT"] = str(invalid_path)
+            invalid_payload = production_preflight_payload(invalid_env)
+            invalid_checks = {check["name"]: check for check in invalid_payload["checks"]}
+            self.assertEqual(invalid_checks["network_recovery_drill"]["status"], "blocked")
+            self.assertEqual(invalid_checks["network_recovery_drill"]["code"], "network_recovery_artifact_invalid")
 
     def test_oss_cdn_manifest_artifact_generation_and_validation(self):
         with tempfile.TemporaryDirectory() as tmp:
