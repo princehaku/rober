@@ -20,6 +20,8 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 
 本轮 `2026.05.12_16-17_remote-credential-rotation-gate` 在同一 relay/preflight/phone-safe 摘要体系上新增 credential rotation artifact gate，证据边界是 `software_proof_docker_credential_rotation_gate`。Artifact 只记录 schema/version、Docker/local bearer rotate gate 状态、OSS 凭证模式边界、STS/account/provisioning/audit-log 缺口、`not_proven`、safe summary、retry hint 和 checksum；preflight 消费后新增 `credential_rotation` check，`/api/status.phone_readiness.credential_rotation` 和 `/api/diagnostics.credential_rotation` 只输出摘要，不返回完整 artifact、checksum、路径、token、Authorization、OSS secret、AK/SK、root password、串口、baudrate、WAVE ROVER、ROS topic 或 `/cmd_vel`。该 gate 仍不是生产 token rotate、真实 STS issuance、真实 OSS upload、CDN origin fetch、生产账号 provisioning、真实审计日志、真实云、真实 4G/SIM、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达证据。
 
+本轮 `2026.05.12_17-18_remote-provisioning-audit-gate` 在同一 relay/preflight/phone-safe 摘要体系上新增 provisioning audit artifact gate，证据边界是 `software_proof_docker_provisioning_audit_gate`。Artifact 覆盖 robot provisioning、STS issuance boundary、audit log contract 三类上线前阻断项，但只证明 Docker/local schema、checksum、phone-safe 摘要和 `not_proven` 缺口可被 preflight、`/api/status.phone_readiness.provisioning_audit`、`/api/diagnostics.provisioning_audit` 消费。它必须保持 `production_ready=false`、`overall_status=blocked`，不得声明真实云、真实 4G/SIM、真实 STS issuance、真实 audit log、真实 OSS upload、production-ready、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
 ## 云端基线规格
 
 目标服务端基线：
@@ -144,6 +146,7 @@ Operator/API 消费 manifest artifact 时输出的是更小的 phone-safe summar
 - `TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT`：可选的本地 OSS/CDN manifest artifact 路径，只供 preflight 验证对象引用 schema、prefix、CDN URL 和 checksum；不得作为真实 OSS 上传、STS 或 CDN 回源证据。
 - `TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT`：可选的本地 network recovery drill artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为真实云、真实 4G、生产 incident recovery 或真实送达证据。
 - `TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT`：可选的本地 credential rotation artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为生产 token rotate、真实 STS 签发、真实 OSS 上传、生产账号 provisioning 或真实审计日志证据。
+- `TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT`：可选的本地 provisioning audit artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为生产账号发放、真实 STS 签发、真实审计日志、真实云或真实 4G 证据。
 - `.env` 不入仓库；`.env.example` 只能放占位符。
 - 错误响应和 state file 不得包含 bearer token、Authorization header、credential-bearing URL、串口设备、baudrate、WAVE ROVER 参数、底层速度控制入口或 raw ROS topic 名。
 - token rotate、账号分级、机器人 provisioning 和审计日志是后续真实云 sprint 的范围。
@@ -227,6 +230,17 @@ python3 -m ros2_trashbot_behavior.remote_cloud_relay \
 ```
 
 Artifact 必须包含 `schema=trashbot.credential_rotation_gate`、`schema_version=1`、`evidence_boundary=software_proof_docker_credential_rotation_gate`、`robot_id`、`generated_at`、`bearer_rotation_status`、`oss_credential_mode`、`sts_boundary_status`、`account_tier_status`、`robot_provisioning_status`、`audit_log_status`、`not_proven`、`safe_summary`、`retry_hint` 和 `checksum`。Preflight 可通过 `TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT` 消费该 artifact；有效 artifact 会新增 `credential_rotation=pass` check，并把本地证据边界推进到 `software_proof_docker_credential_rotation_gate`，但 `production_ready=false` 必须保持，`not_proven` 必须继续列出 production credential rotation、STS issuance、真实 OSS upload、CDN origin fetch、production account、robot provisioning、audit log、真实云、真实 4G/SIM、Nav2/fixed-route、WAVE ROVER/HIL 和真实送达缺口。
+
+Provisioning audit gate CLI 示例：
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --write-provisioning-audit-artifact /tmp/trashbot_provisioning_audit_gate.json \
+  --provisioning-audit-robot-id robot-local-proof
+```
+
+Artifact 必须包含 `schema=trashbot.provisioning_audit_gate`、`schema_version=1`、`evidence_boundary=software_proof_docker_provisioning_audit_gate`、`robot_id`、`generated_at`、`robot_provisioning_status`、`sts_issuance_status`、`audit_log_status`、`credential_delivery_status`、`production_ready=false`、`overall_status=blocked`、`not_proven`、`safe_summary`、`retry_hint` 和 `checksum`。Preflight 可通过 `TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT` 或 `--provisioning-audit-artifact` 消费该 artifact；有效 artifact 会新增 `provisioning_audit=pass` check，并把本地证据边界推进到 `software_proof_docker_provisioning_audit_gate`，但 `production_ready=false` 和 `overall_status=blocked` 必须保持，`not_proven` 必须继续列出 production robot provisioning、真实 STS issuance、真实 audit log、真实云、真实 4G/SIM、Nav2/fixed-route、WAVE ROVER/HIL 和真实送达缺口。
 
 Preflight 可用 `TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT` 验证本地 artifact：
 

@@ -11,6 +11,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     build_phone_credential_rotation_summary,
     build_phone_network_recovery_summary,
     build_phone_oss_cdn_manifest_summary,
+    build_phone_provisioning_audit_summary,
 )
 from ros2_trashbot_behavior.remote_bridge_protocol import parse_bool
 
@@ -2140,6 +2141,7 @@ def build_phone_readiness(
     oss_cdn_manifest=None,
     network_recovery=None,
     credential_rotation=None,
+    provisioning_audit=None,
 ):
     """Build the phone-first readiness summary used by `/api/status`.
 
@@ -2165,6 +2167,12 @@ def build_phone_readiness(
         dict(credential_rotation)
         if isinstance(credential_rotation, dict)
         else build_phone_credential_rotation_summary("")
+    )
+    # provisioning audit 是生产账号发放、STS 边界和审计日志的摘要，不改变运动权限。
+    provisioning_gate = (
+        dict(provisioning_audit)
+        if isinstance(provisioning_audit, dict)
+        else build_phone_provisioning_audit_summary("")
     )
     permissions = _local_action_permissions(status)
     state = str(status.get("state") or "unknown").strip() or "unknown"
@@ -2280,6 +2288,7 @@ def build_phone_readiness(
         "oss_cdn_manifest": dict(manifest_gate),
         "network_recovery": dict(recovery_gate),
         "credential_rotation": dict(credential_gate),
+        "provisioning_audit": dict(provisioning_gate),
         "not_proven": list(PHONE_READINESS_NOT_PROVEN),
     }
 
@@ -2314,6 +2323,10 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         getattr(gateway, "credential_rotation_artifact_ref", "")
         or os.environ.get("TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT", "")
     )
+    provisioning_audit = build_phone_provisioning_audit_summary(
+        getattr(gateway, "provisioning_audit_artifact_ref", "")
+        or os.environ.get("TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT", "")
+    )
     # 可选 gate 字段只在调用方已提供时采纳；默认 not_run/unknown，不推断生产 readiness。
     payload["phone_readiness"] = build_phone_readiness(
         payload,
@@ -2323,6 +2336,7 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         oss_cdn_manifest=oss_cdn_manifest,
         network_recovery=network_recovery,
         credential_rotation=credential_rotation,
+        provisioning_audit=provisioning_audit,
     )
     return payload
 

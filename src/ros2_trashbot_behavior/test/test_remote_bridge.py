@@ -522,6 +522,73 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_provisioning_sts_audit_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "provisioning": {"status": "passed", "robot_id": "robot-1"},
+                "sts": {"status": "issued", "not_proven": True},
+                "audit": {"status": "recorded", "delivery_success": True},
+            },
+            "command_response": {
+                "provisioning": {"status": "passed", "raw_action": "collect"},
+                "sts": {"status": "issued", "credential_url": "must-not-be-used"},
+                "audit": {"status": "recorded", "next_action": "confirm_dropoff"},
+            },
+            "ack_response": {
+                "provisioning": {"status": "passed"},
+                "sts": {"status": "issued"},
+                "audit": {"status": "recorded", "delivery_success": True},
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-provisioning-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station"},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-provisioning-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["command_id"], "cmd-provisioning-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        self.assertNotIn("provisioning", ack_payload)
+        self.assertNotIn("sts", ack_payload)
+        self.assertNotIn("audit", ack_payload)
+        self.assertNotIn("credential_url", json.dumps(ack_payload["result"]))
+        self.assertNotIn("delivery_success", json.dumps(ack_payload["result"]))
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
+    def test_metadata_only_preflight_blocked_response_does_not_start_ack_or_persist_cursor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-blocked",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras["command_response"] = {
+                "provisioning": {"status": "invalid", "raw_action": "collect"},
+                "sts": {"status": "blocked", "secret_access_key": "must-not-be-used"},
+                "audit": {"status": "blocked", "delivery_success": True},
+                "preflight": {"overall_status": "blocked", "production_ready": False},
+            }
+
+            handled = worker.poll_once()
+
+            # metadata-only 响应没有 command envelope，不能被解释成本地任务或 ACK 成功。
+            self.assertFalse(handled)
+            self.assertEqual(self.backend.calls, [])
+            self.assertEqual(self.cloud.ack_posts, [])
+            self.assertEqual(worker.last_ack_id, "cmd-before-blocked")
+            self.assertFalse(state_path.exists())
+            self.assertEqual(len(self.cloud.status_posts), 1)
+            self.assertNotIn("secret_access_key", json.dumps(self.cloud.status_posts))
+
     def test_ack_failure_does_not_persist_cursor_state(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = pathlib.Path(tmpdir) / "remote_cursor.json"

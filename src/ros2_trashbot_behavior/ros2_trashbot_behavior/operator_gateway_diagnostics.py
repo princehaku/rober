@@ -6,6 +6,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     build_phone_credential_rotation_summary,
     build_phone_network_recovery_summary,
     build_phone_oss_cdn_manifest_summary,
+    build_phone_provisioning_audit_summary,
 )
 
 # Diagnostics must stay available even when the optional vision package is not
@@ -973,6 +974,7 @@ def build_diagnostics_payload(
     oss_cdn_manifest_artifact_ref="",
     network_recovery_artifact_ref="",
     credential_rotation_artifact_ref="",
+    provisioning_audit_artifact_ref="",
 ):
     latest_status = dict(latest_status or {})
     last_task = dict(latest_status.get("last_task") or {})
@@ -1062,6 +1064,10 @@ def build_diagnostics_payload(
         credential_rotation=build_phone_credential_rotation_summary(
             credential_rotation_artifact_ref
             or os.environ.get("TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT", "")
+        ),
+        provisioning_audit=build_phone_provisioning_audit_summary(
+            provisioning_audit_artifact_ref
+            or os.environ.get("TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT", "")
         ),
         operator_status_file=str(operator_status_file or ""),
     )

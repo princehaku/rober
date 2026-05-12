@@ -274,6 +274,25 @@ This gate proves only the local/mock or independent Docker relay control-plane
 behavior. It does not prove production identity, provisioning, token rotation,
 HTTPS/TLS, public ingress, or real 4G carrier connectivity.
 
+The provisioning audit gate adds a separate Docker/local artifact for robot
+provisioning, STS issuance boundary, and audit log contract consumption. Generate
+it with:
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --write-provisioning-audit-artifact /tmp/trashbot_provisioning_audit_gate.json \
+  --provisioning-audit-robot-id robot-local-proof
+```
+
+Then pass it to preflight with
+`TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT` or
+`--provisioning-audit-artifact`. The resulting evidence boundary is
+`software_proof_docker_provisioning_audit_gate`; `production_ready=false`,
+`overall_status=blocked`, and `not_proven` must remain. This is not real STS
+issuance, real audit log, production account provisioning, real cloud, real 4G,
+Nav2/fixed-route delivery, WAVE ROVER, HIL, or delivery success.
+
 Phone and diagnostics payloads must not expose bearer tokens, Authorization
 headers, credential-bearing cloud URLs, serial devices, baudrate, WAVE ROVER
 parameters, `/cmd_vel`, raw ROS topic names, or hardware configuration fields.
@@ -390,7 +409,9 @@ The local operator fallback also exposes `/api/status.phone_readiness` for the
 phone-first readiness gate. This is a UI aggregation of local delivery status,
 action permissions, local/mock remote readiness, optional preflight summaries,
 optional backup/restore drill summaries, and optional OSS/CDN diagnostic
-reference summaries. It uses
+reference summaries. It also includes optional network recovery, credential
+rotation, and provisioning audit summaries when their artifacts are configured.
+It uses
 `schema=trashbot.phone_readiness.v1`, `schema_version=1`, and
 `evidence_boundary=software_proof_docker_local_phone_ui_readiness_gate`.
 
@@ -409,6 +430,10 @@ Important product boundary:
   means software summary consumption only; `missing`, `invalid`, and `stale`
   block a green first-screen readiness state until references are refreshed or
   regenerated.
+- `provisioning_audit` is the phone-safe production provisioning / STS / audit
+  gate summary. `ready` means the Docker/local artifact is consumable only; it
+  must still expose `production_ready=false`, `overall_status=blocked`, and
+  `not_proven`.
 - `not_proven` must continue to include production phone app, real cloud,
   real 4G/SIM, OSS/CDN, Nav2/fixed-route delivery, WAVE ROVER motion, and HIL
   until those paths have separate evidence.

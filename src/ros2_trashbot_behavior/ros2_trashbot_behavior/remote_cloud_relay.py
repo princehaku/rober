@@ -28,9 +28,12 @@ OSS_CDN_PHONE_MANIFEST_EVIDENCE_BOUNDARY = "software_proof_docker_phone_manifest
 NETWORK_RECOVERY_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_network_recovery_phone_consumption"
 CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY = "software_proof_docker_credential_rotation_gate"
 CREDENTIAL_ROTATION_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_credential_rotation_phone_consumption"
+PROVISIONING_AUDIT_EVIDENCE_BOUNDARY = "software_proof_docker_provisioning_audit_gate"
+PROVISIONING_AUDIT_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_provisioning_audit_phone_consumption"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
+PROVISIONING_AUDIT_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 DEPLOY_EVIDENCE_BOUNDARY = "software_proof_docker_deploy"
 BACKUP_ARTIFACT_SCHEMA = "trashbot.remote_cloud_relay_backup.v1"
 BACKUP_ARTIFACT_VERSION = 1
@@ -40,6 +43,8 @@ OSS_CDN_MANIFEST_SCHEMA = "trashbot.oss_cdn_manifest"
 OSS_CDN_MANIFEST_VERSION = 1
 CREDENTIAL_ROTATION_SCHEMA = "trashbot.credential_rotation_gate"
 CREDENTIAL_ROTATION_SCHEMA_VERSION = 1
+PROVISIONING_AUDIT_SCHEMA = "trashbot.provisioning_audit_gate"
+PROVISIONING_AUDIT_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -74,6 +79,23 @@ CREDENTIAL_ROTATION_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+PROVISIONING_AUDIT_NOT_PROVEN = [
+    "production_robot_provisioning",
+    "real_sts_issuance",
+    "real_audit_log_sink",
+    "real_oss_upload",
+    "cdn_origin_fetch",
+    "production_account",
+    "restricted_delivery_channel",
+    "real_cloud",
+    "real_4g_sim",
+    "https_tls_public_ingress",
+    "production_db_or_queue",
+    "multi_instance_consistency",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -89,6 +111,7 @@ PHONE_COPY = {
     "oss_cdn_manifest_blocked": "OSS/CDN 诊断引用清单未通过校验，请重新生成后再试。",
     "network_recovery_blocked": "网络恢复演练未通过，请重新运行恢复演练后再试。",
     "credential_rotation_blocked": "凭证轮换软件证明未通过校验，请重新生成后再试。",
+    "provisioning_audit_blocked": "生产 provisioning / STS / audit 软件证明未通过校验，请重新生成后再试。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -1060,6 +1083,247 @@ def build_phone_credential_rotation_summary(artifact_path, *, now=None, stale_af
     return phone_summary
 
 
+def _provisioning_audit_forbidden_markers(payload):
+    # provisioning audit 是上线前阻断证据，必须比普通 diagnostics 更严格地拒绝敏感词。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "oss secret",
+        "oss_access_key",
+        "access_key",
+        "access key",
+        "secret_key",
+        "secret key",
+        "ak/sk",
+        "ak sk",
+        "root password",
+        "credential url",
+        "credential_url",
+        "raw state path",
+        "state path",
+        "/tmp/",
+        "/dev/",
+        "serial",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+        "traceback",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def build_provisioning_audit_artifact_payload(robot_id, *, generated_at=None):
+    """生成 Docker/local provisioning audit gate；不签发真实 STS 或写真实审计日志。"""
+    robot_key = _robot_key(robot_id)
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    body = {
+        "schema": PROVISIONING_AUDIT_SCHEMA,
+        "schema_version": PROVISIONING_AUDIT_SCHEMA_VERSION,
+        "evidence_boundary": PROVISIONING_AUDIT_EVIDENCE_BOUNDARY,
+        "robot_id": robot_key,
+        "generated_at": generated_value,
+        "robot_provisioning_status": "local_contract_artifact_present",
+        "sts_issuance_status": "not_issued_boundary_documented",
+        "audit_log_status": "local_audit_contract_artifact_present",
+        "credential_delivery_status": "no_sensitive_material_exported",
+        "production_ready": False,
+        "overall_status": "blocked",
+        "not_proven": list(PROVISIONING_AUDIT_NOT_PROVEN),
+        "safe_summary": "Provisioning / STS / audit gate 已生成 Docker/local software proof；生产证据仍未补齐。",
+        "retry_hint": "pass_provisioning_audit_artifact_to_preflight_and_keep_production_blocked",
+    }
+    forbidden = _provisioning_audit_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("provisioning audit artifact contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_provisioning_audit_artifact_payload(artifact, *, now=None, stale_after_sec=None):
+    # 校验返回小摘要；完整 artifact、robot_id 和 checksum 不进入手机 status 或 diagnostics。
+    if not isinstance(artifact, dict):
+        raise ValueError("provisioning audit artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != PROVISIONING_AUDIT_SCHEMA:
+        raise ValueError("provisioning audit schema mismatch")
+    if artifact.get("schema_version") != PROVISIONING_AUDIT_SCHEMA_VERSION:
+        raise ValueError("provisioning audit schema version mismatch")
+    if artifact.get("evidence_boundary") != PROVISIONING_AUDIT_EVIDENCE_BOUNDARY:
+        raise ValueError("provisioning audit evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("provisioning audit checksum mismatch")
+    expected_statuses = {
+        "robot_provisioning_status": "local_contract_artifact_present",
+        "sts_issuance_status": "not_issued_boundary_documented",
+        "audit_log_status": "local_audit_contract_artifact_present",
+        "credential_delivery_status": "no_sensitive_material_exported",
+    }
+    for field_name, expected in expected_statuses.items():
+        if artifact.get(field_name) != expected:
+            raise ValueError(f"provisioning audit {field_name} mismatch")
+    if artifact.get("production_ready") is not False or artifact.get("overall_status") != "blocked":
+        raise ValueError("provisioning audit must stay production blocked")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in PROVISIONING_AUDIT_NOT_PROVEN if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("provisioning audit not_proven list is incomplete")
+    safe_summary = str(artifact.get("safe_summary") or "")
+    retry_hint = str(artifact.get("retry_hint") or "")
+    if not safe_summary or not retry_hint:
+        raise ValueError("provisioning audit phone copy missing")
+    forbidden = _provisioning_audit_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("provisioning audit artifact contains forbidden phone-unsafe markers")
+    generated_at = str(artifact.get("generated_at") or "").strip()
+    timestamp = _parse_manifest_time(generated_at)
+    stale_window = (
+        PROVISIONING_AUDIT_ARTIFACT_STALE_AFTER_SEC
+        if stale_after_sec is None
+        else float(stale_after_sec)
+    )
+    now_value = _now() if now is None else float(now)
+    staleness = "fresh"
+    if timestamp is None or now_value - timestamp > stale_window:
+        staleness = "stale"
+    return {
+        "ok": staleness == "fresh",
+        "schema": PROVISIONING_AUDIT_SCHEMA,
+        "schema_version": PROVISIONING_AUDIT_SCHEMA_VERSION,
+        "evidence_boundary": PROVISIONING_AUDIT_EVIDENCE_BOUNDARY,
+        "robot_provisioning_status": expected_statuses["robot_provisioning_status"],
+        "sts_issuance_status": expected_statuses["sts_issuance_status"],
+        "audit_log_status": expected_statuses["audit_log_status"],
+        "credential_delivery_status": expected_statuses["credential_delivery_status"],
+        "production_ready": False,
+        "overall_status": "blocked",
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "generated_at": generated_at,
+        "staleness": staleness,
+        "checksum": checksum,
+        "not_proven": list(PROVISIONING_AUDIT_NOT_PROVEN),
+    }
+
+
+def create_provisioning_audit_artifact(artifact_path, robot_id):
+    # CLI、preflight 和手机摘要共用同一校验函数，避免三类 gate 口径分叉。
+    artifact = build_provisioning_audit_artifact_payload(robot_id)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_provisioning_audit_artifact_payload(artifact)
+    return {
+        "ok": True,
+        "provisioning_audit_status": "blocked",
+        "evidence_boundary": PROVISIONING_AUDIT_EVIDENCE_BOUNDARY,
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(PROVISIONING_AUDIT_NOT_PROVEN),
+    }
+
+
+def provisioning_audit_artifact_summary(artifact_path, *, now=None, stale_after_sec=None):
+    # preflight 只消费摘要和校验结论；路径、robot_id、checksum 不回显。
+    try:
+        artifact = _load_json_file(artifact_path, "provisioning audit artifact")
+        summary = validate_provisioning_audit_artifact_payload(
+            artifact,
+            now=now,
+            stale_after_sec=stale_after_sec,
+        )
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "provisioning_audit_invalid",
+            "safe_summary": "Provisioning / STS / audit 软件证明产物损坏。",
+            "retry_hint": "重新生成 provisioning audit artifact 后刷新 preflight。",
+            "evidence_boundary": PROVISIONING_AUDIT_EVIDENCE_BOUNDARY,
+            "not_proven": list(PROVISIONING_AUDIT_NOT_PROVEN),
+            "debug_reason": _safe_error_reason(exc),
+        }
+    if summary.get("staleness") == "stale":
+        summary.update(
+            {
+                "ok": False,
+                "state": "stale",
+                "reason_code": "provisioning_audit_stale",
+                "safe_summary": "Provisioning / STS / audit 软件证明已过期。",
+                "retry_hint": "重新生成 provisioning audit artifact，避免手机消费旧证明。",
+            }
+        )
+        return summary
+    summary.update({"state": "ready", "reason_code": "provisioning_audit_passed"})
+    return summary
+
+
+def _phone_provisioning_audit_base(state, safe_summary, retry_hint):
+    # 手机端只看三类门禁状态和 not_proven，不展示 artifact 原文、路径或机器人标识。
+    return {
+        "state": state,
+        "schema": PROVISIONING_AUDIT_SCHEMA,
+        "schema_version": PROVISIONING_AUDIT_SCHEMA_VERSION,
+        "evidence_boundary": PROVISIONING_AUDIT_PHONE_EVIDENCE_BOUNDARY,
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "robot_provisioning_status": "",
+        "sts_issuance_status": "",
+        "audit_log_status": "",
+        "credential_delivery_status": "",
+        "production_ready": False,
+        "overall_status": "blocked",
+        "generated_at": "",
+        "staleness": "unknown",
+        "not_proven": list(PROVISIONING_AUDIT_NOT_PROVEN),
+    }
+
+
+def build_phone_provisioning_audit_summary(artifact_path, *, now=None, stale_after_sec=None):
+    """Return a phone-safe provisioning / STS / audit gate summary."""
+    artifact_ref = os.path.expanduser(str(artifact_path or "")).strip()
+    if not artifact_ref or not os.path.exists(artifact_ref):
+        return _phone_provisioning_audit_base(
+            "missing",
+            "Provisioning / STS / audit 软件证明缺失。",
+            "请生成 provisioning audit artifact 后刷新状态。",
+        )
+    summary = provisioning_audit_artifact_summary(
+        artifact_ref,
+        now=now,
+        stale_after_sec=stale_after_sec,
+    )
+    if not summary.get("ok"):
+        return _phone_provisioning_audit_base(
+            str(summary.get("state") or "invalid"),
+            str(summary.get("safe_summary") or "Provisioning / STS / audit 软件证明不可用。"),
+            str(summary.get("retry_hint") or "重新生成 provisioning audit artifact 后刷新状态。"),
+        )
+    phone_summary = _phone_provisioning_audit_base(
+        "ready",
+        "Provisioning / STS / audit 软件证明已准备；这只是 Docker/local software proof。",
+        "继续补真实生产 provisioning、STS 签发和审计日志证据。",
+    )
+    phone_summary.update(
+        {
+            "robot_provisioning_status": str(summary.get("robot_provisioning_status") or ""),
+            "sts_issuance_status": str(summary.get("sts_issuance_status") or ""),
+            "audit_log_status": str(summary.get("audit_log_status") or ""),
+            "credential_delivery_status": str(summary.get("credential_delivery_status") or ""),
+            "generated_at": str(summary.get("generated_at") or ""),
+            "staleness": str(summary.get("staleness") or "fresh"),
+        }
+    )
+    return phone_summary
+
+
 def build_oss_cdn_manifest_payload(robot_id, task_id, date_text=None, objects=None, created_at=None):
     """生成 Docker/local OSS/CDN 对象引用 proof；不声明真实上传、回源或生产账号。"""
     robot_key = _robot_key(robot_id)
@@ -1356,6 +1620,7 @@ def production_preflight_payload(env=None):
     oss_cdn_manifest_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT")
     network_recovery_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT")
     credential_rotation_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT")
+    provisioning_audit_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT")
     tls_mode_safe = _safe_enum(tls_mode, {"future_reverse_proxy", "terminated", "managed", "reverse_proxy"})
     ingress_mode_safe = _safe_enum(ingress_mode, {"missing", "private_only", "public_https"})
     oss_credential_mode_safe = _safe_enum(oss_credential_mode, {"placeholder", "sts", "restricted_ak", "managed_identity"})
@@ -1729,6 +1994,59 @@ def production_preflight_payload(env=None):
             )
         )
 
+    if provisioning_audit_artifact_path:
+        # provisioning audit 只证明三类上线前 contract 形态，不签发 STS、不写真实 audit sink。
+        provisioning_summary = provisioning_audit_artifact_summary(provisioning_audit_artifact_path)
+        if provisioning_summary.get("ok"):
+            checks.append(
+                _check(
+                    "provisioning_audit",
+                    "pass",
+                    "local_provisioning_audit_artifact_valid",
+                    "已找到通过 schema、checksum 和 phone-safe 校验的 provisioning / STS / audit artifact。",
+                    "继续补真实生产 provisioning、STS 签发和审计日志证据。",
+                    {
+                        "artifact_schema": PROVISIONING_AUDIT_SCHEMA,
+                        "schema_version": PROVISIONING_AUDIT_SCHEMA_VERSION,
+                        "robot_provisioning_status": provisioning_summary.get("robot_provisioning_status"),
+                        "sts_issuance_status": provisioning_summary.get("sts_issuance_status"),
+                        "audit_log_status": provisioning_summary.get("audit_log_status"),
+                        "credential_delivery_status": provisioning_summary.get("credential_delivery_status"),
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "staleness": provisioning_summary.get("staleness"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            state = str(provisioning_summary.get("state") or "invalid")
+            checks.append(
+                _check(
+                    "provisioning_audit",
+                    "blocked",
+                    f"provisioning_audit_artifact_{state}",
+                    str(provisioning_summary.get("safe_summary") or "Provisioning / STS / audit 软件证明产物不可用。"),
+                    str(provisioning_summary.get("retry_hint") or "重新生成 provisioning audit artifact 后重跑 preflight。"),
+                    {
+                        "artifact_present": True,
+                        "reason_code": provisioning_summary.get("reason_code", "provisioning_audit_invalid"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "provisioning_audit",
+                "warning",
+                "provisioning_audit_artifact_missing",
+                "尚未提供 provisioning / STS / audit artifact，不能声明生产账号发放、STS 签发或审计日志软件证明。",
+                "生成 provisioning audit artifact，并用 TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT 传给 preflight。",
+                {"artifact_present": False, "software_proof_only": True},
+            )
+        )
+
     if _phone_safe_failure_ready():
         checks.append(
             _check(
@@ -1774,8 +2092,15 @@ def production_preflight_payload(env=None):
         check["name"] == "credential_rotation" and check["status"] == "pass"
         for check in checks
     )
+    local_provisioning_audit_ok = any(
+        check["name"] == "provisioning_audit" and check["status"] == "pass"
+        for check in checks
+    )
     not_proven = [
         "production_credential_rotation",
+        "production_robot_provisioning",
+        "real_sts_issuance",
+        "real_audit_log_sink",
         "real_oss_upload",
         "sts_issuance",
         "cdn_origin_fetch",
@@ -1798,14 +2123,20 @@ def production_preflight_payload(env=None):
         not_proven.insert(9, "network_recovery_drill")
     if not local_credential_rotation_ok:
         not_proven.insert(10, "credential_rotation_gate")
+    if not local_provisioning_audit_ok:
+        not_proven.insert(11, "provisioning_audit_gate")
     payload = {
         "ok": production_ready,
-        "software_proof_ready": bool(local_network_recovery_ok or local_credential_rotation_ok),
+        "software_proof_ready": bool(
+            local_network_recovery_ok or local_credential_rotation_ok or local_provisioning_audit_ok
+        ),
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
         "protocol_version": PROTOCOL_VERSION,
         "evidence_boundary": (
-            CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY
+            PROVISIONING_AUDIT_EVIDENCE_BOUNDARY
+            if local_provisioning_audit_ok
+            else CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY
             if local_credential_rotation_ok
             else OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY
             if local_manifest_ok
@@ -3004,6 +3335,11 @@ def main(argv=None):
         help="phone-safe credential rotation artifact consumed by preflight",
     )
     parser.add_argument(
+        "--provisioning-audit-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT", ""),
+        help="phone-safe provisioning / STS / audit artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
@@ -3014,9 +3350,19 @@ def main(argv=None):
         help="write a phone-safe credential rotation gate artifact JSON and exit",
     )
     parser.add_argument(
+        "--write-provisioning-audit-artifact",
+        default="",
+        help="write a phone-safe provisioning / STS / audit gate artifact JSON and exit",
+    )
+    parser.add_argument(
         "--credential-rotation-robot-id",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ROBOT_ID", "robot-local-proof"),
         help="robot id embedded in generated credential rotation proof",
+    )
+    parser.add_argument(
+        "--provisioning-audit-robot-id",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ROBOT_ID", "robot-local-proof"),
+        help="robot id embedded in generated provisioning audit proof",
     )
     parser.add_argument(
         "--manifest-robot-id",
@@ -3083,9 +3429,21 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT"] = args.network_recovery_artifact
         if args.credential_rotation_artifact:
             preflight_env["TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT"] = args.credential_rotation_artifact
+        if args.provisioning_audit_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT"] = args.provisioning_audit_artifact
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
+    if args.write_provisioning_audit_artifact:
+        try:
+            payload = create_provisioning_audit_artifact(
+                args.write_provisioning_audit_artifact,
+                args.provisioning_audit_robot_id,
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error("provisioning_audit_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     if args.write_credential_rotation_artifact:
         try:
             payload = create_credential_rotation_artifact(
