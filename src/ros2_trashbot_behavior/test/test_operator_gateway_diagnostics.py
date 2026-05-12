@@ -18,7 +18,11 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_hardware_proof,
     summarize_vision_manifest,
 )
-from ros2_trashbot_behavior.operator_gateway_http import ELEVATOR_ASSIST_SPEAKER_PROMPT
+from ros2_trashbot_behavior.operator_gateway_http import (
+    ELEVATOR_ASSIST_SPEAKER_PROMPT,
+    MockCloudStore,
+    _diagnostics_with_phone_task_flow,
+)
 from ros2_trashbot_behavior.remote_cloud_relay import (
     create_credential_rotation_artifact,
     create_network_recovery_artifact,
@@ -937,6 +941,134 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn(str(artifact_path), encoded)
         self.assertNotIn("robot-diagnostics", encoded)
         self.assertNotIn("checksum", encoded)
+
+    def test_diagnostics_phone_support_bundle_is_phone_safe(self):
+        class Gateway:
+            def snapshot(self):
+                return {
+                    "state": "remote_degraded",
+                    "message": "remote blocked; hide token secret-token and /cmd_vel",
+                    "can_collect": False,
+                    "can_confirm_dropoff": False,
+                    "can_cancel": True,
+                    "source": "software_proof",
+                    "task_id": "task-support-1",
+                    "queue_url": "postgres://robot:secret@db.local/queue",
+                    "local_path": "/tmp/robot/status.json",
+                }
+
+            def diagnostics(self):
+                return {
+                    "state": "diagnostics_ready",
+                    "software_version": "0.1.0",
+                    "map_version": "map-a",
+                    "route_version": "route-a",
+                    "source": "software_proof",
+                    "failure_code": "REMOTE_BLOCKED",
+                    "latest_status": self.snapshot(),
+                    "failure": {
+                        "state": "failed",
+                        "message": "raw ROS topic /cmd_vel and Authorization must stay hidden",
+                        "error_code": "REMOTE_BLOCKED",
+                        "final_state": "blocked",
+                    },
+                    "last_task": {
+                        "task_id": "task-support-1",
+                        "serial": "/dev/ttyUSB0",
+                        "baudrate": 115200,
+                        "token": "secret-token",
+                        "Authorization": "Bearer secret-token",
+                    },
+                    "phone_support_bundle": {
+                        "schema": "trashbot.phone_support_bundle.v1",
+                        "safe_copy": "用户可复制摘要，但 ACK 不是送达成功。",
+                        "support_refs": {
+                            "raw_ros_topic": "/cmd_vel",
+                            "serial": "/dev/ttyUSB0",
+                            "baudrate": 115200,
+                            "token": "secret-token",
+                            "Authorization": "Bearer secret-token",
+                            "queue_url": "postgres://robot:secret@db.local/queue",
+                            "local_path": "/tmp/robot/status.json",
+                        },
+                        "ack_semantics": "delivery_success",
+                        "delivery_success": True,
+                    },
+                }
+
+        payload = _diagnostics_with_phone_task_flow(Gateway(), MockCloudStore())
+        bundle = payload["phone_support_bundle"]
+        latest_bundle = payload["latest_status"]["phone_support_bundle"]
+
+        self.assertEqual(bundle["schema"], "trashbot.phone_support_bundle.v1")
+        self.assertEqual(latest_bundle["schema"], "trashbot.phone_support_bundle.v1")
+        self.assertEqual(bundle["evidence_boundary"], "software_proof_docker_phone_support_bundle_gate")
+        self.assertEqual(bundle["support_refs"]["software_version"], "0.1.0")
+        self.assertEqual(bundle["support_refs"]["map_version"], "map-a")
+        self.assertEqual(bundle["support_refs"]["route_version"], "route-a")
+        self.assertEqual(bundle["support_refs"]["source"], "software_proof")
+        self.assertNotEqual(bundle.get("ack_semantics"), "delivery_success")
+        self.assertNotEqual(bundle.get("delivery_success"), True)
+        self.assertIn("ack_as_delivery_success", bundle["not_proven"])
+
+        for forbidden_key in (
+            "raw_ros_topic",
+            "serial",
+            "baudrate",
+            "token",
+            "Authorization",
+            "queue_url",
+            "local_path",
+        ):
+            self.assertNotIn(forbidden_key, bundle["support_refs"])
+        encoded = json.dumps(bundle, ensure_ascii=False)
+        # 这里直接覆盖 /api/diagnostics 的已接线 wrapper，不能再用 skip 掩盖未脱敏输出。
+        for forbidden in (
+            "raw_ros_topic",
+            "/cmd_vel",
+            "/dev/ttyUSB0",
+            "baudrate",
+            "token",
+            "Authorization",
+            "Bearer",
+            "postgres://",
+            "queue_url",
+            "/tmp/robot/status.json",
+            "local_path",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_diagnostics_payload_does_not_forward_preexisting_support_bundle(self):
+        payload = build_diagnostics_payload(
+            {
+                "state": "remote_degraded",
+                "phone_support_bundle": {
+                    "schema": "trashbot.phone_support_bundle.v1",
+                    "safe_copy": "用户可复制摘要，但 ACK 不是送达成功。",
+                    "support_refs": {
+                        "raw_ros_topic": "/cmd_vel",
+                        "serial": "/dev/ttyUSB0",
+                        "baudrate": 115200,
+                        "token": "secret-token",
+                        "Authorization": "Bearer secret-token",
+                        "queue_url": "postgres://robot:secret@db.local/queue",
+                        "local_path": "/tmp/robot/status.json",
+                    },
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                },
+            },
+            software_version="",
+            map_version="",
+            route_version="",
+            log_refs=[],
+            vision_sample_manifest_ref="",
+            review_decision_log_ref="",
+            operator_status_file="/tmp/status.json",
+        )
+
+        # diagnostics core payload 不信任 latest_status 内既有 bundle；HTTP wrapper 负责重新生成脱敏版本。
+        self.assertNotIn("phone_support_bundle", payload)
 
     def test_log_refs_are_normalized_without_claiming_file_existence(self):
         self.assertEqual(normalize_log_refs(None), [])

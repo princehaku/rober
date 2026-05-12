@@ -24,6 +24,8 @@ PHONE_READINESS_SCHEMA = "trashbot.phone_readiness.v1"
 PHONE_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_task_flow_readiness_gate"
 PHONE_COMMAND_SAFETY_EVIDENCE_BOUNDARY = "software_proof_docker_phone_command_safety_browser_gate"
 PHONE_TASK_FLOW_SCHEMA = "trashbot.phone_task_flow_readiness.v1"
+PHONE_SUPPORT_BUNDLE_SCHEMA = "trashbot.phone_support_bundle.v1"
+PHONE_SUPPORT_BUNDLE_EVIDENCE_BOUNDARY = "software_proof_docker_phone_support_bundle_gate"
 PHONE_PWA_EVIDENCE_BOUNDARY = "software_proof_docker_phone_pwa_installability_gate"
 COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
@@ -126,6 +128,55 @@ PHONE_TASK_FLOW_FORBIDDEN_COPY_MARKERS = (
     "cloud secret",
     "wave rover",
 )
+
+PHONE_SUPPORT_BUNDLE_FORBIDDEN_MARKERS = (
+    "token",
+    "authorization",
+    "bearer",
+    "oss ak",
+    "oss sk",
+    "access_key",
+    "secret",
+    "password",
+    "root password",
+    "database url",
+    "db url",
+    "queue url",
+    "ros topic",
+    "/cmd_vel",
+    "serial",
+    "baudrate",
+    "wave rover",
+    "traceback",
+    "checksum",
+    "artifact",
+    "/tmp/",
+    "/users/",
+    "/home/",
+    "http://",
+    "https://",
+)
+
+PHONE_SUPPORT_BUNDLE_SAFE_KEYS = {
+    "schema",
+    "schema_version",
+    "api_version",
+    "state",
+    "primary_state",
+    "next_action",
+    "support_level",
+    "failure_code",
+    "error_code",
+    "final_state",
+    "source",
+    "map_version",
+    "route_version",
+    "software_version",
+    "task_id",
+    "status",
+    "overall_status",
+    "evidence_boundary",
+}
 
 PHONE_READINESS_PRIMARY_COPY = {
     "ready": "手机可以继续操作。",
@@ -1177,10 +1228,12 @@ HTML = """<!doctype html>
         <button id="dropoffButton" onclick="confirmDropoff()">Confirm Dropoff</button>
         <button id="cancelButton" class="danger" onclick="cancelTask()">Cancel</button>
         <button id="diagnosticsButton" onclick="diagnostics()">Diagnostics</button>
+        <button id="supportHandoffButton" onclick="openSupportHandoff()">Support Handoff</button>
       </div>
       <p class="message">Command gate: <strong id="commandSafetyCopy">等待 command safety 计算。</strong></p>
       <p class="message">ACK: <strong id="commandSafetyAck">ACK 只表示指令已被小车侧 bridge 受理或处理。</strong></p>
       <p class="message">Diagnostics: <strong id="diagnosticsGateCopy">Diagnostics 可进入，但不代表主操作可用。</strong></p>
+      <p class="message">Support handoff: <strong id="supportHandoffCopy">失败或 blocked 时可复制脱敏摘要。</strong></p>
     </section>
     <section class="panel">
       <h2>Robot Location</h2>
@@ -1222,8 +1275,23 @@ HTML = """<!doctype html>
         <div class="metric"><span>Elevator next step</span><strong id="diagElevatorAssistNextStep">-</strong></div>
         <div class="metric"><span>Phone task flow</span><strong id="diagPhoneTaskFlow">-</strong></div>
         <div class="metric"><span>Phone next step</span><strong id="diagPhoneTaskFlowNext">-</strong></div>
+        <div class="metric"><span>Support bundle</span><strong id="diagSupportBundleId">-</strong></div>
+        <div class="metric"><span>Support level</span><strong id="diagSupportLevel">-</strong></div>
       </div>
       <p id="diagRecoveryHint" class="message">No manual takeover required.</p>
+      <div id="supportBundlePanel" class="integrityCard">
+        <div class="integrityHeader">
+          <h3>Support Handoff</h3>
+          <span id="supportBundleBadge" class="integrityBadge muted">not loaded</span>
+        </div>
+        <p id="supportBundleSummary" class="message">失败或 blocked 时，可复制这段中文摘要给家人、售后或工程支持。</p>
+        <textarea id="supportBundleSafeCopy" rows="8" readonly></textarea>
+        <div class="row">
+          <button id="supportCopyButton" onclick="copySupportBundle()">Copy Summary</button>
+          <button id="supportRefreshButton" onclick="diagnostics()">Refresh Support</button>
+        </div>
+        <p class="message">ACK: <strong id="supportBundleAck">ACK 只表示指令被受理或处理，不代表送达成功。</strong></p>
+      </div>
       <ul id="diagStateTransitionHistoryList" class="supportList"></ul>
       <div id="diagVisionIntegrity" class="integrityCard">
         <div class="integrityHeader">
@@ -1819,6 +1887,10 @@ function renderPhoneReadiness(phoneReadiness) {
   document.getElementById('phoneReadinessNotProven').textContent = notProven.length
     ? notProven.join(', ')
     : 'not reported';
+  const supportBundle = readiness.phone_support_bundle && typeof readiness.phone_support_bundle === 'object'
+    ? readiness.phone_support_bundle
+    : {};
+  renderSupportBundleSummary(supportBundle);
 }
 function commandAction(commandSafety, actionName) {
   const safety = commandSafety && typeof commandSafety === 'object' ? commandSafety : {};
@@ -1841,15 +1913,19 @@ function applyCommandSafety(payload) {
   const dropoffButton = document.getElementById('dropoffButton');
   const cancelButton = document.getElementById('cancelButton');
   const diagnosticsButton = document.getElementById('diagnosticsButton');
+  const supportHandoffButton = document.getElementById('supportHandoffButton');
   // 浏览器按钮只消费后端派生出的 command_safety；raw can_* 只是后端 gate 的输入。
   collectButton.disabled = !Boolean(startAction.enabled);
   dropoffButton.disabled = !Boolean(dropoffAction.enabled);
   cancelButton.disabled = !Boolean(cancelAction.enabled);
   diagnosticsButton.disabled = !Boolean(diagnosticsAction.enabled);
+  // support/handoff 只读脱敏摘要；主操作 blocked 时也必须可打开，方便复现问题。
+  supportHandoffButton.disabled = false;
   collectButton.title = text(startAction.safe_phone_copy, '当前不能开始任务。');
   dropoffButton.title = text(dropoffAction.safe_phone_copy, '当前不能确认投放。');
   cancelButton.title = text(cancelAction.safe_phone_copy, '当前不能取消任务。');
   diagnosticsButton.title = text(diagnosticsAction.safe_phone_copy, 'Diagnostics 可进入。');
+  supportHandoffButton.title = '复制脱敏支持摘要；ACK 不代表送达成功。';
   document.getElementById('commandSafetyCopy').textContent = text(
     commandSafety.safe_phone_copy,
     '主操作暂不可用。'
@@ -1862,6 +1938,49 @@ function applyCommandSafety(payload) {
     diagnosticsAction.safe_phone_copy,
     'Diagnostics 可进入，但不代表主操作可用。'
   );
+}
+function renderSupportBundleSummary(bundle) {
+  const supportBundle = bundle && typeof bundle === 'object' ? bundle : {};
+  document.getElementById('supportHandoffCopy').textContent = text(
+    supportBundle.status_summary || supportBundle.failure_summary,
+    '失败或 blocked 时可复制脱敏摘要。'
+  );
+}
+function renderSupportBundle(bundle) {
+  const supportBundle = bundle && typeof bundle === 'object' ? bundle : {};
+  const badge = document.getElementById('supportBundleBadge');
+  badge.textContent = text(supportBundle.support_level, 'not loaded');
+  badge.className = `integrityBadge ${supportBundle.support_level ? 'blocked' : 'muted'}`;
+  document.getElementById('supportBundleSummary').textContent = text(
+    supportBundle.status_summary,
+    '失败或 blocked 时，可复制这段中文摘要给家人、售后或工程支持。'
+  );
+  document.getElementById('supportBundleSafeCopy').value = text(
+    supportBundle.safe_copy,
+    '支持交接摘要尚未生成；请刷新状态或打开 Diagnostics。'
+  );
+  document.getElementById('supportBundleAck').textContent = text(
+    supportBundle.ack_semantics,
+    'ACK 只表示指令被受理或处理，不代表送达成功。'
+  );
+  document.getElementById('diagSupportBundleId').textContent = text(supportBundle.bundle_id, 'not reported');
+  document.getElementById('diagSupportLevel').textContent = text(supportBundle.support_level, 'not reported');
+}
+async function copySupportBundle() {
+  const textArea = document.getElementById('supportBundleSafeCopy');
+  const value = text(textArea.value, '支持交接摘要尚未生成；请先刷新 Diagnostics。');
+  try {
+    await navigator.clipboard.writeText(value);
+    document.getElementById('supportBundleSummary').textContent = '已复制脱敏支持摘要；ACK 不代表送达成功。';
+  } catch (error) {
+    textArea.focus();
+    textArea.select();
+    document.getElementById('supportBundleSummary').textContent = '无法自动复制，请手动选择摘要文本。';
+  }
+}
+async function openSupportHandoff() {
+  const payload = await api('/api/diagnostics', {}, false);
+  if (payload) showDiagnostics(payload);
 }
 function showTelemetry(payload) {
   const location = payload.robot_location || payload.location;
@@ -1900,6 +2019,7 @@ function showDiagnostics(payload) {
   const elevatorAssist = payload.elevator_assist || {};
   const elevatorAssistStatus = payload.elevator_assist_status || {};
   const ossCdnManifest = payload.oss_cdn_manifest || {};
+  const phoneSupportBundle = payload.phone_support_bundle || {};
   const phoneTaskFlow = payload.phone_task_flow_readiness && typeof payload.phone_task_flow_readiness === 'object'
     ? payload.phone_task_flow_readiness
     : taskFlowFromPayload(latest);
@@ -1920,6 +2040,7 @@ function showDiagnostics(payload) {
   renderVisionIntegrity(visionSamples);
   renderHardwareProof(hardwareProof);
   renderOssCdnManifest(ossCdnManifest);
+  renderSupportBundle(phoneSupportBundle);
   document.getElementById('diagSoftware').textContent = text(payload.software_version, 'not reported');
   document.getElementById('diagMap').textContent = text(payload.map_version, 'not reported');
   document.getElementById('diagRoute').textContent = text(payload.route_version, 'not reported');
@@ -2548,6 +2669,131 @@ def build_phone_task_flow_readiness(
     }
 
 
+def _support_safe_text(value, fallback="not_reported"):
+    # support bundle 会被复制给家人或售后，所有自由文本先走脱敏过滤。
+    text_value = str(value or "").strip()
+    if not text_value:
+        return fallback
+    lowered = text_value.lower()
+    if any(marker in lowered for marker in PHONE_SUPPORT_BUNDLE_FORBIDDEN_MARKERS):
+        return fallback
+    return text_value
+
+
+def _support_safe_mapping(value):
+    # 只保留可解释的短字段；路径、URL、topic、凭证和完整 artifact 一律不进入 handoff。
+    if not isinstance(value, dict):
+        return {}
+    safe = {}
+    for key, item in value.items():
+        key_text = str(key)
+        key_lc = key_text.lower()
+        if key_text not in PHONE_SUPPORT_BUNDLE_SAFE_KEYS:
+            continue
+        if any(marker in key_lc for marker in PHONE_SUPPORT_BUNDLE_FORBIDDEN_MARKERS):
+            continue
+        if isinstance(item, (str, int, float, bool)) or item is None:
+            safe[key_text] = _support_safe_text(item, "")
+    return safe
+
+
+def _support_failure_summary(status, diagnostics):
+    # failure 摘要优先读 diagnostics 的 terminal failure，再回退到 status，避免展示 raw task record。
+    status = status if isinstance(status, dict) else {}
+    diagnostics = diagnostics if isinstance(diagnostics, dict) else {}
+    failure = diagnostics.get("failure") if isinstance(diagnostics.get("failure"), dict) else {}
+    last_task = diagnostics.get("last_task") if isinstance(diagnostics.get("last_task"), dict) else {}
+    for source in (failure, last_task, diagnostics, status):
+        code = _support_safe_text(
+            source.get("failure_code") or source.get("error_code") or source.get("final_state"),
+            "",
+        )
+        message = _support_safe_text(source.get("message") or source.get("error_message"), "")
+        if code or message:
+            return " / ".join(part for part in (code, message) if part)
+    return "当前没有 terminal failure；请继续观察状态或刷新诊断。"
+
+
+def _support_refs(status, phone_readiness, diagnostics):
+    # 引用只给排障定位，不给本地路径、完整 artifact、checksum 或硬件/串口细节。
+    refs = {}
+    for source in (status, phone_readiness, diagnostics):
+        refs.update(_support_safe_mapping(source))
+    task_flow = phone_readiness.get("phone_task_flow_readiness") if isinstance(phone_readiness, dict) else {}
+    if isinstance(task_flow, dict):
+        refs["current_step"] = _support_safe_text(task_flow.get("current_step"), "")
+    command_safety = phone_readiness.get("command_safety") if isinstance(phone_readiness, dict) else {}
+    if isinstance(command_safety, dict):
+        refs["command_block_reason"] = _support_safe_text(command_safety.get("global_block_reason"), "")
+    return {key: value for key, value in refs.items() if value not in ("", None)}
+
+
+def build_phone_support_bundle(status, phone_readiness=None, diagnostics=None, *, now=None):
+    """Build a phone-safe support handoff package.
+
+    这个对象只复用现有 status、phone_readiness 和 diagnostics 摘要；它不读取硬件、
+    不下发命令，也不把 ACK、artifact 或本地路径解释成送达成功。
+    """
+    status = status if isinstance(status, dict) else {}
+    phone_readiness = phone_readiness if isinstance(phone_readiness, dict) else {}
+    diagnostics = diagnostics if isinstance(diagnostics, dict) else {}
+    generated_at = float(now if now is not None else time.time())
+    state = _support_safe_text(status.get("state"), "unknown")
+    primary_state = _support_safe_text(phone_readiness.get("primary_state"), state)
+    support_level = _support_safe_text(phone_readiness.get("support_level"), "support_required")
+    failure_summary = _support_failure_summary(status, diagnostics)
+    status_summary = _support_safe_text(
+        phone_readiness.get("safe_phone_copy") or status.get("phone_copy") or status.get("message"),
+        "手机入口正在等待可用状态。",
+    )
+    next_hint = _support_safe_text(
+        phone_readiness.get("recovery_hint") or phone_readiness.get("next_action"),
+        "刷新状态；如果仍被阻断，请打开诊断并复制支持交接包。",
+    )
+    bundle_id = f"support-{int(generated_at)}-{state.replace('_', '-')[:24]}"
+    support_refs = _support_refs(status, phone_readiness, diagnostics)
+    not_proven = list(PHONE_READINESS_NOT_PROVEN)
+    not_proven.extend(
+        [
+            "delivery_success",
+            "ack_as_delivery_success",
+            "complete_raw_evidence",
+            "hardware_or_serial_details",
+        ]
+    )
+    safe_copy_lines = [
+        "Trashbot 支持交接摘要",
+        f"状态：{status_summary}",
+        f"阻塞/失败：{failure_summary}",
+        f"下一步：{next_hint}",
+        f"支持等级：{support_level}",
+        f"引用：{json.dumps(support_refs, ensure_ascii=False, sort_keys=True)}",
+        f"ACK 语义：{COMMAND_SAFETY_ACK_COPY}",
+        "未证明：真实手机设备、真实云/4G、Nav2/fixed-route、底盘实机、HIL、送达成功。",
+    ]
+    safe_copy = "\n".join(_support_safe_text(line, "已过滤敏感内容。") for line in safe_copy_lines)
+    return {
+        "schema": PHONE_SUPPORT_BUNDLE_SCHEMA,
+        "schema_version": 1,
+        "api_version": API_VERSION,
+        "evidence_boundary": PHONE_SUPPORT_BUNDLE_EVIDENCE_BOUNDARY,
+        "bundle_id": bundle_id,
+        "generated_at": generated_at,
+        "support_level": support_level,
+        "status_summary": status_summary,
+        "failure_summary": failure_summary,
+        "next_steps": {
+            "user": next_hint,
+            "support": "请按 support_refs 复查软件证据；不要把 ACK 当成送达成功。",
+        },
+        "ack_semantics": COMMAND_SAFETY_ACK_COPY,
+        "support_refs": support_refs,
+        "safe_copy": safe_copy,
+        "not_proven": not_proven,
+        "source": "phone_readiness_and_diagnostics_summary",
+    }
+
+
 def build_phone_readiness(
     status,
     *,
@@ -2790,19 +3036,26 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         production_store_queue=production_store_queue,
         queue_ordering_drill=queue_ordering_drill,
     )
+    phone_support_bundle = build_phone_support_bundle(payload, payload["phone_readiness"])
+    payload["phone_support_bundle"] = phone_support_bundle
+    payload["phone_readiness"]["phone_support_bundle"] = dict(phone_support_bundle)
     payload["phone_task_flow_readiness"] = dict(payload["phone_readiness"]["phone_task_flow_readiness"])
     return payload
 
 
 def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
-    # diagnostics 是支持入口；补同一份 task-flow 摘要，便于复现首屏阻塞但不改变任务状态。
+    # diagnostics 是支持入口；补同一份 task-flow 和 handoff 摘要，便于复现首屏阻塞但不改变任务状态。
     diagnostics_payload = dict(gateway.diagnostics())
     status = _status_with_phone_readiness(gateway, mock_cloud)
     task_flow = dict(status.get("phone_task_flow_readiness", {}))
+    phone_readiness = status.get("phone_readiness") if isinstance(status.get("phone_readiness"), dict) else {}
+    phone_support_bundle = build_phone_support_bundle(status, phone_readiness, diagnostics_payload)
     diagnostics_payload["phone_task_flow_readiness"] = task_flow
+    diagnostics_payload["phone_support_bundle"] = phone_support_bundle
     latest_status = diagnostics_payload.get("latest_status")
     if isinstance(latest_status, dict):
         latest_status.setdefault("phone_task_flow_readiness", task_flow)
+        latest_status.setdefault("phone_support_bundle", phone_support_bundle)
     return diagnostics_payload
 
 

@@ -7,6 +7,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 GATEWAY = REPO_ROOT / "ros2_trashbot_behavior" / "ros2_trashbot_behavior" / "operator_gateway.py"
 DIAGNOSTICS = REPO_ROOT / "ros2_trashbot_behavior" / "ros2_trashbot_behavior" / "operator_gateway_diagnostics.py"
 HTTP = REPO_ROOT / "ros2_trashbot_behavior" / "ros2_trashbot_behavior" / "operator_gateway_http.py"
+STATIC = REPO_ROOT / "ros2_trashbot_behavior" / "ros2_trashbot_behavior" / "operator_gateway_static.py"
 SETUP = REPO_ROOT / "ros2_trashbot_behavior" / "setup.py"
 
 
@@ -89,6 +90,9 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("PHONE_READINESS_SCHEMA", http_source)
         self.assertIn("PHONE_READINESS_EVIDENCE_BOUNDARY", http_source)
         self.assertIn("PHONE_TASK_FLOW_SCHEMA", http_source)
+        self.assertIn("PHONE_SUPPORT_BUNDLE_SCHEMA", http_source)
+        self.assertIn("software_proof_docker_phone_support_bundle_gate", http_source)
+        self.assertIn("build_phone_support_bundle", http_source)
         self.assertIn("build_phone_task_flow_readiness", http_source)
         self.assertIn("build_phone_readiness", http_source)
         self.assertIn("_status_with_phone_readiness", http_source)
@@ -223,6 +227,18 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "phoneReadinessBoundary",
             "phoneReadinessNotProven",
             "phone_task_flow_readiness",
+            "phone_support_bundle",
+            "trashbot.phone_support_bundle.v1",
+            "PHONE_SUPPORT_BUNDLE_EVIDENCE_BOUNDARY",
+            "software_proof_docker_phone_support_bundle_gate",
+            "supportHandoffButton",
+            "supportBundlePanel",
+            "supportBundleSafeCopy",
+            "supportCopyButton",
+            "copySupportBundle",
+            "openSupportHandoff",
+            "supportHandoffButton.disabled = false",
+            "ACK 不代表送达成功",
             "trashbot.phone_task_flow_readiness.v1",
             "renderTaskFlow",
             "taskFlowNext",
@@ -255,6 +271,17 @@ class OperatorGatewayStaticTest(unittest.TestCase):
 
         self.assertNotIn("hardware passed", http_source.lower())
         self.assertNotIn("hil passed", http_source.lower())
+
+    def test_operator_static_contract_marks_support_handoff_surface(self):
+        static_source = STATIC.read_text(encoding="utf-8")
+        ast.parse(static_source)
+
+        self.assertIn("PHONE_SUPPORT_HANDOFF_ENTRY_IDS", static_source)
+        self.assertIn("supportHandoffButton", static_source)
+        self.assertIn("supportBundleSafeCopy", static_source)
+        self.assertIn("ACK 不代表送达成功", static_source)
+        self.assertNotIn("/cmd_vel", static_source)
+        self.assertNotIn("baudrate", static_source.lower())
 
     def test_pwa_static_shell_does_not_expose_robot_or_secret_details(self):
         http_source = HTTP.read_text(encoding="utf-8")

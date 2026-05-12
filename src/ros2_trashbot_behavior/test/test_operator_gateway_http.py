@@ -21,8 +21,11 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     PHONE_PWA_EVIDENCE_BOUNDARY,
     PHONE_READINESS_EVIDENCE_BOUNDARY,
     PHONE_READINESS_SCHEMA,
+    PHONE_SUPPORT_BUNDLE_EVIDENCE_BOUNDARY,
+    PHONE_SUPPORT_BUNDLE_SCHEMA,
     REMOTE_PROTOCOL_VERSION,
     build_phone_readiness,
+    build_phone_support_bundle,
     make_handler,
     normalize_elevator_assist,
     operator_prompt_for_state,
@@ -441,6 +444,13 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["speaker_prompt"], self.gateway.snapshot_payload["speaker_prompt"])
         self.assertEqual(payload["phone_readiness"]["schema"], PHONE_READINESS_SCHEMA)
         self.assertEqual(payload["phone_readiness"]["evidence_boundary"], PHONE_READINESS_EVIDENCE_BOUNDARY)
+        support_bundle = payload["phone_support_bundle"]
+        self.assertEqual(support_bundle["schema"], PHONE_SUPPORT_BUNDLE_SCHEMA)
+        self.assertEqual(support_bundle["evidence_boundary"], PHONE_SUPPORT_BUNDLE_EVIDENCE_BOUNDARY)
+        self.assertEqual(payload["phone_readiness"]["phone_support_bundle"]["bundle_id"], support_bundle["bundle_id"])
+        self.assertIn("ACK 只表示", support_bundle["safe_copy"])
+        self.assertIn("不能代表送达成功", support_bundle["ack_semantics"])
+        self.assertIn("current_step", support_bundle["support_refs"])
         task_flow = payload["phone_task_flow_readiness"]
         self.assertEqual(task_flow["schema"], PHONE_TASK_FLOW_SCHEMA)
         self.assertEqual(task_flow["evidence_boundary"], "software_proof_docker_phone_task_flow_readiness_gate")
@@ -527,6 +537,23 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         encoded_task_flow = json.dumps(task_flow, ensure_ascii=False).lower()
         for forbidden in ("ros topic", "/cmd_vel", "baudrate", "authorization", "cloud secret"):
             self.assertNotIn(forbidden, encoded_task_flow)
+        encoded_support_bundle = json.dumps(support_bundle, ensure_ascii=False).lower()
+        for forbidden in (
+            "authorization",
+            "oss ak",
+            "oss sk",
+            "root password",
+            "db url",
+            "queue url",
+            "ros topic",
+            "/cmd_vel",
+            "serial device",
+            "baudrate",
+            "traceback",
+            "checksum",
+            "/tmp/",
+        ):
+            self.assertNotIn(forbidden, encoded_support_bundle)
 
     def test_status_payload_exposes_phone_and_speaker_copy_for_documented_states(self):
         for state, expected in OPERATOR_PROMPTS.items():
@@ -741,6 +768,60 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertFalse(readiness["command_safety"]["actions"]["cancel"]["enabled"])
         self.assertTrue(readiness["command_safety"]["actions"]["diagnostics"]["enabled"])
 
+    def test_phone_support_bundle_filters_sensitive_handoff_fields(self):
+        status = status_payload(
+            "failed",
+            "Traceback at /tmp/robot.log with token=secret",
+            can_collect=False,
+            can_confirm_dropoff=False,
+            can_cancel=False,
+            error_code="timeout",
+            task_record_path="/Users/m4/private/task.json",
+            authorization="Bearer secret",
+        )
+        readiness = build_phone_readiness(
+            status,
+            remote_readiness={"degradation_state": "malformed_response", "safe_phone_copy": "phone-safe"},
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        diagnostics = {
+            "software_version": "0.1.0",
+            "map_version": "map-a",
+            "route_version": "route-a",
+            "failure": {
+                "failure_code": "TIMED_OUT",
+                "message": "Traceback /tmp/robot.log",
+                "evidence_ref": "/tmp/task.json",
+            },
+            "token": "secret",
+            "db_url": "postgres://user:secret@example.invalid/db",
+            "raw_ros_topic": "/cmd_vel",
+            "checksum": "abc123",
+        }
+
+        bundle = build_phone_support_bundle(status, readiness, diagnostics, now=1778357000.0)
+
+        self.assertEqual(bundle["schema"], PHONE_SUPPORT_BUNDLE_SCHEMA)
+        self.assertEqual(bundle["schema_version"], 1)
+        self.assertEqual(bundle["bundle_id"], "support-1778357000-failed")
+        self.assertIn("ACK 只表示", bundle["safe_copy"])
+        self.assertIn("不能代表送达成功", bundle["safe_copy"])
+        self.assertEqual(bundle["support_refs"]["software_version"], "0.1.0")
+        encoded = json.dumps(bundle, ensure_ascii=False).lower()
+        for forbidden in (
+            "token",
+            "authorization",
+            "postgres://",
+            "db_url",
+            "raw_ros_topic",
+            "/cmd_vel",
+            "traceback",
+            "checksum",
+            "/tmp/",
+            "/users/",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
     def test_unknown_operator_state_falls_back_to_human_help_prompt(self):
         self.assertEqual(
             operator_prompt_for_state("unexpected_state"),
@@ -809,6 +890,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             PHONE_TASK_FLOW_SCHEMA,
         )
         self.assertEqual(payload["phone_task_flow_readiness"]["evidence_boundary"], PHONE_READINESS_EVIDENCE_BOUNDARY)
+        self.assertEqual(payload["phone_support_bundle"]["schema"], PHONE_SUPPORT_BUNDLE_SCHEMA)
+        self.assertEqual(payload["latest_status"]["phone_support_bundle"]["schema"], PHONE_SUPPORT_BUNDLE_SCHEMA)
+        self.assertIn("ACK 只表示", payload["phone_support_bundle"]["safe_copy"])
+        encoded_support_bundle = json.dumps(payload["phone_support_bundle"], ensure_ascii=False).lower()
+        for forbidden in ("authorization", "token", "/cmd_vel", "baudrate", "traceback", "checksum", "/tmp/"):
+            self.assertNotIn(forbidden, encoded_support_bundle)
         self.assertEqual(payload["oss_cdn_manifest"]["state"], "ready")
         self.assertEqual(
             payload["oss_cdn_manifest"]["evidence_boundary"],
@@ -851,6 +938,14 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("Confirm Dropoff", body)
         self.assertIn("Cancel", body)
         self.assertIn("Diagnostics", body)
+        self.assertIn("Support Handoff", body)
+        self.assertIn("supportHandoffButton", body)
+        self.assertIn("supportBundlePanel", body)
+        self.assertIn("supportBundleSafeCopy", body)
+        self.assertIn("copySupportBundle", body)
+        self.assertIn("openSupportHandoff", body)
+        self.assertIn("phone_support_bundle", body)
+        self.assertIn("ACK 不代表送达成功", body)
         self.assertIn("Phone control for trash delivery", body)
         self.assertIn("journeySteps", body)
         self.assertIn("连接就绪", body)
@@ -965,6 +1060,7 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("dropoffButton.disabled = !Boolean(dropoffAction.enabled)", body)
         self.assertIn("cancelButton.disabled = !Boolean(cancelAction.enabled)", body)
         self.assertIn("diagnosticsButton.disabled = !Boolean(diagnosticsAction.enabled)", body)
+        self.assertIn("supportHandoffButton.disabled = false", body)
         self.assertIn("diagnostics payload 不是任务状态", body)
         self.assertIn("api('/api/diagnostics', {}, false)", body)
         self.assertIn("catch (error)", body)
