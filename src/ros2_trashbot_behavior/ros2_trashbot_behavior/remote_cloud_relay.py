@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -21,6 +22,8 @@ PREFLIGHT_EVIDENCE_BOUNDARY = "software_proof_docker_preflight_gate"
 SQLITE_EVIDENCE_BOUNDARY = "software_proof_docker_sqlite_state_store"
 BACKUP_RESTORE_EVIDENCE_BOUNDARY = "software_proof_docker_backup_restore_drill"
 OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY = "software_proof_docker_oss_cdn_manifest"
+OSS_CDN_PHONE_MANIFEST_EVIDENCE_BOUNDARY = "software_proof_docker_phone_manifest_consumption"
+OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 DEPLOY_EVIDENCE_BOUNDARY = "software_proof_docker_deploy"
 BACKUP_ARTIFACT_SCHEMA = "trashbot.remote_cloud_relay_backup.v1"
 BACKUP_ARTIFACT_VERSION = 1
@@ -169,6 +172,14 @@ def _raw_sha256_checksum(payload):
 def _safe_error_reason(exc):
     # CLI 失败原因可以给手机或 operator 看，不能包含路径、token、串口或 traceback。
     return _safe_text(str(exc) or "backup restore drill failed")
+
+
+def _utc_iso(timestamp):
+    # 手机端只需要稳定时间文本；统一 UTC 可避免本地/Docker 时区差异影响测试。
+    return datetime.fromtimestamp(float(timestamp), timezone.utc).replace(microsecond=0).isoformat().replace(
+        "+00:00",
+        "Z",
+    )
 
 
 def phone_error(code, message="", *, status=None, details=None):
@@ -456,6 +467,123 @@ def oss_cdn_manifest_summary(artifact_path):
             "reason_code": "manifest_invalid",
             "safe_summary": _safe_error_reason(exc),
         }
+
+
+def _phone_manifest_base(state, safe_summary, retry_hint):
+    # 手机摘要使用独立 proof 边界，避免把上一轮 artifact proof 误读成真实 OSS/CDN 可达。
+    return {
+        "state": state,
+        "schema": OSS_CDN_MANIFEST_SCHEMA,
+        "schema_version": OSS_CDN_MANIFEST_VERSION,
+        "object_count": 0,
+        "cdn_url_rule": "cdn_base_url + manifest object relative path",
+        "evidence_boundary": OSS_CDN_PHONE_MANIFEST_EVIDENCE_BOUNDARY,
+        "not_proven": list(OSS_CDN_NOT_PROVEN),
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "updated_at": "",
+        "staleness": "unknown",
+    }
+
+
+def _parse_manifest_time(value):
+    # manifest 来自 CLI、本地 artifact 或后续云端，兼容 Z 和 offset 两种 ISO 写法。
+    text = str(value or "").strip()
+    if not text:
+        return None
+    normalized = text[:-1] + "+00:00" if text.endswith("Z") else text
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.timestamp()
+
+
+def build_phone_oss_cdn_manifest_summary(artifact_path, *, now=None, stale_after_sec=None):
+    """Return a phone-safe manifest consumption summary.
+
+    该 helper 只证明手机/API 能消费对象引用摘要；即使 state=ready，也不能推断
+    真实 OSS 上传、CDN 回源、真实云、真实 4G、送达成功或 HIL。
+    """
+    artifact_ref = os.path.expanduser(str(artifact_path or "")).strip()
+    stale_window = (
+        OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC
+        if stale_after_sec is None
+        else float(stale_after_sec)
+    )
+    now_value = _now() if now is None else float(now)
+    if not artifact_ref or not os.path.exists(artifact_ref):
+        return _phone_manifest_base(
+            "missing",
+            "诊断对象引用缺失。",
+            "请刷新状态；如仍然缺失，请重新生成诊断引用。",
+        )
+
+    try:
+        artifact = _load_json_file(artifact_ref, "manifest artifact")
+    except ValueError:
+        return _phone_manifest_base(
+            "missing",
+            "诊断对象引用缺失。",
+            "请重新生成诊断引用后刷新状态。",
+        )
+
+    try:
+        summary = validate_oss_cdn_manifest_payload(artifact)
+    except ValueError:
+        return _phone_manifest_base(
+            "invalid",
+            "诊断对象引用损坏。",
+            "请重新生成诊断引用后刷新状态。",
+        )
+
+    updated_at = str(artifact.get("updated_at") or artifact.get("created_at") or "").strip()
+    timestamp = _parse_manifest_time(updated_at)
+    if timestamp is None:
+        stale_summary = _phone_manifest_base(
+            "stale",
+            "诊断对象引用已过期。",
+            "请重新生成诊断引用，避免手机看到旧诊断。",
+        )
+        stale_summary.update(
+            {
+                "object_count": int(summary.get("object_count", 0) or 0),
+                "updated_at": updated_at,
+                "staleness": "timestamp_unavailable",
+            }
+        )
+        return stale_summary
+    if now_value - timestamp > stale_window:
+        stale_summary = _phone_manifest_base(
+            "stale",
+            "诊断对象引用已过期。",
+            "请重新生成诊断引用，避免手机看到旧诊断。",
+        )
+        stale_summary.update(
+            {
+                "object_count": int(summary.get("object_count", 0) or 0),
+                "updated_at": updated_at,
+                "staleness": "stale",
+            }
+        )
+        return stale_summary
+
+    ready_summary = _phone_manifest_base(
+        "ready",
+        "诊断对象引用已准备。",
+        "如手机无法查看诊断，请刷新状态或重新生成诊断引用。",
+    )
+    ready_summary.update(
+        {
+            "object_count": int(summary.get("object_count", 0) or 0),
+            "cdn_url_rule": "cdn_base_url + manifest object relative path",
+            "updated_at": updated_at or _utc_iso(timestamp),
+            "staleness": "fresh",
+        }
+    )
+    return ready_summary
 
 
 def _state_backend_from_env(env):

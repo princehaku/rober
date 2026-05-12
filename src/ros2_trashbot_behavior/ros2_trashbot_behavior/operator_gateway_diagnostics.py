@@ -2,6 +2,7 @@ import json
 import os
 
 from ros2_trashbot_behavior.operator_gateway_http import normalize_elevator_assist, status_payload
+from ros2_trashbot_behavior.remote_cloud_relay import build_phone_oss_cdn_manifest_summary
 
 # Diagnostics must stay available even when the optional vision package is not
 # installed in a minimal operator-gateway environment.
@@ -965,6 +966,7 @@ def build_diagnostics_payload(
     review_decision_log_ref,
     operator_status_file,
     hardware_proof_ref="",
+    oss_cdn_manifest_artifact_ref="",
 ):
     latest_status = dict(latest_status or {})
     last_task = dict(latest_status.get("last_task") or {})
@@ -1046,5 +1048,6 @@ def build_diagnostics_payload(
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),
+        oss_cdn_manifest=build_phone_oss_cdn_manifest_summary(oss_cdn_manifest_artifact_ref),
         operator_status_file=str(operator_status_file or ""),
     )

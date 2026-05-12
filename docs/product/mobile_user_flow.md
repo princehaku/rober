@@ -61,11 +61,11 @@ This is enough for a phone page or local browser control surface to complete a d
 
 The local page also shows live robot location when localization is publishing. `operator_gateway` subscribes to `/amcl_pose` by default and includes `robot_pose` plus recent `robot_path` points in `GET /api/status`; without AMCL data the controls still work, but the map panel waits for pose updates.
 
-`GET /api/diagnostics` is the minimum support package for phone UI and remote support. It reports software version, map and route version labels, latest status, last task summary, machine-readable failure fields, log references, the operator status file, and the vision sample manifest reference. It does not claim that those files exist; it gives support tools stable references to inspect.
+`GET /api/diagnostics` is the minimum support package for phone UI and remote support. It reports software version, map and route version labels, latest status, last task summary, machine-readable failure fields, log references, the operator status file, the vision sample manifest reference, and a phone-safe `oss_cdn_manifest` diagnostic object reference summary. It does not claim that those files exist; it gives support tools stable references to inspect.
 
 The local browser page is phone-first and uses the API fields directly: task state, `phone_copy`, `speaker_prompt`, action permissions, robot pose/path, and diagnostics. The page is still intentionally dependency-free HTML served by `operator_gateway`; it is a usable local control surface, not a production account system.
 
-The first screen now includes a phone readiness gate derived from `/api/status.phone_readiness`. This gate answers three user questions before raw diagnostics: can the phone continue, why not, and what should happen next. It aggregates local delivery state, action permissions, local/mock remote readiness, optional cloud preflight, and optional backup/restore drill summaries. It is a local/Docker software proof boundary only and must not be presented as production phone app, real cloud, real 4G, real OSS/CDN, Nav2/fixed-route delivery, WAVE ROVER motion, or HIL proof.
+The first screen now includes a phone readiness gate derived from `/api/status.phone_readiness`. This gate answers three user questions before raw diagnostics: can the phone continue, why not, and what should happen next. It aggregates local delivery state, action permissions, local/mock remote readiness, optional cloud preflight, optional backup/restore drill summaries, and the `oss_cdn_manifest` diagnostic object reference summary. It is a local/Docker software proof boundary only and must not be presented as production phone app, real cloud, real 4G, real OSS/CDN, Nav2/fixed-route delivery, WAVE ROVER motion, or HIL proof.
 
 `phone_readiness` fields:
 
@@ -82,7 +82,10 @@ The first screen now includes a phone readiness gate derived from `/api/status.p
 - `action_permissions`: copies `can_collect`, `can_confirm_dropoff`, and `can_cancel`.
 - `remote_readiness`: current local/mock remote readiness object.
 - `cloud_preflight` / `backup_restore`: optional phone-safe gate summaries; missing artifacts remain `not_run` or `unknown`.
+- `oss_cdn_manifest`: phone-safe diagnostic object reference summary. It uses `schema=trashbot.oss_cdn_manifest`, `schema_version=1`, `evidence_boundary=software_proof_docker_phone_manifest_consumption`, `state=ready|missing|invalid|stale`, `object_count`, `cdn_url_rule`, `safe_summary`, `retry_hint`, `updated_at`, `staleness`, and `not_proven`. It must not expose the full artifact, object keys, checksums, local paths, credentials, ROS topics, or hardware details.
 - `not_proven`: explicit list of product or hardware capabilities this local gate does not prove.
+
+`oss_cdn_manifest.state=ready` only means the phone/API can consume a sanitized diagnostic reference summary generated from a local manifest artifact. It does not prove real OSS upload, STS issuance, CDN origin fetch, real cloud, real 4G/SIM, Nav2/fixed-route delivery, WAVE ROVER motion, delivery success, or HIL. `missing`, `invalid`, and `stale` must keep the first screen out of a green ready state and show ordinary user copy such as "诊断对象引用缺失。", "诊断对象引用损坏。", or "诊断对象引用已过期。" plus a retry hint to refresh or regenerate references.
 
 ACK remains command processing evidence only. A remote ACK may make `remote_readiness.degradation_state=ok`, but the phone must keep reading delivery status for `completed`, `failed`, `needs_human_help`, or elevator-assist states.
 

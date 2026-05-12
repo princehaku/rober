@@ -14,6 +14,8 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 
 本轮 `2026.05.12_11-12_remote-cloud-oss-cdn-manifest-proof` 在同一 relay/preflight 体系上新增 OSS/CDN manifest proof，证据边界是 `software_proof_docker_oss_cdn_manifest`。Manifest artifact 会固定 bucket、region、`rober/<robot_id>/<date>/<task_id>/` 前缀、CDN URL 组合规则、对象引用、checksum 和 `not_proven` 缺口；preflight 可通过 `TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT` 或 CLI 参数消费该 artifact。它只证明 Docker/local 对象引用 shape、schema/version、prefix/CDN URL 和 checksum 可校验，不等于真实 OSS upload、STS issuance、CDN origin fetch、lifecycle policy、production account、真实云、真实 4G/SIM、HTTPS/TLS 公网入口、生产 DB/queue、Nav2/fixed-route、WAVE ROVER 或 HIL。
 
+本轮 `2026.05.12_12-13_remote-oss-cdn-phone-consumption-gate` 将上一轮 manifest artifact proof 接入本地 operator/API 消费面，新增 `software_proof_docker_phone_manifest_consumption` 边界。`/api/status.phone_readiness.oss_cdn_manifest` 和 `/api/diagnostics.oss_cdn_manifest` 共用同一 phone-safe summary helper，覆盖 `ready`、`missing`、`invalid`、`stale`，只显示普通用户文案和 retry hint，不返回 full artifact、object key、checksum、本地路径或任何凭证。`ready` 仍只表示手机/API 能消费对象引用摘要，不等于真实 OSS 上传、CDN 回源、真实云、真实 4G、送达成功或 HIL。
+
 ## 云端基线规格
 
 目标服务端基线：
@@ -115,6 +117,15 @@ python3 -m ros2_trashbot_behavior.remote_cloud_relay --preflight
 ```
 
 有效 artifact 会新增 `oss_cdn_manifest` pass check，并把本地证据边界提升到 `software_proof_docker_oss_cdn_manifest`。缺失 artifact 是 warning；schema、version、prefix、CDN URL、checksum 或 phone-safe 校验失败是 blocked。无论 manifest 是否通过，preflight 都必须继续保留真实上传、STS、CDN 回源、生命周期、生产账号、真实云、真实 4G/SIM、HTTPS/TLS 公网入口、生产 DB/queue、Nav2/fixed-route、WAVE ROVER/HIL 等未证明项。
+
+Operator/API 消费 manifest artifact 时输出的是更小的 phone-safe summary：
+
+- `state=ready`：artifact 存在，schema/version/prefix/CDN URL/checksum 校验通过，且时间仍在 freshness window 内；仍必须携带 `not_proven`。
+- `state=missing`：artifact 未配置、不存在或无法读取；手机首屏不得显示绿色 ready。
+- `state=invalid`：schema、version、prefix、CDN URL、checksum 或 phone-safe 校验失败；手机只显示 "诊断对象引用损坏。"，不显示 traceback 或内部路径。
+- `state=stale`：artifact 时间字段缺失、不可解析或超过 freshness window；手机提示重新生成诊断引用。
+
+该 summary 字段包括 `schema=trashbot.oss_cdn_manifest`、`schema_version=1`、`object_count`、`cdn_url_rule`、`evidence_boundary=software_proof_docker_phone_manifest_consumption`、`safe_summary`、`retry_hint`、`updated_at`、`staleness` 和 `not_proven`。它不得返回 full manifest、object key、checksum、bearer token、Authorization header、OSS secret、AK/SK、root password、raw state path、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`。
 
 ## 凭证边界
 

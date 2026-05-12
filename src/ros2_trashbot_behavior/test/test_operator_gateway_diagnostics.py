@@ -19,6 +19,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import ELEVATOR_ASSIST_SPEAKER_PROMPT
+from ros2_trashbot_behavior.remote_cloud_relay import create_oss_cdn_manifest_artifact
 
 
 class OperatorGatewayDiagnosticsTest(unittest.TestCase):
@@ -733,6 +734,38 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
 
         self.assertEqual(payload["hardware_proof"]["status"], "software_proof")
         self.assertEqual(payload["hardware_proof"]["artifact_ref"], str(proof_path))
+
+    def test_diagnostics_payload_includes_phone_safe_oss_cdn_manifest_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            manifest_path = Path(td) / "oss_cdn_manifest.json"
+            create_oss_cdn_manifest_artifact(
+                manifest_path,
+                "robot-diagnostics",
+                "task-diagnostics",
+                date_text="2026-05-12",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                oss_cdn_manifest_artifact_ref=str(manifest_path),
+            )
+            encoded = json.dumps(payload["oss_cdn_manifest"], ensure_ascii=False)
+
+        self.assertEqual(payload["oss_cdn_manifest"]["state"], "ready")
+        self.assertEqual(
+            payload["oss_cdn_manifest"]["evidence_boundary"],
+            "software_proof_docker_phone_manifest_consumption",
+        )
+        self.assertIn("real_oss_upload", payload["oss_cdn_manifest"]["not_proven"])
+        self.assertNotIn(str(manifest_path), encoded)
+        self.assertNotIn("object_key", encoded)
 
     def test_log_refs_are_normalized_without_claiming_file_existence(self):
         self.assertEqual(normalize_log_refs(None), [])

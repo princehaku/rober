@@ -7,6 +7,7 @@ import uuid
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
+from ros2_trashbot_behavior.remote_cloud_relay import build_phone_oss_cdn_manifest_summary
 from ros2_trashbot_behavior.remote_bridge_protocol import parse_bool
 
 
@@ -59,6 +60,7 @@ PHONE_READINESS_NEXT_ACTION_COPY = {
     "contact_support": "联系支持人员，并附带 diagnostics。",
     "manual_takeover": "保持现场安全，按提示人工接管。",
     "watch_progress": "继续观察任务状态，必要时取消。",
+    "refresh_diagnostics_ref": "刷新状态；如果仍不可用，请重新生成诊断引用。",
 }
 
 PHONE_READINESS_PRIMARY_COPY = {
@@ -71,6 +73,9 @@ PHONE_READINESS_PRIMARY_COPY = {
     "remote_response_invalid": "远程通道返回异常。",
     "manual_takeover_required": "需要人工接管。",
     "monitoring": "任务进行中，请继续观察。",
+    "diagnostic_refs_missing": "诊断对象引用缺失。",
+    "diagnostic_refs_invalid": "诊断对象引用损坏。",
+    "diagnostic_refs_stale": "诊断对象引用已过期。",
 }
 
 ELEVATOR_ASSIST_PHASES = {
@@ -940,6 +945,8 @@ HTML = """<!doctype html>
       </div>
       <p id="phoneReadinessCopy" class="readinessHint">正在判断手机现在能不能继续。</p>
       <p class="message">Next: <strong id="phoneReadinessNext">等待状态刷新。</strong></p>
+      <p class="message">诊断引用: <strong id="phoneManifestCopy">诊断对象引用缺失。</strong></p>
+      <p class="message">诊断建议: <strong id="phoneManifestRetry">请刷新状态。</strong></p>
       <p class="message">Support: <strong id="phoneReadinessSupport">not reported</strong></p>
       <p class="message">Not proven: <strong id="phoneReadinessNotProven">real cloud, 4G, HIL</strong></p>
     </section>
@@ -1029,6 +1036,15 @@ HTML = """<!doctype html>
         <p id="diagHardwareProofSummary" class="message">Diagnostics have not been loaded yet.</p>
         <p class="message">Next step: <strong id="diagHardwareProofNextStep">Run software proof, then hardware-in-loop validation.</strong></p>
         <ul id="diagHardwareProofReasons" class="supportList"></ul>
+      </div>
+      <div id="diagOssCdnManifest" class="integrityCard">
+        <div class="integrityHeader">
+          <h2>Diagnostic object references</h2>
+          <span id="diagOssCdnManifestBadge" class="integrityBadge muted">unknown</span>
+        </div>
+        <p id="diagOssCdnManifestSummary" class="message">Diagnostics have not been loaded yet.</p>
+        <p class="message">Next step: <strong id="diagOssCdnManifestNextStep">Refresh status or regenerate references.</strong></p>
+        <p class="message">Boundary: <strong id="diagOssCdnManifestBoundary">software proof only</strong></p>
       </div>
       <ul id="diagRefs" class="supportList"></ul>
     </section>
@@ -1273,6 +1289,25 @@ function renderHardwareProof(hardwareProof) {
     reasonList.appendChild(item);
   });
 }
+function renderOssCdnManifest(manifest) {
+  const summary = manifest && typeof manifest === 'object' ? manifest : {};
+  const state = text(summary.state, 'missing');
+  const badge = document.getElementById('diagOssCdnManifestBadge');
+  badge.textContent = state;
+  badge.className = `integrityBadge ${state === 'ready' ? 'ready' : 'blocked'}`;
+  document.getElementById('diagOssCdnManifestSummary').textContent = text(
+    summary.safe_summary,
+    '诊断对象引用缺失。'
+  );
+  document.getElementById('diagOssCdnManifestNextStep').textContent = text(
+    summary.retry_hint,
+    '请刷新状态；如果仍不可用，请重新生成诊断引用。'
+  );
+  document.getElementById('diagOssCdnManifestBoundary').textContent = text(
+    summary.evidence_boundary,
+    'software proof only'
+  );
+}
 function decisionSummaryText(item) {
   const status = text(item.review_status, 'pending');
   const reason = text(item.reason, 'unknown_reason');
@@ -1486,6 +1521,7 @@ function updateJourney(payload) {
 }
 function readinessTone(phoneReadiness) {
   const primaryState = text(phoneReadiness.primary_state, 'waiting_for_robot_status');
+  if (primaryState.startsWith('diagnostic_refs_')) return 'blocked';
   if (['login_required', 'remote_response_invalid', 'manual_takeover_required'].includes(primaryState)) return 'blocked';
   if (['waiting_for_command_ack', 'waiting_for_robot_status', 'local_ready_remote_status_waiting', 'remote_unreachable'].includes(primaryState)) return 'waiting';
   return 'ready';
@@ -1508,6 +1544,17 @@ function renderPhoneReadiness(phoneReadiness) {
   document.getElementById('phoneReadinessNext').textContent = text(
     readiness.recovery_hint,
     '等待状态刷新。'
+  );
+  const manifest = readiness.oss_cdn_manifest && typeof readiness.oss_cdn_manifest === 'object'
+    ? readiness.oss_cdn_manifest
+    : {};
+  document.getElementById('phoneManifestCopy').textContent = text(
+    manifest.safe_summary,
+    '诊断对象引用缺失。'
+  );
+  document.getElementById('phoneManifestRetry').textContent = text(
+    manifest.retry_hint,
+    '请刷新状态。'
   );
   document.getElementById('phoneReadinessSupport').textContent = text(
     readiness.support_level,
@@ -1561,6 +1608,7 @@ function showDiagnostics(payload) {
   const hardwareProof = payload.hardware_proof || {};
   const elevatorAssist = payload.elevator_assist || {};
   const elevatorAssistStatus = payload.elevator_assist_status || {};
+  const ossCdnManifest = payload.oss_cdn_manifest || {};
   const refs = Array.isArray(payload.log_refs) ? payload.log_refs : [];
   const taskRecord = failure.task_record_path || (payload.last_task || {}).task_record_path || latest.task_record_path || '';
   const humanIntervention = Boolean(
@@ -1577,6 +1625,7 @@ function showDiagnostics(payload) {
   );
   renderVisionIntegrity(visionSamples);
   renderHardwareProof(hardwareProof);
+  renderOssCdnManifest(ossCdnManifest);
   document.getElementById('diagSoftware').textContent = text(payload.software_version, 'not reported');
   document.getElementById('diagMap').textContent = text(payload.map_version, 'not reported');
   document.getElementById('diagRoute').textContent = text(payload.route_version, 'not reported');
@@ -1925,7 +1974,14 @@ def _local_action_permissions(status):
     }
 
 
-def build_phone_readiness(status, *, remote_readiness=None, cloud_preflight=None, backup_restore=None):
+def build_phone_readiness(
+    status,
+    *,
+    remote_readiness=None,
+    cloud_preflight=None,
+    backup_restore=None,
+    oss_cdn_manifest=None,
+):
     """Build the phone-first readiness summary used by `/api/status`.
 
     这个 helper 不创造机器人状态；它只把 local status、action permission、
@@ -1933,6 +1989,12 @@ def build_phone_readiness(status, *, remote_readiness=None, cloud_preflight=None
     """
     status = status if isinstance(status, dict) else {}
     remote = remote_readiness if isinstance(remote_readiness, dict) else {}
+    # manifest gate 是诊断引用是否能被手机消费的独立约束；它不创造机器人状态。
+    manifest_gate = (
+        dict(oss_cdn_manifest)
+        if isinstance(oss_cdn_manifest, dict)
+        else build_phone_oss_cdn_manifest_summary("")
+    )
     permissions = _local_action_permissions(status)
     state = str(status.get("state") or "unknown").strip() or "unknown"
     remote_state = _remote_degradation(remote)
@@ -1997,6 +2059,25 @@ def build_phone_readiness(status, *, remote_readiness=None, cloud_preflight=None
     if primary_state == "local_ready_remote_status_waiting":
         safe_phone_copy = "本地手机入口可继续；远程状态仍在等待小车上报。"
 
+    manifest_state = str(manifest_gate.get("state") or "missing").strip() or "missing"
+    if manifest_state != "ready":
+        # 诊断引用不可消费时，首屏不能显示 green；用户需要先刷新或重建诊断引用。
+        primary_state = {
+            "invalid": "diagnostic_refs_invalid",
+            "stale": "diagnostic_refs_stale",
+        }.get(manifest_state, "diagnostic_refs_missing")
+        next_action = "refresh_diagnostics_ref"
+        can_continue = False
+        support_level = "diagnostic_refs_blocked"
+        safe_phone_copy = str(
+            manifest_gate.get("safe_summary")
+            or PHONE_READINESS_PRIMARY_COPY[primary_state]
+        )
+        recovery_hint = str(
+            manifest_gate.get("retry_hint")
+            or PHONE_READINESS_NEXT_ACTION_COPY[next_action]
+        )
+
     return {
         "schema": PHONE_READINESS_SCHEMA,
         "schema_version": 1,
@@ -2017,6 +2098,7 @@ def build_phone_readiness(status, *, remote_readiness=None, cloud_preflight=None
         "remote_readiness": dict(remote),
         "cloud_preflight": _copy_gate(cloud_preflight, "cloud_preflight"),
         "backup_restore": _copy_gate(backup_restore, "backup_restore"),
+        "oss_cdn_manifest": dict(manifest_gate),
         "not_proven": list(PHONE_READINESS_NOT_PROVEN),
     }
 
@@ -2039,12 +2121,17 @@ def _status_with_phone_readiness(gateway, mock_cloud):
             remote_readiness = remote_payload.get("remote_readiness", {})
         except ValueError:
             remote_readiness = {}
+    # status 与 diagnostics 共用同一个 helper；只输出摘要，不把 manifest artifact 原文透给手机。
+    oss_cdn_manifest = build_phone_oss_cdn_manifest_summary(
+        getattr(gateway, "oss_cdn_manifest_artifact_ref", "")
+    )
     # 可选 gate 字段只在调用方已提供时采纳；默认 not_run/unknown，不推断生产 readiness。
     payload["phone_readiness"] = build_phone_readiness(
         payload,
         remote_readiness=remote_readiness,
         cloud_preflight=payload.get("cloud_preflight") or payload.get("remote_preflight"),
         backup_restore=payload.get("backup_restore") or payload.get("backup_restore_drill"),
+        oss_cdn_manifest=oss_cdn_manifest,
     )
     return payload
 

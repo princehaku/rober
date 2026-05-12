@@ -26,11 +26,31 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     operator_prompt_for_state,
     status_payload,
 )
+from ros2_trashbot_behavior.remote_cloud_relay import (
+    build_phone_oss_cdn_manifest_summary,
+    create_oss_cdn_manifest_artifact,
+)
+
+
+READY_MANIFEST = {
+    "state": "ready",
+    "schema": "trashbot.oss_cdn_manifest",
+    "schema_version": 1,
+    "object_count": 1,
+    "cdn_url_rule": "cdn_base_url + manifest object relative path",
+    "evidence_boundary": "software_proof_docker_phone_manifest_consumption",
+    "not_proven": ["real_oss_upload", "real_4g_sim", "wave_rover_or_hil"],
+    "safe_summary": "诊断对象引用已准备。",
+    "retry_hint": "如手机无法查看诊断，请刷新状态或重新生成诊断引用。",
+    "updated_at": "2026-05-12T04:00:00Z",
+    "staleness": "fresh",
+}
 
 
 class FakeGateway:
     def __init__(self):
         self.mock_cloud_bearer_token = ""
+        self.oss_cdn_manifest_artifact_ref = ""
         self.collect_status = 202
         self.collect_payload = {"state": "loaded_and_ready"}
         self.dropoff_status = 200
@@ -289,6 +309,19 @@ class FakeGateway:
                 ],
                 "hil_recipe": {"no_motion": "python3 scripts/hardware_smoke_wave_rover.py"},
             },
+            "oss_cdn_manifest": {
+                "state": "ready",
+                "schema": "trashbot.oss_cdn_manifest",
+                "schema_version": 1,
+                "object_count": 1,
+                "cdn_url_rule": "cdn_base_url + manifest object relative path",
+                "evidence_boundary": "software_proof_docker_phone_manifest_consumption",
+                "not_proven": ["real_oss_upload", "real_4g_sim", "wave_rover_or_hil"],
+                "safe_summary": "诊断对象引用已准备。",
+                "retry_hint": "如手机无法查看诊断，请刷新状态或重新生成诊断引用。",
+                "updated_at": "2026-05-12T04:00:00Z",
+                "staleness": "fresh",
+            },
             "operator_status_file": "/tmp/trashbot_operator_status.json",
         }
 
@@ -320,6 +353,15 @@ class FakeGateway:
 class OperatorGatewayHttpTest(unittest.TestCase):
     def setUp(self):
         self.gateway = FakeGateway()
+        self.tempdir = tempfile.TemporaryDirectory()
+        manifest_path = Path(self.tempdir.name) / "oss_cdn_manifest.json"
+        create_oss_cdn_manifest_artifact(
+            manifest_path,
+            "robot-phone-ui",
+            "task-phone-ui",
+            date_text="2026-05-12",
+        )
+        self.gateway.oss_cdn_manifest_artifact_ref = str(manifest_path)
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(self.gateway))
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -329,6 +371,7 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.server.shutdown()
         self.server.server_close()
         self.thread.join(timeout=1.0)
+        self.tempdir.cleanup()
 
     def request(self, method, path, body=None, headers=None):
         conn = HTTPConnection("127.0.0.1", self.port, timeout=2)
@@ -358,6 +401,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["phone_readiness"]["primary_state"], "local_ready_remote_status_waiting")
         self.assertTrue(payload["phone_readiness"]["can_continue"])
         self.assertEqual(payload["phone_readiness"]["next_action"], "continue_local_or_wait_remote_status")
+        self.assertEqual(payload["phone_readiness"]["oss_cdn_manifest"]["state"], "ready")
+        self.assertEqual(
+            payload["phone_readiness"]["oss_cdn_manifest"]["evidence_boundary"],
+            "software_proof_docker_phone_manifest_consumption",
+        )
+        self.assertIn("real_oss_upload", payload["phone_readiness"]["oss_cdn_manifest"]["not_proven"])
         self.assertIn("hil_pass", payload["phone_readiness"]["not_proven"])
 
     def test_status_payload_exposes_phone_and_speaker_copy_for_documented_states(self):
@@ -416,6 +465,7 @@ class OperatorGatewayHttpTest(unittest.TestCase):
                 "retry_hint": "wait_for_robot_status",
                 "safe_phone_copy": "正在等待小车上报最新状态，请稍后再试。",
             },
+            oss_cdn_manifest=READY_MANIFEST,
         )
         self.assertEqual(stale["primary_state"], "local_ready_remote_status_waiting")
         self.assertTrue(stale["can_continue"])
@@ -429,6 +479,7 @@ class OperatorGatewayHttpTest(unittest.TestCase):
                 "safe_phone_copy": "指令已提交，正在等待小车确认。",
                 "last_command_ack": "cmd-1",
             },
+            oss_cdn_manifest=READY_MANIFEST,
         )
         self.assertEqual(pending["primary_state"], "waiting_for_command_ack")
         self.assertFalse(pending["can_continue"])
@@ -443,6 +494,7 @@ class OperatorGatewayHttpTest(unittest.TestCase):
                 "safe_phone_copy": "手机远程控制通道可用，可以继续操作。",
                 "last_command_ack": "cmd-1",
             },
+            oss_cdn_manifest=READY_MANIFEST,
         )
         self.assertEqual(acked["primary_state"], "ready")
         self.assertNotEqual(acked["local_delivery"]["state"], "completed")
@@ -468,11 +520,50 @@ class OperatorGatewayHttpTest(unittest.TestCase):
                         "degradation_state": degradation_state,
                         "safe_phone_copy": "phone-safe",
                     },
+                    oss_cdn_manifest=READY_MANIFEST,
                 )
                 self.assertEqual(readiness["primary_state"], expected[0])
                 self.assertEqual(readiness["next_action"], expected[1])
                 self.assertEqual(readiness["can_continue"], expected[2])
                 self.assertEqual(readiness["schema_version"], 1)
+
+    def test_phone_readiness_blocks_when_manifest_summary_not_ready(self):
+        local_status = status_payload(
+            "loaded_and_ready",
+            can_collect=True,
+            can_confirm_dropoff=False,
+            can_cancel=False,
+        )
+        cases = {
+            "missing": "diagnostic_refs_missing",
+            "invalid": "diagnostic_refs_invalid",
+            "stale": "diagnostic_refs_stale",
+        }
+        for state, primary_state in cases.items():
+            with self.subTest(state=state):
+                manifest = dict(READY_MANIFEST)
+                manifest.update(
+                    {
+                        "state": state,
+                        "safe_summary": {
+                            "missing": "诊断对象引用缺失。",
+                            "invalid": "诊断对象引用损坏。",
+                            "stale": "诊断对象引用已过期。",
+                        }[state],
+                        "retry_hint": "请重新生成诊断引用后刷新状态。",
+                    }
+                )
+                readiness = build_phone_readiness(
+                    local_status,
+                    remote_readiness={"degradation_state": "ok"},
+                    oss_cdn_manifest=manifest,
+                )
+
+                self.assertEqual(readiness["primary_state"], primary_state)
+                self.assertFalse(readiness["can_continue"])
+                self.assertEqual(readiness["next_action"], "refresh_diagnostics_ref")
+                self.assertEqual(readiness["oss_cdn_manifest"]["state"], state)
+                self.assertIn("诊断对象引用", readiness["safe_phone_copy"])
 
     def test_unknown_operator_state_falls_back_to_human_help_prompt(self):
         self.assertEqual(
@@ -536,6 +627,11 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["hardware_proof"]["risk_flags"][0]["id"], "hil_required")
         self.assertEqual(payload["elevator_assist"]["state"], "disabled")
         self.assertEqual(payload["elevator_assist_status"]["state"], "disabled")
+        self.assertEqual(payload["oss_cdn_manifest"]["state"], "ready")
+        self.assertEqual(
+            payload["oss_cdn_manifest"]["evidence_boundary"],
+            "software_proof_docker_phone_manifest_consumption",
+        )
 
     def test_status_preserves_robot_location_snapshot_fields(self):
         self.gateway.snapshot_payload["robot_location"] = {
@@ -578,6 +674,8 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("Support Diagnostics", body)
         self.assertIn("phone_copy", body)
         self.assertIn("speaker_prompt", body)
+        self.assertIn("phoneManifestCopy", body)
+        self.assertIn("phoneManifestRetry", body)
         self.assertIn("showDiagnostics", body)
         self.assertIn("diagSoftware", body)
         self.assertIn("diagFailure", body)
@@ -610,6 +708,11 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("diagHardwareProofNextStep", body)
         self.assertIn("diagHardwareProofReasons", body)
         self.assertIn("renderHardwareProof", body)
+        self.assertIn("diagOssCdnManifest", body)
+        self.assertIn("diagOssCdnManifestBadge", body)
+        self.assertIn("renderOssCdnManifest", body)
+        self.assertIn("oss_cdn_manifest", body)
+        self.assertIn("诊断对象引用", body)
         self.assertIn("hardwareProofView", body)
         self.assertIn("hardware_proof", body)
         self.assertIn("software_proof", body)

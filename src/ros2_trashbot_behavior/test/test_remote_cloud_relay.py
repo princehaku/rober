@@ -19,6 +19,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     OSS_CDN_BUCKET,
     OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY,
     OSS_CDN_MANIFEST_SCHEMA,
+    OSS_CDN_PHONE_MANIFEST_EVIDENCE_BOUNDARY,
     OSS_CDN_REGION,
     PREFLIGHT_EVIDENCE_BOUNDARY,
     PROTOCOL_VERSION,
@@ -27,6 +28,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     backup_artifact_summary,
     backup_restore_drill_payload,
     build_oss_cdn_manifest_payload,
+    build_phone_oss_cdn_manifest_summary,
     build_server,
     create_oss_cdn_manifest_artifact,
     create_sqlite_backup_artifact,
@@ -888,6 +890,53 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             url_summary = oss_cdn_manifest_summary(url_path)
             self.assertFalse(url_summary["ok"])
             self.assertEqual(url_summary["reason_code"], "manifest_invalid")
+
+    def test_phone_oss_cdn_manifest_summary_covers_ready_missing_invalid_and_stale(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            ready_path = root / "ready_manifest.json"
+            invalid_path = root / "invalid_manifest.json"
+            stale_path = root / "stale_manifest.json"
+            ready_artifact = build_oss_cdn_manifest_payload(
+                "robot-local-proof",
+                "task-local-proof",
+                date_text="2026-05-12",
+                created_at="2026-05-12T04:00:00Z",
+            )
+            ready_path.write_text(json.dumps(ready_artifact, ensure_ascii=False), encoding="utf-8")
+            invalid_artifact = dict(ready_artifact)
+            invalid_artifact["bucket"] = "other-bucket"
+            invalid_path.write_text(json.dumps(invalid_artifact, ensure_ascii=False), encoding="utf-8")
+            stale_artifact = build_oss_cdn_manifest_payload(
+                "robot-local-proof",
+                "task-stale-proof",
+                date_text="2026-05-12",
+                created_at="2026-05-10T04:00:00Z",
+            )
+            stale_path.write_text(json.dumps(stale_artifact, ensure_ascii=False), encoding="utf-8")
+
+            ready = build_phone_oss_cdn_manifest_summary(ready_path, now=1778562000.0)
+            missing = build_phone_oss_cdn_manifest_summary(root / "missing.json", now=1778562000.0)
+            invalid = build_phone_oss_cdn_manifest_summary(invalid_path, now=1778562000.0)
+            stale = build_phone_oss_cdn_manifest_summary(stale_path, now=1778562000.0)
+            encoded = json.dumps(
+                {"ready": ready, "missing": missing, "invalid": invalid, "stale": stale},
+                ensure_ascii=False,
+            )
+
+            self.assertEqual(ready["state"], "ready")
+            self.assertEqual(ready["evidence_boundary"], OSS_CDN_PHONE_MANIFEST_EVIDENCE_BOUNDARY)
+            self.assertEqual(ready["object_count"], 1)
+            self.assertEqual(ready["staleness"], "fresh")
+            self.assertEqual(missing["state"], "missing")
+            self.assertEqual(invalid["state"], "invalid")
+            self.assertEqual(stale["state"], "stale")
+            self.assertIn("real_oss_upload", ready["not_proven"])
+            self.assertIn("real_4g_sim", ready["not_proven"])
+            self.assertIn("wave_rover_or_hil", ready["not_proven"])
+            self.assertNotIn("object_key", encoded)
+            self.assertNotIn("checksum", encoded)
+            self.assertNotIn(str(ready_path), encoded)
 
     def test_preflight_consumes_valid_oss_cdn_manifest_without_production_claims(self):
         with tempfile.TemporaryDirectory() as tmp:

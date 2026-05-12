@@ -109,6 +109,11 @@ class OperatorGateway(Node):
         # This reference points to a software proof artifact only. It never
         # upgrades diagnostics to hardware/HIL pass by itself.
         self.declare_parameter("hardware_proof_ref", "")
+        # 该路径只用于手机诊断引用摘要；即使 artifact 通过，也不代表真实 OSS/CDN 可达。
+        self.declare_parameter(
+            "oss_cdn_manifest_artifact_ref",
+            os.environ.get("TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT", ""),
+        )
         self.declare_parameter("mock_cloud_state_path", "")
 
         self.host = str(self.get_parameter("host").value)
@@ -130,6 +135,9 @@ class OperatorGateway(Node):
         )
         self.hardware_proof_ref = os.path.expanduser(
             str(self.get_parameter("hardware_proof_ref").value)
+        )
+        self.oss_cdn_manifest_artifact_ref = os.path.expanduser(
+            str(self.get_parameter("oss_cdn_manifest_artifact_ref").value)
         )
         self.mock_cloud_state_path = os.path.expanduser(
             str(self.get_parameter("mock_cloud_state_path").value)
@@ -194,6 +202,7 @@ class OperatorGateway(Node):
             review_decision_log_ref=self.review_decision_log_ref,
             operator_status_file=self.status_file,
             hardware_proof_ref=self.hardware_proof_ref,
+            oss_cdn_manifest_artifact_ref=self.oss_cdn_manifest_artifact_ref,
         )
 
     def vision_review_queue(self):

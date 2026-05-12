@@ -86,6 +86,17 @@ real OSS upload, STS issuance, CDN origin fetch, lifecycle policy, production
 account, real cloud, real 4G/SIM, HTTPS/TLS public ingress, production DB/queue,
 Nav2/fixed-route delivery, WAVE ROVER, or HIL.
 
+The local operator/API can now consume that artifact as a smaller phone-safe
+diagnostic reference summary with
+`evidence_boundary=software_proof_docker_phone_manifest_consumption`. The
+summary is exposed at `/api/status.phone_readiness.oss_cdn_manifest` and
+`/api/diagnostics.oss_cdn_manifest`, and both surfaces share the same helper.
+It reports only `state=ready|missing|invalid|stale`, schema/version,
+`object_count`, the CDN URL rule, freshness, ordinary user copy, retry hint, and
+`not_proven`. It must not expose the full artifact, object keys, checksums,
+local paths, credentials, raw ROS topics, `/cmd_vel`, serial data, or hardware
+configuration.
+
 Example local proof launch:
 
 ```bash
@@ -164,6 +175,15 @@ phone-safe failure is blocked. The artifact and preflight output must not expose
 bearer tokens, Authorization headers, OSS secrets, AK/SK, root passwords, raw
 state paths, serial ports, baudrate, WAVE ROVER parameters, ROS topic names,
 `/cmd_vel`, or tracebacks.
+
+Operator consumption has a stricter phone UX rule than preflight: `missing`,
+`invalid`, or `stale` must keep the phone readiness gate out of a green ready
+state and show copy such as "诊断对象引用缺失。", "诊断对象引用损坏。", or
+"诊断对象引用已过期。" with a retry hint to refresh or regenerate references.
+`ready` still proves only local software consumption of a manifest summary; it
+does not prove real OSS upload, STS issuance, CDN origin fetch, real cloud, real
+4G/SIM, production DB/queue, Nav2/fixed-route delivery, WAVE ROVER, HIL, or
+delivery success.
 
 Example Docker deploy proof:
 
@@ -301,7 +321,8 @@ fresh robot status before implying that the task is healthy.
 The local operator fallback also exposes `/api/status.phone_readiness` for the
 phone-first readiness gate. This is a UI aggregation of local delivery status,
 action permissions, local/mock remote readiness, optional preflight summaries,
-and optional backup/restore drill summaries. It uses
+optional backup/restore drill summaries, and optional OSS/CDN diagnostic
+reference summaries. It uses
 `schema=trashbot.phone_readiness.v1`, `schema_version=1`, and
 `evidence_boundary=software_proof_docker_local_phone_ui_readiness_gate`.
 
@@ -316,6 +337,10 @@ Important product boundary:
   robot navigation failure.
 - `cloud_preflight` and `backup_restore` are optional local/Docker proof
   summaries. Missing output remains `not_run` or `unknown`.
+- `oss_cdn_manifest` is the phone-safe diagnostic reference summary. `ready`
+  means software summary consumption only; `missing`, `invalid`, and `stale`
+  block a green first-screen readiness state until references are refreshed or
+  regenerated.
 - `not_proven` must continue to include production phone app, real cloud,
   real 4G/SIM, OSS/CDN, Nav2/fixed-route delivery, WAVE ROVER motion, and HIL
   until those paths have separate evidence.
