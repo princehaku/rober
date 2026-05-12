@@ -30,6 +30,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     create_production_store_queue_artifact,
     create_provisioning_audit_artifact,
     create_queue_ordering_drill_artifact,
+    create_transaction_isolation_artifact,
 )
 
 
@@ -938,6 +939,44 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(payload["queue_ordering_drill"]["production_ready"])
         self.assertIn("production_queue_ordering", payload["queue_ordering_drill"]["not_proven"])
         self.assertIn("production_db_or_queue", payload["queue_ordering_drill"]["not_proven"])
+        self.assertNotIn(str(artifact_path), encoded)
+        self.assertNotIn("robot-diagnostics", encoded)
+        self.assertNotIn("checksum", encoded)
+
+    def test_diagnostics_payload_includes_phone_safe_transaction_isolation_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_path = Path(td) / "transaction_isolation.json"
+            create_transaction_isolation_artifact(
+                artifact_path,
+                "robot-diagnostics",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                transaction_isolation_artifact_ref=str(artifact_path),
+            )
+            encoded = json.dumps(payload["transaction_isolation"], ensure_ascii=False)
+
+        self.assertEqual(payload["transaction_isolation"]["state"], "ready")
+        self.assertEqual(
+            payload["transaction_isolation"]["evidence_boundary"],
+            "software_proof_docker_transaction_isolation_phone_consumption",
+        )
+        self.assertEqual(
+            payload["transaction_isolation"]["cursor_after_interleaving"],
+            "cmd-before-transaction-a",
+        )
+        self.assertFalse(payload["transaction_isolation"]["delivery_success"])
+        self.assertFalse(payload["transaction_isolation"]["production_ready"])
+        self.assertIn("production_transaction_isolation", payload["transaction_isolation"]["not_proven"])
+        self.assertIn("production_db_or_queue", payload["transaction_isolation"]["not_proven"])
         self.assertNotIn(str(artifact_path), encoded)
         self.assertNotIn("robot-diagnostics", encoded)
         self.assertNotIn("checksum", encoded)

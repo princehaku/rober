@@ -24,6 +24,8 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 
 本轮 `2026.05.12_21-22_remote-queue-ordering-drill` 在同一 relay/preflight/phone-safe 摘要体系上新增 queue ordering drill artifact gate，证据边界是 `software_proof_docker_queue_ordering_drill`。Artifact 覆盖 Docker/local 并发提交、相邻 command id、`cmd-9`/`cmd-10` 数字顺序、cursor 只在 terminal ACK 后推进、ACK 不等于 delivery success 等 invariant；preflight 可通过 `TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_ARTIFACT` 或 CLI 参数消费，`/api/status.phone_readiness.queue_ordering_drill` 和 `/api/diagnostics.queue_ordering_drill` 只输出 phone-safe summary。它必须保持 `production_ready=false`，不得声明真实生产 queue ordering、生产 DB/queue、多实例一致性、transaction isolation、真实云、真实 4G/SIM、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 
+本轮 `2026.05.12_23-24_remote-transaction-isolation-gate` 在同一 relay/preflight/phone-safe 摘要体系上新增 transaction isolation drill artifact gate，证据边界是 `software_proof_docker_transaction_isolation_gate`。Artifact 构造同一 robot 的 interleaved command/status/ACK 场景：command A 仍是 non-terminal，command B 后发并出现 terminal ACK，status update 与 ACK 交错写入；有效 proof 要求 ACK cursor 不得越过未完成 command A，且 terminal ACK 不得升级为 delivery success。Preflight 可通过 `TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT` 或 `--transaction-isolation-artifact` 消费，`/api/status.phone_readiness.transaction_isolation` 和 `/api/diagnostics.transaction_isolation` 只输出 phone-safe summary。它必须保持 `production_ready=false`，不得声明真实生产 DB/queue、多实例一致性、真实生产 transaction isolation、真实云、真实 4G/SIM、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
 ## 云端基线规格
 
 目标服务端基线：
@@ -151,6 +153,7 @@ Operator/API 消费 manifest artifact 时输出的是更小的 phone-safe summar
 - `TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT`：可选的本地 provisioning audit artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为生产账号发放、真实 STS 签发、真实审计日志、真实云或真实 4G 证据。
 - `TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT`：可选的本地 production store/queue artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为真实生产 DB/queue、多实例一致性、生产备份或真实灾备证据。
 - `TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_ARTIFACT`：可选的本地 queue ordering drill artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为真实生产 queue ordering、transaction isolation、生产 DB/queue、多实例一致性或真实云证据。
+- `TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT`：可选的本地 transaction isolation drill artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为真实生产 transaction isolation、生产 DB/queue、多实例一致性、真实云或真实 4G 证据。
 - `.env` 不入仓库；`.env.example` 只能放占位符。
 - 错误响应和 state file 不得包含 bearer token、Authorization header、credential-bearing URL、串口设备、baudrate、WAVE ROVER 参数、底层速度控制入口或 raw ROS topic 名。
 - token rotate、账号分级、机器人 provisioning 和审计日志是后续真实云 sprint 的范围。
@@ -269,6 +272,19 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m ros2_trashbot_behavior.remote_cloud_relay \
 ```
 
 Artifact 必须包含 `schema=trashbot.queue_ordering_drill`、`schema_version=1`、`evidence_boundary=software_proof_docker_queue_ordering_drill`、`robot_id`、`updated_at`、`ordering_invariant`、`concurrency_invariant`、`cursor_invariant`、`ack_invariant`、`adjacent_command_ids=["cmd-9","cmd-10"]`、`observed_order=["cmd-9","cmd-10"]`、`production_ready=false`、`overall_status=passed|failed`、`not_proven`、`safe_summary`、`retry_hint` 和 `checksum`。Preflight 有效时只新增 `queue_ordering_drill=pass` check，并把本地证据边界推进到 `software_proof_docker_queue_ordering_drill`；`production_ready=false` 必须保持，`not_proven` 必须继续列出真实生产 queue ordering、生产 DB/queue、多实例一致性、transaction isolation、真实云、真实 4G/SIM、Nav2/fixed-route、WAVE ROVER/HIL 和真实送达缺口。
+
+## Transaction Isolation Drill
+
+Transaction isolation drill 是 queue ordering 之后的下一层 Docker/local 软件证明。它验证同一 robot 的 command/status/ACK interleaving 不会让 ACK cursor 越过未完成 command，也不会把 ACK 当成真实送达成功：
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --write-transaction-isolation-artifact /tmp/trashbot_transaction_isolation_drill.json \
+  --transaction-isolation-robot-id robot-local-proof
+```
+
+Artifact 必须包含 `schema=trashbot.transaction_isolation_drill`、`schema_version=1`、`evidence_boundary=software_proof_docker_transaction_isolation_gate`、`robot_id`、`updated_at`、`scenario=same_robot_interleaved_command_status_ack`、`command_a_id`、`command_b_id`、`command_a_ack_state=processing`、`command_b_ack_state=acked`、`terminal_ack_ids`、`cursor_before`、`cursor_after_interleaving`、`cursor_invariant`、`ack_invariant`、`delivery_success=false`、`production_ready=false`、`overall_status=passed|failed`、`not_proven`、`safe_summary`、`retry_hint` 和 `checksum`。Preflight 有效时新增 `transaction_isolation=pass` check，并把本地证据边界推进到 `software_proof_docker_transaction_isolation_gate`；`production_ready=false` 必须保持，`not_proven` 必须继续列出真实生产 transaction isolation、生产 DB/queue、多实例一致性、真实云、真实 4G/SIM、Nav2/fixed-route、WAVE ROVER/HIL 和真实送达缺口。
 
 Preflight 可用 `TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT` 验证本地 artifact：
 

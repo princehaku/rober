@@ -961,6 +961,118 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertNotIn("delivery_success", encoded_status)
             self.assertNotIn("/cmd_vel", encoded_status)
 
+    def test_transaction_isolation_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "transaction_isolation": {
+                    "schema": "trashbot.transaction_isolation_drill",
+                    "transaction_invariant": "passed",
+                    "cursor_invariant": "passed",
+                    "ack_invariant": "passed",
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "transaction_isolation": {
+                    "schema": "trashbot.transaction_isolation_drill",
+                    "overall_status": "passed",
+                    "next_action": "confirm_dropoff",
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                },
+                "diagnostics": {
+                    "transaction_isolation": {
+                        "delivery_success": True,
+                        "final_state": "DELIVERED",
+                    },
+                },
+            },
+            "ack_response": {
+                "transaction_isolation": {
+                    "schema": "trashbot.transaction_isolation_drill",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-transaction-isolation-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-transaction-isolation-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-transaction-isolation-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        self.assertEqual(ack_payload["message"], "collect")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # transaction isolation 是云端状态/诊断元数据，robot ACK 只能表达 command envelope 处理结果。
+        self.assertNotIn("transaction_isolation", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("transaction_isolation", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
+    def test_metadata_only_transaction_isolation_response_does_not_start_ack_or_persist_cursor(self):
+        for isolation_status in ("blocked", "invalid", "stale"):
+            with self.subTest(isolation_status=isolation_status):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.backend.calls.clear()
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-transaction-{isolation_status}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        "transaction_isolation": {
+                            "schema": "trashbot.transaction_isolation_drill",
+                            "overall_status": isolation_status,
+                            "transaction_invariant": "metadata_only",
+                            "cursor_invariant": "must_not_advance",
+                            "ack_invariant": "ack_is_not_delivery_success",
+                            "next_action": "collect",
+                            "trigger_robot_action": "collect",
+                            "delivery_success": True,
+                        },
+                        "diagnostics": {
+                            "transaction_isolation": {
+                                "overall_status": isolation_status,
+                                "ack_semantics": "delivery_success",
+                            },
+                        },
+                        "preflight": {"overall_status": "blocked", "production_ready": False},
+                    }
+
+                    handled = worker.poll_once()
+
+                    # 只有 transaction isolation metadata、没有 command envelope 时，不能驱动本地 action/ACK/cursor。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-transaction-{isolation_status}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn("transaction_isolation", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+
     def test_ack_failure_does_not_persist_cursor_state(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = pathlib.Path(tmpdir) / "remote_cursor.json"

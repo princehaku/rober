@@ -337,6 +337,31 @@ It is not a real production queue ordering, transaction isolation,
 multi-instance consistency, production DB/queue, real cloud, real 4G/SIM,
 Nav2/fixed-route delivery, WAVE ROVER/HIL, or delivery success proof.
 
+The transaction isolation drill adds the next Docker/local artifact for
+interleaved command/status/ACK writes on one robot. Generate it with:
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --write-transaction-isolation-artifact /tmp/trashbot_transaction_isolation_drill.json \
+  --transaction-isolation-robot-id robot-local-proof
+```
+
+Then pass it to preflight with
+`TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT` or
+`--transaction-isolation-artifact`. The resulting evidence boundary is
+`software_proof_docker_transaction_isolation_gate`; phone consumption uses
+`software_proof_docker_transaction_isolation_phone_consumption`.
+
+The artifact fixes the local drill expectations for command A remaining
+non-terminal, command B receiving a terminal ACK, status writes interleaving
+with ACK writes, the ACK cursor staying before unfinished command A, and ACK not
+becoming delivery success. It covers `ready|missing|invalid|stale|failed`
+summaries for phone status and diagnostics. It is not real production
+transaction isolation, a production DB/queue, multi-instance consistency, real
+cloud, real 4G/SIM, Nav2/fixed-route delivery, WAVE ROVER/HIL, or delivery
+success proof.
+
 Phone and diagnostics payloads must not expose bearer tokens, Authorization
 headers, credential-bearing cloud URLs, serial devices, baudrate, WAVE ROVER
 parameters, `/cmd_vel`, raw ROS topic names, or hardware configuration fields.

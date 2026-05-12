@@ -34,12 +34,15 @@ PRODUCTION_STORE_QUEUE_EVIDENCE_BOUNDARY = "software_proof_docker_production_sto
 PRODUCTION_STORE_QUEUE_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_production_store_queue_phone_consumption"
 QUEUE_ORDERING_DRILL_EVIDENCE_BOUNDARY = "software_proof_docker_queue_ordering_drill"
 QUEUE_ORDERING_DRILL_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_queue_ordering_phone_consumption"
+TRANSACTION_ISOLATION_EVIDENCE_BOUNDARY = "software_proof_docker_transaction_isolation_gate"
+TRANSACTION_ISOLATION_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_transaction_isolation_phone_consumption"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 PROVISIONING_AUDIT_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 PRODUCTION_STORE_QUEUE_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 QUEUE_ORDERING_DRILL_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
+TRANSACTION_ISOLATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 DEPLOY_EVIDENCE_BOUNDARY = "software_proof_docker_deploy"
 BACKUP_ARTIFACT_SCHEMA = "trashbot.remote_cloud_relay_backup.v1"
 BACKUP_ARTIFACT_VERSION = 1
@@ -55,6 +58,8 @@ PRODUCTION_STORE_QUEUE_SCHEMA = "trashbot.production_store_queue_gate"
 PRODUCTION_STORE_QUEUE_SCHEMA_VERSION = 1
 QUEUE_ORDERING_DRILL_SCHEMA = "trashbot.queue_ordering_drill"
 QUEUE_ORDERING_DRILL_SCHEMA_VERSION = 1
+TRANSACTION_ISOLATION_SCHEMA = "trashbot.transaction_isolation_drill"
+TRANSACTION_ISOLATION_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -134,6 +139,19 @@ QUEUE_ORDERING_DRILL_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+TRANSACTION_ISOLATION_NOT_PROVEN = [
+    "production_transaction_isolation",
+    "production_db_or_queue",
+    "multi_instance_consistency",
+    "production_queue_ordering",
+    "real_cloud",
+    "real_4g_sim",
+    "https_tls_public_ingress",
+    "production_account",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -152,6 +170,7 @@ PHONE_COPY = {
     "provisioning_audit_blocked": "生产 provisioning / STS / audit 软件证明未通过校验，请重新生成后再试。",
     "production_store_queue_blocked": "生产 DB/queue 软件证明未通过校验，请重新生成后再试。",
     "queue_ordering_drill_blocked": "队列顺序演练软件证明未通过校验，请重新生成后再试。",
+    "transaction_isolation_blocked": "事务隔离演练软件证明未通过校验，请重新生成后再试。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -1883,6 +1902,320 @@ def build_phone_queue_ordering_drill_summary(artifact_path, *, now=None, stale_a
     return phone_summary
 
 
+def _transaction_isolation_forbidden_markers(payload):
+    # Transaction isolation artifact 会被手机和 preflight 消费，不能夹带真实 DB/queue URL、路径或底层控制词。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "secret",
+        "password",
+        "postgres://",
+        "mysql://",
+        "redis://",
+        "amqp://",
+        "kafka://",
+        "queue url",
+        "queue_url",
+        "database url",
+        "database_url",
+        "raw state path",
+        "state path",
+        "/tmp/",
+        "/dev/",
+        "serial",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+        "traceback",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def build_transaction_isolation_artifact_payload(robot_id, *, generated_at=None, drill_status="passed"):
+    """生成 Docker/local transaction isolation drill artifact；不连接真实生产 DB/queue。"""
+    robot_key = _robot_key(robot_id)
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    status_value = _safe_enum(drill_status, {"passed", "failed"}, default="failed")
+    body = {
+        "schema": TRANSACTION_ISOLATION_SCHEMA,
+        "schema_version": TRANSACTION_ISOLATION_SCHEMA_VERSION,
+        "evidence_boundary": TRANSACTION_ISOLATION_EVIDENCE_BOUNDARY,
+        "robot_id": robot_key,
+        "updated_at": generated_value,
+        "scenario": "same_robot_interleaved_command_status_ack",
+        "interleaved_events": [
+            "command_a_created",
+            "status_update_after_command_a",
+            "command_b_created",
+            "ack_b_terminal_acked",
+            "status_update_after_ack_b",
+            "ack_a_still_non_terminal",
+        ],
+        "command_a_id": "cmd-transaction-a",
+        "command_b_id": "cmd-transaction-b",
+        "command_a_ack_state": "processing",
+        "command_b_ack_state": "acked",
+        "terminal_ack_ids": ["cmd-transaction-b"],
+        "status_interleaving": "status_writes_before_and_after_terminal_ack_b",
+        "cursor_before": "cmd-before-transaction-a",
+        "cursor_after_interleaving": "cmd-before-transaction-a",
+        "cursor_invariant": "ack_cursor_does_not_advance_past_unfinished_command_a",
+        "ack_invariant": "terminal_ack_for_command_b_is_not_delivery_success",
+        "delivery_success": False,
+        "production_ready": False,
+        "overall_status": status_value,
+        "not_proven": list(TRANSACTION_ISOLATION_NOT_PROVEN),
+        "safe_summary": (
+            "Transaction isolation drill 已通过 Docker/local software proof；ACK cursor 未越过未完成 command A。"
+            if status_value == "passed"
+            else "Transaction isolation drill 未通过；不能声明本地事务隔离软件证明。"
+        ),
+        "retry_hint": (
+            "pass_transaction_isolation_artifact_to_preflight_and_keep_production_blocked"
+            if status_value == "passed"
+            else "rerun_transaction_isolation_drill_after_fixing_cursor_or_ack_failure"
+        ),
+    }
+    forbidden = _transaction_isolation_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("transaction isolation artifact contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_transaction_isolation_artifact_payload(artifact, *, now=None, stale_after_sec=None):
+    # 校验只返回摘要；完整 artifact、robot_id 和 checksum 不进入手机输出，避免把本地 proof 当生产 DB 证据。
+    if not isinstance(artifact, dict):
+        raise ValueError("transaction isolation artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != TRANSACTION_ISOLATION_SCHEMA:
+        raise ValueError("transaction isolation schema mismatch")
+    if artifact.get("schema_version") != TRANSACTION_ISOLATION_SCHEMA_VERSION:
+        raise ValueError("transaction isolation schema version mismatch")
+    if artifact.get("evidence_boundary") != TRANSACTION_ISOLATION_EVIDENCE_BOUNDARY:
+        raise ValueError("transaction isolation evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("transaction isolation checksum mismatch")
+    expected = {
+        "scenario": "same_robot_interleaved_command_status_ack",
+        "command_a_id": "cmd-transaction-a",
+        "command_b_id": "cmd-transaction-b",
+        "command_a_ack_state": "processing",
+        "command_b_ack_state": "acked",
+        "status_interleaving": "status_writes_before_and_after_terminal_ack_b",
+        "cursor_before": "cmd-before-transaction-a",
+        "cursor_after_interleaving": "cmd-before-transaction-a",
+        "cursor_invariant": "ack_cursor_does_not_advance_past_unfinished_command_a",
+        "ack_invariant": "terminal_ack_for_command_b_is_not_delivery_success",
+    }
+    for field_name, expected_value in expected.items():
+        if artifact.get(field_name) != expected_value:
+            raise ValueError(f"transaction isolation {field_name} mismatch")
+    if artifact.get("terminal_ack_ids") != ["cmd-transaction-b"]:
+        raise ValueError("transaction isolation terminal ack ids mismatch")
+    events = artifact.get("interleaved_events")
+    if not isinstance(events, list) or events[:3] != [
+        "command_a_created",
+        "status_update_after_command_a",
+        "command_b_created",
+    ]:
+        raise ValueError("transaction isolation interleaving mismatch")
+    if artifact.get("delivery_success") is not False:
+        raise ValueError("transaction isolation ack must not become delivery success")
+    if artifact.get("production_ready") is not False:
+        raise ValueError("transaction isolation must stay production blocked")
+    overall_status = str(artifact.get("overall_status") or "")
+    if overall_status not in {"passed", "failed"}:
+        raise ValueError("transaction isolation overall status mismatch")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    if [item for item in TRANSACTION_ISOLATION_NOT_PROVEN if item not in not_proven]:
+        raise ValueError("transaction isolation not_proven list is incomplete")
+    if not str(artifact.get("safe_summary") or "") or not str(artifact.get("retry_hint") or ""):
+        raise ValueError("transaction isolation phone copy missing")
+    forbidden = _transaction_isolation_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("transaction isolation artifact contains forbidden phone-unsafe markers")
+    updated_at = str(artifact.get("updated_at") or "").strip()
+    timestamp = _parse_manifest_time(updated_at)
+    stale_window = (
+        TRANSACTION_ISOLATION_ARTIFACT_STALE_AFTER_SEC
+        if stale_after_sec is None
+        else float(stale_after_sec)
+    )
+    now_value = _now() if now is None else float(now)
+    staleness = "fresh"
+    if timestamp is None or now_value - timestamp > stale_window:
+        staleness = "stale"
+    return {
+        "ok": overall_status == "passed" and staleness == "fresh",
+        "schema": TRANSACTION_ISOLATION_SCHEMA,
+        "schema_version": TRANSACTION_ISOLATION_SCHEMA_VERSION,
+        "evidence_boundary": TRANSACTION_ISOLATION_EVIDENCE_BOUNDARY,
+        "scenario": expected["scenario"],
+        "command_a_id": expected["command_a_id"],
+        "command_b_id": expected["command_b_id"],
+        "command_a_ack_state": expected["command_a_ack_state"],
+        "command_b_ack_state": expected["command_b_ack_state"],
+        "terminal_ack_ids": ["cmd-transaction-b"],
+        "cursor_before": expected["cursor_before"],
+        "cursor_after_interleaving": expected["cursor_after_interleaving"],
+        "cursor_invariant": expected["cursor_invariant"],
+        "ack_invariant": expected["ack_invariant"],
+        "delivery_success": False,
+        "production_ready": False,
+        "overall_status": overall_status,
+        "safe_summary": str(artifact.get("safe_summary") or ""),
+        "retry_hint": str(artifact.get("retry_hint") or ""),
+        "updated_at": updated_at,
+        "staleness": staleness,
+        "checksum": checksum,
+        "not_proven": list(TRANSACTION_ISOLATION_NOT_PROVEN),
+    }
+
+
+def create_transaction_isolation_artifact(artifact_path, robot_id, *, drill_status="passed"):
+    # CLI、preflight 和手机摘要共用同一校验函数；ACK 只代表 envelope 处理，不能提升为送达成功。
+    artifact = build_transaction_isolation_artifact_payload(robot_id, drill_status=drill_status)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_transaction_isolation_artifact_payload(artifact)
+    return {
+        "ok": summary.get("ok"),
+        "transaction_isolation_status": str(artifact.get("overall_status") or ""),
+        "evidence_boundary": TRANSACTION_ISOLATION_EVIDENCE_BOUNDARY,
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(TRANSACTION_ISOLATION_NOT_PROVEN),
+    }
+
+
+def transaction_isolation_artifact_summary(artifact_path, *, now=None, stale_after_sec=None):
+    # Preflight 只消费摘要和状态；路径、robot_id、checksum 不回显给手机或运维面板。
+    try:
+        artifact = _load_json_file(artifact_path, "transaction isolation artifact")
+        summary = validate_transaction_isolation_artifact_payload(
+            artifact,
+            now=now,
+            stale_after_sec=stale_after_sec,
+        )
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "transaction_isolation_invalid",
+            "safe_summary": "Transaction isolation drill 软件证明产物损坏。",
+            "retry_hint": "重新生成 transaction isolation artifact 后刷新 preflight。",
+            "evidence_boundary": TRANSACTION_ISOLATION_EVIDENCE_BOUNDARY,
+            "not_proven": list(TRANSACTION_ISOLATION_NOT_PROVEN),
+            "debug_reason": _safe_error_reason(exc),
+        }
+    if summary.get("staleness") == "stale":
+        summary.update(
+            {
+                "ok": False,
+                "state": "stale",
+                "reason_code": "transaction_isolation_stale",
+                "safe_summary": "Transaction isolation drill 软件证明已过期。",
+                "retry_hint": "重新生成 transaction isolation artifact，避免手机消费旧证明。",
+            }
+        )
+        return summary
+    if summary.get("overall_status") == "failed":
+        summary.update(
+            {
+                "ok": False,
+                "state": "failed",
+                "reason_code": "transaction_isolation_failed",
+            }
+        )
+        return summary
+    summary.update({"state": "ready", "reason_code": "transaction_isolation_passed"})
+    return summary
+
+
+def _phone_transaction_isolation_base(state, safe_summary, retry_hint):
+    # 手机端只看 cursor/ACK invariant 摘要；不展示 artifact 原文、路径、checksum 或真实 DB/queue 信息。
+    return {
+        "state": state,
+        "schema": TRANSACTION_ISOLATION_SCHEMA,
+        "schema_version": TRANSACTION_ISOLATION_SCHEMA_VERSION,
+        "evidence_boundary": TRANSACTION_ISOLATION_PHONE_EVIDENCE_BOUNDARY,
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "scenario": "",
+        "command_a_id": "",
+        "command_b_id": "",
+        "command_a_ack_state": "",
+        "command_b_ack_state": "",
+        "terminal_ack_ids": [],
+        "cursor_before": "",
+        "cursor_after_interleaving": "",
+        "cursor_invariant": "",
+        "ack_invariant": "",
+        "delivery_success": False,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "updated_at": "",
+        "staleness": "unknown",
+        "not_proven": list(TRANSACTION_ISOLATION_NOT_PROVEN),
+    }
+
+
+def build_phone_transaction_isolation_summary(artifact_path, *, now=None, stale_after_sec=None):
+    """Return a phone-safe transaction isolation drill summary."""
+    artifact_ref = os.path.expanduser(str(artifact_path or "")).strip()
+    if not artifact_ref or not os.path.exists(artifact_ref):
+        return _phone_transaction_isolation_base(
+            "missing",
+            "尚未提供 transaction isolation artifact，不能声明事务隔离软件证明。",
+            "请生成 transaction isolation artifact 后刷新状态。",
+        )
+    summary = transaction_isolation_artifact_summary(
+        artifact_ref,
+        now=now,
+        stale_after_sec=stale_after_sec,
+    )
+    if not summary.get("ok"):
+        return _phone_transaction_isolation_base(
+            str(summary.get("state") or "invalid"),
+            str(summary.get("safe_summary") or "Transaction isolation drill 软件证明产物不可用。"),
+            str(summary.get("retry_hint") or "重新生成 transaction isolation artifact 后刷新状态。"),
+        )
+    phone_summary = _phone_transaction_isolation_base(
+        "ready",
+        "Transaction isolation drill 软件证明已准备；ACK cursor 未越过未完成命令，ACK 不等于送达成功。",
+        "继续补真实生产 DB/queue、多实例一致性和生产事务隔离证据。",
+    )
+    phone_summary.update(
+        {
+            "scenario": str(summary.get("scenario") or ""),
+            "command_a_id": str(summary.get("command_a_id") or ""),
+            "command_b_id": str(summary.get("command_b_id") or ""),
+            "command_a_ack_state": str(summary.get("command_a_ack_state") or ""),
+            "command_b_ack_state": str(summary.get("command_b_ack_state") or ""),
+            "terminal_ack_ids": list(summary.get("terminal_ack_ids") or []),
+            "cursor_before": str(summary.get("cursor_before") or ""),
+            "cursor_after_interleaving": str(summary.get("cursor_after_interleaving") or ""),
+            "cursor_invariant": str(summary.get("cursor_invariant") or ""),
+            "ack_invariant": str(summary.get("ack_invariant") or ""),
+            "delivery_success": False,
+            "overall_status": str(summary.get("overall_status") or "passed"),
+            "updated_at": str(summary.get("updated_at") or ""),
+            "staleness": str(summary.get("staleness") or "fresh"),
+        }
+    )
+    return phone_summary
+
+
 def build_oss_cdn_manifest_payload(robot_id, task_id, date_text=None, objects=None, created_at=None):
     """生成 Docker/local OSS/CDN 对象引用 proof；不声明真实上传、回源或生产账号。"""
     robot_key = _robot_key(robot_id)
@@ -2182,6 +2515,7 @@ def production_preflight_payload(env=None):
     provisioning_audit_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT")
     production_store_queue_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT")
     queue_ordering_drill_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_ARTIFACT")
+    transaction_isolation_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT")
     tls_mode_safe = _safe_enum(tls_mode, {"future_reverse_proxy", "terminated", "managed", "reverse_proxy"})
     ingress_mode_safe = _safe_enum(ingress_mode, {"missing", "private_only", "public_https"})
     oss_credential_mode_safe = _safe_enum(oss_credential_mode, {"placeholder", "sts", "restricted_ak", "managed_identity"})
@@ -2717,6 +3051,66 @@ def production_preflight_payload(env=None):
             )
         )
 
+    if transaction_isolation_artifact_path:
+        # Transaction isolation drill 只验证同 robot 的本地 interleaving，不声明真实生产隔离级别。
+        isolation_summary = transaction_isolation_artifact_summary(transaction_isolation_artifact_path)
+        if isolation_summary.get("ok"):
+            checks.append(
+                _check(
+                    "transaction_isolation",
+                    "pass",
+                    "local_transaction_isolation_artifact_valid",
+                    "已找到通过 schema、checksum 和 phone-safe 校验的 transaction isolation artifact。",
+                    "继续补真实生产 DB/queue、多实例一致性和生产事务隔离证据。",
+                    {
+                        "artifact_schema": TRANSACTION_ISOLATION_SCHEMA,
+                        "schema_version": TRANSACTION_ISOLATION_SCHEMA_VERSION,
+                        "scenario": isolation_summary.get("scenario"),
+                        "command_a_id": isolation_summary.get("command_a_id"),
+                        "command_b_id": isolation_summary.get("command_b_id"),
+                        "command_a_ack_state": isolation_summary.get("command_a_ack_state"),
+                        "command_b_ack_state": isolation_summary.get("command_b_ack_state"),
+                        "terminal_ack_ids": isolation_summary.get("terminal_ack_ids"),
+                        "cursor_before": isolation_summary.get("cursor_before"),
+                        "cursor_after_interleaving": isolation_summary.get("cursor_after_interleaving"),
+                        "cursor_invariant": isolation_summary.get("cursor_invariant"),
+                        "ack_invariant": isolation_summary.get("ack_invariant"),
+                        "delivery_success": False,
+                        "production_ready": False,
+                        "overall_status": "passed",
+                        "staleness": isolation_summary.get("staleness"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            state = str(isolation_summary.get("state") or "invalid")
+            checks.append(
+                _check(
+                    "transaction_isolation",
+                    "blocked",
+                    f"transaction_isolation_artifact_{state}",
+                    str(isolation_summary.get("safe_summary") or "Transaction isolation drill 软件证明产物不可用。"),
+                    str(isolation_summary.get("retry_hint") or "重新生成 transaction isolation artifact 后重跑 preflight。"),
+                    {
+                        "artifact_present": True,
+                        "reason_code": isolation_summary.get("reason_code", "transaction_isolation_invalid"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "transaction_isolation",
+                "warning",
+                "transaction_isolation_artifact_missing",
+                "尚未提供 transaction isolation artifact，不能声明事务隔离软件证明。",
+                "生成 transaction isolation artifact，并用 TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT 传给 preflight。",
+                {"artifact_present": False, "software_proof_only": True},
+            )
+        )
+
     if _phone_safe_failure_ready():
         checks.append(
             _check(
@@ -2774,6 +3168,10 @@ def production_preflight_payload(env=None):
         check["name"] == "queue_ordering_drill" and check["status"] == "pass"
         for check in checks
     )
+    local_transaction_isolation_ok = any(
+        check["name"] == "transaction_isolation" and check["status"] == "pass"
+        for check in checks
+    )
     not_proven = [
         "production_credential_rotation",
         "production_robot_provisioning",
@@ -2809,6 +3207,8 @@ def production_preflight_payload(env=None):
         not_proven.insert(12, "production_store_queue_gate")
     if not local_queue_ordering_drill_ok:
         not_proven.insert(13, "queue_ordering_drill")
+    if not local_transaction_isolation_ok:
+        not_proven.insert(14, "transaction_isolation_drill")
     payload = {
         "ok": production_ready,
         "software_proof_ready": bool(
@@ -2817,12 +3217,15 @@ def production_preflight_payload(env=None):
             or local_provisioning_audit_ok
             or local_production_store_queue_ok
             or local_queue_ordering_drill_ok
+            or local_transaction_isolation_ok
         ),
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
         "protocol_version": PROTOCOL_VERSION,
         "evidence_boundary": (
-            QUEUE_ORDERING_DRILL_EVIDENCE_BOUNDARY
+            TRANSACTION_ISOLATION_EVIDENCE_BOUNDARY
+            if local_transaction_isolation_ok
+            else QUEUE_ORDERING_DRILL_EVIDENCE_BOUNDARY
             if local_queue_ordering_drill_ok
             else PRODUCTION_STORE_QUEUE_EVIDENCE_BOUNDARY
             if local_production_store_queue_ok
@@ -4042,6 +4445,11 @@ def main(argv=None):
         help="phone-safe queue ordering drill artifact consumed by preflight",
     )
     parser.add_argument(
+        "--transaction-isolation-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT", ""),
+        help="phone-safe transaction isolation drill artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
@@ -4067,6 +4475,11 @@ def main(argv=None):
         help="write a phone-safe queue ordering drill artifact JSON and exit",
     )
     parser.add_argument(
+        "--write-transaction-isolation-artifact",
+        default="",
+        help="write a phone-safe transaction isolation drill artifact JSON and exit",
+    )
+    parser.add_argument(
         "--credential-rotation-robot-id",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ROBOT_ID", "robot-local-proof"),
         help="robot id embedded in generated credential rotation proof",
@@ -4087,10 +4500,21 @@ def main(argv=None):
         help="robot id embedded in generated queue ordering drill proof",
     )
     parser.add_argument(
+        "--transaction-isolation-robot-id",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ROBOT_ID", "robot-local-proof"),
+        help="robot id embedded in generated transaction isolation proof",
+    )
+    parser.add_argument(
         "--queue-ordering-drill-status",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_STATUS", "passed"),
         choices=("passed", "failed"),
         help="local drill status embedded in generated queue ordering proof",
+    )
+    parser.add_argument(
+        "--transaction-isolation-status",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_STATUS", "passed"),
+        choices=("passed", "failed"),
+        help="local drill status embedded in generated transaction isolation proof",
     )
     parser.add_argument(
         "--manifest-robot-id",
@@ -4167,9 +4591,24 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_ARTIFACT"] = (
                 args.queue_ordering_drill_artifact
             )
+        if args.transaction_isolation_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT"] = (
+                args.transaction_isolation_artifact
+            )
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
+    if args.write_transaction_isolation_artifact:
+        try:
+            payload = create_transaction_isolation_artifact(
+                args.write_transaction_isolation_artifact,
+                args.transaction_isolation_robot_id,
+                drill_status=args.transaction_isolation_status,
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error("transaction_isolation_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     if args.write_queue_ordering_drill_artifact:
         try:
             payload = create_queue_ordering_drill_artifact(

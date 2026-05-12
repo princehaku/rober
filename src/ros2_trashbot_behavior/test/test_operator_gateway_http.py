@@ -39,6 +39,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     create_production_store_queue_artifact,
     create_provisioning_audit_artifact,
     create_queue_ordering_drill_artifact,
+    create_transaction_isolation_artifact,
 )
 
 
@@ -66,6 +67,7 @@ class FakeGateway:
         self.provisioning_audit_artifact_ref = ""
         self.production_store_queue_artifact_ref = ""
         self.queue_ordering_drill_artifact_ref = ""
+        self.transaction_isolation_artifact_ref = ""
         self.collect_status = 202
         self.collect_payload = {"state": "loaded_and_ready"}
         self.dropoff_status = 200
@@ -408,6 +410,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             "robot-phone-ui",
         )
         self.gateway.queue_ordering_drill_artifact_ref = str(queue_ordering_path)
+        transaction_isolation_path = Path(self.tempdir.name) / "transaction_isolation.json"
+        create_transaction_isolation_artifact(
+            transaction_isolation_path,
+            "robot-phone-ui",
+        )
+        self.gateway.transaction_isolation_artifact_ref = str(transaction_isolation_path)
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(self.gateway))
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -533,6 +541,26 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         encoded_queue_ordering = json.dumps(payload["phone_readiness"]["queue_ordering_drill"], ensure_ascii=False)
         self.assertNotIn("checksum", encoded_queue_ordering)
         self.assertNotIn(self.gateway.queue_ordering_drill_artifact_ref, encoded_queue_ordering)
+        self.assertEqual(payload["phone_readiness"]["transaction_isolation"]["state"], "ready")
+        self.assertEqual(
+            payload["phone_readiness"]["transaction_isolation"]["evidence_boundary"],
+            "software_proof_docker_transaction_isolation_phone_consumption",
+        )
+        self.assertEqual(
+            payload["phone_readiness"]["transaction_isolation"]["cursor_after_interleaving"],
+            "cmd-before-transaction-a",
+        )
+        self.assertFalse(payload["phone_readiness"]["transaction_isolation"]["delivery_success"])
+        self.assertIn(
+            "production_transaction_isolation",
+            payload["phone_readiness"]["transaction_isolation"]["not_proven"],
+        )
+        encoded_transaction_isolation = json.dumps(
+            payload["phone_readiness"]["transaction_isolation"],
+            ensure_ascii=False,
+        )
+        self.assertNotIn("checksum", encoded_transaction_isolation)
+        self.assertNotIn(self.gateway.transaction_isolation_artifact_ref, encoded_transaction_isolation)
         self.assertIn("hil_pass", payload["phone_readiness"]["not_proven"])
         encoded_task_flow = json.dumps(task_flow, ensure_ascii=False).lower()
         for forbidden in ("ros topic", "/cmd_vel", "baudrate", "authorization", "cloud secret"):
@@ -901,6 +929,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             payload["oss_cdn_manifest"]["evidence_boundary"],
             "software_proof_docker_phone_manifest_consumption",
         )
+        self.assertEqual(payload["transaction_isolation"]["state"], "ready")
+        self.assertEqual(
+            payload["transaction_isolation"]["evidence_boundary"],
+            "software_proof_docker_transaction_isolation_phone_consumption",
+        )
+        self.assertFalse(payload["transaction_isolation"]["delivery_success"])
 
     def test_status_preserves_robot_location_snapshot_fields(self):
         self.gateway.snapshot_payload["robot_location"] = {
