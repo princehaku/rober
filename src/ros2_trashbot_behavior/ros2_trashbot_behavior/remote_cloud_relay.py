@@ -20,9 +20,29 @@ STATUS_STALE_AFTER_SEC = 90.0
 PREFLIGHT_EVIDENCE_BOUNDARY = "software_proof_docker_preflight_gate"
 SQLITE_EVIDENCE_BOUNDARY = "software_proof_docker_sqlite_state_store"
 BACKUP_RESTORE_EVIDENCE_BOUNDARY = "software_proof_docker_backup_restore_drill"
+OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY = "software_proof_docker_oss_cdn_manifest"
 DEPLOY_EVIDENCE_BOUNDARY = "software_proof_docker_deploy"
 BACKUP_ARTIFACT_SCHEMA = "trashbot.remote_cloud_relay_backup.v1"
 BACKUP_ARTIFACT_VERSION = 1
+OSS_CDN_MANIFEST_SCHEMA = "trashbot.oss_cdn_manifest"
+OSS_CDN_MANIFEST_VERSION = 1
+OSS_CDN_BUCKET = "bytegallop"
+OSS_CDN_REGION = "oss-cn-hangzhou"
+OSS_CDN_PREFIX_ROOT = "rober/"
+OSS_CDN_BASE_URL = "https://cdn.bytegallop.com/rober/"
+OSS_CDN_NOT_PROVEN = [
+    "real_oss_upload",
+    "sts_issuance",
+    "cdn_origin_fetch",
+    "lifecycle_policy",
+    "production_account",
+    "real_cloud",
+    "real_4g_sim",
+    "https_tls_public_ingress",
+    "production_db_or_queue",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -35,6 +55,7 @@ PHONE_COPY = {
     "malformed_json": "请求格式异常，请检查客户端版本后重试。",
     "preflight_blocked": "云端上线前检查未通过，请先补齐生产入口、凭证和存储配置。",
     "backup_restore_blocked": "云端状态备份恢复演练未通过，请重新生成备份后再恢复。",
+    "oss_cdn_manifest_blocked": "OSS/CDN 诊断引用清单未通过校验，请重新生成后再试。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -125,9 +146,24 @@ def _canonical_json_bytes(payload):
     ).encode("utf-8")
 
 
+def _raw_canonical_json_bytes(payload):
+    # manifest checksum 必须覆盖 CDN URL 等公开引用字段，不能复用会删除 url key 的通用脱敏。
+    return json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
 def _sha256_checksum(payload):
     # artifact 校验只覆盖业务数据和 metadata，不覆盖 checksum 字段本身。
     return "sha256:" + hashlib.sha256(_canonical_json_bytes(payload)).hexdigest()
+
+
+def _raw_sha256_checksum(payload):
+    # OSS/CDN manifest 本身就是公开对象引用 contract，checksum 应覆盖完整 contract 字段。
+    return "sha256:" + hashlib.sha256(_raw_canonical_json_bytes(payload)).hexdigest()
 
 
 def _safe_error_reason(exc):
@@ -220,6 +256,208 @@ def _safe_enum(value, allowed, default="invalid_or_unsupported"):
     return text if text in allowed else default
 
 
+def _manifest_prefix(robot_id, date_text, task_id):
+    # 前缀是手机诊断引用的稳定命名空间；真实上传接入前先锁定可校验规则。
+    return f"{OSS_CDN_PREFIX_ROOT}{robot_id}/{date_text}/{task_id}/"
+
+
+def _manifest_cdn_url(object_key):
+    # CDN 公开只读入口映射到去掉 rober/ 根前缀后的对象相对路径。
+    if not str(object_key or "").startswith(OSS_CDN_PREFIX_ROOT):
+        raise ValueError("object_key must start with rober/")
+    relative_key = str(object_key)[len(OSS_CDN_PREFIX_ROOT):]
+    return OSS_CDN_BASE_URL + relative_key
+
+
+def _manifest_forbidden_markers(payload):
+    # manifest 允许公开 CDN URL，但仍禁止凭证、原始硬件/ROS 控制和本机路径泄露。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    encoded = encoded.replace(OSS_CDN_BASE_URL.lower(), "")
+    markers = (
+        "authorization",
+        "bearer",
+        "token",
+        "secret",
+        "access_key",
+        "ak/sk",
+        "root password",
+        "state path",
+        "/dev/",
+        "serial",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def _load_json_file(path, artifact_name):
+    try:
+        with open(os.path.expanduser(str(path or "")), "r", encoding="utf-8") as artifact_file:
+            payload = json.load(artifact_file)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{artifact_name} could not be read") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"{artifact_name} must be an object")
+    return payload
+
+
+def build_oss_cdn_manifest_payload(robot_id, task_id, date_text=None, objects=None, created_at=None):
+    """生成 Docker/local OSS/CDN 对象引用 proof；不声明真实上传、回源或生产账号。"""
+    robot_key = _robot_key(robot_id)
+    task_key = str(task_id or "").strip()
+    if not task_key:
+        raise ValueError("task_id is required")
+    date_value = str(date_text or time.strftime("%Y-%m-%d", time.gmtime())).strip()
+    created_value = str(created_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    prefix = _manifest_prefix(robot_key, date_value, task_key)
+    object_entries = objects if isinstance(objects, list) and objects else [
+        {
+            "name": "diagnostic_snapshot",
+            "object_key": prefix + "diagnostic_snapshot.json",
+            "content_type": "application/json",
+            "sha256": "sha256:local-proof-placeholder",
+            "bytes": 0,
+            "redaction": "phone_safe",
+        }
+    ]
+    normalized_objects = []
+    for index, item in enumerate(object_entries):
+        if not isinstance(item, dict):
+            raise ValueError("manifest object entry must be an object")
+        object_key = str(item.get("object_key") or "").strip()
+        if not object_key:
+            raise ValueError("manifest object_key is required")
+        entry = {
+            "name": str(item.get("name") or f"object_{index + 1}").strip(),
+            "object_key": object_key,
+            "cdn_url": str(item.get("cdn_url") or _manifest_cdn_url(object_key)).strip(),
+            "content_type": str(item.get("content_type") or item.get("media_type") or "application/octet-stream").strip(),
+            "sha256": str(item.get("sha256") or "sha256:local-proof-placeholder").strip(),
+            "bytes": int(item.get("bytes", 0) or 0),
+            "redaction": str(item.get("redaction") or "phone_safe").strip(),
+        }
+        normalized_objects.append(entry)
+    body = {
+        "schema": OSS_CDN_MANIFEST_SCHEMA,
+        "schema_version": OSS_CDN_MANIFEST_VERSION,
+        "evidence_boundary": OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY,
+        "created_at": created_value,
+        "robot_id": robot_key,
+        "task_id": task_key,
+        "date": date_value,
+        "bucket": OSS_CDN_BUCKET,
+        "region": OSS_CDN_REGION,
+        "prefix": prefix,
+        "cdn_base_url": OSS_CDN_BASE_URL,
+        "objects": normalized_objects,
+        "not_proven": list(OSS_CDN_NOT_PROVEN),
+    }
+    forbidden = _manifest_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("manifest contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _raw_sha256_checksum(body)
+    return artifact
+
+
+def validate_oss_cdn_manifest_payload(artifact):
+    # 校验路径只返回摘要；完整 artifact 不进入 preflight 输出，避免误暴露对象清单之外的字段。
+    if not isinstance(artifact, dict):
+        raise ValueError("manifest artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != OSS_CDN_MANIFEST_SCHEMA:
+        raise ValueError("manifest schema mismatch")
+    if artifact.get("schema_version") != OSS_CDN_MANIFEST_VERSION:
+        raise ValueError("manifest version mismatch")
+    if artifact.get("evidence_boundary") != OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY:
+        raise ValueError("manifest evidence boundary mismatch")
+    if artifact.get("bucket") != OSS_CDN_BUCKET:
+        raise ValueError("manifest bucket mismatch")
+    if artifact.get("region") != OSS_CDN_REGION:
+        raise ValueError("manifest region mismatch")
+    if artifact.get("cdn_base_url") != OSS_CDN_BASE_URL:
+        raise ValueError("manifest cdn base url mismatch")
+    robot_key = _robot_key(artifact.get("robot_id"))
+    task_key = str(artifact.get("task_id") or "").strip()
+    date_value = str(artifact.get("date") or "").strip()
+    expected_prefix = _manifest_prefix(robot_key, date_value, task_key)
+    if artifact.get("prefix") != expected_prefix:
+        raise ValueError("manifest prefix mismatch")
+    objects = artifact.get("objects")
+    if not isinstance(objects, list) or not objects:
+        raise ValueError("manifest objects must be a non-empty list")
+    for item in objects:
+        if not isinstance(item, dict):
+            raise ValueError("manifest object entry must be an object")
+        object_key = str(item.get("object_key") or "").strip()
+        cdn_url = str(item.get("cdn_url") or "").strip()
+        if not object_key.startswith(expected_prefix):
+            raise ValueError("manifest object_key prefix mismatch")
+        if cdn_url != _manifest_cdn_url(object_key):
+            raise ValueError("manifest cdn_url mismatch")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in OSS_CDN_NOT_PROVEN if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("manifest not_proven list is incomplete")
+    forbidden = _manifest_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("manifest contains forbidden phone-unsafe markers")
+    if checksum != _raw_sha256_checksum(body):
+        raise ValueError("manifest checksum mismatch")
+    return {
+        "ok": True,
+        "schema": OSS_CDN_MANIFEST_SCHEMA,
+        "schema_version": OSS_CDN_MANIFEST_VERSION,
+        "evidence_boundary": OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY,
+        "robot_id": robot_key,
+        "task_id": task_key,
+        "date": date_value,
+        "object_count": len(objects),
+        "bucket": OSS_CDN_BUCKET,
+        "region": OSS_CDN_REGION,
+        "prefix_valid": True,
+        "cdn_url_rule": "cdn_base_url_plus_object_key_without_rober_prefix",
+        "checksum": checksum,
+        "not_proven": list(OSS_CDN_NOT_PROVEN),
+    }
+
+
+def create_oss_cdn_manifest_artifact(artifact_path, robot_id, task_id, date_text=None):
+    # 该 artifact 是 phone-safe 对象引用 contract，不写入任何 OSS 凭证或本机 state path。
+    artifact = build_oss_cdn_manifest_payload(robot_id, task_id, date_text=date_text)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_oss_cdn_manifest_payload(artifact)
+    return {
+        "ok": True,
+        "manifest_status": "passed",
+        "evidence_boundary": OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY,
+        "safe_summary": "OSS/CDN object reference manifest generated for Docker/local software proof.",
+        "retry_hint": "pass_manifest_artifact_to_preflight",
+        "artifact": summary,
+        "not_proven": list(OSS_CDN_NOT_PROVEN),
+    }
+
+
+def oss_cdn_manifest_summary(artifact_path):
+    # preflight 只消费摘要和 checksum 校验结果，不把原始 object list 全量回显给手机。
+    try:
+        artifact = _load_json_file(artifact_path, "manifest artifact")
+        return validate_oss_cdn_manifest_payload(artifact)
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "reason_code": "manifest_invalid",
+            "safe_summary": _safe_error_reason(exc),
+        }
+
+
 def _state_backend_from_env(env):
     # backend 是 proof 边界的一部分，未知值必须降级，避免把任意 env 文本回显给手机。
     return _safe_enum(
@@ -245,6 +483,7 @@ def production_preflight_payload(env=None):
     state_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_STATE")
     state_backend_safe = _state_backend_from_env(env)
     backup_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT")
+    oss_cdn_manifest_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT")
     tls_mode_safe = _safe_enum(tls_mode, {"future_reverse_proxy", "terminated", "managed", "reverse_proxy"})
     ingress_mode_safe = _safe_enum(ingress_mode, {"missing", "private_only", "public_https"})
     oss_credential_mode_safe = _safe_enum(oss_credential_mode, {"placeholder", "sts", "restricted_ak", "managed_identity"})
@@ -456,6 +695,66 @@ def production_preflight_payload(env=None):
             )
         )
 
+    if oss_cdn_manifest_artifact_path:
+        # manifest gate 只证明对象引用 shape/checksum/CDN URL 规则，不发起真实 OSS 或 CDN 请求。
+        manifest_summary = oss_cdn_manifest_summary(oss_cdn_manifest_artifact_path)
+        if manifest_summary.get("ok"):
+            checks.append(
+                _check(
+                    "oss_cdn_manifest",
+                    "pass",
+                    "local_oss_cdn_manifest_artifact_valid",
+                    "已找到通过 schema、prefix、CDN URL 和 checksum 校验的 OSS/CDN manifest artifact。",
+                    "后续仍需接入真实 STS、OSS 上传、CDN 回源和生命周期证据。",
+                    {
+                        "manifest_schema": OSS_CDN_MANIFEST_SCHEMA,
+                        "schema_version": OSS_CDN_MANIFEST_VERSION,
+                        "object_count": manifest_summary.get("object_count"),
+                        "bucket": OSS_CDN_BUCKET,
+                        "region": OSS_CDN_REGION,
+                        "prefix_valid": bool(manifest_summary.get("prefix_valid")),
+                        "cdn_url_rule": manifest_summary.get("cdn_url_rule"),
+                        "checksum_valid": True,
+                        "real_oss_upload": False,
+                        "sts_issuance": False,
+                        "cdn_origin_fetch": False,
+                        "lifecycle_policy": False,
+                        "production_account": False,
+                    },
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "oss_cdn_manifest",
+                    "blocked",
+                    "oss_cdn_manifest_artifact_invalid",
+                    "OSS/CDN manifest artifact 缺失、schema 不匹配、URL 规则错误或 checksum 校验失败。",
+                    "重新生成 phone-safe manifest artifact 后通过环境变量或 CLI 参数传给 preflight。",
+                    {
+                        "manifest_present": False,
+                        "reason_code": manifest_summary.get("reason_code", "manifest_invalid"),
+                        "real_oss_upload": False,
+                        "cdn_origin_fetch": False,
+                    },
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "oss_cdn_manifest",
+                "warning",
+                "oss_cdn_manifest_artifact_missing",
+                "尚未提供 OSS/CDN manifest artifact，不能声明对象引用 shape proof。",
+                "生成 manifest artifact，并用 TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT 或 CLI 参数传给 preflight。",
+                {
+                    "manifest_present": False,
+                    "real_oss_upload": False,
+                    "cdn_origin_fetch": False,
+                },
+            )
+        )
+
     if _phone_safe_failure_ready():
         checks.append(
             _check(
@@ -489,19 +788,25 @@ def production_preflight_payload(env=None):
         check["name"] == "backup_restore_drill" and check["status"] == "pass"
         for check in checks
     )
+    local_manifest_ok = any(
+        check["name"] == "oss_cdn_manifest" and check["status"] == "pass"
+        for check in checks
+    )
     not_proven = [
+        "real_oss_upload",
+        "sts_issuance",
+        "cdn_origin_fetch",
+        "lifecycle_policy",
+        "production_account",
         "real_cloud",
-        "real_4g",
-        "external_tls",
-        "public_ingress",
-        "oss_upload",
-        "cdn_origin",
+        "real_4g_sim",
+        "https_tls_public_ingress",
         "production_db_or_queue",
         "multi_instance_consistency",
         "production_backup_policy",
         "real_disaster_recovery",
-        "nav2_or_fixed_route",
-        "wave_rover_hil",
+        "nav2_or_fixed_route_delivery",
+        "wave_rover_or_hil",
     ]
     if not local_backup_drill_ok:
         not_proven.insert(8, "backup_restore")
@@ -511,7 +816,9 @@ def production_preflight_payload(env=None):
         "service": "remote_cloud_relay",
         "protocol_version": PROTOCOL_VERSION,
         "evidence_boundary": (
-            BACKUP_RESTORE_EVIDENCE_BOUNDARY
+            OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY
+            if local_manifest_ok
+            else BACKUP_RESTORE_EVIDENCE_BOUNDARY
             if local_backup_drill_ok
             else SQLITE_EVIDENCE_BOUNDARY if state_backend_safe == "sqlite" else PREFLIGHT_EVIDENCE_BOUNDARY
         ),
@@ -1689,6 +1996,31 @@ def main(argv=None):
         help="run production preflight gate as machine-readable JSON and exit",
     )
     parser.add_argument(
+        "--oss-cdn-manifest-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT", ""),
+        help="phone-safe OSS/CDN manifest artifact consumed by preflight",
+    )
+    parser.add_argument(
+        "--write-oss-cdn-manifest",
+        default="",
+        help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
+    )
+    parser.add_argument(
+        "--manifest-robot-id",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_MANIFEST_ROBOT_ID", "robot-local-proof"),
+        help="robot id embedded in generated OSS/CDN manifest proof",
+    )
+    parser.add_argument(
+        "--manifest-task-id",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_MANIFEST_TASK_ID", "task-local-proof"),
+        help="task id embedded in generated OSS/CDN manifest proof",
+    )
+    parser.add_argument(
+        "--manifest-date",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_MANIFEST_DATE", ""),
+        help="YYYY-MM-DD date embedded in generated OSS/CDN manifest proof",
+    )
+    parser.add_argument(
         "--backup-state-to",
         default="",
         help="write a phone-safe SQLite backup artifact JSON and exit",
@@ -1721,9 +2053,24 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.preflight:
         # CLI gate 用当前进程 env 评估 Docker/local production readiness，不启动 HTTP server。
-        payload = production_preflight_payload()
+        preflight_env = dict(os.environ)
+        if args.oss_cdn_manifest_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT"] = args.oss_cdn_manifest_artifact
+        payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") else 2
+    if args.write_oss_cdn_manifest:
+        try:
+            payload = create_oss_cdn_manifest_artifact(
+                args.write_oss_cdn_manifest,
+                args.manifest_robot_id,
+                args.manifest_task_id,
+                date_text=args.manifest_date or None,
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error("oss_cdn_manifest_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     if args.backup_restore_drill:
         # Drill 是 Docker/local 软件证明；它不启动 HTTP server，也不触碰真实云资源。
         payload = backup_restore_drill_payload(

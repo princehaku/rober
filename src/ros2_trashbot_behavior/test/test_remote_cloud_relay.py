@@ -15,14 +15,22 @@ sys.path.insert(0, str(REPO_ROOT / "ros2_trashbot_behavior"))
 from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     BACKUP_RESTORE_EVIDENCE_BOUNDARY,
     FileBackedRelayStore,
+    OSS_CDN_BASE_URL,
+    OSS_CDN_BUCKET,
+    OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY,
+    OSS_CDN_MANIFEST_SCHEMA,
+    OSS_CDN_REGION,
     PREFLIGHT_EVIDENCE_BOUNDARY,
     PROTOCOL_VERSION,
     SQLITE_EVIDENCE_BOUNDARY,
     SQLiteRelayStore,
     backup_artifact_summary,
     backup_restore_drill_payload,
+    build_oss_cdn_manifest_payload,
     build_server,
+    create_oss_cdn_manifest_artifact,
     create_sqlite_backup_artifact,
+    oss_cdn_manifest_summary,
     production_preflight_payload,
     restore_sqlite_backup_artifact,
 )
@@ -794,6 +802,181 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
                 "baudrate",
             ):
                 self.assertNotIn(forbidden, encoded)
+
+    def test_oss_cdn_manifest_artifact_generation_and_validation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact_path = pathlib.Path(tmp) / "oss_cdn_manifest.json"
+
+            result = create_oss_cdn_manifest_artifact(
+                artifact_path,
+                "robot-local-proof",
+                "task-local-proof",
+                date_text="2026-05-12",
+            )
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            summary = oss_cdn_manifest_summary(artifact_path)
+            encoded = json.dumps(artifact, ensure_ascii=False)
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(summary["ok"])
+            self.assertEqual(artifact["schema"], OSS_CDN_MANIFEST_SCHEMA)
+            self.assertEqual(artifact["evidence_boundary"], OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY)
+            self.assertEqual(artifact["bucket"], OSS_CDN_BUCKET)
+            self.assertEqual(artifact["region"], OSS_CDN_REGION)
+            self.assertEqual(artifact["prefix"], "rober/robot-local-proof/2026-05-12/task-local-proof/")
+            self.assertEqual(artifact["cdn_base_url"], OSS_CDN_BASE_URL)
+            self.assertEqual(
+                artifact["objects"][0]["cdn_url"],
+                "https://cdn.bytegallop.com/rober/robot-local-proof/2026-05-12/task-local-proof/diagnostic_snapshot.json",
+            )
+            self.assertEqual(summary["object_count"], 1)
+            for required in (
+                "real_oss_upload",
+                "sts_issuance",
+                "cdn_origin_fetch",
+                "lifecycle_policy",
+                "production_account",
+                "real_cloud",
+                "real_4g_sim",
+                "https_tls_public_ingress",
+                "production_db_or_queue",
+                "nav2_or_fixed_route_delivery",
+                "wave_rover_or_hil",
+            ):
+                self.assertIn(required, artifact["not_proven"])
+            for forbidden in (
+                "Authorization",
+                "Bearer",
+                "/cmd_vel",
+                "ttyUSB",
+                "baudrate",
+                "WAVE ROVER",
+                "root password",
+                "OSS secret",
+                "/trashbot/",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_oss_cdn_manifest_validation_fails_closed_on_checksum_and_url_mismatch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            checksum_path = pathlib.Path(tmp) / "manifest_checksum.json"
+            url_path = pathlib.Path(tmp) / "manifest_url.json"
+            create_oss_cdn_manifest_artifact(
+                checksum_path,
+                "robot-local-proof",
+                "task-local-proof",
+                date_text="2026-05-12",
+            )
+
+            checksum_artifact = json.loads(checksum_path.read_text(encoding="utf-8"))
+            checksum_artifact["bucket"] = "other-bucket"
+            checksum_path.write_text(json.dumps(checksum_artifact, ensure_ascii=False), encoding="utf-8")
+            checksum_summary = oss_cdn_manifest_summary(checksum_path)
+            self.assertFalse(checksum_summary["ok"])
+            self.assertEqual(checksum_summary["reason_code"], "manifest_invalid")
+
+            url_artifact = build_oss_cdn_manifest_payload(
+                "robot-local-proof",
+                "task-local-proof",
+                date_text="2026-05-12",
+            )
+            url_artifact["objects"][0]["cdn_url"] = "https://cdn.bytegallop.com/rober/wrong.json"
+            body = {key: value for key, value in url_artifact.items() if key != "checksum"}
+            # 用原 checksum 保持篡改状态，校验必须失败，不能只看 schema happy path。
+            url_path.write_text(json.dumps(url_artifact, ensure_ascii=False), encoding="utf-8")
+            self.assertNotEqual(url_artifact["checksum"], json.dumps(body, ensure_ascii=False))
+            url_summary = oss_cdn_manifest_summary(url_path)
+            self.assertFalse(url_summary["ok"])
+            self.assertEqual(url_summary["reason_code"], "manifest_invalid")
+
+    def test_preflight_consumes_valid_oss_cdn_manifest_without_production_claims(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact_path = pathlib.Path(tmp) / "oss_cdn_manifest.json"
+            create_oss_cdn_manifest_artifact(
+                artifact_path,
+                "robot-local-proof",
+                "task-local-proof",
+                date_text="2026-05-12",
+            )
+            env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "production-token-value",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "terminated",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https",
+                "TRASHBOT_REMOTE_CLOUD_OSS_BUCKET": "bytegallop",
+                "TRASHBOT_REMOTE_CLOUD_OSS_REGION": "oss-cn-hangzhou",
+                "TRASHBOT_REMOTE_CLOUD_OSS_PREFIX": "rober/robot-local-proof/2026-05-12/task-local-proof/",
+                "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL": "https://cdn.bytegallop.com/rober/",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE": "sts",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(pathlib.Path(tmp) / "relay_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT": str(artifact_path),
+            }
+
+            payload = production_preflight_payload(env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps(payload, ensure_ascii=False)
+
+            self.assertFalse(payload["production_ready"])
+            self.assertEqual(payload["evidence_boundary"], OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY)
+            self.assertEqual(checks["oss_cdn_manifest"]["status"], "pass")
+            self.assertEqual(checks["oss_cdn_manifest"]["details"]["object_count"], 1)
+            self.assertIn("real_oss_upload", payload["not_proven"])
+            self.assertIn("sts_issuance", payload["not_proven"])
+            self.assertIn("cdn_origin_fetch", payload["not_proven"])
+            self.assertIn("lifecycle_policy", payload["not_proven"])
+            self.assertIn("production_account", payload["not_proven"])
+            self.assertIn("real_cloud", payload["not_proven"])
+            self.assertIn("real_4g_sim", payload["not_proven"])
+            self.assertIn("https_tls_public_ingress", payload["not_proven"])
+            self.assertIn("production_db_or_queue", payload["not_proven"])
+            self.assertIn("nav2_or_fixed_route_delivery", payload["not_proven"])
+            self.assertIn("wave_rover_or_hil", payload["not_proven"])
+            for forbidden in (
+                str(artifact_path),
+                "production-token-value",
+                "Authorization",
+                "Bearer",
+                "/cmd_vel",
+                "ttyUSB",
+                "baudrate",
+                "WAVE ROVER",
+                "/trashbot/",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_preflight_warns_when_oss_cdn_manifest_missing_and_blocks_invalid_artifact(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base_env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "production-token-value",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "terminated",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https",
+                "TRASHBOT_REMOTE_CLOUD_OSS_BUCKET": "bytegallop",
+                "TRASHBOT_REMOTE_CLOUD_OSS_REGION": "oss-cn-hangzhou",
+                "TRASHBOT_REMOTE_CLOUD_OSS_PREFIX": "rober/robot-local-proof/2026-05-12/task-local-proof/",
+                "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL": "https://cdn.bytegallop.com/rober/",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE": "sts",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(pathlib.Path(tmp) / "relay_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+
+            missing_payload = production_preflight_payload(base_env)
+            missing_checks = {check["name"]: check for check in missing_payload["checks"]}
+            self.assertEqual(missing_checks["oss_cdn_manifest"]["status"], "warning")
+            self.assertEqual(missing_checks["oss_cdn_manifest"]["code"], "oss_cdn_manifest_artifact_missing")
+
+            invalid_path = pathlib.Path(tmp) / "invalid_manifest.json"
+            invalid_path.write_text(json.dumps({"schema": "wrong"}, ensure_ascii=False), encoding="utf-8")
+            invalid_env = dict(base_env)
+            invalid_env["TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT"] = str(invalid_path)
+            invalid_payload = production_preflight_payload(invalid_env)
+            invalid_checks = {check["name"]: check for check in invalid_payload["checks"]}
+            encoded = json.dumps(invalid_payload, ensure_ascii=False)
+
+            self.assertEqual(invalid_checks["oss_cdn_manifest"]["status"], "blocked")
+            self.assertEqual(invalid_checks["oss_cdn_manifest"]["code"], "oss_cdn_manifest_artifact_invalid")
+            self.assertNotIn(str(invalid_path), encoded)
 
 
 if __name__ == "__main__":

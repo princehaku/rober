@@ -75,6 +75,17 @@ multi-instance consistency, real disaster recovery, real cloud, real 4G/SIM,
 OSS/CDN traffic, formal phone UI, Nav2/fixed-route delivery, WAVE ROVER, and
 HIL remain unproven.
 
+The relay now also supports an OSS/CDN object reference manifest proof with
+`evidence_boundary=software_proof_docker_oss_cdn_manifest`. The manifest is a
+phone-safe JSON artifact for future diagnostic snapshots, logs, or task records:
+it fixes the bucket `bytegallop`, region `oss-cn-hangzhou`, object prefix
+`rober/<robot_id>/<date>/<task_id>/`, CDN base URL
+`https://cdn.bytegallop.com/rober/`, object refs, `not_proven`, and checksum.
+It proves only local schema/prefix/CDN URL/checksum shape. It does not prove
+real OSS upload, STS issuance, CDN origin fetch, lifecycle policy, production
+account, real cloud, real 4G/SIM, HTTPS/TLS public ingress, production DB/queue,
+Nav2/fixed-route delivery, WAVE ROVER, or HIL.
+
 Example local proof launch:
 
 ```bash
@@ -118,6 +129,41 @@ The drill output is intended for future phone/operator diagnostics. It reports
 tokens, Authorization headers, OSS secrets, root passwords, raw state paths,
 ROS topic names, serial ports, baudrate, WAVE ROVER parameters, `/cmd_vel`, or
 tracebacks.
+
+Example OSS/CDN manifest proof:
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --write-oss-cdn-manifest /tmp/trashbot_oss_cdn_manifest.json \
+  --manifest-robot-id robot-local-proof \
+  --manifest-task-id task-local-proof \
+  --manifest-date 2026-05-12
+```
+
+Preflight can consume the artifact by environment variable or CLI parameter:
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT=/tmp/trashbot_oss_cdn_manifest.json \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay --preflight
+```
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --preflight \
+  --oss-cdn-manifest-artifact /tmp/trashbot_oss_cdn_manifest.json
+```
+
+A valid manifest adds a passed `oss_cdn_manifest` preflight check and raises the
+local evidence boundary to `software_proof_docker_oss_cdn_manifest`, while
+keeping `production_ready=false` until the real production checks are proven.
+Missing manifest is a warning; invalid schema/version/prefix/CDN URL/checksum or
+phone-safe failure is blocked. The artifact and preflight output must not expose
+bearer tokens, Authorization headers, OSS secrets, AK/SK, root passwords, raw
+state paths, serial ports, baudrate, WAVE ROVER parameters, ROS topic names,
+`/cmd_vel`, or tracebacks.
 
 Example Docker deploy proof:
 
