@@ -62,3 +62,49 @@ exit 0
 - 本轮没有真实 iPhone/Android 设备、Safari/Chrome install prompt 或 home-screen 安装验证。
 - 本轮没有真实云、真实 4G/SIM、HTTPS/TLS 公网入口、生产账号、真实 OSS/CDN、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 - Service worker 策略已用 HTTP/static tests 围住，但仍需后续真实手机浏览器验收确认平台差异。
+
+## Task B Robot Compatibility Fence
+
+- 完成时间：2026-05-12 16:28 Asia/Shanghai
+- Owner：`robot-software-engineer`
+- Evidence boundary：`software_proof_docker_phone_pwa_installability_gate`
+
+### 兼容性结论
+
+- 未修改产品代码或 robot bridge 代码。
+- 未补充测试代码；现有 `test_remote_bridge.py` 已覆盖 command/status/ack envelope、ACK 失败不持久化 cursor、云端/鉴权/畸形响应不触发本地 action 且不推进 `last_ack_id`。
+- `test_operator_gateway_http.py` 已覆盖 PWA 静态路由不回归 `/api/status` 与 command contract，service worker 对 `/api/*`、`/robots/*`、command 与 ACK route 走 `no-store` bypass。
+- Task A 的 PWA shell 未改变 command/status/ack envelope，未缓存 ACK/status，未触发额外 local action，未推进 cursor。
+
+### Task B 验证结果
+
+```text
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest src/ros2_trashbot_behavior/test/test_remote_bridge.py
+.............................
+----------------------------------------------------------------------
+Ran 29 tests in 14.214s
+
+OK
+```
+
+```text
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest src/ros2_trashbot_behavior/test/test_operator_gateway_http.py
+.....................................
+----------------------------------------------------------------------
+Ran 37 tests in 20.025s
+
+OK
+```
+
+```text
+PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_bridge.py src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_http.py
+exit 0
+```
+
+### Task B 失败定位
+
+- 未出现失败。
+
+### Task B 剩余风险
+
+- 本围栏只证明本地 Python HTTP/bridge contract 与 service worker source policy，没有证明真实手机浏览器、真实 service worker runtime、真实云、真实 4G/SIM、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
