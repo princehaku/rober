@@ -38,6 +38,7 @@ TRANSACTION_ISOLATION_EVIDENCE_BOUNDARY = "software_proof_docker_transaction_iso
 TRANSACTION_ISOLATION_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_transaction_isolation_phone_consumption"
 PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY = "software_proof_docker_production_recovery_gate"
 PRODUCTION_RECOVERY_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_production_recovery_phone_consumption"
+CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_deployment_readiness_gate"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -65,6 +66,8 @@ TRANSACTION_ISOLATION_SCHEMA = "trashbot.transaction_isolation_drill"
 TRANSACTION_ISOLATION_SCHEMA_VERSION = 1
 PRODUCTION_RECOVERY_SCHEMA = "trashbot.production_recovery_gate"
 PRODUCTION_RECOVERY_SCHEMA_VERSION = 1
+CLOUD_DEPLOYMENT_READINESS_SCHEMA = "trashbot.cloud_deployment_readiness"
+CLOUD_DEPLOYMENT_READINESS_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -173,6 +176,23 @@ PRODUCTION_RECOVERY_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+CLOUD_DEPLOYMENT_READINESS_NOT_PROVEN = [
+    "real_cloud",
+    "real_https_tls",
+    "public_ingress_external_probe",
+    "real_4g_sim",
+    "real_oss_upload",
+    "cdn_origin_fetch",
+    "sts_issuance",
+    "production_db_or_queue",
+    "multi_instance_consistency",
+    "production_queue_ordering",
+    "production_backup_policy",
+    "real_disaster_recovery",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -193,6 +213,7 @@ PHONE_COPY = {
     "queue_ordering_drill_blocked": "队列顺序演练软件证明未通过校验，请重新生成后再试。",
     "transaction_isolation_blocked": "事务隔离演练软件证明未通过校验，请重新生成后再试。",
     "production_recovery_blocked": "生产备份/灾备恢复 gate 未通过校验，请重新生成后再试。",
+    "cloud_deployment_readiness_blocked": "云部署就绪检查仍未通过，请补齐公网、TLS、4G 和生产存储证据。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -489,6 +510,7 @@ def _network_recovery_not_proven():
     # artifact 每次都列出未证明项，避免把 Docker/local drill 扩大解释成真实 4G/云恢复。
     return [
         "real_cloud",
+        "real_https_tls",
         "real_4g_sim",
         "https_tls_public_ingress",
         "production_db_or_queue",
@@ -1403,6 +1425,254 @@ def build_phone_provisioning_audit_summary(artifact_path, *, now=None, stale_aft
         }
     )
     return phone_summary
+
+
+def _deployment_readiness_forbidden_markers(payload):
+    # 部署 readiness 会进入 preflight 和 Docker smoke，必须比 runbook 文案更严格地拒绝凭证和底层机器人细节。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "secret",
+        "password",
+        "postgres://",
+        "mysql://",
+        "redis://",
+        "amqp://",
+        "queue url",
+        "queue_url",
+        "database url",
+        "database_url",
+        "://",
+        "raw state path",
+        "state path",
+        "/tmp/",
+        "/dev/",
+        "serial",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+        "traceback",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def _deployment_readiness_checks(env):
+    # 只从 env 推导枚举化状态，不回显 URL、token、DB/queue 连接串或本机路径。
+    token = _env_value(env, "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN")
+    public_scheme = _safe_scheme(_env_value(env, "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL"))
+    tls_mode = _safe_enum(
+        _env_value(env, "TRASHBOT_REMOTE_CLOUD_TLS_MODE", "future_reverse_proxy"),
+        {"future_reverse_proxy", "terminated", "managed", "reverse_proxy"},
+    )
+    ingress = _safe_enum(
+        _env_value(env, "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS", "missing"),
+        {"missing", "private_only", "public_https"},
+    )
+    state_backend = _state_backend_from_env(env)
+    oss_credential_mode = _safe_enum(
+        _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE", "placeholder"),
+        {"placeholder", "sts", "restricted_ak", "managed_identity"},
+    )
+    deployment_runbook = _safe_enum(
+        _env_value(env, "TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_RUNBOOK", "local_docker_smoke"),
+        {"local_docker_smoke", "external_runbook_reviewed"},
+        "local_docker_smoke",
+    )
+    return [
+        {
+            "name": "public_base_url_tls_ingress",
+            "status": "blocked" if public_scheme != "https" or ingress != "public_https" else "warning",
+            "code": "https_public_ingress_not_proven",
+            "safe_summary": "公网 HTTPS 入口尚未用外网探测证明。",
+            "retry_hint": "configure_public_https_ingress_and_attach_external_probe",
+            "details": {
+                "scheme": public_scheme,
+                "tls_mode": tls_mode,
+                "public_ingress": ingress,
+                "external_probe_performed": False,
+            },
+        },
+        {
+            "name": "healthcheck_endpoint",
+            "status": "warning",
+            "code": "local_healthcheck_only",
+            "safe_summary": "仅证明 relay 提供本地 /healthz 与 /readyz；未证明公网探针。",
+            "retry_hint": "run_cloud_healthcheck_from_external_network_after_deploy",
+            "details": {"local_healthz_documented": True, "public_health_probe_performed": False},
+        },
+        {
+            "name": "bearer_credential_placeholder",
+            "status": "blocked" if _is_placeholder(token) else "warning",
+            "code": "bearer_credential_not_production_verified",
+            "safe_summary": "访问凭证仍未完成生产托管、轮换和外部验证。",
+            "retry_hint": "inject_production_credential_from_secret_manager_and_verify_rotation",
+            "details": {"credential_present": bool(token), "credential_placeholder": _is_placeholder(token)},
+        },
+        {
+            "name": "state_backend",
+            "status": "warning",
+            "code": "state_backend_not_production_db_queue",
+            "safe_summary": "当前 state backend 仍是本地软件证明，不是生产 DB/queue。",
+            "retry_hint": "attach_production_db_queue_migration_backup_and_consistency_evidence",
+            "details": {"backend": state_backend, "production_db_queue_probe_performed": False},
+        },
+        {
+            "name": "production_db_queue_gap",
+            "status": "blocked",
+            "code": "production_db_queue_not_proven",
+            "safe_summary": "生产 DB/queue、多实例一致性和队列顺序仍未证明。",
+            "retry_hint": "run_production_store_queue_gate_against_real_services",
+            "details": {"production_ready": False, "software_proof_only": True},
+        },
+        {
+            "name": "oss_cdn_gap",
+            "status": "blocked" if oss_credential_mode == "placeholder" else "warning",
+            "code": "oss_cdn_real_traffic_not_proven",
+            "safe_summary": "OSS/CDN 仍缺真实上传、回源、生命周期和凭证边界证据。",
+            "retry_hint": "run_sts_upload_cdn_origin_fetch_and_lifecycle_probe",
+            "details": {"credential_mode": oss_credential_mode, "real_object_probe_performed": False},
+        },
+        {
+            "name": "cellular_4g_sim_gap",
+            "status": "blocked",
+            "code": "real_4g_sim_not_proven",
+            "safe_summary": "当前主机没有真实 4G/SIM 或公网链路证据。",
+            "retry_hint": "rerun_after_robot_4g_sim_and_cloud_account_are_available",
+            "details": {"real_4g_sim_probe_performed": False},
+        },
+        {
+            "name": "deployment_runbook_or_smoke",
+            "status": "pass",
+            "code": "local_docker_smoke_documented",
+            "safe_summary": "本地 Docker smoke/runbook 入口已作为软件证明围栏。",
+            "retry_hint": "keep_local_smoke_then_add_external_cloud_smoke_command",
+            "details": {"runbook": deployment_runbook, "local_smoke_present": True},
+        },
+    ]
+
+
+def build_cloud_deployment_readiness_artifact_payload(env=None, *, generated_at=None):
+    """生成云部署 readiness gate artifact；它是上线前缺口清单，不是生产部署证明。"""
+    env = os.environ if env is None else env
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    checks = _deployment_readiness_checks(env)
+    body = {
+        "schema": CLOUD_DEPLOYMENT_READINESS_SCHEMA,
+        "schema_version": CLOUD_DEPLOYMENT_READINESS_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY,
+        "generated_at": generated_value,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "checks": safe_value(checks),
+        "not_proven": list(CLOUD_DEPLOYMENT_READINESS_NOT_PROVEN),
+        "safe_summary": "Cloud deployment readiness gate 已生成 Docker/local software proof；生产云和 4G 仍未证明。",
+        "retry_hint": "pass_cloud_deployment_readiness_artifact_to_preflight_and_collect_real_cloud_evidence",
+    }
+    forbidden = _deployment_readiness_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("cloud deployment readiness artifact contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_cloud_deployment_readiness_artifact_payload(artifact):
+    # 校验只返回小摘要；完整 checks、checksum 和任何环境来源字段不进入手机状态。
+    if not isinstance(artifact, dict):
+        raise ValueError("cloud deployment readiness artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != CLOUD_DEPLOYMENT_READINESS_SCHEMA:
+        raise ValueError("cloud deployment readiness schema mismatch")
+    if artifact.get("schema_version") != CLOUD_DEPLOYMENT_READINESS_SCHEMA_VERSION:
+        raise ValueError("cloud deployment readiness schema version mismatch")
+    if artifact.get("evidence_boundary") != CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY:
+        raise ValueError("cloud deployment readiness evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("cloud deployment readiness checksum mismatch")
+    if artifact.get("production_ready") is not False or artifact.get("overall_status") != "blocked":
+        raise ValueError("cloud deployment readiness must stay production blocked")
+    checks = artifact.get("checks")
+    if not isinstance(checks, list):
+        raise ValueError("cloud deployment readiness checks must be a list")
+    check_names = {str(check.get("name") or "") for check in checks if isinstance(check, dict)}
+    required_checks = {
+        "public_base_url_tls_ingress",
+        "healthcheck_endpoint",
+        "bearer_credential_placeholder",
+        "state_backend",
+        "production_db_queue_gap",
+        "oss_cdn_gap",
+        "cellular_4g_sim_gap",
+        "deployment_runbook_or_smoke",
+    }
+    if required_checks - check_names:
+        raise ValueError("cloud deployment readiness required checks missing")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in CLOUD_DEPLOYMENT_READINESS_NOT_PROVEN if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("cloud deployment readiness not_proven list is incomplete")
+    safe_summary = str(artifact.get("safe_summary") or "")
+    retry_hint = str(artifact.get("retry_hint") or "")
+    if not safe_summary or not retry_hint:
+        raise ValueError("cloud deployment readiness phone copy missing")
+    forbidden = _deployment_readiness_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("cloud deployment readiness artifact contains forbidden phone-unsafe markers")
+    return {
+        "ok": True,
+        "schema": CLOUD_DEPLOYMENT_READINESS_SCHEMA,
+        "schema_version": CLOUD_DEPLOYMENT_READINESS_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "check_count": len(checks),
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "generated_at": str(artifact.get("generated_at") or ""),
+        "not_proven": list(CLOUD_DEPLOYMENT_READINESS_NOT_PROVEN),
+    }
+
+
+def create_cloud_deployment_readiness_artifact(artifact_path, env=None):
+    # CLI、Docker smoke 和 preflight 共用同一 artifact，避免“本地可跑”和“生产就绪”口径分叉。
+    artifact = build_cloud_deployment_readiness_artifact_payload(env)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_cloud_deployment_readiness_artifact_payload(artifact)
+    return {
+        "ok": True,
+        "cloud_deployment_readiness_status": "blocked",
+        "evidence_boundary": CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(CLOUD_DEPLOYMENT_READINESS_NOT_PROVEN),
+    }
+
+
+def cloud_deployment_readiness_artifact_summary(artifact_path):
+    # preflight 只消费摘要和 checksum 校验结果；artifact 路径和完整 checks 不回显。
+    try:
+        artifact = _load_json_file(artifact_path, "cloud deployment readiness artifact")
+        return validate_cloud_deployment_readiness_artifact_payload(artifact)
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "cloud_deployment_readiness_invalid",
+            "safe_summary": _safe_error_reason(exc),
+            "retry_hint": "重新生成 cloud deployment readiness artifact 后重跑 preflight。",
+            "not_proven": list(CLOUD_DEPLOYMENT_READINESS_NOT_PROVEN),
+        }
 
 
 def _production_store_queue_forbidden_markers(payload):
@@ -2836,9 +3106,69 @@ def production_preflight_payload(env=None):
     queue_ordering_drill_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_ARTIFACT")
     transaction_isolation_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT")
     production_recovery_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT")
+    cloud_deployment_readiness_artifact_path = _env_value(
+        env,
+        "TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT",
+    )
     tls_mode_safe = _safe_enum(tls_mode, {"future_reverse_proxy", "terminated", "managed", "reverse_proxy"})
     ingress_mode_safe = _safe_enum(ingress_mode, {"missing", "private_only", "public_https"})
     oss_credential_mode_safe = _safe_enum(oss_credential_mode, {"placeholder", "sts", "restricted_ak", "managed_identity"})
+
+    if cloud_deployment_readiness_artifact_path:
+        # deployment readiness artifact 是上线前缺口摘要；即使 artifact 有效，也必须保持 production_ready=false。
+        deployment_summary = cloud_deployment_readiness_artifact_summary(cloud_deployment_readiness_artifact_path)
+        if deployment_summary.get("ok"):
+            checks.append(
+                _check(
+                    "cloud_deployment_readiness",
+                    "pass",
+                    "local_cloud_deployment_readiness_artifact_valid",
+                    "已找到通过 schema、checksum 和 phone-safe 校验的云部署 readiness artifact。",
+                    "继续补真实云、HTTPS/TLS、公网入口、4G/SIM、OSS/CDN 和生产 DB/queue 证据。",
+                    {
+                        "artifact_schema": CLOUD_DEPLOYMENT_READINESS_SCHEMA,
+                        "schema_version": CLOUD_DEPLOYMENT_READINESS_SCHEMA_VERSION,
+                        "evidence_boundary": CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY,
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "check_count": deployment_summary.get("check_count"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "cloud_deployment_readiness",
+                    "blocked",
+                    "cloud_deployment_readiness_artifact_invalid",
+                    str(deployment_summary.get("safe_summary") or "云部署 readiness artifact 不可用。"),
+                    str(deployment_summary.get("retry_hint") or "重新生成 cloud deployment readiness artifact 后重跑 preflight。"),
+                    {"artifact_present": True, "software_proof_only": True},
+                )
+            )
+    else:
+        inline_deployment_summary = validate_cloud_deployment_readiness_artifact_payload(
+            build_cloud_deployment_readiness_artifact_payload(env)
+        )
+        checks.append(
+            _check(
+                "cloud_deployment_readiness",
+                "pass",
+                "local_cloud_deployment_readiness_inline_gate",
+                "已生成本地云部署 readiness gate 摘要；它只记录上线前缺口。",
+                "需要持久化 artifact 时设置 TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT 后重跑。",
+                {
+                    "artifact_schema": CLOUD_DEPLOYMENT_READINESS_SCHEMA,
+                    "schema_version": CLOUD_DEPLOYMENT_READINESS_SCHEMA_VERSION,
+                    "evidence_boundary": CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY,
+                    "production_ready": False,
+                    "overall_status": "blocked",
+                    "check_count": inline_deployment_summary.get("check_count"),
+                    "software_proof_only": True,
+                },
+            )
+        )
 
     if _is_placeholder(token):
         checks.append(
@@ -3568,6 +3898,7 @@ def production_preflight_payload(env=None):
         "lifecycle_policy",
         "production_account",
         "real_cloud",
+        "real_https_tls",
         "real_4g_sim",
         "https_tls_public_ingress",
         "production_db_or_queue",
@@ -3629,7 +3960,7 @@ def production_preflight_payload(env=None):
             if local_network_recovery_ok
             else BACKUP_RESTORE_EVIDENCE_BOUNDARY
             if local_backup_drill_ok
-            else SQLITE_EVIDENCE_BOUNDARY if state_backend_safe == "sqlite" else PREFLIGHT_EVIDENCE_BOUNDARY
+            else CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY
         ),
         "overall_status": overall,
         "safe_summary": safe_summary,
@@ -4845,6 +5176,11 @@ def main(argv=None):
         help="phone-safe production recovery gate artifact consumed by preflight",
     )
     parser.add_argument(
+        "--cloud-deployment-readiness-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT", ""),
+        help="phone-safe cloud deployment readiness artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
@@ -4878,6 +5214,11 @@ def main(argv=None):
         "--write-production-recovery-artifact",
         default="",
         help="write a phone-safe production recovery gate artifact JSON and exit",
+    )
+    parser.add_argument(
+        "--write-cloud-deployment-readiness-artifact",
+        default="",
+        help="write a phone-safe cloud deployment readiness artifact JSON and exit",
     )
     parser.add_argument(
         "--credential-rotation-robot-id",
@@ -5010,9 +5351,23 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT"] = (
                 args.production_recovery_artifact
             )
+        if args.cloud_deployment_readiness_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT"] = (
+                args.cloud_deployment_readiness_artifact
+            )
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
+    if args.write_cloud_deployment_readiness_artifact:
+        try:
+            payload = create_cloud_deployment_readiness_artifact(
+                args.write_cloud_deployment_readiness_artifact,
+                dict(os.environ),
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error("cloud_deployment_readiness_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     if args.write_production_recovery_artifact:
         try:
             payload = create_production_recovery_artifact(

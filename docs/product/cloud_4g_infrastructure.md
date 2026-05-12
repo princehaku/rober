@@ -28,6 +28,8 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 
 本轮 `2026.05.12_25-26_remote-production-recovery-gate` 在同一 relay/preflight/phone-safe 摘要体系上新增 production recovery artifact gate，证据边界是 `software_proof_docker_production_recovery_gate`。Artifact 覆盖 Docker/local backup/restore 输入、schema/checksum/invariant 校验、生产备份策略、灾备恢复、DB/queue、多实例、保留周期和 RPO/RTO 的上线前缺口；preflight 可通过 `TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT` 或 `--production-recovery-artifact` 消费，`/api/status.phone_readiness.production_recovery` 和 `/api/diagnostics.production_recovery` 只输出 phone-safe summary。它必须保持 `production_ready=false` 和 `overall_status=blocked`，不得声明真实生产 DB/queue、真实生产备份/灾备、多实例一致性、真实云、真实 4G/SIM、OSS/CDN 实流量、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 
+本轮 `2026.05.13_04-05_cloud-deployment-readiness-gate` 新增 cloud deployment readiness gate，证据边界是 `software_proof_docker_cloud_deployment_readiness_gate`。Artifact schema 为 `trashbot.cloud_deployment_readiness`、`schema_version=1`，检查公网 base URL/TLS/public ingress、healthcheck endpoint、bearer credential 占位、state backend、production DB/queue gap、OSS/CDN gap、4G/SIM gap、deployment runbook 或 Docker smoke 入口。该 gate 是 blocked-by-design：`production_ready=false`、`overall_status=blocked`、`not_proven`、`safe_summary` 和 `retry_hint` 必须保留；它不得声明真实云、真实 HTTPS/TLS、公网入口、真实 4G/SIM、OSS/CDN 实流量、生产 DB/queue、HIL 或真实送达。
+
 ## 云端基线规格
 
 目标服务端基线：
@@ -157,6 +159,8 @@ Operator/API 消费 manifest artifact 时输出的是更小的 phone-safe summar
 - `TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_DRILL_ARTIFACT`：可选的本地 queue ordering drill artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为真实生产 queue ordering、transaction isolation、生产 DB/queue、多实例一致性或真实云证据。
 - `TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT`：可选的本地 transaction isolation drill artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为真实生产 transaction isolation、生产 DB/queue、多实例一致性、真实云或真实 4G 证据。
 - `TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT`：可选的本地 production recovery artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为真实生产 DB/queue、真实生产备份策略、真实灾备恢复、多实例一致性、真实云或真实 4G 证据。
+- `TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_RUNBOOK`：可选的部署 readiness runbook 标识，当前 `.env.example` 只允许 `local_docker_smoke` 这类占位，不得写入真实凭证或 credential-bearing URL。
+- `TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT`：可选的本地 cloud deployment readiness artifact 路径，只供 preflight 消费脱敏摘要；不得作为真实云、真实 HTTPS/TLS、公网入口、真实 4G/SIM、OSS/CDN 实流量或生产 DB/queue 证据。
 - `.env` 不入仓库；`.env.example` 只能放占位符。
 - 错误响应和 state file 不得包含 bearer token、Authorization header、credential-bearing URL、串口设备、baudrate、WAVE ROVER 参数、底层速度控制入口或 raw ROS topic 名。
 - token rotate、账号分级、机器人 provisioning 和审计日志是后续真实云 sprint 的范围。
@@ -191,7 +195,7 @@ health/readiness：
 
 - `GET /healthz`：只证明进程存活、service 名称、protocol version 和 `software_proof_docker_deploy` evidence boundary。
 - `GET /readyz`：覆盖 protocol/version、credential gate 是否配置、state store 是否可写、phone-safe failure 脱敏自检。未配置 bearer token 或 state store 不可写时返回 503 和 `not_ready`，不回显 token、state path、credential URL、串口、baudrate、WAVE ROVER 参数、ROS topic、`/cmd_vel` 或 traceback。
-- `GET /preflightz`：返回 production preflight gate 的 machine-readable JSON。file backend 的 evidence boundary 为 `software_proof_docker_preflight_gate`；SQLite backend 的 evidence boundary 为 `software_proof_docker_sqlite_state_store`。本地 HTTP、占位 token、缺 TLS/公网入口、OSS/CDN 占位、file/SQLite proof store、生产 DB/queue 缺失或 state path 不可写会返回 blocked/warning，并用 phone-safe `safe_summary` / `retry_hint` 指导下一步。
+- `GET /preflightz`：返回 production preflight gate 的 machine-readable JSON。当前 Docker-only deployment readiness gate 的默认 evidence boundary 为 `software_proof_docker_cloud_deployment_readiness_gate`；更窄的 SQLite、backup/restore、OSS/CDN、queue 等 proof 只作为检查项或后续 artifact 证据出现。本地 HTTP、占位 token、缺 TLS/公网入口、OSS/CDN 占位、file/SQLite proof store、生产 DB/queue 缺失或 state path 不可写会返回 blocked/warning，并用 phone-safe `safe_summary` / `retry_hint` 指导下一步。
 
 CLI gate：
 
@@ -203,7 +207,7 @@ TRASHBOT_REMOTE_CLOUD_STATE=/tmp/trashbot_remote_cloud_relay.json \
 python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 ```
 
-本地占位配置预期返回非 0，并输出 `production_ready=false`、`overall_status=blocked` 和 `evidence_boundary=software_proof_docker_preflight_gate`。这正是上线前 gate 的目标：真实生产入口、TLS、公网、防火墙、OSS/CDN 和生产 state store 未补齐前，不能把 Docker/local proof 包装成生产完成。
+本地占位配置预期返回非 0，并输出 `production_ready=false`、`overall_status=blocked` 和 `evidence_boundary=software_proof_docker_cloud_deployment_readiness_gate`。这正是上线前 gate 的目标：真实生产入口、TLS、公网、防火墙、OSS/CDN、4G/SIM 和生产 state store 未补齐前，不能把 Docker/local proof 包装成生产完成。
 
 SQLite state proof 示例：
 
@@ -317,6 +321,29 @@ TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite \
 TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT=/tmp/trashbot_remote_cloud_relay_backup.json \
 python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 ```
+
+## Cloud Deployment Readiness Gate
+
+Cloud deployment readiness gate 是上线前总门禁，只把本地 Docker 能证明的内容变成可复核 artifact。它不会探测真实公网、不会申请 TLS、不会连接真实 4G/SIM、不会上传 OSS/CDN、不会连接生产 DB/queue，也不会证明 WAVE ROVER、Nav2/fixed-route、HIL 或真实送达。
+
+生成 artifact：
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-smoke-token \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --write-cloud-deployment-readiness-artifact /tmp/trashbot_cloud_deployment_readiness.json
+```
+
+传给 preflight：
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT=/tmp/trashbot_cloud_deployment_readiness.json \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
+```
+
+有效 artifact 只表示本地 schema、checksum、检查项覆盖和脱敏边界通过。Preflight 和 artifact 都必须保持 `evidence_boundary=software_proof_docker_cloud_deployment_readiness_gate`、`production_ready=false`、`overall_status=blocked`，并继续输出真实云、真实 HTTPS/TLS、公网入口、4G/SIM、OSS/CDN 实流量、生产 DB/queue、多实例、生产备份/灾备、Nav2/fixed-route、WAVE ROVER/HIL 和真实送达的 `not_proven`。输出不得包含 bearer token、Authorization header、OSS secret、AK/SK、root password、DB URL、queue URL、credential-bearing URL、raw state path、串口、baudrate、WAVE ROVER 参数、ROS topic、`/cmd_vel` 或 traceback。
 
 如果 artifact schema、version 或 checksum 不匹配，preflight 必须返回 phone-safe blocked reason；如果 artifact 有效，preflight 只允许声明本地 backup/restore drill artifact 通过，不能声明生产 backup policy、真实 DR 或生产 DB/queue ready。
 

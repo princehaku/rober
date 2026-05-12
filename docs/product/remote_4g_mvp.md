@@ -50,7 +50,7 @@ python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 ```
 
 The preflight output is machine-readable JSON with
-`evidence_boundary=software_proof_docker_preflight_gate`, `production_ready`,
+`evidence_boundary=software_proof_docker_cloud_deployment_readiness_gate` for the current Docker-only deployment gate, `production_ready`,
 `overall_status`, `safe_summary`, `retry_hint`, and per-check status records.
 It checks secret provisioning, HTTPS/public ingress, OSS/CDN configuration,
 state store writability, and phone-safe redaction. Docker/local HTTP, missing
@@ -58,6 +58,41 @@ or placeholder secrets, missing TLS/public ingress, OSS/CDN placeholders,
 file-backed store, missing production DB/queue, and unwritable state paths must
 remain blocked or warning states. A blocked preflight is not a robot delivery
 failure; it is an上线前配置 gate telling the phone/cloud team what to fix next.
+
+The current deployment-readiness gate extends that preflight with
+`schema=trashbot.cloud_deployment_readiness`, `schema_version=1`, and
+`evidence_boundary=software_proof_docker_cloud_deployment_readiness_gate`. It
+checks public base URL/TLS/public ingress, local healthcheck endpoints, bearer
+credential placeholders, state backend type, production DB/queue gap, OSS/CDN
+gap, 4G/SIM gap, and whether a deployment runbook or Docker smoke entry exists.
+It is blocked-by-design on the Docker-only host: `production_ready=false`,
+`overall_status=blocked`, `not_proven`, `safe_summary`, and `retry_hint` must
+remain visible to the phone/cloud operator.
+
+Generate the artifact locally:
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-smoke-token \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --write-cloud-deployment-readiness-artifact /tmp/trashbot_cloud_deployment_readiness.json
+```
+
+Consume it in preflight:
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT=/tmp/trashbot_cloud_deployment_readiness.json \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
+```
+
+This proof does not establish real cloud hosting, real HTTPS/TLS, public
+ingress, 4G/SIM connectivity, OSS/CDN traffic, production DB/queue,
+Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or delivery success. The
+artifact, preflight output, and phone-safe summaries must not expose bearer
+tokens, Authorization headers, OSS secrets, AK/SK, root passwords, DB URLs,
+queue URLs, credential-bearing URLs, raw state paths, serial ports, baudrate,
+WAVE ROVER parameters, ROS topic names, `/cmd_vel`, or tracebacks.
 
 When `TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite`, the same preflight uses
 `evidence_boundary=software_proof_docker_sqlite_state_store`. That boundary
@@ -521,7 +556,10 @@ mobile shell or installability contract, but it is not part of the robot
 `trashbot.remote.v1` command/status/ack envelope. A metadata-only response must
 not trigger `/trashbot/collect_trash`, dropoff confirmation, cancel, ACK
 posting, cursor advancement, cursor persistence, or wording that treats ACK as
-delivery success.
+delivery success. Deployment-readiness metadata such as
+`deployment_readiness`, `cloud_deployment_readiness`, or `preflight` follows
+the same robot-side rule: it is diagnostic cloud deployment evidence only, and
+must not be interpreted as a robot command or cursor instruction.
 
 Important product boundary:
 

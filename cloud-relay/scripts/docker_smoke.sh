@@ -81,7 +81,8 @@ import sys
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
 encoded = json.dumps(payload, ensure_ascii=False)
 required = (
-    "software_proof_docker_sqlite_state_store",
+    "software_proof_docker_cloud_deployment_readiness_gate",
+    "cloud_deployment_readiness",
     "missing_or_placeholder_credential",
     "https_public_ingress_missing",
     "oss_cdn_not_production_ready",
@@ -99,6 +100,43 @@ for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate", "
         raise SystemExit(f"preflight leaked forbidden marker: {forbidden}")
 if payload.get("production_ready"):
     raise SystemExit("preflight must not pass for Docker/local placeholder config")
+PY
+
+echo "== cloud deployment readiness artifact remains blocked-by-design =="
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  rm -f /tmp/trashbot_cloud_deployment_readiness.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+    --write-cloud-deployment-readiness-artifact /tmp/trashbot_cloud_deployment_readiness.json \
+    >/tmp/trashbot_cloud_deployment_readiness.json
+cat /tmp/trashbot_cloud_deployment_readiness.json
+echo
+python3 - /tmp/trashbot_cloud_deployment_readiness.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+encoded = json.dumps(payload, ensure_ascii=False)
+if not payload.get("ok"):
+    raise SystemExit("cloud deployment readiness artifact generation failed")
+if payload.get("production_ready"):
+    raise SystemExit("cloud deployment readiness must not claim production_ready")
+if payload.get("overall_status") != "blocked":
+    raise SystemExit("cloud deployment readiness must remain blocked")
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_deployment_readiness_gate":
+    raise SystemExit("wrong cloud deployment readiness evidence boundary")
+for marker in (
+    "real_cloud",
+    "real_https_tls",
+    "real_4g_sim",
+    "production_db_or_queue",
+    "real_oss_upload",
+):
+    if marker not in encoded:
+        raise SystemExit(f"missing deployment readiness not_proven marker: {marker}")
+for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate", "WAVE ROVER", "/tmp/remote_cloud"):
+    if forbidden in encoded:
+        raise SystemExit(f"deployment readiness leaked forbidden marker: {forbidden}")
 PY
 
 echo "== production preflight CLI with unwritable state expects blocked =="
@@ -123,7 +161,7 @@ payload = json.load(open(sys.argv[1], encoding="utf-8"))
 checks = {check["name"]: check for check in payload.get("checks", [])}
 if checks.get("state_store", {}).get("code") != "state_store_not_writable":
     raise SystemExit("unwritable state store was not reported as blocked")
-if payload.get("evidence_boundary") != "software_proof_docker_sqlite_state_store":
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_deployment_readiness_gate":
     raise SystemExit("wrong evidence boundary")
 PY
 

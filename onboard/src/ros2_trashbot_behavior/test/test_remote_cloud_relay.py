@@ -41,6 +41,8 @@ def _unwritable_json_state_path() -> str:
 
 from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     BACKUP_RESTORE_EVIDENCE_BOUNDARY,
+    CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY,
+    CLOUD_DEPLOYMENT_READINESS_SCHEMA,
     CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY,
     CREDENTIAL_ROTATION_PHONE_EVIDENCE_BOUNDARY,
     CREDENTIAL_ROTATION_SCHEMA,
@@ -86,6 +88,8 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     build_phone_provisioning_audit_summary,
     build_phone_queue_ordering_drill_summary,
     build_phone_transaction_isolation_summary,
+    build_cloud_deployment_readiness_artifact_payload,
+    cloud_deployment_readiness_artifact_summary,
     build_production_store_queue_artifact_payload,
     build_production_recovery_artifact_payload,
     build_provisioning_audit_artifact_payload,
@@ -102,6 +106,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     create_queue_ordering_drill_artifact,
     create_sqlite_backup_artifact,
     create_transaction_isolation_artifact,
+    create_cloud_deployment_readiness_artifact,
     network_recovery_artifact_summary,
     network_recovery_drill_payload,
     oss_cdn_manifest_summary,
@@ -251,7 +256,7 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
 
         self.assertEqual(status, 503)
         self.assertFalse(payload["production_ready"])
-        self.assertEqual(payload["evidence_boundary"], PREFLIGHT_EVIDENCE_BOUNDARY)
+        self.assertEqual(payload["evidence_boundary"], CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY)
         self.assertGreaterEqual(payload["blocked_count"], 1)
         self.assertIn("Docker/local 软件 proof", payload["safe_summary"])
         self.assertIn("real_cloud", payload["not_proven"])
@@ -755,6 +760,120 @@ class RemoteCloudRelayStoreTest(unittest.TestCase):
 
 
 class RemoteCloudRelayPreflightTest(unittest.TestCase):
+    def test_cloud_deployment_readiness_artifact_generation_and_preflight_are_blocked_by_design(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact_path = pathlib.Path(tmp) / "cloud_deployment_readiness.json"
+            env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "replace-with-local-dev-token",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "http://127.0.0.1:8088",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "future_reverse_proxy",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "missing",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE": "placeholder",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(pathlib.Path(tmp) / "relay_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+
+            result = create_cloud_deployment_readiness_artifact(artifact_path, env)
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            summary = cloud_deployment_readiness_artifact_summary(artifact_path)
+            preflight_env = dict(env)
+            preflight_env["TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT"] = str(artifact_path)
+            payload = production_preflight_payload(preflight_env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps({"artifact": artifact, "summary": summary, "preflight": payload}, ensure_ascii=False)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(artifact["schema"], CLOUD_DEPLOYMENT_READINESS_SCHEMA)
+            self.assertEqual(artifact["evidence_boundary"], CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY)
+            self.assertFalse(artifact["production_ready"])
+            self.assertEqual(artifact["overall_status"], "blocked")
+            self.assertIn("real_cloud", artifact["not_proven"])
+            self.assertIn("real_4g_sim", artifact["not_proven"])
+            self.assertEqual(summary["check_count"], 8)
+            self.assertFalse(payload["production_ready"])
+            self.assertEqual(payload["evidence_boundary"], CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY)
+            self.assertEqual(checks["cloud_deployment_readiness"]["status"], "pass")
+            self.assertFalse(checks["cloud_deployment_readiness"]["details"]["production_ready"])
+            for required in (
+                "public_base_url_tls_ingress",
+                "healthcheck_endpoint",
+                "bearer_credential_placeholder",
+                "state_backend",
+                "production_db_queue_gap",
+                "oss_cdn_gap",
+                "cellular_4g_sim_gap",
+                "deployment_runbook_or_smoke",
+            ):
+                self.assertIn(required, encoded)
+            for forbidden in (
+                str(artifact_path),
+                str(pathlib.Path(tmp) / "relay_state.sqlite"),
+                "replace-with-local-dev-token",
+                "Authorization",
+                "Bearer ",
+                "postgres://",
+                "queue URL",
+                "raw state path",
+                "/cmd_vel",
+                "ttyUSB",
+                "baudrate",
+                "WAVE ROVER",
+                "Traceback",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_deployment_readiness_blocks_hostile_artifact(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            hostile_path = root / "hostile_cloud_deployment_readiness.json"
+            hostile = build_cloud_deployment_readiness_artifact_payload(
+                {"TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "replace-with-local-dev-token"},
+                generated_at="2026-05-13T04:00:00Z",
+            )
+            hostile["safe_summary"] = (
+                "Authorization Bearer token postgres://db secret queue URL raw state path "
+                "/dev/ttyUSB0 serial baudrate WAVE ROVER ROS topic /cmd_vel"
+            )
+            body = {key: value for key, value in hostile.items() if key != "checksum"}
+            hostile["checksum"] = _sha256_checksum(body)
+            hostile_path.write_text(json.dumps(hostile, ensure_ascii=False), encoding="utf-8")
+
+            summary = cloud_deployment_readiness_artifact_summary(hostile_path)
+            payload = production_preflight_payload(
+                {
+                    "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "production-token-value",
+                    "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+                    "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "terminated",
+                    "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https",
+                    "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "relay_state.sqlite"),
+                    "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                    "TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT": str(hostile_path),
+                }
+            )
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps({"summary": summary, "preflight": payload}, ensure_ascii=False)
+
+            self.assertFalse(summary["ok"])
+            self.assertEqual(checks["cloud_deployment_readiness"]["status"], "blocked")
+            self.assertEqual(checks["cloud_deployment_readiness"]["code"], "cloud_deployment_readiness_artifact_invalid")
+            for forbidden in (
+                str(hostile_path),
+                "Authorization",
+                "Bearer",
+                "token",
+                "postgres://",
+                "secret",
+                "queue URL",
+                "raw state path",
+                "/dev/ttyUSB0",
+                "serial",
+                "baudrate",
+                "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
     def test_preflight_reports_local_http_secret_oss_and_file_store_boundary(self):
         with tempfile.TemporaryDirectory() as tmp:
             env = {
@@ -777,14 +896,15 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
 
             self.assertFalse(payload["production_ready"])
             self.assertEqual(payload["overall_status"], "blocked")
-            self.assertEqual(payload["evidence_boundary"], PREFLIGHT_EVIDENCE_BOUNDARY)
+            self.assertEqual(payload["evidence_boundary"], CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY)
+            self.assertEqual(checks["cloud_deployment_readiness"]["status"], "pass")
             self.assertEqual(checks["credential_provisioning"]["status"], "blocked")
             self.assertEqual(checks["tls_public_ingress"]["status"], "blocked")
             self.assertEqual(checks["oss_cdn"]["status"], "blocked")
             self.assertEqual(checks["state_store"]["status"], "warning")
             self.assertEqual(checks["backup_restore_drill"]["status"], "warning")
             self.assertEqual(checks["phone_safe_output"]["status"], "pass")
-            self.assertIn("software_proof_docker_preflight_gate", encoded)
+            self.assertIn("software_proof_docker_cloud_deployment_readiness_gate", encoded)
             for forbidden in (
                 "replace-with-local-dev-token",
                 "Authorization",
@@ -884,7 +1004,7 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             encoded = json.dumps(payload, ensure_ascii=False)
 
             self.assertFalse(payload["production_ready"])
-            self.assertEqual(payload["evidence_boundary"], SQLITE_EVIDENCE_BOUNDARY)
+            self.assertEqual(payload["evidence_boundary"], CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY)
             self.assertEqual(checks["state_store"]["status"], "warning")
             self.assertEqual(checks["state_store"]["code"], "sqlite_state_store_proof_only")
             self.assertEqual(checks["backup_restore_drill"]["code"], "backup_restore_drill_not_run")

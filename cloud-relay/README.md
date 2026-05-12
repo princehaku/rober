@@ -17,6 +17,7 @@
 - **健康检查 & 生产 preflight**：
   - `/healthz` / `/readyz` 容器存活与就绪探针
   - `/preflightz` 生产就绪检查（HTTPS、OSS 凭证、DR backup 等还没就位时会显式 503）
+  - `trashbot.cloud_deployment_readiness` artifact，汇总公网入口、TLS、healthcheck、凭证、state backend、生产 DB/queue、OSS/CDN、4G/SIM 和 runbook/smoke 缺口；证据边界固定为 `software_proof_docker_cloud_deployment_readiness_gate`
 
 ## 子目录
 
@@ -54,6 +55,18 @@ cd cloud-relay
 TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-smoke-token bash scripts/docker_smoke.sh
 ```
 
+生成 cloud deployment readiness artifact：
+
+```bash
+cd cloud-relay
+PYTHONPATH=src:../onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-smoke-token \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --write-cloud-deployment-readiness-artifact /tmp/trashbot_cloud_deployment_readiness.json
+```
+
+该 artifact 的 `schema=trashbot.cloud_deployment_readiness`、`schema_version=1`、`evidence_boundary=software_proof_docker_cloud_deployment_readiness_gate`。它必须保持 `production_ready=false`、`overall_status=blocked`，并列出 `not_proven`、`safe_summary`、`retry_hint`。本地占位配置不得被 Docker smoke 或 CLI preflight 判成生产 ready。
+
 ## 运行时契约（Runtime contracts）
 
 - **与 `onboard/` 的契约**：
@@ -76,6 +89,7 @@ TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-smoke-token bash scripts/docker_smoke.sh
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。
 - **不允许变更已存在的 phone-safe schema 字段、值域、`evidence_boundary`**；如确需新增，新建 `.v2` 版本，保留 `.v1` 兼容。
 - 不允许向 phone-safe 输出泄漏 `Authorization` / `Bearer` / `/cmd_vel` / `ttyUSB` / `baudrate` / `WAVE ROVER` / 本地文件路径等敏感字段。
+- Deployment readiness / preflight 输出不得泄漏 bearer token、Authorization header、OSS secret、AK/SK、root password、DB URL、queue URL、credential-bearing URL、raw state path、串口、baudrate、WAVE ROVER 参数、ROS topic、`/cmd_vel` 或 traceback。
 - 修改 Docker / compose / scripts / Dockerfile 时必须更新本 README 的"标准入口"段落。
 - 中文注释比例 >20%，注释解释"为什么"而非"做什么"。
 

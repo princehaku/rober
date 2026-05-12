@@ -1351,6 +1351,62 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
                     self.assertNotIn("cursor_override", encoded_status)
                     self.assertNotIn("delivery_success", encoded_status)
 
+    def test_metadata_only_deployment_readiness_response_does_not_start_ack_or_persist_cursor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-deployment-readiness",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras["command_response"] = {
+                "deployment_readiness": {
+                    "schema": "trashbot.cloud_deployment_readiness",
+                    "schema_version": 1,
+                    "production_ready": False,
+                    "overall_status": "blocked",
+                    "evidence_boundary": "software_proof_docker_cloud_deployment_readiness_gate",
+                    "safe_summary": "云部署就绪检查仍是 blocked-by-design。",
+                    "not_proven": ["real_cloud", "https_tls", "4g_sim", "wave_rover_hil"],
+                    "trigger_robot_action": "collect",
+                    "raw_ros_topic": "/cmd_vel",
+                    "delivery_success": True,
+                    "raw_credential": "secret-token",
+                },
+                "cloud_deployment_readiness": {
+                    "schema": "trashbot.cloud_deployment_readiness",
+                    "production_ready": False,
+                    "credential_url": "https://user:secret@example.invalid",
+                    "Authorization": "Bearer must-not-leak",
+                },
+                "preflight": {
+                    "production_ready": False,
+                    "evidence_boundary": "software_proof_docker_cloud_deployment_readiness_gate",
+                },
+            }
+
+            handled = worker.poll_once()
+
+            # deployment metadata 是云部署诊断，不是 robot command；没有 command envelope 时必须 fail-closed。
+            self.assertFalse(handled)
+            self.assertEqual(self.backend.calls, [])
+            self.assertEqual(self.cloud.ack_posts, [])
+            self.assertEqual(worker.last_ack_id, "cmd-before-deployment-readiness")
+            self.assertFalse(state_path.exists())
+            self.assertEqual(len(self.cloud.status_posts), 1)
+            encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+            self.assertNotIn("deployment_readiness", encoded_status)
+            self.assertNotIn("cloud_deployment_readiness", encoded_status)
+            self.assertNotIn("trigger_robot_action", encoded_status)
+            self.assertNotIn("delivery_success", encoded_status)
+            self.assertNotIn("/cmd_vel", encoded_status)
+            self.assertNotIn("raw_credential", encoded_status)
+            self.assertNotIn("secret-token", encoded_status)
+            self.assertNotIn("Authorization", encoded_status)
+            self.assertNotIn("credential_url", encoded_status)
+
     def test_transaction_isolation_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {

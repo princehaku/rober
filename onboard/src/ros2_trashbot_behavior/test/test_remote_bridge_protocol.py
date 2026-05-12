@@ -179,6 +179,45 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("cursor_override", encoded_command)
         self.assertNotIn("delivery_success", encoded_command)
 
+    def test_validate_command_ignores_deployment_readiness_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-deployment-readiness-metadata",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "deployment_readiness": {
+                "schema": "trashbot.cloud_deployment_readiness",
+                "schema_version": 1,
+                "production_ready": False,
+                "evidence_boundary": "software_proof_docker_cloud_deployment_readiness_gate",
+                "trigger_robot_action": "cancel",
+                "raw_ros_topic": "/cmd_vel",
+                "delivery_success": True,
+            },
+            "cloud_deployment_readiness": {
+                "schema": "trashbot.cloud_deployment_readiness",
+                "overall_status": "blocked",
+                "credential_url": "https://user:secret@example.invalid",
+            },
+            "preflight": {
+                "production_ready": False,
+                "Authorization": "Bearer must-not-leak",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-deployment-readiness-metadata")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"]["target"], "trash_station")
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # deployment readiness 只是云部署诊断元数据，不能扩展 robot command envelope。
+        self.assertNotIn("deployment_readiness", encoded_command)
+        self.assertNotIn("cloud_deployment_readiness", encoded_command)
+        self.assertNotIn("preflight", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("credential_url", encoded_command)
+
     def test_validate_command_keeps_command_id_order_as_supplied(self):
         command = validate_command({
             "id": "cmd-10",
