@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0f766e">
+    <meta name="description" content="rober 手机送垃圾入口">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="rober">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="stylesheet" href="./styles.css">
+    <title>rober 手机入口</title>
+  </head>
+  <body>
+    <!-- 首屏只承载 phone-safe 字段，避免把调试细节暴露给普通手机用户。 -->
+    <main class="app-shell" aria-live="polite">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">rober 手机入口</p>
+          <h1>送垃圾任务</h1>
+        </div>
+        <span id="connectionBadge" class="badge badge-waiting">连接中</span>
+      </header>
+
+      <section class="hero-panel" aria-labelledby="readinessTitle">
+        <div class="hero-copy">
+          <p id="boundaryCopy" class="boundary">software proof only</p>
+          <h2 id="readinessTitle">正在读取小车状态</h2>
+          <p id="safePhoneCopy" class="message">请稍候，手机入口正在读取后端提供的安全状态。</p>
+          <p id="recoveryHint" class="hint">主操作会在安全 gate 允许后启用。</p>
+        </div>
+        <dl class="status-grid">
+          <div>
+            <dt>下一步</dt>
+            <dd id="nextAction">等待状态</dd>
+          </div>
+          <div>
+            <dt>支持级别</dt>
+            <dd id="supportLevel">待确认</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="action-panel" aria-label="主操作">
+        <!-- 按钮默认禁用，JS 只能在 command_safety 和旧权限同时允许时打开。 -->
+        <button id="startButton" class="primary-action" type="button" data-action="start" disabled>
+          开始送达
+        </button>
+        <button id="confirmButton" type="button" data-action="confirm_dropoff" disabled>
+          确认投放
+        </button>
+        <button id="cancelButton" type="button" data-action="cancel" disabled>
+          取消任务
+        </button>
+      </section>
+
+      <section class="task-panel" aria-labelledby="taskFlowTitle">
+        <h2 id="taskFlowTitle">任务流程</h2>
+        <ol id="taskFlowList" class="task-flow">
+          <li>等待后端返回任务步骤。</li>
+        </ol>
+      </section>
+
+      <section class="gate-panel" aria-labelledby="gateTitle">
+        <h2 id="gateTitle">操作安全</h2>
+        <p id="commandSafetyCopy" class="message">主操作保持禁用，直到后端 gate 放行。</p>
+        <p id="ackCopy" class="hint">ACK 只代表指令受理或处理中，不代表送达成功。</p>
+        <ul id="actionReasons" class="reason-list"></ul>
+      </section>
+
+      <section class="offline-panel" aria-labelledby="offlineTitle">
+        <h2 id="offlineTitle">离线与恢复</h2>
+        <p id="offlineCopy" class="message">离线壳不会缓存、排队或重放控制请求。</p>
+        <p id="offlineHint" class="hint">重新连接后刷新状态，再按提示继续。</p>
+      </section>
+
+      <section class="voice-panel" aria-labelledby="voiceTitle">
+        <h2 id="voiceTitle">语音提示</h2>
+        <p id="voiceCopy" class="message">等待后端提供 voice prompt readiness。</p>
+        <p id="voiceBoundary" class="hint">本地软件证明不代表真实喇叭或 TTS 播放。</p>
+      </section>
+
+      <section class="support-panel" aria-labelledby="supportTitle">
+        <div class="section-heading">
+          <h2 id="supportTitle">诊断与求助</h2>
+          <button id="diagnosticsButton" type="button">打开诊断</button>
+        </div>
+        <p id="supportCopy" class="message">主操作 blocked 时仍可打开诊断或复制脱敏摘要。</p>
+        <button id="supportButton" type="button">Support Handoff</button>
+        <pre id="supportSafeCopy" class="safe-copy" aria-label="脱敏支持摘要">暂无支持摘要。</pre>
+      </section>
+
+      <section id="diagnosticsPanel" class="diagnostics-panel" hidden aria-labelledby="diagnosticsTitle">
+        <h2 id="diagnosticsTitle">诊断摘要</h2>
+        <dl id="diagnosticsSummary" class="diagnostics-grid"></dl>
+      </section>
+    </main>
+    <script src="./app.js" defer></script>
+  </body>
+</html>

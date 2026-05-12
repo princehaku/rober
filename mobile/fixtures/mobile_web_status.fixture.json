@@ -1,0 +1,72 @@
+{
+  "fixture": true,
+  "fixture_note": "Static mobile smoke only; not live robot state.",
+  "state": "waiting_for_trash",
+  "phone_copy": "请放入垃圾，确认安全后再开始送达。",
+  "can_collect": true,
+  "can_confirm_dropoff": false,
+  "can_cancel": false,
+  "phone_readiness": {
+    "schema": "trashbot.phone_readiness.v1",
+    "schema_version": 1,
+    "evidence_boundary": "software_proof_docker_mobile_web_entrypoint_gate",
+    "primary_state": "ready",
+    "can_continue": true,
+    "next_action": "continue_local_flow",
+    "safe_phone_copy": "手机入口可继续；这是静态 fixture smoke，不是真实机器人状态。",
+    "recovery_hint": "真实运行时请读取后端 /api/status。",
+    "support_level": "local_fallback",
+    "action_permissions": {
+      "can_collect": true,
+      "can_confirm_dropoff": false,
+      "can_cancel": false
+    },
+    "command_safety": {
+      "schema": "trashbot.command_safety.v1",
+      "evidence_boundary": "software_proof_docker_phone_command_safety_browser_gate",
+      "global_block_reason": "allowed",
+      "safe_phone_copy": "当前 fixture 允许开始按钮；真实状态以服务端返回为准。",
+      "ack_semantics": "ACK 只表示指令受理或处理中，不代表送达成功。",
+      "actions": {
+        "start": {"enabled": true, "blocking_reason": "allowed", "safe_phone_copy": "可以开始。"},
+        "confirm_dropoff": {"enabled": false, "blocking_reason": "not_permitted_by_local_state", "safe_phone_copy": "尚未到达投放步骤。"},
+        "cancel": {"enabled": false, "blocking_reason": "not_permitted_by_local_state", "safe_phone_copy": "当前没有可取消任务。"},
+        "diagnostics": {"enabled": true, "blocking_reason": "allowed", "safe_phone_copy": "诊断可打开。"}
+      }
+    },
+    "phone_offline_resume_readiness": {
+      "schema": "trashbot.phone_offline_resume_readiness.v1",
+      "connection_state": "online",
+      "can_resume": true,
+      "primary_actions_enabled": true,
+      "support_entry_enabled": true,
+      "safe_phone_copy": "当前在线；离线时主操作会禁用。",
+      "recovery_hint": "断线后恢复连接并刷新。"
+    },
+    "phone_task_flow_readiness": {
+      "schema": "trashbot.phone_task_flow_readiness.v1",
+      "steps": [
+        {"step": "connection_ready", "label": "连接/就绪", "current": true, "safe_phone_copy": "手机入口已读取 fixture。"},
+        {"step": "start_delivery", "label": "一键发车", "safe_phone_copy": "真实运行时由 command_safety 决定。"}
+      ]
+    },
+    "phone_support_bundle": {
+      "schema": "trashbot.phone_support_bundle.v1",
+      "support_level": "local_fallback",
+      "safe_copy": "fixture support copy：仅用于静态 smoke，不是真实诊断。"
+    }
+  },
+  "phone_offline_resume_readiness": {
+    "schema": "trashbot.phone_offline_resume_readiness.v1",
+    "connection_state": "online",
+    "can_resume": true,
+    "primary_actions_enabled": true,
+    "support_entry_enabled": true,
+    "safe_phone_copy": "当前在线；离线时主操作会禁用。",
+    "recovery_hint": "断线后恢复连接并刷新。"
+  },
+  "voice_prompt_readiness": {
+    "schema": "trashbot.voice_prompt_readiness.v1",
+    "safe_phone_copy": "提示词 readiness 不是实际播放证明。"
+  }
+}

@@ -513,6 +513,16 @@ It uses
 `schema=trashbot.phone_readiness.v1`, `schema_version=1`, and
 `evidence_boundary=software_proof_docker_local_phone_ui_readiness_gate`.
 
+The `mobile/web/` entrypoint is a phone-side consumer of these phone-safe
+status, diagnostics, readiness, command-safety, and offline/resume summaries.
+Metadata such as `mobile_web_entrypoint`,
+`mobile_web_entrypoint_readiness`, or `pwa_entrypoint` may describe the static
+mobile shell or installability contract, but it is not part of the robot
+`trashbot.remote.v1` command/status/ack envelope. A metadata-only response must
+not trigger `/trashbot/collect_trash`, dropoff confirmation, cancel, ACK
+posting, cursor advancement, cursor persistence, or wording that treats ACK as
+delivery success.
+
 Important product boundary:
 
 - `primary_state=ready` means the phone has a safe next software step; it does

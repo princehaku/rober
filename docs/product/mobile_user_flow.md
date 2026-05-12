@@ -59,6 +59,22 @@ The first operator gateway is intentionally small: an API-first local HTTP servi
 
 This is enough for a phone page or local browser control surface to complete a dry-run task and drive the manual dropoff confirmation service.
 
+## Mobile Web Entrypoint
+
+The standalone phone entrypoint now lives in `mobile/web/`:
+
+- `index.html`, `styles.css`, and `app.js` implement a dependency-free phone-first shell.
+- `manifest.webmanifest`, `service-worker.js`, `offline.html`, and SVG icons provide the minimal PWA shell.
+- `mobile/fixtures/mobile_web_status.fixture.json` is marked as a static smoke fixture and is not live robot state.
+
+This entrypoint consumes the existing phone-safe contract only. It reads `/api/status`, `/api/diagnostics`, `phone_readiness`, `command_safety`, and `phone_offline_resume_readiness`; it can render optional `phone_task_flow_readiness`, `phone_support_bundle`, and `voice_prompt_readiness` when they are present. It does not add robot state names or reinterpret ROS2 delivery semantics.
+
+Start Delivery, Confirm Dropoff, and Cancel are disabled by default. The browser enables them only when `command_safety.actions.<action>.enabled=true` and the legacy permission fields also allow the same action. Blocked, offline, pending ACK, and manual-takeover states stay disabled. Diagnostics and Support Handoff remain visible while primary actions are blocked, because support collection must not require making motion-related controls available.
+
+The mobile PWA service worker caches only the static shell. It bypasses `/api/*`, `/robots/*`, command routes, ACK routes, diagnostics, and all non-GET requests with `no-store`. The offline shell does not cache, queue, or replay control requests; it shows recovery copy and keeps primary actions disabled.
+
+Evidence boundary: `software_proof_docker_mobile_web_entrypoint_gate`. This proves the static entrypoint and smoke checks exist; it does not prove production app readiness, real iPhone/Android browser behavior, real service-worker install prompt, real cloud/4G, OSS/CDN live traffic, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or delivery success.
+
 The local page also shows live robot location when localization is publishing. `operator_gateway` subscribes to `/amcl_pose` by default and includes `robot_pose` plus recent `robot_path` points in `GET /api/status`; without AMCL data the controls still work, but the map panel waits for pose updates.
 
 `GET /api/diagnostics` is the minimum support package for phone UI and remote support. It reports software version, map and route version labels, latest status, last task summary, machine-readable failure fields, log references, the operator status file, the vision sample manifest reference, and phone-safe O6 summaries such as `oss_cdn_manifest`, `network_recovery_drill`, `credential_rotation`, `provisioning_audit`, `production_store_queue`, `queue_ordering_drill`, `transaction_isolation`, and `production_recovery`. It does not claim that those files exist; it gives support tools stable references to inspect.

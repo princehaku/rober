@@ -144,6 +144,41 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("trigger_robot_action", json.dumps(command))
         self.assertNotIn("delivery_success", json.dumps(command))
 
+    def test_validate_command_ignores_mobile_web_entrypoint_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-mobile-entrypoint-metadata",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "mobile_web_entrypoint": {
+                "schema": "trashbot.mobile_web_entrypoint.v1",
+                "entrypoint_url": "/mobile/",
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+            },
+            "mobile_web_entrypoint_readiness": {
+                "schema": "trashbot.mobile_web_entrypoint_readiness.v1",
+                "overall_status": "ready",
+                "ack_semantics": "delivery_success",
+            },
+            "pwa_entrypoint": {
+                "schema": "trashbot.pwa_entrypoint.v1",
+                "offline_shell": "ready",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-mobile-entrypoint-metadata")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"]["target"], "trash_station")
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # mobile web/PWA 字段只服务手机入口展示，不能进入 robot command envelope。
+        self.assertNotIn("mobile_web_entrypoint", encoded_command)
+        self.assertNotIn("mobile_web_entrypoint_readiness", encoded_command)
+        self.assertNotIn("pwa_entrypoint", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+
     def test_validate_command_keeps_command_id_order_as_supplied(self):
         command = validate_command({
             "id": "cmd-10",

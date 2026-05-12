@@ -149,17 +149,17 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-05-13 02:55 Asia/Shanghai。最新 sprint：`2026.05.13_02-03_cloud-relay-self-contained-gate`。详细历史见 `docs/process/okr_progress_log.md`。
+更新时间：2026-05-13 03:37 Asia/Shanghai。最新 sprint：`2026.05.13_03-04_mobile-web-entrypoint-gate`。详细历史见 `docs/process/okr_progress_log.md`。
 
 | Objective | 当前进度 | 本轮证据与边界 | 主要缺口 |
 | --- | --- | --- | --- |
 | Objective 1：硬件协议可信底盘 | 约 75% | 本轮未改硬件、WAVE ROVER、UART、Orange Pi、launch 参数或 HIL 证据；保留此前 Docker/Humble 与 hardware smoke 软件护栏。 | 仍缺真实 WAVE ROVER `hil_pass`、真实串口日志、`T=1001` feedback、`/odom`、`/imu/data`、`/battery` 实机样本。 |
 | Objective 2：可送垃圾任务完整闭环 | 约 77% | 本轮 robot compatibility fence 只确认 cloud-relay metadata 不触发 robot action、不 ACK metadata-only response、不把 ACK 升级为 delivery success；不提升任务闭环完成度。 | 仍缺真实 Nav2/fixed-route 运行、同一 `evidence_ref` 的任务复盘、真实送达和失败恢复实测。 |
 | Objective 3：可验证导航与固定路线 | 约 77% | 本轮未改导航、route、keyframe 或 replay 工具；既有软件对账能力保持。 | 仍缺真实路线采集、Nav2 waypoint/fixed-route 实跑、关键帧实景证据与上车复账。 |
-| Objective 4：手机用户体验与低成本量产边界 | 约 54% | 本轮文档同步确认 `cloud-relay/` 是正式云中转部署入口，手机侧仍通过云端 commands/status/ack contract 消费状态；未新增真实手机设备证据。 | 仍缺 production app、真实手机浏览器/设备验收、TTS/喇叭实放、量产实物验收。 |
-| Objective 5：云中转 + OSS/CDN 数据通路产品化（历史 O6） | 约 55% | `2026.05.13_02-03_cloud-relay-self-contained-gate` 完成 `software_proof_docker_cloud_relay_self_contained_gate`：`cloud-relay/` 已具备自包含 runtime 入口，Dockerfile/compose/smoke 改为新 module 入口；Docker smoke 覆盖 build/start、`/readyz`、`/healthz`、production preflight blocked 且 `production_ready=false`、command/status/ACK、backup/restore drill、restart recovery；robot compatibility fence 证明自包含 metadata 不污染 `trashbot.remote.v1` envelope。 | 仍没有真实云、公网 HTTPS/TLS、真实 4G/SIM、生产 DB/queue、多实例一致性、真实 OSS/CDN 实流量、正式手机 app、WAVE ROVER、HIL 或真实送达。 |
+| Objective 4：手机用户体验与低成本量产边界 | 约 56% | `2026.05.13_03-04_mobile-web-entrypoint-gate` 完成 `software_proof_docker_mobile_web_entrypoint_gate`：`mobile/web/` 从 README 脚手架推进为 dependency-free PWA 静态入口，包含 manifest、service worker、offline shell、icons、static smoke fixture；按钮 fail-closed、service worker 动态控制流量 bypass、phone-safe schema 消费和文档同步均有 worker 验证。 | 仍缺 production app、真实手机浏览器/设备验收、真实 PWA install prompt、TTS/喇叭实放、量产实物验收。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化（历史 O6） | 约 55% | 本轮只新增 mobile web consumer compatibility fence，证明 `mobile_web_entrypoint`、`mobile_web_entrypoint_readiness`、`pwa_entrypoint` metadata-only responses 不触发 robot action、不 ACK、不推进或持久化 cursor、不改变 `trashbot.remote.v1` envelope；保持 02-03 `software_proof_docker_cloud_relay_self_contained_gate` 进度。 | 仍没有真实云、公网 HTTPS/TLS、真实 4G/SIM、生产 DB/queue、多实例一致性、真实 OSS/CDN 实流量、正式手机 app、WAVE ROVER、HIL 或真实送达。 |
 
-本轮 OKR 口径：云中转 Objective 只因部署边界从旧 `onboard/src/...` 实现面收敛到 `cloud-relay/` 自包含 Docker/local runtime 而从约 53% 保守上调到约 55%。这不是 `production_ready=true`，也不是真实云、4G、OSS/CDN 或 HIL 证据。
+本轮 OKR 口径：Objective 4 只因 `mobile/web/` 从脚手架推进到独立 PWA 静态入口、并补齐 mobile web consumer + robot compatibility fences，而从约 54% 保守上调到约 56%。证据边界是 `software_proof_docker_mobile_web_entrypoint_gate`；这不是 production app，不是真实手机设备/浏览器验收，不是真实云、4G、OSS/CDN、HIL 或真实送达证据。Objective 5 保持约 55%。
 
 ## 5. OKR完成路线
 

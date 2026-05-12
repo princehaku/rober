@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0f766e">
+    <link rel="stylesheet" href="./styles.css">
+    <title>rober 离线</title>
+  </head>
+  <body>
+    <!-- 离线页只允许恢复提示，不能缓存、排队或重放控制请求。 -->
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">rober 手机入口</p>
+          <h1>当前离线</h1>
+        </div>
+        <span class="badge badge-blocked">离线</span>
+      </header>
+      <section class="hero-panel">
+        <div class="hero-copy">
+          <p class="boundary">software_proof_docker_mobile_web_entrypoint_gate</p>
+          <h2>请恢复连接后刷新</h2>
+          <p class="message">离线壳不会发送、缓存、排队或重放开始送达、确认投放、取消任务等控制请求。</p>
+          <p class="hint">诊断和支持交接可在重新连接后继续查看；ACK 仍只代表受理或处理中。</p>
+        </div>
+      </section>
+      <section class="action-panel" aria-label="离线主操作">
+        <button type="button" disabled>开始送达</button>
+        <button type="button" disabled>确认投放</button>
+        <button type="button" disabled>取消任务</button>
+      </section>
+    </main>
+  </body>
+</html>

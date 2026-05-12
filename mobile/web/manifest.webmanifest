@@ -1,0 +1,25 @@
+{
+  "name": "rober 手机送垃圾入口",
+  "short_name": "rober",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "theme_color": "#0f766e",
+  "background_color": "#f4f7f6",
+  "description": "dependency-free phone PWA entrypoint for phone-safe trash delivery flow",
+  "icons": [
+    {
+      "src": "./icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "evidence_boundary": "software_proof_docker_mobile_web_entrypoint_gate"
+}

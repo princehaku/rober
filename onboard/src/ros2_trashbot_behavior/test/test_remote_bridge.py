@@ -1093,6 +1093,78 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertEqual(len(self.cloud.status_posts), 1)
             self.assertNotIn("phone_task_flow_readiness", json.dumps(self.cloud.status_posts))
 
+    def test_metadata_only_mobile_web_entrypoint_response_does_not_start_ack_or_persist_cursor(self):
+        metadata_cases = (
+            (
+                "mobile_web_entrypoint",
+                {
+                    "schema": "trashbot.mobile_web_entrypoint.v1",
+                    "entrypoint_url": "/mobile/",
+                    "static_contract": "phone_safe_consumer_only",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-future",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+            (
+                "mobile_web_entrypoint_readiness",
+                {
+                    "schema": "trashbot.mobile_web_entrypoint_readiness.v1",
+                    "overall_status": "ready",
+                    "next_action": "confirm_dropoff",
+                    "trigger_robot_action": "confirm_dropoff",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                },
+            ),
+            (
+                "pwa_entrypoint",
+                {
+                    "schema": "trashbot.pwa_entrypoint.v1",
+                    "offline_shell": "ready",
+                    "next_action": "cancel",
+                    "trigger_robot_action": "cancel",
+                    "delivery_success": True,
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.backend.calls.clear()
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        metadata_name: metadata,
+                        "preflight": {"overall_status": "blocked", "production_ready": False},
+                    }
+
+                    handled = worker.poll_once()
+
+                    # mobile web/PWA 入口是手机端 consumer metadata，不是 robot command。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
     def test_metadata_only_phone_offline_resume_response_does_not_start_ack_or_persist_cursor(self):
         for connection_state in ("offline", "recovering", "stale"):
             with self.subTest(connection_state=connection_state):
