@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "browser": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "viewports": [
+    "390x844",
+    "768x900"
+  ],
+  "evidence_boundary": "software_proof_docker_phone_browser_acceptance_gate",
+  "artifact_sha256": {
+    "phone_browser_390x844.json": "2d0d2ce613bd3a2f0233b96660a0263ad2b65ef8329ee29b8746a852a363d9ac",
+    "phone_browser_390x844.png": "9bd5bb1b9bc41df6ba18f76210dedd27bcaca01bab7cc22188f246e082979728",
+    "phone_browser_768x900.json": "4c5b66f1693549f37ad788ac11311f485151e52854c8846899fecd4f45a80102",
+    "phone_browser_768x900.png": "8cef8d6f304c46eb49978fbcb02b9d757ce875ea5c25b2c34ac36bb6b6186fef",
+    "phone_browser_acceptance_summary.json": "a9839967a2f668b4a2c08e3a81270175456c776bac0184999bb6b07cb94d2244"
+  }
+}

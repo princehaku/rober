@@ -92,6 +92,18 @@ The same object now includes `command_safety`, a stricter browser button gate fo
 
 ACK remains command processing evidence only. A remote ACK may make `remote_readiness.degradation_state=ok`, but the phone must keep reading delivery status for `completed`, `failed`, `needs_human_help`, or elevator-assist states. The UI text must explain that ACK means command accepted or processing evidence only; it does not prove delivery success, Nav2/fixed-route success, WAVE ROVER movement, real cloud/4G, or HIL.
 
+## Local Phone Browser Acceptance Gate
+
+The local operator page now has a Docker/local browser acceptance gate for the fallback phone surface:
+
+```bash
+python3 scripts/phone_browser_acceptance_gate.py --output-dir sprints/2026.05.12_15-16_phone-browser-acceptance-gate/evidence
+```
+
+The gate starts a lightweight local operator fixture, opens the served HTML in a real Chromium-family browser, and checks `390x844` plus `768x900` viewports. It verifies button hit areas are at least 44 CSS px, Start/Confirm/Cancel stay disabled in a blocked command-safety state, Diagnostics remains accessible, ACK copy is visible, and key first-screen text does not overlap.
+
+This evidence boundary is `software_proof_docker_phone_browser_acceptance_gate`. It does not prove a production phone app, real iPhone/Android device behavior, real cloud/4G, OSS/CDN traffic, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or delivery success. The local page keeps raw JSON status hidden by default so ordinary phone users see readiness, command safety, ACK semantics, recovery hints, and Diagnostics entry copy instead of ROS or hardware internals.
+
 For H2 elevator assisted delivery dry-runs, `GET /api/status` and `GET /api/diagnostics` may include an `elevator_assist` object. Older clients can ignore it. New clients should treat it as the machine-readable source for elevator UI:
 
 - `enabled`: boolean; false means normal single-floor delivery UI.

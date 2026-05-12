@@ -91,7 +91,7 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn("build_phone_readiness", http_source)
         self.assertIn("_status_with_phone_readiness", http_source)
         self.assertIn('"phone_readiness"', http_source)
-        self.assertIn("software_proof_docker_local_phone_ui_readiness_gate", http_source)
+        self.assertIn("software_proof_docker_phone_command_safety_browser_gate", http_source)
         self.assertIn("mock_cloud_bearer_token", http_source)
         self.assertIn('"phone_copy": prompt["phone_copy"]', http_source)
         self.assertIn('"speaker_prompt": prompt["speaker_prompt"]', http_source)
@@ -222,7 +222,7 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             "renderPhoneReadiness",
             "PHONE_READINESS_EVIDENCE_BOUNDARY",
             "trashbot.phone_readiness.v1",
-            "software_proof_docker_local_phone_ui_readiness_gate",
+            "software_proof_docker_phone_command_safety_browser_gate",
         ):
             self.assertIn(text, http_source)
 

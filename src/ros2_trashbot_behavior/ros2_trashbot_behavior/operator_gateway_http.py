@@ -832,6 +832,7 @@ HTML = """<!doctype html>
       color: var(--danger);
     }
     .message { color: var(--muted); margin: 4px 0 0; }
+    .message strong { overflow-wrap: anywhere; }
     .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
     .row button { flex: 1 1 150px; }
     .steps {
@@ -939,10 +940,21 @@ HTML = """<!doctype html>
     }
     [hidden] { display: none; }
     @media (max-width: 560px) {
-      main { padding: 10px; }
+      main { gap: 10px; padding: 10px; }
       header { align-items: start; flex-direction: column; }
+      h1 { font-size: 20px; }
+      .panel { padding: 10px; }
+      .readinessMain { align-items: start; flex-direction: column; }
+      .readinessMeta { display: none; }
+      #phoneReadinessBoundary {
+        font-size: 10px;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        white-space: normal;
+      }
       .status { grid-template-columns: 1fr; }
-      .steps { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .step { font-size: 11px; min-height: 36px; overflow-wrap: anywhere; }
       .telemetry, .diagnosticGrid { grid-template-columns: 1fr; }
       .reviewGrid { grid-template-columns: 1fr; }
       canvas { height: 220px; }
@@ -968,10 +980,10 @@ HTML = """<!doctype html>
       </div>
       <p id="phoneReadinessCopy" class="readinessHint">正在判断手机现在能不能继续。</p>
       <p class="message">Next: <strong id="phoneReadinessNext">等待状态刷新。</strong></p>
-      <p class="message">诊断引用: <strong id="phoneManifestCopy">诊断对象引用缺失。</strong></p>
-      <p class="message">诊断建议: <strong id="phoneManifestRetry">请刷新状态。</strong></p>
-      <p class="message">Support: <strong id="phoneReadinessSupport">not reported</strong></p>
-      <p class="message">Not proven: <strong id="phoneReadinessNotProven">real cloud, 4G, HIL</strong></p>
+      <p class="message readinessMeta">诊断引用: <strong id="phoneManifestCopy">诊断对象引用缺失。</strong></p>
+      <p class="message readinessMeta">诊断建议: <strong id="phoneManifestRetry">请刷新状态。</strong></p>
+      <p class="message readinessMeta">Support: <strong id="phoneReadinessSupport">not reported</strong></p>
+      <p class="message readinessMeta">Not proven: <strong id="phoneReadinessNotProven">real cloud, 4G, HIL</strong></p>
     </section>
     <section class="panel status">
       <div>
@@ -1114,8 +1126,8 @@ HTML = """<!doctype html>
         <p class="message">Result: <strong id="reviewResultMessage">not submitted</strong></p>
       </div>
     </section>
-    <section class="panel">
-      <h2>Raw Status</h2>
+    <section id="rawStatusPanel" class="panel" hidden>
+      <h2>Support Snapshot</h2>
       <pre id="status">loading...</pre>
     </section>
   </main>
@@ -1655,6 +1667,7 @@ function showTelemetry(payload) {
   drawMap(payload);
 }
 function showStatus(payload) {
+  // raw status 只保留给开发者临时排障，默认隐藏，避免手机用户看到 JSON/ROS 内部字段。
   document.getElementById('status').textContent = JSON.stringify(payload, null, 2);
   renderPhoneReadiness(payload.phone_readiness);
   updateJourney(payload);
@@ -1777,11 +1790,12 @@ function showDiagnostics(payload) {
     refList.appendChild(item);
   });
 }
-async function api(path, options) {
+async function api(path, options, updateStatus = true) {
   try {
     const response = await fetch(path, options || {});
     const payload = await response.json();
-    showStatus(payload);
+    // diagnostics payload 不是任务状态；避免支持入口覆盖首屏 command safety 文案。
+    if (updateStatus) showStatus(payload);
     return payload;
   } catch (error) {
     showStatus({
@@ -1849,7 +1863,7 @@ async function submitReviewDecision() {
   }
 }
 async function diagnostics() {
-  const payload = await api('/api/diagnostics');
+  const payload = await api('/api/diagnostics', {}, false);
   if (payload) showDiagnostics(payload);
 }
 document.getElementById('reviewSampleSelect').addEventListener('change', updateSelectedReviewSummary);

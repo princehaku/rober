@@ -1,0 +1,150 @@
+{
+  "viewport": "768x900",
+  "url": "http://127.0.0.1:59422/",
+  "title": "Trashbot Operator",
+  "judgment": {
+    "hit_area_status": "passed",
+    "overlap_status": "passed",
+    "overflow_status": "passed",
+    "ack_copy_visible": true,
+    "diagnostics_accessible": true,
+    "primary_actions_disabled": true,
+    "first_screen_buttons_visible": true,
+    "phone_safe_status": "passed",
+    "button_failures": [],
+    "primary_enabled": [],
+    "overlaps": [],
+    "overflow": [],
+    "phone_safe_failures": []
+  },
+  "rects": [
+    {
+      "id": "phoneReadinessPanel",
+      "text": "CAN CONTINUE\nlocal ready remote status waiting\nSOFTWARE_PROOF_DOCKER_PHONE_COMMAND_SAFETY_BROWSER_GATE\n\n本地手机入口可继续；远程状态仍在等待小车上报。\n\nNext: 本地可继续；远程流程请等待小车上报新状态。\n\n诊断引用: 诊断对象引用已准备。\n\n诊断建议: 如手机无法查看诊断，请刷新状态或重新生成诊断引用。\n\nSupport: local_fallback\n\nNot proven: production_phone_app, real_cloud_https_tls_public_ingress, real_4g_sim_carrier_network, oss_cdn_data_path",
+      "disabled": false,
+      "visible": true,
+      "left": 14,
+      "top": 76,
+      "right": 754,
+      "bottom": 391,
+      "width": 740,
+      "height": 315
+    },
+    {
+      "id": "phoneReadinessCopy",
+      "text": "本地手机入口可继续；远程状态仍在等待小车上报。",
+      "disabled": false,
+      "visible": true,
+      "left": 33,
+      "top": 165,
+      "right": 739,
+      "bottom": 186,
+      "width": 706,
+      "height": 21
+    },
+    {
+      "id": "phoneReadinessNext",
+      "text": "本地可继续；远程流程请等待小车上报新状态。",
+      "disabled": false,
+      "visible": true,
+      "left": 75.28125,
+      "top": 202,
+      "right": 411.28125,
+      "bottom": 220,
+      "width": 336,
+      "height": 18
+    },
+    {
+      "id": "commandSafetyCopy",
+      "text": "正在等待小车上报最新状态，主操作暂不可用。",
+      "disabled": false,
+      "visible": true,
+      "left": 148.53125,
+      "top": 656,
+      "right": 484.53125,
+      "bottom": 674,
+      "width": 336,
+      "height": 18
+    },
+    {
+      "id": "commandSafetyAck",
+      "text": "ACK 只表示指令已被小车侧 bridge 受理或处理，不能代表送达成功、真实运动、HIL 或真实云成功。",
+      "disabled": false,
+      "visible": true,
+      "left": 29,
+      "top": 682,
+      "right": 738.328125,
+      "bottom": 722,
+      "width": 709.328125,
+      "height": 40
+    },
+    {
+      "id": "diagnosticsGateCopy",
+      "text": "Diagnostics 可进入；请先处理阻断原因。",
+      "disabled": false,
+      "visible": true,
+      "left": 122.53125,
+      "top": 730,
+      "right": 425.859375,
+      "bottom": 748,
+      "width": 303.328125,
+      "height": 18
+    },
+    {
+      "id": "collectButton",
+      "text": "Start Delivery",
+      "disabled": true,
+      "visible": true,
+      "left": 29,
+      "top": 606,
+      "right": 200.5,
+      "bottom": 650,
+      "width": 171.5,
+      "height": 44
+    },
+    {
+      "id": "dropoffButton",
+      "text": "Confirm Dropoff",
+      "disabled": true,
+      "visible": true,
+      "left": 208.5,
+      "top": 606,
+      "right": 380,
+      "bottom": 650,
+      "width": 171.5,
+      "height": 44
+    },
+    {
+      "id": "cancelButton",
+      "text": "Cancel",
+      "disabled": true,
+      "visible": true,
+      "left": 388,
+      "top": 606,
+      "right": 559.5,
+      "bottom": 650,
+      "width": 171.5,
+      "height": 44
+    },
+    {
+      "id": "diagnosticsButton",
+      "text": "Diagnostics",
+      "disabled": false,
+      "visible": true,
+      "left": 567.5,
+      "top": 606,
+      "right": 739,
+      "bottom": 650,
+      "width": 171.5,
+      "height": 44
+    }
+  ],
+  "copy": {
+    "readiness": "本地手机入口可继续；远程状态仍在等待小车上报。",
+    "command": "正在等待小车上报最新状态，主操作暂不可用。",
+    "ack": "ACK 只表示指令已被小车侧 bridge 受理或处理，不能代表送达成功、真实运动、HIL 或真实云成功。",
+    "diagnostics": "Diagnostics 可进入；请先处理阻断原因。"
+  },
+  "screenshot": "sprints/2026.05.12_15-16_phone-browser-acceptance-gate/evidence/phone_browser_768x900.png",
+  "evidence_boundary": "software_proof_docker_phone_browser_acceptance_gate"
+}
