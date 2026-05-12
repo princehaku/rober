@@ -26,8 +26,11 @@ NETWORK_RECOVERY_EVIDENCE_BOUNDARY = "software_proof_docker_network_recovery_dri
 OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY = "software_proof_docker_oss_cdn_manifest"
 OSS_CDN_PHONE_MANIFEST_EVIDENCE_BOUNDARY = "software_proof_docker_phone_manifest_consumption"
 NETWORK_RECOVERY_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_network_recovery_phone_consumption"
+CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY = "software_proof_docker_credential_rotation_gate"
+CREDENTIAL_ROTATION_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_credential_rotation_phone_consumption"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
+CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 DEPLOY_EVIDENCE_BOUNDARY = "software_proof_docker_deploy"
 BACKUP_ARTIFACT_SCHEMA = "trashbot.remote_cloud_relay_backup.v1"
 BACKUP_ARTIFACT_VERSION = 1
@@ -35,6 +38,8 @@ NETWORK_RECOVERY_SCHEMA = "trashbot.network_recovery_drill"
 NETWORK_RECOVERY_SCHEMA_VERSION = 1
 OSS_CDN_MANIFEST_SCHEMA = "trashbot.oss_cdn_manifest"
 OSS_CDN_MANIFEST_VERSION = 1
+CREDENTIAL_ROTATION_SCHEMA = "trashbot.credential_rotation_gate"
+CREDENTIAL_ROTATION_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -52,6 +57,23 @@ OSS_CDN_NOT_PROVEN = [
     "nav2_or_fixed_route_delivery",
     "wave_rover_or_hil",
 ]
+CREDENTIAL_ROTATION_NOT_PROVEN = [
+    "production_credential_rotation",
+    "sts_issuance",
+    "real_oss_upload",
+    "cdn_origin_fetch",
+    "production_account",
+    "account_tier_enforcement",
+    "robot_provisioning",
+    "audit_log_sink",
+    "real_cloud",
+    "real_4g_sim",
+    "https_tls_public_ingress",
+    "production_db_or_queue",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -66,6 +88,7 @@ PHONE_COPY = {
     "backup_restore_blocked": "云端状态备份恢复演练未通过，请重新生成备份后再恢复。",
     "oss_cdn_manifest_blocked": "OSS/CDN 诊断引用清单未通过校验，请重新生成后再试。",
     "network_recovery_blocked": "网络恢复演练未通过，请重新运行恢复演练后再试。",
+    "credential_rotation_blocked": "凭证轮换软件证明未通过校验，请重新生成后再试。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -87,6 +110,9 @@ SENSITIVE_KEYS = {
     "topic",
     "cmd_vel",
 }
+PHONE_SAFE_KEY_EXCEPTIONS = {
+    "bearer_rotation_status",
+}
 
 # 对字符串也做保守脱敏，避免敏感内容藏在 message 或 diagnostics 里。
 SENSITIVE_TEXT = (
@@ -96,8 +122,17 @@ SENSITIVE_TEXT = (
     "secret",
     "password",
     "oss secret",
+    "oss_access_key",
+    "access_key",
+    "access key",
+    "secret_key",
+    "secret key",
+    "ak/sk",
+    "ak sk",
     "root password",
     "://",
+    "raw state path",
+    "state path",
     "/dev/",
     "/cmd_vel",
     "cmd_vel",
@@ -133,7 +168,7 @@ def safe_value(value):
         for key, item in value.items():
             key_text = str(key)
             key_lc = key_text.lower()
-            if any(marker in key_lc for marker in SENSITIVE_KEYS):
+            if key_lc not in PHONE_SAFE_KEY_EXCEPTIONS and any(marker in key_lc for marker in SENSITIVE_KEYS):
                 continue
             safe[key_text] = safe_value(item)
         return safe
@@ -209,15 +244,16 @@ def _phone_safe_failure_ready():
     # readiness 自检用固定敏感样本，避免以后改脱敏规则时把底层细节暴露给手机。
     sample = phone_error(
         "bad_request",
-        "Authorization Bearer token leaked /cmd_vel ttyUSB0 baudrate https://secret.invalid",
+        "Authorization Bearer token AK/SK OSS_ACCESS_KEY_SECRET raw state path /cmd_vel ttyUSB0 baudrate https://secret.invalid",
         details={
             "authorization": "Bearer hidden",
             "serial_port": "/dev/ttyUSB0",
+            "access_key_secret": "should-not-render",
             "safe": "visible",
         },
     )
     encoded = json.dumps(sample, ensure_ascii=False)
-    forbidden = ("Bearer", "token", "/cmd_vel", "ttyUSB", "baudrate", "https://secret")
+    forbidden = ("Bearer", "token", "AK/SK", "OSS_ACCESS_KEY", "/cmd_vel", "ttyUSB", "baudrate", "https://secret")
     return not any(marker in encoded for marker in forbidden)
 
 
@@ -403,18 +439,19 @@ def _network_step(name, status, safe_summary, retry_hint, details=None):
 
 def _seed_network_recovery_store(store, robot_id, now_value):
     # 恢复演练只写标准 command/status/ack envelope，不触发 ROS2 action 或底盘控制。
+    active_now = max(float(now_value), _now())
     command = {
         "protocol_version": PROTOCOL_VERSION,
         "id": "cmd-network-recovery-1",
         "type": "collect",
-        "expires_at": now_value + 300.0,
+        "expires_at": active_now + 300.0,
         "payload": {"target": "trash_station", "trash_type": 0},
     }
     status = {
         "protocol_version": PROTOCOL_VERSION,
         "state": "delivering",
         "message": "network recovery drill status",
-        "updated_at": now_value,
+        "updated_at": active_now,
         "diagnostics": {"network_recovery_drill": "software_proof"},
     }
     store.submit_command(robot_id, command)
@@ -783,6 +820,246 @@ def build_phone_network_recovery_summary(artifact_path, *, now=None, stale_after
     return phone_summary
 
 
+def _credential_rotation_forbidden_markers(payload):
+    # credential artifact 是给 preflight/手机消费的 proof，必须主动拒绝凭证、路径和底层控制词。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "oss secret",
+        "oss_access_key",
+        "access_key",
+        "access key",
+        "secret_key",
+        "secret key",
+        "ak/sk",
+        "ak sk",
+        "root password",
+        "raw state path",
+        "state path",
+        "/tmp/",
+        "/dev/",
+        "serial",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def build_credential_rotation_artifact_payload(robot_id, *, generated_at=None):
+    """生成 Docker/local 凭证轮换 gate artifact；不签发真实 STS 或生产 token。"""
+    robot_key = _robot_key(robot_id)
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    body = {
+        "schema": CREDENTIAL_ROTATION_SCHEMA,
+        "schema_version": CREDENTIAL_ROTATION_SCHEMA_VERSION,
+        "evidence_boundary": CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY,
+        "robot_id": robot_key,
+        "generated_at": generated_value,
+        "bearer_rotation_status": "local_rotation_gate_passed",
+        "oss_credential_mode": "sts_or_restricted_ak_required",
+        "sts_boundary_status": "software_boundary_documented",
+        "account_tier_status": "production_account_not_proven",
+        "robot_provisioning_status": "software_provisioning_contract_documented",
+        "audit_log_status": "audit_log_contract_documented",
+        "not_proven": list(CREDENTIAL_ROTATION_NOT_PROVEN),
+        "safe_summary": "凭证轮换 gate 已生成 Docker/local software proof；仍未证明真实生产 rotate。",
+        "retry_hint": "pass_credential_rotation_artifact_to_preflight_and_keep_production_not_proven",
+    }
+    forbidden = _credential_rotation_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("credential rotation artifact contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_credential_rotation_artifact_payload(artifact, *, now=None, stale_after_sec=None):
+    # 校验只返回摘要字段；完整 artifact、robot_id 和 checksum 不进入手机 diagnostics。
+    if not isinstance(artifact, dict):
+        raise ValueError("credential rotation artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != CREDENTIAL_ROTATION_SCHEMA:
+        raise ValueError("credential rotation schema mismatch")
+    if artifact.get("schema_version") != CREDENTIAL_ROTATION_SCHEMA_VERSION:
+        raise ValueError("credential rotation schema version mismatch")
+    if artifact.get("evidence_boundary") != CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY:
+        raise ValueError("credential rotation evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("credential rotation checksum mismatch")
+    expected_statuses = {
+        "bearer_rotation_status": "local_rotation_gate_passed",
+        "oss_credential_mode": "sts_or_restricted_ak_required",
+        "sts_boundary_status": "software_boundary_documented",
+        "account_tier_status": "production_account_not_proven",
+        "robot_provisioning_status": "software_provisioning_contract_documented",
+        "audit_log_status": "audit_log_contract_documented",
+    }
+    for field_name, expected in expected_statuses.items():
+        if artifact.get(field_name) != expected:
+            raise ValueError(f"credential rotation {field_name} mismatch")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in CREDENTIAL_ROTATION_NOT_PROVEN if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("credential rotation not_proven list is incomplete")
+    safe_summary = str(artifact.get("safe_summary") or "")
+    retry_hint = str(artifact.get("retry_hint") or "")
+    if not safe_summary or not retry_hint:
+        raise ValueError("credential rotation phone copy missing")
+    forbidden = _credential_rotation_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("credential rotation artifact contains forbidden phone-unsafe markers")
+    generated_at = str(artifact.get("generated_at") or "").strip()
+    timestamp = _parse_manifest_time(generated_at)
+    stale_window = (
+        CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC
+        if stale_after_sec is None
+        else float(stale_after_sec)
+    )
+    now_value = _now() if now is None else float(now)
+    staleness = "fresh"
+    if timestamp is None or now_value - timestamp > stale_window:
+        staleness = "stale"
+    return {
+        "ok": staleness == "fresh",
+        "schema": CREDENTIAL_ROTATION_SCHEMA,
+        "schema_version": CREDENTIAL_ROTATION_SCHEMA_VERSION,
+        "evidence_boundary": CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY,
+        "bearer_rotation_status": expected_statuses["bearer_rotation_status"],
+        "oss_credential_mode": expected_statuses["oss_credential_mode"],
+        "sts_boundary_status": expected_statuses["sts_boundary_status"],
+        "account_tier_status": expected_statuses["account_tier_status"],
+        "robot_provisioning_status": expected_statuses["robot_provisioning_status"],
+        "audit_log_status": expected_statuses["audit_log_status"],
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "generated_at": generated_at,
+        "staleness": staleness,
+        "checksum": checksum,
+        "not_proven": list(CREDENTIAL_ROTATION_NOT_PROVEN),
+    }
+
+
+def create_credential_rotation_artifact(artifact_path, robot_id):
+    # CLI、preflight 和手机摘要共用同一份 artifact，避免软件证明口径分叉。
+    artifact = build_credential_rotation_artifact_payload(robot_id)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_credential_rotation_artifact_payload(artifact)
+    return {
+        "ok": True,
+        "credential_rotation_status": "passed",
+        "evidence_boundary": CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY,
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(CREDENTIAL_ROTATION_NOT_PROVEN),
+    }
+
+
+def credential_rotation_artifact_summary(artifact_path, *, now=None, stale_after_sec=None):
+    # preflight 只消费摘要和校验结论；artifact 路径、robot_id 和 checksum 不回显。
+    try:
+        artifact = _load_json_file(artifact_path, "credential rotation artifact")
+        summary = validate_credential_rotation_artifact_payload(
+            artifact,
+            now=now,
+            stale_after_sec=stale_after_sec,
+        )
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "credential_rotation_invalid",
+            "safe_summary": "凭证轮换软件证明产物损坏。",
+            "retry_hint": "重新生成 credential rotation artifact 后刷新 preflight。",
+            "evidence_boundary": CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY,
+            "not_proven": list(CREDENTIAL_ROTATION_NOT_PROVEN),
+            "debug_reason": _safe_error_reason(exc),
+        }
+    if summary.get("staleness") == "stale":
+        summary.update(
+            {
+                "ok": False,
+                "state": "stale",
+                "reason_code": "credential_rotation_stale",
+                "safe_summary": "凭证轮换软件证明已过期。",
+                "retry_hint": "重新生成 credential rotation artifact，避免手机消费旧证明。",
+            }
+        )
+        return summary
+    summary.update({"state": "ready", "reason_code": "credential_rotation_passed"})
+    return summary
+
+
+def _phone_credential_rotation_base(state, safe_summary, retry_hint):
+    # 手机端只看摘要和 not_proven，不展示 artifact 原文、checksum、路径或 robot_id。
+    return {
+        "state": state,
+        "schema": CREDENTIAL_ROTATION_SCHEMA,
+        "schema_version": CREDENTIAL_ROTATION_SCHEMA_VERSION,
+        "evidence_boundary": CREDENTIAL_ROTATION_PHONE_EVIDENCE_BOUNDARY,
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "bearer_rotation_status": "",
+        "oss_credential_mode": "",
+        "sts_boundary_status": "",
+        "account_tier_status": "",
+        "robot_provisioning_status": "",
+        "audit_log_status": "",
+        "generated_at": "",
+        "staleness": "unknown",
+        "not_proven": list(CREDENTIAL_ROTATION_NOT_PROVEN),
+    }
+
+
+def build_phone_credential_rotation_summary(artifact_path, *, now=None, stale_after_sec=None):
+    """Return a phone-safe credential rotation gate summary."""
+    artifact_ref = os.path.expanduser(str(artifact_path or "")).strip()
+    if not artifact_ref or not os.path.exists(artifact_ref):
+        return _phone_credential_rotation_base(
+            "missing",
+            "凭证轮换软件证明缺失。",
+            "请生成 credential rotation artifact 后刷新状态。",
+        )
+    summary = credential_rotation_artifact_summary(
+        artifact_ref,
+        now=now,
+        stale_after_sec=stale_after_sec,
+    )
+    if not summary.get("ok"):
+        return _phone_credential_rotation_base(
+            str(summary.get("state") or "invalid"),
+            str(summary.get("safe_summary") or "凭证轮换软件证明不可用。"),
+            str(summary.get("retry_hint") or "重新生成 credential rotation artifact 后刷新状态。"),
+        )
+    phone_summary = _phone_credential_rotation_base(
+        "ready",
+        "凭证轮换软件证明已准备；这只是 Docker/local software proof。",
+        "继续补真实云账号、STS 签发、审计日志和生产 rotate 证据。",
+    )
+    phone_summary.update(
+        {
+            "bearer_rotation_status": str(summary.get("bearer_rotation_status") or ""),
+            "oss_credential_mode": str(summary.get("oss_credential_mode") or ""),
+            "sts_boundary_status": str(summary.get("sts_boundary_status") or ""),
+            "account_tier_status": str(summary.get("account_tier_status") or ""),
+            "robot_provisioning_status": str(summary.get("robot_provisioning_status") or ""),
+            "audit_log_status": str(summary.get("audit_log_status") or ""),
+            "generated_at": str(summary.get("generated_at") or ""),
+            "staleness": str(summary.get("staleness") or "fresh"),
+        }
+    )
+    return phone_summary
+
+
 def build_oss_cdn_manifest_payload(robot_id, task_id, date_text=None, objects=None, created_at=None):
     """生成 Docker/local OSS/CDN 对象引用 proof；不声明真实上传、回源或生产账号。"""
     robot_key = _robot_key(robot_id)
@@ -1078,6 +1355,7 @@ def production_preflight_payload(env=None):
     backup_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT")
     oss_cdn_manifest_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT")
     network_recovery_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT")
+    credential_rotation_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT")
     tls_mode_safe = _safe_enum(tls_mode, {"future_reverse_proxy", "terminated", "managed", "reverse_proxy"})
     ingress_mode_safe = _safe_enum(ingress_mode, {"missing", "private_only", "public_https"})
     oss_credential_mode_safe = _safe_enum(oss_credential_mode, {"placeholder", "sts", "restricted_ak", "managed_identity"})
@@ -1398,6 +1676,59 @@ def production_preflight_payload(env=None):
             )
         )
 
+    if credential_rotation_artifact_path:
+        # credential gate 只校验本地 artifact，不读取或输出任何真实 token、AK/SK 或账号 secret。
+        credential_summary = credential_rotation_artifact_summary(credential_rotation_artifact_path)
+        if credential_summary.get("ok"):
+            checks.append(
+                _check(
+                    "credential_rotation",
+                    "pass",
+                    "local_credential_rotation_artifact_valid",
+                    "已找到通过 schema、checksum 和 phone-safe 校验的凭证轮换 artifact。",
+                    "继续补真实云账号、STS 签发、审计日志和生产 rotate 证据。",
+                    {
+                        "artifact_schema": CREDENTIAL_ROTATION_SCHEMA,
+                        "schema_version": CREDENTIAL_ROTATION_SCHEMA_VERSION,
+                        "bearer_rotation_status": credential_summary.get("bearer_rotation_status"),
+                        "oss_credential_mode": credential_summary.get("oss_credential_mode"),
+                        "sts_boundary_status": credential_summary.get("sts_boundary_status"),
+                        "account_tier_status": credential_summary.get("account_tier_status"),
+                        "robot_provisioning_status": credential_summary.get("robot_provisioning_status"),
+                        "audit_log_status": credential_summary.get("audit_log_status"),
+                        "staleness": credential_summary.get("staleness"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            state = str(credential_summary.get("state") or "invalid")
+            checks.append(
+                _check(
+                    "credential_rotation",
+                    "blocked",
+                    f"credential_rotation_artifact_{state}",
+                    str(credential_summary.get("safe_summary") or "凭证轮换软件证明产物不可用。"),
+                    str(credential_summary.get("retry_hint") or "重新生成 credential rotation artifact 后重跑 preflight。"),
+                    {
+                        "artifact_present": True,
+                        "reason_code": credential_summary.get("reason_code", "credential_rotation_invalid"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "credential_rotation",
+                "warning",
+                "credential_rotation_artifact_missing",
+                "尚未提供凭证轮换 artifact，不能声明本地 credential rotation gate 软件证明。",
+                "生成 credential rotation artifact，并用 TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT 传给 preflight。",
+                {"artifact_present": False, "software_proof_only": True},
+            )
+        )
+
     if _phone_safe_failure_ready():
         checks.append(
             _check(
@@ -1439,7 +1770,12 @@ def production_preflight_payload(env=None):
         check["name"] == "network_recovery_drill" and check["status"] == "pass"
         for check in checks
     )
+    local_credential_rotation_ok = any(
+        check["name"] == "credential_rotation" and check["status"] == "pass"
+        for check in checks
+    )
     not_proven = [
+        "production_credential_rotation",
         "real_oss_upload",
         "sts_issuance",
         "cdn_origin_fetch",
@@ -1460,14 +1796,18 @@ def production_preflight_payload(env=None):
         not_proven.insert(8, "backup_restore")
     if not local_network_recovery_ok:
         not_proven.insert(9, "network_recovery_drill")
+    if not local_credential_rotation_ok:
+        not_proven.insert(10, "credential_rotation_gate")
     payload = {
         "ok": production_ready,
-        "software_proof_ready": bool(local_network_recovery_ok),
+        "software_proof_ready": bool(local_network_recovery_ok or local_credential_rotation_ok),
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
         "protocol_version": PROTOCOL_VERSION,
         "evidence_boundary": (
-            OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY
+            CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY
+            if local_credential_rotation_ok
+            else OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY
             if local_manifest_ok
             else NETWORK_RECOVERY_EVIDENCE_BOUNDARY
             if local_network_recovery_ok
@@ -2659,9 +2999,24 @@ def main(argv=None):
         help="phone-safe network recovery drill artifact consumed by preflight",
     )
     parser.add_argument(
+        "--credential-rotation-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT", ""),
+        help="phone-safe credential rotation artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
+    )
+    parser.add_argument(
+        "--write-credential-rotation-artifact",
+        default="",
+        help="write a phone-safe credential rotation gate artifact JSON and exit",
+    )
+    parser.add_argument(
+        "--credential-rotation-robot-id",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ROBOT_ID", "robot-local-proof"),
+        help="robot id embedded in generated credential rotation proof",
     )
     parser.add_argument(
         "--manifest-robot-id",
@@ -2726,9 +3081,21 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT"] = args.oss_cdn_manifest_artifact
         if args.network_recovery_artifact:
             preflight_env["TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT"] = args.network_recovery_artifact
+        if args.credential_rotation_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT"] = args.credential_rotation_artifact
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
+    if args.write_credential_rotation_artifact:
+        try:
+            payload = create_credential_rotation_artifact(
+                args.write_credential_rotation_artifact,
+                args.credential_rotation_robot_id,
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error("credential_rotation_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     if args.write_oss_cdn_manifest:
         try:
             payload = create_oss_cdn_manifest_artifact(

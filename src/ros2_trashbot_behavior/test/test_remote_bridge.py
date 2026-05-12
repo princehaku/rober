@@ -28,6 +28,7 @@ class MockCloud:
         self.malformed_get_count = 0
         self.malformed_ack_count = 0
         self.auth_fail_get_count = 0
+        self.response_extras = {}
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), self._make_handler())
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
 
@@ -83,7 +84,10 @@ class MockCloud:
                         self.wfile.write(data)
                         return
                     command = cloud.commands.pop(0) if cloud.commands else None
-                    self._json(200, {"command": command})
+                    payload = {"command": command}
+                    # 未来 relay/preflight 字段只能作为云端诊断元数据，不能改变 robot bridge 的 envelope 解析。
+                    payload.update(cloud.response_extras.get("command_response", {}))
+                    self._json(200, payload)
                     return
                 self._json(404, {"error": self.path})
 
@@ -104,7 +108,10 @@ class MockCloud:
                         self.wfile.write(data)
                         return
                     cloud.status_posts.append(self._body())
-                    self._json(200, {"ok": True})
+                    payload = {"ok": True}
+                    # status response 的诊断扩展不属于 robot 命令契约，worker 不应消费它们。
+                    payload.update(cloud.response_extras.get("status_response", {}))
+                    self._json(200, payload)
                     return
                 if self.path.startswith("/robots/robot-1/commands/") and self.path.endswith("/ack"):
                     cloud.auth_headers.append(self.headers.get("Authorization"))
@@ -122,7 +129,10 @@ class MockCloud:
                         self.wfile.write(data)
                         return
                     cloud.ack_posts.append(self._body())
-                    self._json(200, {"ok": True})
+                    payload = {"ok": True}
+                    # ACK response 只能证明云端收到了 ACK envelope，不能升级为 delivery success。
+                    payload.update(cloud.response_extras.get("ack_response", {}))
+                    self._json(200, payload)
                     return
                 self._json(404, {"error": self.path})
 
@@ -448,6 +458,69 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.backend.last_status["retry_hint"], "contact_support")
         self.assertTrue(self.backend.last_status["cloud_reachable"])
         self.assertNotIn("/cmd_vel", json.dumps(self.backend.last_status))
+
+    def test_command_cloud_outage_with_credential_metadata_does_not_start_or_advance_cursor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-outage",
+                cursor_state_path=state_path,
+            )
+            self.cloud.commands.append({
+                "id": "cmd-hidden-by-outage",
+                "type": "collect",
+                "payload": {"target": "trash_station"},
+            })
+            self.cloud.fail_get_count = 1
+            self.cloud.response_extras["command_response"] = {
+                "credential_rotation": {"status": "passed"},
+                "preflight": {"production_ready": True},
+                "diagnostics": {"delivery_success": True},
+            }
+
+            handled = worker.poll_once()
+
+            self.assertFalse(handled)
+            self.assertEqual(self.backend.calls, [])
+            self.assertEqual(self.cloud.ack_posts, [])
+            self.assertEqual(worker.last_ack_id, "cmd-before-outage")
+            self.assertFalse(state_path.exists())
+            self.assertEqual(self.backend.last_status["degradation_state"], "cloud_unreachable")
+
+    def test_credential_rotation_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "credential_rotation": {"status": "passed"},
+                "preflight": {"production_ready": True},
+            },
+            "command_response": {
+                "credential_rotation": {"status": "passed"},
+                "artifact": {"evidence_boundary": "software_proof_docker_credential_rotation_gate"},
+            },
+            "ack_response": {
+                "delivery_success": True,
+                "diagnostics": {"final_state": "DELIVERED"},
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-credential-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station"},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-credential-extra")
+        self.assertEqual(self.cloud.ack_posts[0]["state"], "acked")
+        self.assertEqual(self.cloud.ack_posts[0]["message"], "collect")
+        self.assertNotIn("delivery_success", json.dumps(self.cloud.ack_posts[0]))
+        self.assertNotIn("credential_rotation", json.dumps(self.cloud.ack_posts[0]))
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
     def test_ack_failure_does_not_persist_cursor_state(self):
         with tempfile.TemporaryDirectory() as tmpdir:

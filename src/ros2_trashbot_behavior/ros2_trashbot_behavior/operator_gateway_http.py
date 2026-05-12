@@ -8,6 +8,7 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
 from ros2_trashbot_behavior.remote_cloud_relay import (
+    build_phone_credential_rotation_summary,
     build_phone_network_recovery_summary,
     build_phone_oss_cdn_manifest_summary,
 )
@@ -2138,6 +2139,7 @@ def build_phone_readiness(
     backup_restore=None,
     oss_cdn_manifest=None,
     network_recovery=None,
+    credential_rotation=None,
 ):
     """Build the phone-first readiness summary used by `/api/status`.
 
@@ -2157,6 +2159,12 @@ def build_phone_readiness(
         dict(network_recovery)
         if isinstance(network_recovery, dict)
         else build_phone_network_recovery_summary("")
+    )
+    # credential rotation 是 O6 上线前凭证边界摘要；它不改变机器人运动状态或本地任务权限。
+    credential_gate = (
+        dict(credential_rotation)
+        if isinstance(credential_rotation, dict)
+        else build_phone_credential_rotation_summary("")
     )
     permissions = _local_action_permissions(status)
     state = str(status.get("state") or "unknown").strip() or "unknown"
@@ -2271,6 +2279,7 @@ def build_phone_readiness(
         "backup_restore": _copy_gate(backup_restore, "backup_restore"),
         "oss_cdn_manifest": dict(manifest_gate),
         "network_recovery": dict(recovery_gate),
+        "credential_rotation": dict(credential_gate),
         "not_proven": list(PHONE_READINESS_NOT_PROVEN),
     }
 
@@ -2301,6 +2310,10 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         getattr(gateway, "network_recovery_artifact_ref", "")
         or os.environ.get("TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT", "")
     )
+    credential_rotation = build_phone_credential_rotation_summary(
+        getattr(gateway, "credential_rotation_artifact_ref", "")
+        or os.environ.get("TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT", "")
+    )
     # 可选 gate 字段只在调用方已提供时采纳；默认 not_run/unknown，不推断生产 readiness。
     payload["phone_readiness"] = build_phone_readiness(
         payload,
@@ -2309,6 +2322,7 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         backup_restore=payload.get("backup_restore") or payload.get("backup_restore_drill"),
         oss_cdn_manifest=oss_cdn_manifest,
         network_recovery=network_recovery,
+        credential_rotation=credential_rotation,
     )
     return payload
 

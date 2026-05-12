@@ -20,6 +20,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
 )
 from ros2_trashbot_behavior.operator_gateway_http import ELEVATOR_ASSIST_SPEAKER_PROMPT
 from ros2_trashbot_behavior.remote_cloud_relay import (
+    create_credential_rotation_artifact,
     create_network_recovery_artifact,
     create_oss_cdn_manifest_artifact,
 )
@@ -800,6 +801,37 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("delivery_success", payload["network_recovery_drill"]["not_proven"])
         self.assertNotIn(str(artifact_path), encoded)
         self.assertNotIn("steps", encoded)
+        self.assertNotIn("checksum", encoded)
+
+    def test_diagnostics_payload_includes_phone_safe_credential_rotation_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_path = Path(td) / "credential_rotation.json"
+            create_credential_rotation_artifact(
+                artifact_path,
+                "robot-diagnostics",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                credential_rotation_artifact_ref=str(artifact_path),
+            )
+            encoded = json.dumps(payload["credential_rotation"], ensure_ascii=False)
+
+        self.assertEqual(payload["credential_rotation"]["state"], "ready")
+        self.assertEqual(
+            payload["credential_rotation"]["evidence_boundary"],
+            "software_proof_docker_credential_rotation_phone_consumption",
+        )
+        self.assertIn("production_credential_rotation", payload["credential_rotation"]["not_proven"])
+        self.assertNotIn(str(artifact_path), encoded)
+        self.assertNotIn("robot-diagnostics", encoded)
         self.assertNotIn("checksum", encoded)
 
     def test_log_refs_are_normalized_without_claiming_file_existence(self):

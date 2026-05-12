@@ -27,6 +27,7 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     status_payload,
 )
 from ros2_trashbot_behavior.remote_cloud_relay import (
+    create_credential_rotation_artifact,
     create_network_recovery_artifact,
     build_phone_oss_cdn_manifest_summary,
     create_oss_cdn_manifest_artifact,
@@ -53,6 +54,7 @@ class FakeGateway:
         self.mock_cloud_bearer_token = ""
         self.oss_cdn_manifest_artifact_ref = ""
         self.network_recovery_artifact_ref = ""
+        self.credential_rotation_artifact_ref = ""
         self.collect_status = 202
         self.collect_payload = {"state": "loaded_and_ready"}
         self.dropoff_status = 200
@@ -371,6 +373,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             state_backend="sqlite",
         )
         self.gateway.network_recovery_artifact_ref = str(network_recovery_path)
+        credential_rotation_path = Path(self.tempdir.name) / "credential_rotation.json"
+        create_credential_rotation_artifact(
+            credential_rotation_path,
+            "robot-phone-ui",
+        )
+        self.gateway.credential_rotation_artifact_ref = str(credential_rotation_path)
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(self.gateway))
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -426,6 +434,18 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             "software_proof_docker_network_recovery_phone_consumption",
         )
         self.assertIn("delivery_success", payload["phone_readiness"]["network_recovery"]["not_proven"])
+        self.assertEqual(payload["phone_readiness"]["credential_rotation"]["state"], "ready")
+        self.assertEqual(
+            payload["phone_readiness"]["credential_rotation"]["evidence_boundary"],
+            "software_proof_docker_credential_rotation_phone_consumption",
+        )
+        self.assertIn(
+            "production_credential_rotation",
+            payload["phone_readiness"]["credential_rotation"]["not_proven"],
+        )
+        encoded_rotation = json.dumps(payload["phone_readiness"]["credential_rotation"], ensure_ascii=False)
+        self.assertNotIn("checksum", encoded_rotation)
+        self.assertNotIn(self.gateway.credential_rotation_artifact_ref, encoded_rotation)
         self.assertIn("hil_pass", payload["phone_readiness"]["not_proven"])
 
     def test_status_payload_exposes_phone_and_speaker_copy_for_documented_states(self):

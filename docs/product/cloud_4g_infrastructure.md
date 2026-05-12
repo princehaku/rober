@@ -18,6 +18,8 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 
 本轮 `2026.05.12_14-15_remote-network-recovery-drill` 在 independent relay 上新增 Docker/local network recovery drill，证据边界是 `software_proof_docker_network_recovery_drill`。该 drill 会构造本地等价连接失败、验证 ACK post failure 不等于 delivery success、恢复后 command/status/ack envelope 可重新对账，并把 status stale 输出成 phone-safe blocked/warning 摘要。产物可被 `--preflight`、`/api/status.phone_readiness.network_recovery` 和 `/api/diagnostics.network_recovery_drill` 消费；missing、invalid、stale、failed 都不能显示绿色 ready，passed 也只能表示 software proof ready。它仍不是真实云、真实 4G/SIM、HTTPS/TLS 公网、生产 incident recovery、真实送达、Nav2/fixed-route、WAVE ROVER 或 HIL 证据。
 
+本轮 `2026.05.12_16-17_remote-credential-rotation-gate` 在同一 relay/preflight/phone-safe 摘要体系上新增 credential rotation artifact gate，证据边界是 `software_proof_docker_credential_rotation_gate`。Artifact 只记录 schema/version、Docker/local bearer rotate gate 状态、OSS 凭证模式边界、STS/account/provisioning/audit-log 缺口、`not_proven`、safe summary、retry hint 和 checksum；preflight 消费后新增 `credential_rotation` check，`/api/status.phone_readiness.credential_rotation` 和 `/api/diagnostics.credential_rotation` 只输出摘要，不返回完整 artifact、checksum、路径、token、Authorization、OSS secret、AK/SK、root password、串口、baudrate、WAVE ROVER、ROS topic 或 `/cmd_vel`。该 gate 仍不是生产 token rotate、真实 STS issuance、真实 OSS upload、CDN origin fetch、生产账号 provisioning、真实审计日志、真实云、真实 4G/SIM、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达证据。
+
 ## 云端基线规格
 
 目标服务端基线：
@@ -141,6 +143,7 @@ Operator/API 消费 manifest artifact 时输出的是更小的 phone-safe summar
 - `TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT`：可选的本地 backup/restore drill artifact 路径，只供 preflight 验证 schema/checksum 和软件演练状态；不得作为生产备份策略或真实 DR 证据。
 - `TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT`：可选的本地 OSS/CDN manifest artifact 路径，只供 preflight 验证对象引用 schema、prefix、CDN URL 和 checksum；不得作为真实 OSS 上传、STS 或 CDN 回源证据。
 - `TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT`：可选的本地 network recovery drill artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为真实云、真实 4G、生产 incident recovery 或真实送达证据。
+- `TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT`：可选的本地 credential rotation artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为生产 token rotate、真实 STS 签发、真实 OSS 上传、生产账号 provisioning 或真实审计日志证据。
 - `.env` 不入仓库；`.env.example` 只能放占位符。
 - 错误响应和 state file 不得包含 bearer token、Authorization header、credential-bearing URL、串口设备、baudrate、WAVE ROVER 参数、底层速度控制入口或 raw ROS topic 名。
 - token rotate、账号分级、机器人 provisioning 和审计日志是后续真实云 sprint 的范围。
@@ -213,6 +216,17 @@ python3 -m ros2_trashbot_behavior.remote_cloud_relay \
 ```
 
 成功输出必须包含 `evidence_boundary=software_proof_docker_backup_restore_drill`、`backup_status=passed`、`restore_status=passed`、`drill_status=passed`，并继续把 `production_backup_policy`、`real_disaster_recovery`、`production_db_or_queue`、`multi_instance_consistency`、真实云和真实 4G 列为未证明。输出和 artifact 摘要不得包含 bearer token、Authorization header、OSS secret、root password、原始 state path、ROS topic、串口、baudrate、WAVE ROVER 参数或 `/cmd_vel`。
+
+Credential rotation gate CLI 示例：
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --write-credential-rotation-artifact /tmp/trashbot_credential_rotation_gate.json \
+  --credential-rotation-robot-id robot-local-proof
+```
+
+Artifact 必须包含 `schema=trashbot.credential_rotation_gate`、`schema_version=1`、`evidence_boundary=software_proof_docker_credential_rotation_gate`、`robot_id`、`generated_at`、`bearer_rotation_status`、`oss_credential_mode`、`sts_boundary_status`、`account_tier_status`、`robot_provisioning_status`、`audit_log_status`、`not_proven`、`safe_summary`、`retry_hint` 和 `checksum`。Preflight 可通过 `TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT` 消费该 artifact；有效 artifact 会新增 `credential_rotation=pass` check，并把本地证据边界推进到 `software_proof_docker_credential_rotation_gate`，但 `production_ready=false` 必须保持，`not_proven` 必须继续列出 production credential rotation、STS issuance、真实 OSS upload、CDN origin fetch、production account、robot provisioning、audit log、真实云、真实 4G/SIM、Nav2/fixed-route、WAVE ROVER/HIL 和真实送达缺口。
 
 Preflight 可用 `TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT` 验证本地 artifact：
 
