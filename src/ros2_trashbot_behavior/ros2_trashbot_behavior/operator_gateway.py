@@ -114,6 +114,11 @@ class OperatorGateway(Node):
             "oss_cdn_manifest_artifact_ref",
             os.environ.get("TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT", ""),
         )
+        # 该路径只进入手机 readiness/diagnostics 摘要；通过也不代表真实生产 DB/queue。
+        self.declare_parameter(
+            "production_store_queue_artifact_ref",
+            os.environ.get("TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT", ""),
+        )
         self.declare_parameter("mock_cloud_state_path", "")
 
         self.host = str(self.get_parameter("host").value)
@@ -138,6 +143,9 @@ class OperatorGateway(Node):
         )
         self.oss_cdn_manifest_artifact_ref = os.path.expanduser(
             str(self.get_parameter("oss_cdn_manifest_artifact_ref").value)
+        )
+        self.production_store_queue_artifact_ref = os.path.expanduser(
+            str(self.get_parameter("production_store_queue_artifact_ref").value)
         )
         self.mock_cloud_state_path = os.path.expanduser(
             str(self.get_parameter("mock_cloud_state_path").value)
@@ -203,6 +211,7 @@ class OperatorGateway(Node):
             operator_status_file=self.status_file,
             hardware_proof_ref=self.hardware_proof_ref,
             oss_cdn_manifest_artifact_ref=self.oss_cdn_manifest_artifact_ref,
+            production_store_queue_artifact_ref=self.production_store_queue_artifact_ref,
         )
 
     def vision_review_queue(self):

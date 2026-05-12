@@ -6,6 +6,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     build_phone_credential_rotation_summary,
     build_phone_network_recovery_summary,
     build_phone_oss_cdn_manifest_summary,
+    build_phone_production_store_queue_summary,
     build_phone_provisioning_audit_summary,
 )
 
@@ -975,6 +976,7 @@ def build_diagnostics_payload(
     network_recovery_artifact_ref="",
     credential_rotation_artifact_ref="",
     provisioning_audit_artifact_ref="",
+    production_store_queue_artifact_ref="",
 ):
     latest_status = dict(latest_status or {})
     last_task = dict(latest_status.get("last_task") or {})
@@ -1068,6 +1070,10 @@ def build_diagnostics_payload(
         provisioning_audit=build_phone_provisioning_audit_summary(
             provisioning_audit_artifact_ref
             or os.environ.get("TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT", "")
+        ),
+        production_store_queue=build_phone_production_store_queue_summary(
+            production_store_queue_artifact_ref
+            or os.environ.get("TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT", "")
         ),
         operator_status_file=str(operator_status_file or ""),
     )

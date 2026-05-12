@@ -32,6 +32,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     create_network_recovery_artifact,
     build_phone_oss_cdn_manifest_summary,
     create_oss_cdn_manifest_artifact,
+    create_production_store_queue_artifact,
     create_provisioning_audit_artifact,
 )
 
@@ -58,6 +59,7 @@ class FakeGateway:
         self.network_recovery_artifact_ref = ""
         self.credential_rotation_artifact_ref = ""
         self.provisioning_audit_artifact_ref = ""
+        self.production_store_queue_artifact_ref = ""
         self.collect_status = 202
         self.collect_payload = {"state": "loaded_and_ready"}
         self.dropoff_status = 200
@@ -388,6 +390,12 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             "robot-phone-ui",
         )
         self.gateway.provisioning_audit_artifact_ref = str(provisioning_audit_path)
+        production_store_queue_path = Path(self.tempdir.name) / "production_store_queue.json"
+        create_production_store_queue_artifact(
+            production_store_queue_path,
+            "robot-phone-ui",
+        )
+        self.gateway.production_store_queue_artifact_ref = str(production_store_queue_path)
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(self.gateway))
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -466,6 +474,20 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         encoded_provisioning = json.dumps(payload["phone_readiness"]["provisioning_audit"], ensure_ascii=False)
         self.assertNotIn("checksum", encoded_provisioning)
         self.assertNotIn(self.gateway.provisioning_audit_artifact_ref, encoded_provisioning)
+        self.assertEqual(payload["phone_readiness"]["production_store_queue"]["state"], "ready")
+        self.assertEqual(
+            payload["phone_readiness"]["production_store_queue"]["evidence_boundary"],
+            "software_proof_docker_production_store_queue_phone_consumption",
+        )
+        self.assertFalse(payload["phone_readiness"]["production_store_queue"]["production_ready"])
+        self.assertEqual(payload["phone_readiness"]["production_store_queue"]["overall_status"], "blocked")
+        self.assertIn(
+            "production_db_or_queue",
+            payload["phone_readiness"]["production_store_queue"]["not_proven"],
+        )
+        encoded_store_queue = json.dumps(payload["phone_readiness"]["production_store_queue"], ensure_ascii=False)
+        self.assertNotIn("checksum", encoded_store_queue)
+        self.assertNotIn(self.gateway.production_store_queue_artifact_ref, encoded_store_queue)
         self.assertIn("hil_pass", payload["phone_readiness"]["not_proven"])
 
     def test_status_payload_exposes_phone_and_speaker_copy_for_documented_states(self):

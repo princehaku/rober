@@ -293,6 +293,26 @@ Then pass it to preflight with
 issuance, real audit log, production account provisioning, real cloud, real 4G,
 Nav2/fixed-route delivery, WAVE ROVER, HIL, or delivery success.
 
+The production store/queue gate adds a Docker/local artifact for the production
+DB/queue contract boundary. Generate it with:
+
+```bash
+PYTHONPATH=src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --write-production-store-queue-artifact /tmp/trashbot_production_store_queue_gate.json \
+  --production-store-queue-robot-id robot-local-proof
+```
+
+Then pass it to preflight with
+`TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT` or
+`--production-store-queue-artifact`. The resulting evidence boundary is
+`software_proof_docker_production_store_queue_gate`; phone consumption uses
+`software_proof_docker_production_store_queue_phone_consumption`.
+`production_ready=false`, `overall_status=blocked`, and `not_proven` must remain.
+This is not a real production DB/queue, multi-instance consistency, production
+backup policy, disaster recovery, real cloud, real 4G, Nav2/fixed-route delivery,
+WAVE ROVER, HIL, or delivery success.
+
 Phone and diagnostics payloads must not expose bearer tokens, Authorization
 headers, credential-bearing cloud URLs, serial devices, baudrate, WAVE ROVER
 parameters, `/cmd_vel`, raw ROS topic names, or hardware configuration fields.

@@ -11,6 +11,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     build_phone_credential_rotation_summary,
     build_phone_network_recovery_summary,
     build_phone_oss_cdn_manifest_summary,
+    build_phone_production_store_queue_summary,
     build_phone_provisioning_audit_summary,
 )
 from ros2_trashbot_behavior.remote_bridge_protocol import parse_bool
@@ -2274,6 +2275,7 @@ def build_phone_readiness(
     network_recovery=None,
     credential_rotation=None,
     provisioning_audit=None,
+    production_store_queue=None,
 ):
     """Build the phone-first readiness summary used by `/api/status`.
 
@@ -2305,6 +2307,12 @@ def build_phone_readiness(
         dict(provisioning_audit)
         if isinstance(provisioning_audit, dict)
         else build_phone_provisioning_audit_summary("")
+    )
+    # production store/queue 是 O6 生产持久化/队列边界摘要，不改变运动权限。
+    store_queue_gate = (
+        dict(production_store_queue)
+        if isinstance(production_store_queue, dict)
+        else build_phone_production_store_queue_summary("")
     )
     permissions = _local_action_permissions(status)
     state = str(status.get("state") or "unknown").strip() or "unknown"
@@ -2421,6 +2429,7 @@ def build_phone_readiness(
         "network_recovery": dict(recovery_gate),
         "credential_rotation": dict(credential_gate),
         "provisioning_audit": dict(provisioning_gate),
+        "production_store_queue": dict(store_queue_gate),
         "not_proven": list(PHONE_READINESS_NOT_PROVEN),
     }
 
@@ -2459,6 +2468,10 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         getattr(gateway, "provisioning_audit_artifact_ref", "")
         or os.environ.get("TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT", "")
     )
+    production_store_queue = build_phone_production_store_queue_summary(
+        getattr(gateway, "production_store_queue_artifact_ref", "")
+        or os.environ.get("TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT", "")
+    )
     # 可选 gate 字段只在调用方已提供时采纳；默认 not_run/unknown，不推断生产 readiness。
     payload["phone_readiness"] = build_phone_readiness(
         payload,
@@ -2469,6 +2482,7 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         network_recovery=network_recovery,
         credential_rotation=credential_rotation,
         provisioning_audit=provisioning_audit,
+        production_store_queue=production_store_queue,
     )
     return payload
 

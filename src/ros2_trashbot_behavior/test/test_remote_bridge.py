@@ -561,6 +561,51 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_production_store_queue_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "production_store_queue": {
+                    "state": "ready",
+                    "production_ready": False,
+                    "overall_status": "blocked",
+                },
+            },
+            "command_response": {
+                "production_store_queue": {
+                    "state": "ready",
+                    "queue_contract_status": "local_queue_contract_artifact_present",
+                    "next_action": "confirm_dropoff",
+                },
+                "preflight": {"production_ready": False, "overall_status": "blocked"},
+            },
+            "ack_response": {
+                "production_store_queue": {"state": "ready"},
+                "delivery_success": True,
+                "diagnostics": {"final_state": "DELIVERED"},
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-production-store-queue-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-production-store-queue-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-production-store-queue-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        # production store/queue 只是云端 preflight/status 诊断元数据，不能污染 robot ACK envelope。
+        self.assertNotIn("production_store_queue", ack_payload)
+        self.assertNotIn("production_store_queue", json.dumps(ack_payload["result"]))
+        self.assertNotIn("queue_contract_status", json.dumps(ack_payload["result"]))
+        self.assertNotIn("delivery_success", json.dumps(ack_payload["result"]))
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_metadata_only_preflight_blocked_response_does_not_start_ack_or_persist_cursor(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
@@ -588,6 +633,41 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertFalse(state_path.exists())
             self.assertEqual(len(self.cloud.status_posts), 1)
             self.assertNotIn("secret_access_key", json.dumps(self.cloud.status_posts))
+
+    def test_metadata_only_production_store_queue_response_does_not_start_ack_or_persist_cursor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-production-store-queue",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras["command_response"] = {
+                "production_store_queue": {
+                    "state": "ready",
+                    "store_contract_status": "local_store_contract_artifact_present",
+                    "queue_contract_status": "local_queue_contract_artifact_present",
+                    "ordering_status": "local_ordering_contract_artifact_present",
+                    "consistency_status": "single_instance_only",
+                    "production_ready": False,
+                    "overall_status": "blocked",
+                    "delivery_success": True,
+                },
+                "preflight": {"overall_status": "blocked", "production_ready": False},
+            }
+
+            handled = worker.poll_once()
+
+            # 只有 metadata、没有 command envelope 时，robot 侧必须保持 fail-closed。
+            self.assertFalse(handled)
+            self.assertEqual(self.backend.calls, [])
+            self.assertEqual(self.cloud.ack_posts, [])
+            self.assertEqual(worker.last_ack_id, "cmd-before-production-store-queue")
+            self.assertFalse(state_path.exists())
+            self.assertEqual(len(self.cloud.status_posts), 1)
+            self.assertNotIn("production_store_queue", json.dumps(self.cloud.status_posts))
 
     def test_ack_failure_does_not_persist_cursor_state(self):
         with tempfile.TemporaryDirectory() as tmpdir:

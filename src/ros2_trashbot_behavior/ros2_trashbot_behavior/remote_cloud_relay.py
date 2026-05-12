@@ -30,10 +30,13 @@ CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY = "software_proof_docker_credential_rotati
 CREDENTIAL_ROTATION_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_credential_rotation_phone_consumption"
 PROVISIONING_AUDIT_EVIDENCE_BOUNDARY = "software_proof_docker_provisioning_audit_gate"
 PROVISIONING_AUDIT_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_provisioning_audit_phone_consumption"
+PRODUCTION_STORE_QUEUE_EVIDENCE_BOUNDARY = "software_proof_docker_production_store_queue_gate"
+PRODUCTION_STORE_QUEUE_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_production_store_queue_phone_consumption"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 PROVISIONING_AUDIT_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
+PRODUCTION_STORE_QUEUE_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 DEPLOY_EVIDENCE_BOUNDARY = "software_proof_docker_deploy"
 BACKUP_ARTIFACT_SCHEMA = "trashbot.remote_cloud_relay_backup.v1"
 BACKUP_ARTIFACT_VERSION = 1
@@ -45,6 +48,8 @@ CREDENTIAL_ROTATION_SCHEMA = "trashbot.credential_rotation_gate"
 CREDENTIAL_ROTATION_SCHEMA_VERSION = 1
 PROVISIONING_AUDIT_SCHEMA = "trashbot.provisioning_audit_gate"
 PROVISIONING_AUDIT_SCHEMA_VERSION = 1
+PRODUCTION_STORE_QUEUE_SCHEMA = "trashbot.production_store_queue_gate"
+PRODUCTION_STORE_QUEUE_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -96,6 +101,21 @@ PROVISIONING_AUDIT_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+PRODUCTION_STORE_QUEUE_NOT_PROVEN = [
+    "production_db_or_queue",
+    "multi_instance_consistency",
+    "production_queue_ordering",
+    "production_transaction_isolation",
+    "production_backup_policy",
+    "real_disaster_recovery",
+    "real_cloud",
+    "real_4g_sim",
+    "https_tls_public_ingress",
+    "production_account",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -112,6 +132,7 @@ PHONE_COPY = {
     "network_recovery_blocked": "网络恢复演练未通过，请重新运行恢复演练后再试。",
     "credential_rotation_blocked": "凭证轮换软件证明未通过校验，请重新生成后再试。",
     "provisioning_audit_blocked": "生产 provisioning / STS / audit 软件证明未通过校验，请重新生成后再试。",
+    "production_store_queue_blocked": "生产 DB/queue 软件证明未通过校验，请重新生成后再试。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -1324,6 +1345,252 @@ def build_phone_provisioning_audit_summary(artifact_path, *, now=None, stale_aft
     return phone_summary
 
 
+def _production_store_queue_forbidden_markers(payload):
+    # 该 artifact 会进入手机和 preflight，必须拒绝真实连接串、队列地址、路径和底层控制词。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "secret",
+        "password",
+        "postgres://",
+        "mysql://",
+        "redis://",
+        "amqp://",
+        "kafka://",
+        "queue url",
+        "queue_url",
+        "database url",
+        "database_url",
+        "raw state path",
+        "state path",
+        "/tmp/",
+        "/dev/",
+        "serial",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+        "traceback",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def build_production_store_queue_artifact_payload(robot_id, *, generated_at=None):
+    """生成 Docker/local production store/queue gate；不连接真实 DB 或生产队列。"""
+    robot_key = _robot_key(robot_id)
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    body = {
+        "schema": PRODUCTION_STORE_QUEUE_SCHEMA,
+        "schema_version": PRODUCTION_STORE_QUEUE_SCHEMA_VERSION,
+        "evidence_boundary": PRODUCTION_STORE_QUEUE_EVIDENCE_BOUNDARY,
+        "robot_id": robot_key,
+        "generated_at": generated_value,
+        "store_contract_status": "local_store_contract_artifact_present",
+        "queue_contract_status": "local_queue_contract_artifact_present",
+        "ordering_status": "single_instance_ordering_documented",
+        "consistency_status": "multi_instance_consistency_not_proven",
+        "migration_status": "production_migration_not_run",
+        "production_ready": False,
+        "overall_status": "blocked",
+        "not_proven": list(PRODUCTION_STORE_QUEUE_NOT_PROVEN),
+        "safe_summary": "Production store/queue gate 已生成 Docker/local software proof；真实生产 DB/queue 仍未验证。",
+        "retry_hint": "pass_production_store_queue_artifact_to_preflight_and_keep_production_blocked",
+    }
+    forbidden = _production_store_queue_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("production store queue artifact contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_production_store_queue_artifact_payload(artifact, *, now=None, stale_after_sec=None):
+    # 校验只返回小摘要；完整 artifact、robot_id、checksum 不进入手机状态。
+    if not isinstance(artifact, dict):
+        raise ValueError("production store queue artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != PRODUCTION_STORE_QUEUE_SCHEMA:
+        raise ValueError("production store queue schema mismatch")
+    if artifact.get("schema_version") != PRODUCTION_STORE_QUEUE_SCHEMA_VERSION:
+        raise ValueError("production store queue schema version mismatch")
+    if artifact.get("evidence_boundary") != PRODUCTION_STORE_QUEUE_EVIDENCE_BOUNDARY:
+        raise ValueError("production store queue evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("production store queue checksum mismatch")
+    expected_statuses = {
+        "store_contract_status": "local_store_contract_artifact_present",
+        "queue_contract_status": "local_queue_contract_artifact_present",
+        "ordering_status": "single_instance_ordering_documented",
+        "consistency_status": "multi_instance_consistency_not_proven",
+        "migration_status": "production_migration_not_run",
+    }
+    for field_name, expected in expected_statuses.items():
+        if artifact.get(field_name) != expected:
+            raise ValueError(f"production store queue {field_name} mismatch")
+    if artifact.get("production_ready") is not False or artifact.get("overall_status") != "blocked":
+        raise ValueError("production store queue must stay production blocked")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in PRODUCTION_STORE_QUEUE_NOT_PROVEN if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("production store queue not_proven list is incomplete")
+    safe_summary = str(artifact.get("safe_summary") or "")
+    retry_hint = str(artifact.get("retry_hint") or "")
+    if not safe_summary or not retry_hint:
+        raise ValueError("production store queue phone copy missing")
+    forbidden = _production_store_queue_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("production store queue artifact contains forbidden phone-unsafe markers")
+    generated_at = str(artifact.get("generated_at") or "").strip()
+    timestamp = _parse_manifest_time(generated_at)
+    stale_window = (
+        PRODUCTION_STORE_QUEUE_ARTIFACT_STALE_AFTER_SEC
+        if stale_after_sec is None
+        else float(stale_after_sec)
+    )
+    now_value = _now() if now is None else float(now)
+    staleness = "fresh"
+    if timestamp is None or now_value - timestamp > stale_window:
+        staleness = "stale"
+    return {
+        "ok": staleness == "fresh",
+        "schema": PRODUCTION_STORE_QUEUE_SCHEMA,
+        "schema_version": PRODUCTION_STORE_QUEUE_SCHEMA_VERSION,
+        "evidence_boundary": PRODUCTION_STORE_QUEUE_EVIDENCE_BOUNDARY,
+        "store_contract_status": expected_statuses["store_contract_status"],
+        "queue_contract_status": expected_statuses["queue_contract_status"],
+        "ordering_status": expected_statuses["ordering_status"],
+        "consistency_status": expected_statuses["consistency_status"],
+        "migration_status": expected_statuses["migration_status"],
+        "production_ready": False,
+        "overall_status": "blocked",
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "generated_at": generated_at,
+        "staleness": staleness,
+        "checksum": checksum,
+        "not_proven": list(PRODUCTION_STORE_QUEUE_NOT_PROVEN),
+    }
+
+
+def create_production_store_queue_artifact(artifact_path, robot_id):
+    # CLI、preflight 和手机摘要共用同一个校验函数，避免生产 DB/queue 口径分叉。
+    artifact = build_production_store_queue_artifact_payload(robot_id)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_production_store_queue_artifact_payload(artifact)
+    return {
+        "ok": True,
+        "production_store_queue_status": "blocked",
+        "evidence_boundary": PRODUCTION_STORE_QUEUE_EVIDENCE_BOUNDARY,
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(PRODUCTION_STORE_QUEUE_NOT_PROVEN),
+    }
+
+
+def production_store_queue_artifact_summary(artifact_path, *, now=None, stale_after_sec=None):
+    # preflight 只消费摘要和校验结论；路径、robot_id、checksum 不回显。
+    try:
+        artifact = _load_json_file(artifact_path, "production store queue artifact")
+        summary = validate_production_store_queue_artifact_payload(
+            artifact,
+            now=now,
+            stale_after_sec=stale_after_sec,
+        )
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "production_store_queue_invalid",
+            "safe_summary": "Production store/queue 软件证明产物损坏。",
+            "retry_hint": "重新生成 production store/queue artifact 后刷新 preflight。",
+            "evidence_boundary": PRODUCTION_STORE_QUEUE_EVIDENCE_BOUNDARY,
+            "not_proven": list(PRODUCTION_STORE_QUEUE_NOT_PROVEN),
+            "debug_reason": _safe_error_reason(exc),
+        }
+    if summary.get("staleness") == "stale":
+        summary.update(
+            {
+                "ok": False,
+                "state": "stale",
+                "reason_code": "production_store_queue_stale",
+                "safe_summary": "Production store/queue 软件证明已过期。",
+                "retry_hint": "重新生成 production store/queue artifact，避免手机消费旧证明。",
+            }
+        )
+        return summary
+    summary.update({"state": "ready", "reason_code": "production_store_queue_passed"})
+    return summary
+
+
+def _phone_production_store_queue_base(state, safe_summary, retry_hint):
+    # 手机端只看摘要，不展示 artifact 原文、路径、checksum 或真实存储连接信息。
+    return {
+        "state": state,
+        "schema": PRODUCTION_STORE_QUEUE_SCHEMA,
+        "schema_version": PRODUCTION_STORE_QUEUE_SCHEMA_VERSION,
+        "evidence_boundary": PRODUCTION_STORE_QUEUE_PHONE_EVIDENCE_BOUNDARY,
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "store_contract_status": "",
+        "queue_contract_status": "",
+        "ordering_status": "",
+        "consistency_status": "",
+        "migration_status": "",
+        "production_ready": False,
+        "overall_status": "blocked",
+        "generated_at": "",
+        "staleness": "unknown",
+        "not_proven": list(PRODUCTION_STORE_QUEUE_NOT_PROVEN),
+    }
+
+
+def build_phone_production_store_queue_summary(artifact_path, *, now=None, stale_after_sec=None):
+    """Return a phone-safe production store/queue gate summary."""
+    artifact_ref = os.path.expanduser(str(artifact_path or "")).strip()
+    if not artifact_ref or not os.path.exists(artifact_ref):
+        return _phone_production_store_queue_base(
+            "missing",
+            "尚未提供 production store/queue artifact，不能声明生产 DB/queue 软件证明。",
+            "请生成 production store/queue artifact 后刷新状态。",
+        )
+    summary = production_store_queue_artifact_summary(
+        artifact_ref,
+        now=now,
+        stale_after_sec=stale_after_sec,
+    )
+    if not summary.get("ok"):
+        return _phone_production_store_queue_base(
+            str(summary.get("state") or "invalid"),
+            str(summary.get("safe_summary") or "Production store/queue 软件证明产物不可用。"),
+            str(summary.get("retry_hint") or "重新生成 production store/queue artifact 后刷新状态。"),
+        )
+    phone_summary = _phone_production_store_queue_base(
+        "ready",
+        "Production store/queue 软件证明已准备；这只是 Docker/local software proof。",
+        "继续补真实生产 DB/queue、多实例一致性和备份证据。",
+    )
+    phone_summary.update(
+        {
+            "store_contract_status": str(summary.get("store_contract_status") or ""),
+            "queue_contract_status": str(summary.get("queue_contract_status") or ""),
+            "ordering_status": str(summary.get("ordering_status") or ""),
+            "consistency_status": str(summary.get("consistency_status") or ""),
+            "migration_status": str(summary.get("migration_status") or ""),
+            "generated_at": str(summary.get("generated_at") or ""),
+            "staleness": str(summary.get("staleness") or "fresh"),
+        }
+    )
+    return phone_summary
+
+
 def build_oss_cdn_manifest_payload(robot_id, task_id, date_text=None, objects=None, created_at=None):
     """生成 Docker/local OSS/CDN 对象引用 proof；不声明真实上传、回源或生产账号。"""
     robot_key = _robot_key(robot_id)
@@ -1621,6 +1888,7 @@ def production_preflight_payload(env=None):
     network_recovery_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT")
     credential_rotation_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT")
     provisioning_audit_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT")
+    production_store_queue_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT")
     tls_mode_safe = _safe_enum(tls_mode, {"future_reverse_proxy", "terminated", "managed", "reverse_proxy"})
     ingress_mode_safe = _safe_enum(ingress_mode, {"missing", "private_only", "public_https"})
     oss_credential_mode_safe = _safe_enum(oss_credential_mode, {"placeholder", "sts", "restricted_ak", "managed_identity"})
@@ -2047,6 +2315,60 @@ def production_preflight_payload(env=None):
             )
         )
 
+    if production_store_queue_artifact_path:
+        # production store/queue gate 只证明 contract artifact 可消费，不连接真实 DB/queue。
+        store_queue_summary = production_store_queue_artifact_summary(production_store_queue_artifact_path)
+        if store_queue_summary.get("ok"):
+            checks.append(
+                _check(
+                    "production_store_queue",
+                    "pass",
+                    "local_production_store_queue_artifact_valid",
+                    "已找到通过 schema、checksum 和 phone-safe 校验的 production store/queue artifact。",
+                    "继续补真实生产 DB/queue、多实例一致性、迁移和备份证据。",
+                    {
+                        "artifact_schema": PRODUCTION_STORE_QUEUE_SCHEMA,
+                        "schema_version": PRODUCTION_STORE_QUEUE_SCHEMA_VERSION,
+                        "store_contract_status": store_queue_summary.get("store_contract_status"),
+                        "queue_contract_status": store_queue_summary.get("queue_contract_status"),
+                        "ordering_status": store_queue_summary.get("ordering_status"),
+                        "consistency_status": store_queue_summary.get("consistency_status"),
+                        "migration_status": store_queue_summary.get("migration_status"),
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "staleness": store_queue_summary.get("staleness"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            state = str(store_queue_summary.get("state") or "invalid")
+            checks.append(
+                _check(
+                    "production_store_queue",
+                    "blocked",
+                    f"production_store_queue_artifact_{state}",
+                    str(store_queue_summary.get("safe_summary") or "Production store/queue 软件证明产物不可用。"),
+                    str(store_queue_summary.get("retry_hint") or "重新生成 production store/queue artifact 后重跑 preflight。"),
+                    {
+                        "artifact_present": True,
+                        "reason_code": store_queue_summary.get("reason_code", "production_store_queue_invalid"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "production_store_queue",
+                "warning",
+                "production_store_queue_artifact_missing",
+                "尚未提供 production store/queue artifact，不能声明生产 DB/queue 软件证明。",
+                "生成 production store/queue artifact，并用 TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT 传给 preflight。",
+                {"artifact_present": False, "software_proof_only": True},
+            )
+        )
+
     if _phone_safe_failure_ready():
         checks.append(
             _check(
@@ -2096,6 +2418,10 @@ def production_preflight_payload(env=None):
         check["name"] == "provisioning_audit" and check["status"] == "pass"
         for check in checks
     )
+    local_production_store_queue_ok = any(
+        check["name"] == "production_store_queue" and check["status"] == "pass"
+        for check in checks
+    )
     not_proven = [
         "production_credential_rotation",
         "production_robot_provisioning",
@@ -2125,16 +2451,23 @@ def production_preflight_payload(env=None):
         not_proven.insert(10, "credential_rotation_gate")
     if not local_provisioning_audit_ok:
         not_proven.insert(11, "provisioning_audit_gate")
+    if not local_production_store_queue_ok:
+        not_proven.insert(12, "production_store_queue_gate")
     payload = {
         "ok": production_ready,
         "software_proof_ready": bool(
-            local_network_recovery_ok or local_credential_rotation_ok or local_provisioning_audit_ok
+            local_network_recovery_ok
+            or local_credential_rotation_ok
+            or local_provisioning_audit_ok
+            or local_production_store_queue_ok
         ),
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
         "protocol_version": PROTOCOL_VERSION,
         "evidence_boundary": (
-            PROVISIONING_AUDIT_EVIDENCE_BOUNDARY
+            PRODUCTION_STORE_QUEUE_EVIDENCE_BOUNDARY
+            if local_production_store_queue_ok
+            else PROVISIONING_AUDIT_EVIDENCE_BOUNDARY
             if local_provisioning_audit_ok
             else CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY
             if local_credential_rotation_ok
@@ -3340,6 +3673,11 @@ def main(argv=None):
         help="phone-safe provisioning / STS / audit artifact consumed by preflight",
     )
     parser.add_argument(
+        "--production-store-queue-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT", ""),
+        help="phone-safe production store/queue artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
@@ -3355,6 +3693,11 @@ def main(argv=None):
         help="write a phone-safe provisioning / STS / audit gate artifact JSON and exit",
     )
     parser.add_argument(
+        "--write-production-store-queue-artifact",
+        default="",
+        help="write a phone-safe production store/queue gate artifact JSON and exit",
+    )
+    parser.add_argument(
         "--credential-rotation-robot-id",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ROBOT_ID", "robot-local-proof"),
         help="robot id embedded in generated credential rotation proof",
@@ -3363,6 +3706,11 @@ def main(argv=None):
         "--provisioning-audit-robot-id",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ROBOT_ID", "robot-local-proof"),
         help="robot id embedded in generated provisioning audit proof",
+    )
+    parser.add_argument(
+        "--production-store-queue-robot-id",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ROBOT_ID", "robot-local-proof"),
+        help="robot id embedded in generated production store/queue proof",
     )
     parser.add_argument(
         "--manifest-robot-id",
@@ -3431,9 +3779,23 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT"] = args.credential_rotation_artifact
         if args.provisioning_audit_artifact:
             preflight_env["TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT"] = args.provisioning_audit_artifact
+        if args.production_store_queue_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_PRODUCTION_STORE_QUEUE_ARTIFACT"] = (
+                args.production_store_queue_artifact
+            )
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
+    if args.write_production_store_queue_artifact:
+        try:
+            payload = create_production_store_queue_artifact(
+                args.write_production_store_queue_artifact,
+                args.production_store_queue_robot_id,
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error("production_store_queue_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     if args.write_provisioning_audit_artifact:
         try:
             payload = create_provisioning_audit_artifact(
