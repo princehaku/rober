@@ -662,6 +662,129 @@
       "delivery success"
     ]
   },
+  "mobile_real_device_review_execution": {
+    "schema": "trashbot.mobile_real_device_review_execution.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.mobile_real_device_review_execution_summary.v1",
+    "package_schema": "trashbot.mobile_real_device_review_execution_package.v1",
+    "source": "mobile_web_fixture",
+    "execution_session_id": "review_execution_mobile_fixture_20260514_0607",
+    "handoff_session_id": "review_handoff_mobile_fixture_20260514_0001",
+    "decision_status": "blocked_missing_evidence",
+    "review_owner": "review_owner_unassigned",
+    "review_status": "blocked_missing_evidence",
+    "review_result": "blocked_missing_evidence",
+    "safe_to_control": false,
+    "evidence_items_readiness": {
+      "device_materials": "blocked_missing_evidence",
+      "production_app": "blocked_missing_evidence",
+      "pwa_install_prompt": "blocked_missing_evidence",
+      "redaction": "passed"
+    },
+    "operator_notes": "operator notes fixture：未提供真实设备现场执行摘要。",
+    "reviewer_notes": "reviewer notes fixture：等待真实设备、production app 和真实 PWA install prompt/user choice。",
+    "blocked_reason": "缺少真实 iPhone/Android device behavior、production app 和真实 PWA install prompt/user choice。",
+    "next_evidence_request": [
+      "真实 iPhone/Android device behavior 摘要",
+      "production app 入口与 release summary",
+      "真实 PWA install prompt capture status",
+      "真实 install prompt user choice"
+    ],
+    "review_execution_checklist": [
+      {
+        "item": "review result",
+        "status": "blocked_missing_evidence",
+        "safe_phone_copy": "确认 review result 仍是 blocked_missing_evidence，不是验收通过。"
+      },
+      {
+        "item": "evidence items readiness",
+        "status": "blocked_missing_evidence",
+        "safe_phone_copy": "逐项确认真实设备材料、production app 和真实 PWA install prompt/user choice 仍缺失。"
+      },
+      {
+        "item": "operator notes",
+        "status": "not_proven",
+        "safe_phone_copy": "operator notes 只能写 phone-safe 摘要，不粘贴原始机器人响应或完整证据文件。"
+      },
+      {
+        "item": "reviewer notes",
+        "status": "required",
+        "safe_phone_copy": "reviewer notes 必须保留 ACK-not-delivery 和 not_proven 边界。"
+      }
+    ],
+    "redaction_status": "passed",
+    "linked_review_handoff": {
+      "schema": "trashbot.mobile_real_device_review_handoff_package.v1",
+      "handoff_schema": "trashbot.mobile_real_device_review_handoff.v1",
+      "summary_schema": "trashbot.mobile_real_device_review_handoff_summary.v1",
+      "handoff_session_id": "review_handoff_mobile_fixture_20260514_0001",
+      "decision_status": "blocked_missing_evidence",
+      "review_status": "blocked_missing_evidence",
+      "redaction_status": "passed",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_review_handoff_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_acceptance_decision_gate",
+      "safe_to_control": false
+    },
+    "safe_phone_copy": "review execution package 只表示人工评审执行记录；fixture 不是真实设备验收通过、真实 PWA install prompt、O5 外部 proof、HIL 或 delivery success。",
+    "recovery_hint": "按 blocked reason 和 next evidence request 补齐材料；Start、Confirm、Cancel 继续 fail closed。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成、取消完成或真实设备验收通过。",
+    "evidence_boundary": "software_proof_docker_mobile_real_device_review_execution_gate",
+    "source_evidence_boundary": "software_proof_docker_mobile_real_device_review_handoff_gate",
+    "not_proven": [
+      "真实手机设备",
+      "真实 iPhone/Android device behavior",
+      "production app",
+      "PWA install prompt",
+      "真实 PWA install prompt/user choice",
+      "O5 外部 proof",
+      "HIL",
+      "delivery success",
+      "真实送达"
+    ]
+  },
+  "mobile_real_device_review_execution_summary": {
+    "schema": "trashbot.mobile_real_device_review_execution_summary.v1",
+    "schema_version": 1,
+    "review_result": "blocked_missing_evidence",
+    "review_status": "blocked_missing_evidence",
+    "safe_phone_copy": "真实设备 review execution 摘要只说明人工评审执行状态，不证明真实设备验收通过。",
+    "blocked_reason": "缺少真实设备、production app 和真实 PWA install prompt/user choice。",
+    "next_evidence_request": [
+      "真实设备材料",
+      "production app",
+      "真实 PWA install prompt/user choice"
+    ],
+    "evidence_boundary": "software_proof_docker_mobile_real_device_review_execution_gate",
+    "source_evidence_boundary": "software_proof_docker_mobile_real_device_review_handoff_gate",
+    "not_proven": [
+      "真实手机设备",
+      "production app",
+      "PWA install prompt",
+      "HIL",
+      "delivery success"
+    ]
+  },
+  "mobile_real_device_review_execution_package": {
+    "schema": "trashbot.mobile_real_device_review_execution_package.v1",
+    "schema_version": 1,
+    "execution_schema": "trashbot.mobile_real_device_review_execution.v1",
+    "summary_schema": "trashbot.mobile_real_device_review_execution_summary.v1",
+    "review_result": "blocked_missing_evidence",
+    "review_status": "blocked_missing_evidence",
+    "safe_to_control": false,
+    "redaction_status": "passed",
+    "safe_phone_copy": "可复制的 review execution package 只包含 phone-safe 人工评审执行记录字段。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+    "evidence_boundary": "software_proof_docker_mobile_real_device_review_execution_gate",
+    "source_evidence_boundary": "software_proof_docker_mobile_real_device_review_handoff_gate",
+    "not_proven": [
+      "真实手机设备",
+      "production app",
+      "PWA install prompt",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "mobile_browser_acceptance_bundle": {
     "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
     "schema_version": 1,

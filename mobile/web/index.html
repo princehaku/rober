@@ -513,6 +513,78 @@
         <pre id="mobileRealDeviceReviewHandoffSafeCopy" class="safe-copy" aria-label="真实设备 review handoff package">暂无真实设备评审交接包。</pre>
       </section>
 
+      <section class="real-device-review-panel" aria-labelledby="mobileRealDeviceReviewExecutionTitle">
+        <div class="section-heading">
+          <h2 id="mobileRealDeviceReviewExecutionTitle">真实设备评审执行</h2>
+          <span id="mobileRealDeviceReviewExecutionBadge" class="gate-badge gate-blocked">blocked_missing_evidence</span>
+        </div>
+        <p id="mobileRealDeviceReviewExecutionCopy" class="message">
+          review execution package 只表示人工评审执行记录；不是真实设备验收通过、PWA install prompt 或 delivery success。
+        </p>
+        <dl class="real-device-review-grid">
+          <div>
+            <dt>Review Result</dt>
+            <dd id="mobileRealDeviceReviewExecutionResult">blocked_missing_evidence</dd>
+          </div>
+          <div>
+            <dt>Review Status</dt>
+            <dd id="mobileRealDeviceReviewExecutionStatus">review owner=unassigned / review status=blocked</dd>
+          </div>
+          <div>
+            <dt>Evidence Items Readiness</dt>
+            <dd id="mobileRealDeviceReviewExecutionEvidenceReadiness">device=not_proven / production_app=not_proven / PWA install prompt=not_proven</dd>
+          </div>
+          <div>
+            <dt>Operator Notes</dt>
+            <dd id="mobileRealDeviceReviewExecutionOperatorNotes">operator notes 未提供。</dd>
+          </div>
+          <div>
+            <dt>Reviewer Notes</dt>
+            <dd id="mobileRealDeviceReviewExecutionReviewerNotes">reviewer notes 未提供。</dd>
+          </div>
+          <div>
+            <dt>Blocked Reason</dt>
+            <dd id="mobileRealDeviceReviewExecutionBlockedReason">缺少真实设备验收材料。</dd>
+          </div>
+          <div>
+            <dt>Next Evidence Request</dt>
+            <dd id="mobileRealDeviceReviewExecutionNextEvidence">真实设备、production app、PWA install prompt/user choice。</dd>
+          </div>
+          <div>
+            <dt>Redaction Status</dt>
+            <dd id="mobileRealDeviceReviewExecutionRedaction">missing</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileRealDeviceReviewExecutionAck">ACK 只代表 accepted/processing。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileRealDeviceReviewExecutionBoundary">software_proof_docker_mobile_real_device_review_execution_gate</dd>
+          </div>
+          <div>
+            <dt>Source Boundary</dt>
+            <dd id="mobileRealDeviceReviewExecutionSourceBoundary">software_proof_docker_mobile_real_device_review_handoff_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileRealDeviceReviewExecutionNotProven">真实手机设备、production app、PWA install prompt、O5、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <ol id="mobileRealDeviceReviewExecutionChecklist" class="handoff-checklist">
+          <li>
+            <strong>review execution checklist：not_executed</strong>
+            <em>人工评审执行必须记录 review result/status、operator notes、reviewer notes 和 next evidence request。</em>
+          </li>
+        </ol>
+        <p id="mobileRealDeviceReviewExecutionRecoveryHint" class="hint">缺真实设备材料、production app 或真实 PWA install prompt/user choice 时，Start、Confirm、Cancel 继续 fail closed。</p>
+        <div class="bundle-copy-row">
+          <button id="copyRealDeviceReviewExecutionButton" type="button">复制 review execution package</button>
+          <span id="mobileRealDeviceReviewExecutionCopyStatus" class="hint">复制内容只包含 phone-safe 人工评审执行字段。</span>
+        </div>
+        <pre id="mobileRealDeviceReviewExecutionSafeCopy" class="safe-copy" aria-label="真实设备 review execution package">暂无真实设备评审执行包。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>

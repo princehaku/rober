@@ -37,6 +37,8 @@
 > 当前增量：sprint `2026.05.14_03-04_mobile-real-device-evidence-intake-gate` 在首屏新增“真实设备验收材料”intake panel。证据边界是 `software_proof_docker_mobile_real_device_evidence_intake_gate`，只证明 Docker/local static fixture 与 targeted unittest 能导入 JSON 摘要、用当前本地浏览器 metadata 生成 blocked-by-design package、输出 redacted phone-safe package，并保持 Start / Confirm / Cancel 不因本 gate 放行；不等于真实 iPhone/Android device behavior、production app、真实 PWA install prompt/user choice、真实公网 HTTPS/TLS、4G/SIM、Nav2/fixed-route、WAVE ROVER、HIL 或真实 delivery。
 >
 > 当前增量：sprint `2026.05.14_05-06_mobile-real-device-review-handoff-gate` 在首屏新增“真实设备评审交接”panel。证据边界是 `software_proof_docker_mobile_real_device_review_handoff_gate`，只证明 Docker/local static fixture 与 targeted unittest 能从 `mobile_real_device_acceptance_decision*` 派生或消费 `mobile_real_device_review_handoff*`，展示 reviewer checklist、decision status、review owner/status、evidence blocker、next required evidence、redaction status、source boundary、ACK-not-delivery 和 `not_proven`，并复制 phone-safe review handoff package；不等于真实设备验收通过、production app、真实 PWA install prompt/user choice、O5 外部 proof、HIL 或真实 delivery。
+>
+> 当前增量：sprint `2026.05.14_06-07_mobile-real-device-review-execution-gate` 在首屏新增“真实设备评审执行”panel。证据边界是 `software_proof_docker_mobile_real_device_review_execution_gate`，只证明 Docker/local static fixture 与 targeted unittest 能从 `mobile_real_device_review_handoff*` 派生或消费 `mobile_real_device_review_execution*`，展示 review execution checklist、review result/status、evidence items readiness、operator notes、reviewer notes、blocked reason、next evidence request、redaction status、source boundary、ACK-not-delivery 和 `not_proven`，并复制 phone-safe review execution package；不等于真实设备验收通过、production app、真实 PWA install prompt/user choice、O5 外部 proof、HIL 或真实 delivery。
 
 ## 用途（What lives here）
 
@@ -116,6 +118,7 @@ cloud-relay hosted PWA installability/browser gate：
 - 可选：`mobile_real_device_evidence_intake`、`mobile_real_device_evidence_intake_summary`、`mobile_real_device_evidence_package` 或 `/api/status.phone_readiness.mobile_real_device_evidence_*` 作为真实设备验收材料 intake；它只输出 redacted phone-safe package，不能写成真实设备验收通过或控制放行来源
 - 可选：`mobile_real_device_acceptance_decision`、`mobile_real_device_acceptance_decision_summary`、`mobile_real_device_acceptance_decision_package` 或 `/api/status.phone_readiness.mobile_real_device_acceptance_decision*` 作为真实设备验收决策；它只说明材料是否可进入人工复核，不能写成验收通过
 - 可选：`mobile_real_device_review_handoff`、`mobile_real_device_review_handoff_summary`、`mobile_real_device_review_handoff_package` 或 `/api/status.phone_readiness.mobile_real_device_review_handoff*` 作为真实设备人工评审交接；它可从 acceptance decision 派生 reviewer checklist、review owner/status、evidence blocker 和 next required evidence，但不能写成真实设备验收通过、O5 外部 proof 或控制放行来源
+- 可选：`mobile_real_device_review_execution`、`mobile_real_device_review_execution_summary`、`mobile_real_device_review_execution_package` 或 `/api/status.phone_readiness.mobile_real_device_review_execution*` 作为真实设备人工评审执行记录；它可从 review handoff 派生 review execution checklist、review result/status、evidence items readiness、operator/reviewer notes、blocked reason 和 next evidence request，但不能写成真实设备验收通过、O5 外部 proof 或控制放行来源
 - 可选：`mobile_browser_acceptance_bundle`、`phone_browser_acceptance_bundle`、`mobile_acceptance_evidence_bundle` 或 `/api/status.phone_readiness.*_acceptance_bundle`
 - 可选：`mobile_primary_journey_gate`、`mobile_primary_journey_summary` 作为 phone-safe 支持摘要；Start 是否允许仍由既有 destination、manual load confirmation、`command_safety`、cloud/device/browser readiness、operation log 和 action feedback 共同决定
 - 可选：`mobile_recovery_decision_gate`、`mobile_recovery_decision_summary` 作为 phone-safe 恢复决策摘要；缺失时只能从既有 offline、command safety、operation log、action feedback、support handoff 和 primary journey 字段派生 blocked-by-design 摘要
@@ -240,6 +243,15 @@ PWA 安装提示证据规则：
 - review handoff package 白名单字段为 handoff/session schema、handoff session id、decision status、review owner/status、safe_to_control=false、evidence blocker、next required evidence、reviewer checklist、redaction status、linked acceptance decision 摘要、safe phone copy、recovery hint、ACK 语义、evidence boundary、source evidence boundary 和 `not_proven`。
 - 复制包必须过滤 token、Authorization、OSS AK/SK、root password、DB/queue URL、raw ROS topic、`/cmd_vel`、serial、baudrate、WAVE ROVER、本地路径、traceback、checksum、complete artifact 和 raw robot response；命中敏感输入时只能显示 blocked/rejected 摘要。
 - review handoff package 只表示人工评审交接，不是真实设备验收通过、真实 PWA install prompt、HIL、O5 外部 proof 或 delivery success。缺真实设备材料、production app 或真实 PWA install prompt/user choice 时，Start、Confirm、Cancel 必须继续 fail closed。
+
+真实设备 review execution gate 规则：
+
+- 首屏“真实设备评审执行”panel 消费或派生 `mobile_real_device_review_execution`、`mobile_real_device_review_execution_summary`、`mobile_real_device_review_execution_package`，输入来源是上一轮 `mobile_real_device_review_handoff` / summary / package。
+- schema 为 `trashbot.mobile_real_device_review_execution.v1`、`trashbot.mobile_real_device_review_execution_summary.v1`、`trashbot.mobile_real_device_review_execution_package.v1`，本地证据边界为 `software_proof_docker_mobile_real_device_review_execution_gate`，source boundary 必须保留 `software_proof_docker_mobile_real_device_review_handoff_gate`。
+- 首屏必须展示 review execution checklist、review result/status、evidence items readiness、operator notes、reviewer notes、blocked reason、next evidence request、redaction status、source boundary、ACK-not-delivery 和 `not_proven`。
+- review execution package 白名单字段为 execution/session schema、execution session id、handoff session id、decision status、review owner/status/result、safe_to_control=false、evidence items readiness、operator notes、reviewer notes、blocked reason、next evidence request、review execution checklist、redaction status、linked review handoff 摘要、safe phone copy、recovery hint、ACK 语义、evidence boundary、source evidence boundary 和 `not_proven`。
+- 复制包必须过滤 token、Authorization、OSS AK/SK、root password、DB/queue URL、raw ROS topic、`/cmd_vel`、serial、baudrate、WAVE ROVER、本地路径、traceback、checksum、complete artifact 和 raw robot response；命中敏感输入时只能显示 blocked/rejected 摘要。
+- review execution package 只表示人工评审执行记录，不是真实设备验收通过、真实 PWA install prompt、HIL、O5 外部 proof 或 delivery success。缺真实设备材料、production app 或真实 PWA install prompt/user choice 时，Start、Confirm、Cancel 必须继续 fail closed。
 
 operation log 规则：
 

@@ -879,6 +879,38 @@ enablement remains governed by `command_safety` and `action_permissions`. ACK
 remains accepted/processing evidence only and must not be rendered or
 interpreted as review-handoff completion, robot execution, delivery success,
 production readiness, HIL, dropoff success, or cancel completion.
+Mobile real-device review-execution metadata, including
+`mobile_real_device_review_execution`,
+`mobile_real_device_review_execution_summary`, and
+`mobile_real_device_review_execution_package`, follows the same
+phone/support/product metadata-only rule for the
+`software_proof_docker_mobile_real_device_review_execution_gate` boundary. It
+may describe review execution checklist state, review result/status, evidence
+items readiness, operator notes, reviewer notes, blocked reason, next evidence
+request, redaction status, source boundary, ACK-not-delivery copy, and
+`not_proven` items for human review execution, but it is not a
+`trashbot.remote.v1` command/status/ACK envelope, terminal ACK, backend action
+result, cursor instruction, ROS2 action result, Nav2/fixed-route result, WAVE
+ROVER feedback, HIL result, production-readiness proof, real robot proof,
+dropoff success proof, cancel completion proof, or delivery success proof.
+Robot-side protocol normalization must strip these fields from valid command
+objects; metadata-only responses must not invoke `collect`,
+`confirm_dropoff`, or `cancel`, must not POST ACK, must not advance in-memory
+`last_ack_id`, and must not persist `last_terminal_ack_id`. If these fields
+appear beside a valid `collect`, `confirm_dropoff`, or `cancel` command, the
+robot bridge must execute only the `trashbot.remote.v1` command envelope and
+must not copy `trigger_robot_action`, `next_action`, `cursor_override`,
+`terminal_ack`, `delivery_success`, `dropoff_success`, `cancel_completed`,
+`production_ready`, `production_app_ready`, `hil_pass`,
+`real_device_review_executed`, credential-bearing URLs, Authorization headers,
+raw ROS topics, `/cmd_vel`, serial devices, or hardware parameters into robot
+status, ACK, backend action result, normalized command payload, terminal
+result, or cursor state. These fields also must not enable Start Delivery,
+Confirm Dropoff, or Cancel; button enablement remains governed by
+`command_safety` and `action_permissions`. ACK remains accepted/processing
+evidence only and must not be rendered or interpreted as review execution
+completion, robot execution, delivery success, production readiness, HIL,
+dropoff success, or cancel completion.
 Cloud-hosted PWA/static-shell metadata, including `cloud_hosted_pwa`,
 `static_shell_metadata`, `pwa_static_surface`, and
 `cloud_hosted_mobile_web_gate`, is the phone/static surface contract for a
