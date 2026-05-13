@@ -31,6 +31,8 @@
 > 当前增量：sprint `2026.05.14_00-01_mobile-device-handoff-session-gate` 在首屏新增“真实手机验收交接会话”panel 和复制入口。证据边界是 `software_proof_docker_mobile_device_handoff_session_gate`，只证明 Docker/local static fixture 与 targeted unittest 能把当前入口 URL/摘要、session id、client reference、真实手机验收步骤、device/browser/PWA/install prompt/offline shell/touch target/viewport 观察项和 `mobile_device_evidence_capture` 引用整理成脱敏 handoff package；不等于真实 iPhone/Android device behavior、production app、真实 PWA install prompt、真实公网 HTTPS/TLS、4G/SIM、Nav2/fixed-route、WAVE ROVER、HIL 或真实 delivery。
 >
 > 当前增量：sprint `2026.05.14_01-02_mobile-pwa-install-prompt-evidence-gate` 在首屏新增“PWA 安装提示证据”panel 和复制入口。证据边界是 `software_proof_docker_mobile_pwa_install_prompt_evidence_gate`，只证明 Docker/local static fixture 与 targeted unittest 能展示/复制 phone-safe install prompt capture metadata、user outcome、display-mode/installability/offline shell、manifest/service worker、production app readiness、safe-to-control、ACK 语义和 `not_proven`；不等于真实 iPhone/Android device behavior、production app、真实 PWA install prompt、真实用户安装选择、Nav2/fixed-route、WAVE ROVER、HIL 或真实 delivery。
+>
+> 当前增量：sprint `2026.05.14_02-03_mobile-current-pwa-browser-proof-refresh` 刷新当前 `mobile/web/` 的本地 Chromium-family browser proof。证据边界是 `software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate`；它覆盖当前首屏的三步主路径、恢复决策、终端动作二次确认、手机设备证据采集、真实手机验收交接会话、PWA 安装提示证据、浏览器验收包、Diagnostics、Support Handoff 和 ACK 文案。旧 `software_proof_docker_mobile_web_browser_proof_gate` 作为兼容边界保留在 summary 中；文件名仍沿用 `mobile_web_browser_*`，但本轮只证明本机 Chromium 渲染当前 PWA，不等于真实 iPhone/Android、production app、真实 PWA install prompt、O5 外部材料、Nav2/fixed-route、WAVE ROVER、HIL 或真实 delivery。
 
 ## 用途（What lives here）
 
@@ -245,10 +247,10 @@ PWA / offline 边界：
 - 当前真实本地浏览器 proof gate：
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gate.py --output-dir sprints/2026.05.13_16-17_mobile-web-browser-proof-gate/evidence
+PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gate.py --output-dir sprints/2026.05.14_02-03_mobile-current-pwa-browser-proof-refresh/evidence
 ```
 
-该 gate 自带轻量静态 HTTP server，直接服务 `mobile/web/`，并用 `mobile/fixtures/mobile_web_status.fixture.json` 响应 `/api/status` 与 `/api/diagnostics`。它通过 `--browser` 或 `PHONE_BROWSER_CHROME` 指向 Chromium-family 浏览器；成功后在 sprint `evidence/` 下写入 `mobile_web_browser_390x844.json/png`、`mobile_web_browser_768x900.json/png` 和 `mobile_web_browser_acceptance_summary.json`。summary 必须继续声明 `software_proof_docker_mobile_web_browser_proof_gate` 与非声明边界。
+该 gate 自带轻量静态 HTTP server，直接服务 `mobile/web/`，并用 `mobile/fixtures/mobile_web_status.fixture.json` 响应 `/api/status` 与 `/api/diagnostics`。它通过 `--browser` 或 `PHONE_BROWSER_CHROME` 指向 Chromium-family 浏览器；成功后在 sprint `evidence/` 下写入 `mobile_web_browser_390x844.json/png`、`mobile_web_browser_768x900.json/png` 和 `mobile_web_browser_acceptance_summary.json`。summary 的当前证据边界必须是 `software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate`，同时保留旧 `software_proof_docker_mobile_web_browser_proof_gate` 作为兼容说明，方便读取旧 `mobile_web_browser_*` 文件名的流程不漂移。该 gate 只证明本机 Chromium-family browser 渲染当前 PWA，不是真实手机设备、production app、真实 PWA install prompt、O5 外部材料、真实机器人动作或真实送达。
 
 ## Agent 工作纪律
 
@@ -278,5 +280,6 @@ PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gat
 | 当前 mobile-device-evidence-capture gate | 首屏手机设备证据采集、phone-safe evidence package 复制、not_proven 边界和主操作 fail-closed |
 | 当前 mobile-device-handoff-session gate | 首屏真实手机验收交接会话、phone-safe handoff package 复制、capture 引用和主操作 fail-closed |
 | 当前 mobile-pwa-install-prompt-evidence gate | 首屏 PWA 安装提示证据、phone-safe install prompt evidence package 复制、not_proven 边界和主操作 fail-closed |
+| 当前 mobile-current-pwa-browser-proof-refresh gate | 当前 `mobile/web/` 首屏 panels 的本机 Chromium-family browser proof refresh；保留旧 browser proof boundary 兼容说明 |
 | 下一个 sprint | 真实手机设备验收、production app、真实 PWA install prompt 和弱网体验 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |

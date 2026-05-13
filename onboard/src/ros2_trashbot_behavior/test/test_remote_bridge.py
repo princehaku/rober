@@ -1628,6 +1628,167 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_mobile_current_pwa_browser_proof_refresh_metadata_only_response_does_not_move_robot(self):
+        metadata_cases = (
+            (
+                "mobile_current_pwa_browser_proof_refresh",
+                {
+                    "schema": "trashbot.mobile_current_pwa_browser_proof_refresh.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate",
+                    "viewport_results": {"390x844": "passed", "768x900": "passed"},
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-current-pwa-refresh",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "production_ready": True,
+                    "hil_pass": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+            (
+                "mobile_current_pwa_browser_proof_refresh_summary",
+                {
+                    "schema": "trashbot.mobile_current_pwa_browser_proof_refresh_summary.v1",
+                    "safe_phone_copy": "本地 Chromium proof 只说明当前 PWA 首屏软件证据。",
+                    "next_action": "confirm_dropoff",
+                    "cursor_override": "cmd-current-pwa-summary",
+                    "delivery_success": True,
+                    "real_device_proof": True,
+                },
+            ),
+            (
+                "phone_current_pwa_browser_proof_refresh",
+                {
+                    "schema": "trashbot.phone_current_pwa_browser_proof_refresh.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate",
+                    "safe_to_control": True,
+                    "trigger_robot_action": "cancel",
+                    "production_ready": True,
+                    "Authorization": "Bearer must-not-leak",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.backend.calls.clear()
+                self.cloud.response_extras["command_response"] = {
+                    metadata_name: metadata,
+                    "preflight": {"overall_status": "blocked", "production_ready": False},
+                }
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+
+                    handled = worker.poll_once()
+
+                    # current PWA browser proof refresh 只是手机证据元数据；没有 command envelope 不能动机器人。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("production_ready", encoded_status)
+                    self.assertNotIn("hil_pass", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
+    def test_mobile_current_pwa_browser_proof_refresh_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "mobile_current_pwa_browser_proof_refresh_summary": {
+                    "schema": "trashbot.mobile_current_pwa_browser_proof_refresh_summary.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate",
+                    "delivery_success": True,
+                    "production_ready": True,
+                },
+            },
+            "command_response": {
+                "mobile_current_pwa_browser_proof_refresh": {
+                    "schema": "trashbot.mobile_current_pwa_browser_proof_refresh.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate",
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+                "phone_current_pwa_browser_proof_refresh": {
+                    "schema": "trashbot.phone_current_pwa_browser_proof_refresh.v1",
+                    "safe_phone_copy": "ACK 只代表 accepted/processing，不代表送达成功。",
+                    "next_action": "confirm_dropoff",
+                    "production_ready": True,
+                    "real_device_proof": True,
+                    "hil_pass": True,
+                },
+            },
+            "ack_response": {
+                "mobile_current_pwa_browser_proof_refresh_summary": {
+                    "schema": "trashbot.mobile_current_pwa_browser_proof_refresh_summary.v1",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-current-pwa-browser-proof-refresh-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "mobile_current_pwa_browser_proof_refresh": {
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+            },
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-current-pwa-browser-proof-refresh-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-current-pwa-browser-proof-refresh-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        self.assertEqual(ack_payload["message"], "collect")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # ACK 仍只描述 command envelope 的本地处理结果，不能吸收 current PWA 浏览器刷新 proof。
+        self.assertNotIn("mobile_current_pwa_browser_proof_refresh", encoded_ack)
+        self.assertNotIn("mobile_current_pwa_browser_proof_refresh_summary", encoded_ack)
+        self.assertNotIn("phone_current_pwa_browser_proof_refresh", encoded_ack)
+        self.assertNotIn("software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("production_ready", encoded_ack)
+        self.assertNotIn("real_device_proof", encoded_ack)
+        self.assertNotIn("hil_pass", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        self.assertNotIn("/cmd_vel", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("mobile_current_pwa_browser_proof_refresh", encoded_status)
+        self.assertNotIn("mobile_current_pwa_browser_proof_refresh_summary", encoded_status)
+        self.assertNotIn("phone_current_pwa_browser_proof_refresh", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_mobile_pwa_install_prompt_evidence_metadata_only_response_does_not_move_robot(self):
         metadata_cases = (
             (

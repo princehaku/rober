@@ -1,0 +1,102 @@
+{
+  "ok": true,
+  "browser": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "served_root": "/Users/m4/apps/rober/mobile/web",
+  "fixture": "/Users/m4/apps/rober/mobile/fixtures/mobile_web_status.fixture.json",
+  "viewports": [
+    "390x844",
+    "768x900"
+  ],
+  "checks": [
+    {
+      "viewport": "390x844",
+      "passed": true,
+      "evidence_json": "sprints/2026.05.14_02-03_mobile-current-pwa-browser-proof-refresh/evidence/mobile_web_browser_390x844.json",
+      "screenshot": "sprints/2026.05.14_02-03_mobile-current-pwa-browser-proof-refresh/evidence/mobile_web_browser_390x844.png",
+      "judgment": {
+        "hit_area_status": "passed",
+        "overlap_status": "passed",
+        "overflow_status": "passed",
+        "ack_copy_visible": true,
+        "ack_not_delivery_success": true,
+        "diagnostics_accessible": true,
+        "terminal_action_confirmation_visible": true,
+        "terminal_action_confirm_disabled": true,
+        "support_handoff_available": true,
+        "device_evidence_capture_visible": true,
+        "device_handoff_session_visible": true,
+        "pwa_install_prompt_evidence_visible": true,
+        "browser_acceptance_bundle_visible": true,
+        "browser_acceptance_bundle_copyable": true,
+        "current_panels_status": "passed",
+        "current_boundaries_status": "passed",
+        "primary_actions_disabled": true,
+        "phone_safe_status": "passed",
+        "hit_area_failures": [],
+        "overlaps": [],
+        "horizontal_overflow": [],
+        "page_horizontal_overflow": false,
+        "phone_safe_failures": [],
+        "current_panel_failures": [],
+        "current_boundary_failures": []
+      }
+    },
+    {
+      "viewport": "768x900",
+      "passed": true,
+      "evidence_json": "sprints/2026.05.14_02-03_mobile-current-pwa-browser-proof-refresh/evidence/mobile_web_browser_768x900.json",
+      "screenshot": "sprints/2026.05.14_02-03_mobile-current-pwa-browser-proof-refresh/evidence/mobile_web_browser_768x900.png",
+      "judgment": {
+        "hit_area_status": "passed",
+        "overlap_status": "passed",
+        "overflow_status": "passed",
+        "ack_copy_visible": true,
+        "ack_not_delivery_success": true,
+        "diagnostics_accessible": true,
+        "terminal_action_confirmation_visible": true,
+        "terminal_action_confirm_disabled": true,
+        "support_handoff_available": true,
+        "device_evidence_capture_visible": true,
+        "device_handoff_session_visible": true,
+        "pwa_install_prompt_evidence_visible": true,
+        "browser_acceptance_bundle_visible": true,
+        "browser_acceptance_bundle_copyable": true,
+        "current_panels_status": "passed",
+        "current_boundaries_status": "passed",
+        "primary_actions_disabled": true,
+        "phone_safe_status": "passed",
+        "hit_area_failures": [],
+        "overlaps": [],
+        "horizontal_overflow": [],
+        "page_horizontal_overflow": false,
+        "phone_safe_failures": [],
+        "current_panel_failures": [],
+        "current_boundary_failures": []
+      }
+    }
+  ],
+  "evidence_boundary": "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate",
+  "compatible_evidence_boundary": "software_proof_docker_mobile_web_browser_proof_gate",
+  "boundary_compatibility": "This refresh supersedes the older local mobile/web browser proof boundary while remaining compatible with artifacts named mobile_web_browser_*.",
+  "proof_type": "real local Chromium-family browser proof for dependency-free mobile/web PWA",
+  "ack_semantics": "ACK is accepted/processing evidence only, not delivery success.",
+  "not_proven": [
+    "真实 iPhone/Android device",
+    "production app",
+    "真实 PWA install prompt",
+    "真实云/4G",
+    "OSS/CDN live traffic",
+    "production DB/queue",
+    "Nav2/fixed-route",
+    "WAVE ROVER",
+    "HIL",
+    "真实送达"
+  ],
+  "artifact_sha256": {
+    "mobile_web_browser_390x844.json": "b342e15f0cf274286c2a74745f8959a3c5ea5f76d80844a10bcf58e8fc0f75d8",
+    "mobile_web_browser_390x844.png": "254237e1746b7fc88d2dd4e5d17e7972ae2e167bea0d2f62a6078387afebc863",
+    "mobile_web_browser_768x900.json": "9b35a5d1db876379d1df663d6354c7dd1ad9e6281824d8b0d7fb5943f86a946b",
+    "mobile_web_browser_768x900.png": "1c894a2e27ae002584cd9e2991f9a48043fd0b0888aac9681fc4c0b1f9be692e",
+    "mobile_web_browser_acceptance_summary.json": "d7cac5640523761d19195ede98f49361880e65f2afd646624017e670425906d7"
+  }
+}

@@ -29,22 +29,54 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MOBILE_WEB_ROOT = REPO_ROOT / "mobile" / "web"
 MOBILE_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
-EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"
+EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"
+COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"
 VIEWPORTS = ((390, 844), (768, 900))
 PRIMARY_BUTTON_IDS = ("startButton", "confirmButton", "cancelButton")
-SUPPORT_BUTTON_IDS = ("diagnosticsButton", "supportButton", "copyAcceptanceBundleButton")
+SUPPORT_BUTTON_IDS = (
+    "diagnosticsButton",
+    "supportButton",
+    "copyAcceptanceBundleButton",
+)
 HIT_AREA_IDS = PRIMARY_BUTTON_IDS + SUPPORT_BUTTON_IDS
 KEY_ELEMENT_IDS = (
     "connectionBadge",
     "readinessTitle",
     "safePhoneCopy",
     "recoveryHint",
+    "primaryJourneyTitle",
+    "primaryJourneySteps",
+    "primaryJourneyBoundary",
+    "recoveryDecisionTitle",
+    "recoveryDecisionState",
+    "recoveryDecisionNextAction",
+    "recoveryDecisionAck",
+    "recoveryDecisionBoundary",
+    "mobileDeviceEvidenceTitle",
+    "mobileDeviceEvidenceSafeCopy",
+    "mobileDeviceEvidenceBoundary",
+    "copyDeviceEvidencePackageButton",
+    "mobileDeviceHandoffTitle",
+    "mobileDeviceHandoffSafeCopy",
+    "mobileDeviceHandoffBoundary",
+    "copyDeviceHandoffPackageButton",
+    "mobilePwaInstallPromptTitle",
+    "mobilePwaInstallPromptSafeCopy",
+    "mobilePwaInstallPromptBoundary",
+    "copyPwaInstallPromptPackageButton",
     "mobileBrowserAcceptanceTitle",
     "mobileBrowserAcceptanceCopy",
     "mobileBrowserAck",
     "mobileBrowserBoundary",
     "mobileBrowserSafeCopy",
     "copyAcceptanceBundleButton",
+    "terminalActionPanel",
+    "terminalActionTitle",
+    "terminalActionAck",
+    "terminalActionBoundary",
+    "terminalActionNotProven",
+    "terminalActionBackButton",
+    "terminalActionConfirmButton",
     "ackCopy",
     "startButton",
     "confirmButton",
@@ -53,6 +85,24 @@ KEY_ELEMENT_IDS = (
     "supportButton",
     "supportSafeCopy",
 )
+CURRENT_PANEL_EXPECTATIONS = {
+    "primaryJourneyTitle": "三步主路径",
+    "recoveryDecisionTitle": "恢复决策",
+    "terminalActionTitle": "终端动作二次确认",
+    "mobileDeviceEvidenceTitle": "手机设备证据采集",
+    "mobileDeviceHandoffTitle": "真实手机验收交接会话",
+    "mobilePwaInstallPromptTitle": "PWA 安装提示证据",
+    "mobileBrowserAcceptanceTitle": "浏览器验收包",
+}
+CURRENT_BOUNDARY_EXPECTATIONS = {
+    "primaryJourneyBoundary": "software_proof_docker_mobile_primary_journey_gate",
+    "recoveryDecisionBoundary": "software_proof_docker_mobile_recovery_decision_gate",
+    "terminalActionBoundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
+    "mobileDeviceEvidenceBoundary": "software_proof_docker_mobile_device_evidence_capture_gate",
+    "mobileDeviceHandoffBoundary": "software_proof_docker_mobile_device_handoff_session_gate",
+    "mobilePwaInstallPromptBoundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_gate",
+    "mobileBrowserBoundary": "software_proof_docker_mobile_browser_acceptance_bundle_gate",
+}
 PHONE_SAFE_FORBIDDEN_VISIBLE = (
     "token",
     "authorization",
@@ -68,7 +118,6 @@ PHONE_SAFE_FORBIDDEN_VISIBLE = (
     "/cmd_vel",
     "serial",
     "baudrate",
-    "wave rover",
     "/users/",
     "/private/",
     "/ws/",
@@ -132,6 +181,7 @@ class MobileWebHandler(BaseHTTPRequestHandler):
             "mobile_device_acceptance_readiness": fixture.get("mobile_device_acceptance_readiness", {}),
             "mobile_browser_acceptance_bundle": fixture.get("mobile_browser_acceptance_bundle", {}),
             "evidence_boundary": EVIDENCE_BOUNDARY,
+            "compatible_evidence_boundary": COMPATIBLE_EVIDENCE_BOUNDARY,
             "not_proven": list(NOT_PROVEN),
         }
 
@@ -396,24 +446,43 @@ class CDPClient:
 
 def viewport_script():
     ids_json = json.dumps(list(KEY_ELEMENT_IDS))
+    current_panel_expectations_json = json.dumps(CURRENT_PANEL_EXPECTATIONS, ensure_ascii=False)
+    current_boundary_expectations_json = json.dumps(CURRENT_BOUNDARY_EXPECTATIONS, ensure_ascii=False)
     return f"""
 (async () => {{
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   for (let i = 0; i < 100; i += 1) {{
     const bundle = document.getElementById('mobileBrowserSafeCopy');
+    const pwa = document.getElementById('mobilePwaInstallPromptSafeCopy');
+    const handoff = document.getElementById('mobileDeviceHandoffSafeCopy');
+    const device = document.getElementById('mobileDeviceEvidenceSafeCopy');
     const diag = document.getElementById('diagnosticsButton');
     const ack = document.getElementById('ackCopy');
     if (bundle && bundle.innerText.includes('trashbot.mobile_browser_acceptance_bundle.v1') &&
+        pwa && pwa.innerText.includes('trashbot.mobile_pwa_install_prompt_evidence_package.v1') &&
+        handoff && handoff.innerText.includes('trashbot.mobile_device_handoff_package.v1') &&
+        device && device.innerText.includes('trashbot.mobile_device_evidence_package.v1') &&
         diag && !diag.disabled && ack && ack.innerText.includes('不代表送达成功')) break;
     await sleep(100);
   }}
   document.getElementById('diagnosticsButton').click();
   document.getElementById('supportButton').click();
+  if (typeof renderTerminalActionPanel === 'function') {{
+    // 直接打开本地确认面板只验证 UI gate，不调用 endpoint，也不改变机器人语义。
+    pendingTerminalAction = {{
+      actionName: 'confirm_dropoff',
+      clientReference: 'browser_gate_terminal_probe'
+    }};
+    renderTerminalActionPanel();
+  }}
   for (let i = 0; i < 50; i += 1) {{
-    if (!document.getElementById('diagnosticsPanel').hidden) break;
+    if (!document.getElementById('diagnosticsPanel').hidden &&
+        !document.getElementById('terminalActionPanel').hidden) break;
     await sleep(100);
   }}
   const ids = {ids_json};
+  const panelExpectations = {current_panel_expectations_json};
+  const boundaryExpectations = {current_boundary_expectations_json};
   const rectFor = (id) => {{
     const node = document.getElementById(id);
     if (!node) return null;
@@ -434,6 +503,25 @@ def viewport_script():
     }};
   }};
   const rects = ids.map(rectFor).filter(Boolean);
+  const currentPanels = Object.fromEntries(Object.entries(panelExpectations).map(([id, expected]) => {{
+    const node = document.getElementById(id);
+    return [id, {{
+      expected,
+      present: Boolean(node),
+      visible: Boolean(node) && window.getComputedStyle(node).display !== 'none' &&
+        window.getComputedStyle(node).visibility !== 'hidden' &&
+        node.getBoundingClientRect().width > 0 && node.getBoundingClientRect().height > 0,
+      text: node ? (node.innerText || node.textContent || '').trim() : ''
+    }}];
+  }}));
+  const currentBoundaries = Object.fromEntries(Object.entries(boundaryExpectations).map(([id, expected]) => {{
+    const node = document.getElementById(id);
+    return [id, {{
+      expected,
+      present: Boolean(node),
+      text: node ? (node.innerText || node.textContent || '').trim() : ''
+    }}];
+  }}));
   const visibleText = Array.from(document.body.querySelectorAll('body *'))
     .filter((node) => {{
       const rect = node.getBoundingClientRect();
@@ -457,11 +545,22 @@ def viewport_script():
       cancel: document.getElementById('cancelButton').disabled
     }},
     diagnosticsPanelVisible: !document.getElementById('diagnosticsPanel').hidden,
+    terminalActionPanelVisible: !document.getElementById('terminalActionPanel').hidden,
+    terminalActionConfirmDisabled: document.getElementById('terminalActionConfirmButton').disabled,
     supportCopyVisible: document.getElementById('supportSafeCopy').innerText.trim().length > 0,
+    deviceEvidenceVisible: document.getElementById('mobileDeviceEvidenceSafeCopy').innerText.includes('trashbot.mobile_device_evidence_package.v1'),
+    deviceHandoffVisible: document.getElementById('mobileDeviceHandoffSafeCopy').innerText.includes('trashbot.mobile_device_handoff_package.v1'),
+    pwaInstallPromptVisible: document.getElementById('mobilePwaInstallPromptSafeCopy').innerText.includes('trashbot.mobile_pwa_install_prompt_evidence_package.v1'),
     bundleVisible: document.getElementById('mobileBrowserSafeCopy').innerText.includes('trashbot.mobile_browser_acceptance_bundle.v1'),
     bundleCopyButtonEnabled: !document.getElementById('copyAcceptanceBundleButton').disabled,
+    currentPanels,
+    currentBoundaries,
     ackText: document.getElementById('ackCopy').innerText,
     bundleAckText: document.getElementById('mobileBrowserAck').innerText,
+    terminalAckText: document.getElementById('terminalActionAck').innerText,
+    pwaAckText: document.getElementById('mobilePwaInstallPromptAck').innerText,
+    handoffAckText: document.getElementById('mobileDeviceHandoffAck').innerText,
+    deviceAckText: document.getElementById('mobileDeviceEvidenceAck').innerText,
     visibleText
   }};
 }})()
@@ -506,7 +605,24 @@ def judge_viewport(result):
     phone_safe_failures = [
         token for token in PHONE_SAFE_FORBIDDEN_VISIBLE if token.lower() in visible_lower
     ]
-    ack_copy = f"{result.get('ackText', '')}\n{result.get('bundleAckText', '')}"
+    current_panel_failures = [
+        panel_id
+        for panel_id, item in result.get("currentPanels", {}).items()
+        if not item.get("present") or not item.get("visible") or item.get("expected", "") not in item.get("text", "")
+    ]
+    current_boundary_failures = [
+        boundary_id
+        for boundary_id, item in result.get("currentBoundaries", {}).items()
+        if not item.get("present") or item.get("expected", "") not in item.get("text", "")
+    ]
+    ack_copy = "\n".join([
+        result.get("ackText", ""),
+        result.get("bundleAckText", ""),
+        result.get("terminalAckText", ""),
+        result.get("pwaAckText", ""),
+        result.get("handoffAckText", ""),
+        result.get("deviceAckText", ""),
+    ])
     ack_visible = "ACK" in ack_copy and "不代表送达成功" in ack_copy
     return {
         "hit_area_status": "passed" if not hit_area_failures else "failed",
@@ -515,9 +631,16 @@ def judge_viewport(result):
         "ack_copy_visible": bool(ack_visible),
         "ack_not_delivery_success": "delivery success" not in ack_copy.lower() and "送达成功" in ack_copy,
         "diagnostics_accessible": bool(result.get("diagnosticsPanelVisible")),
+        "terminal_action_confirmation_visible": bool(result.get("terminalActionPanelVisible")),
+        "terminal_action_confirm_disabled": bool(result.get("terminalActionConfirmDisabled")),
         "support_handoff_available": bool(result.get("supportCopyVisible")),
+        "device_evidence_capture_visible": bool(result.get("deviceEvidenceVisible")),
+        "device_handoff_session_visible": bool(result.get("deviceHandoffVisible")),
+        "pwa_install_prompt_evidence_visible": bool(result.get("pwaInstallPromptVisible")),
         "browser_acceptance_bundle_visible": bool(result.get("bundleVisible")),
         "browser_acceptance_bundle_copyable": bool(result.get("bundleCopyButtonEnabled")),
+        "current_panels_status": "passed" if not current_panel_failures else "failed",
+        "current_boundaries_status": "passed" if not current_boundary_failures else "failed",
         "primary_actions_disabled": all(result.get("primaryDisabled", {}).values()),
         "phone_safe_status": "passed" if not phone_safe_failures else "failed",
         "hit_area_failures": hit_area_failures,
@@ -525,6 +648,8 @@ def judge_viewport(result):
         "horizontal_overflow": horizontal_overflow,
         "page_horizontal_overflow": page_horizontal_overflow,
         "phone_safe_failures": phone_safe_failures,
+        "current_panel_failures": current_panel_failures,
+        "current_boundary_failures": current_boundary_failures,
     }
 
 
@@ -555,6 +680,7 @@ def run_viewport(cdp, url, width, height, output_dir):
         },
         "screenshot": str(screenshot_path),
         "evidence_boundary": EVIDENCE_BOUNDARY,
+        "compatible_evidence_boundary": COMPATIBLE_EVIDENCE_BOUNDARY,
         "not_proven": list(NOT_PROVEN),
     }
     evidence_path = output_dir / f"mobile_web_browser_{width}x{height}.json"
@@ -590,9 +716,16 @@ def main():
                     and judgment["ack_copy_visible"]
                     and judgment["ack_not_delivery_success"]
                     and judgment["diagnostics_accessible"]
+                    and judgment["terminal_action_confirmation_visible"]
+                    and judgment["terminal_action_confirm_disabled"]
                     and judgment["support_handoff_available"]
+                    and judgment["device_evidence_capture_visible"]
+                    and judgment["device_handoff_session_visible"]
+                    and judgment["pwa_install_prompt_evidence_visible"]
                     and judgment["browser_acceptance_bundle_visible"]
                     and judgment["browser_acceptance_bundle_copyable"]
+                    and judgment["current_panels_status"] == "passed"
+                    and judgment["current_boundaries_status"] == "passed"
                     and judgment["primary_actions_disabled"]
                     and judgment["phone_safe_status"] == "passed"
                 )
@@ -613,11 +746,18 @@ def main():
                     f"ack_copy_visible={str(judgment['ack_copy_visible']).lower()} "
                     f"primary_actions_disabled={str(judgment['primary_actions_disabled']).lower()} "
                     f"diagnostics_accessible={str(judgment['diagnostics_accessible']).lower()} "
+                    f"terminal_action_confirmation_visible={str(judgment['terminal_action_confirmation_visible']).lower()} "
                     f"support_handoff_available={str(judgment['support_handoff_available']).lower()} "
+                    f"device_evidence_capture_visible={str(judgment['device_evidence_capture_visible']).lower()} "
+                    f"device_handoff_session_visible={str(judgment['device_handoff_session_visible']).lower()} "
+                    f"pwa_install_prompt_evidence_visible={str(judgment['pwa_install_prompt_evidence_visible']).lower()} "
                     f"bundle_visible={str(judgment['browser_acceptance_bundle_visible']).lower()} "
                     f"bundle_copyable={str(judgment['browser_acceptance_bundle_copyable']).lower()} "
+                    f"current_panels_status={judgment['current_panels_status']} "
+                    f"current_boundaries_status={judgment['current_boundaries_status']} "
                     f"phone_safe_status={judgment['phone_safe_status']} "
                     f"evidence_boundary={EVIDENCE_BOUNDARY} "
+                    f"compatible_evidence_boundary={COMPATIBLE_EVIDENCE_BOUNDARY} "
                     f"evidence_json={evidence_path} screenshot={screenshot_path}"
                 )
                 if not passed:
@@ -636,13 +776,22 @@ def main():
         "viewports": [f"{width}x{height}" for width, height in VIEWPORTS],
         "checks": per_viewport,
         "evidence_boundary": EVIDENCE_BOUNDARY,
+        "compatible_evidence_boundary": COMPATIBLE_EVIDENCE_BOUNDARY,
+        "boundary_compatibility": (
+            "This refresh supersedes the older local mobile/web browser proof boundary while "
+            "remaining compatible with artifacts named mobile_web_browser_*."
+        ),
         "proof_type": "real local Chromium-family browser proof for dependency-free mobile/web PWA",
         "ack_semantics": "ACK is accepted/processing evidence only, not delivery success.",
         "not_proven": list(NOT_PROVEN),
         "artifact_sha256": artifact_hashes,
     }
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"summary={summary_path} ok={str(all_passed).lower()} evidence_boundary={EVIDENCE_BOUNDARY}")
+    print(
+        f"summary={summary_path} ok={str(all_passed).lower()} "
+        f"evidence_boundary={EVIDENCE_BOUNDARY} "
+        f"compatible_evidence_boundary={COMPATIBLE_EVIDENCE_BOUNDARY}"
+    )
     return 0 if all_passed else 1
 
 

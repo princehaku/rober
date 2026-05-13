@@ -22,19 +22,55 @@ class MobileWebEntrypointTest(unittest.TestCase):
         # gate 必须验证当前 dependency-free PWA，不能回退到旧 operator gateway 或旧 DOM id。
         self.assertIn('MOBILE_WEB_ROOT = REPO_ROOT / "mobile" / "web"', script)
         self.assertIn('MOBILE_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"', script)
-        self.assertIn('EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"', script)
+        self.assertIn(
+            'EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"',
+            script,
+        )
+        self.assertIn(
+            'COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"',
+            script,
+        )
         self.assertIn('"/api/status"', script)
         self.assertIn('"/api/diagnostics"', script)
         self.assertIn('"startButton"', script)
         self.assertIn('"confirmButton"', script)
         self.assertIn('"cancelButton"', script)
+        self.assertIn('"primaryJourneyTitle"', script)
+        self.assertIn('"recoveryDecisionTitle"', script)
+        self.assertIn('"terminalActionTitle"', script)
+        self.assertIn('"mobileDeviceEvidenceTitle"', script)
+        self.assertIn('"mobileDeviceHandoffTitle"', script)
+        self.assertIn('"mobilePwaInstallPromptTitle"', script)
         self.assertIn('"mobileBrowserSafeCopy"', script)
         self.assertIn('"copyAcceptanceBundleButton"', script)
+        self.assertIn('"copyDeviceEvidencePackageButton"', script)
+        self.assertIn('"copyDeviceHandoffPackageButton"', script)
+        self.assertIn('"copyPwaInstallPromptPackageButton"', script)
+        self.assertIn("CURRENT_PANEL_EXPECTATIONS", script)
+        self.assertIn("CURRENT_BOUNDARY_EXPECTATIONS", script)
+        self.assertIn("terminal_action_confirmation_visible", script)
+        self.assertIn("pwa_install_prompt_evidence_visible", script)
+        self.assertIn("device_handoff_session_visible", script)
+        self.assertIn("device_evidence_capture_visible", script)
+        self.assertIn("current_panels_status", script)
+        self.assertIn("current_boundaries_status", script)
         self.assertIn("PHONE_BROWSER_CHROME", script)
         self.assertIn("--browser", script)
         self.assertNotIn("ros2_trashbot_behavior", script)
         self.assertNotIn("operator_gateway_http", script)
         self.assertNotIn("collectButton", script)
+
+    def test_current_browser_gate_refresh_boundary_keeps_old_artifact_compatibility(self):
+        script = BROWSER_GATE.read_text(encoding="utf-8")
+
+        # refresh gate 继续写入旧 mobile_web_browser_* 文件名，便于 Product/Robot 复用既有证据读取路径。
+        self.assertIn("mobile_web_browser_{width}x{height}.png", script)
+        self.assertIn("mobile_web_browser_{width}x{height}.json", script)
+        self.assertIn("mobile_web_browser_acceptance_summary.json", script)
+        self.assertIn("compatible_evidence_boundary", script)
+        self.assertIn("boundary_compatibility", script)
+        self.assertIn("software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate", script)
+        self.assertIn("software_proof_docker_mobile_web_browser_proof_gate", script)
 
     def test_static_shell_files_exist_and_reference_phone_safe_schema(self):
         index = self.read("index.html")

@@ -8,7 +8,15 @@
 
 ## 2026-05-14 系列
 
-更新时间：2026-05-14 01:15 Asia/Shanghai。
+更新时间：2026-05-14 02:14 Asia/Shanghai。
+
+### 2026-05-14 02-03｜mobile-current-pwa-browser-proof-refresh｜O4 current PWA local Chromium proof refresh，手机体验由约 78% 上调到约 79%
+
+`sprints/2026.05.14_02-03_mobile-current-pwa-browser-proof-refresh` 完成 `software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate`：Task A Full-stack 更新 `pc-tools/evidence/phone_browser_acceptance_gate.py`、`mobile/test_mobile_web_entrypoint.py`、`mobile/README.md`、`docs/product/mobile_user_flow.md`，并产出 `sprints/2026.05.14_02-03_mobile-current-pwa-browser-proof-refresh/evidence/*`。Browser gate summary `ok=true`，browser 为 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`；390x844 与 768x900 两个 viewport 均 passed，hit area、overlap、overflow、current panels、current boundaries、phone-safe checks 均 passed，primary actions disabled，terminal action confirmation、device evidence capture、handoff session、PWA install prompt evidence、browser acceptance bundle、Diagnostics、Support Handoff 和 ACK copy 可见或可用。Task A 验证输出 mobile entrypoint unittest `Ran 23 tests ... OK`、`py_compile` pass、scoped diff check pass。
+
+Task B Robot 更新 `onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge_protocol.py`、`docs/interfaces/ros_contracts.md`，新增或复用 `mobile_current_pwa_browser_proof_refresh`、`mobile_current_pwa_browser_proof_refresh_summary`、`phone_current_pwa_browser_proof_refresh` metadata-only fence。Robot fence 证明 metadata-only response 不触发 collect、confirm_dropoff、cancel，不 POST ACK，不推进或持久化 cursor，不写 delivery success；valid command mixed metadata 只按 `trashbot.remote.v1` command envelope 执行，不把 browser proof refresh metadata 编入 ACK/status/cursor。Task B 验证输出 remote bridge/protocol targeted unittest `Ran 129 tests in 65.076s OK`、`py_compile` pass、scoped diff check pass；未改 production `remote_bridge.py`。
+
+该证据只支持 Objective 4 从约 78% 保守上调到约 79%，理由是当前 `mobile/web/` 已用本地 Chromium-family browser proof 重新覆盖最新首屏组合、两组视口、fail-closed 主操作、phone-safe copy、ACK 语义和 robot metadata-only fence。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料。本轮 `software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate` 只证明 current PWA local browser software proof 和 robot metadata-only fence，不证明真实手机设备、真实 iPhone/Android device behavior、production app、真实 PWA install prompt/user choice、真实公网 HTTPS/TLS、真实 4G/SIM、OSS/CDN live traffic、production DB/queue、production worker/migration、Nav2/fixed-route、WAVE ROVER、HIL、真实 dropoff/cancel completion 或真实 delivery。ACK、HTTP accepted、receipt、browser proof、evidence package、handoff session 和 install prompt evidence 仍只是 accepted/processing/support metadata，不是 delivery success。
 
 ### 2026-05-14 01-02｜mobile-pwa-install-prompt-evidence-gate｜O4 PWA install prompt evidence software proof，手机体验由约 77% 上调到约 78%
 
