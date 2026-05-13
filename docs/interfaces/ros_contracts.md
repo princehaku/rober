@@ -454,12 +454,12 @@ The optional `remote_bridge` node is the formal 4G-oriented remote MVP path. It 
 | robot -> cloud | `POST /robots/{robot_id}/commands/{command_id}/ack` | Sends `acked`, `failed`, or `ignored` plus local operator result metadata. `ignored` is used for expired commands that were not executed. |
 
 Cloud responses may include optional status, preflight, diagnostics, queue,
-mobile-web-entrypoint, PWA-entrypoint, voice-prompt-readiness,
-production-recovery, transaction-isolation, cloud external probe,
-cloud DB/queue external probe, OSS/CDN live probe, external evidence intake,
-deployment-readiness, mobile task-start confirmation, mobile action feedback,
-operation-log, DB/queue config-gate, phone/mobile cloud-readiness summary, or
-mobile/browser acceptance-bundle metadata beside the
+mobile-web-entrypoint, PWA-entrypoint, cloud-hosted PWA/static-shell,
+voice-prompt-readiness, production-recovery, transaction-isolation, cloud
+external probe, cloud DB/queue external probe, OSS/CDN live probe, external
+evidence intake, deployment-readiness, mobile task-start confirmation, mobile
+action feedback, operation-log, DB/queue config-gate, phone/mobile
+cloud-readiness summary, or mobile/browser acceptance-bundle metadata beside the
 `trashbot.remote.v1` command/status/ACK envelope. Robot clients must treat
 those fields as ignorable diagnostics for forward compatibility. A
 metadata-only response with `command=null` or no command object must not start a
@@ -628,6 +628,22 @@ responses must not invoke `collect`, `confirm_dropoff`, or `cancel`, must not
 POST ACK, and must not advance or persist `last_terminal_ack_id`. ACK remains
 accepted/processing evidence only and must not be rendered or interpreted as
 browser proof or delivery success.
+Cloud-hosted PWA/static-shell metadata, including `cloud_hosted_pwa`,
+`static_shell_metadata`, `pwa_static_surface`, and
+`cloud_hosted_mobile_web_gate`, is the phone/static surface contract for a
+hosted PWA or static mobile shell. It may describe hosted URLs, manifest/start
+URLs, cache boundary, safe phone copy, screenshot/evidence refs, and
+software-proof status for the mobile surface, but it is not part of the
+`trashbot.remote.v1` command/status/ACK envelope. Robot-side protocol
+normalization must strip these fields from valid command objects; metadata-only
+responses or static PWA GET responses must not invoke `collect`,
+`confirm_dropoff`, or `cancel`, must not POST ACK, must not advance in-memory
+`last_ack_id`, and must not persist `last_terminal_ack_id`. These metadata
+fields must not be copied into robot status, ACK, backend action result, or
+normalized command payload, and must not expand robot command payload shape
+beyond the command envelope. ACK remains accepted/processing evidence only and
+must not be rendered or interpreted as browser proof, static-shell proof, or
+delivery success.
 Operation-log metadata, including `operation_log` and `phone_operation_log`, is
 phone/support metadata for recent events, blocked reasons, pending ACK,
 offline/recovery state, manual takeover, and support handoff copy. It is not a

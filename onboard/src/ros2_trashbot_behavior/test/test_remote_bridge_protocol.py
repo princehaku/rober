@@ -318,6 +318,48 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("/dev/ttyUSB0", encoded_command)
         self.assertNotIn("Authorization", encoded_command)
 
+    def test_validate_command_ignores_cloud_hosted_pwa_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-cloud-hosted-pwa",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "cloud_hosted_pwa": {
+                "schema": "trashbot.cloud_hosted_pwa.v1",
+                "surface": "phone_static",
+                "hosted_url": "https://app.example.invalid/rober/",
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "static_shell_metadata": {
+                "schema": "trashbot.static_shell_metadata.v1",
+                "manifest_url": "/manifest.webmanifest",
+                "start_url": "/",
+                "ack_semantics": "delivery_success",
+                "next_action": "confirm_dropoff",
+            },
+            "pwa_static_surface": {
+                "schema": "trashbot.pwa_static_surface.v1",
+                "evidence_boundary": "software_proof_docker_cloud_hosted_mobile_web_gate",
+                "Authorization": "Bearer must-not-leak",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-cloud-hosted-pwa")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 云托管 PWA/static shell 是手机静态面元数据，normalization 只能保留 robot command envelope。
+        self.assertNotIn("cloud_hosted_pwa", encoded_command)
+        self.assertNotIn("static_shell_metadata", encoded_command)
+        self.assertNotIn("pwa_static_surface", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+
     def test_mobile_browser_acceptance_bundle_response_metadata_does_not_create_command_or_ack(self):
         self.cloud.response_extras.update({
             "command_response": {

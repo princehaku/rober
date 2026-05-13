@@ -1,4 +1,5 @@
 import json
+import os
 import pathlib
 import sys
 import tempfile
@@ -178,6 +179,18 @@ class RelayHttpClient:
             body = exc.read().decode("utf-8") or "{}"
             return exc.code, json.loads(body)
 
+    def raw_request(self, method, path, token=None):
+        headers = {}
+        active_token = self.token if token is None else token
+        if active_token:
+            headers["Authorization"] = f"Bearer {active_token}"
+        request = urllib.request.Request(self.base_url + path, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(request, timeout=2.0) as response:
+                return response.status, dict(response.headers), response.read()
+        except urllib.error.HTTPError as exc:
+            return exc.code, dict(exc.headers), exc.read()
+
 
 class RemoteCloudRelayHttpTest(unittest.TestCase):
     def setUp(self):
@@ -294,6 +307,197 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertIn("real_cloud", payload["not_proven"])
         for forbidden in ("phone-token", "Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate"):
             self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_relay_serves_mobile_web_shell_without_auth(self):
+        for path, marker, content_type in (
+            ("/", b"rober", "text/html"),
+            ("/index.html", b"rober", "text/html"),
+            ("/app.js", b"mobile_web", "application/javascript"),
+            ("/styles.css", b":root", "text/css"),
+            ("/manifest.webmanifest", b"short_name", "application/manifest+json"),
+            ("/service-worker.js", b"isControlOrDynamicRequest", "application/javascript"),
+            ("/offline.html", b"software_proof_docker_mobile_web_entrypoint_gate", "text/html"),
+            ("/icon-192.svg", b"<svg", "image/svg+xml"),
+            ("/icon-512.svg", b"<svg", "image/svg+xml"),
+        ):
+            status, headers, body = self.client.raw_request("GET", path, token="")
+            self.assertEqual(status, 200, path)
+            self.assertIn(content_type, headers.get("Content-Type", ""))
+            self.assertIn(marker, body)
+            self.assertEqual(
+                headers.get("X-Trashbot-Evidence-Boundary"),
+                "software_proof_docker_cloud_hosted_mobile_web_gate",
+            )
+            self.assertNotIn(str(REPO_ROOT).encode("utf-8"), body)
+
+    def test_mobile_web_static_does_not_cover_api_or_probe_routes(self):
+        status, payload = self.client.request("GET", "/api/status", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["state"], "status_missing")
+        self.assertEqual(payload["robot_id"], "trashbot-001")
+        self.assertFalse(payload["can_collect"])
+        self.assertFalse(payload["phone_readiness"]["can_continue"])
+        self.assertFalse(payload["phone_readiness"]["command_safety"]["actions"]["start"]["enabled"])
+        self.assertEqual(
+            payload["evidence_boundary"],
+            "software_proof_docker_cloud_hosted_mobile_web_gate",
+        )
+
+        status, payload = self.client.request("GET", "/api/diagnostics", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["overall_status"], "blocked")
+        self.assertEqual(
+            payload["evidence_boundary"],
+            "software_proof_docker_cloud_hosted_mobile_web_gate",
+        )
+        self.assertIn("real_phone_device_browser", payload["not_proven"])
+
+        status, payload = self.client.request("GET", "/api/collect", token="")
+        self.assertEqual(status, 404)
+        self.assertEqual(payload["error"]["code"], "not_found")
+
+        status, payload = self.client.request("GET", "/healthz", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["service"], "remote_cloud_relay")
+
+        status, payload = self.client.request("GET", "/robots/trashbot-001/status")
+        self.assertEqual(status, 404)
+        self.assertEqual(payload["error"]["code"], "status_missing")
+
+    def test_mobile_web_phone_safe_api_uses_default_robot_id_and_fails_closed(self):
+        with mock.patch.dict(os.environ, {"TRASHBOT_REMOTE_CLOUD_DEFAULT_ROBOT_ID": "robot-web-42"}):
+            status, payload = self.client.request("GET", "/api/status", token="")
+        encoded = json.dumps(payload, ensure_ascii=False)
+
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["robot_id"], "robot-web-42")
+        self.assertEqual(payload["overall_status"], "blocked")
+        self.assertFalse(payload["production_ready"])
+        self.assertFalse(payload["can_collect"])
+        self.assertFalse(payload["can_confirm_dropoff"])
+        self.assertFalse(payload["can_cancel"])
+        self.assertFalse(payload["phone_readiness"]["can_continue"])
+        self.assertFalse(payload["phone_readiness"]["action_permissions"]["can_collect"])
+        self.assertFalse(payload["phone_readiness"]["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(payload["phone_readiness"]["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(payload["phone_readiness"]["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertIsNone(payload["latest_status"])
+        for forbidden in (
+            "phone-token",
+            "Authorization",
+            "Bearer",
+            "postgres://",
+            "queue URL",
+            str(REPO_ROOT),
+            "/cmd_vel",
+            "ttyUSB",
+            "serial",
+            "baudrate",
+            "WAVE ROVER",
+            "traceback",
+            "complete artifact",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_mobile_web_phone_safe_api_copies_latest_status_without_opening_actions(self):
+        status, _ = self.client.request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "delivering",
+                "message": "Authorization Bearer secret should redact",
+                "updated_at": time.time(),
+                "diagnostics": {
+                    "network": "relay_proof",
+                    "serial_port": "/dev/ttyUSB0",
+                    "ros_topic": "/cmd_vel",
+                    "safe_hint": "waiting_for_ack",
+                },
+            },
+        )
+        self.assertEqual(status, 200)
+
+        status, payload = self.client.request("GET", "/api/status", token="")
+        encoded = json.dumps(payload, ensure_ascii=False)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["state"], "delivering")
+        self.assertEqual(payload["latest_status"]["state"], "delivering")
+        self.assertEqual(payload["latest_status"]["message"], "[redacted]")
+        self.assertEqual(payload["latest_status"]["diagnostics"]["network"], "relay_proof")
+        self.assertEqual(payload["latest_status"]["diagnostics"]["safe_hint"], "waiting_for_ack")
+        self.assertFalse(payload["can_collect"])
+        self.assertFalse(payload["phone_readiness"]["can_continue"])
+        self.assertFalse(payload["phone_readiness"]["command_safety"]["actions"]["start"]["enabled"])
+        for forbidden in (
+            "Authorization",
+            "Bearer",
+            "secret",
+            "/dev/ttyUSB0",
+            "/cmd_vel",
+            "serial_port",
+            "ros_topic",
+            "phone-token",
+            str(REPO_ROOT),
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_mobile_web_diagnostics_contains_safe_summary_latest_status_and_no_leaks(self):
+        status, _ = self.client.request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "waiting_for_dropoff",
+                "message": "waiting safely",
+                "updated_at": time.time(),
+                "diagnostics": {"network": "relay_proof", "database_url": "postgres://hidden"},
+            },
+        )
+        self.assertEqual(status, 200)
+
+        status, payload = self.client.request("GET", "/api/diagnostics", token="")
+        encoded = json.dumps(payload, ensure_ascii=False)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["overall_status"], "blocked")
+        self.assertEqual(payload["phone_safe_summary"]["state"], "waiting_for_dropoff")
+        self.assertFalse(payload["phone_safe_summary"]["can_collect"])
+        self.assertEqual(payload["latest_status"]["state"], "waiting_for_dropoff")
+        self.assertEqual(payload["cloud_hosted_mobile_web_gate"]["overall_status"], "blocked")
+        self.assertEqual(
+            payload["evidence_boundary"],
+            "software_proof_docker_cloud_hosted_mobile_web_gate",
+        )
+        self.assertIn("real_4g_sim", payload["not_proven"])
+        for forbidden in (
+            "Authorization",
+            "Bearer",
+            "token",
+            "postgres://",
+            "database_url",
+            "queue URL",
+            str(REPO_ROOT),
+            "/cmd_vel",
+            "ttyUSB",
+            "serial",
+            "baudrate",
+            "WAVE ROVER",
+            "traceback",
+            "complete artifact",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_mobile_web_missing_static_and_traversal_are_phone_safe(self):
+        for path in ("/missing.css", "/../OKR.md", "/%2e%2e/OKR.md"):
+            status, headers, body = self.client.raw_request("GET", path, token="")
+            payload = json.loads(body.decode("utf-8") or "{}")
+            encoded = json.dumps(payload, ensure_ascii=False)
+            self.assertEqual(status, 404, path)
+            self.assertIn("application/json", headers.get("Content-Type", ""))
+            self.assertEqual(payload["error"]["code"], "not_found")
+            self.assertNotIn(str(REPO_ROOT), encoded)
+            self.assertNotIn("OKR.md", encoded)
 
     def test_readiness_fails_without_credential_gate(self):
         server = build_server("127.0.0.1", 0, self.state_path, "")

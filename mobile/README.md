@@ -15,6 +15,8 @@
 > 当前增量：sprint `2026.05.13_15-16_mobile-browser-acceptance-bundle-gate` 在首屏新增“浏览器验收包”摘要和复制入口。证据边界是 `software_proof_docker_mobile_browser_acceptance_bundle_gate`，只证明 local/static fixture 与 targeted unittest 能展示/复制 phone-safe browser acceptance bundle，并在 bundle blocked 时让 Start / Confirm / Cancel fail closed；不等于真实手机设备/browser、production app、真实 PWA install prompt、真实云/4G、Nav2/fixed-route、真实底盘运动、HIL 或真实送达。
 >
 > 当前增量：sprint `2026.05.13_16-17_mobile-web-browser-proof-gate` 将真实 Chrome/Chromium browser acceptance gate 迁移到当前 `mobile/web/` 静态 PWA。证据边界是 `software_proof_docker_mobile_web_browser_proof_gate`，只证明本机 Chromium-family 浏览器可渲染 390x844 与 768x900 viewport、主操作 fail closed、Diagnostics/Support Handoff 与浏览器验收包可用、ACK 文案未变成送达成功、首屏无水平 overflow/不合理 overlap、可见文案不泄漏敏感或机器人内部细节；不等于真实 iPhone/Android device、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+>
+> 当前增量：sprint `2026.05.13_18-19_cloud-hosted-mobile-web-gate` 让 cloud-relay HTTP runtime 托管同一份 `mobile/web/` PWA 静态壳，并提供 phone-safe `/api/status` 与 `/api/diagnostics` fail-closed adapter。证据边界是 `software_proof_docker_cloud_hosted_mobile_web_gate`，只证明本地/Docker relay 可返回静态 shell、同源只读状态/诊断 adapter、API/probe 路由优先、missing static 和 traversal 返回 phone-safe 404；不等于真实公网、TLS、4G/SIM、真实手机设备/browser、production app、真实 PWA install prompt、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 
 ## 用途（What lives here）
 
@@ -52,6 +54,24 @@ python3 -m http.server 8088
 ```
 
 然后打开 `http://127.0.0.1:8088/`。如果没有 operator gateway 提供 `/api/status` 和 `/api/diagnostics`，页面会进入离线/blocked 文案，Start Delivery、Confirm Dropoff、Cancel 保持禁用。
+
+cloud-relay same-origin 查看方式：
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-token \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --host 127.0.0.1 --port 8088
+```
+
+打开 `http://127.0.0.1:8088/` 会返回 `mobile/web/index.html`，PWA assets 走同一 host；`/api/status` 和 `/api/diagnostics` 会返回 phone-safe blocked 摘要，其他未知 `/api/*`、`/robots/*`、`/healthz`、`/readyz`、`/preflightz`、commands 和 ACK 路由仍优先由 relay JSON/control handler 处理，不会被静态 fallback 覆盖。静态壳与这两个只读 phone API 不需要 bearer token；所有 command/status/ACK 路径仍保留原 bearer 与 `trashbot.remote.v1` 语义。
+
+cloud-relay hosted phone API 规则：
+
+- 默认 robot id 来自 `TRASHBOT_REMOTE_CLOUD_DEFAULT_ROBOT_ID`，否则为 `trashbot-001`。
+- 如果 relay store 没有最近 `/robots/{robot_id}/status`，`/api/status` 返回 `state=status_missing`、`overall_status=blocked`，而不是 404。
+- 如果 store 有最近 status，`latest_status` 只包含脱敏后的安全字段；主操作仍保持 fail closed。
+- `/api/diagnostics` 包含同一 phone-safe summary、`cloud_hosted_mobile_web_gate`、安全 `latest_status`、`evidence_boundary=software_proof_docker_cloud_hosted_mobile_web_gate` 和 `not_proven`。
+- 两个 API 都不得暴露 token、Authorization、DB/queue URL、本地路径、ROS topic、serial、WAVE ROVER、`/cmd_vel`、traceback 或 complete artifact。
 
 当前入口消费这些既有字段：
 
@@ -157,5 +177,6 @@ PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gat
 | 当前 mobile-device-acceptance-readiness gate | `mobile/web/` 手机验收准备摘要、blocked-by-design 真机/PWA/product app gate、primary action fail-closed |
 | 当前 mobile-browser-acceptance-bundle gate | `mobile/web/` 浏览器验收包显示/复制、blocked-by-design 摘要、bundle 级主操作 fail-closed |
 | 当前 mobile-web-browser-proof gate | `mobile/web/` 静态 PWA 的本机 Chromium-family 真实 browser proof、viewport 截图、JSON/summary evidence |
+| 当前 cloud-hosted-mobile-web gate | cloud-relay 同源托管 `mobile/web/` 静态壳、API/probe 路由优先、静态路径围栏 |
 | 下一个 sprint | 真实手机设备验收、production app、真实 PWA install prompt 和弱网体验 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |

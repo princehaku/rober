@@ -7,6 +7,8 @@ WORKDIR /app
 # 构建 context 仍为仓库根，这样镜像能同时拿到 cloud-relay 入口和复用的纯 Python relay 模块。
 COPY cloud-relay/src /app/cloud-relay/src
 COPY onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior /app/onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior
+# PWA 静态壳随 cloud-relay 镜像发布，确保 Docker/local 入口不依赖宿主机源码目录。
+COPY mobile/web /app/mobile/web
 
 # /data 用于 file-backed proof store；生产云仍需要数据库或队列替代这个本地文件。
 RUN adduser --disabled-password --gecos "" relay \

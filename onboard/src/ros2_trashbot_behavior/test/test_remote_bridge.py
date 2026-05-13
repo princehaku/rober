@@ -2769,6 +2769,154 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
                     self.assertNotIn("/cmd_vel", encoded_status)
                     self.cloud.response_extras["command_response"] = {}
 
+    def test_metadata_only_cloud_hosted_pwa_response_does_not_start_ack_or_persist_cursor(self):
+        metadata_cases = (
+            (
+                "cloud_hosted_pwa",
+                {
+                    "schema": "trashbot.cloud_hosted_pwa.v1",
+                    "surface": "phone_static",
+                    "hosted_url": "https://app.example.invalid/rober/",
+                    "safe_phone_copy": "云托管 PWA 只是手机静态入口。",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-cloud-hosted-pwa",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+            (
+                "static_shell_metadata",
+                {
+                    "schema": "trashbot.static_shell_metadata.v1",
+                    "manifest_url": "/manifest.webmanifest",
+                    "start_url": "/",
+                    "ack_semantics": "delivery_success",
+                    "next_action": "confirm_dropoff",
+                    "Authorization": "Bearer must-not-leak",
+                },
+            ),
+            (
+                "pwa_static_surface",
+                {
+                    "schema": "trashbot.pwa_static_surface.v1",
+                    "evidence_boundary": "software_proof_docker_cloud_hosted_mobile_web_gate",
+                    "static_get_only": True,
+                    "next_action": "cancel",
+                    "delivery_success": True,
+                    "credential_url": "https://user:secret@example.invalid/pwa",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    self.backend.calls.clear()
+                    self.cloud.status_posts.clear()
+                    self.cloud.ack_posts.clear()
+                    self.cloud.get_paths.clear()
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        metadata_name: metadata,
+                        "cloud_hosted_mobile_web_gate": {
+                            "schema": "trashbot.cloud_hosted_mobile_web_gate.v1",
+                            "command_envelope_expanded": False,
+                        },
+                    }
+
+                    handled = worker.poll_once()
+
+                    # 只有云托管 PWA/static-shell metadata 时，不能触发动作、ACK 或游标推进。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("cloud_hosted_mobile_web_gate", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("credential_url", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
+    def test_cloud_hosted_pwa_metadata_is_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "cloud_hosted_pwa": {
+                    "schema": "trashbot.cloud_hosted_pwa.v1",
+                    "delivery_success": True,
+                    "trigger_robot_action": "cancel",
+                },
+            },
+            "command_response": {
+                "cloud_hosted_pwa": {
+                    "schema": "trashbot.cloud_hosted_pwa.v1",
+                    "hosted_url": "https://app.example.invalid/rober/",
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+                "static_shell_metadata": {
+                    "schema": "trashbot.static_shell_metadata.v1",
+                    "manifest_url": "/manifest.webmanifest",
+                    "ack_semantics": "delivery_success",
+                    "next_action": "confirm_dropoff",
+                },
+                "pwa_static_surface": {
+                    "schema": "trashbot.pwa_static_surface.v1",
+                    "Authorization": "Bearer must-not-leak",
+                    "credential_url": "https://user:secret@example.invalid/pwa",
+                },
+            },
+            "ack_response": {
+                "cloud_hosted_pwa": {
+                    "schema": "trashbot.cloud_hosted_pwa.v1",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-cloud-hosted-pwa-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-cloud-hosted-pwa-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-cloud-hosted-pwa-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        self.assertEqual(ack_payload["message"], "collect")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # 有效 command 混入静态 PWA 元数据时，ACK 只能描述 command envelope 的处理结果。
+        self.assertNotIn("cloud_hosted_pwa", encoded_ack)
+        self.assertNotIn("static_shell_metadata", encoded_ack)
+        self.assertNotIn("pwa_static_surface", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("Authorization", encoded_ack)
+        self.assertNotIn("credential_url", encoded_ack)
+        self.assertNotIn("/cmd_vel", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+
     def test_public_ingress_tls_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {

@@ -3,6 +3,8 @@
 本目录是 `ros_rbs` 的 **公网云中转服务部署单位**：把 onboard 上车机器人和手机用户在公网上撮合起来。部署入口独立于 onboard/mobile/pc-tools；当前协议实现仍复用 onboard behavior 包中的纯 Python relay 模块，避免复制第二套 `trashbot.remote.v1` 语义。
 
 > **当前状态（本轮）**：`cloud-relay/src/ros2_trashbot_cloud_relay/` 已提供 Python runtime 入口；Dockerfile / `docker-compose.yml` / `scripts/docker_smoke.sh` 均从该入口启动。镜像构建 **context 为仓库根 `..`**，只为复用 onboard behavior 里的唯一 relay 协议实现；证据边界仍是 Docker/local software proof。
+>
+> **当前增量**：relay HTTP handler 可同源托管 `mobile/web/` dependency-free PWA 静态壳，并提供免 bearer 的 phone-safe `GET /api/status` / `GET /api/diagnostics` fail-closed adapter。证据边界是 `software_proof_docker_cloud_hosted_mobile_web_gate`，只证明 Docker/local cloud-relay shell route、静态路径围栏和同源只读状态/诊断 adapter；不证明真实公网 HTTPS/TLS、真实 4G/SIM、真实手机设备/browser、production app、PWA install prompt、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 
 ## 用途（What lives here）
 
@@ -30,7 +32,7 @@
 | 目录 | 用途 | 现状 |
 | --- | --- | --- |
 | `cloud-relay/src/` | Python runtime 入口 | `ros2_trashbot_cloud_relay.remote_cloud_relay` 包装 onboard relay 实现，保持协议单一来源 |
-| `cloud-relay/docker/` | Dockerfile | 复制 cloud-relay 入口和 onboard 纯 Python relay 模块，不拉入 ROS2/Humble 构建链路 |
+| `cloud-relay/docker/` | Dockerfile | 复制 cloud-relay 入口、onboard 纯 Python relay 模块和 `mobile/web/` 静态壳，不拉入 ROS2/Humble 构建链路 |
 | `cloud-relay/test/` | 单测 + 集成测试 | 后续可迁入 cloud relay 专属测试；当前仍复用 onboard compatibility fence |
 | `cloud-relay/scripts/` | 部署脚本 | `cloud-relay/scripts/docker_smoke.sh` 以 cloud-relay runtime 为主入口 |
 | `cloud-relay/docker-compose.yml` | compose 入口（公网 8088 端口） | 在 `cloud-relay/` 下执行，使用仓库根 context 复用唯一协议实现 |
@@ -60,6 +62,28 @@ docker compose down
 cd cloud-relay
 TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-smoke-token bash scripts/docker_smoke.sh
 ```
+
+## Cloud-hosted mobile web shell
+
+`remote_cloud_relay` 现在在同一个 HTTP server 上服务 `mobile/web/` 静态壳：
+
+```text
+GET /                         -> mobile/web/index.html
+GET /index.html               -> mobile/web/index.html
+GET /app.js                   -> mobile/web/app.js
+GET /styles.css               -> mobile/web/styles.css
+GET /manifest.webmanifest     -> mobile/web/manifest.webmanifest
+GET /service-worker.js        -> mobile/web/service-worker.js
+GET /offline.html             -> mobile/web/offline.html
+GET /icon-192.svg             -> mobile/web/icon-192.svg
+GET /icon-512.svg             -> mobile/web/icon-512.svg
+```
+
+API/probe/control routes stay ahead of static serving: `/api/*`, `/robots/*`, `/healthz`, `/readyz`, `/preflightz`, command routes, and ACK routes are never served by static fallback. Unknown static names and traversal attempts return phone-safe JSON 404 without local absolute paths. The handler accepts optional `TRASHBOT_REMOTE_CLOUD_MOBILE_WEB_ROOT` for a mounted asset directory; otherwise it discovers the repo-local `mobile/web/` layout.
+
+The same handler also exposes `GET /api/status` and `GET /api/diagnostics` for the hosted shell without bearer auth. These endpoints select `TRASHBOT_REMOTE_CLOUD_DEFAULT_ROBOT_ID` or `trashbot-001`, read the latest relay `/robots/{robot_id}/status` when available, then return a phone-safe copy plus a blocked `cloud_hosted_mobile_web_gate` summary. Missing or stale status returns `overall_status=blocked` / `state=status_missing|status_stale` instead of 404. Primary controls always fail closed: `can_collect=false`, `can_confirm_dropoff=false`, `can_cancel=false`, `phone_readiness.can_continue=false`, and `command_safety.actions.*.enabled=false`.
+
+This shell and the same-origin static APIs do not require bearer auth because they are read-only phone surfaces. Any command/status/ACK robot contract path still uses the existing `trashbot.remote.v1` contract and bearer gate. The static APIs must not expose raw ROS topics, `/cmd_vel`, serial devices, WAVE ROVER parameters, credentials, DB/queue URLs, local state paths, tracebacks, or complete artifacts.
 
 生成 cloud deployment readiness artifact：
 

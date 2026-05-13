@@ -41,6 +41,44 @@ ROS2 topic names to ordinary phone users. The independent relay is still
 HTTPS/TLS, public ingress, real 4G/SIM, OSS/CDN, Nav2/fixed-route, WAVE ROVER,
 or HIL.
 
+The independent relay now also hosts the dependency-free `mobile/web/` PWA
+shell on the same origin:
+
+```text
+GET /, /index.html, /app.js, /styles.css, /manifest.webmanifest,
+GET /service-worker.js, /offline.html, /icon-192.svg, /icon-512.svg
+```
+
+This is a static phone shell only. `/api/*`, `/robots/*`, `/healthz`,
+`/readyz`, `/preflightz`, command routes, and ACK routes are resolved before
+static lookup, so opening the PWA cannot shadow the cloud control plane.
+Static serving is restricted to the `mobile/web/` file set; missing assets and
+path traversal return phone-safe 404 JSON without local absolute paths. The
+evidence boundary is `software_proof_docker_cloud_hosted_mobile_web_gate`; it
+does not prove production cloud, HTTPS/TLS public ingress, real 4G/SIM,
+real phone browser/device validation, production app, PWA install prompt,
+OSS/CDN live traffic, production DB/queue, Nav2/fixed-route, WAVE ROVER, HIL,
+or delivery success.
+
+The hosted shell also has a same-origin phone-safe adapter:
+
+```text
+GET /api/status
+GET /api/diagnostics
+```
+
+These two static-phone APIs do not require bearer auth and do not change the
+robot command/status/ACK contract. They select
+`TRASHBOT_REMOTE_CLOUD_DEFAULT_ROBOT_ID` or `trashbot-001`, read the relay
+store's latest `/robots/{robot_id}/status` when present, and return only a safe
+copy. If no status exists, the response is still JSON 200 with
+`overall_status=blocked` and `state=status_missing`, not a 404. The adapter is
+always fail closed: `can_collect=false`, `can_confirm_dropoff=false`,
+`can_cancel=false`, `phone_readiness.can_continue=false`, and
+`command_safety.actions.*.enabled=false`. `/api/diagnostics` includes the same
+summary, `cloud_hosted_mobile_web_gate`, `latest_status` when safe, and
+`evidence_boundary=software_proof_docker_cloud_hosted_mobile_web_gate`.
+
 The independent relay also has a production preflight gate for deployment
 readiness:
 
@@ -750,6 +788,14 @@ successful or failed robot state. In the independent relay, a missing status
 returns `status_missing`; a stale status returns `status_stale` with the last
 safe status payload. A phone UI must treat both as degraded states and wait for
 fresh robot status before implying that the task is healthy.
+
+For the cloud-hosted static shell only, `GET /api/status` and
+`GET /api/diagnostics` wrap that store status into a blocked phone-safe summary
+instead of surfacing the store's 404 to the browser. This adapter is a
+Docker/local software proof convenience for same-origin phone rendering. It must
+not leak Authorization headers, bearer tokens, DB/queue URLs, local paths, ROS
+topics, `/cmd_vel`, serial devices, WAVE ROVER details, tracebacks, or complete
+artifacts, and it must not open Start Delivery, Confirm Dropoff, or Cancel.
 
 The local operator fallback also exposes `/api/status.phone_readiness` for the
 phone-first readiness gate. This is a UI aggregation of local delivery status,

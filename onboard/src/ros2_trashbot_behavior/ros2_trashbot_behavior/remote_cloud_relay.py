@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import os
+import pathlib
 import socket
 import sqlite3
 import tempfile
@@ -11,7 +12,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 import urllib.error
 import urllib.request
 
@@ -47,6 +48,7 @@ CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_db_queue_
 CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_db_queue_external_probe_gate"
 OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_oss_cdn_live_probe_gate"
 EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY = "software_proof_docker_external_evidence_intake_gate"
+CLOUD_HOSTED_MOBILE_WEB_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_hosted_mobile_web_gate"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -88,6 +90,8 @@ OSS_CDN_LIVE_PROBE_SCHEMA = "trashbot.oss_cdn_live_probe"
 OSS_CDN_LIVE_PROBE_SCHEMA_VERSION = 1
 EXTERNAL_EVIDENCE_INTAKE_SCHEMA = "trashbot.external_evidence_intake"
 EXTERNAL_EVIDENCE_INTAKE_SCHEMA_VERSION = 1
+CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA = "trashbot.cloud_hosted_mobile_web_gate"
+CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -369,6 +373,38 @@ SENSITIVE_KEYS = {
 PHONE_SAFE_KEY_EXCEPTIONS = {
     "bearer_rotation_status",
 }
+
+# cloud-relay 只托管 dependency-free PWA 壳；控制面路径必须在 handler 中优先返回。
+MOBILE_WEB_STATIC_FILES = {
+    "index.html",
+    "app.js",
+    "styles.css",
+    "manifest.webmanifest",
+    "service-worker.js",
+    "offline.html",
+    "icon-192.svg",
+    "icon-512.svg",
+}
+MOBILE_WEB_CONTENT_TYPES = {
+    "html": "text/html; charset=utf-8",
+    "js": "application/javascript; charset=utf-8",
+    "css": "text/css; charset=utf-8",
+    "webmanifest": "application/manifest+json; charset=utf-8",
+    "svg": "image/svg+xml; charset=utf-8",
+}
+CONTROL_PATH_PREFIXES = ("/api/", "/robots/")
+CONTROL_PATHS = {"/api", "/robots", "/healthz", "/readyz", "/preflightz"}
+CLOUD_HOSTED_MOBILE_WEB_NOT_PROVEN = [
+    "real_public_cloud",
+    "real_https_tls",
+    "real_4g_sim",
+    "real_phone_device_browser",
+    "production_app",
+    "production_db_or_queue",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 对字符串也做保守脱敏，避免敏感内容藏在 message 或 diagnostics 里。
 SENSITIVE_TEXT = (
@@ -6945,6 +6981,176 @@ def _route(path):
     return None
 
 
+def _mobile_web_root():
+    # Docker 或本地开发可以显式指定目录；默认按仓库布局向上找到 mobile/web。
+    override = str(os.environ.get("TRASHBOT_REMOTE_CLOUD_MOBILE_WEB_ROOT") or "").strip()
+    if override:
+        return pathlib.Path(override)
+    module_path = pathlib.Path(__file__).resolve()
+    for parent in module_path.parents:
+        candidate = parent / "mobile" / "web"
+        # 只检查目录是否存在，不把绝对路径写入任何 HTTP 响应。
+        if candidate.is_dir():
+            return candidate
+    return module_path.parents[4] / "mobile" / "web"
+
+
+def _static_content_type(filename):
+    suffix = pathlib.PurePosixPath(filename).suffix.lstrip(".")
+    return MOBILE_WEB_CONTENT_TYPES.get(suffix, "application/octet-stream")
+
+
+def _resolve_mobile_web_asset(path):
+    raw_path = unquote(str(path or ""))
+    if raw_path in ("", "/"):
+        relative_name = "index.html"
+    else:
+        # URL path 必须是单个静态文件名；不接受子目录、反斜杠或 traversal 变体。
+        relative_name = raw_path.lstrip("/")
+    if "\\" in relative_name:
+        return None
+    parts = pathlib.PurePosixPath(relative_name).parts
+    if len(parts) != 1 or any(part in ("", ".", "..") for part in parts):
+        return None
+    if relative_name not in MOBILE_WEB_STATIC_FILES:
+        return None
+
+    root = _mobile_web_root()
+    root_resolved = root.resolve(strict=False)
+    candidate = (root / relative_name).resolve(strict=False)
+    try:
+        candidate.relative_to(root_resolved)
+    except ValueError:
+        # 即使路径被编码绕过，失败也只返回 phone-safe 404，不暴露本地目录。
+        return None
+    if not candidate.is_file():
+        return None
+    return candidate, _static_content_type(relative_name)
+
+
+def _default_mobile_web_robot_id():
+    # 同源手机壳没有 URL 参数时也要有稳定 robot_id，避免前端收到 404 后直接离线。
+    return str(os.environ.get("TRASHBOT_REMOTE_CLOUD_DEFAULT_ROBOT_ID") or "trashbot-001").strip() or "trashbot-001"
+
+
+def _fail_closed_command_safety(reason):
+    # 这是 cloud-hosted shell 的只读 gate，不是 command/status/ACK 主契约的一部分。
+    action = {
+        "enabled": False,
+        "blocking_reason": reason,
+        "recovery_hint": "等待机器人上报安全状态；本 gate 只证明 Docker/local phone-safe adapter。",
+    }
+    return {
+        "schema": "trashbot.command_safety.v1",
+        "overall_status": "blocked",
+        "safe_phone_copy": "云端托管手机壳只提供只读状态；主操作保持禁用。",
+        "global_block_reason": reason,
+        "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达、投放或取消完成。",
+        "actions": {
+            "start": dict(action),
+            "confirm_dropoff": dict(action),
+            "cancel": dict(action),
+        },
+    }
+
+
+def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
+    # 手机同源 API 只读取 relay store 的最近状态；缺失或过期都转成 blocked 页面状态。
+    robot_key = _robot_key(robot_id or _default_mobile_web_robot_id())
+    status_code, store_payload = store.get_status(robot_key)
+    latest_status = store_payload.get("status") if isinstance(store_payload, dict) else None
+    latest_status = safe_value(latest_status) if isinstance(latest_status, dict) else None
+    if status_code == 200 and latest_status:
+        state = str(latest_status.get("state") or "status_present")
+        reason = "cloud-hosted mobile web gate keeps primary actions fail-closed."
+        safe_phone_copy = "已读取 relay 最近状态；云端托管手机壳仍保持主操作安全关闭。"
+    elif latest_status:
+        state = "status_stale"
+        reason = "robot status is stale; cloud-hosted mobile web gate keeps actions disabled."
+        safe_phone_copy = "relay 中只有过期状态；请等待机器人重新上报。"
+    else:
+        state = "status_missing"
+        reason = "robot has not posted status to relay yet."
+        safe_phone_copy = "relay 尚未收到机器人状态；请等待机器人上线或检查桥接。"
+
+    command_safety = _fail_closed_command_safety(reason)
+    phone_readiness = {
+        "schema": CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA,
+        "schema_version": CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA_VERSION,
+        "primary_state": "blocked",
+        "can_continue": False,
+        "safe_phone_copy": safe_phone_copy,
+        "recovery_hint": "这只是 Docker/local software proof；真实公网、手机和机器人联调仍未证明。",
+        "next_action": "wait_for_robot_status",
+        "support_level": "support_required",
+        "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_EVIDENCE_BOUNDARY,
+        "cloud_hosted_mobile_web_gate": {
+            "overall_status": "blocked",
+            "production_ready": False,
+            "adapter": "phone_safe_status_diagnostics",
+            "safe_summary": "托管静态壳 + phone-safe /api/status 和 /api/diagnostics fail-closed adapter。",
+        },
+        "action_permissions": {
+            "can_collect": False,
+            "can_confirm_dropoff": False,
+            "can_cancel": False,
+        },
+        "command_safety": command_safety,
+        "not_proven": list(CLOUD_HOSTED_MOBILE_WEB_NOT_PROVEN),
+    }
+    return safe_value(
+        {
+            "ok": True,
+            "schema": CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA,
+            "schema_version": CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA_VERSION,
+            "protocol_version": PROTOCOL_VERSION,
+            "robot_id": robot_key,
+            "state": state,
+            "overall_status": "blocked",
+            "production_ready": False,
+            "can_collect": False,
+            "can_confirm_dropoff": False,
+            "can_cancel": False,
+            "command_safety": command_safety,
+            "phone_readiness": phone_readiness,
+            "safe_phone_copy": safe_phone_copy,
+            "recovery_hint": phone_readiness["recovery_hint"],
+            "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_EVIDENCE_BOUNDARY,
+            "not_proven": list(CLOUD_HOSTED_MOBILE_WEB_NOT_PROVEN),
+            "latest_status": latest_status,
+        }
+    )
+
+
+def cloud_hosted_mobile_web_diagnostics_payload(store, robot_id=None):
+    # diagnostics 复用 status adapter，保证用户看到的 gate 和支持人员复制的摘要一致。
+    status_payload = cloud_hosted_mobile_web_status_payload(store, robot_id)
+    return safe_value(
+        {
+            "ok": True,
+            "schema": CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA,
+            "schema_version": CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA_VERSION,
+            "robot_id": status_payload["robot_id"],
+            "overall_status": "blocked",
+            "production_ready": False,
+            "cloud_hosted_mobile_web_gate": status_payload["phone_readiness"]["cloud_hosted_mobile_web_gate"],
+            "phone_safe_summary": {
+                "state": status_payload["state"],
+                "safe_phone_copy": status_payload["safe_phone_copy"],
+                "recovery_hint": status_payload["recovery_hint"],
+                "can_collect": False,
+                "can_confirm_dropoff": False,
+                "can_cancel": False,
+            },
+            "phone_readiness": status_payload["phone_readiness"],
+            "command_safety": status_payload["command_safety"],
+            "latest_status": status_payload.get("latest_status"),
+            "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_EVIDENCE_BOUNDARY,
+            "not_proven": list(CLOUD_HOSTED_MOBILE_WEB_NOT_PROVEN),
+        }
+    )
+
+
 def _bearer_header(headers):
     # 只接受标准 Bearer 格式，失败时不回显原始 Authorization header。
     value = str(headers.get("Authorization") or headers.get("authorization") or "").strip()
@@ -6989,6 +7195,22 @@ def make_handler(store, bearer_token):
             self.end_headers()
             self.wfile.write(data)
 
+        def _send_static_asset(self, asset):
+            asset_path, content_type = asset
+            try:
+                data = asset_path.read_bytes()
+            except OSError:
+                self._send_json(404, phone_error("not_found", "static shell asset not found"))
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(data)))
+            # 静态壳可缓存；service worker 已明确绕过 API、commands 和 ACK 控制面请求。
+            self.send_header("Cache-Control", "public, max-age=300")
+            self.send_header("X-Trashbot-Evidence-Boundary", CLOUD_HOSTED_MOBILE_WEB_EVIDENCE_BOUNDARY)
+            self.end_headers()
+            self.wfile.write(data)
+
         def _authorized(self):
             if not expected_token:
                 return True
@@ -7019,8 +7241,24 @@ def make_handler(store, bearer_token):
                 payload = production_preflight_payload()
                 self._send_json(200 if payload.get("production_ready") else 503, payload)
                 return
+            if parsed.path == "/api/status":
+                # 手机静态壳的同源状态 API 不要求 bearer；它只输出脱敏 blocked 摘要。
+                self._send_json(200, cloud_hosted_mobile_web_status_payload(store))
+                return
+            if parsed.path == "/api/diagnostics":
+                # diagnostics 给支持人员复现 blocked 状态，不能泄露 token、路径或 ROS/硬件细节。
+                self._send_json(200, cloud_hosted_mobile_web_diagnostics_payload(store))
+                return
             route = _route(parsed.path)
             if not route:
+                if parsed.path in CONTROL_PATHS or parsed.path.startswith(CONTROL_PATH_PREFIXES):
+                    # API/probe/control 路由必须优先，避免静态 fallback 把控制面错误伪装成页面。
+                    self._send_json(404, phone_error("not_found", "path not found"))
+                    return
+                asset = _resolve_mobile_web_asset(parsed.path)
+                if asset:
+                    self._send_static_asset(asset)
+                    return
                 self._send_json(404, phone_error("not_found", "path not found"))
                 return
             if not self._authorized():

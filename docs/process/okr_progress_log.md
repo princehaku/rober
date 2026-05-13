@@ -10,6 +10,14 @@
 
 更新时间：2026-05-13（本系列持续追加）。本系列下"补充"段落原本写在 `OKR.md` §4.1，2026-05-13 00:00 之后迁入本日志。
 
+### 2026-05-13 18-19｜cloud-hosted-mobile-web-gate｜O5 cloud-hosted mobile web gate，云中转由约 67% 上调到约 68%
+
+`sprints/2026.05.13_18-19_cloud-hosted-mobile-web-gate` 完成 `software_proof_docker_cloud_hosted_mobile_web_gate`：Task A Full-stack 让 `cloud-relay` Docker/local runtime 托管 `mobile/web/` PWA at `/`、`/index.html`、`/app.js`、`/styles.css`、`/manifest.webmanifest`、`/service-worker.js`、`/offline.html` 和 icons，Dockerfile 已 `COPY mobile/web /app/mobile/web`，API/probe/control route 不被 static fallback 覆盖。Task A 还新增免 bearer、phone-safe、fail-closed `GET /api/status` 和 `GET /api/diagnostics` adapter：默认 robot id 为 `TRASHBOT_REMOTE_CLOUD_DEFAULT_ROBOT_ID` 或 `trashbot-001`，缺 status 返回 blocked/missing，不再 404；有 status 只复制 safe fields；`can_collect=false`、`can_confirm_dropoff=false`、`can_cancel=false`、`phone_readiness.can_continue=false`、`command_safety.actions.*.enabled=false`；不改 `/robots/{robot_id}/status`、command、ACK 的 `trashbot.remote.v1` robot contract。Task A 验证输出 `test_remote_cloud_relay.py` 72 tests OK、py_compile OK、`bash cloud-relay/scripts/docker_smoke.sh` OK、diff check OK；Docker smoke 覆盖镜像构建、health/ready、preflight blocked-by-design、status/command/ack、backup/restore、restart recovery，readiness 等待期间一次连接重置后自动重试成功。
+
+Task B Robot 只补 compatibility fence 和 `docs/interfaces/ros_contracts.md`，未改生产代码。Robot fence 证明 `cloud_hosted_pwa`、`static_shell_metadata`、`pwa_static_surface`、`cloud_hosted_mobile_web_gate` metadata-only 不触发 collect/confirm_dropoff/cancel，不 POST ACK，不推进 in-memory `last_ack_id`，不持久化 `last_terminal_ack_id`；valid collect command mixed metadata 只执行 command envelope，ACK/status 不带 static metadata、delivery_success、cursor_override、Authorization、`/cmd_vel`。Task B 验证输出 remote bridge/protocol tests `Ran 100 tests ... OK`、py_compile OK、diff check OK。
+
+该证据只支持 Objective 5 从约 67% 保守上调到约 68%，理由是正式手机入口与云中转控制面形成 same-origin Docker/local proof，并补齐 fail-closed phone API adapter 与 robot compatibility fence；Objective 4 只记录支撑，保持约 70%；Objective 1/2/3 不提升。本轮仍没有真实公网 HTTPS/TLS、真实 4G/SIM、真实手机设备/browser、production app、真实 PWA install prompt、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达；ACK 仍只是 accepted/processing evidence，不是 delivery success。
+
 ### 2026-05-13 17-18｜O5 external evidence intake gate
 
 本轮 `sprints/2026.05.13_17-18_o5_external-evidence-intake-gate/` 按 `OKR.md` 4.1 的最低完成度继续推进 Objective 5。`remote_cloud_relay.py` 新增 `trashbot.external_evidence_intake` artifact、writer、validator、summary helper、CLI 参数和 preflight consumption，覆盖 `public_ingress_tls`、`oss_cdn`、`production_db_queue`、`four_g_sim` 四类未来外部材料状态；`docs/interfaces/ros_contracts.md` 和 remote bridge/protocol tests 同步新增 metadata-only compatibility fence，证明该 metadata 不触发 backend action、不 POST ACK、不推进或持久化 cursor。
