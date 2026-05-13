@@ -179,6 +179,48 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("cursor_override", encoded_command)
         self.assertNotIn("delivery_success", encoded_command)
 
+    def test_validate_command_ignores_mobile_device_acceptance_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-mobile-device-acceptance-metadata",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "mobile_device_acceptance_readiness": {
+                "schema": "trashbot.mobile_device_acceptance_readiness.v1",
+                "overall_status": "ready",
+                "trigger_robot_action": "confirm_dropoff",
+                "cursor_override": "cmd-future",
+                "ack_semantics": "delivery_success",
+                "delivery_success": True,
+                "raw_ros_topic": "/trashbot/collect_trash",
+            },
+            "phone_device_acceptance_readiness": {
+                "schema": "trashbot.phone_device_acceptance_readiness.v1",
+                "support_entry_enabled": True,
+                "next_action": "cancel",
+                "serial_device": "/dev/ttyUSB0",
+            },
+            "mobile_browser_acceptance_readiness": {
+                "schema": "trashbot.mobile_browser_acceptance_readiness.v1",
+                "browser_acceptance_ready": True,
+                "Authorization": "Bearer must-not-leak",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-mobile-device-acceptance-metadata")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 设备/浏览器验收 readiness 只服务手机验收面板，不能扩展 robot command envelope。
+        self.assertNotIn("mobile_device_acceptance_readiness", encoded_command)
+        self.assertNotIn("phone_device_acceptance_readiness", encoded_command)
+        self.assertNotIn("mobile_browser_acceptance_readiness", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("/trashbot/collect_trash", encoded_command)
+        self.assertNotIn("/dev/ttyUSB0", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+
     def test_validate_command_ignores_mobile_task_start_confirmation_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-mobile-task-start-confirmation",

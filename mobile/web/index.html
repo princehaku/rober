@@ -72,6 +72,43 @@
         <p id="cloudEvidenceBoundary" class="boundary">software_proof_docker_mobile_cloud_readiness_summary_gate</p>
       </section>
 
+      <section class="mobile-device-panel" aria-labelledby="mobileDeviceAcceptanceTitle">
+        <div class="section-heading">
+          <h2 id="mobileDeviceAcceptanceTitle">手机验收准备</h2>
+          <span id="mobileDeviceAcceptanceBadge" class="gate-badge gate-blocked">等待验收摘要</span>
+        </div>
+        <p id="mobileDeviceAcceptanceCopy" class="message">
+          等待后端提供真实手机/browser、production app 和 PWA install prompt 的 phone-safe 摘要。
+        </p>
+        <dl class="mobile-device-grid">
+          <div>
+            <dt>Viewport / Touch</dt>
+            <dd id="mobileDeviceViewportTouch">未证明</dd>
+          </div>
+          <div>
+            <dt>PWA / Offline</dt>
+            <dd id="mobileDevicePwaOffline">未证明</dd>
+          </div>
+          <div>
+            <dt>Diagnostics / Cloud</dt>
+            <dd id="mobileDeviceDiagnosticsCloud">未证明</dd>
+          </div>
+          <div>
+            <dt>Production App</dt>
+            <dd id="mobileDeviceProductionApp">未证明</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileDeviceAckSemantics">ACK 只代表 accepted/processing。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileDeviceEvidenceBoundary">software_proof_docker_mobile_device_acceptance_readiness_gate</dd>
+          </div>
+        </dl>
+        <p id="mobileDeviceRecoveryHint" class="hint">缺少真实设备/browser 验收摘要时，主操作保持禁用。</p>
+      </section>
+
       <section class="action-panel" aria-label="主操作">
         <div class="start-confirmation" aria-labelledby="startGateTitle">
           <div class="section-heading">

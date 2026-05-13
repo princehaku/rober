@@ -15,6 +15,7 @@ const ACTIONS = {
 const SAFE_EMPTY = "等待后端提供安全摘要。";
 const ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
 const CLOUD_READINESS_BOUNDARY = "software_proof_docker_mobile_cloud_readiness_summary_gate";
+const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_acceptance_readiness_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 
 let latestStatus = null;
@@ -115,6 +116,58 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
   };
 }
 
+function mobileDeviceAcceptanceReadinessFromStatus(status, readiness, diagnostics) {
+  // 真实手机/browser 验收必须来自后端或诊断摘要；静态页面不能把本地 smoke 升格成真机证明。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const candidates = [
+    status?.mobile_device_acceptance_readiness,
+    status?.phone_device_acceptance_readiness,
+    status?.mobile_browser_acceptance_readiness,
+    readiness?.mobile_device_acceptance_readiness,
+    readiness?.phone_device_acceptance_readiness,
+    readiness?.mobile_browser_acceptance_readiness,
+    diagnostics?.mobile_device_acceptance_readiness,
+    diagnostics?.phone_device_acceptance_readiness,
+    diagnostics?.mobile_browser_acceptance_readiness,
+    diagnosticsReadiness.mobile_device_acceptance_readiness,
+    diagnosticsReadiness.phone_device_acceptance_readiness,
+    diagnosticsReadiness.mobile_browser_acceptance_readiness,
+  ];
+  const provided = candidates.find((value) => value && typeof value === "object");
+  if (provided) {
+    return { ...provided, missing: false };
+  }
+  return {
+    missing: true,
+    schema: "trashbot.mobile_device_acceptance_readiness.v1",
+    schema_version: 1,
+    overall_status: "blocked",
+    primary_actions_enabled: false,
+    production_app_ready: false,
+    safe_to_control: false,
+    viewport_status: "not_proven",
+    touch_target_status: "not_proven",
+    pwa_install_prompt_status: "not_proven",
+    offline_status: "not_proven",
+    diagnostics_status: "not_proven",
+    cloud_gate_status: "not_proven",
+    safe_phone_copy: "缺少真实手机设备/browser、production app 和真实 PWA install prompt 验收摘要；手机主操作安全关闭。",
+    recovery_hint: "请完成真实手机浏览器/设备验收或由后端提供 blocked-by-design 摘要；Diagnostics 和 Support Handoff 仍可用。",
+    ack_semantics: ACK_PROCESSING_COPY,
+    evidence_boundary: MOBILE_DEVICE_ACCEPTANCE_BOUNDARY,
+    not_proven: [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "真实云/4G",
+      "HIL",
+      "真实送达",
+    ],
+  };
+}
+
 function cloudSummaryAllowsPrimaryActions(summary) {
   // Docker/local proof 不能自动开控制动作；只有后端显式 phone-safe 放行才允许继续。
   if (!summary || summary.missing === true) {
@@ -124,6 +177,19 @@ function cloudSummaryAllowsPrimaryActions(summary) {
     return summary.overall_status !== "blocked" && summary.production_ready !== false;
   }
   return false;
+}
+
+function mobileDeviceAcceptanceAllowsPrimaryActions(summary) {
+  // production app ready 必须和 primary action grant 同时出现；safe_to_control 是后端显式兼容放行。
+  if (!summary || summary.missing === true) {
+    return false;
+  }
+  if (summary.safe_to_control === true) {
+    return summary.overall_status !== "blocked";
+  }
+  return summary.primary_actions_enabled === true &&
+    summary.production_app_ready === true &&
+    summary.overall_status !== "blocked";
 }
 
 function operationLogFromStatus(status, readiness) {
@@ -345,7 +411,9 @@ function renderCommandSafety(status) {
   const readiness = readinessFromStatus(status);
   const commandSafety = commandSafetyFromReadiness(readiness);
   const cloudSummary = cloudReadinessSummaryFromStatus(status, readiness);
+  const mobileDeviceAcceptance = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics);
   const cloudAllowsPrimaryActions = cloudSummaryAllowsPrimaryActions(cloudSummary);
+  const mobileDeviceAllowsPrimaryActions = mobileDeviceAcceptanceAllowsPrimaryActions(mobileDeviceAcceptance);
   const actions = commandSafety.actions && typeof commandSafety.actions === "object" ? commandSafety.actions : {};
   $("commandSafetyCopy").textContent = safeText(commandSafety.safe_phone_copy, "主操作保持禁用。");
   $("ackCopy").textContent = safeText(
@@ -363,6 +431,7 @@ function renderCommandSafety(status) {
     const startGate = name === "start" ? latestStartGate : null;
     const enabled = actionGate.enabled === true && permitted === true &&
       cloudAllowsPrimaryActions &&
+      mobileDeviceAllowsPrimaryActions &&
       (startGate ? startGate.startEnabled : true);
     // blocked、离线、等待 ACK、人工接管都会通过 command_safety 关闭按钮。
     button.disabled = !enabled;
@@ -374,7 +443,8 @@ function renderCommandSafety(status) {
       ? startGate.blockedReason
       : safeText(actionGate.blocking_reason || commandSafety.global_block_reason, "blocked");
     const cloudReason = cloudAllowsPrimaryActions ? "" : "；云中转摘要未放行主操作。";
-    item.textContent = `${actionMeta.label}：${enabled ? "可操作" : `${reason}${cloudReason}`}`;
+    const mobileDeviceReason = mobileDeviceAllowsPrimaryActions ? "" : "；手机验收准备未放行主操作。";
+    item.textContent = `${actionMeta.label}：${enabled ? "可操作" : `${reason}${cloudReason}${mobileDeviceReason}`}`;
     reasons.appendChild(item);
   });
 
@@ -446,6 +516,7 @@ function deriveOperationLogEntries(status, readiness) {
   pushDerivedEvent(entries, "离线恢复", offlineResumeFromStatus(status, readiness));
   pushDerivedEvent(entries, "支持交接", status?.phone_support_bundle || readiness?.phone_support_bundle);
   pushDerivedEvent(entries, "语音提示", voicePromptFromStatus(status, readiness));
+  pushDerivedEvent(entries, "手机验收准备", mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics));
   return entries.slice(0, 6);
 }
 
@@ -471,6 +542,36 @@ function renderCloudReadiness(status) {
     "等待 cloud readiness 摘要；主操作保持禁用。",
   );
   $("cloudEvidenceBoundary").textContent = safeText(summary.evidence_boundary, CLOUD_READINESS_BOUNDARY);
+}
+
+function renderMobileDeviceAcceptance(status) {
+  const readiness = readinessFromStatus(status);
+  const summary = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("mobileDeviceAcceptanceBadge");
+  const allowed = mobileDeviceAcceptanceAllowsPrimaryActions(summary);
+  const viewport = safeText(summary.viewport_status || summary.viewport_gate || summary.viewport, "not_proven");
+  const touch = safeText(summary.touch_target_status || summary.touch_gate || summary.touch, "not_proven");
+  const pwa = safeText(summary.pwa_install_prompt_status || summary.pwa_status || summary.pwa_installability, "not_proven");
+  const offline = safeText(summary.offline_status || summary.offline_gate, "not_proven");
+  const diagnostics = safeText(summary.diagnostics_status || summary.diagnostics_gate, "not_proven");
+  const cloud = safeText(summary.cloud_gate_status || summary.cloud_status, "not_proven");
+
+  badge.className = "gate-badge";
+  badge.classList.add(allowed ? "gate-ready" : (summary.missing ? "gate-waiting" : "gate-blocked"));
+  badge.textContent = allowed ? "验收允许" : (summary.missing ? "等待摘要" : "验收阻塞");
+  $("mobileDeviceAcceptanceCopy").textContent = safeText(summary.safe_phone_copy || summary.safe_summary);
+  $("mobileDeviceViewportTouch").textContent = `viewport=${viewport} / touch=${touch}`;
+  $("mobileDevicePwaOffline").textContent = `PWA=${pwa} / offline=${offline}`;
+  $("mobileDeviceDiagnosticsCloud").textContent = `diagnostics=${diagnostics} / cloud=${cloud}`;
+  $("mobileDeviceProductionApp").textContent = summary.production_app_ready === true
+    ? "production_app_ready=true"
+    : "production_app_ready=false / 未证明";
+  $("mobileDeviceAckSemantics").textContent = safeText(summary.ack_semantics, ACK_PROCESSING_COPY);
+  $("mobileDeviceEvidenceBoundary").textContent = safeText(summary.evidence_boundary, MOBILE_DEVICE_ACCEPTANCE_BOUNDARY);
+  $("mobileDeviceRecoveryHint").textContent = safeText(
+    summary.recovery_hint || summary.retry_hint,
+    "缺少真实手机验收摘要时，Start、Confirm、Cancel 保持禁用。",
+  );
 }
 
 function renderOperationLog(status) {
@@ -632,6 +733,7 @@ function renderOfflineFailure() {
   $("operationLogList").appendChild(offlineEvent);
   $("operationSupportEntry").textContent = "离线时可保留恢复提示，但不发送控制请求。";
   renderCloudReadiness({});
+  renderMobileDeviceAcceptance({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -656,6 +758,7 @@ function renderStatus(status) {
   latestStatus = status;
   renderReadiness(status);
   renderCloudReadiness(status);
+  renderMobileDeviceAcceptance(status);
   renderTaskFlow(status);
   renderStartConfirmation(status);
   renderCommandSafety(status);
@@ -749,6 +852,8 @@ async function refreshStatus() {
 async function openDiagnostics() {
   try {
     latestDiagnostics = await fetchJson(ENDPOINTS.diagnostics);
+    renderMobileDeviceAcceptance(latestStatus || {});
+    renderCommandSafety(latestStatus || {});
     renderDiagnosticsSummary(latestDiagnostics);
   } catch (_error) {
     $("supportSafeCopy").textContent = "诊断暂不可用，请稍后重试或联系支持人员。";

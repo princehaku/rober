@@ -9,6 +9,8 @@
 > 当前增量：sprint `2026.05.13_09-10_mobile-action-feedback-gate` 在静态入口中新增动作回执面板，并让 Confirm Dropoff / Cancel 携带 generic mobile action confirmation payload。证据边界是 `software_proof_docker_mobile_action_feedback_gate`，只证明 local/static fixture 与 targeted unittest 能展示提交状态、失败原因、恢复建议、client reference 和 ACK 语义；不等于真实手机设备/browser、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 >
 > 当前增量：sprint `2026.05.13_11-12_mobile-cloud-readiness-summary-gate` 在首屏新增“云中转状态”摘要。证据边界是 `software_proof_docker_mobile_cloud_readiness_summary_gate`，只证明 local/static fixture 与 targeted unittest 能展示 cloud/preflight/DB/queue 的 phone-safe 摘要、阻塞恢复建议和 ACK 语义；不等于真实手机设备/browser、production app、真实云/4G、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+>
+> 当前增量：sprint `2026.05.13_13-14_mobile-device-acceptance-readiness-gate` 在首屏新增“手机验收准备”摘要。证据边界是 `software_proof_docker_mobile_device_acceptance_readiness_gate`，只证明 local/static fixture 与 targeted unittest 能展示真实手机设备/browser、production app、PWA install prompt、offline、diagnostics 和 cloud gate 的 blocked-by-design 摘要；不等于真实手机设备/browser、production app、真实 PWA install prompt、真实云/4G、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 
 ## 用途（What lives here）
 
@@ -55,6 +57,7 @@ python3 -m http.server 8088
 - 可选：`operation_log`、`phone_operation_log`、`phone_task_flow_readiness`、`phone_support_bundle`、`voice_prompt_readiness`
 - 可选：`mobile_action_receipt`、`phone_action_feedback`
 - 可选：`phone_cloud_readiness_summary`、`mobile_cloud_readiness_summary`、`cloud_readiness_summary` 或 `/api/status.phone_readiness.cloud_readiness`
+- 可选：`mobile_device_acceptance_readiness`、`phone_device_acceptance_readiness`、`mobile_browser_acceptance_readiness` 或 `/api/status.phone_readiness.*_acceptance_readiness`
 - `/api/diagnostics` 的脱敏摘要字段
 
 云中转摘要规则：
@@ -65,6 +68,15 @@ python3 -m http.server 8088
 - `production_ready=false`、`overall_status=blocked` 或未显式 `primary_actions_enabled=true` 时，主操作继续 fail closed。
 - `software_proof_docker_cloud_db_queue_config_gate` 只能作为上游 Docker/local 配置证明来源，不代表真实公网、真实 4G、production DB/queue、OSS/CDN live traffic、HIL 或真实送达。
 - ACK 文案只能写成 accepted/processing evidence，不得写成真实云就绪、任务成功、投放完成、取消完成或机器人已运动。
+
+手机验收准备规则：
+
+- 首屏“手机验收准备”只消费后端或 diagnostics 提供的 phone-safe 摘要，不从静态 HTML、fixture smoke 或本地浏览器自行推断真实设备验收通过。
+- 支持字段优先级为 `mobile_device_acceptance_readiness`、`phone_device_acceptance_readiness`、`mobile_browser_acceptance_readiness`，并兼容同名字段出现在 `phone_readiness` 或 `/api/diagnostics`。
+- 摘要缺失时返回 blocked 默认摘要，`evidence_boundary=software_proof_docker_mobile_device_acceptance_readiness_gate`，并明确缺真实手机设备/browser、production app 和真实 PWA install prompt。
+- 面板展示 viewport/touch、PWA/offline、diagnostics/cloud gate、production app readiness、recovery hint、ACK 语义和 evidence boundary。
+- Start Delivery、Confirm Dropoff、Cancel 只有在该摘要显式 `safe_to_control=true`，或同时满足 `primary_actions_enabled=true` 与 `production_app_ready=true` 时才可能继续通过后续 gate；否则 fail closed。Diagnostics 和 Support Handoff 仍可见。
+- ACK 文案只能写成 accepted/processing evidence，不得写成真实手机验收通过、production app ready、delivery success、dropoff success 或 cancel completed。
 
 operation log 规则：
 
@@ -120,5 +132,6 @@ PWA / offline 边界：
 | 当前 mobile-operation-log gate | `mobile/web/` operation log 面板、恢复提示、支持交接入口、fixture smoke |
 | 当前 mobile-action-feedback gate | `mobile/web/` 动作回执面板、Confirm/Cancel generic confirmation payload、失败提示和 ACK 语义 fixture smoke |
 | 当前 mobile-cloud-readiness-summary gate | `mobile/web/` 云中转状态摘要、blocked recovery、production_ready=false 和 ACK 语义 fixture smoke |
+| 当前 mobile-device-acceptance-readiness gate | `mobile/web/` 手机验收准备摘要、blocked-by-design 真机/PWA/product app gate、primary action fail-closed |
 | 下一个 sprint | 真实手机浏览器/设备验收、安装提示和弱网体验 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |

@@ -1676,6 +1676,85 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
                     self.assertNotIn("/cmd_vel", encoded_status)
                     self.cloud.response_extras["command_response"] = {}
 
+    def test_metadata_only_mobile_device_acceptance_response_does_not_start_ack_or_persist_cursor(self):
+        metadata_cases = (
+            (
+                "mobile_device_acceptance_readiness",
+                {
+                    "schema": "trashbot.mobile_device_acceptance_readiness.v1",
+                    "overall_status": "ready",
+                    "device_acceptance_ready": True,
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-device-override",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/trashbot/collect_trash",
+                },
+            ),
+            (
+                "phone_device_acceptance_readiness",
+                {
+                    "schema": "trashbot.phone_device_acceptance_readiness.v1",
+                    "support_entry_enabled": True,
+                    "next_action": "confirm_dropoff",
+                    "trigger_robot_action": "confirm_dropoff",
+                    "cursor_override": "cmd-phone-override",
+                    "delivery_success": True,
+                    "serial_device": "/dev/ttyUSB0",
+                },
+            ),
+            (
+                "mobile_browser_acceptance_readiness",
+                {
+                    "schema": "trashbot.mobile_browser_acceptance_readiness.v1",
+                    "browser_acceptance_ready": True,
+                    "next_action": "cancel",
+                    "trigger_robot_action": "cancel",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "Authorization": "Bearer must-not-leak",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.backend.calls.clear()
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        metadata_name: metadata,
+                        "preflight": {"overall_status": "blocked", "production_ready": False},
+                    }
+
+                    handled = worker.poll_once()
+
+                    # 手机设备/浏览器验收 readiness 是展示元数据；没有 command envelope 时必须 no-op。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("/trashbot/collect_trash", encoded_status)
+                    self.assertNotIn("/dev/ttyUSB0", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
     def test_metadata_only_phone_offline_resume_response_does_not_start_ack_or_persist_cursor(self):
         for connection_state in ("offline", "recovering", "stale"):
             with self.subTest(connection_state=connection_state):

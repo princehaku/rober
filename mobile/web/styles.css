@@ -128,6 +128,7 @@ h2 {
 
 .hero-panel,
 .cloud-panel,
+.mobile-device-panel,
 .action-feedback-panel,
 .task-panel,
 .gate-panel,
@@ -161,6 +162,7 @@ h2 {
 
 .status-grid,
 .cloud-grid,
+.mobile-device-grid,
 .feedback-grid,
 .diagnostics-grid {
   display: grid;
@@ -171,6 +173,7 @@ h2 {
 
 .status-grid div,
 .cloud-grid div,
+.mobile-device-grid div,
 .feedback-grid div,
 .diagnostics-grid div {
   border: 1px solid var(--line);
