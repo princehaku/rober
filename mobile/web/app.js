@@ -20,6 +20,7 @@ const MOBILE_DEVICE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_device_evi
 const MOBILE_DEVICE_HANDOFF_SESSION_BOUNDARY = "software_proof_docker_mobile_device_handoff_session_gate";
 const MOBILE_BROWSER_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_browser_acceptance_bundle_gate";
 const MOBILE_PWA_INSTALL_PROMPT_BOUNDARY = "software_proof_docker_mobile_pwa_install_prompt_evidence_gate";
+const MOBILE_REAL_DEVICE_EVIDENCE_INTAKE_BOUNDARY = "software_proof_docker_mobile_real_device_evidence_intake_gate";
 const PRIMARY_JOURNEY_BOUNDARY = "software_proof_docker_mobile_primary_journey_gate";
 const RECOVERY_DECISION_BOUNDARY = "software_proof_docker_mobile_recovery_decision_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
@@ -32,9 +33,13 @@ const ACCEPTANCE_BUNDLE_SCHEMA = "trashbot.mobile_browser_acceptance_bundle.v1";
 const PWA_INSTALL_PROMPT_SCHEMA = "trashbot.mobile_pwa_install_prompt_evidence.v1";
 const PWA_INSTALL_PROMPT_SUMMARY_SCHEMA = "trashbot.mobile_pwa_install_prompt_evidence_summary.v1";
 const PWA_INSTALL_PROMPT_PACKAGE_SCHEMA = "trashbot.mobile_pwa_install_prompt_evidence_package.v1";
+const REAL_DEVICE_EVIDENCE_INTAKE_SCHEMA = "trashbot.mobile_real_device_evidence_intake.v1";
+const REAL_DEVICE_EVIDENCE_INTAKE_SUMMARY_SCHEMA = "trashbot.mobile_real_device_evidence_intake_summary.v1";
+const REAL_DEVICE_EVIDENCE_PACKAGE_SCHEMA = "trashbot.mobile_real_device_evidence_package.v1";
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|artifact)/i;
 const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
+const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/ws\/|\/var\/|traceback|checksum|artifact|raw robot response|robot response|password)/i;
 
 let latestStatus = null;
 let latestDiagnostics = null;
@@ -43,6 +48,8 @@ let latestAcceptanceBundle = null;
 let latestDeviceEvidencePackage = null;
 let latestDeviceHandoffSession = null;
 let latestPwaInstallPromptPackage = null;
+let latestRealDeviceEvidencePackage = null;
+let importedRealDeviceEvidence = null;
 let pendingTerminalAction = null;
 let stableHandoffClientReference = `mobile_web_handoff_${Date.now()}`;
 let latestStartGate = {
@@ -89,6 +96,15 @@ function safeTerminalActionText(value, fallback = "等待安全摘要") {
   // 终端动作确认直接影响投放/取消入口，任何成功暗示或内部细节都降级为保守文案。
   const text = safeText(value, fallback);
   if (UNSAFE_TERMINAL_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeRealDeviceEvidenceText(value, fallback = "not_proven") {
+  // 真实设备材料来自用户粘贴或后端摘要，必须先过滤凭证、ROS/硬件细节和原始响应。
+  const text = safeText(value, fallback);
+  if (UNSAFE_REAL_DEVICE_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -308,6 +324,29 @@ function mobilePwaInstallPromptEvidenceCandidate(status, readiness, diagnostics)
     diagnosticsReadiness.mobile_pwa_install_prompt_evidence,
     diagnosticsReadiness.mobile_pwa_install_prompt_evidence_summary,
     diagnosticsReadiness.mobile_pwa_install_prompt_evidence_package,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function mobileRealDeviceEvidenceIntakeCandidate(status, readiness, diagnostics) {
+  // 真实设备材料 intake 可能来自 status、phone_readiness 或 diagnostics；导入 JSON 只作为本地白名单输入。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const candidates = [
+    importedRealDeviceEvidence,
+    status?.mobile_real_device_evidence_intake,
+    status?.mobile_real_device_evidence_intake_summary,
+    status?.mobile_real_device_evidence_package,
+    readiness?.mobile_real_device_evidence_intake,
+    readiness?.mobile_real_device_evidence_intake_summary,
+    readiness?.mobile_real_device_evidence_package,
+    diagnostics?.mobile_real_device_evidence_intake,
+    diagnostics?.mobile_real_device_evidence_intake_summary,
+    diagnostics?.mobile_real_device_evidence_package,
+    diagnosticsReadiness.mobile_real_device_evidence_intake,
+    diagnosticsReadiness.mobile_real_device_evidence_intake_summary,
+    diagnosticsReadiness.mobile_real_device_evidence_package,
   ];
   return candidates.find((value) => value && typeof value === "object") || null;
 }
@@ -576,6 +615,85 @@ function mobilePwaInstallPromptEvidenceFromStatus(status, readiness, diagnostics
   const browserBundle = mobileBrowserAcceptanceBundleFromStatus(status, readiness, diagnostics);
   const provided = mobilePwaInstallPromptEvidenceCandidate(status, readiness, diagnostics) || {};
   return normalizePwaInstallPromptEvidence(provided, localEvidence, handoffSession, browserBundle);
+}
+
+function normalizeRealDeviceEvidenceIntake(value, localEvidence, pwaEvidence) {
+  // intake 包只输出 redacted phone-safe summary；即使用户粘贴完整 JSON，也不复制 raw 输入。
+  const device = value?.device && typeof value.device === "object" ? value.device : {};
+  const browser = value?.browser && typeof value.browser === "object" ? value.browser : {};
+  const viewport = browser.viewport_css && typeof browser.viewport_css === "object" ? browser.viewport_css : {};
+  const pwa = value?.pwa && typeof value.pwa === "object" ? value.pwa : {};
+  const productionApp = value?.production_app && typeof value.production_app === "object" ? value.production_app : {};
+  const evidence = value?.evidence && typeof value.evidence === "object" ? value.evidence : {};
+  const browserSummary = `${safeRealDeviceEvidenceText(browser.family, "unknown")} ${safeRealDeviceEvidenceText(browser.version_summary, "not_provided")}`.trim();
+  return {
+    schema: REAL_DEVICE_EVIDENCE_INTAKE_SCHEMA,
+    schema_version: 1,
+    summary_schema: REAL_DEVICE_EVIDENCE_INTAKE_SUMMARY_SCHEMA,
+    package_schema: REAL_DEVICE_EVIDENCE_PACKAGE_SCHEMA,
+    source: safeRealDeviceEvidenceText(value?.source, importedRealDeviceEvidence ? "mobile_web_import" : "mobile_web_local_metadata"),
+    overall_status: safeRealDeviceEvidenceText(value?.overall_status || value?.status, "blocked"),
+    device: {
+      platform: safeRealDeviceEvidenceText(device.platform || navigator.platform, "unknown"),
+      model_summary: safeRealDeviceEvidenceText(device.model_summary, "not_provided"),
+      os_summary: safeRealDeviceEvidenceText(device.os_summary, "not_provided"),
+    },
+    browser: {
+      family: safeRealDeviceEvidenceText(browser.family, "unknown"),
+      version_summary: safeRealDeviceEvidenceText(browser.version_summary || browserSummary, "not_provided"),
+      viewport_css: {
+        width: Number(viewport.width || viewport.width_css_px || localEvidence.viewport.width_css_px || 0),
+        height: Number(viewport.height || viewport.height_css_px || localEvidence.viewport.height_css_px || 0),
+      },
+      device_pixel_ratio: Number(browser.device_pixel_ratio || localEvidence.viewport.device_pixel_ratio || 1),
+      orientation: safeRealDeviceEvidenceText(browser.orientation || localEvidence.viewport.orientation, "unknown"),
+      touch_target_summary: safeRealDeviceEvidenceText(browser.touch_target_summary, "not_proven"),
+    },
+    pwa: {
+      display_mode: safeRealDeviceEvidenceText(pwa.display_mode || localEvidence.display_mode, "browser"),
+      install_prompt_status: safeRealDeviceEvidenceText(
+        pwa.install_prompt_status || pwaEvidence.install_prompt_capture_status,
+        "not_proven",
+      ),
+      install_prompt_user_choice: safeRealDeviceEvidenceText(
+        pwa.install_prompt_user_choice || pwaEvidence.install_prompt_user_outcome,
+        "not_provided",
+      ),
+      manifest_status: safeRealDeviceEvidenceText(pwa.manifest_status, localEvidence.pwa.manifest_link_present ? "present" : "unknown"),
+      service_worker_status: safeRealDeviceEvidenceText(pwa.service_worker_status || localEvidence.service_worker.status, "unknown"),
+      offline_shell_status: safeRealDeviceEvidenceText(pwa.offline_shell_status || localEvidence.service_worker.offline_shell_status, "unknown"),
+    },
+    production_app: {
+      ready: productionApp.ready === true || value?.production_app_ready === true,
+      entry_url_summary: safeRealDeviceEvidenceText(productionApp.entry_url_summary || value?.entry_url_summary, "not_provided"),
+      release_summary: safeRealDeviceEvidenceText(productionApp.release_summary, "not_provided"),
+    },
+    evidence: {
+      screenshot_summary: safeRealDeviceEvidenceText(evidence.screenshot_summary || value?.screenshot_summary, "not_provided"),
+      url_summary: safeRealDeviceEvidenceText(evidence.url_summary || value?.url_summary || safeEntryUrlSummary(), "not_provided"),
+      observer_note: safeRealDeviceEvidenceText(evidence.observer_note || value?.observer_note, "not_provided"),
+      redaction_status: safeRealDeviceEvidenceText(evidence.redaction_status || value?.redaction_status, "passed"),
+    },
+    safe_to_control: false,
+    not_proven: notProvenList(value?.not_proven),
+    safe_phone_copy: safeRealDeviceEvidenceText(
+      value?.safe_phone_copy || value?.safe_summary,
+      "真实设备验收材料 intake blocked-by-design：当前只生成 redacted phone-safe package，不证明真实手机设备、production app 或 PWA install prompt 通过。",
+    ),
+    recovery_hint: safeRealDeviceEvidenceText(
+      value?.recovery_hint || value?.retry_hint,
+      "请导入真实 iPhone/Android 或 production app 的脱敏摘要；本 gate 不启用 Start、Confirm 或 Cancel。",
+    ),
+    ack_semantics: safeRealDeviceEvidenceText(value?.ack_semantics, ACK_PROCESSING_COPY),
+    evidence_boundary: safeRealDeviceEvidenceText(value?.evidence_boundary, MOBILE_REAL_DEVICE_EVIDENCE_INTAKE_BOUNDARY),
+  };
+}
+
+function mobileRealDeviceEvidencePackageFromStatus(status, readiness, diagnostics) {
+  const localEvidence = mobileDeviceEvidencePackageFromStatus(status, readiness, diagnostics);
+  const pwaEvidence = mobilePwaInstallPromptEvidenceFromStatus(status, readiness, diagnostics);
+  const provided = mobileRealDeviceEvidenceIntakeCandidate(status, readiness, diagnostics) || {};
+  return normalizeRealDeviceEvidenceIntake(provided, localEvidence, pwaEvidence);
 }
 
 function bundleFieldSummary(value, fallback = "not_proven") {
@@ -1450,6 +1568,7 @@ function deriveOperationLogEntries(status, readiness) {
   pushDerivedEvent(entries, "手机验收准备", mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics));
   pushDerivedEvent(entries, "真实手机验收交接会话", mobileDeviceHandoffSessionFromStatus(status, readiness, latestDiagnostics));
   pushDerivedEvent(entries, "PWA 安装提示证据", mobilePwaInstallPromptEvidenceFromStatus(status, readiness, latestDiagnostics));
+  pushDerivedEvent(entries, "真实设备验收材料", mobileRealDeviceEvidencePackageFromStatus(status, readiness, latestDiagnostics));
   return entries.slice(0, 8);
 }
 
@@ -1609,6 +1728,29 @@ function pwaInstallPromptPackageCopyPayload(packagePayload) {
   };
 }
 
+function realDeviceEvidencePackageCopyPayload(packagePayload) {
+  // 真实设备材料复制包是最终 redacted contract，不能包含用户粘贴原文或控制放行字段。
+  return {
+    schema: REAL_DEVICE_EVIDENCE_PACKAGE_SCHEMA,
+    schema_version: packagePayload.schema_version,
+    intake_schema: packagePayload.schema,
+    summary_schema: packagePayload.summary_schema,
+    source: packagePayload.source,
+    overall_status: packagePayload.overall_status,
+    device: packagePayload.device,
+    browser: packagePayload.browser,
+    pwa: packagePayload.pwa,
+    production_app: packagePayload.production_app,
+    evidence: packagePayload.evidence,
+    safe_to_control: false,
+    safe_phone_copy: packagePayload.safe_phone_copy,
+    recovery_hint: packagePayload.recovery_hint,
+    ack_semantics: packagePayload.ack_semantics,
+    evidence_boundary: packagePayload.evidence_boundary,
+    not_proven: packagePayload.not_proven,
+  };
+}
+
 function renderMobileDeviceEvidence(status) {
   const readiness = readinessFromStatus(status);
   const packagePayload = mobileDeviceEvidencePackageFromStatus(status, readiness, latestDiagnostics);
@@ -1658,6 +1800,37 @@ function renderMobilePwaInstallPromptEvidence(status) {
   $("mobilePwaInstallPromptRecoveryHint").textContent = packagePayload.recovery_hint;
   $("mobilePwaInstallPromptSafeCopy").textContent =
     JSON.stringify(pwaInstallPromptPackageCopyPayload(packagePayload), null, 2);
+}
+
+function renderMobileRealDeviceEvidenceIntake(status) {
+  const readiness = readinessFromStatus(status);
+  const packagePayload = mobileRealDeviceEvidencePackageFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("mobileRealDeviceEvidenceBadge");
+  latestRealDeviceEvidencePackage = packagePayload;
+
+  badge.className = "gate-badge gate-blocked";
+  badge.textContent = packagePayload.overall_status === "ready" ? "材料已导入但不放行" : "not_proven";
+  $("mobileRealDeviceEvidenceCopy").textContent = packagePayload.safe_phone_copy;
+  $("mobileRealDeviceEvidenceDevice").textContent =
+    `platform=${packagePayload.device.platform} / model=${packagePayload.device.model_summary} / os=${packagePayload.device.os_summary}`;
+  $("mobileRealDeviceEvidenceBrowser").textContent =
+    `${packagePayload.browser.family} ${packagePayload.browser.version_summary}`;
+  $("mobileRealDeviceEvidenceViewport").textContent =
+    `${packagePayload.browser.viewport_css.width}x${packagePayload.browser.viewport_css.height} / DPR=${packagePayload.browser.device_pixel_ratio} / orientation=${packagePayload.browser.orientation}`;
+  $("mobileRealDeviceEvidencePwa").textContent =
+    `display=${packagePayload.pwa.display_mode} / PWA install prompt=${packagePayload.pwa.install_prompt_status} / user_choice=${packagePayload.pwa.install_prompt_user_choice}`;
+  $("mobileRealDeviceEvidenceProduction").textContent =
+    `production app ready=${packagePayload.production_app.ready} / release=${packagePayload.production_app.release_summary}`;
+  $("mobileRealDeviceEvidenceScreenshot").textContent = packagePayload.evidence.screenshot_summary;
+  $("mobileRealDeviceEvidenceUrl").textContent = packagePayload.evidence.url_summary;
+  $("mobileRealDeviceEvidenceObserver").textContent = packagePayload.evidence.observer_note;
+  $("mobileRealDeviceEvidenceRedaction").textContent = packagePayload.evidence.redaction_status;
+  $("mobileRealDeviceEvidenceAck").textContent = packagePayload.ack_semantics;
+  $("mobileRealDeviceEvidenceBoundary").textContent = packagePayload.evidence_boundary;
+  $("mobileRealDeviceEvidenceNotProven").textContent = packagePayload.not_proven.join("、");
+  $("mobileRealDeviceEvidenceRecoveryHint").textContent = packagePayload.recovery_hint;
+  $("mobileRealDeviceEvidenceSafeCopy").textContent =
+    JSON.stringify(realDeviceEvidencePackageCopyPayload(packagePayload), null, 2);
 }
 
 function renderMobileDeviceHandoffSession(status) {
@@ -1891,6 +2064,7 @@ function renderOfflineFailure() {
   renderMobileDeviceEvidence({});
   renderMobileDeviceHandoffSession({});
   renderMobilePwaInstallPromptEvidence({});
+  renderMobileRealDeviceEvidenceIntake({});
   renderMobileBrowserAcceptanceBundle({});
   renderRecoveryDecision({ connection_state: "offline" });
   latestActionFeedback = normalizeActionFeedback({
@@ -1924,6 +2098,7 @@ function renderStatus(status) {
   renderMobileDeviceEvidence(status);
   renderMobileDeviceHandoffSession(status);
   renderMobilePwaInstallPromptEvidence(status);
+  renderMobileRealDeviceEvidenceIntake(status);
   renderMobileBrowserAcceptanceBundle(status);
   renderTaskFlow(status);
   renderStartConfirmation(status);
@@ -2114,6 +2289,7 @@ async function openDiagnostics() {
     renderMobileDeviceEvidence(latestStatus || {});
     renderMobileDeviceHandoffSession(latestStatus || {});
     renderMobilePwaInstallPromptEvidence(latestStatus || {});
+    renderMobileRealDeviceEvidenceIntake(latestStatus || {});
     renderMobileBrowserAcceptanceBundle(latestStatus || {});
     renderCommandSafety(latestStatus || {});
     renderDiagnosticsSummary(latestDiagnostics);
@@ -2200,6 +2376,47 @@ function wireEvents() {
       $("mobilePwaInstallPromptCopyStatus").textContent = "已复制脱敏安装提示证据包。";
     } catch (_error) {
       $("mobilePwaInstallPromptCopyStatus").textContent = "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("importRealDeviceEvidenceButton").addEventListener("click", () => {
+    // 用户导入只接受 JSON 摘要，解析失败或命中敏感字段时保持 blocked-by-design。
+    const raw = $("mobileRealDeviceEvidenceImport").value || "";
+    try {
+      const parsed = JSON.parse(raw);
+      const redactedText = JSON.stringify(parsed);
+      if (UNSAFE_REAL_DEVICE_TEXT.test(redactedText)) {
+        importedRealDeviceEvidence = {
+          overall_status: "blocked",
+          evidence: { redaction_status: "failed_sensitive_input_filtered" },
+          safe_phone_copy: "导入 JSON 含敏感字段，已拒绝复制原文；请提供 redacted phone-safe summary。",
+          recovery_hint: "移除 token、Authorization、OSS AK/SK、root password、DB/queue URL、ROS topic、/cmd_vel、serial、baudrate、WAVE ROVER、local paths、traceback、checksum、artifact 或 raw robot response 后重试。",
+        };
+      } else {
+        importedRealDeviceEvidence = parsed;
+      }
+      $("mobileRealDeviceEvidenceImportStatus").textContent = "已导入并重新生成 redacted package。";
+    } catch (_error) {
+      importedRealDeviceEvidence = null;
+      $("mobileRealDeviceEvidenceImportStatus").textContent = "JSON 解析失败；继续使用本地 blocked-by-design package。";
+    }
+    renderMobileRealDeviceEvidenceIntake(latestStatus || {});
+    renderCommandSafety(latestStatus || {});
+  });
+  $("generateRealDeviceEvidenceButton").addEventListener("click", () => {
+    // 生成本地 blocked package 便于支持复现，但它不是实机证明或控制放行来源。
+    importedRealDeviceEvidence = null;
+    $("mobileRealDeviceEvidenceImportStatus").textContent = "已使用当前本地浏览器 metadata 生成 blocked-by-design package。";
+    renderMobileRealDeviceEvidenceIntake(latestStatus || {});
+  });
+  $("copyRealDeviceEvidencePackageButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(realDeviceEvidencePackageCopyPayload(latestRealDeviceEvidencePackage || {}), null, 2);
+    $("mobileRealDeviceEvidenceSafeCopy").textContent = payload;
+    // 复制失败不影响 intake；pre 区域始终显示最终 redacted phone-safe package。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("mobileRealDeviceEvidenceCopyStatus").textContent = "已复制 redacted phone-safe package。";
+    } catch (_error) {
+      $("mobileRealDeviceEvidenceCopyStatus").textContent = "浏览器未授权剪贴板；请从下方文本框手动复制。";
     }
   });
   $("supportButton").addEventListener("click", () => {

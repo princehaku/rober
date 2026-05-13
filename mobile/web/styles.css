@@ -134,6 +134,7 @@ h2 {
 .device-evidence-panel,
 .handoff-session-panel,
 .pwa-install-panel,
+.real-device-evidence-panel,
 .acceptance-bundle-panel,
 .terminal-action-panel,
 .action-feedback-panel,
@@ -229,6 +230,7 @@ h2 {
 .device-evidence-grid,
 .handoff-session-grid,
 .pwa-install-grid,
+.real-device-evidence-grid,
 .acceptance-bundle-grid,
 .feedback-grid,
 .terminal-action-grid,
@@ -246,6 +248,7 @@ h2 {
 .device-evidence-grid div,
 .handoff-session-grid div,
 .pwa-install-grid div,
+.real-device-evidence-grid div,
 .acceptance-bundle-grid div,
 .feedback-grid div,
 .terminal-action-grid div,
@@ -315,6 +318,10 @@ dd {
   grid-template-columns: 1fr;
 }
 
+.real-device-evidence-grid {
+  grid-template-columns: 1fr;
+}
+
 .handoff-session-grid {
   grid-template-columns: 1fr;
 }
@@ -353,6 +360,27 @@ dd {
   gap: 8px;
   align-items: center;
   margin-top: 12px;
+}
+
+.import-field {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.import-field textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--ink);
+  background: #fbfefd;
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .load-confirmation {
@@ -477,6 +505,10 @@ dd {
   }
 
   .acceptance-bundle-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .real-device-evidence-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

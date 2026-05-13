@@ -1146,6 +1146,121 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         # protocol client 不能从 current PWA browser proof refresh metadata-only 回包合成 command id 或 ACK。
         self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
 
+    def test_validate_command_ignores_mobile_real_device_evidence_intake_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-mobile-real-device-intake",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "mobile_real_device_evidence_intake": {
+                "schema": "trashbot.mobile_real_device_evidence_intake.v1",
+                "evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate",
+                "device": {"platform": "android", "model_summary": "redacted"},
+                "browser": {"family": "Chrome", "viewport_css": {"width": 390, "height": 844}},
+                "pwa": {"install_prompt_status": "observed"},
+                "production_app": {"ready": True},
+                "safe_to_control": True,
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "ack_semantics": "delivery_success",
+                "delivery_success": True,
+                "dropoff_success": True,
+                "cancel_completed": True,
+                "production_ready": True,
+                "hil_pass": True,
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "mobile_real_device_evidence_intake_summary": {
+                "schema": "trashbot.mobile_real_device_evidence_intake_summary.v1",
+                "safe_phone_copy": "真实设备材料导入只供验收和支持侧判断。",
+                "next_action": "confirm_dropoff",
+                "real_device_proof": True,
+                "production_app_ready": True,
+                "pwa_install_prompt_proof": True,
+            },
+            "mobile_real_device_evidence_package": {
+                "schema": "trashbot.mobile_real_device_evidence_package.v1",
+                "support_refs": [{"kind": "screenshot", "url": "https://user:secret@example.invalid/real-device.png"}],
+                "Authorization": "Bearer must-not-leak",
+                "serial_device": "/dev/ttyUSB0",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-mobile-real-device-intake")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 真实设备 intake 字段只属于 phone/support metadata，normalization 只能留下 robot command envelope。
+        self.assertNotIn("mobile_real_device_evidence_intake", encoded_command)
+        self.assertNotIn("mobile_real_device_evidence_intake_summary", encoded_command)
+        self.assertNotIn("mobile_real_device_evidence_package", encoded_command)
+        self.assertNotIn("software_proof_docker_mobile_real_device_evidence_intake_gate", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("dropoff_success", encoded_command)
+        self.assertNotIn("cancel_completed", encoded_command)
+        self.assertNotIn("production_ready", encoded_command)
+        self.assertNotIn("production_app_ready", encoded_command)
+        self.assertNotIn("hil_pass", encoded_command)
+        self.assertNotIn("real_device_proof", encoded_command)
+        self.assertNotIn("pwa_install_prompt_proof", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("/dev/ttyUSB0", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("secret", encoded_command)
+
+    def test_mobile_real_device_evidence_intake_response_metadata_does_not_create_command_or_ack(self):
+        self.cloud.response_extras.update({
+            "command_response": {
+                "mobile_real_device_evidence_intake": {
+                    "schema": "trashbot.mobile_real_device_evidence_intake.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-real-device-intake",
+                    "delivery_success": True,
+                    "dropoff_success": True,
+                },
+                "mobile_real_device_evidence_intake_summary": {
+                    "schema": "trashbot.mobile_real_device_evidence_intake_summary.v1",
+                    "ack_semantics": "delivery_success",
+                    "next_action": "confirm_dropoff",
+                    "production_app_ready": True,
+                    "hil_pass": True,
+                },
+                "mobile_real_device_evidence_package": {
+                    "schema": "trashbot.mobile_real_device_evidence_package.v1",
+                    "safe_to_control": True,
+                    "real_device_proof": True,
+                    "pwa_install_prompt_proof": True,
+                },
+            },
+            "status_response": {
+                "mobile_real_device_evidence_intake_summary": {"delivery_success": True},
+            },
+            "ack_response": {
+                "mobile_real_device_evidence_package": {
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                },
+            },
+        })
+        client = RemoteCloudClient(self.base_url, "robot-1", timeout_sec=2)
+
+        status_response = client.post_status(make_status("robot-1", "waiting_for_trash", "ready"))
+        command = client.get_next_command()
+
+        self.assertIsNone(command)
+        self.assertEqual(self.cloud.acks, [])
+        self.assertTrue(status_response["ok"])
+        encoded_status = json.dumps(self.cloud.statuses[0], ensure_ascii=False)
+        self.assertNotIn("mobile_real_device_evidence_intake", encoded_status)
+        self.assertNotIn("mobile_real_device_evidence_intake_summary", encoded_status)
+        self.assertNotIn("mobile_real_device_evidence_package", encoded_status)
+        self.assertNotIn("software_proof_docker_mobile_real_device_evidence_intake_gate", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        # protocol client 不能从真实设备 intake metadata-only 回包合成 command id 或 terminal ACK。
+        self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
+
     def test_validate_command_ignores_operation_log_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-operation-log-metadata",

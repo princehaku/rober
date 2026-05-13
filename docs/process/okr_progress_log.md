@@ -8,7 +8,15 @@
 
 ## 2026-05-14 系列
 
-更新时间：2026-05-14 02:14 Asia/Shanghai。
+更新时间：2026-05-14 03:19 Asia/Shanghai。
+
+### 2026-05-14 03-04｜mobile-real-device-evidence-intake-gate｜O4 real-device evidence intake software proof，手机体验由约 79% 上调到约 80%
+
+`sprints/2026.05.14_03-04_mobile-real-device-evidence-intake-gate` 完成 `software_proof_docker_mobile_real_device_evidence_intake_gate`：Task A Full-stack 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/test_mobile_web_entrypoint.py`、`docs/product/mobile_user_flow.md`、`mobile/README.md`，在 `mobile/web` 首屏新增“真实设备验收材料”intake panel，支持 JSON 导入、本地 blocked package 生成、redacted phone-safe package 复制，并覆盖真实手机设备、browser、viewport、display-mode、PWA install prompt/user choice、production app readiness、截图/URL 摘要、redaction、`not_proven` 和 ACK 非 delivery success 语义。Task A 验证输出 mobile entrypoint unittest `Ran 24 tests in 0.014s OK`、`py_compile` pass、`node --check mobile/web/app.js` pass、rg pass、scoped diff check pass。
+
+Task B Robot 更新 `onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge_protocol.py`、`docs/interfaces/ros_contracts.md`，新增 `mobile_real_device_evidence_intake`、`mobile_real_device_evidence_intake_summary`、`mobile_real_device_evidence_package` metadata-only compatibility fence。Robot fence 证明 intake metadata-only response 不触发 collect、confirm_dropoff、cancel、ACK POST、cursor advance、cursor persistence、terminal ACK、production readiness、HIL、dropoff success、cancel completed 或 delivery success；valid command mixed metadata 只按 `trashbot.remote.v1` command envelope 执行，不把 intake metadata 编入 ACK/status/cursor。Task B 验证输出 remote bridge/protocol targeted unittest `Ran 133 tests in 67.780s OK`、`py_compile` pass、rg pass、scoped diff check pass；首轮断言失败已修正后重跑通过。
+
+该证据只支持 Objective 4 从约 79% 保守上调到约 80%，理由是 Docker/local `mobile/web` 已把真实设备验收材料入口、redaction、blocked package、phone-safe copy 和 Robot metadata-only fence 做成可验收的软件入口。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1/2/3 不提升。本轮 `software_proof_docker_mobile_real_device_evidence_intake_gate` 只证明 Docker/local mobile software proof 和 robot metadata-only fence，不证明真实手机设备、真实 iPhone/Android device behavior、production app、真实 PWA install prompt/user choice、真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、production worker/migration、Nav2/fixed-route、WAVE ROVER、HIL、真实 dropoff/cancel completion 或真实 delivery。ACK、HTTP accepted、receipt、intake package、browser proof、handoff session 和 install prompt evidence 仍只是 accepted/processing/support metadata，不是 delivery success。
 
 ### 2026-05-14 02-03｜mobile-current-pwa-browser-proof-refresh｜O4 current PWA local Chromium proof refresh，手机体验由约 78% 上调到约 79%
 

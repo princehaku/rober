@@ -385,6 +385,89 @@
       "真实送达"
     ]
   },
+  "mobile_real_device_evidence_intake": {
+    "schema": "trashbot.mobile_real_device_evidence_intake.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.mobile_real_device_evidence_intake_summary.v1",
+    "package_schema": "trashbot.mobile_real_device_evidence_package.v1",
+    "source": "mobile_web_fixture",
+    "overall_status": "blocked",
+    "device": {
+      "platform": "unknown",
+      "model_summary": "not_provided",
+      "os_summary": "not_provided"
+    },
+    "browser": {
+      "family": "local_chromium_family",
+      "version_summary": "fixture_summary_only",
+      "viewport_css": {"width": 390, "height": 844},
+      "device_pixel_ratio": 3,
+      "orientation": "portrait-primary",
+      "touch_target_summary": "software_smoke_only"
+    },
+    "pwa": {
+      "display_mode": "browser",
+      "install_prompt_status": "not_proven",
+      "install_prompt_user_choice": "not_provided",
+      "manifest_status": "present",
+      "service_worker_status": "registered_or_pending",
+      "offline_shell_status": "static_shell_only"
+    },
+    "production_app": {
+      "ready": false,
+      "entry_url_summary": "local mobile/web fixture entry",
+      "release_summary": "not_provided"
+    },
+    "evidence": {
+      "screenshot_summary": "not_provided",
+      "url_summary": "local mobile/web fixture summary only",
+      "observer_note": "fixture is blocked-by-design and not real device acceptance",
+      "redaction_status": "passed"
+    },
+    "safe_to_control": false,
+    "safe_phone_copy": "真实设备验收材料 intake blocked-by-design：fixture 只证明 redacted phone-safe package 渲染，不证明真实手机设备、production app 或 PWA install prompt。",
+    "recovery_hint": "导入真实 iPhone/Android 或 production app 的脱敏摘要后再交给支持复核；本 gate 不启用 Start、Confirm 或 Cancel。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成、取消完成或真实设备验收通过。",
+    "evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate",
+    "not_proven": [
+      "真实手机设备",
+      "真实 iPhone/Android device behavior",
+      "production app",
+      "PWA install prompt",
+      "真实 PWA install prompt/user choice",
+      "真实送达"
+    ]
+  },
+  "mobile_real_device_evidence_intake_summary": {
+    "schema": "trashbot.mobile_real_device_evidence_intake_summary.v1",
+    "schema_version": 1,
+    "safe_phone_copy": "真实设备材料摘要只说明可复制 redacted phone-safe package，不证明真实验收。",
+    "redaction_status": "passed",
+    "evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate",
+    "not_proven": [
+      "真实手机设备",
+      "production app",
+      "PWA install prompt"
+    ]
+  },
+  "mobile_real_device_evidence_package": {
+    "schema": "trashbot.mobile_real_device_evidence_package.v1",
+    "schema_version": 1,
+    "intake_schema": "trashbot.mobile_real_device_evidence_intake.v1",
+    "summary_schema": "trashbot.mobile_real_device_evidence_intake_summary.v1",
+    "overall_status": "blocked",
+    "safe_to_control": false,
+    "safe_phone_copy": "可复制的真实设备验收材料包只包含 redacted phone-safe 字段。",
+    "redaction_status": "passed",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+    "evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate",
+    "not_proven": [
+      "真实手机设备",
+      "production app",
+      "PWA install prompt",
+      "真实送达"
+    ]
+  },
   "mobile_browser_acceptance_bundle": {
     "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
     "schema_version": 1,
@@ -715,6 +798,73 @@
       "overall_status": "blocked",
       "safe_phone_copy": "嵌套安装提示证据包同样只包含 phone-safe metadata。",
       "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_gate"
+    },
+    "mobile_real_device_evidence_intake": {
+      "schema": "trashbot.mobile_real_device_evidence_intake.v1",
+      "schema_version": 1,
+      "summary_schema": "trashbot.mobile_real_device_evidence_intake_summary.v1",
+      "package_schema": "trashbot.mobile_real_device_evidence_package.v1",
+      "overall_status": "blocked",
+      "device": {
+        "platform": "unknown",
+        "model_summary": "not_provided",
+        "os_summary": "not_provided"
+      },
+      "browser": {
+        "family": "local_chromium_family",
+        "version_summary": "fixture_summary_only",
+        "viewport_css": {"width": 390, "height": 844},
+        "device_pixel_ratio": 3,
+        "orientation": "portrait-primary",
+        "touch_target_summary": "software_smoke_only"
+      },
+      "pwa": {
+        "display_mode": "browser",
+        "install_prompt_status": "not_proven",
+        "install_prompt_user_choice": "not_provided",
+        "manifest_status": "present",
+        "service_worker_status": "registered_or_pending",
+        "offline_shell_status": "static_shell_only"
+      },
+      "production_app": {
+        "ready": false,
+        "entry_url_summary": "local mobile/web fixture entry",
+        "release_summary": "not_provided"
+      },
+      "evidence": {
+        "screenshot_summary": "not_provided",
+        "url_summary": "local mobile/web fixture summary only",
+        "observer_note": "nested fixture is not real device acceptance",
+        "redaction_status": "passed"
+      },
+      "safe_to_control": false,
+      "safe_phone_copy": "phone_readiness 内的真实设备验收材料只用于 redacted intake，不放行控制动作。",
+      "recovery_hint": "真实手机设备、production app 和 PWA install prompt 缺失时主操作继续 fail closed。",
+      "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表真实设备验收通过。",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate",
+      "not_proven": [
+        "真实手机设备",
+        "production app",
+        "PWA install prompt"
+      ]
+    },
+    "mobile_real_device_evidence_intake_summary": {
+      "schema": "trashbot.mobile_real_device_evidence_intake_summary.v1",
+      "schema_version": 1,
+      "safe_phone_copy": "嵌套真实设备材料摘要不放行控制动作。",
+      "redaction_status": "passed",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate"
+    },
+    "mobile_real_device_evidence_package": {
+      "schema": "trashbot.mobile_real_device_evidence_package.v1",
+      "schema_version": 1,
+      "intake_schema": "trashbot.mobile_real_device_evidence_intake.v1",
+      "summary_schema": "trashbot.mobile_real_device_evidence_intake_summary.v1",
+      "overall_status": "blocked",
+      "safe_to_control": false,
+      "safe_phone_copy": "嵌套真实设备材料包同样只包含 redacted phone-safe metadata。",
+      "redaction_status": "passed",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate"
     },
     "mobile_browser_acceptance_bundle": {
       "schema": "trashbot.mobile_browser_acceptance_bundle.v1",

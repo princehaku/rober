@@ -33,6 +33,8 @@
 > 当前增量：sprint `2026.05.14_01-02_mobile-pwa-install-prompt-evidence-gate` 在首屏新增“PWA 安装提示证据”panel 和复制入口。证据边界是 `software_proof_docker_mobile_pwa_install_prompt_evidence_gate`，只证明 Docker/local static fixture 与 targeted unittest 能展示/复制 phone-safe install prompt capture metadata、user outcome、display-mode/installability/offline shell、manifest/service worker、production app readiness、safe-to-control、ACK 语义和 `not_proven`；不等于真实 iPhone/Android device behavior、production app、真实 PWA install prompt、真实用户安装选择、Nav2/fixed-route、WAVE ROVER、HIL 或真实 delivery。
 >
 > 当前增量：sprint `2026.05.14_02-03_mobile-current-pwa-browser-proof-refresh` 刷新当前 `mobile/web/` 的本地 Chromium-family browser proof。证据边界是 `software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate`；它覆盖当前首屏的三步主路径、恢复决策、终端动作二次确认、手机设备证据采集、真实手机验收交接会话、PWA 安装提示证据、浏览器验收包、Diagnostics、Support Handoff 和 ACK 文案。旧 `software_proof_docker_mobile_web_browser_proof_gate` 作为兼容边界保留在 summary 中；文件名仍沿用 `mobile_web_browser_*`，但本轮只证明本机 Chromium 渲染当前 PWA，不等于真实 iPhone/Android、production app、真实 PWA install prompt、O5 外部材料、Nav2/fixed-route、WAVE ROVER、HIL 或真实 delivery。
+>
+> 当前增量：sprint `2026.05.14_03-04_mobile-real-device-evidence-intake-gate` 在首屏新增“真实设备验收材料”intake panel。证据边界是 `software_proof_docker_mobile_real_device_evidence_intake_gate`，只证明 Docker/local static fixture 与 targeted unittest 能导入 JSON 摘要、用当前本地浏览器 metadata 生成 blocked-by-design package、输出 redacted phone-safe package，并保持 Start / Confirm / Cancel 不因本 gate 放行；不等于真实 iPhone/Android device behavior、production app、真实 PWA install prompt/user choice、真实公网 HTTPS/TLS、4G/SIM、Nav2/fixed-route、WAVE ROVER、HIL 或真实 delivery。
 
 ## 用途（What lives here）
 
@@ -109,6 +111,7 @@ cloud-relay hosted PWA installability/browser gate：
 - 可选：`mobile_device_evidence_capture`、`mobile_device_evidence_capture_summary`、`mobile_device_evidence_package` 或 `/api/status.phone_readiness.mobile_device_evidence_*` 作为 phone-safe 设备证据采集包；缺失时前端只从当前浏览器采集白名单元数据，不能证明真实手机验收
 - 可选：`mobile_device_handoff_session`、`mobile_device_handoff_session_summary`、`mobile_device_handoff_package` 或 `/api/status.phone_readiness.mobile_device_handoff_*` 作为 phone-safe 真实手机验收交接会话；它可引用 `mobile_device_evidence_capture`，但不能把 evidence capture 写成真实设备验收通过
 - 可选：`mobile_pwa_install_prompt_evidence`、`mobile_pwa_install_prompt_evidence_summary`、`mobile_pwa_install_prompt_evidence_package` 或 `/api/status.phone_readiness.mobile_pwa_install_prompt_evidence*` 作为 phone-safe PWA 安装提示证据包；它可引用 handoff session、device evidence capture 和 browser acceptance bundle，但不能写成真实 PWA install prompt 通过
+- 可选：`mobile_real_device_evidence_intake`、`mobile_real_device_evidence_intake_summary`、`mobile_real_device_evidence_package` 或 `/api/status.phone_readiness.mobile_real_device_evidence_*` 作为真实设备验收材料 intake；它只输出 redacted phone-safe package，不能写成真实设备验收通过或控制放行来源
 - 可选：`mobile_browser_acceptance_bundle`、`phone_browser_acceptance_bundle`、`mobile_acceptance_evidence_bundle` 或 `/api/status.phone_readiness.*_acceptance_bundle`
 - 可选：`mobile_primary_journey_gate`、`mobile_primary_journey_summary` 作为 phone-safe 支持摘要；Start 是否允许仍由既有 destination、manual load confirmation、`command_safety`、cloud/device/browser readiness、operation log 和 action feedback 共同决定
 - 可选：`mobile_recovery_decision_gate`、`mobile_recovery_decision_summary` 作为 phone-safe 恢复决策摘要；缺失时只能从既有 offline、command safety、operation log、action feedback、support handoff 和 primary journey 字段派生 blocked-by-design 摘要
@@ -207,6 +210,15 @@ PWA 安装提示证据规则：
 - 缺真实手机/browser、production app 或真实 PWA install prompt capture/user outcome 时，Start Delivery、Confirm Dropoff、Cancel 继续依赖既有 readiness / acceptance bundle / handoff session / command_safety fail closed；install prompt evidence 本身不新增放行条件。
 - ACK、HTTP accepted、receipt 或 install prompt evidence package 只能说明 accepted/processing 或支持复现 metadata，不得写成 delivery success、dropoff success、cancel completed、真实 PWA install prompt 通过、HIL 或真实送达。
 
+真实设备验收材料 intake 规则：
+
+- 首屏“真实设备验收材料”panel 用于导入真实 iPhone/Android、production app、PWA install prompt/user choice、截图摘要、URL 摘要和观察员备注的 JSON 摘要，也可用当前本地浏览器 metadata 生成 blocked-by-design package。
+- 支持字段优先级为 `mobile_real_device_evidence_intake`、`mobile_real_device_evidence_intake_summary`、`mobile_real_device_evidence_package`，并兼容这些字段出现在 `phone_readiness` 或 `/api/diagnostics`。
+- schema 为 `trashbot.mobile_real_device_evidence_intake.v1`、`trashbot.mobile_real_device_evidence_intake_summary.v1`、`trashbot.mobile_real_device_evidence_package.v1`，本地证据边界统一为 `software_proof_docker_mobile_real_device_evidence_intake_gate`。
+- 输出包白名单字段为 device/platform、browser family/version summary、viewport、DPR、orientation、display-mode、PWA install prompt status/user choice、production app readiness/release summary、screenshot summary、URL summary、observer note、redaction status、ACK 语义、evidence boundary 和 `not_proven`。
+- 导入和复制路径必须过滤 token、Authorization、OSS AK/SK、root password、DB/queue URL、ROS topic、`/cmd_vel`、serial、baudrate、WAVE ROVER、本地路径、traceback、checksum、complete artifacts 和 raw robot response；命中敏感输入时只返回 blocked redaction failure summary。
+- 本 gate 不新增控制放行条件；缺失、blocked 或 `not_proven` 时 Start、Confirm、Cancel 继续由既有 command_safety、cloud/device/browser readiness、handoff session、operation log 和 action feedback fail closed。
+
 operation log 规则：
 
 - 优先展示后端或 fixture 提供的 `operation_log` / `phone_operation_log`。
@@ -281,5 +293,6 @@ PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gat
 | 当前 mobile-device-handoff-session gate | 首屏真实手机验收交接会话、phone-safe handoff package 复制、capture 引用和主操作 fail-closed |
 | 当前 mobile-pwa-install-prompt-evidence gate | 首屏 PWA 安装提示证据、phone-safe install prompt evidence package 复制、not_proven 边界和主操作 fail-closed |
 | 当前 mobile-current-pwa-browser-proof-refresh gate | 当前 `mobile/web/` 首屏 panels 的本机 Chromium-family browser proof refresh；保留旧 browser proof boundary 兼容说明 |
+| 当前 mobile-real-device-evidence-intake gate | 首屏真实设备验收材料导入、redacted phone-safe package 复制、not_proven/redaction 边界和非控制放行 |
 | 下一个 sprint | 真实手机设备验收、production app、真实 PWA install prompt 和弱网体验 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |

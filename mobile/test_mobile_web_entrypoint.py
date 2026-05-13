@@ -104,6 +104,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("mobile_pwa_install_prompt_evidence", app)
         self.assertIn("mobile_pwa_install_prompt_evidence_summary", app)
         self.assertIn("mobile_pwa_install_prompt_evidence_package", app)
+        self.assertIn("mobile_real_device_evidence_intake", app)
+        self.assertIn("mobile_real_device_evidence_intake_summary", app)
+        self.assertIn("mobile_real_device_evidence_package", app)
         self.assertIn("mobile_browser_acceptance_bundle", app)
         self.assertIn("phone_browser_acceptance_bundle", app)
         self.assertIn("mobile_acceptance_evidence_bundle", app)
@@ -417,6 +420,36 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertNotIn("mobilePwaInstallPromptAllowsPrimaryActions", app)
         self.assertNotRegex(app, r"mobilePwaInstallPrompt.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
 
+    def test_mobile_real_device_evidence_intake_is_importable_redacted_and_not_control_grant(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        self.assertIn("mobileRealDeviceEvidenceTitle", index)
+        self.assertIn("真实设备验收材料", index)
+        self.assertIn("mobileRealDeviceEvidenceImport", index)
+        self.assertIn("importRealDeviceEvidenceButton", index)
+        self.assertIn("generateRealDeviceEvidenceButton", index)
+        self.assertIn("copyRealDeviceEvidencePackageButton", index)
+        self.assertIn("mobileRealDeviceEvidenceSafeCopy", index)
+        self.assertIn("software_proof_docker_mobile_real_device_evidence_intake_gate", index)
+        self.assertIn("trashbot.mobile_real_device_evidence_intake.v1", app)
+        self.assertIn("trashbot.mobile_real_device_evidence_intake_summary.v1", app)
+        self.assertIn("trashbot.mobile_real_device_evidence_package.v1", app)
+        self.assertIn("mobileRealDeviceEvidencePackageFromStatus", app)
+        self.assertIn("mobileRealDeviceEvidenceIntakeCandidate", app)
+        self.assertIn("mobile_real_device_evidence_intake", app)
+        self.assertIn("mobile_real_device_evidence_intake_summary", app)
+        self.assertIn("mobile_real_device_evidence_package", app)
+        self.assertIn("realDeviceEvidencePackageCopyPayload", app)
+        self.assertIn("UNSAFE_REAL_DEVICE_TEXT", app)
+        self.assertIn("redaction_status", app)
+        self.assertIn("raw robot response", app)
+        self.assertIn("safe_to_control: false", app)
+        self.assertIn("本 gate 不启用 Start、Confirm 或 Cancel", app)
+        self.assertIn("navigator.clipboard.writeText", app)
+        self.assertNotIn("mobileRealDeviceEvidenceAllowsPrimaryActions", app)
+        self.assertNotRegex(app, r"mobileRealDeviceEvidence.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
     def test_action_feedback_panel_consumes_receipt_and_fail_closed_copy(self):
         app = self.read("app.js")
         index = self.read("index.html")
@@ -698,6 +731,39 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "trashbot.mobile_pwa_install_prompt_evidence_package.v1",
         )
         self.assertEqual(
+            payload["mobile_real_device_evidence_intake"]["schema"],
+            "trashbot.mobile_real_device_evidence_intake.v1",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_evidence_intake"]["summary_schema"],
+            "trashbot.mobile_real_device_evidence_intake_summary.v1",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_evidence_intake"]["package_schema"],
+            "trashbot.mobile_real_device_evidence_package.v1",
+        )
+        self.assertEqual(payload["mobile_real_device_evidence_intake"]["overall_status"], "blocked")
+        self.assertEqual(payload["mobile_real_device_evidence_intake"]["safe_to_control"], False)
+        self.assertEqual(payload["mobile_real_device_evidence_intake"]["evidence"]["redaction_status"], "passed")
+        self.assertEqual(
+            payload["mobile_real_device_evidence_intake"]["evidence_boundary"],
+            "software_proof_docker_mobile_real_device_evidence_intake_gate",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_evidence_intake_summary"]["schema"],
+            "trashbot.mobile_real_device_evidence_intake_summary.v1",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_evidence_package"]["schema"],
+            "trashbot.mobile_real_device_evidence_package.v1",
+        )
+        self.assertEqual(payload["mobile_real_device_evidence_package"]["safe_to_control"], False)
+        self.assertEqual(payload["mobile_real_device_evidence_package"]["redaction_status"], "passed")
+        self.assertEqual(
+            payload["phone_readiness"]["mobile_real_device_evidence_intake"]["evidence_boundary"],
+            "software_proof_docker_mobile_real_device_evidence_intake_gate",
+        )
+        self.assertEqual(
             payload["phone_readiness"]["mobile_pwa_install_prompt_evidence"]["evidence_boundary"],
             "software_proof_docker_mobile_pwa_install_prompt_evidence_gate",
         )
@@ -800,6 +866,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("trashbot.mobile_pwa_install_prompt_evidence.v1", encoded)
         self.assertIn("trashbot.mobile_pwa_install_prompt_evidence_summary.v1", encoded)
         self.assertIn("trashbot.mobile_pwa_install_prompt_evidence_package.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_evidence_intake.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_evidence_intake_summary.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_evidence_package.v1", encoded)
         self.assertIn("trashbot.mobile_browser_acceptance_bundle.v1", encoded)
         self.assertIn("blocked-by-design", encoded)
         self.assertIn("真实 pwa install prompt", encoded)
@@ -807,7 +876,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("software_proof_docker_mobile_device_evidence_capture_gate", encoded)
         self.assertIn("software_proof_docker_mobile_device_handoff_session_gate", encoded)
         self.assertIn("software_proof_docker_mobile_pwa_install_prompt_evidence_gate", encoded)
+        self.assertIn("software_proof_docker_mobile_real_device_evidence_intake_gate", encoded)
         self.assertIn("software_proof_docker_mobile_browser_acceptance_bundle_gate", encoded)
+        self.assertIn("redaction", encoded)
         self.assertIn("software_proof_docker_mobile_primary_journey_gate", encoded)
         self.assertIn("trashbot.mobile_recovery_decision_gate.v1", encoded)
         self.assertIn("trashbot.mobile_recovery_decision_summary.v1", encoded)

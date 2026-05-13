@@ -324,6 +324,81 @@
         <pre id="mobilePwaInstallPromptSafeCopy" class="safe-copy" aria-label="脱敏 PWA 安装提示证据包">暂无 PWA 安装提示证据包。</pre>
       </section>
 
+      <section class="real-device-evidence-panel" aria-labelledby="mobileRealDeviceEvidenceTitle">
+        <div class="section-heading">
+          <h2 id="mobileRealDeviceEvidenceTitle">真实设备验收材料</h2>
+          <span id="mobileRealDeviceEvidenceBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="mobileRealDeviceEvidenceCopy" class="message">
+          导入真实 iPhone/Android、production app 或 PWA install prompt 摘要；输出只保留 redacted phone-safe package。
+        </p>
+        <label class="import-field" for="mobileRealDeviceEvidenceImport">
+          <span>JSON 摘要导入</span>
+          <textarea id="mobileRealDeviceEvidenceImport" rows="5" placeholder='{"device":{"platform":"iOS"},"pwa":{"install_prompt_status":"not_observed"}}'></textarea>
+        </label>
+        <div class="bundle-copy-row">
+          <button id="importRealDeviceEvidenceButton" type="button">导入 JSON 摘要</button>
+          <button id="generateRealDeviceEvidenceButton" type="button">生成本地 blocked package</button>
+          <span id="mobileRealDeviceEvidenceImportStatus" class="hint">未导入真实设备摘要。</span>
+        </div>
+        <dl class="real-device-evidence-grid">
+          <div>
+            <dt>Device / Platform</dt>
+            <dd id="mobileRealDeviceEvidenceDevice">platform=unknown / model=not_provided / os=not_provided</dd>
+          </div>
+          <div>
+            <dt>Browser Family / Version</dt>
+            <dd id="mobileRealDeviceEvidenceBrowser">unknown not_provided</dd>
+          </div>
+          <div>
+            <dt>Viewport / DPR / Orientation</dt>
+            <dd id="mobileRealDeviceEvidenceViewport">0x0 / DPR=0 / orientation=unknown</dd>
+          </div>
+          <div>
+            <dt>Display-mode / PWA install prompt</dt>
+            <dd id="mobileRealDeviceEvidencePwa">display=unknown / PWA install prompt=not_proven / user_choice=not_provided</dd>
+          </div>
+          <div>
+            <dt>Production App</dt>
+            <dd id="mobileRealDeviceEvidenceProduction">production app ready=false / release=not_provided</dd>
+          </div>
+          <div>
+            <dt>Screenshot Summary</dt>
+            <dd id="mobileRealDeviceEvidenceScreenshot">not_provided</dd>
+          </div>
+          <div>
+            <dt>URL Summary</dt>
+            <dd id="mobileRealDeviceEvidenceUrl">not_provided</dd>
+          </div>
+          <div>
+            <dt>Observer Note</dt>
+            <dd id="mobileRealDeviceEvidenceObserver">not_provided</dd>
+          </div>
+          <div>
+            <dt>Redaction Status</dt>
+            <dd id="mobileRealDeviceEvidenceRedaction">passed</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileRealDeviceEvidenceAck">ACK 只代表 accepted/processing。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileRealDeviceEvidenceBoundary">software_proof_docker_mobile_real_device_evidence_intake_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileRealDeviceEvidenceNotProven">真实手机设备、production app、PWA install prompt、真实送达未证明。</dd>
+          </div>
+        </dl>
+        <p id="mobileRealDeviceEvidenceRecoveryHint" class="hint">本 gate 只整理验收材料，不启用 Start、Confirm 或 Cancel。</p>
+        <div class="bundle-copy-row">
+          <button id="copyRealDeviceEvidencePackageButton" type="button">复制 redacted package</button>
+          <span id="mobileRealDeviceEvidenceCopyStatus" class="hint">复制内容只包含脱敏 phone-safe 字段。</span>
+        </div>
+        <pre id="mobileRealDeviceEvidenceSafeCopy" class="safe-copy" aria-label="redacted 真实设备验收材料包">暂无真实设备验收材料包。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>
