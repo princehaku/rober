@@ -43,6 +43,30 @@
     "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
     "evidence_boundary": "software_proof_docker_mobile_action_feedback_gate"
   },
+  "phone_cloud_readiness_summary": {
+    "schema": "trashbot.phone_cloud_readiness_summary.v1",
+    "schema_version": 1,
+    "overall_status": "blocked",
+    "preflight_status": "blocked_missing_cloud_db_queue_config",
+    "db_queue_status": "config_present_not_externally_proven",
+    "production_ready": false,
+    "primary_actions_enabled": false,
+    "safe_phone_copy": "云中转配置已有 Docker/local 软件证明，但还没有真实公网、真实 4G、production DB/queue 或外部恢复证明。",
+    "recovery_hint": "请先完成真实云、4G 和生产依赖验收；手机端只展示摘要，不放行控制动作。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、真实云就绪或 production 队列成功。",
+    "evidence_boundary": "software_proof_docker_mobile_cloud_readiness_summary_gate",
+    "source_evidence_boundary": "software_proof_docker_cloud_db_queue_config_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "真实云/4G",
+      "OSS/CDN live traffic",
+      "production DB/queue",
+      "Nav2/fixed-route",
+      "真实底盘运动",
+      "HIL",
+      "真实送达"
+    ]
+  },
   "operation_log": {
     "schema": "trashbot.phone_operation_log.v1",
     "evidence_boundary": "software_proof_docker_mobile_operation_log_gate",
@@ -117,6 +141,20 @@
       "schema": "trashbot.phone_support_bundle.v1",
       "support_level": "local_fallback",
       "safe_copy": "fixture support copy：仅用于静态 smoke，不是真实诊断。"
+    },
+    "cloud_readiness": {
+      "schema": "trashbot.phone_cloud_readiness_summary.v1",
+      "schema_version": 1,
+      "overall_status": "blocked",
+      "preflight_status": "blocked_missing_cloud_db_queue_config",
+      "db_queue_status": "config_present_not_externally_proven",
+      "production_ready": false,
+      "primary_actions_enabled": false,
+      "safe_phone_copy": "云中转配置已有 Docker/local 软件证明，但还没有真实公网、真实 4G、production DB/queue 或外部恢复证明。",
+      "recovery_hint": "请先完成真实云、4G 和生产依赖验收；手机端只展示摘要，不放行控制动作。",
+      "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、真实云就绪或 production 队列成功。",
+      "evidence_boundary": "software_proof_docker_mobile_cloud_readiness_summary_gate",
+      "source_evidence_boundary": "software_proof_docker_cloud_db_queue_config_gate"
     }
   },
   "phone_offline_resume_readiness": {

@@ -42,6 +42,36 @@
         </dl>
       </section>
 
+      <section class="cloud-panel" aria-labelledby="cloudReadinessTitle">
+        <div class="section-heading">
+          <h2 id="cloudReadinessTitle">云中转状态</h2>
+          <span id="cloudReadinessBadge" class="gate-badge gate-blocked">等待摘要</span>
+        </div>
+        <p id="cloudReadinessCopy" class="message">
+          等待后端提供 cloud/preflight/DB/queue 的 phone-safe 摘要。
+        </p>
+        <dl class="cloud-grid">
+          <div>
+            <dt>云前置检查</dt>
+            <dd id="cloudPreflightState">等待摘要</dd>
+          </div>
+          <div>
+            <dt>DB / Queue</dt>
+            <dd id="cloudDbQueueState">等待摘要</dd>
+          </div>
+          <div>
+            <dt>生产可用</dt>
+            <dd id="cloudProductionReady">未证明</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="cloudAckSemantics">ACK 只代表 accepted/processing。</dd>
+          </div>
+        </dl>
+        <p id="cloudRecoveryHint" class="hint">摘要缺失时主操作保持禁用。</p>
+        <p id="cloudEvidenceBoundary" class="boundary">software_proof_docker_mobile_cloud_readiness_summary_gate</p>
+      </section>
+
       <section class="action-panel" aria-label="主操作">
         <div class="start-confirmation" aria-labelledby="startGateTitle">
           <div class="section-heading">

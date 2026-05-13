@@ -465,6 +465,51 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("Authorization", encoded_command)
         self.assertNotIn("/cmd_vel", encoded_command)
 
+    def test_validate_command_ignores_cloud_readiness_summary_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-cloud-readiness-summary-metadata",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "phone_cloud_readiness_summary": {
+                "schema": "trashbot.phone_cloud_readiness_summary.v1",
+                "overall_status": "blocked",
+                "safe_phone_copy": "云端配置还未完成，先保持本地等待。",
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+                "credential_url": "https://user:secret@example.invalid/creds",
+            },
+            "mobile_cloud_readiness_summary": {
+                "schema": "trashbot.mobile_cloud_readiness_summary.v1",
+                "production_ready": True,
+                "next_action": "confirm_dropoff",
+                "cloud_url": "https://token@example.invalid/mobile",
+            },
+            "cloud_readiness_summary": {
+                "schema": "trashbot.cloud_readiness_summary.v1",
+                "production_ready": False,
+                "ack_semantics": "delivery_success",
+                "Authorization": "Bearer must-not-leak",
+                "raw_ros_topic": "/cmd_vel",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-cloud-readiness-summary-metadata")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 云 readiness summary 是手机/支持摘要，parser 只能保留 robot command envelope。
+        self.assertNotIn("phone_cloud_readiness_summary", encoded_command)
+        self.assertNotIn("mobile_cloud_readiness_summary", encoded_command)
+        self.assertNotIn("cloud_readiness_summary", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("credential_url", encoded_command)
+        self.assertNotIn("cloud_url", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+
     def test_validate_command_keeps_command_id_order_as_supplied(self):
         command = validate_command({
             "id": "cmd-10",

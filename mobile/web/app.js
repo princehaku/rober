@@ -14,6 +14,7 @@ const ACTIONS = {
 
 const SAFE_EMPTY = "等待后端提供安全摘要。";
 const ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
+const CLOUD_READINESS_BOUNDARY = "software_proof_docker_mobile_cloud_readiness_summary_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 
 let latestStatus = null;
@@ -82,6 +83,47 @@ function voicePromptFromStatus(status, readiness) {
     return readiness.voice_prompt_readiness;
   }
   return {};
+}
+
+function cloudReadinessSummaryFromStatus(status, readiness) {
+  // 云摘要只读消费后端 phone-safe 字段，避免前端把配置证明误写成真实云可用。
+  const candidates = [
+    status?.phone_cloud_readiness_summary,
+    status?.mobile_cloud_readiness_summary,
+    status?.cloud_readiness_summary,
+    readiness?.cloud_readiness,
+    readiness?.phone_cloud_readiness_summary,
+    readiness?.mobile_cloud_readiness_summary,
+    readiness?.cloud_readiness_summary,
+  ];
+  const provided = candidates.find((value) => value && typeof value === "object");
+  if (provided) {
+    return { ...provided, missing: false };
+  }
+  return {
+    missing: true,
+    schema: "trashbot.phone_cloud_readiness_summary.v1",
+    overall_status: "waiting_summary",
+    preflight_status: "waiting_summary",
+    db_queue_status: "waiting_summary",
+    production_ready: false,
+    primary_actions_enabled: false,
+    safe_phone_copy: "等待后端提供 cloud/preflight/DB/queue 的 phone-safe 摘要。",
+    recovery_hint: "摘要缺失时不启用 Start、Confirm 或 Cancel；请刷新状态或打开诊断。",
+    ack_semantics: ACK_PROCESSING_COPY,
+    evidence_boundary: CLOUD_READINESS_BOUNDARY,
+  };
+}
+
+function cloudSummaryAllowsPrimaryActions(summary) {
+  // Docker/local proof 不能自动开控制动作；只有后端显式 phone-safe 放行才允许继续。
+  if (!summary || summary.missing === true) {
+    return false;
+  }
+  if (summary.primary_actions_enabled === true || summary.safe_to_control === true) {
+    return summary.overall_status !== "blocked" && summary.production_ready !== false;
+  }
+  return false;
 }
 
 function operationLogFromStatus(status, readiness) {
@@ -302,6 +344,8 @@ function actionPermission(status, readiness, actionName) {
 function renderCommandSafety(status) {
   const readiness = readinessFromStatus(status);
   const commandSafety = commandSafetyFromReadiness(readiness);
+  const cloudSummary = cloudReadinessSummaryFromStatus(status, readiness);
+  const cloudAllowsPrimaryActions = cloudSummaryAllowsPrimaryActions(cloudSummary);
   const actions = commandSafety.actions && typeof commandSafety.actions === "object" ? commandSafety.actions : {};
   $("commandSafetyCopy").textContent = safeText(commandSafety.safe_phone_copy, "主操作保持禁用。");
   $("ackCopy").textContent = safeText(
@@ -317,7 +361,9 @@ function renderCommandSafety(status) {
     const actionGate = actions[name] && typeof actions[name] === "object" ? actions[name] : {};
     const permitted = actionPermission(status, readiness, name);
     const startGate = name === "start" ? latestStartGate : null;
-    const enabled = actionGate.enabled === true && permitted === true && (startGate ? startGate.startEnabled : true);
+    const enabled = actionGate.enabled === true && permitted === true &&
+      cloudAllowsPrimaryActions &&
+      (startGate ? startGate.startEnabled : true);
     // blocked、离线、等待 ACK、人工接管都会通过 command_safety 关闭按钮。
     button.disabled = !enabled;
     button.dataset.endpoint = ENDPOINTS[name];
@@ -327,7 +373,8 @@ function renderCommandSafety(status) {
     const reason = name === "start" && startGate
       ? startGate.blockedReason
       : safeText(actionGate.blocking_reason || commandSafety.global_block_reason, "blocked");
-    item.textContent = `${actionMeta.label}：${enabled ? "可操作" : reason}`;
+    const cloudReason = cloudAllowsPrimaryActions ? "" : "；云中转摘要未放行主操作。";
+    item.textContent = `${actionMeta.label}：${enabled ? "可操作" : `${reason}${cloudReason}`}`;
     reasons.appendChild(item);
   });
 
@@ -395,10 +442,35 @@ function deriveOperationLogEntries(status, readiness) {
   pushDerivedEvent(entries, "手机就绪", readiness);
   pushDerivedEvent(entries, "操作安全", commandSafetyFromReadiness(readiness));
   pushDerivedEvent(entries, "任务流程", taskFlowObjectFromStatus(status, readiness));
+  pushDerivedEvent(entries, "云中转状态", cloudReadinessSummaryFromStatus(status, readiness));
   pushDerivedEvent(entries, "离线恢复", offlineResumeFromStatus(status, readiness));
   pushDerivedEvent(entries, "支持交接", status?.phone_support_bundle || readiness?.phone_support_bundle);
   pushDerivedEvent(entries, "语音提示", voicePromptFromStatus(status, readiness));
   return entries.slice(0, 6);
+}
+
+function renderCloudReadiness(status) {
+  const readiness = readinessFromStatus(status);
+  const summary = cloudReadinessSummaryFromStatus(status, readiness);
+  const badge = $("cloudReadinessBadge");
+  const allowed = cloudSummaryAllowsPrimaryActions(summary);
+  const overall = safeText(summary.overall_status || summary.state, "waiting_summary");
+
+  badge.className = "gate-badge";
+  badge.classList.add(allowed ? "gate-ready" : (summary.missing ? "gate-waiting" : "gate-blocked"));
+  badge.textContent = summary.missing ? "等待摘要" : (allowed ? "摘要允许" : "摘要阻塞");
+  $("cloudReadinessCopy").textContent = safeText(summary.safe_phone_copy || summary.safe_summary);
+  $("cloudPreflightState").textContent = safeText(summary.preflight_status || summary.cloud_preflight_status || overall);
+  $("cloudDbQueueState").textContent = safeText(summary.db_queue_status || summary.cloud_db_queue_status || summary.queue_status);
+  $("cloudProductionReady").textContent = summary.production_ready === true
+    ? "后端声明可用"
+    : "production_ready=false / 未证明";
+  $("cloudAckSemantics").textContent = safeText(summary.ack_semantics, ACK_PROCESSING_COPY);
+  $("cloudRecoveryHint").textContent = safeText(
+    summary.recovery_hint || summary.retry_hint,
+    "等待 cloud readiness 摘要；主操作保持禁用。",
+  );
+  $("cloudEvidenceBoundary").textContent = safeText(summary.evidence_boundary, CLOUD_READINESS_BOUNDARY);
 }
 
 function renderOperationLog(status) {
@@ -559,6 +631,7 @@ function renderOfflineFailure() {
   offlineEvent.textContent = "无法读取后端 operation log；请恢复网络后刷新。";
   $("operationLogList").appendChild(offlineEvent);
   $("operationSupportEntry").textContent = "离线时可保留恢复提示，但不发送控制请求。";
+  renderCloudReadiness({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -582,6 +655,7 @@ function renderOfflineFailure() {
 function renderStatus(status) {
   latestStatus = status;
   renderReadiness(status);
+  renderCloudReadiness(status);
   renderTaskFlow(status);
   renderStartConfirmation(status);
   renderCommandSafety(status);

@@ -30,6 +30,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("phone_task_flow_readiness", app)
         self.assertIn("phone_support_bundle", app)
         self.assertIn("voice_prompt_readiness", app)
+        self.assertIn("phone_cloud_readiness_summary", app)
+        self.assertIn("mobile_cloud_readiness_summary", app)
+        self.assertIn("cloud_readiness", app)
         self.assertIn("operation_log", app)
         self.assertIn("phone_operation_log", app)
         self.assertIn("mobile_action_receipt", app)
@@ -50,6 +53,8 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("can_confirm_dropoff", app)
         self.assertIn("can_cancel", app)
         self.assertIn("latestStartGate.startEnabled", app)
+        self.assertIn("cloudSummaryAllowsPrimaryActions", app)
+        self.assertIn("云中转摘要未放行主操作", app)
         self.assertIn("缺少 command_safety", app)
         self.assertIn("旧权限 can_collect", app)
         self.assertIn("缺少后端 phone-safe 目标垃圾站", app)
@@ -75,6 +80,28 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("phone_support_bundle", app)
         self.assertIn("voice_prompt_readiness", app)
         self.assertNotRegex(app, r"operationLog.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+    def test_cloud_readiness_panel_is_visible_read_only_and_fail_closed(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        self.assertIn("cloudReadinessTitle", index)
+        self.assertIn("云中转状态", index)
+        self.assertIn("cloudReadinessBadge", index)
+        self.assertIn("cloudPreflightState", index)
+        self.assertIn("cloudDbQueueState", index)
+        self.assertIn("cloudProductionReady", index)
+        self.assertIn("cloudAckSemantics", index)
+        self.assertIn("software_proof_docker_mobile_cloud_readiness_summary_gate", index)
+        self.assertIn("cloudReadinessSummaryFromStatus", app)
+        self.assertIn("phone_cloud_readiness_summary", app)
+        self.assertIn("mobile_cloud_readiness_summary", app)
+        self.assertIn("readiness?.cloud_readiness", app)
+        self.assertIn("production_ready=false / 未证明", app)
+        self.assertIn("ACK_PROCESSING_COPY", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("cloudAllowsPrimaryActions", app)
+        self.assertNotRegex(app, r"cloudReadiness.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
 
     def test_action_feedback_panel_consumes_receipt_and_fail_closed_copy(self):
         app = self.read("app.js")
@@ -208,7 +235,23 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "software_proof_docker_mobile_action_feedback_gate",
         )
         self.assertEqual(payload["phone_action_feedback"]["schema"], "trashbot.phone_action_feedback.v1")
+        self.assertEqual(payload["phone_cloud_readiness_summary"]["schema"], "trashbot.phone_cloud_readiness_summary.v1")
+        self.assertEqual(payload["phone_cloud_readiness_summary"]["production_ready"], False)
+        self.assertEqual(payload["phone_cloud_readiness_summary"]["overall_status"], "blocked")
+        self.assertEqual(
+            payload["phone_cloud_readiness_summary"]["evidence_boundary"],
+            "software_proof_docker_mobile_cloud_readiness_summary_gate",
+        )
+        self.assertEqual(
+            payload["phone_cloud_readiness_summary"]["source_evidence_boundary"],
+            "software_proof_docker_cloud_db_queue_config_gate",
+        )
+        self.assertEqual(payload["phone_readiness"]["cloud_readiness"]["primary_actions_enabled"], False)
         self.assertIn("trashbot.command_safety.v1", encoded)
+        self.assertIn("trashbot.phone_cloud_readiness_summary.v1", encoded)
+        self.assertIn("software_proof_docker_cloud_db_queue_config_gate", encoded)
+        self.assertIn("production_ready", encoded)
+        self.assertIn("真实云就绪", encoded)
         self.assertIn("trashbot.mobile_action_confirmation.v1", encoded)
         self.assertIn("最近状态：等待用户确认垃圾已放入", encoded)
         self.assertIn("勾选已放入垃圾后再尝试开始送达", encoded)

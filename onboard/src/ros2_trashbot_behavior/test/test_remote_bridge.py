@@ -805,6 +805,146 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_cloud_readiness_summary_metadata_only_response_does_not_move_robot(self):
+        metadata_cases = (
+            (
+                "phone_cloud_readiness_summary",
+                {
+                    "schema": "trashbot.phone_cloud_readiness_summary.v1",
+                    "overall_status": "blocked",
+                    "safe_phone_copy": "云端配置还未完成，先保持本地等待。",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-summary-override",
+                    "delivery_success": True,
+                    "credential_url": "https://user:secret@example.invalid/creds",
+                },
+            ),
+            (
+                "mobile_cloud_readiness_summary",
+                {
+                    "schema": "trashbot.mobile_cloud_readiness_summary.v1",
+                    "production_ready": True,
+                    "next_action": "confirm_dropoff",
+                    "cursor_override": "cmd-summary-override",
+                    "delivery_success": True,
+                    "cloud_url": "https://token@example.invalid/mobile",
+                },
+            ),
+            (
+                "cloud_readiness_summary",
+                {
+                    "schema": "trashbot.cloud_readiness_summary.v1",
+                    "production_ready": False,
+                    "trigger_robot_action": "cancel",
+                    "delivery_success": True,
+                    "Authorization": "Bearer must-not-leak",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.backend.calls.clear()
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        metadata_name: metadata,
+                        "preflight": {"overall_status": "blocked", "production_ready": False},
+                    }
+
+                    handled = worker.poll_once()
+
+                    # readiness summary 是手机/支持摘要；没有 command envelope 时不能驱动 robot 侧副作用。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("credential_url", encoded_status)
+                    self.assertNotIn("cloud_url", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
+    def test_cloud_readiness_summary_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "phone_cloud_readiness_summary": {
+                    "schema": "trashbot.phone_cloud_readiness_summary.v1",
+                    "overall_status": "blocked",
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "mobile_cloud_readiness_summary": {
+                    "schema": "trashbot.mobile_cloud_readiness_summary.v1",
+                    "production_ready": False,
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "cloud_url": "https://token@example.invalid/mobile",
+                },
+                "cloud_readiness_summary": {
+                    "schema": "trashbot.cloud_readiness_summary.v1",
+                    "next_action": "confirm_dropoff",
+                    "delivery_success": True,
+                    "credential_url": "https://user:secret@example.invalid/creds",
+                },
+            },
+            "ack_response": {
+                "cloud_readiness_summary": {
+                    "schema": "trashbot.cloud_readiness_summary.v1",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-cloud-readiness-summary-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-cloud-readiness-summary-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-cloud-readiness-summary-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # ACK 只能表达 command envelope 被本地处理，不能吸收手机云 readiness 或送达语义。
+        self.assertNotIn("phone_cloud_readiness_summary", encoded_ack)
+        self.assertNotIn("mobile_cloud_readiness_summary", encoded_ack)
+        self.assertNotIn("cloud_readiness_summary", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("phone_cloud_readiness_summary", encoded_status)
+        self.assertNotIn("mobile_cloud_readiness_summary", encoded_status)
+        self.assertNotIn("cloud_readiness_summary", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertNotIn("https://token@", encoded_status)
+        self.assertNotIn("https://user:secret@", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_phone_task_flow_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {

@@ -127,6 +127,7 @@ h2 {
 }
 
 .hero-panel,
+.cloud-panel,
 .action-feedback-panel,
 .task-panel,
 .gate-panel,
@@ -159,6 +160,7 @@ h2 {
 }
 
 .status-grid,
+.cloud-grid,
 .feedback-grid,
 .diagnostics-grid {
   display: grid;
@@ -168,6 +170,7 @@ h2 {
 }
 
 .status-grid div,
+.cloud-grid div,
 .feedback-grid div,
 .diagnostics-grid div {
   border: 1px solid var(--line);

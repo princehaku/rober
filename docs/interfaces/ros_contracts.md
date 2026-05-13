@@ -413,7 +413,8 @@ Cloud responses may include optional status, preflight, diagnostics, queue,
 mobile-web-entrypoint, PWA-entrypoint, voice-prompt-readiness,
 production-recovery, transaction-isolation, cloud external probe,
 deployment-readiness, mobile task-start confirmation, mobile action feedback,
-operation-log, or DB/queue config-gate metadata beside the
+operation-log, DB/queue config-gate, or phone/mobile cloud-readiness summary
+metadata beside the
 `trashbot.remote.v1` command/status/ACK envelope. Robot clients must treat
 those fields as ignorable diagnostics for forward compatibility. A
 metadata-only response with `command=null` or no command object must not start a
@@ -462,6 +463,24 @@ raw ROS topics, `/cmd_vel`, serial devices, hardware parameters,
 `trigger_robot_action`, `cursor_override`, and `delivery_success` must not be
 copied into robot status, ACK, backend action result, or normalized command
 payload.
+Cloud-readiness summary metadata, including
+`phone_cloud_readiness_summary`, `mobile_cloud_readiness_summary`, and
+`cloud_readiness_summary`, is phone-safe support/readiness summary for the
+mobile surface to explain cloud DB/queue/config readiness. It may summarize
+blocked readiness, `production_ready=false`, redacted support copy, or the
+software-proof boundary, but it is not part of the `trashbot.remote.v1`
+command/status/ACK envelope. It is not a robot command, ACK payload, cursor
+instruction, ROS2 action result, Nav2/fixed-route result, WAVE ROVER feedback,
+HIL result, real cloud/4G proof, or delivery success proof. Robot-side protocol
+normalization must strip those fields from valid command objects, and
+metadata-only responses must not invoke `collect`, `confirm_dropoff`, or
+`cancel`, must not POST ACK, and must not advance or persist
+`last_terminal_ack_id`. Production-ready claims, credential material,
+credential-bearing cloud URLs, raw ROS topics, `trigger_robot_action`,
+`cursor_override`, and `delivery_success` must not be copied into robot status,
+ACK, backend action result, or normalized command payload. ACK remains
+accepted/processing evidence only and must not be interpreted as delivery
+success.
 Mobile task-start confirmation metadata, including
 `mobile_task_start_confirmation`,
 `mobile_task_start_confirmation_readiness`, and
