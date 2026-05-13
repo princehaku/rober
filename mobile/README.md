@@ -13,6 +13,8 @@
 > 当前增量：sprint `2026.05.13_13-14_mobile-device-acceptance-readiness-gate` 在首屏新增“手机验收准备”摘要。证据边界是 `software_proof_docker_mobile_device_acceptance_readiness_gate`，只证明 local/static fixture 与 targeted unittest 能展示真实手机设备/browser、production app、PWA install prompt、offline、diagnostics 和 cloud gate 的 blocked-by-design 摘要；不等于真实手机设备/browser、production app、真实 PWA install prompt、真实云/4G、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 >
 > 当前增量：sprint `2026.05.13_15-16_mobile-browser-acceptance-bundle-gate` 在首屏新增“浏览器验收包”摘要和复制入口。证据边界是 `software_proof_docker_mobile_browser_acceptance_bundle_gate`，只证明 local/static fixture 与 targeted unittest 能展示/复制 phone-safe browser acceptance bundle，并在 bundle blocked 时让 Start / Confirm / Cancel fail closed；不等于真实手机设备/browser、production app、真实 PWA install prompt、真实云/4G、Nav2/fixed-route、真实底盘运动、HIL 或真实送达。
+>
+> 当前增量：sprint `2026.05.13_16-17_mobile-web-browser-proof-gate` 将真实 Chrome/Chromium browser acceptance gate 迁移到当前 `mobile/web/` 静态 PWA。证据边界是 `software_proof_docker_mobile_web_browser_proof_gate`，只证明本机 Chromium-family 浏览器可渲染 390x844 与 768x900 viewport、主操作 fail closed、Diagnostics/Support Handoff 与浏览器验收包可用、ACK 文案未变成送达成功、首屏无水平 overflow/不合理 overlap、可见文案不泄漏敏感或机器人内部细节；不等于真实 iPhone/Android device、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 
 ## 用途（What lives here）
 
@@ -127,6 +129,13 @@ PWA / offline 边界：
 - `operator_gateway_static.py` 内嵌的 HTML/CSS/JS 仍留在 onboard `ros2_trashbot_behavior` 包内，作为本地 fallback；`mobile/web/` 是正式手机入口的静态部署单位。
 - 手机端验收 gate：`pc-tools/evidence/phone_browser_acceptance_gate.py`（与本目录无 import 耦合，仅文档引用）。
 - 当前新增 smoke：`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest mobile.test_mobile_web_entrypoint`。
+- 当前真实本地浏览器 proof gate：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gate.py --output-dir sprints/2026.05.13_16-17_mobile-web-browser-proof-gate/evidence
+```
+
+该 gate 自带轻量静态 HTTP server，直接服务 `mobile/web/`，并用 `mobile/fixtures/mobile_web_status.fixture.json` 响应 `/api/status` 与 `/api/diagnostics`。它通过 `--browser` 或 `PHONE_BROWSER_CHROME` 指向 Chromium-family 浏览器；成功后在 sprint `evidence/` 下写入 `mobile_web_browser_390x844.json/png`、`mobile_web_browser_768x900.json/png` 和 `mobile_web_browser_acceptance_summary.json`。summary 必须继续声明 `software_proof_docker_mobile_web_browser_proof_gate` 与非声明边界。
 
 ## Agent 工作纪律
 
@@ -147,5 +156,6 @@ PWA / offline 边界：
 | 当前 mobile-cloud-readiness-summary gate | `mobile/web/` 云中转状态摘要、blocked recovery、production_ready=false 和 ACK 语义 fixture smoke |
 | 当前 mobile-device-acceptance-readiness gate | `mobile/web/` 手机验收准备摘要、blocked-by-design 真机/PWA/product app gate、primary action fail-closed |
 | 当前 mobile-browser-acceptance-bundle gate | `mobile/web/` 浏览器验收包显示/复制、blocked-by-design 摘要、bundle 级主操作 fail-closed |
-| 下一个 sprint | 真实手机浏览器/设备验收、安装提示和弱网体验 |
+| 当前 mobile-web-browser-proof gate | `mobile/web/` 静态 PWA 的本机 Chromium-family 真实 browser proof、viewport 截图、JSON/summary evidence |
+| 下一个 sprint | 真实手机设备验收、production app、真实 PWA install prompt 和弱网体验 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |

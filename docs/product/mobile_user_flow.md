@@ -225,17 +225,17 @@ The voice prompt summary is phone-safe. It must not expose tokens, Authorization
 
 ACK remains command processing evidence only. A remote ACK may make `remote_readiness.degradation_state=ok`, but the phone must keep reading delivery status for `completed`, `failed`, `needs_human_help`, or elevator-assist states. The UI text must explain that ACK means command accepted or processing evidence only; it does not prove delivery success, Nav2/fixed-route success, WAVE ROVER movement, real cloud/4G, or HIL.
 
-## Local Phone Browser Acceptance Gate
+## Local Mobile Web Browser Acceptance Gate
 
-The local operator page now has a Docker/local browser acceptance gate for the fallback phone surface:
+The current browser acceptance gate targets the standalone `mobile/web/` PWA, not the older onboard fallback operator gateway. It starts a lightweight static HTTP server, serves `mobile/web/`, and uses `mobile/fixtures/mobile_web_status.fixture.json` as the phone-safe response for both `/api/status` and `/api/diagnostics`:
 
 ```bash
-python3 scripts/phone_browser_acceptance_gate.py --output-dir sprints/2026.05.12_15-16_phone-browser-acceptance-gate/evidence
+PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gate.py --output-dir sprints/2026.05.13_16-17_mobile-web-browser-proof-gate/evidence
 ```
 
-The gate starts a lightweight local operator fixture, opens the served HTML in a real Chromium-family browser, and checks `390x844` plus `768x900` viewports. It verifies button hit areas are at least 44 CSS px, Start/Confirm/Cancel stay disabled in a blocked command-safety state, Diagnostics remains accessible, ACK copy is visible, and key first-screen text does not overlap.
+The gate opens the served PWA in a real local Chromium-family browser through Chrome DevTools Protocol and checks `390x844` plus `768x900` viewports. It verifies primary Start/Confirm/Cancel buttons remain disabled, Diagnostics and Support Handoff remain available, the browser acceptance bundle is visible and copyable, ACK copy remains accepted/processing evidence only, interactive hit areas are at least 44 CSS px, key first-screen elements avoid horizontal overflow and unreasonable overlap, and visible text does not leak token, Authorization, OSS AK/SK, DB/queue URL, ROS topic, `/cmd_vel`, serial, baudrate, WAVE ROVER, local paths, traceback, checksum, or complete artifact wording.
 
-This evidence boundary is `software_proof_docker_phone_browser_acceptance_gate`. It does not prove a production phone app, real iPhone/Android device behavior, real cloud/4G, OSS/CDN traffic, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or delivery success. The local page keeps raw JSON status hidden by default so ordinary phone users see readiness, command safety, ACK semantics, recovery hints, and Diagnostics entry copy instead of ROS or hardware internals.
+Successful runs write `mobile_web_browser_390x844.json/png`, `mobile_web_browser_768x900.json/png`, and `mobile_web_browser_acceptance_summary.json` into the sprint `evidence/` directory. This evidence boundary is `software_proof_docker_mobile_web_browser_proof_gate`. It proves a real local Chromium-family browser rendered the dependency-free PWA against a phone-safe fixture; it does not prove a real iPhone/Android device, production app, real PWA install prompt, real cloud/4G, OSS/CDN live traffic, production DB/queue, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or delivery success.
 
 ## Local PWA Installability Gate
 

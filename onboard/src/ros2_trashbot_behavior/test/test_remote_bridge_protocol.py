@@ -274,6 +274,50 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("/dev/ttyUSB0", encoded_command)
         self.assertNotIn("Authorization", encoded_command)
 
+    def test_validate_command_ignores_mobile_web_browser_proof_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-mobile-web-browser-proof",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "mobile_web_browser_proof": {
+                "schema": "trashbot.mobile_web_browser_proof.v1",
+                "evidence_boundary": "software_proof_docker_mobile_web_browser_proof_gate",
+                "screenshot_ref": "evidence/mobile_web_browser.png",
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "phone_browser_proof": {
+                "schema": "trashbot.phone_browser_proof.v1",
+                "ack_semantics": "delivery_success",
+                "next_action": "confirm_dropoff",
+                "serial_device": "/dev/ttyUSB0",
+            },
+            "mobile_browser_proof_summary": {
+                "schema": "trashbot.mobile_browser_proof_summary.v1",
+                "browser_family": "chromium",
+                "not_proven": ["real_phone_device", "delivery_success"],
+                "Authorization": "Bearer must-not-leak",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-mobile-web-browser-proof")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # browser proof 是手机/浏览器证据元数据，normalization 只能保留 command envelope。
+        self.assertNotIn("mobile_web_browser_proof", encoded_command)
+        self.assertNotIn("phone_browser_proof", encoded_command)
+        self.assertNotIn("mobile_browser_proof_summary", encoded_command)
+        self.assertNotIn("software_proof_docker_mobile_web_browser_proof_gate", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("/dev/ttyUSB0", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+
     def test_mobile_browser_acceptance_bundle_response_metadata_does_not_create_command_or_ack(self):
         self.cloud.response_extras.update({
             "command_response": {

@@ -1489,6 +1489,74 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_mobile_web_browser_proof_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "mobile_web_browser_proof": {
+                    "schema": "trashbot.mobile_web_browser_proof.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_web_browser_proof_gate",
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "phone_browser_proof": {
+                    "schema": "trashbot.phone_browser_proof.v1",
+                    "safe_phone_copy": "浏览器 proof 只说明本地页面证据，不能触发机器人动作。",
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                },
+                "mobile_browser_proof_summary": {
+                    "schema": "trashbot.mobile_browser_proof_summary.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_web_browser_proof_gate",
+                    "next_action": "confirm_dropoff",
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            },
+            "ack_response": {
+                "mobile_web_browser_proof": {
+                    "schema": "trashbot.mobile_web_browser_proof.v1",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-mobile-web-browser-proof-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-mobile-web-browser-proof-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-mobile-web-browser-proof-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        self.assertEqual(ack_payload["message"], "collect")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # browser proof 元数据不能污染 ACK；ACK 仍只是命令 accepted/processing 证据。
+        self.assertNotIn("mobile_web_browser_proof", encoded_ack)
+        self.assertNotIn("phone_browser_proof", encoded_ack)
+        self.assertNotIn("mobile_browser_proof_summary", encoded_ack)
+        self.assertNotIn("software_proof_docker_mobile_web_browser_proof_gate", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        self.assertNotIn("/cmd_vel", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("mobile_web_browser_proof", encoded_status)
+        self.assertNotIn("phone_browser_proof", encoded_status)
+        self.assertNotIn("mobile_browser_proof_summary", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_voice_prompt_readiness_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {
@@ -1947,6 +2015,53 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
                     "next_action": "cancel",
                     "trigger_robot_action": "cancel",
                     "cursor_override": "cmd-mobile-evidence-bundle",
+                    "delivery_success": True,
+                    "Authorization": "Bearer must-not-leak",
+                },
+            ),
+            (
+                "mobile_web_browser_proof",
+                {
+                    "schema": "trashbot.mobile_web_browser_proof.v1",
+                    "schema_version": 1,
+                    "evidence_boundary": "software_proof_docker_mobile_web_browser_proof_gate",
+                    "browser_family": "chromium",
+                    "screenshot_ref": "evidence/mobile_web_browser.png",
+                    "summary_ref": "evidence/summary.json",
+                    "ack_semantics": "accepted_or_processing_only",
+                    "not_proven": ["real_phone_device", "production_app", "delivery_success"],
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-mobile-web-browser-proof",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+            (
+                "phone_browser_proof",
+                {
+                    "schema": "trashbot.phone_browser_proof.v1",
+                    "schema_version": 1,
+                    "evidence_boundary": "software_proof_docker_mobile_web_browser_proof_gate",
+                    "safe_phone_copy": "本地浏览器 proof 不是手机真机或送达成功证明。",
+                    "ack_semantics": "delivery_success",
+                    "next_action": "confirm_dropoff",
+                    "trigger_robot_action": "confirm_dropoff",
+                    "cursor_override": "cmd-phone-browser-proof",
+                    "delivery_success": True,
+                    "serial_device": "/dev/ttyUSB0",
+                },
+            ),
+            (
+                "mobile_browser_proof_summary",
+                {
+                    "schema": "trashbot.mobile_browser_proof_summary.v1",
+                    "schema_version": 1,
+                    "evidence_boundary": "software_proof_docker_mobile_web_browser_proof_gate",
+                    "overall_status": "passed",
+                    "not_proven": ["hil_pass", "dropoff_success", "cancel_complete"],
+                    "next_action": "cancel",
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-mobile-browser-proof-summary",
                     "delivery_success": True,
                     "Authorization": "Bearer must-not-leak",
                 },

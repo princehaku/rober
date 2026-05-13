@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Run the O5 local phone browser acceptance gate.
+"""Run the mobile/web local Chromium-family browser acceptance gate.
 
-This script starts the dependency-free operator gateway HTML/API fixture and
-uses a real Chromium-family browser through Chrome DevTools Protocol. It avoids
-ROS2, hardware, cloud and 4G dependencies while still measuring rendered layout.
+本 gate 服务当前 dependency-free PWA，而不是旧 operator gateway fallback。
+它只证明本地 Chromium-family 浏览器渲染与 phone-safe UI 行为，不证明真机、
+production app、真实 PWA install prompt、云、4G、机器人运动或送达完成。
 """
 
 import argparse
 import base64
 import hashlib
 import json
+import mimetypes
 import os
 import socket
 import struct
@@ -21,142 +22,162 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from http.server import ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-BEHAVIOR_ROOT = REPO_ROOT / "src" / "ros2_trashbot_behavior"
-sys.path.insert(0, str(BEHAVIOR_ROOT))
-
-from ros2_trashbot_behavior.operator_gateway_http import make_handler, status_payload
-from ros2_trashbot_behavior.remote_cloud_relay import (
-    create_network_recovery_artifact,
-    create_oss_cdn_manifest_artifact,
-)
-
-
-EVIDENCE_BOUNDARY = "software_proof_docker_phone_browser_acceptance_gate"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+MOBILE_WEB_ROOT = REPO_ROOT / "mobile" / "web"
+MOBILE_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
+EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"
 VIEWPORTS = ((390, 844), (768, 900))
-PRIMARY_BUTTON_IDS = ("collectButton", "dropoffButton", "cancelButton")
-BUTTON_IDS = PRIMARY_BUTTON_IDS + ("diagnosticsButton",)
+PRIMARY_BUTTON_IDS = ("startButton", "confirmButton", "cancelButton")
+SUPPORT_BUTTON_IDS = ("diagnosticsButton", "supportButton", "copyAcceptanceBundleButton")
+HIT_AREA_IDS = PRIMARY_BUTTON_IDS + SUPPORT_BUTTON_IDS
+KEY_ELEMENT_IDS = (
+    "connectionBadge",
+    "readinessTitle",
+    "safePhoneCopy",
+    "recoveryHint",
+    "mobileBrowserAcceptanceTitle",
+    "mobileBrowserAcceptanceCopy",
+    "mobileBrowserAck",
+    "mobileBrowserBoundary",
+    "mobileBrowserSafeCopy",
+    "copyAcceptanceBundleButton",
+    "ackCopy",
+    "startButton",
+    "confirmButton",
+    "cancelButton",
+    "diagnosticsButton",
+    "supportButton",
+    "supportSafeCopy",
+)
 PHONE_SAFE_FORBIDDEN_VISIBLE = (
-    "{",
-    "}",
-    "/cmd_vel",
-    "ros_topic",
-    "serial_port",
-    "baudrate",
-    "bearer",
     "token",
-    "cloud secret",
+    "authorization",
+    "oss ak",
+    "oss sk",
+    "access_key",
+    "access key",
+    "secret",
+    "db url",
+    "database url",
+    "queue url",
+    "ros topic",
+    "/cmd_vel",
+    "serial",
+    "baudrate",
+    "wave rover",
+    "/users/",
+    "/private/",
+    "/ws/",
+    "traceback",
+    "checksum",
+    "完整 artifact",
+)
+NOT_PROVEN = (
+    "真实 iPhone/Android device",
+    "production app",
+    "真实 PWA install prompt",
+    "真实云/4G",
+    "OSS/CDN live traffic",
+    "production DB/queue",
+    "Nav2/fixed-route",
+    "WAVE ROVER",
+    "HIL",
+    "真实送达",
 )
 
 
-class FixtureGateway:
-    """operator gateway fixture，只暴露手机需要的状态和诊断摘要。"""
+class MobileWebHandler(BaseHTTPRequestHandler):
+    """静态 PWA fixture server，只暴露 mobile/web 与 phone-safe JSON。"""
 
-    def __init__(self, evidence_dir):
-        self.mock_cloud_bearer_token = ""
-        self.network_recovery_artifact_ref = ""
-        self.oss_cdn_manifest_artifact_ref = ""
-        self._prepare_artifacts(Path(evidence_dir))
+    server_version = "MobileWebAcceptanceGate/1.0"
 
-    def _prepare_artifacts(self, evidence_dir):
-        # manifest 与 network recovery artifact 只用于让 readiness gate 进入可复查状态。
-        manifest_path = evidence_dir / "fixture_oss_cdn_manifest.json"
-        network_path = evidence_dir / "fixture_network_recovery.json"
-        sqlite_path = evidence_dir / "fixture_network_recovery.sqlite"
-        # acceptance gate 可能重复运行；先删除旧 fixture，避免 SQLite 状态污染本轮 proof。
-        for path in (manifest_path, network_path, sqlite_path):
-            if path.exists():
-                path.unlink()
-        create_oss_cdn_manifest_artifact(
-            manifest_path,
-            "robot-phone-browser",
-            "task-phone-browser",
-            date_text="2026-05-12",
-        )
-        create_network_recovery_artifact(network_path, sqlite_path, state_backend="sqlite")
-        self.oss_cdn_manifest_artifact_ref = str(manifest_path)
-        self.network_recovery_artifact_ref = str(network_path)
+    def do_GET(self):
+        parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == "/api/status":
+            self._send_json(self.server.fixture)
+            return
+        if parsed.path == "/api/diagnostics":
+            self._send_json(self._diagnostics_payload())
+            return
+        self._send_static(parsed.path)
 
-    def snapshot(self):
-        # status_stale 来自 mock cloud 默认状态，本地 action 权限仍让脚本证明主操作被 command gate 阻断。
-        return status_payload(
-            "waiting_for_trash",
-            "Waiting for trash.",
-            can_collect=True,
-            can_confirm_dropoff=True,
-            can_cancel=True,
-        )
+    def log_message(self, _format, *_args):
+        # gate 输出保持机器可读；HTTP access log 不参与证据。
+        return
 
-    def diagnostics(self):
-        # 诊断入口必须可打开，但 payload 只给 phone-safe 摘要，不暴露 raw ROS/hardware details。
+    def _send_json(self, payload):
+        data = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _diagnostics_payload(self):
+        fixture = self.server.fixture
+        # diagnostics 复用 fixture 的 phone-safe 摘要，避免另造机器人状态。
         return {
-            "api_version": "slice2.operator.v1",
-            "state": "diagnostics_ready",
-            "software_version": "fixture",
-            "map_version": "local-browser-fixture",
-            "route_version": "local-browser-fixture",
-            "latest_status": self.snapshot(),
-            "source": "software_proof",
-            "failure": {},
-            "log_refs": [],
-            "vision_samples": {"integrity_summary": {"status": "unknown"}},
-            "route_proof_summary": {},
-            "route_proof_status": {"state": "not_run"},
-            "hardware_proof": {
-                "status": "needs_hil",
-                "summary": "Software proof only; hardware-in-loop still required.",
-                "next_step": "Run real robot validation before claiming hardware readiness.",
-                "risk_flags": [],
-            },
-            "elevator_assist": {"enabled": False, "state": "disabled"},
-            "elevator_assist_status": {"state": "disabled"},
-            "oss_cdn_manifest": {
-                "state": "ready",
-                "safe_summary": "诊断对象引用已准备。",
-                "retry_hint": "如手机无法查看诊断，请刷新状态或重新生成诊断引用。",
-                "evidence_boundary": "software_proof_docker_phone_manifest_consumption",
-            },
+            "schema": "trashbot.mobile_web_browser_diagnostics_fixture.v1",
+            "source": "mobile_web_static_fixture",
+            "safe_phone_copy": "本地 Chromium-family browser proof fixture；不是生产诊断。",
+            "latest_status": fixture,
+            "phone_readiness": fixture.get("phone_readiness", {}),
+            "phone_support_bundle": fixture.get("phone_support_bundle")
+            or fixture.get("phone_readiness", {}).get("phone_support_bundle", {}),
+            "mobile_device_acceptance_readiness": fixture.get("mobile_device_acceptance_readiness", {}),
+            "mobile_browser_acceptance_bundle": fixture.get("mobile_browser_acceptance_bundle", {}),
+            "evidence_boundary": EVIDENCE_BOUNDARY,
+            "not_proven": list(NOT_PROVEN),
         }
 
-    def start_collection(self, target, trash_type=0):
-        return 409, status_payload("busy", "Fixture keeps command safety blocked.")
-
-    def confirm_dropoff(self, accepted=True):
-        return 409, status_payload("busy", "Fixture keeps command safety blocked.")
-
-    def cancel_collection(self):
-        return 409, status_payload("busy", "Fixture keeps command safety blocked.")
-
-    def vision_review_queue(self):
-        return {
-            "ok": True,
-            "review_queue_count": 0,
-            "review_queue": [],
-            "progress_summary": {"total": 0, "decided": 0, "pending": 0, "coverage_rate": 0},
-            "decision_distribution": {},
-            "next_pending_sample": None,
-        }
-
-    def submit_review_decision(self, payload):
-        return 400, {"ok": False, "message": "fixture review queue is empty"}
+    def _send_static(self, raw_path):
+        safe_path = "/index.html" if raw_path in ("", "/") else raw_path
+        # URL path 必须留在 mobile/web 内，避免本地文件路径穿越。
+        relative = Path(urllib.parse.unquote(safe_path).lstrip("/"))
+        candidate = (MOBILE_WEB_ROOT / relative).resolve()
+        try:
+            candidate.relative_to(MOBILE_WEB_ROOT.resolve())
+        except ValueError:
+            self.send_error(404)
+            return
+        if not candidate.is_file():
+            self.send_error(404)
+            return
+        data = candidate.read_bytes()
+        content_type = mimetypes.guess_type(str(candidate))[0] or "application/octet-stream"
+        if candidate.suffix in (".html", ".js", ".css", ".svg", ".webmanifest"):
+            content_type = {
+                ".html": "text/html; charset=utf-8",
+                ".js": "application/javascript; charset=utf-8",
+                ".css": "text/css; charset=utf-8",
+                ".svg": "image/svg+xml; charset=utf-8",
+                ".webmanifest": "application/manifest+json; charset=utf-8",
+            }[candidate.suffix]
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
 
 class LocalServer:
-    """本地 HTTP fixture 生命周期，确保验收不依赖真实 ROS2 runtime。"""
+    """本地 HTTP server 生命周期，验证时不依赖 ROS2 或 cloud runtime。"""
 
-    def __init__(self, output_dir):
-        self.output_dir = Path(output_dir)
+    def __init__(self):
         self.server = None
         self.thread = None
         self.url = ""
 
     def __enter__(self):
-        gateway = FixtureGateway(self.output_dir)
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(gateway))
+        fixture = json.loads(MOBILE_FIXTURE.read_text(encoding="utf-8"))
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), MobileWebHandler)
+        self.server.fixture = fixture
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.url = f"http://127.0.0.1:{self.server.server_address[1]}/"
@@ -200,7 +221,7 @@ def http_json(url, *, method="GET", timeout=5.0):
 
 
 class ChromeProcess:
-    """启动 headless Chrome，并暴露 page websocket 地址。"""
+    """启动 headless Chrome，并用 CDP 读取真实布局与截图。"""
 
     def __init__(self, browser_path):
         self.browser_path = browser_path
@@ -254,7 +275,7 @@ class ChromeProcess:
 
 
 class WebSocket:
-    """最小 CDP websocket client；只实现本验收需要的 text frame。"""
+    """最小 CDP websocket client；无第三方依赖，覆盖本 gate 的 text frame。"""
 
     def __init__(self, ws_url):
         parsed = urllib.parse.urlparse(ws_url)
@@ -288,7 +309,7 @@ class WebSocket:
 
     def send_json(self, payload):
         data = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-        # client-to-server frame 必须 mask；payload 很小，126/127 两种长度也一并覆盖。
+        # client-to-server frame 必须 mask；CDP payload 较小但仍覆盖扩展长度。
         header = bytearray([0x81])
         if len(data) < 126:
             header.append(0x80 | len(data))
@@ -339,7 +360,7 @@ class WebSocket:
 
 
 class CDPClient:
-    """Chrome DevTools Protocol helper，用同步 id 等待命令结果。"""
+    """Chrome DevTools Protocol helper，用递增 id 等待命令响应。"""
 
     def __init__(self, ws):
         self.ws = ws
@@ -361,48 +382,42 @@ class CDPClient:
     def evaluate(self, expression, timeout=5.0):
         result = self.call(
             "Runtime.evaluate",
-            {
-                "expression": expression,
-                "awaitPromise": True,
-                "returnByValue": True,
-            },
+            {"expression": expression, "awaitPromise": True, "returnByValue": True},
             timeout=timeout,
         )
-        remote = result.get("result", {})
         if "exceptionDetails" in result:
             raise RuntimeError(f"Runtime.evaluate failed: {result['exceptionDetails']}")
-        return remote.get("value")
+        return result.get("result", {}).get("value")
 
 
 def viewport_script():
-    return r"""
-(async () => {
+    ids_json = json.dumps(list(KEY_ELEMENT_IDS))
+    return f"""
+(async () => {{
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-  for (let i = 0; i < 80; i += 1) {
-    const ack = document.getElementById('commandSafetyAck');
+  for (let i = 0; i < 100; i += 1) {{
+    const bundle = document.getElementById('mobileBrowserSafeCopy');
     const diag = document.getElementById('diagnosticsButton');
-    if (ack && ack.innerText.includes('不能代表送达成功') && diag && !diag.disabled) break;
+    const ack = document.getElementById('ackCopy');
+    if (bundle && bundle.innerText.includes('trashbot.mobile_browser_acceptance_bundle.v1') &&
+        diag && !diag.disabled && ack && ack.innerText.includes('不代表送达成功')) break;
     await sleep(100);
-  }
-  const ids = [
-    'phoneReadinessPanel',
-    'phoneReadinessCopy',
-    'phoneReadinessNext',
-    'commandSafetyCopy',
-    'commandSafetyAck',
-    'diagnosticsGateCopy',
-    'collectButton',
-    'dropoffButton',
-    'cancelButton',
-    'diagnosticsButton'
-  ];
-  const rectFor = (id) => {
+  }}
+  document.getElementById('diagnosticsButton').click();
+  document.getElementById('supportButton').click();
+  for (let i = 0; i < 50; i += 1) {{
+    if (!document.getElementById('diagnosticsPanel').hidden) break;
+    await sleep(100);
+  }}
+  const ids = {ids_json};
+  const rectFor = (id) => {{
     const node = document.getElementById(id);
     if (!node) return null;
     const rect = node.getBoundingClientRect();
     const style = window.getComputedStyle(node);
-    return {
+    return {{
       id,
+      tag: node.tagName.toLowerCase(),
       text: (node.innerText || node.textContent || '').trim(),
       disabled: Boolean(node.disabled),
       visible: style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0,
@@ -412,116 +427,105 @@ def viewport_script():
       bottom: rect.bottom,
       width: rect.width,
       height: rect.height
-    };
-  };
+    }};
+  }};
   const rects = ids.map(rectFor).filter(Boolean);
-  document.getElementById('diagnosticsButton').click();
-  for (let i = 0; i < 40; i += 1) {
-    if (!document.getElementById('diagnosticsPanel').hidden) break;
-    await sleep(100);
-  }
   const visibleText = Array.from(document.body.querySelectorAll('body *'))
-    .filter((node) => {
+    .filter((node) => {{
       const rect = node.getBoundingClientRect();
       const style = window.getComputedStyle(node);
       return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
-    })
+    }})
     .map((node) => (node.innerText || node.textContent || '').trim())
     .filter(Boolean)
-    .join('\n')
-    .slice(0, 12000);
-  return {
+    .join('\\n')
+    .slice(0, 40000);
+  return {{
     title: document.title,
     url: location.href,
-    viewport: {width: window.innerWidth, height: window.innerHeight},
+    viewport: {{width: window.innerWidth, height: window.innerHeight}},
+    documentWidth: document.documentElement.scrollWidth,
+    documentHeight: document.documentElement.scrollHeight,
     rects,
-    ackText: document.getElementById('commandSafetyAck').innerText,
-    commandCopy: document.getElementById('commandSafetyCopy').innerText,
-    diagnosticsCopy: document.getElementById('diagnosticsGateCopy').innerText,
-    readinessCopy: document.getElementById('phoneReadinessCopy').innerText,
+    primaryDisabled: {{
+      start: document.getElementById('startButton').disabled,
+      confirm: document.getElementById('confirmButton').disabled,
+      cancel: document.getElementById('cancelButton').disabled
+    }},
     diagnosticsPanelVisible: !document.getElementById('diagnosticsPanel').hidden,
+    supportCopyVisible: document.getElementById('supportSafeCopy').innerText.trim().length > 0,
+    bundleVisible: document.getElementById('mobileBrowserSafeCopy').innerText.includes('trashbot.mobile_browser_acceptance_bundle.v1'),
+    bundleCopyButtonEnabled: !document.getElementById('copyAcceptanceBundleButton').disabled,
+    ackText: document.getElementById('ackCopy').innerText,
+    bundleAckText: document.getElementById('mobileBrowserAck').innerText,
     visibleText
-  };
-})()
+  }};
+}})()
 """
 
 
-def intersects(a, b):
-    left = max(float(a["left"]), float(b["left"]))
-    top = max(float(a["top"]), float(b["top"]))
-    right = min(float(a["right"]), float(b["right"]))
-    bottom = min(float(a["bottom"]), float(b["bottom"]))
+def intersects(first, second):
+    left = max(float(first["left"]), float(second["left"]))
+    top = max(float(first["top"]), float(second["top"]))
+    right = min(float(first["right"]), float(second["right"]))
+    bottom = min(float(first["bottom"]), float(second["bottom"]))
     return (right - left) > 1.0 and (bottom - top) > 1.0
 
 
 def judge_viewport(result):
     rects = {item["id"]: item for item in result["rects"]}
-    button_failures = [
-        button_id
-        for button_id in BUTTON_IDS
-        if rects.get(button_id, {}).get("width", 0) < 44 or rects.get(button_id, {}).get("height", 0) < 44
+    viewport_width = float(result.get("viewport", {}).get("width") or 0)
+    first_screen_rects = [
+        item for item in rects.values()
+        if item.get("visible") and item.get("top", 0) >= -1 and item.get("top", 0) <= 900
     ]
-    primary_enabled = [button_id for button_id in PRIMARY_BUTTON_IDS if not rects.get(button_id, {}).get("disabled")]
-    diagnostics_accessible = bool(
-        not rects.get("diagnosticsButton", {}).get("disabled")
-        and result.get("diagnosticsPanelVisible")
-    )
-    key_rects = [
-        rects[item_id]
-        for item_id in (
-            "phoneReadinessCopy",
-            "phoneReadinessNext",
-            "commandSafetyCopy",
-            "commandSafetyAck",
-            "diagnosticsGateCopy",
-            "collectButton",
-            "dropoffButton",
-            "cancelButton",
-            "diagnosticsButton",
-        )
-        if rects.get(item_id, {}).get("visible")
+    # 首屏互相覆盖只检查兄弟级关键文案和按钮；pre 内 JSON 换行不按 overlap 处理。
+    overlap_candidates = [
+        item for item in first_screen_rects
+        if item["id"] not in ("mobileBrowserSafeCopy", "supportSafeCopy")
     ]
     overlaps = []
-    viewport_width = float(result.get("viewport", {}).get("width") or 0)
-    viewport_height = float(result.get("viewport", {}).get("height") or 0)
-    for index, first in enumerate(key_rects):
-        for second in key_rects[index + 1:]:
+    for index, first in enumerate(overlap_candidates):
+        for second in overlap_candidates[index + 1:]:
             if intersects(first, second):
                 overlaps.append(f"{first['id']}->{second['id']}")
-    overflow = [
-        item["id"]
-        for item in key_rects
+    hit_area_failures = [
+        button_id for button_id in HIT_AREA_IDS
+        if rects.get(button_id, {}).get("width", 0) < 44 or rects.get(button_id, {}).get("height", 0) < 44
+    ]
+    horizontal_overflow = [
+        item["id"] for item in first_screen_rects
         if item.get("left", 0) < -1.0 or item.get("right", 0) > viewport_width + 1.0
     ]
-    first_screen_buttons = [
-        button_id
-        for button_id in BUTTON_IDS
-        if rects.get(button_id, {}).get("bottom", viewport_height + 1) <= viewport_height
-    ]
+    page_horizontal_overflow = float(result.get("documentWidth") or 0) > viewport_width + 1.0
     visible_lower = result.get("visibleText", "").lower()
     phone_safe_failures = [
         token for token in PHONE_SAFE_FORBIDDEN_VISIBLE if token.lower() in visible_lower
     ]
-    ack_visible = "ACK" in result.get("ackText", "") and "不能代表送达成功" in result.get("ackText", "")
+    ack_copy = f"{result.get('ackText', '')}\n{result.get('bundleAckText', '')}"
+    ack_visible = "ACK" in ack_copy and "不代表送达成功" in ack_copy
     return {
-        "hit_area_status": "passed" if not button_failures else "failed",
+        "hit_area_status": "passed" if not hit_area_failures else "failed",
         "overlap_status": "passed" if not overlaps else "failed",
-        "overflow_status": "passed" if not overflow else "failed",
+        "overflow_status": "passed" if not horizontal_overflow and not page_horizontal_overflow else "failed",
         "ack_copy_visible": bool(ack_visible),
-        "diagnostics_accessible": diagnostics_accessible,
-        "primary_actions_disabled": not primary_enabled,
-        "first_screen_buttons_visible": len(first_screen_buttons) == len(BUTTON_IDS),
+        "ack_not_delivery_success": "delivery success" not in ack_copy.lower() and "送达成功" in ack_copy,
+        "diagnostics_accessible": bool(result.get("diagnosticsPanelVisible")),
+        "support_handoff_available": bool(result.get("supportCopyVisible")),
+        "browser_acceptance_bundle_visible": bool(result.get("bundleVisible")),
+        "browser_acceptance_bundle_copyable": bool(result.get("bundleCopyButtonEnabled")),
+        "primary_actions_disabled": all(result.get("primaryDisabled", {}).values()),
         "phone_safe_status": "passed" if not phone_safe_failures else "failed",
-        "button_failures": button_failures,
-        "primary_enabled": primary_enabled,
+        "hit_area_failures": hit_area_failures,
         "overlaps": overlaps,
-        "overflow": overflow,
+        "horizontal_overflow": horizontal_overflow,
+        "page_horizontal_overflow": page_horizontal_overflow,
         "phone_safe_failures": phone_safe_failures,
     }
 
 
 def run_viewport(cdp, url, width, height, output_dir):
-    # 每个 viewport 都重新导航，避免上一个 diagnostics 展开状态影响首屏判断。
+    # 每个 viewport 都重新导航，避免展开 diagnostics 的状态污染下一次判断。
     cdp.call("Emulation.setDeviceMetricsOverride", {
         "width": width,
         "height": height,
@@ -530,10 +534,10 @@ def run_viewport(cdp, url, width, height, output_dir):
     })
     cdp.call("Page.navigate", {"url": url})
     time.sleep(0.5)
-    result = cdp.evaluate(viewport_script(), timeout=12.0)
+    result = cdp.evaluate(viewport_script(), timeout=15.0)
     judgment = judge_viewport(result)
     screenshot = cdp.call("Page.captureScreenshot", {"format": "png", "fromSurface": True}, timeout=8.0)
-    screenshot_path = output_dir / f"phone_browser_{width}x{height}.png"
+    screenshot_path = output_dir / f"mobile_web_browser_{width}x{height}.png"
     screenshot_path.write_bytes(base64.b64decode(screenshot["data"]))
     evidence = {
         "viewport": f"{width}x{height}",
@@ -542,21 +546,20 @@ def run_viewport(cdp, url, width, height, output_dir):
         "judgment": judgment,
         "rects": result.get("rects", []),
         "copy": {
-            "readiness": result.get("readinessCopy", ""),
-            "command": result.get("commandCopy", ""),
             "ack": result.get("ackText", ""),
-            "diagnostics": result.get("diagnosticsCopy", ""),
+            "bundle_ack": result.get("bundleAckText", ""),
         },
         "screenshot": str(screenshot_path),
         "evidence_boundary": EVIDENCE_BOUNDARY,
+        "not_proven": list(NOT_PROVEN),
     }
-    evidence_path = output_dir / f"phone_browser_{width}x{height}.json"
+    evidence_path = output_dir / f"mobile_web_browser_{width}x{height}.json"
     evidence_path.write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return evidence_path, screenshot_path, judgment
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run local phone browser layout acceptance gate.")
+    parser = argparse.ArgumentParser(description="Run mobile/web local browser proof gate.")
     parser.add_argument("--output-dir", required=True, help="Directory for screenshots and JSON evidence.")
     parser.add_argument("--browser", default="", help="Optional Chromium-family executable path.")
     return parser.parse_args()
@@ -568,7 +571,8 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     browser = find_browser(args.browser)
     all_passed = True
-    with LocalServer(output_dir) as server, ChromeProcess(browser) as chrome:
+    per_viewport = []
+    with LocalServer() as server, ChromeProcess(browser) as chrome:
         with WebSocket(chrome.new_page_ws()) as ws:
             cdp = CDPClient(ws)
             cdp.call("Page.enable")
@@ -580,38 +584,58 @@ def main():
                     and judgment["overlap_status"] == "passed"
                     and judgment["overflow_status"] == "passed"
                     and judgment["ack_copy_visible"]
+                    and judgment["ack_not_delivery_success"]
                     and judgment["diagnostics_accessible"]
+                    and judgment["support_handoff_available"]
+                    and judgment["browser_acceptance_bundle_visible"]
+                    and judgment["browser_acceptance_bundle_copyable"]
                     and judgment["primary_actions_disabled"]
-                    and judgment["first_screen_buttons_visible"]
                     and judgment["phone_safe_status"] == "passed"
                 )
                 all_passed = all_passed and passed
+                per_viewport.append({
+                    "viewport": f"{width}x{height}",
+                    "passed": passed,
+                    "evidence_json": str(evidence_path),
+                    "screenshot": str(screenshot_path),
+                    "judgment": judgment,
+                })
                 print(
                     f"viewport={width}x{height} "
+                    f"passed={str(passed).lower()} "
                     f"hit_area_status={judgment['hit_area_status']} "
                     f"overlap_status={judgment['overlap_status']} "
                     f"overflow_status={judgment['overflow_status']} "
                     f"ack_copy_visible={str(judgment['ack_copy_visible']).lower()} "
-                    f"diagnostics_accessible={str(judgment['diagnostics_accessible']).lower()} "
                     f"primary_actions_disabled={str(judgment['primary_actions_disabled']).lower()} "
-                    f"first_screen_buttons_visible={str(judgment['first_screen_buttons_visible']).lower()} "
+                    f"diagnostics_accessible={str(judgment['diagnostics_accessible']).lower()} "
+                    f"support_handoff_available={str(judgment['support_handoff_available']).lower()} "
+                    f"bundle_visible={str(judgment['browser_acceptance_bundle_visible']).lower()} "
+                    f"bundle_copyable={str(judgment['browser_acceptance_bundle_copyable']).lower()} "
                     f"phone_safe_status={judgment['phone_safe_status']} "
                     f"evidence_boundary={EVIDENCE_BOUNDARY} "
                     f"evidence_json={evidence_path} screenshot={screenshot_path}"
                 )
                 if not passed:
                     print(f"failure_detail={json.dumps(judgment, ensure_ascii=False, sort_keys=True)}")
-    summary_path = output_dir / "phone_browser_acceptance_summary.json"
+    summary_path = output_dir / "mobile_web_browser_acceptance_summary.json"
+    artifact_hashes = {
+        path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(output_dir.glob("mobile_web_browser_*.*"))
+        if path.is_file()
+    }
     summary = {
         "ok": bool(all_passed),
         "browser": browser,
+        "served_root": str(MOBILE_WEB_ROOT),
+        "fixture": str(MOBILE_FIXTURE),
         "viewports": [f"{width}x{height}" for width, height in VIEWPORTS],
+        "checks": per_viewport,
         "evidence_boundary": EVIDENCE_BOUNDARY,
-        "artifact_sha256": {
-            path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in sorted(output_dir.glob("phone_browser_*.*"))
-            if path.is_file()
-        },
+        "proof_type": "real local Chromium-family browser proof for dependency-free mobile/web PWA",
+        "ack_semantics": "ACK is accepted/processing evidence only, not delivery success.",
+        "not_proven": list(NOT_PROVEN),
+        "artifact_sha256": artifact_hashes,
     }
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"summary={summary_path} ok={str(all_passed).lower()} evidence_boundary={EVIDENCE_BOUNDARY}")
@@ -619,4 +643,4 @@ def main():
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

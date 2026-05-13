@@ -5,13 +5,35 @@ from pathlib import Path
 
 
 MOBILE_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = MOBILE_ROOT.parent
 WEB_ROOT = MOBILE_ROOT / "web"
 FIXTURE = MOBILE_ROOT / "fixtures" / "mobile_web_status.fixture.json"
+BROWSER_GATE = REPO_ROOT / "pc-tools" / "evidence" / "phone_browser_acceptance_gate.py"
 
 
 class MobileWebEntrypointTest(unittest.TestCase):
     def read(self, relative):
         return (WEB_ROOT / relative).read_text(encoding="utf-8")
+
+    def test_browser_acceptance_gate_targets_current_mobile_web_pwa(self):
+        script = BROWSER_GATE.read_text(encoding="utf-8")
+
+        # gate 必须验证当前 dependency-free PWA，不能回退到旧 operator gateway 或旧 DOM id。
+        self.assertIn('MOBILE_WEB_ROOT = REPO_ROOT / "mobile" / "web"', script)
+        self.assertIn('MOBILE_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"', script)
+        self.assertIn('EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"', script)
+        self.assertIn('"/api/status"', script)
+        self.assertIn('"/api/diagnostics"', script)
+        self.assertIn('"startButton"', script)
+        self.assertIn('"confirmButton"', script)
+        self.assertIn('"cancelButton"', script)
+        self.assertIn('"mobileBrowserSafeCopy"', script)
+        self.assertIn('"copyAcceptanceBundleButton"', script)
+        self.assertIn("PHONE_BROWSER_CHROME", script)
+        self.assertIn("--browser", script)
+        self.assertNotIn("ros2_trashbot_behavior", script)
+        self.assertNotIn("operator_gateway_http", script)
+        self.assertNotIn("collectButton", script)
 
     def test_static_shell_files_exist_and_reference_phone_safe_schema(self):
         index = self.read("index.html")
