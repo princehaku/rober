@@ -221,6 +221,59 @@
         <pre id="mobileDeviceEvidenceSafeCopy" class="safe-copy" aria-label="脱敏手机设备证据包">暂无手机设备证据包。</pre>
       </section>
 
+      <section class="handoff-session-panel" aria-labelledby="mobileDeviceHandoffTitle">
+        <div class="section-heading">
+          <h2 id="mobileDeviceHandoffTitle">真实手机验收交接会话</h2>
+          <span id="mobileDeviceHandoffBadge" class="gate-badge gate-blocked">会话阻塞</span>
+        </div>
+        <p id="mobileDeviceHandoffCopy" class="message">
+          等待 phone-safe handoff session；缺真实手机/browser、production app 和真实 PWA install prompt 时不放行主操作。
+        </p>
+        <dl class="handoff-session-grid">
+          <div>
+            <dt>入口 URL / 摘要</dt>
+            <dd id="mobileDeviceHandoffEntry">等待当前入口。</dd>
+          </div>
+          <div>
+            <dt>Session id</dt>
+            <dd id="mobileDeviceHandoffSessionId">等待生成</dd>
+          </div>
+          <div>
+            <dt>Client reference</dt>
+            <dd id="mobileDeviceHandoffClientReference">等待生成</dd>
+          </div>
+          <div>
+            <dt>Evidence Capture 引用</dt>
+            <dd id="mobileDeviceHandoffEvidenceRef">等待设备证据包。</dd>
+          </div>
+          <div>
+            <dt>真实观察项</dt>
+            <dd id="mobileDeviceHandoffObservations">device=false / app=false / install_prompt=false</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileDeviceHandoffAck">ACK 只代表 accepted/processing。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileDeviceHandoffBoundary">software_proof_docker_mobile_device_handoff_session_gate</dd>
+          </div>
+        </dl>
+        <ol id="mobileDeviceHandoffChecklist" class="handoff-checklist">
+          <li>
+            <strong>device_browser：not_proven</strong>
+            <em>在真实 iPhone/Android 浏览器打开当前入口。</em>
+          </li>
+        </ol>
+        <p id="mobileDeviceHandoffHint" class="hint">交接包只用于支持人员复现真实手机验收步骤，不是验收通过。</p>
+        <p id="mobileDeviceHandoffNotProven" class="hint">真实手机设备/browser、production app、真实 PWA install prompt 未证明。</p>
+        <div class="bundle-copy-row">
+          <button id="copyDeviceHandoffPackageButton" type="button">复制交接包</button>
+          <span id="mobileDeviceHandoffCopyStatus" class="hint">复制内容只包含脱敏 phone-safe 字段。</span>
+        </div>
+        <pre id="mobileDeviceHandoffSafeCopy" class="safe-copy" aria-label="脱敏真实手机验收交接包">暂无真实手机验收交接包。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>

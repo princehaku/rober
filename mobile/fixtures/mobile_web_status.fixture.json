@@ -234,6 +234,62 @@
       "真实送达"
     ]
   },
+  "mobile_device_handoff_session": {
+    "schema": "trashbot.mobile_device_handoff_session.v1",
+    "schema_version": 1,
+    "package_schema": "trashbot.mobile_device_handoff_package.v1",
+    "overall_status": "blocked",
+    "session_id": "handoff_mobile_fixture_20260514_0001",
+    "client_reference": "mobile_web_handoff_fixture_20260514_0001",
+    "entry_url_summary": "fixture local mobile/web entry; replace with real HTTPS phone URL during device handoff.",
+    "safe_entry_summary": "真实手机验收交接会话只记录入口、步骤和设备观察项；当前 fixture 不是实机验收通过。",
+    "real_device_observed": false,
+    "production_app_ready": false,
+    "pwa_install_prompt_observed": false,
+    "safe_to_control": false,
+    "observation_checklist": [
+      {
+        "item": "device_browser",
+        "status": "not_proven",
+        "safe_phone_copy": "在真实 iPhone/Android 浏览器打开入口，并记录设备型号和浏览器。"
+      },
+      {
+        "item": "pwa_install_prompt",
+        "status": "not_proven",
+        "safe_phone_copy": "观察真实 PWA install prompt；未出现时保持 not_proven。"
+      },
+      {
+        "item": "offline_shell",
+        "status": "static_shell_only",
+        "safe_phone_copy": "断网后只能看到离线壳，不缓存或重放控制请求。"
+      },
+      {
+        "item": "touch_target",
+        "status": "software_smoke_only",
+        "safe_phone_copy": "检查 Start、Confirm、Cancel、Diagnostics 和复制按钮可触控。"
+      },
+      {
+        "item": "viewport",
+        "status": "software_smoke_only",
+        "safe_phone_copy": "记录真实手机 viewport、方向和文字是否遮挡。"
+      }
+    ],
+    "safe_phone_copy": "真实手机验收交接会话 blocked-by-design：当前只复用 mobile_device_evidence_capture 的 phone-safe 元数据和会话步骤，不证明真实设备验收通过。",
+    "recovery_hint": "请把复制包交给支持人员，并在真实 iPhone/Android 浏览器或 production app 入口完成验收记录。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成、取消完成或真实手机验收通过。",
+    "evidence_boundary": "software_proof_docker_mobile_device_handoff_session_gate",
+    "source_evidence_boundary": "software_proof_docker_mobile_device_evidence_capture_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "真实云/4G",
+      "Nav2/fixed-route",
+      "真实底盘运动",
+      "HIL",
+      "真实送达"
+    ]
+  },
   "mobile_browser_acceptance_bundle": {
     "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
     "schema_version": 1,
@@ -487,6 +543,42 @@
       "client_timestamp": "2026-05-13T23:24:00+08:00",
       "safe_phone_copy": "嵌套证据包同样只包含 phone-safe 元数据。",
       "evidence_boundary": "software_proof_docker_mobile_device_evidence_capture_gate"
+    },
+    "mobile_device_handoff_session": {
+      "schema": "trashbot.mobile_device_handoff_session.v1",
+      "schema_version": 1,
+      "package_schema": "trashbot.mobile_device_handoff_package.v1",
+      "overall_status": "blocked",
+      "session_id": "handoff_mobile_fixture_20260514_0001",
+      "client_reference": "mobile_web_handoff_fixture_20260514_0001",
+      "entry_url_summary": "fixture local mobile/web entry; replace with real HTTPS phone URL during device handoff.",
+      "safe_entry_summary": "嵌套交接会话同样只用于真实手机验收交接，不证明通过。",
+      "real_device_observed": false,
+      "production_app_ready": false,
+      "pwa_install_prompt_observed": false,
+      "safe_to_control": false,
+      "observation_checklist": [
+        {
+          "item": "device_browser",
+          "status": "not_proven",
+          "safe_phone_copy": "在真实 iPhone/Android 浏览器打开入口。"
+        },
+        {
+          "item": "pwa_install_prompt",
+          "status": "not_proven",
+          "safe_phone_copy": "观察真实 PWA install prompt。"
+        }
+      ],
+      "safe_phone_copy": "phone_readiness 内的 handoff session 只复用 phone-safe evidence capture 元数据。",
+      "recovery_hint": "真实手机/browser、production app 和真实 PWA install prompt 缺失时主操作继续 fail closed。",
+      "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表真实手机验收通过。",
+      "evidence_boundary": "software_proof_docker_mobile_device_handoff_session_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_device_evidence_capture_gate",
+      "not_proven": [
+        "真实手机设备/browser",
+        "production app",
+        "真实 PWA install prompt"
+      ]
     },
     "mobile_browser_acceptance_bundle": {
       "schema": "trashbot.mobile_browser_acceptance_bundle.v1",

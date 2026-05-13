@@ -62,6 +62,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("mobile_device_evidence_capture", app)
         self.assertIn("mobile_device_evidence_capture_summary", app)
         self.assertIn("mobile_device_evidence_package", app)
+        self.assertIn("mobile_device_handoff_session", app)
+        self.assertIn("mobile_device_handoff_session_summary", app)
+        self.assertIn("mobile_device_handoff_package", app)
         self.assertIn("mobile_browser_acceptance_bundle", app)
         self.assertIn("phone_browser_acceptance_bundle", app)
         self.assertIn("mobile_acceptance_evidence_bundle", app)
@@ -313,6 +316,37 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("真实手机/browser、production app 和真实 PWA install prompt 仍未证明", app)
         self.assertNotRegex(app, r"mobileDeviceEvidence.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
 
+    def test_mobile_device_handoff_session_is_visible_copyable_and_fail_closed(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        self.assertIn("mobileDeviceHandoffTitle", index)
+        self.assertIn("真实手机验收交接会话", index)
+        self.assertIn("mobileDeviceHandoffEntry", index)
+        self.assertIn("mobileDeviceHandoffSessionId", index)
+        self.assertIn("mobileDeviceHandoffClientReference", index)
+        self.assertIn("mobileDeviceHandoffChecklist", index)
+        self.assertIn("copyDeviceHandoffPackageButton", index)
+        self.assertIn("mobileDeviceHandoffSafeCopy", index)
+        self.assertIn("software_proof_docker_mobile_device_handoff_session_gate", index)
+        self.assertIn("trashbot.mobile_device_handoff_session.v1", app)
+        self.assertIn("trashbot.mobile_device_handoff_package.v1", app)
+        self.assertIn("mobileDeviceHandoffSessionFromStatus", app)
+        self.assertIn("mobileDeviceHandoffSessionAllowsPrimaryActions", app)
+        self.assertIn("mobile_device_handoff_session", app)
+        self.assertIn("mobile_device_handoff_session_summary", app)
+        self.assertIn("mobile_device_handoff_package", app)
+        self.assertIn("deviceHandoffPackageCopyPayload", app)
+        self.assertIn("safeEntryUrlSummary", app)
+        self.assertIn("observation_checklist", app)
+        self.assertIn("evidence_capture_reference", app)
+        self.assertIn("mobile device handoff session 未显式放行主操作", app)
+        self.assertIn("mobile device handoff session 未显式放行终端动作", app)
+        self.assertIn("真实手机验收交接会话未放行主操作", app)
+        self.assertIn("navigator.clipboard.writeText", app)
+        self.assertIn("真实设备验收通过", app)
+        self.assertNotRegex(app, r"mobileDeviceHandoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
     def test_action_feedback_panel_consumes_receipt_and_fail_closed_copy(self):
         app = self.read("app.js")
         index = self.read("index.html")
@@ -548,12 +582,33 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "software_proof_docker_mobile_device_evidence_capture_gate",
         )
         self.assertEqual(
+            payload["mobile_device_handoff_session"]["schema"],
+            "trashbot.mobile_device_handoff_session.v1",
+        )
+        self.assertEqual(
+            payload["mobile_device_handoff_session"]["package_schema"],
+            "trashbot.mobile_device_handoff_package.v1",
+        )
+        self.assertEqual(payload["mobile_device_handoff_session"]["overall_status"], "blocked")
+        self.assertEqual(payload["mobile_device_handoff_session"]["real_device_observed"], False)
+        self.assertEqual(payload["mobile_device_handoff_session"]["production_app_ready"], False)
+        self.assertEqual(payload["mobile_device_handoff_session"]["pwa_install_prompt_observed"], False)
+        self.assertEqual(payload["mobile_device_handoff_session"]["safe_to_control"], False)
+        self.assertEqual(
+            payload["mobile_device_handoff_session"]["evidence_boundary"],
+            "software_proof_docker_mobile_device_handoff_session_gate",
+        )
+        self.assertEqual(
             payload["phone_readiness"]["mobile_device_acceptance_readiness"]["evidence_boundary"],
             "software_proof_docker_mobile_device_acceptance_readiness_gate",
         )
         self.assertEqual(
             payload["phone_readiness"]["mobile_device_evidence_capture"]["evidence_boundary"],
             "software_proof_docker_mobile_device_evidence_capture_gate",
+        )
+        self.assertEqual(
+            payload["phone_readiness"]["mobile_device_handoff_session"]["evidence_boundary"],
+            "software_proof_docker_mobile_device_handoff_session_gate",
         )
         self.assertEqual(
             payload["mobile_browser_acceptance_bundle"]["schema"],
@@ -637,11 +692,14 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("trashbot.mobile_device_evidence_capture.v1", encoded)
         self.assertIn("trashbot.mobile_device_evidence_capture_summary.v1", encoded)
         self.assertIn("trashbot.mobile_device_evidence_package.v1", encoded)
+        self.assertIn("trashbot.mobile_device_handoff_session.v1", encoded)
+        self.assertIn("trashbot.mobile_device_handoff_package.v1", encoded)
         self.assertIn("trashbot.mobile_browser_acceptance_bundle.v1", encoded)
         self.assertIn("blocked-by-design", encoded)
         self.assertIn("真实 pwa install prompt", encoded)
         self.assertIn("software_proof_docker_mobile_device_acceptance_readiness_gate", encoded)
         self.assertIn("software_proof_docker_mobile_device_evidence_capture_gate", encoded)
+        self.assertIn("software_proof_docker_mobile_device_handoff_session_gate", encoded)
         self.assertIn("software_proof_docker_mobile_browser_acceptance_bundle_gate", encoded)
         self.assertIn("software_proof_docker_mobile_primary_journey_gate", encoded)
         self.assertIn("trashbot.mobile_recovery_decision_gate.v1", encoded)

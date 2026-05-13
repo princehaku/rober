@@ -132,6 +132,7 @@ h2 {
 .cloud-panel,
 .mobile-device-panel,
 .device-evidence-panel,
+.handoff-session-panel,
 .acceptance-bundle-panel,
 .terminal-action-panel,
 .action-feedback-panel,
@@ -225,6 +226,7 @@ h2 {
 .recovery-decision-grid,
 .mobile-device-grid,
 .device-evidence-grid,
+.handoff-session-grid,
 .acceptance-bundle-grid,
 .feedback-grid,
 .terminal-action-grid,
@@ -240,6 +242,7 @@ h2 {
 .recovery-decision-grid div,
 .mobile-device-grid div,
 .device-evidence-grid div,
+.handoff-session-grid div,
 .acceptance-bundle-grid div,
 .feedback-grid div,
 .terminal-action-grid div,
@@ -307,6 +310,38 @@ dd {
 
 .acceptance-bundle-grid {
   grid-template-columns: 1fr;
+}
+
+.handoff-session-grid {
+  grid-template-columns: 1fr;
+}
+
+.handoff-checklist {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.handoff-checklist li {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fbfa;
+}
+
+.handoff-checklist strong,
+.handoff-checklist em {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.handoff-checklist em {
+  margin-top: 4px;
+  color: var(--muted);
+  font-style: normal;
+  line-height: 1.45;
 }
 
 .bundle-copy-row {
@@ -439,6 +474,10 @@ dd {
   }
 
   .acceptance-bundle-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .handoff-session-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-05-14 系列
+
+更新时间：2026-05-14 00:16 Asia/Shanghai。
+
+### 2026-05-14 00-01｜mobile-device-handoff-session-gate｜O4 mobile device handoff session software proof，手机体验由约 76% 上调到约 77%
+
+`sprints/2026.05.14_00-01_mobile-device-handoff-session-gate` 完成 `software_proof_docker_mobile_device_handoff_session_gate`：Task A Full-stack 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/test_mobile_web_entrypoint.py`、`mobile/README.md`、`docs/product/mobile_user_flow.md`，新增首屏“真实手机验收交接会话”面板和复制入口。该面板展示入口 URL/摘要、session id、client reference、真实手机验收步骤、device/browser/PWA/install prompt/offline shell/touch target/viewport 观察项，并生成脱敏 phone-safe handoff package；复制包只引用 `mobile_device_evidence_capture`，不把 evidence capture 写成真实手机设备、真实 iPhone/Android、production app 或真实 PWA install prompt 通过。缺真实手机/browser、production app、真实 PWA install prompt 时，Start Delivery、Confirm Dropoff、Cancel 继续 fail closed。Task A 验证输出 mobile entrypoint unittest `Ran 21 tests in 0.013s OK`、`py_compile` pass、`node --check mobile/web/app.js` pass、scoped diff check pass。
+
+Task B Robot 更新 `onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge_protocol.py`、`docs/interfaces/ros_contracts.md`，新增 `mobile_device_handoff_session`、`mobile_device_handoff_session_summary`、`mobile_device_handoff_package` worker-level 和 protocol-level metadata-only / valid-command mixed-envelope tests。Robot fence 证明 metadata-only response 不触发 collect、confirm_dropoff、cancel，不 POST ACK，不推进或持久化 cursor，不写 delivery success；valid command-envelope mixed metadata 只按 `trashbot.remote.v1` command envelope 执行，不把 handoff metadata 编入 ACK/status/cursor。Task B 验证输出 remote bridge/protocol targeted unittest `Ran 121 tests in 61.586s OK`、`py_compile` pass、scoped diff check pass；未改 production `remote_bridge.py`。
+
+该证据只支持 Objective 4 从约 76% 保守上调到约 77%，理由是 Docker/local `mobile/web/` 已把真实手机验收交接会话做成可见、可复制、phone-safe 的软件护栏，并由 robot metadata-only fence 证明它不污染 command/ACK/status/cursor。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1/2/3 不提升。本轮 `software_proof_docker_mobile_device_handoff_session_gate` 只证明 Docker/local mobile software proof 和 robot metadata-only fence，不证明真实 iPhone/Android device behavior、production app、真实 PWA install prompt、真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、production worker/migration、Nav2/fixed-route、WAVE ROVER、HIL、真实 dropoff/cancel completion 或真实 delivery。ACK、HTTP accepted、receipt、terminal confirmation、evidence package 和 handoff session 仍只是 accepted/processing/support metadata，不是 delivery success。
+
 ## 2026-05-13 系列
 
 更新时间：2026-05-13（本系列持续追加）。本系列下"补充"段落原本写在 `OKR.md` §4.1，2026-05-13 00:00 之后迁入本日志。

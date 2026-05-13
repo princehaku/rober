@@ -842,6 +842,107 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         # protocol client 不能从设备取证 metadata-only 回包合成 command id 或 terminal ACK。
         self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
 
+    def test_validate_command_ignores_mobile_device_handoff_session_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-mobile-device-handoff-session",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "mobile_device_handoff_session": {
+                "schema": "trashbot.mobile_device_handoff_session.v1",
+                "session_state": "support_ready",
+                "evidence_boundary": "software_proof_docker_mobile_device_handoff_session_gate",
+                "trigger_robot_action": "confirm_dropoff",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+                "production_ready": True,
+                "hil_pass": True,
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "mobile_device_handoff_session_summary": {
+                "schema": "trashbot.mobile_device_handoff_session_summary.v1",
+                "safe_phone_copy": "设备交接会话只用于手机和支持侧留痕。",
+                "ack_semantics": "delivery_success",
+                "next_action": "cancel",
+                "real_device_proof": True,
+                "wave_rover_feedback": True,
+            },
+            "mobile_device_handoff_package": {
+                "schema": "trashbot.mobile_device_handoff_package.v1",
+                "support_refs": [{"kind": "session", "url": "https://user:secret@example.invalid/session"}],
+                "Authorization": "Bearer must-not-leak",
+                "serial_device": "/dev/ttyUSB0",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-mobile-device-handoff-session")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 设备交接会话是 phone/support metadata，normalization 只能留下 robot command envelope。
+        self.assertNotIn("mobile_device_handoff_session", encoded_command)
+        self.assertNotIn("mobile_device_handoff_session_summary", encoded_command)
+        self.assertNotIn("mobile_device_handoff_package", encoded_command)
+        self.assertNotIn("software_proof_docker_mobile_device_handoff_session_gate", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("production_ready", encoded_command)
+        self.assertNotIn("hil_pass", encoded_command)
+        self.assertNotIn("real_device_proof", encoded_command)
+        self.assertNotIn("wave_rover_feedback", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("/dev/ttyUSB0", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("secret", encoded_command)
+
+    def test_mobile_device_handoff_session_response_metadata_does_not_create_command_or_ack(self):
+        self.cloud.response_extras.update({
+            "command_response": {
+                "mobile_device_handoff_session": {
+                    "schema": "trashbot.mobile_device_handoff_session.v1",
+                    "session_state": "support_ready",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-handoff-session",
+                    "delivery_success": True,
+                },
+                "mobile_device_handoff_session_summary": {
+                    "schema": "trashbot.mobile_device_handoff_session_summary.v1",
+                    "ack_semantics": "delivery_success",
+                    "next_action": "confirm_dropoff",
+                    "hil_pass": True,
+                },
+                "mobile_device_handoff_package": {
+                    "schema": "trashbot.mobile_device_handoff_package.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_device_handoff_session_gate",
+                    "production_ready": True,
+                },
+            },
+            "status_response": {
+                "mobile_device_handoff_session_summary": {"delivery_success": True},
+            },
+            "ack_response": {
+                "mobile_device_handoff_package": {
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                },
+            },
+        })
+        client = RemoteCloudClient(self.base_url, "robot-1", timeout_sec=2)
+
+        status_response = client.post_status(make_status("robot-1", "waiting_for_trash", "ready"))
+        command = client.get_next_command()
+
+        self.assertIsNone(command)
+        self.assertEqual(self.cloud.acks, [])
+        self.assertTrue(status_response["ok"])
+        encoded_status = json.dumps(self.cloud.statuses[0], ensure_ascii=False)
+        self.assertNotIn("mobile_device_handoff_session", encoded_status)
+        self.assertNotIn("mobile_device_handoff_session_summary", encoded_status)
+        self.assertNotIn("mobile_device_handoff_package", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        # protocol client 不能从设备交接 metadata-only 回包合成 command id 或 terminal ACK。
+        self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
+
     def test_validate_command_ignores_operation_log_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-operation-log-metadata",
