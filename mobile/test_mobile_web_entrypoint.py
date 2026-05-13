@@ -9,6 +9,7 @@ REPO_ROOT = MOBILE_ROOT.parent
 WEB_ROOT = MOBILE_ROOT / "web"
 FIXTURE = MOBILE_ROOT / "fixtures" / "mobile_web_status.fixture.json"
 BROWSER_GATE = REPO_ROOT / "pc-tools" / "evidence" / "phone_browser_acceptance_gate.py"
+CLOUD_PWA_GATE = REPO_ROOT / "pc-tools" / "evidence" / "cloud_hosted_pwa_installability_gate.py"
 
 
 class MobileWebEntrypointTest(unittest.TestCase):
@@ -66,7 +67,32 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("mobile_action_receipt", app)
         self.assertIn("phone_action_feedback", app)
         self.assertEqual(manifest["evidence_boundary"], "software_proof_docker_mobile_web_entrypoint_gate")
+        self.assertEqual(
+            manifest["installability_evidence_boundary"],
+            "software_proof_docker_cloud_hosted_mobile_pwa_installability_gate",
+        )
         self.assertIn("manifest.webmanifest", index)
+
+    def test_cloud_hosted_pwa_installability_gate_uses_relay_and_browser(self):
+        script = CLOUD_PWA_GATE.read_text(encoding="utf-8")
+
+        # 新 gate 必须启动 cloud-relay hosted URL，不能退化成只读本地静态文件。
+        self.assertIn("EVIDENCE_BOUNDARY = \"software_proof_docker_cloud_hosted_mobile_pwa_installability_gate\"", script)
+        self.assertIn("TRASHBOT_REMOTE_CLOUD_MOBILE_WEB_ROOT", script)
+        self.assertIn("ros2_trashbot_cloud_relay.remote_cloud_relay", script)
+        self.assertIn("validate_manifest", script)
+        self.assertIn("validate_service_worker", script)
+        self.assertIn("validate_offline_shell", script)
+        self.assertIn("run_browser_acceptance", script)
+        self.assertIn("manifest.webmanifest", script)
+        self.assertIn("installability_evidence_boundary", script)
+        self.assertIn("request.method !== \"GET\"", script)
+        self.assertIn("/api/collect", script)
+        self.assertIn("/robots/trashbot-001/commands", script)
+        self.assertIn("VIEWPORTS = ((390, 844), (768, 900))", script)
+        self.assertIn("mobile_web_browser_*.*", script)
+        self.assertIn("cloud_hosted_pwa_installability_summary.json", script)
+        self.assertIn("真实 PWA install prompt", script)
 
     def test_primary_actions_fail_closed_and_use_command_safety(self):
         app = self.read("app.js")

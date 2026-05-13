@@ -243,6 +243,16 @@ The gate opens the served PWA in a real local Chromium-family browser through Ch
 
 Successful runs write `mobile_web_browser_390x844.json/png`, `mobile_web_browser_768x900.json/png`, and `mobile_web_browser_acceptance_summary.json` into the sprint `evidence/` directory. This evidence boundary is `software_proof_docker_mobile_web_browser_proof_gate`. It proves a real local Chromium-family browser rendered the dependency-free PWA against a phone-safe fixture; it does not prove a real iPhone/Android device, production app, real PWA install prompt, real cloud/4G, OSS/CDN live traffic, production DB/queue, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or delivery success.
 
+## Cloud-Hosted PWA Installability Gate
+
+`pc-tools/evidence/cloud_hosted_pwa_installability_gate.py` verifies the same `mobile/web/` PWA through a Docker/local `cloud-relay` hosted URL. It starts the relay, requests hosted static routes, and writes `cloud_hosted_pwa_installability_summary.json` plus 390x844 and 768x900 browser evidence into the sprint evidence directory. The evidence boundary is `software_proof_docker_cloud_hosted_mobile_pwa_installability_gate`.
+
+The manifest check covers `name`, `short_name`, `start_url`, `scope`, `display=standalone`, theme/background color, icons, `evidence_boundary=software_proof_docker_mobile_web_entrypoint_gate`, and `installability_evidence_boundary=software_proof_docker_cloud_hosted_mobile_pwa_installability_gate`. The hosted response header must still show `software_proof_docker_cloud_hosted_mobile_web_gate`, because the relay is the serving surface while installability is the browser/PWA acceptance gate layered on top.
+
+The service worker check proves static shell and dynamic control traffic stay separated: `/api/*`, `/robots/*`, commands, ACK, diagnostics, and every non-GET request bypass cache with `no-store`; the script must not use offline queue/replay storage for control requests. The offline shell keeps Start Delivery, Confirm Dropoff, and Cancel disabled and only explains reconnect/recovery. The browser check keeps 390x844 and 768x900 viewports, verifies Start/Confirm/Cancel fail closed, Diagnostics and Support remain available, ACK copy is not delivery success, the browser evidence bundle is visible/copyable, key touch targets are at least 44 CSS px, and the layout has no horizontal overflow.
+
+This is Docker/local cloud-hosted browser/PWA software proof only. It is not a real iPhone/Android device test, not a production app, not a real PWA install prompt, not real HTTPS/TLS public ingress, not real 4G/SIM, not OSS/CDN live traffic, not production DB/queue proof, not Nav2/fixed-route delivery, not WAVE ROVER/HIL, and not real delivery success.
+
 ## Local PWA Installability Gate
 
 The local operator fallback page now exposes a minimal PWA shell for Docker/local software proof:

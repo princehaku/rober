@@ -189,6 +189,49 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("cursor_override", encoded_command)
         self.assertNotIn("delivery_success", encoded_command)
 
+    def test_validate_command_ignores_mobile_pwa_installability_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-pwa-installability-metadata",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "cloud_hosted_mobile_pwa_installability_gate": {
+                "schema": "trashbot.cloud_hosted_mobile_pwa_installability_gate.v1",
+                "installability_status": "software_proof_only",
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "pwa_installability_metadata": {
+                "schema": "trashbot.pwa_installability_metadata.v1",
+                "manifest_url": "/manifest.webmanifest",
+                "service_worker_url": "/service-worker.js",
+                "ack_semantics": "delivery_success",
+                "next_action": "confirm_dropoff",
+            },
+            "browser_installability_bundle": {
+                "schema": "trashbot.browser_installability_bundle.v1",
+                "evidence_boundary": "software_proof_docker_mobile_pwa_installability_gate",
+                "Authorization": "Bearer must-not-leak",
+                "credential_url": "https://user:secret@example.invalid/install",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-pwa-installability-metadata")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # PWA installability/browser bundle 是手机静态面证据，parser 只能保留 robot command envelope。
+        self.assertNotIn("cloud_hosted_mobile_pwa_installability_gate", encoded_command)
+        self.assertNotIn("pwa_installability_metadata", encoded_command)
+        self.assertNotIn("browser_installability_bundle", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("credential_url", encoded_command)
+
     def test_validate_command_ignores_mobile_device_acceptance_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-mobile-device-acceptance-metadata",

@@ -21,5 +21,6 @@
       "purpose": "any maskable"
     }
   ],
-  "evidence_boundary": "software_proof_docker_mobile_web_entrypoint_gate"
+  "evidence_boundary": "software_proof_docker_mobile_web_entrypoint_gate",
+  "installability_evidence_boundary": "software_proof_docker_cloud_hosted_mobile_pwa_installability_gate"
 }

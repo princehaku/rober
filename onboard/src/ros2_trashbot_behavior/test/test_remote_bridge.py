@@ -2917,6 +2917,145 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertNotIn("/cmd_vel", encoded_ack)
         self.assertNotIn("DELIVERED", encoded_ack)
 
+    def test_metadata_only_mobile_pwa_installability_response_does_not_start_ack_or_persist_cursor(self):
+        metadata_cases = (
+            (
+                "cloud_hosted_mobile_pwa_installability_gate",
+                {
+                    "schema": "trashbot.cloud_hosted_mobile_pwa_installability_gate.v1",
+                    "installability_status": "software_proof_only",
+                    "manifest_url": "/manifest.webmanifest",
+                    "service_worker_url": "/service-worker.js",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-pwa-installability-gate",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+            (
+                "pwa_installability_metadata",
+                {
+                    "schema": "trashbot.pwa_installability_metadata.v1",
+                    "display": "standalone",
+                    "start_url": "/",
+                    "ack_semantics": "delivery_success",
+                    "next_action": "confirm_dropoff",
+                    "Authorization": "Bearer must-not-leak",
+                },
+            ),
+            (
+                "browser_installability_bundle",
+                {
+                    "schema": "trashbot.browser_installability_bundle.v1",
+                    "browser_surface": "mobile",
+                    "evidence_boundary": "software_proof_docker_mobile_pwa_installability_gate",
+                    "next_action": "cancel",
+                    "delivery_success": True,
+                    "credential_url": "https://user:secret@example.invalid/install",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    self.backend.calls.clear()
+                    self.cloud.status_posts.clear()
+                    self.cloud.ack_posts.clear()
+                    self.cloud.get_paths.clear()
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {metadata_name: metadata}
+
+                    handled = worker.poll_once()
+
+                    # PWA installability/browser metadata 只服务手机静态面，不能驱动 robot action/ACK/cursor。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("credential_url", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
+    def test_mobile_pwa_installability_metadata_is_ignored_by_valid_collect_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "pwa_installability_metadata": {
+                    "schema": "trashbot.pwa_installability_metadata.v1",
+                    "delivery_success": True,
+                    "trigger_robot_action": "cancel",
+                },
+            },
+            "command_response": {
+                "cloud_hosted_mobile_pwa_installability_gate": {
+                    "schema": "trashbot.cloud_hosted_mobile_pwa_installability_gate.v1",
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+                "pwa_installability_metadata": {
+                    "schema": "trashbot.pwa_installability_metadata.v1",
+                    "ack_semantics": "delivery_success",
+                    "next_action": "confirm_dropoff",
+                },
+                "browser_installability_bundle": {
+                    "schema": "trashbot.browser_installability_bundle.v1",
+                    "Authorization": "Bearer must-not-leak",
+                    "credential_url": "https://user:secret@example.invalid/install",
+                },
+            },
+            "ack_response": {
+                "browser_installability_bundle": {
+                    "schema": "trashbot.browser_installability_bundle.v1",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-pwa-installability-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-pwa-installability-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-pwa-installability-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        self.assertEqual(ack_payload["message"], "collect")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # 有效 collect 混入 PWA installability metadata 时，执行和 ACK 仍只跟随 command envelope。
+        self.assertNotIn("cloud_hosted_mobile_pwa_installability_gate", encoded_ack)
+        self.assertNotIn("pwa_installability_metadata", encoded_ack)
+        self.assertNotIn("browser_installability_bundle", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("Authorization", encoded_ack)
+        self.assertNotIn("credential_url", encoded_ack)
+        self.assertNotIn("/cmd_vel", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+
     def test_public_ingress_tls_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {

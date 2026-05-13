@@ -1,0 +1,272 @@
+{
+  "ok": true,
+  "evidence_boundary": "software_proof_docker_cloud_hosted_mobile_pwa_installability_gate",
+  "hosted_url": "http://127.0.0.1:62669/",
+  "hosted_surface_boundary": "software_proof_docker_cloud_hosted_mobile_web_gate",
+  "manifest": {
+    "ok": true,
+    "status": 200,
+    "content_type": "application/manifest+json; charset=utf-8",
+    "required": {
+      "name": true,
+      "short_name": true,
+      "start_url": true,
+      "scope": true,
+      "display": true,
+      "theme_color": true,
+      "background_color": true,
+      "icons": true,
+      "entrypoint_evidence_boundary": true,
+      "installability_evidence_boundary": true,
+      "hosted_header_boundary": true
+    },
+    "manifest": {
+      "name": "rober 手机送垃圾入口",
+      "short_name": "rober",
+      "start_url": "./index.html",
+      "scope": "./",
+      "display": "standalone",
+      "theme_color": "#0f766e",
+      "background_color": "#f4f7f6",
+      "description": "dependency-free phone PWA entrypoint for phone-safe trash delivery flow",
+      "icons": [
+        {
+          "src": "./icon-192.svg",
+          "sizes": "192x192",
+          "type": "image/svg+xml",
+          "purpose": "any maskable"
+        },
+        {
+          "src": "./icon-512.svg",
+          "sizes": "512x512",
+          "type": "image/svg+xml",
+          "purpose": "any maskable"
+        }
+      ],
+      "evidence_boundary": "software_proof_docker_mobile_web_entrypoint_gate",
+      "installability_evidence_boundary": "software_proof_docker_cloud_hosted_mobile_pwa_installability_gate"
+    },
+    "icons": [
+      {
+        "src": "./icon-192.svg",
+        "sizes": "192x192",
+        "type": "image/svg+xml",
+        "purpose": "any maskable",
+        "route_status": 200,
+        "content_type": "image/svg+xml; charset=utf-8",
+        "sha256": "a2985292e4fc21138dd60ebdb8c5074e7037676cc3cc04097482a6a2d551927c"
+      },
+      {
+        "src": "./icon-512.svg",
+        "sizes": "512x512",
+        "type": "image/svg+xml",
+        "purpose": "any maskable",
+        "route_status": 200,
+        "content_type": "image/svg+xml; charset=utf-8",
+        "sha256": "8b79474ef11cc1b0debab7b7c56e013328b0779484def706d5aa14d70d02085f"
+      }
+    ]
+  },
+  "service_worker": {
+    "ok": true,
+    "checks": {
+      "status_200": true,
+      "content_type_js": true,
+      "shell_cache_only": true,
+      "api_bypassed": true,
+      "robots_bypassed": true,
+      "commands_bypassed": true,
+      "ack_bypassed": true,
+      "diagnostics_bypassed": true,
+      "non_get_bypassed": true,
+      "no_store_dynamic": true,
+      "no_queue_or_replay_api": true,
+      "hosted_header_boundary": true
+    },
+    "control_route_checks": {
+      "/api/status": {
+        "method": "GET",
+        "status": 200,
+        "content_type": "application/json; charset=utf-8",
+        "static_shell_returned": false
+      },
+      "/api/diagnostics": {
+        "method": "GET",
+        "status": 200,
+        "content_type": "application/json; charset=utf-8",
+        "static_shell_returned": false
+      },
+      "/api/collect": {
+        "method": "POST",
+        "status": 404,
+        "content_type": "application/json; charset=utf-8",
+        "static_shell_returned": false
+      },
+      "/robots/trashbot-001/commands": {
+        "method": "POST",
+        "status": 401,
+        "content_type": "application/json; charset=utf-8",
+        "static_shell_returned": false
+      },
+      "/robots/trashbot-001/commands/next": {
+        "method": "GET",
+        "status": 401,
+        "content_type": "application/json; charset=utf-8",
+        "static_shell_returned": false
+      },
+      "/robots/trashbot-001/commands/cmd-proof/ack": {
+        "method": "POST",
+        "status": 401,
+        "content_type": "application/json; charset=utf-8",
+        "static_shell_returned": false
+      }
+    },
+    "sha256": "cb7129ab474fe7382a77fd1093befc8867e0ab0338e6c46153fe230ca950f5e9"
+  },
+  "offline_shell": {
+    "ok": true,
+    "checks": {
+      "status_200": true,
+      "content_type_html": true,
+      "primary_actions_disabled": true,
+      "no_cache_queue_replay_copy": true,
+      "ack_not_success": true,
+      "entrypoint_boundary": true,
+      "hosted_header_boundary": true
+    },
+    "sha256": "0768c9124e1213e1a237eed21d0ff17d6a60d4d823ae2f0bc8b6437701ba6942"
+  },
+  "static_routes": {
+    "ok": true,
+    "assets": {
+      "/": {
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "hosted_header_boundary": "software_proof_docker_cloud_hosted_mobile_web_gate",
+        "sha256": "0658bb5c577e902eefd444002588664be41d0e2d638ad5e871197574134a5fb6"
+      },
+      "/index.html": {
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "hosted_header_boundary": "software_proof_docker_cloud_hosted_mobile_web_gate",
+        "sha256": "0658bb5c577e902eefd444002588664be41d0e2d638ad5e871197574134a5fb6"
+      },
+      "/app.js": {
+        "status": 200,
+        "content_type": "application/javascript; charset=utf-8",
+        "hosted_header_boundary": "software_proof_docker_cloud_hosted_mobile_web_gate",
+        "sha256": "9ed38a78e4584ed9ae8756193c43e040dd42d09d1a60568f566ff4efc7c674d7"
+      },
+      "/styles.css": {
+        "status": 200,
+        "content_type": "text/css; charset=utf-8",
+        "hosted_header_boundary": "software_proof_docker_cloud_hosted_mobile_web_gate",
+        "sha256": "f2c6bf6044216f9607fee6eab0a2c222558e113331d987704bc89f2a54fe2947"
+      },
+      "/manifest.webmanifest": {
+        "status": 200,
+        "content_type": "application/manifest+json; charset=utf-8",
+        "hosted_header_boundary": "software_proof_docker_cloud_hosted_mobile_web_gate",
+        "sha256": "88596db36bdda6af0338b7b1b4bd25affa429a24f39b2acdee9750d49f0bd826"
+      },
+      "/service-worker.js": {
+        "status": 200,
+        "content_type": "application/javascript; charset=utf-8",
+        "hosted_header_boundary": "software_proof_docker_cloud_hosted_mobile_web_gate",
+        "sha256": "cb7129ab474fe7382a77fd1093befc8867e0ab0338e6c46153fe230ca950f5e9"
+      },
+      "/offline.html": {
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "hosted_header_boundary": "software_proof_docker_cloud_hosted_mobile_web_gate",
+        "sha256": "0768c9124e1213e1a237eed21d0ff17d6a60d4d823ae2f0bc8b6437701ba6942"
+      },
+      "/icon-192.svg": {
+        "status": 200,
+        "content_type": "image/svg+xml; charset=utf-8",
+        "hosted_header_boundary": "software_proof_docker_cloud_hosted_mobile_web_gate",
+        "sha256": "a2985292e4fc21138dd60ebdb8c5074e7037676cc3cc04097482a6a2d551927c"
+      },
+      "/icon-512.svg": {
+        "status": 200,
+        "content_type": "image/svg+xml; charset=utf-8",
+        "hosted_header_boundary": "software_proof_docker_cloud_hosted_mobile_web_gate",
+        "sha256": "8b79474ef11cc1b0debab7b7c56e013328b0779484def706d5aa14d70d02085f"
+      }
+    }
+  },
+  "browser_acceptance": {
+    "ok": true,
+    "browser": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "viewports": [
+      {
+        "viewport": "390x844",
+        "passed": true,
+        "evidence_json": "sprints/2026.05.13_19-20_mobile-pwa-installability-gate/evidence/mobile_web_browser_390x844.json",
+        "screenshot": "sprints/2026.05.13_19-20_mobile-pwa-installability-gate/evidence/mobile_web_browser_390x844.png",
+        "judgment": {
+          "hit_area_status": "passed",
+          "overlap_status": "passed",
+          "overflow_status": "passed",
+          "ack_copy_visible": true,
+          "ack_not_delivery_success": true,
+          "diagnostics_accessible": true,
+          "support_handoff_available": true,
+          "browser_acceptance_bundle_visible": true,
+          "browser_acceptance_bundle_copyable": true,
+          "primary_actions_disabled": true,
+          "phone_safe_status": "passed",
+          "hit_area_failures": [],
+          "overlaps": [],
+          "horizontal_overflow": [],
+          "page_horizontal_overflow": false,
+          "phone_safe_failures": []
+        }
+      },
+      {
+        "viewport": "768x900",
+        "passed": true,
+        "evidence_json": "sprints/2026.05.13_19-20_mobile-pwa-installability-gate/evidence/mobile_web_browser_768x900.json",
+        "screenshot": "sprints/2026.05.13_19-20_mobile-pwa-installability-gate/evidence/mobile_web_browser_768x900.png",
+        "judgment": {
+          "hit_area_status": "passed",
+          "overlap_status": "passed",
+          "overflow_status": "passed",
+          "ack_copy_visible": true,
+          "ack_not_delivery_success": true,
+          "diagnostics_accessible": true,
+          "support_handoff_available": true,
+          "browser_acceptance_bundle_visible": true,
+          "browser_acceptance_bundle_copyable": true,
+          "primary_actions_disabled": true,
+          "phone_safe_status": "passed",
+          "hit_area_failures": [],
+          "overlaps": [],
+          "horizontal_overflow": [],
+          "page_horizontal_overflow": false,
+          "phone_safe_failures": []
+        }
+      }
+    ]
+  },
+  "ack_semantics": "ACK is accepted/processing evidence only, not delivery success.",
+  "not_proven": [
+    "真实 iPhone/Android device",
+    "production app",
+    "真实 PWA install prompt",
+    "真实云/4G",
+    "真实公网 HTTPS/TLS",
+    "OSS/CDN live traffic",
+    "production DB/queue",
+    "Nav2/fixed-route",
+    "WAVE ROVER",
+    "HIL",
+    "真实送达"
+  ],
+  "artifact_sha256": {
+    "mobile_web_browser_390x844.json": "a60bba1ad8514efd829ead2f50f3b5b1196d9d8f7c96c0da116360ba54f84dc3",
+    "mobile_web_browser_390x844.png": "4740e2d22c9a11130bfc7e71e683b7a5a34446bc2fd4a5b31ec66780ebaa5069",
+    "mobile_web_browser_768x900.json": "d4176f2c342d176f195eb4aeffed1012dbbeabccaee23c5e3debb2bb38d657f6",
+    "mobile_web_browser_768x900.png": "f57e84200d283e98cb48f3d2d8e4375ffe48f73bbdf78961afac97a6497913c2"
+  }
+}

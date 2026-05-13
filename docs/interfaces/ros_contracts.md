@@ -455,6 +455,7 @@ The optional `remote_bridge` node is the formal 4G-oriented remote MVP path. It 
 
 Cloud responses may include optional status, preflight, diagnostics, queue,
 mobile-web-entrypoint, PWA-entrypoint, cloud-hosted PWA/static-shell,
+mobile PWA installability/browser installability,
 voice-prompt-readiness, production-recovery, transaction-isolation, cloud
 external probe, cloud DB/queue external probe, OSS/CDN live probe, external
 evidence intake, deployment-readiness, mobile task-start confirmation, mobile
@@ -644,6 +645,27 @@ normalized command payload, and must not expand robot command payload shape
 beyond the command envelope. ACK remains accepted/processing evidence only and
 must not be rendered or interpreted as browser proof, static-shell proof, or
 delivery success.
+Mobile PWA installability metadata, including
+`cloud_hosted_mobile_pwa_installability_gate`,
+`pwa_installability_metadata`, and `browser_installability_bundle`, is the
+phone/browser static-surface proof for manifest, service worker, start URL,
+standalone display mode, cache boundary, and local/Docker installability
+evidence. It is not a robot command, backend action result, ACK payload, cursor
+instruction, ROS2 action result, Nav2/fixed-route result, WAVE ROVER feedback,
+HIL result, real phone-device proof, real browser-install prompt proof, or
+delivery success proof. Robot-side protocol normalization must strip these
+fields from valid command objects; metadata-only responses must not invoke
+`collect`, `confirm_dropoff`, or `cancel`, must not POST ACK, must not advance
+in-memory `last_ack_id`, and must not persist `last_terminal_ack_id`. If those
+fields appear beside a valid `collect`, `confirm_dropoff`, or `cancel`
+command, the robot bridge must execute only the `trashbot.remote.v1` command
+envelope and must not copy `trigger_robot_action`, `next_action`,
+`cursor_override`, `delivery_success`, credential-bearing URLs, Authorization
+headers, raw ROS topics, `/cmd_vel`, serial devices, or hardware parameters
+into robot status, ACK, backend action result, normalized command payload, or
+cursor state. ACK remains accepted/processing evidence only and must not be
+rendered or interpreted as PWA installability proof, browser proof, or delivery
+success.
 Operation-log metadata, including `operation_log` and `phone_operation_log`, is
 phone/support metadata for recent events, blocked reasons, pending ACK,
 offline/recovery state, manual takeover, and support handoff copy. It is not a

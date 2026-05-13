@@ -372,7 +372,11 @@ class CDPClient:
         self.ws.send_json({"id": command_id, "method": method, "params": params or {}})
         deadline = time.time() + timeout
         while time.time() < deadline:
-            message = self.ws.recv_json(timeout=max(0.1, min(1.0, deadline - time.time())))
+            try:
+                message = self.ws.recv_json(timeout=max(0.1, min(1.0, deadline - time.time())))
+            except TimeoutError:
+                # CDP 事件不是稳定心跳；空读应继续等到本次命令总超时。
+                continue
             if message.get("id") == command_id:
                 if "error" in message:
                     raise RuntimeError(f"CDP {method} failed: {message['error']}")
@@ -534,7 +538,7 @@ def run_viewport(cdp, url, width, height, output_dir):
     })
     cdp.call("Page.navigate", {"url": url})
     time.sleep(0.5)
-    result = cdp.evaluate(viewport_script(), timeout=15.0)
+    result = cdp.evaluate(viewport_script(), timeout=30.0)
     judgment = judge_viewport(result)
     screenshot = cdp.call("Page.captureScreenshot", {"format": "png", "fromSurface": True}, timeout=8.0)
     screenshot_path = output_dir / f"mobile_web_browser_{width}x{height}.png"

@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 REMOTE_BRIDGE = REPO_ROOT / "ros2_trashbot_behavior" / "ros2_trashbot_behavior" / "remote_bridge.py"
 PROTOCOL = REPO_ROOT / "ros2_trashbot_behavior" / "ros2_trashbot_behavior" / "remote_bridge_protocol.py"
 SETUP = REPO_ROOT / "ros2_trashbot_behavior" / "setup.py"
+ROS_CONTRACTS = REPO_ROOT.parents[1] / "docs" / "interfaces" / "ros_contracts.md"
 
 
 class RemoteBridgeStaticTest(unittest.TestCase):
@@ -116,6 +117,25 @@ class RemoteBridgeStaticTest(unittest.TestCase):
 
         self.assertIn("error_code=result.error_code", result_block)
         self.assertIn("final_state=result.final_state", result_block)
+
+    def test_pwa_installability_metadata_is_not_hardcoded_as_robot_logic(self):
+        source = REMOTE_BRIDGE.read_text(encoding="utf-8")
+        protocol = PROTOCOL.read_text(encoding="utf-8")
+        docs = ROS_CONTRACTS.read_text(encoding="utf-8")
+        ast.parse(source)
+        ast.parse(protocol)
+
+        metadata_fields = (
+            "cloud_hosted_mobile_pwa_installability_gate",
+            "pwa_installability_metadata",
+            "browser_installability_bundle",
+        )
+        for field in metadata_fields:
+            with self.subTest(field=field):
+                # remote bridge/protocol 依赖 command envelope 解析，不能为手机 installability metadata 写动作分支。
+                self.assertNotIn(field, source)
+                self.assertNotIn(field, protocol)
+                self.assertIn(field, docs)
 
 
 if __name__ == "__main__":

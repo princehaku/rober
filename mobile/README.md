@@ -17,6 +17,8 @@
 > 当前增量：sprint `2026.05.13_16-17_mobile-web-browser-proof-gate` 将真实 Chrome/Chromium browser acceptance gate 迁移到当前 `mobile/web/` 静态 PWA。证据边界是 `software_proof_docker_mobile_web_browser_proof_gate`，只证明本机 Chromium-family 浏览器可渲染 390x844 与 768x900 viewport、主操作 fail closed、Diagnostics/Support Handoff 与浏览器验收包可用、ACK 文案未变成送达成功、首屏无水平 overflow/不合理 overlap、可见文案不泄漏敏感或机器人内部细节；不等于真实 iPhone/Android device、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 >
 > 当前增量：sprint `2026.05.13_18-19_cloud-hosted-mobile-web-gate` 让 cloud-relay HTTP runtime 托管同一份 `mobile/web/` PWA 静态壳，并提供 phone-safe `/api/status` 与 `/api/diagnostics` fail-closed adapter。证据边界是 `software_proof_docker_cloud_hosted_mobile_web_gate`，只证明本地/Docker relay 可返回静态 shell、同源只读状态/诊断 adapter、API/probe 路由优先、missing static 和 traversal 返回 phone-safe 404；不等于真实公网、TLS、4G/SIM、真实手机设备/browser、production app、真实 PWA install prompt、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+>
+> 当前增量：sprint `2026.05.13_19-20_mobile-pwa-installability-gate` 新增 cloud-relay hosted PWA installability/browser gate。证据边界是 `software_proof_docker_cloud_hosted_mobile_pwa_installability_gate`，只证明 Docker/local relay hosted URL 上的 manifest、icons、service worker 动静分离、offline shell、静态 assets、390x844/768x900 本机 Chromium-family 浏览器和 fail-closed 主操作；不等于真实 iPhone/Android device、production app、真实 PWA install prompt、真实公网 HTTPS/TLS、真实云/4G、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 
 ## 用途（What lives here）
 
@@ -72,6 +74,14 @@ cloud-relay hosted phone API 规则：
 - 如果 store 有最近 status，`latest_status` 只包含脱敏后的安全字段；主操作仍保持 fail closed。
 - `/api/diagnostics` 包含同一 phone-safe summary、`cloud_hosted_mobile_web_gate`、安全 `latest_status`、`evidence_boundary=software_proof_docker_cloud_hosted_mobile_web_gate` 和 `not_proven`。
 - 两个 API 都不得暴露 token、Authorization、DB/queue URL、本地路径、ROS topic、serial、WAVE ROVER、`/cmd_vel`、traceback 或 complete artifact。
+
+cloud-relay hosted PWA installability/browser gate：
+
+- 运行命令：`PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/cloud_hosted_pwa_installability_gate.py --output-dir sprints/2026.05.13_19-20_mobile-pwa-installability-gate/evidence`。
+- gate 启动本地 `remote_cloud_relay`，只通过 hosted URL 拉取 `/`、`/index.html`、`/app.js`、`/styles.css`、`/manifest.webmanifest`、`/service-worker.js`、`/offline.html` 和 icons。
+- manifest 必须保留 `name`、`short_name`、`start_url`、`scope`、`display=standalone`、theme/background color、icons、`evidence_boundary=software_proof_docker_mobile_web_entrypoint_gate`，并声明 `installability_evidence_boundary=software_proof_docker_cloud_hosted_mobile_pwa_installability_gate`。
+- service worker 只缓存静态 shell；`/api/*`、`/robots/*`、commands、ACK、diagnostics 和非 GET 请求必须绕过缓存、使用 `no-store`，并且不能离线排队或重放。
+- 成功后 evidence 目录包含 `cloud_hosted_pwa_installability_summary.json`、两个 viewport 的 JSON/PNG。summary 的 `not_proven` 必须继续列出真实手机设备、production app、真实 PWA install prompt、真实公网/4G、OSS/CDN、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 和真实送达。
 
 当前入口消费这些既有字段：
 
@@ -178,5 +188,6 @@ PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gat
 | 当前 mobile-browser-acceptance-bundle gate | `mobile/web/` 浏览器验收包显示/复制、blocked-by-design 摘要、bundle 级主操作 fail-closed |
 | 当前 mobile-web-browser-proof gate | `mobile/web/` 静态 PWA 的本机 Chromium-family 真实 browser proof、viewport 截图、JSON/summary evidence |
 | 当前 cloud-hosted-mobile-web gate | cloud-relay 同源托管 `mobile/web/` 静态壳、API/probe 路由优先、静态路径围栏 |
+| 当前 cloud-hosted-pwa-installability gate | cloud-relay hosted PWA manifest/SW/offline/assets/browser acceptance 软件证明 |
 | 下一个 sprint | 真实手机设备验收、production app、真实 PWA install prompt 和弱网体验 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |
