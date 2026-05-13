@@ -42,6 +42,7 @@ PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY = "software_proof_docker_production_recove
 PRODUCTION_RECOVERY_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_production_recovery_phone_consumption"
 CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_deployment_readiness_gate"
 CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_external_probe_bundle_gate"
+CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_public_ingress_tls_gate"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -73,6 +74,8 @@ CLOUD_DEPLOYMENT_READINESS_SCHEMA = "trashbot.cloud_deployment_readiness"
 CLOUD_DEPLOYMENT_READINESS_SCHEMA_VERSION = 1
 CLOUD_EXTERNAL_PROBE_SCHEMA = "trashbot.cloud_external_probe_bundle"
 CLOUD_EXTERNAL_PROBE_SCHEMA_VERSION = 1
+CLOUD_PUBLIC_INGRESS_TLS_SCHEMA = "trashbot.cloud_public_ingress_tls_gate"
+CLOUD_PUBLIC_INGRESS_TLS_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -215,6 +218,24 @@ CLOUD_EXTERNAL_PROBE_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+CLOUD_PUBLIC_INGRESS_TLS_NOT_PROVEN = [
+    "real_cloud",
+    "real_https_tls",
+    "public_ingress_external_probe",
+    "dns_resolution",
+    "reverse_proxy_live_routing",
+    "firewall_public_ingress",
+    "real_4g_sim",
+    "real_oss_upload",
+    "cdn_origin_fetch",
+    "production_db_or_queue",
+    "multi_instance_consistency",
+    "production_backup_policy",
+    "real_disaster_recovery",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -237,6 +258,7 @@ PHONE_COPY = {
     "production_recovery_blocked": "生产备份/灾备恢复 gate 未通过校验，请重新生成后再试。",
     "cloud_deployment_readiness_blocked": "云部署就绪检查仍未通过，请补齐公网、TLS、4G 和生产存储证据。",
     "cloud_external_probe_blocked": "云端外部探测 bundle 未通过校验，请重新生成后再试。",
+    "cloud_public_ingress_tls_blocked": "公网入口/TLS 配置 gate 仍未通过外部实证，请补齐 DNS、反向代理和防火墙证据。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -1908,6 +1930,229 @@ def cloud_external_probe_bundle_summary(artifact_path):
         }
 
 
+def _cloud_public_ingress_tls_forbidden_markers(payload):
+    # 公网入口/TLS gate 面向手机和部署 preflight，只能保留枚举结果，不能保留 URL、证书路径或代理配置正文。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "secret",
+        "password",
+        "private key",
+        "private_key",
+        "tls key",
+        "certificate path",
+        "cert path",
+        "postgres://",
+        "mysql://",
+        "redis://",
+        "amqp://",
+        "queue url",
+        "queue_url",
+        "database url",
+        "database_url",
+        "://",
+        "raw state path",
+        "state path",
+        "/tmp/",
+        "/etc/",
+        "/dev/",
+        "serial",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+        "traceback",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def _cloud_public_ingress_tls_config(env):
+    # 该 gate 只判断“配置包是否具备形态”，不读取真实证书、域名或反向代理文件内容。
+    public_scheme = _safe_scheme(_env_value(env, "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL"))
+    tls_mode = _safe_enum(
+        _env_value(env, "TRASHBOT_REMOTE_CLOUD_TLS_MODE", "future_reverse_proxy"),
+        {"future_reverse_proxy", "terminated", "managed", "reverse_proxy"},
+    )
+    ingress = _safe_enum(
+        _env_value(env, "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS", "missing"),
+        {"missing", "private_only", "public_https"},
+    )
+    reverse_proxy = _safe_enum(
+        _env_value(env, "TRASHBOT_REMOTE_CLOUD_REVERSE_PROXY_CONFIG", "missing"),
+        {"missing", "planned", "present"},
+        "missing",
+    )
+    firewall = _safe_enum(
+        _env_value(env, "TRASHBOT_REMOTE_CLOUD_FIREWALL_CONFIG", "missing"),
+        {"missing", "planned", "present"},
+        "missing",
+    )
+    tls_config_present = public_scheme == "https" and tls_mode in {"terminated", "managed", "reverse_proxy"}
+    ingress_config_present = public_scheme == "https" and ingress == "public_https"
+    reverse_proxy_config_present = reverse_proxy == "present" or tls_mode in {"terminated", "managed", "reverse_proxy"}
+    firewall_config_present = firewall == "present"
+    config_package_present = tls_config_present and ingress_config_present and reverse_proxy_config_present
+    if config_package_present:
+        state = "public_ingress_tls_config_present_not_externally_proven"
+        summary = "公网入口/TLS/反向代理配置包形态存在，但还没有真实外部 HTTPS、DNS、反向代理或防火墙实证。"
+        retry = "run_external_https_dns_reverse_proxy_firewall_probe_and_attach_evidence"
+    else:
+        state = "missing_public_ingress_tls_config"
+        summary = "尚未形成公网入口/TLS/反向代理配置包，不能进入真实外部 HTTPS 验收。"
+        retry = "create_https_public_ingress_reverse_proxy_and_firewall_config_package"
+    return {
+        "state": state,
+        "public_base_url_scheme": public_scheme,
+        "tls_mode": tls_mode,
+        "public_ingress": ingress,
+        "reverse_proxy_config": reverse_proxy,
+        "firewall_config": firewall,
+        "ingress_config_present": ingress_config_present,
+        "tls_config_present": tls_config_present,
+        "reverse_proxy_config_present": reverse_proxy_config_present,
+        "firewall_config_present": firewall_config_present,
+        "config_package_present": config_package_present,
+        "external_probe_proven": False,
+        "safe_summary": summary,
+        "retry_hint": retry,
+    }
+
+
+def build_cloud_public_ingress_tls_artifact_payload(env=None, *, generated_at=None):
+    """生成公网入口/TLS 配置 gate artifact；它只证明配置包形态，不证明真实公网链路。"""
+    env = os.environ if env is None else env
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    config = _cloud_public_ingress_tls_config(env)
+    body = {
+        "schema": CLOUD_PUBLIC_INGRESS_TLS_SCHEMA,
+        "schema_version": CLOUD_PUBLIC_INGRESS_TLS_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY,
+        "generated_at": generated_value,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "state": config["state"],
+        "ingress_config_present": config["ingress_config_present"],
+        "tls_config_present": config["tls_config_present"],
+        "reverse_proxy_config_present": config["reverse_proxy_config_present"],
+        "firewall_config_present": config["firewall_config_present"],
+        "config_package_present": config["config_package_present"],
+        "external_probe_proven": False,
+        "details": {
+            "public_base_url_scheme": config["public_base_url_scheme"],
+            "tls_mode": config["tls_mode"],
+            "public_ingress": config["public_ingress"],
+            "reverse_proxy_config": config["reverse_proxy_config"],
+            "firewall_config": config["firewall_config"],
+        },
+        "not_proven": list(CLOUD_PUBLIC_INGRESS_TLS_NOT_PROVEN),
+        "safe_summary": config["safe_summary"],
+        "retry_hint": config["retry_hint"],
+    }
+    forbidden = _cloud_public_ingress_tls_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("cloud public ingress TLS artifact contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_cloud_public_ingress_tls_artifact_payload(artifact):
+    # 校验返回小摘要；完整 artifact、证书路径、URL 或代理配置正文都不能进入 preflight 输出。
+    if not isinstance(artifact, dict):
+        raise ValueError("cloud public ingress TLS artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != CLOUD_PUBLIC_INGRESS_TLS_SCHEMA:
+        raise ValueError("cloud public ingress TLS schema mismatch")
+    if artifact.get("schema_version") != CLOUD_PUBLIC_INGRESS_TLS_SCHEMA_VERSION:
+        raise ValueError("cloud public ingress TLS schema version mismatch")
+    if artifact.get("evidence_boundary") != CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY:
+        raise ValueError("cloud public ingress TLS evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("cloud public ingress TLS checksum mismatch")
+    if artifact.get("production_ready") is not False or artifact.get("overall_status") != "blocked":
+        raise ValueError("cloud public ingress TLS must stay production blocked")
+    state = str(artifact.get("state") or "")
+    if state not in {
+        "missing_public_ingress_tls_config",
+        "public_ingress_tls_config_present_not_externally_proven",
+    }:
+        raise ValueError("cloud public ingress TLS state mismatch")
+    if artifact.get("external_probe_proven") is not False:
+        raise ValueError("cloud public ingress TLS external proof must stay false")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in CLOUD_PUBLIC_INGRESS_TLS_NOT_PROVEN if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("cloud public ingress TLS not_proven list is incomplete")
+    safe_summary = str(artifact.get("safe_summary") or "")
+    retry_hint = str(artifact.get("retry_hint") or "")
+    if not safe_summary or not retry_hint:
+        raise ValueError("cloud public ingress TLS phone copy missing")
+    forbidden = _cloud_public_ingress_tls_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("cloud public ingress TLS artifact contains forbidden phone-unsafe markers")
+    return {
+        "ok": True,
+        "schema": CLOUD_PUBLIC_INGRESS_TLS_SCHEMA,
+        "schema_version": CLOUD_PUBLIC_INGRESS_TLS_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "state": state,
+        "ingress_config_present": bool(artifact.get("ingress_config_present")),
+        "tls_config_present": bool(artifact.get("tls_config_present")),
+        "reverse_proxy_config_present": bool(artifact.get("reverse_proxy_config_present")),
+        "firewall_config_present": bool(artifact.get("firewall_config_present")),
+        "config_package_present": bool(artifact.get("config_package_present")),
+        "external_probe_proven": False,
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "generated_at": str(artifact.get("generated_at") or ""),
+        "not_proven": list(CLOUD_PUBLIC_INGRESS_TLS_NOT_PROVEN),
+    }
+
+
+def create_cloud_public_ingress_tls_artifact(artifact_path, env=None):
+    # CLI、Docker smoke 和 preflight 使用同一生成函数，确保缺配置/有配置未实证的分类一致。
+    artifact = build_cloud_public_ingress_tls_artifact_payload(env)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_cloud_public_ingress_tls_artifact_payload(artifact)
+    return {
+        "ok": True,
+        "cloud_public_ingress_tls_status": "blocked",
+        "evidence_boundary": CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "state": artifact.get("state"),
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(CLOUD_PUBLIC_INGRESS_TLS_NOT_PROVEN),
+    }
+
+
+def cloud_public_ingress_tls_artifact_summary(artifact_path):
+    # preflight 只读取摘要，不回显 artifact 路径、原始 URL、证书路径或反向代理配置正文。
+    try:
+        artifact = _load_json_file(artifact_path, "cloud public ingress TLS artifact")
+        return validate_cloud_public_ingress_tls_artifact_payload(artifact)
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "cloud_public_ingress_tls_invalid",
+            "safe_summary": _safe_error_reason(exc),
+            "retry_hint": "重新生成 cloud public ingress TLS artifact 后重跑 preflight。",
+            "not_proven": list(CLOUD_PUBLIC_INGRESS_TLS_NOT_PROVEN),
+        }
+
+
 def _production_store_queue_forbidden_markers(payload):
     # 该 artifact 会进入手机和 preflight，必须拒绝真实连接串、队列地址、路径和底层控制词。
     encoded = json.dumps(payload, ensure_ascii=False).lower()
@@ -3340,6 +3585,10 @@ def production_preflight_payload(env=None):
     transaction_isolation_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_ARTIFACT")
     production_recovery_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ARTIFACT")
     cloud_external_probe_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_ARTIFACT")
+    cloud_public_ingress_tls_artifact_path = _env_value(
+        env,
+        "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS_TLS_ARTIFACT",
+    )
     cloud_deployment_readiness_artifact_path = _env_value(
         env,
         "TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT",
@@ -3448,6 +3697,76 @@ def production_preflight_payload(env=None):
                 "尚未提供 cloud external probe bundle artifact，不能声明外部探测软件证明。",
                 "用本地或未来公网 base URL 生成 artifact，并通过 TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_ARTIFACT 传给 preflight。",
                 {"artifact_present": False, "software_proof_only": True},
+            )
+        )
+
+    if cloud_public_ingress_tls_artifact_path:
+        # artifact 只让 preflight 区分“完全缺配置”和“配置存在但缺外部实证”，绝不升级 production_ready。
+        ingress_tls_summary = cloud_public_ingress_tls_artifact_summary(cloud_public_ingress_tls_artifact_path)
+        if ingress_tls_summary.get("ok"):
+            state = str(ingress_tls_summary.get("state") or "missing_public_ingress_tls_config")
+            checks.append(
+                _check(
+                    "cloud_public_ingress_tls",
+                    "blocked",
+                    state,
+                    str(ingress_tls_summary.get("safe_summary") or "公网入口/TLS gate 仍未通过外部实证。"),
+                    str(ingress_tls_summary.get("retry_hint") or "补齐公网入口/TLS 证据后重跑 preflight。"),
+                    {
+                        "artifact_schema": CLOUD_PUBLIC_INGRESS_TLS_SCHEMA,
+                        "schema_version": CLOUD_PUBLIC_INGRESS_TLS_SCHEMA_VERSION,
+                        "evidence_boundary": CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY,
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "ingress_config_present": ingress_tls_summary.get("ingress_config_present"),
+                        "tls_config_present": ingress_tls_summary.get("tls_config_present"),
+                        "reverse_proxy_config_present": ingress_tls_summary.get("reverse_proxy_config_present"),
+                        "firewall_config_present": ingress_tls_summary.get("firewall_config_present"),
+                        "config_package_present": ingress_tls_summary.get("config_package_present"),
+                        "external_probe_proven": False,
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "cloud_public_ingress_tls",
+                    "blocked",
+                    "cloud_public_ingress_tls_artifact_invalid",
+                    str(ingress_tls_summary.get("safe_summary") or "公网入口/TLS artifact 不可用。"),
+                    str(
+                        ingress_tls_summary.get("retry_hint")
+                        or "重新生成 cloud public ingress TLS artifact 后重跑 preflight。"
+                    ),
+                    {"artifact_present": True, "software_proof_only": True},
+                )
+            )
+    else:
+        inline_ingress_tls_summary = validate_cloud_public_ingress_tls_artifact_payload(
+            build_cloud_public_ingress_tls_artifact_payload(env)
+        )
+        checks.append(
+            _check(
+                "cloud_public_ingress_tls",
+                "blocked",
+                str(inline_ingress_tls_summary.get("state") or "missing_public_ingress_tls_config"),
+                str(inline_ingress_tls_summary.get("safe_summary") or "公网入口/TLS gate 仍未通过外部实证。"),
+                str(inline_ingress_tls_summary.get("retry_hint") or "补齐公网入口/TLS 证据后重跑 preflight。"),
+                {
+                    "artifact_schema": CLOUD_PUBLIC_INGRESS_TLS_SCHEMA,
+                    "schema_version": CLOUD_PUBLIC_INGRESS_TLS_SCHEMA_VERSION,
+                    "evidence_boundary": CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY,
+                    "production_ready": False,
+                    "overall_status": "blocked",
+                    "ingress_config_present": inline_ingress_tls_summary.get("ingress_config_present"),
+                    "tls_config_present": inline_ingress_tls_summary.get("tls_config_present"),
+                    "reverse_proxy_config_present": inline_ingress_tls_summary.get("reverse_proxy_config_present"),
+                    "firewall_config_present": inline_ingress_tls_summary.get("firewall_config_present"),
+                    "config_package_present": inline_ingress_tls_summary.get("config_package_present"),
+                    "external_probe_proven": False,
+                    "software_proof_only": True,
+                },
             )
         )
 
@@ -4172,6 +4491,12 @@ def production_preflight_payload(env=None):
         check["name"] == "cloud_external_probe_bundle" and check["status"] == "pass"
         for check in checks
     )
+    local_cloud_public_ingress_tls_seen = any(
+        check["name"] == "cloud_public_ingress_tls"
+        and check["code"]
+        in {"missing_public_ingress_tls_config", "public_ingress_tls_config_present_not_externally_proven"}
+        for check in checks
+    )
     not_proven = [
         "production_credential_rotation",
         "production_robot_provisioning",
@@ -4214,6 +4539,8 @@ def production_preflight_payload(env=None):
         not_proven.insert(15, "production_recovery_gate")
     if not local_cloud_external_probe_ok:
         not_proven.insert(16, "cloud_external_probe_bundle")
+    if local_cloud_public_ingress_tls_seen:
+        not_proven.insert(16, "cloud_public_ingress_tls_external_proof")
     payload = {
         "ok": production_ready,
         "software_proof_ready": bool(
@@ -4225,6 +4552,7 @@ def production_preflight_payload(env=None):
             or local_transaction_isolation_ok
             or local_production_recovery_ok
             or local_cloud_external_probe_ok
+            or local_cloud_public_ingress_tls_seen
         ),
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
@@ -4250,6 +4578,8 @@ def production_preflight_payload(env=None):
             if local_network_recovery_ok
             else BACKUP_RESTORE_EVIDENCE_BOUNDARY
             if local_backup_drill_ok
+            else CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY
+            if local_cloud_public_ingress_tls_seen
             else CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY
         ),
         "overall_status": overall,
@@ -5476,6 +5806,11 @@ def main(argv=None):
         help="phone-safe cloud external probe bundle artifact consumed by preflight",
     )
     parser.add_argument(
+        "--cloud-public-ingress-tls-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS_TLS_ARTIFACT", ""),
+        help="phone-safe public ingress/TLS/reverse-proxy artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
@@ -5519,6 +5854,11 @@ def main(argv=None):
         "--write-cloud-external-probe-artifact",
         default="",
         help="probe health/ready/preflight endpoints and write a phone-safe cloud external probe bundle artifact",
+    )
+    parser.add_argument(
+        "--write-cloud-public-ingress-tls-artifact",
+        default="",
+        help="write a phone-safe public ingress/TLS/reverse-proxy config gate artifact",
     )
     parser.add_argument(
         "--cloud-external-probe-base-url",
@@ -5668,9 +6008,23 @@ def main(argv=None):
             )
         if args.cloud_external_probe_artifact:
             preflight_env["TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_ARTIFACT"] = args.cloud_external_probe_artifact
+        if args.cloud_public_ingress_tls_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS_TLS_ARTIFACT"] = (
+                args.cloud_public_ingress_tls_artifact
+            )
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
+    if args.write_cloud_public_ingress_tls_artifact:
+        try:
+            payload = create_cloud_public_ingress_tls_artifact(
+                args.write_cloud_public_ingress_tls_artifact,
+                dict(os.environ),
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error("cloud_public_ingress_tls_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     if args.write_cloud_external_probe_artifact:
         try:
             base_url = args.cloud_external_probe_base_url or os.environ.get(

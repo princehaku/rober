@@ -331,6 +331,53 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("delivery_success", encoded_command)
         self.assertNotIn("Authorization", encoded_command)
 
+    def test_validate_command_ignores_public_ingress_tls_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-public-ingress-tls-metadata",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "cloud_public_ingress_tls": {
+                "schema": "trashbot.cloud_public_ingress_tls.v1",
+                "production_ready": False,
+                "overall_status": "blocked",
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+                "Authorization": "Bearer must-not-leak",
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "public_ingress_tls": {
+                "schema": "trashbot.public_ingress_tls.v1",
+                "tls_config_present": True,
+                "external_probe_proven": False,
+                "credential_url": "https://user:secret@example.invalid",
+            },
+            "cloud_public_ingress_tls_gate": {
+                "schema": "trashbot.cloud_public_ingress_tls_gate.v1",
+                "ack_semantics": "delivery_success",
+            },
+            "deployment_readiness": {
+                "schema": "trashbot.cloud_deployment_readiness",
+                "production_ready": False,
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-public-ingress-tls-metadata")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 公网入口/TLS readiness 是部署诊断元数据，parser 只能保留 robot command envelope。
+        self.assertNotIn("cloud_public_ingress_tls", encoded_command)
+        self.assertNotIn("public_ingress_tls", encoded_command)
+        self.assertNotIn("cloud_public_ingress_tls_gate", encoded_command)
+        self.assertNotIn("deployment_readiness", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("credential_url", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+
     def test_validate_command_keeps_command_id_order_as_supplied(self):
         command = validate_command({
             "id": "cmd-10",

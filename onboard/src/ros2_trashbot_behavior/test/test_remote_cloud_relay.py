@@ -45,6 +45,8 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     CLOUD_DEPLOYMENT_READINESS_SCHEMA,
     CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
     CLOUD_EXTERNAL_PROBE_SCHEMA,
+    CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY,
+    CLOUD_PUBLIC_INGRESS_TLS_SCHEMA,
     CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY,
     CREDENTIAL_ROTATION_PHONE_EVIDENCE_BOUNDARY,
     CREDENTIAL_ROTATION_SCHEMA,
@@ -92,8 +94,10 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     build_phone_transaction_isolation_summary,
     build_cloud_deployment_readiness_artifact_payload,
     build_cloud_external_probe_bundle_payload,
+    build_cloud_public_ingress_tls_artifact_payload,
     cloud_deployment_readiness_artifact_summary,
     cloud_external_probe_bundle_summary,
+    cloud_public_ingress_tls_artifact_summary,
     build_production_store_queue_artifact_payload,
     build_production_recovery_artifact_payload,
     build_provisioning_audit_artifact_payload,
@@ -112,6 +116,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     create_transaction_isolation_artifact,
     create_cloud_deployment_readiness_artifact,
     create_cloud_external_probe_bundle_artifact,
+    create_cloud_public_ingress_tls_artifact,
     network_recovery_artifact_summary,
     network_recovery_drill_payload,
     oss_cdn_manifest_summary,
@@ -261,7 +266,7 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
 
         self.assertEqual(status, 503)
         self.assertFalse(payload["production_ready"])
-        self.assertEqual(payload["evidence_boundary"], CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY)
+        self.assertEqual(payload["evidence_boundary"], CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY)
         self.assertGreaterEqual(payload["blocked_count"], 1)
         self.assertIn("Docker/local 软件 proof", payload["safe_summary"])
         self.assertIn("real_cloud", payload["not_proven"])
@@ -796,7 +801,7 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             self.assertIn("real_4g_sim", artifact["not_proven"])
             self.assertEqual(summary["check_count"], 8)
             self.assertFalse(payload["production_ready"])
-            self.assertEqual(payload["evidence_boundary"], CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY)
+            self.assertEqual(payload["evidence_boundary"], CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY)
             self.assertEqual(checks["cloud_deployment_readiness"]["status"], "pass")
             self.assertFalse(checks["cloud_deployment_readiness"]["details"]["production_ready"])
             for required in (
@@ -1007,6 +1012,170 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             ):
                 self.assertNotIn(forbidden, encoded)
 
+    def test_cloud_public_ingress_tls_gate_distinguishes_missing_and_config_present_without_proof(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            missing_path = root / "cloud_public_ingress_tls_missing.json"
+            present_path = root / "cloud_public_ingress_tls_present.json"
+            missing_env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "replace-with-local-dev-token",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "http://127.0.0.1:8088",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "future_reverse_proxy",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "missing",
+                "TRASHBOT_REMOTE_CLOUD_REVERSE_PROXY_CONFIG": "missing",
+                "TRASHBOT_REMOTE_CLOUD_FIREWALL_CONFIG": "missing",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "missing_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+            present_env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "replace-with-local-dev-token",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "reverse_proxy",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https",
+                "TRASHBOT_REMOTE_CLOUD_REVERSE_PROXY_CONFIG": "present",
+                "TRASHBOT_REMOTE_CLOUD_FIREWALL_CONFIG": "present",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "present_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+
+            missing_result = create_cloud_public_ingress_tls_artifact(missing_path, missing_env)
+            present_result = create_cloud_public_ingress_tls_artifact(present_path, present_env)
+            missing_artifact = json.loads(missing_path.read_text(encoding="utf-8"))
+            present_artifact = json.loads(present_path.read_text(encoding="utf-8"))
+            missing_payload_env = dict(missing_env)
+            missing_payload_env["TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS_TLS_ARTIFACT"] = str(missing_path)
+            present_payload_env = dict(present_env)
+            present_payload_env["TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS_TLS_ARTIFACT"] = str(present_path)
+            missing_payload = production_preflight_payload(missing_payload_env)
+            present_payload = production_preflight_payload(present_payload_env)
+            missing_checks = {check["name"]: check for check in missing_payload["checks"]}
+            present_checks = {check["name"]: check for check in present_payload["checks"]}
+            encoded = json.dumps(
+                {
+                    "missing_result": missing_result,
+                    "present_result": present_result,
+                    "missing_artifact": missing_artifact,
+                    "present_artifact": present_artifact,
+                    "missing_preflight": missing_payload,
+                    "present_preflight": present_payload,
+                },
+                ensure_ascii=False,
+            )
+
+            self.assertTrue(missing_result["ok"])
+            self.assertTrue(present_result["ok"])
+            self.assertEqual(missing_artifact["schema"], CLOUD_PUBLIC_INGRESS_TLS_SCHEMA)
+            self.assertEqual(present_artifact["evidence_boundary"], CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY)
+            self.assertFalse(missing_artifact["production_ready"])
+            self.assertFalse(present_artifact["production_ready"])
+            self.assertEqual(missing_artifact["overall_status"], "blocked")
+            self.assertEqual(present_artifact["overall_status"], "blocked")
+            self.assertEqual(missing_artifact["state"], "missing_public_ingress_tls_config")
+            self.assertEqual(present_artifact["state"], "public_ingress_tls_config_present_not_externally_proven")
+            self.assertFalse(missing_artifact["config_package_present"])
+            self.assertTrue(present_artifact["config_package_present"])
+            self.assertFalse(present_artifact["external_probe_proven"])
+            self.assertFalse(missing_payload["production_ready"])
+            self.assertFalse(present_payload["production_ready"])
+            self.assertEqual(missing_payload["overall_status"], "blocked")
+            self.assertEqual(present_payload["overall_status"], "blocked")
+            self.assertEqual(missing_payload["evidence_boundary"], CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY)
+            self.assertEqual(present_payload["evidence_boundary"], CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY)
+            self.assertEqual(
+                missing_checks["cloud_public_ingress_tls"]["code"],
+                "missing_public_ingress_tls_config",
+            )
+            self.assertEqual(
+                present_checks["cloud_public_ingress_tls"]["code"],
+                "public_ingress_tls_config_present_not_externally_proven",
+            )
+            self.assertFalse(present_checks["cloud_public_ingress_tls"]["details"]["external_probe_proven"])
+            for marker in (
+                "real_https_tls",
+                "public_ingress_external_probe",
+                "dns_resolution",
+                "reverse_proxy_live_routing",
+                "firewall_public_ingress",
+            ):
+                self.assertIn(marker, encoded)
+            for forbidden in (
+                str(missing_path),
+                str(present_path),
+                str(root / "missing_state.sqlite"),
+                str(root / "present_state.sqlite"),
+                "relay.example.invalid",
+                "replace-with-local-dev-token",
+                "Authorization",
+                "Bearer",
+                "token",
+                "private key",
+                "certificate path",
+                "/cmd_vel",
+                "ttyUSB",
+                "baudrate",
+                "WAVE ROVER",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_public_ingress_tls_blocks_hostile_artifact_without_leaks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            hostile_path = root / "hostile_cloud_public_ingress_tls.json"
+            hostile = build_cloud_public_ingress_tls_artifact_payload(
+                {
+                    "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+                    "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "reverse_proxy",
+                    "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https",
+                    "TRASHBOT_REMOTE_CLOUD_REVERSE_PROXY_CONFIG": "present",
+                },
+                generated_at="2026-05-13T08:00:00Z",
+            )
+            hostile["safe_summary"] = (
+                "Authorization Bearer token private key certificate path postgres://db "
+                "queue URL raw state path /dev/ttyUSB0 baudrate WAVE ROVER ROS topic /cmd_vel"
+            )
+            body = {key: value for key, value in hostile.items() if key != "checksum"}
+            hostile["checksum"] = _sha256_checksum(body)
+            hostile_path.write_text(json.dumps(hostile, ensure_ascii=False), encoding="utf-8")
+
+            summary = cloud_public_ingress_tls_artifact_summary(hostile_path)
+            payload = production_preflight_payload(
+                {
+                    "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "production-token-value",
+                    "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+                    "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "terminated",
+                    "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https",
+                    "TRASHBOT_REMOTE_CLOUD_REVERSE_PROXY_CONFIG": "present",
+                    "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "relay_state.sqlite"),
+                    "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                    "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS_TLS_ARTIFACT": str(hostile_path),
+                }
+            )
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps({"summary": summary, "preflight": payload}, ensure_ascii=False)
+
+            self.assertFalse(summary["ok"])
+            self.assertEqual(checks["cloud_public_ingress_tls"]["status"], "blocked")
+            self.assertEqual(checks["cloud_public_ingress_tls"]["code"], "cloud_public_ingress_tls_artifact_invalid")
+            for forbidden in (
+                str(hostile_path),
+                "relay.example.invalid",
+                "Authorization",
+                "Bearer",
+                "token",
+                "private key",
+                "certificate path",
+                "postgres://",
+                "queue URL",
+                "raw state path",
+                "/dev/ttyUSB0",
+                "baudrate",
+                "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
     def test_preflight_reports_local_http_secret_oss_and_file_store_boundary(self):
         with tempfile.TemporaryDirectory() as tmp:
             env = {
@@ -1029,7 +1198,7 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
 
             self.assertFalse(payload["production_ready"])
             self.assertEqual(payload["overall_status"], "blocked")
-            self.assertEqual(payload["evidence_boundary"], CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY)
+            self.assertEqual(payload["evidence_boundary"], CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY)
             self.assertEqual(checks["cloud_deployment_readiness"]["status"], "pass")
             self.assertEqual(checks["credential_provisioning"]["status"], "blocked")
             self.assertEqual(checks["tls_public_ingress"]["status"], "blocked")
@@ -1137,7 +1306,7 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             encoded = json.dumps(payload, ensure_ascii=False)
 
             self.assertFalse(payload["production_ready"])
-            self.assertEqual(payload["evidence_boundary"], CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY)
+            self.assertEqual(payload["evidence_boundary"], CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY)
             self.assertEqual(checks["state_store"]["status"], "warning")
             self.assertEqual(checks["state_store"]["code"], "sqlite_state_store_proof_only")
             self.assertEqual(checks["backup_restore_drill"]["code"], "backup_restore_drill_not_run")

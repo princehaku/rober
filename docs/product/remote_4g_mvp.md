@@ -127,6 +127,41 @@ Docker/local endpoint contract and artifact validation in the current sprint;
 it is not proof of real HTTPS/TLS, public ingress, DNS, 4G/SIM, OSS/CDN live
 traffic, production DB/queue, HIL, Nav2/fixed-route delivery, or real delivery.
 
+The relay also exposes a public ingress/TLS/reverse-proxy configuration gate
+with `schema=trashbot.cloud_public_ingress_tls_gate`, `schema_version=1`, and
+`evidence_boundary=software_proof_docker_cloud_public_ingress_tls_gate`.
+It separates two blocked deployment-readiness states:
+
+- `missing_public_ingress_tls_config`: no complete public ingress/TLS/reverse-proxy configuration package exists.
+- `public_ingress_tls_config_present_not_externally_proven`: the configuration package shape exists, but there is still no real external HTTPS/TLS, public ingress, DNS, reverse-proxy routing, or firewall proof.
+
+Generate the artifact locally:
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL=https://relay.example.invalid \
+TRASHBOT_REMOTE_CLOUD_TLS_MODE=reverse_proxy \
+TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS=public_https \
+TRASHBOT_REMOTE_CLOUD_REVERSE_PROXY_CONFIG=present \
+TRASHBOT_REMOTE_CLOUD_FIREWALL_CONFIG=present \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --write-cloud-public-ingress-tls-artifact /tmp/trashbot_cloud_public_ingress_tls.json
+```
+
+Consume it in preflight:
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS_TLS_ARTIFACT=/tmp/trashbot_cloud_public_ingress_tls.json \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
+```
+
+Both states must keep `production_ready=false` and `overall_status=blocked`.
+This gate must not expose real URLs, credential-bearing URLs, Authorization
+headers, bearer tokens, TLS private keys, private-key paths, root passwords,
+OSS AK/SK, DB/queue URLs, local state paths, serial ports, WAVE ROVER
+parameters, ROS topic names, `/cmd_vel`, or tracebacks.
+
 When `TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite`, the same preflight uses
 `evidence_boundary=software_proof_docker_sqlite_state_store`. That boundary
 means the relay can prove single-node command/status/ack recovery across store

@@ -214,6 +214,8 @@ ACK semantics remain separate from delivery result semantics. `remote_readiness.
 
 If operation-log metadata appears beside a cloud `command` response or in any status/diagnostics payload, robot-side code must treat it as ignorable phone/support metadata. A metadata-only response with no valid `trashbot.remote.v1` command must not call `/trashbot/collect_trash`, `/trashbot/confirm_dropoff`, or cancel; must not POST ACK; and must not advance or persist `last_terminal_ack_id`.
 
+`cloud_public_ingress_tls`, `public_ingress_tls`, `cloud_public_ingress_tls_gate`, and public-ingress/TLS details under `deployment_readiness` are deployment readiness metadata only. They may describe whether a public ingress, TLS config, reverse proxy config, or external probe artifact is present, but they are not robot commands and do not alter the `trashbot.remote.v1` command/status/ACK envelope. If those fields appear without a valid `command`, robot-side code must not call backend actions, must not POST ACK, must not advance or persist cursor state, and must not copy `delivery_success`, `cursor_override`, Authorization/token material, credential-bearing URLs, raw ROS topics, `/cmd_vel`, serial devices, or hardware parameters into status or ACK. ACK remains accepted/processing evidence only; it is never delivery success or proof of real HTTPS/TLS/public ingress.
+
 `voice_prompt_readiness` contract:
 
 | Field | Contract |

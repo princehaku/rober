@@ -1638,6 +1638,150 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertNotIn("delivery_success", encoded_status)
             self.assertNotIn("Authorization", encoded_status)
 
+    def test_public_ingress_tls_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "cloud_public_ingress_tls": {
+                    "schema": "trashbot.cloud_public_ingress_tls.v1",
+                    "production_ready": False,
+                    "overall_status": "blocked",
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "cloud_public_ingress_tls": {
+                    "schema": "trashbot.cloud_public_ingress_tls.v1",
+                    "public_ingress_config_present": True,
+                    "tls_config_present": True,
+                    "external_probe_proven": False,
+                    "next_action": "confirm_dropoff",
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "delivery_success": True,
+                    "Authorization": "Bearer must-not-leak",
+                    "raw_ros_topic": "/cmd_vel",
+                },
+                "public_ingress_tls": {
+                    "schema": "trashbot.public_ingress_tls.v1",
+                    "credential_url": "https://user:secret@example.invalid",
+                },
+                "cloud_public_ingress_tls_gate": {
+                    "schema": "trashbot.cloud_public_ingress_tls_gate.v1",
+                    "ack_semantics": "delivery_success",
+                },
+                "deployment_readiness": {
+                    "schema": "trashbot.cloud_deployment_readiness",
+                    "production_ready": False,
+                },
+            },
+            "ack_response": {
+                "cloud_public_ingress_tls": {
+                    "schema": "trashbot.cloud_public_ingress_tls.v1",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-public-ingress-tls-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-public-ingress-tls-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-public-ingress-tls-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        self.assertEqual(ack_payload["message"], "collect")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # 公网入口/TLS readiness 是云部署元数据，ACK 只能表达本地 command envelope 处理结果。
+        self.assertNotIn("cloud_public_ingress_tls", encoded_ack)
+        self.assertNotIn("public_ingress_tls", encoded_ack)
+        self.assertNotIn("cloud_public_ingress_tls_gate", encoded_ack)
+        self.assertNotIn("deployment_readiness", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("Authorization", encoded_ack)
+        self.assertNotIn("credential_url", encoded_ack)
+        self.assertNotIn("/cmd_vel", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("cloud_public_ingress_tls", encoded_status)
+        self.assertNotIn("public_ingress_tls", encoded_status)
+        self.assertNotIn("cloud_public_ingress_tls_gate", encoded_status)
+        self.assertNotIn("deployment_readiness", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
+    def test_metadata_only_public_ingress_tls_response_does_not_start_ack_or_persist_cursor(self):
+        metadata_cases = (
+            "cloud_public_ingress_tls",
+            "public_ingress_tls",
+            "cloud_public_ingress_tls_gate",
+            "deployment_readiness",
+        )
+        for metadata_name in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.backend.calls.clear()
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        metadata_name: {
+                            "schema": f"trashbot.{metadata_name}.v1",
+                            "production_ready": False,
+                            "overall_status": "blocked",
+                            "public_ingress_config_present": True,
+                            "tls_config_present": True,
+                            "external_probe_proven": False,
+                            "trigger_robot_action": "collect",
+                            "next_action": "confirm_dropoff",
+                            "cursor_override": "cmd-future",
+                            "ack_semantics": "delivery_success",
+                            "delivery_success": True,
+                            "Authorization": "Bearer must-not-leak",
+                            "credential_url": "https://user:secret@example.invalid",
+                            "raw_ros_topic": "/cmd_vel",
+                        },
+                        "preflight": {"overall_status": "blocked", "production_ready": False},
+                    }
+
+                    handled = worker.poll_once()
+
+                    # 只有公网入口/TLS readiness metadata、没有 command envelope 时，不能驱动 action/ACK/cursor。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("preflight", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.assertNotIn("credential_url", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
     def test_transaction_isolation_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {

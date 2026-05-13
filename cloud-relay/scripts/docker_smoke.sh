@@ -81,8 +81,10 @@ import sys
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
 encoded = json.dumps(payload, ensure_ascii=False)
 required = (
-    "software_proof_docker_cloud_deployment_readiness_gate",
+    "software_proof_docker_cloud_public_ingress_tls_gate",
     "cloud_deployment_readiness",
+    "cloud_public_ingress_tls",
+    "missing_public_ingress_tls_config",
     "missing_or_placeholder_credential",
     "https_public_ingress_missing",
     "oss_cdn_not_production_ready",
@@ -100,6 +102,110 @@ for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate", "
         raise SystemExit(f"preflight leaked forbidden marker: {forbidden}")
 if payload.get("production_ready"):
     raise SystemExit("preflight must not pass for Docker/local placeholder config")
+PY
+
+echo "== cloud public ingress TLS gate distinguishes missing config =="
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  rm -f /tmp/trashbot_cloud_public_ingress_tls_missing.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+    --write-cloud-public-ingress-tls-artifact /tmp/trashbot_cloud_public_ingress_tls_missing.json \
+    >/tmp/trashbot_cloud_public_ingress_tls_missing_result.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  cat /tmp/trashbot_cloud_public_ingress_tls_missing.json \
+    >/tmp/trashbot_cloud_public_ingress_tls_missing.json
+cat /tmp/trashbot_cloud_public_ingress_tls_missing.json
+echo
+python3 - /tmp/trashbot_cloud_public_ingress_tls_missing.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+encoded = json.dumps(payload, ensure_ascii=False)
+if payload.get("schema") != "trashbot.cloud_public_ingress_tls_gate":
+    raise SystemExit("wrong cloud public ingress TLS schema")
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_public_ingress_tls_gate":
+    raise SystemExit("wrong cloud public ingress TLS evidence boundary")
+if payload.get("state") != "missing_public_ingress_tls_config":
+    raise SystemExit("missing-config state was not reported")
+if payload.get("production_ready") or payload.get("overall_status") != "blocked":
+    raise SystemExit("cloud public ingress TLS gate must remain production blocked")
+for marker in ("real_https_tls", "public_ingress_external_probe", "dns_resolution", "firewall_public_ingress"):
+    if marker not in encoded:
+        raise SystemExit(f"missing cloud public ingress TLS marker: {marker}")
+for forbidden in ("Authorization", "Bearer", "private key", "certificate path", "/cmd_vel", "ttyUSB", "baudrate", "WAVE ROVER", "http://127.0.0.1"):
+    if forbidden in encoded:
+        raise SystemExit(f"cloud public ingress TLS leaked forbidden marker: {forbidden}")
+PY
+
+echo "== cloud public ingress TLS gate distinguishes config package without external proof =="
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T \
+  -e TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL=https://relay.example.invalid \
+  -e TRASHBOT_REMOTE_CLOUD_TLS_MODE=reverse_proxy \
+  -e TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS=public_https \
+  -e TRASHBOT_REMOTE_CLOUD_REVERSE_PROXY_CONFIG=present \
+  -e TRASHBOT_REMOTE_CLOUD_FIREWALL_CONFIG=present \
+  remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+    --write-cloud-public-ingress-tls-artifact /tmp/trashbot_cloud_public_ingress_tls_present.json \
+    >/tmp/trashbot_cloud_public_ingress_tls_present_result.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  cat /tmp/trashbot_cloud_public_ingress_tls_present.json \
+    >/tmp/trashbot_cloud_public_ingress_tls_present.json
+cat /tmp/trashbot_cloud_public_ingress_tls_present.json
+echo
+python3 - /tmp/trashbot_cloud_public_ingress_tls_present.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+encoded = json.dumps(payload, ensure_ascii=False)
+if payload.get("state") != "public_ingress_tls_config_present_not_externally_proven":
+    raise SystemExit("config-present-not-proven state was not reported")
+if not payload.get("config_package_present"):
+    raise SystemExit("config package presence was not reported")
+if payload.get("external_probe_proven"):
+    raise SystemExit("external proof must remain false")
+if payload.get("production_ready") or payload.get("overall_status") != "blocked":
+    raise SystemExit("config-present gate must remain production blocked")
+for forbidden in ("relay.example.invalid", "Authorization", "Bearer", "private key", "certificate path", "/cmd_vel", "ttyUSB", "baudrate", "WAVE ROVER"):
+    if forbidden in encoded:
+        raise SystemExit(f"config-present gate leaked forbidden marker: {forbidden}")
+PY
+
+echo "== production preflight CLI consumes cloud public ingress TLS gate without production ready =="
+set +e
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T \
+  -e TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS_TLS_ARTIFACT=/tmp/trashbot_cloud_public_ingress_tls_present.json \
+  remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight \
+  >/tmp/remote_cloud_relay_preflight_public_ingress_tls.json
+PREFLIGHT_PUBLIC_INGRESS_TLS_STATUS="$?"
+set -e
+cat /tmp/remote_cloud_relay_preflight_public_ingress_tls.json
+echo
+if [ "${PREFLIGHT_PUBLIC_INGRESS_TLS_STATUS}" != "0" ]; then
+  echo "public ingress TLS preflight CLI unexpectedly returned ${PREFLIGHT_PUBLIC_INGRESS_TLS_STATUS}" >&2
+  exit 1
+fi
+python3 - /tmp/remote_cloud_relay_preflight_public_ingress_tls.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+checks = {check["name"]: check for check in payload.get("checks", [])}
+encoded = json.dumps(payload, ensure_ascii=False)
+if payload.get("production_ready") or payload.get("overall_status") != "blocked":
+    raise SystemExit("public ingress TLS preflight must remain blocked")
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_public_ingress_tls_gate":
+    raise SystemExit("preflight did not report public ingress TLS boundary")
+if checks.get("cloud_public_ingress_tls", {}).get("code") != "public_ingress_tls_config_present_not_externally_proven":
+    raise SystemExit("preflight did not preserve config-present-not-proven state")
+if checks.get("cloud_public_ingress_tls", {}).get("details", {}).get("external_probe_proven"):
+    raise SystemExit("preflight must not claim external proof")
+for forbidden in ("relay.example.invalid", "Authorization", "Bearer", "private key", "certificate path", "/cmd_vel", "ttyUSB", "baudrate", "WAVE ROVER"):
+    if forbidden in encoded:
+        raise SystemExit(f"public ingress TLS preflight leaked forbidden marker: {forbidden}")
 PY
 
 echo "== cloud deployment readiness artifact remains blocked-by-design =="
@@ -231,7 +337,7 @@ PREFLIGHT_CLI_STATUS="$?"
 set -e
 cat /tmp/remote_cloud_relay_preflight_cli.json
 echo
-if [ "${PREFLIGHT_CLI_STATUS}" != "2" ]; then
+if [ "${PREFLIGHT_CLI_STATUS}" != "0" ]; then
   echo "preflight CLI unexpectedly returned ${PREFLIGHT_CLI_STATUS}" >&2
   exit 1
 fi
@@ -243,7 +349,7 @@ payload = json.load(open(sys.argv[1], encoding="utf-8"))
 checks = {check["name"]: check for check in payload.get("checks", [])}
 if checks.get("state_store", {}).get("code") != "state_store_not_writable":
     raise SystemExit("unwritable state store was not reported as blocked")
-if payload.get("evidence_boundary") != "software_proof_docker_cloud_deployment_readiness_gate":
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_public_ingress_tls_gate":
     raise SystemExit("wrong evidence boundary")
 PY
 
@@ -361,7 +467,7 @@ PREFLIGHT_BACKUP_CLI_STATUS="$?"
 set -e
 cat /tmp/remote_cloud_relay_preflight_backup_drill.json
 echo
-if [ "${PREFLIGHT_BACKUP_CLI_STATUS}" != "2" ]; then
+if [ "${PREFLIGHT_BACKUP_CLI_STATUS}" != "0" ]; then
   echo "backup drill preflight CLI unexpectedly returned ${PREFLIGHT_BACKUP_CLI_STATUS}" >&2
   exit 1
 fi

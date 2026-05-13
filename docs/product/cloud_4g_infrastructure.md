@@ -32,6 +32,8 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 
 本轮 `2026.05.13_06-07_cloud-external-probe-bundle-gate` 新增 cloud external probe bundle gate，证据边界是 `software_proof_docker_cloud_external_probe_bundle_gate`。Artifact schema 为 `trashbot.cloud_external_probe_bundle`、`schema_version=1`，用本地或未来公网 base URL 探测 `/healthz`、`/readyz`、`/preflightz`，但 artifact 只保存 endpoint path、HTTP status、JSON 合同状态、`redaction_status`、`safe_summary`、`retry_hint` 和 `not_proven`，不保存 base URL、header、token、响应体或本地路径。本轮 Docker smoke 只证明本地 relay probe contract 和 artifact 校验，preflight 即使消费有效 bundle，也必须保持 `production_ready=false`、`overall_status=blocked`；它不得声明真实云、真实 HTTPS/TLS、公网入口、真实 4G/SIM、OSS/CDN live traffic、production DB/queue、HIL 或真实送达。
 
+本轮 `2026.05.13_08-09_cloud-public-ingress-tls-gate` 新增 cloud public ingress/TLS/reverse-proxy 配置 gate，证据边界是 `software_proof_docker_cloud_public_ingress_tls_gate`。Artifact schema 为 `trashbot.cloud_public_ingress_tls_gate`、`schema_version=1`，只保存枚举化配置状态和缺口摘要，用来区分 `missing_public_ingress_tls_config` 与 `public_ingress_tls_config_present_not_externally_proven`。前者表示公网入口/TLS/反向代理配置包仍缺失；后者表示配置包形态存在，但没有真实外部 HTTPS/TLS、公网入口、DNS、反向代理转发或防火墙实证。两种状态都必须保持 `production_ready=false`、`overall_status=blocked`；artifact、preflight 和 phone-safe summary 不得输出真实 URL、credential-bearing URL、Authorization header、bearer token、TLS private key、证书私钥路径、root password、OSS AK/SK、DB/queue URL、本地 state path、串口、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`。
+
 ## 云端基线规格
 
 目标服务端基线：
@@ -166,6 +168,9 @@ Operator/API 消费 manifest artifact 时输出的是更小的 phone-safe summar
 - `TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_BASE_URL`：可选的外部探测 base URL；`.env.example` 只能放本地占位，本字段不写入 artifact。
 - `TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_ARTIFACT`：可选的本地 cloud external probe bundle artifact 路径，只供 preflight 消费 endpoint 覆盖摘要；不得作为真实云、真实 HTTPS/TLS、公网入口、真实 4G/SIM、OSS/CDN 实流量或生产 DB/queue 证据。
 - `TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_TIMEOUT`：可选的 endpoint 探测超时秒数，仅影响本地/未来公网探测命令。
+- `TRASHBOT_REMOTE_CLOUD_REVERSE_PROXY_CONFIG`：可选枚举，`missing`、`planned` 或 `present`；只参与 public ingress/TLS 配置包形态判断，不读取或输出真实反向代理配置正文。
+- `TRASHBOT_REMOTE_CLOUD_FIREWALL_CONFIG`：可选枚举，`missing`、`planned` 或 `present`；只参与 public ingress/TLS 配置包形态判断，不读取或输出真实防火墙规则。
+- `TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS_TLS_ARTIFACT`：可选的本地 public ingress/TLS/reverse-proxy 配置 gate artifact 路径，只供 preflight 消费脱敏摘要；不得作为真实 HTTPS/TLS、公网入口、DNS、反向代理、防火墙、真实云或真实 4G/SIM 证据。
 - `.env` 不入仓库；`.env.example` 只能放占位符。
 - 错误响应和 state file 不得包含 bearer token、Authorization header、credential-bearing URL、串口设备、baudrate、WAVE ROVER 参数、底层速度控制入口或 raw ROS topic 名。
 - token rotate、账号分级、机器人 provisioning 和审计日志是后续真实云 sprint 的范围。
