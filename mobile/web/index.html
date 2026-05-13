@@ -179,6 +179,48 @@
         <p id="mobileDeviceRecoveryHint" class="hint">缺少真实设备/browser 验收摘要时，主操作保持禁用。</p>
       </section>
 
+      <section class="device-evidence-panel" aria-labelledby="mobileDeviceEvidenceTitle">
+        <div class="section-heading">
+          <h2 id="mobileDeviceEvidenceTitle">手机设备证据采集</h2>
+          <span id="mobileDeviceEvidenceBadge" class="gate-badge gate-blocked">证据未证明</span>
+        </div>
+        <p id="mobileDeviceEvidenceCopy" class="message">
+          采集本地浏览器可安全复制的 viewport、touch、PWA/offline 和客户端时间；这不是实机验收通过。
+        </p>
+        <dl class="device-evidence-grid">
+          <div>
+            <dt>Viewport / Touch</dt>
+            <dd id="mobileDeviceEvidenceViewportTouch">等待采集</dd>
+          </div>
+          <div>
+            <dt>Display / PWA</dt>
+            <dd id="mobileDeviceEvidenceDisplayPwa">等待采集</dd>
+          </div>
+          <div>
+            <dt>Service Worker / Offline</dt>
+            <dd id="mobileDeviceEvidenceServiceWorker">等待采集</dd>
+          </div>
+          <div>
+            <dt>Client Timestamp</dt>
+            <dd id="mobileDeviceEvidenceTimestamp">等待生成</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileDeviceEvidenceAck">ACK 只代表 accepted/processing。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileDeviceEvidenceBoundary">software_proof_docker_mobile_device_evidence_capture_gate</dd>
+          </div>
+        </dl>
+        <p id="mobileDeviceEvidenceNotProven" class="hint">真实手机设备/browser、production app、真实 PWA install prompt 未证明。</p>
+        <div class="bundle-copy-row">
+          <button id="copyDeviceEvidencePackageButton" type="button">复制设备证据包</button>
+          <span id="mobileDeviceEvidenceCopyStatus" class="hint">复制内容只包含脱敏 phone-safe 字段。</span>
+        </div>
+        <pre id="mobileDeviceEvidenceSafeCopy" class="safe-copy" aria-label="脱敏手机设备证据包">暂无手机设备证据包。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>

@@ -25,6 +25,8 @@
 > 当前增量：sprint `2026.05.13_21-22_mobile-recovery-decision-gate` 在三步主路径之后新增“恢复决策”首屏 panel。证据边界是 `software_proof_docker_mobile_recovery_decision_gate`，只证明 Docker/local static fixture 与 targeted unittest 能展示恢复状态、建议下一步、阻塞原因、支持入口、ACK 语义和 not_proven 边界；不等于真实手机设备/browser、production app、真实 PWA install prompt、真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL、真实 cancel completion、真实 dropoff completion 或真实送达。
 >
 > 当前增量：sprint `2026.05.13_22-23_mobile-terminal-action-confirmation-gate` 给 Confirm Dropoff / Cancel 增加“终端动作二次确认”panel。证据边界是 `software_proof_docker_mobile_terminal_action_confirmation_gate`，只证明 Docker/local static fixture 与 targeted unittest 能做到首次点击不提交 endpoint、用户显式确认后才提交 `trashbot.mobile_action_confirmation.v1` compatible payload、返回不提交、ACK 文案保持 accepted/processing only；不等于真实手机设备/browser、production app、真实 PWA install prompt、真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、Nav2/fixed-route、WAVE ROVER、HIL、真实 dropoff completion、真实 cancel completion 或真实 delivery。
+>
+> 当前增量：sprint `2026.05.13_23-24_mobile-device-evidence-capture-gate` 在首屏新增“手机设备证据采集”panel 和复制入口。证据边界是 `software_proof_docker_mobile_device_evidence_capture_gate`，只证明 Docker/local static fixture 与 targeted unittest 能采集/展示/复制 phone-safe viewport、touch target、display-mode/PWA、service worker/offline shell、client timestamp、ACK 语义和 `not_proven` 边界；不等于真实 iPhone/Android device、production app、真实 PWA install prompt、真实公网 HTTPS/TLS、4G/SIM、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 
 ## 用途（What lives here）
 
@@ -98,6 +100,7 @@ cloud-relay hosted PWA installability/browser gate：
 - 可选：`mobile_action_receipt`、`phone_action_feedback`
 - 可选：`phone_cloud_readiness_summary`、`mobile_cloud_readiness_summary`、`cloud_readiness_summary` 或 `/api/status.phone_readiness.cloud_readiness`
 - 可选：`mobile_device_acceptance_readiness`、`phone_device_acceptance_readiness`、`mobile_browser_acceptance_readiness` 或 `/api/status.phone_readiness.*_acceptance_readiness`
+- 可选：`mobile_device_evidence_capture`、`mobile_device_evidence_capture_summary`、`mobile_device_evidence_package` 或 `/api/status.phone_readiness.mobile_device_evidence_*` 作为 phone-safe 设备证据采集包；缺失时前端只从当前浏览器采集白名单元数据，不能证明真实手机验收
 - 可选：`mobile_browser_acceptance_bundle`、`phone_browser_acceptance_bundle`、`mobile_acceptance_evidence_bundle` 或 `/api/status.phone_readiness.*_acceptance_bundle`
 - 可选：`mobile_primary_journey_gate`、`mobile_primary_journey_summary` 作为 phone-safe 支持摘要；Start 是否允许仍由既有 destination、manual load confirmation、`command_safety`、cloud/device/browser readiness、operation log 和 action feedback 共同决定
 - 可选：`mobile_recovery_decision_gate`、`mobile_recovery_decision_summary` 作为 phone-safe 恢复决策摘要；缺失时只能从既有 offline、command safety、operation log、action feedback、support handoff 和 primary journey 字段派生 blocked-by-design 摘要
@@ -161,6 +164,16 @@ cloud-relay hosted PWA installability/browser gate：
 - Start Delivery、Confirm Dropoff、Cancel 只有在 bundle 显式 `safe_to_control=true`、`production_app_ready=true` 且 `overall_status!=blocked` 后才可能继续通过后续 gate；bundle blocked 或缺失时 fail closed。Diagnostics 和 Support Handoff 仍可用。
 - 复制内容只包含脱敏白名单字段，不包含 token、Authorization、OSS AK/SK、root password、DB/queue URL、ROS topic、serial、`/cmd_vel`、WAVE ROVER 参数、本地路径、traceback、checksum 或完整证据文件。
 - ACK 文案只能写成 accepted/processing evidence，不得写成 delivery success、dropoff success、cancel completed、真实云就绪、HIL 或真实送达。
+
+手机设备证据采集规则：
+
+- 首屏“手机设备证据采集”panel 用于真实手机/browser/PWA 验收前复制 phone-safe evidence package，不是验收通过标志。
+- 支持字段优先级为 `mobile_device_evidence_capture`、`mobile_device_evidence_capture_summary`、`mobile_device_evidence_package`，并兼容这些字段出现在 `phone_readiness` 或 `/api/diagnostics`。
+- schema 为 `trashbot.mobile_device_evidence_capture.v1`、`trashbot.mobile_device_evidence_capture_summary.v1`、`trashbot.mobile_device_evidence_package.v1`，本地证据边界统一为 `software_proof_docker_mobile_device_evidence_capture_gate`。
+- 复制包白名单字段为 viewport CSS 尺寸、device pixel ratio、orientation、touch target 元数据、display-mode、manifest link、install prompt status、production app readiness、service worker/offline shell 状态、client timestamp、safe copy、recovery hint、ACK 语义、evidence boundary 和 `not_proven`。
+- 复制包不得包含 token、Authorization、OSS AK/SK、root password、DB/queue URL、ROS topic、serial、`/cmd_vel`、WAVE ROVER 参数、本地路径、traceback、checksum、完整证据文件、raw robot 响应或任何 robot/internal 技术字段。
+- 缺真实手机/browser、production app、真实 PWA install prompt 时，Start Delivery、Confirm Dropoff、Cancel 继续依赖既有 readiness / acceptance bundle / command_safety fail closed；设备证据包本身不放行动作。
+- ACK、HTTP accepted、receipt 或 evidence package 只能说明 accepted/processing 或可复现元数据，不得写成 delivery success、dropoff success、cancel completed、真实手机验收通过、HIL 或真实送达。
 
 operation log 规则：
 
@@ -232,5 +245,6 @@ PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gat
 | 当前 mobile-primary-journey gate | 首屏三步主路径 summary、Start fail-closed gate、`/api/collect target` 兼容 payload |
 | 当前 mobile-recovery-decision gate | 首屏恢复决策 summary、blocked/offline/pending ACK/manual takeover/local submit failed 的中文恢复建议 |
 | 当前 mobile-terminal-action-confirmation gate | Confirm Dropoff / Cancel 首次点击不提交、终端动作 panel 二次确认、返回不提交、ACK 非成功语义 |
+| 当前 mobile-device-evidence-capture gate | 首屏手机设备证据采集、phone-safe evidence package 复制、not_proven 边界和主操作 fail-closed |
 | 下一个 sprint | 真实手机设备验收、production app、真实 PWA install prompt 和弱网体验 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |

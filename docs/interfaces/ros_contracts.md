@@ -698,6 +698,32 @@ responses must not invoke `collect`, `confirm_dropoff`, or `cancel`, must not
 POST ACK, and must not advance or persist `last_terminal_ack_id`. ACK remains
 accepted/processing evidence only and must not be rendered or interpreted as
 browser proof or delivery success.
+Mobile device evidence-capture metadata, including
+`mobile_device_evidence_capture`, `mobile_device_evidence_capture_summary`, and
+`mobile_device_evidence_package`, is phone/support metadata for a future
+operator-captured photo/video/support package and its local/Docker evidence
+boundary
+`software_proof_docker_mobile_device_evidence_capture_gate`. It may describe
+capture state, attachment references, safe phone copy, client references,
+support handoff fields, and `not_proven` items, but it is not a
+`trashbot.remote.v1` command/status/ACK envelope, backend action result, cursor
+instruction, ROS2 action result, Nav2/fixed-route result, WAVE ROVER feedback,
+HIL result, production-readiness proof, real phone-device proof, real browser
+proof, real support-upload proof, or delivery success proof. Robot-side
+protocol normalization must strip these fields from valid command objects;
+metadata-only responses must not invoke `collect`, `confirm_dropoff`, or
+`cancel`, must not POST ACK, must not advance in-memory `last_ack_id`, and must
+not persist `last_terminal_ack_id`. If these fields appear beside a valid
+`collect`, `confirm_dropoff`, or `cancel` command, the robot bridge must
+execute only the `trashbot.remote.v1` command envelope and must not copy
+`trigger_robot_action`, `next_action`, `cursor_override`, `delivery_success`,
+`dropoff_success`, `cancel_completed`, `production_ready`, `hil_pass`,
+`real_device_proof`, `wave_rover_feedback`, credential-bearing URLs,
+Authorization headers, raw ROS topics, `/cmd_vel`, serial devices, or hardware
+parameters into robot status, ACK, backend action result, normalized command
+payload, or cursor state. ACK remains accepted/processing evidence only and
+must not be rendered or interpreted as device proof, robot execution, delivery
+success, production readiness, HIL, or real WAVE ROVER proof.
 Cloud-hosted PWA/static-shell metadata, including `cloud_hosted_pwa`,
 `static_shell_metadata`, `pwa_static_surface`, and
 `cloud_hosted_mobile_web_gate`, is the phone/static surface contract for a

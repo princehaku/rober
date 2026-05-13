@@ -3023,6 +3023,191 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertNotIn("/cmd_vel", encoded_ack)
             self.assertNotIn("DELIVERED", encoded_ack)
 
+    def test_metadata_only_mobile_device_evidence_capture_response_does_not_start_ack_or_persist_cursor(self):
+        metadata_cases = (
+            (
+                "mobile_device_evidence_capture",
+                {
+                    "schema": "trashbot.mobile_device_evidence_capture.v1",
+                    "capture_state": "ready_for_upload",
+                    "device_label": "phone-camera",
+                    "evidence_boundary": "software_proof_docker_mobile_device_evidence_capture_gate",
+                    "not_proven": [
+                        "robot_command",
+                        "ack",
+                        "cursor",
+                        "delivery_success",
+                        "real_phone_device",
+                        "hil_pass",
+                    ],
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-device-capture",
+                    "delivery_success": True,
+                },
+            ),
+            (
+                "mobile_device_evidence_capture_summary",
+                {
+                    "schema": "trashbot.mobile_device_evidence_capture_summary.v1",
+                    "safe_phone_copy": "设备取证摘要只供手机和支持侧查看。",
+                    "ack_semantics": "accepted_processing_only",
+                    "next_action": "confirm_dropoff",
+                    "evidence_boundary": "software_proof_docker_mobile_device_evidence_capture_gate",
+                    "delivery_success": True,
+                    "production_ready": True,
+                    "hil_pass": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+            (
+                "mobile_device_evidence_package",
+                {
+                    "schema": "trashbot.mobile_device_evidence_package.v1",
+                    "attachments": [{"kind": "photo", "url": "https://user:secret@example.invalid/photo.jpg"}],
+                    "device_capture_status": "uploaded_to_support",
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-device-package",
+                    "real_device_proof": True,
+                    "wave_rover_feedback": True,
+                    "Authorization": "Bearer must-not-leak",
+                    "serial_device": "/dev/ttyUSB0",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    self.backend.calls.clear()
+                    self.cloud.status_posts.clear()
+                    self.cloud.ack_posts.clear()
+                    self.cloud.get_paths.clear()
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {metadata_name: metadata}
+
+                    handled = worker.poll_once()
+
+                    # 设备取证 metadata 只服务手机/支持侧；没有 command envelope 时不能有 robot 副作用。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("production_ready", encoded_status)
+                    self.assertNotIn("hil_pass", encoded_status)
+                    self.assertNotIn("real_device_proof", encoded_status)
+                    self.assertNotIn("wave_rover_feedback", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.assertNotIn("/dev/ttyUSB0", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.assertNotIn("secret", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
+    def test_mobile_device_evidence_capture_metadata_is_ignored_by_valid_command_envelope(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-device-evidence",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras.update({
+                "status_response": {
+                    "mobile_device_evidence_capture_summary": {
+                        "schema": "trashbot.mobile_device_evidence_capture_summary.v1",
+                        "delivery_success": True,
+                        "trigger_robot_action": "collect",
+                    },
+                },
+                "command_response": {
+                    "mobile_device_evidence_capture": {
+                        "schema": "trashbot.mobile_device_evidence_capture.v1",
+                        "capture_state": "ready_for_upload",
+                        "evidence_boundary": "software_proof_docker_mobile_device_evidence_capture_gate",
+                        "trigger_robot_action": "collect",
+                        "cursor_override": "cmd-device-evidence-override",
+                        "delivery_success": True,
+                    },
+                    "mobile_device_evidence_capture_summary": {
+                        "schema": "trashbot.mobile_device_evidence_capture_summary.v1",
+                        "ack_semantics": "delivery_success",
+                        "next_action": "confirm_dropoff",
+                        "production_ready": True,
+                        "hil_pass": True,
+                        "raw_ros_topic": "/cmd_vel",
+                    },
+                    "mobile_device_evidence_package": {
+                        "schema": "trashbot.mobile_device_evidence_package.v1",
+                        "attachments": [{"kind": "photo", "url": "https://user:secret@example.invalid/photo.jpg"}],
+                        "real_device_proof": True,
+                        "wave_rover_feedback": True,
+                        "Authorization": "Bearer must-not-leak",
+                        "serial_device": "/dev/ttyUSB0",
+                    },
+                },
+                "ack_response": {
+                    "mobile_device_evidence_package": {
+                        "schema": "trashbot.mobile_device_evidence_package.v1",
+                        "delivery_success": True,
+                        "final_state": "DELIVERED",
+                    },
+                },
+            })
+            self.cloud.commands.append({
+                "id": "cmd-device-evidence-cancel",
+                "type": "cancel",
+                "payload": {},
+            })
+
+            self.assertTrue(worker.poll_once())
+
+            self.assertEqual(self.backend.calls, [("cancel",)])
+            self.assertEqual(worker.last_ack_id, "cmd-device-evidence-cancel")
+            self.assertIn("last_ack_id=cmd-before-device-evidence", self.cloud.get_paths[-1])
+            cursor_payload = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(cursor_payload["last_terminal_ack_id"], "cmd-device-evidence-cancel")
+            ack_payload = self.cloud.ack_posts[0]
+            self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+            self.assertEqual(ack_payload["command_id"], "cmd-device-evidence-cancel")
+            self.assertEqual(ack_payload["state"], "acked")
+            self.assertEqual(ack_payload["message"], "cancel")
+            encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+            # 有效 command 混入设备取证 metadata 时，执行、ACK、cursor 仍只跟随 command envelope。
+            self.assertNotIn("mobile_device_evidence_capture", encoded_ack)
+            self.assertNotIn("mobile_device_evidence_capture_summary", encoded_ack)
+            self.assertNotIn("mobile_device_evidence_package", encoded_ack)
+            self.assertNotIn("trigger_robot_action", encoded_ack)
+            self.assertNotIn("cursor_override", encoded_ack)
+            self.assertNotIn("delivery_success", encoded_ack)
+            self.assertNotIn("production_ready", encoded_ack)
+            self.assertNotIn("hil_pass", encoded_ack)
+            self.assertNotIn("real_device_proof", encoded_ack)
+            self.assertNotIn("wave_rover_feedback", encoded_ack)
+            self.assertNotIn("/cmd_vel", encoded_ack)
+            self.assertNotIn("/dev/ttyUSB0", encoded_ack)
+            self.assertNotIn("Authorization", encoded_ack)
+            self.assertNotIn("secret", encoded_ack)
+            self.assertNotIn("DELIVERED", encoded_ack)
+            encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+            self.assertNotIn("mobile_device_evidence_capture", encoded_status)
+            self.assertNotIn("mobile_device_evidence_package", encoded_status)
+            self.assertNotIn("delivery_success", encoded_status)
+
     def test_metadata_only_cloud_external_probe_response_does_not_start_ack_or_persist_cursor(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = pathlib.Path(tmpdir) / "remote_cursor.json"

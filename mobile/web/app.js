@@ -16,11 +16,14 @@ const SAFE_EMPTY = "等待后端提供安全摘要。";
 const ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
 const CLOUD_READINESS_BOUNDARY = "software_proof_docker_mobile_cloud_readiness_summary_gate";
 const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_acceptance_readiness_gate";
+const MOBILE_DEVICE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_device_evidence_capture_gate";
 const MOBILE_BROWSER_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_browser_acceptance_bundle_gate";
 const PRIMARY_JOURNEY_BOUNDARY = "software_proof_docker_mobile_primary_journey_gate";
 const RECOVERY_DECISION_BOUNDARY = "software_proof_docker_mobile_recovery_decision_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
+const DEVICE_EVIDENCE_SCHEMA = "trashbot.mobile_device_evidence_capture.v1";
+const DEVICE_EVIDENCE_PACKAGE_SCHEMA = "trashbot.mobile_device_evidence_package.v1";
 const ACCEPTANCE_BUNDLE_SCHEMA = "trashbot.mobile_browser_acceptance_bundle.v1";
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|artifact)/i;
 const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
@@ -30,6 +33,7 @@ let latestStatus = null;
 let latestDiagnostics = null;
 let latestActionFeedback = null;
 let latestAcceptanceBundle = null;
+let latestDeviceEvidencePackage = null;
 let pendingTerminalAction = null;
 let latestStartGate = {
   destination: null,
@@ -230,6 +234,125 @@ function mobileBrowserAcceptanceBundleCandidate(status, readiness, diagnostics) 
     diagnosticsReadiness.mobile_acceptance_evidence_bundle,
   ];
   return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function mobileDeviceEvidenceCandidate(status, readiness, diagnostics) {
+  // 证据采集包可来自 status/readiness/diagnostics；前端只合并白名单字段。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const candidates = [
+    status?.mobile_device_evidence_capture,
+    status?.mobile_device_evidence_capture_summary,
+    status?.mobile_device_evidence_package,
+    readiness?.mobile_device_evidence_capture,
+    readiness?.mobile_device_evidence_capture_summary,
+    readiness?.mobile_device_evidence_package,
+    diagnostics?.mobile_device_evidence_capture,
+    diagnostics?.mobile_device_evidence_capture_summary,
+    diagnostics?.mobile_device_evidence_package,
+    diagnosticsReadiness.mobile_device_evidence_capture,
+    diagnosticsReadiness.mobile_device_evidence_capture_summary,
+    diagnosticsReadiness.mobile_device_evidence_package,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function currentDisplayMode() {
+  // display-mode 只能说明当前浏览器上下文，不能证明 production app 或真实 install prompt。
+  const modes = ["standalone", "fullscreen", "minimal-ui", "browser"];
+  return modes.find((mode) => window.matchMedia && window.matchMedia(`(display-mode: ${mode})`).matches) || "browser";
+}
+
+function collectLocalDeviceEvidence() {
+  // 本地采集只保留浏览器安全元数据，绝不复制 robot/raw 调试字段。
+  const coarsePointer = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  const touchCapable = navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+  const serviceWorkerState = "serviceWorker" in navigator
+    ? (navigator.serviceWorker.controller ? "controller_present" : "registered_or_pending")
+    : "not_supported";
+  return {
+    viewport: {
+      width_css_px: window.innerWidth || document.documentElement.clientWidth || 0,
+      height_css_px: window.innerHeight || document.documentElement.clientHeight || 0,
+      device_pixel_ratio: window.devicePixelRatio || 1,
+      orientation: window.screen?.orientation?.type || "unknown",
+    },
+    touch_target: {
+      min_target_css_px: 48,
+      coarse_pointer: coarsePointer,
+      max_touch_points: navigator.maxTouchPoints || 0,
+      touch_capable: touchCapable,
+    },
+    display_mode: currentDisplayMode(),
+    pwa: {
+      manifest_link_present: Boolean(document.querySelector('link[rel="manifest"]')),
+      install_prompt_status: "not_proven",
+      production_app_ready: false,
+    },
+    service_worker: {
+      status: serviceWorkerState,
+      offline_shell_status: "static_shell_only",
+      dynamic_control_cache_policy: "no_store_required",
+    },
+    client_timestamp: new Date().toISOString(),
+  };
+}
+
+function normalizeDeviceEvidence(value, localEvidence) {
+  // 后端/诊断字段和本地采集字段都要经过白名单，复制包不能带原始 JSON。
+  const notProven = notProvenList(value?.not_proven);
+  return {
+    schema: DEVICE_EVIDENCE_SCHEMA,
+    schema_version: 1,
+    capture_summary_schema: "trashbot.mobile_device_evidence_capture_summary.v1",
+    package_schema: DEVICE_EVIDENCE_PACKAGE_SCHEMA,
+    viewport: {
+      width_css_px: Number(value?.viewport?.width_css_px || localEvidence.viewport.width_css_px || 0),
+      height_css_px: Number(value?.viewport?.height_css_px || localEvidence.viewport.height_css_px || 0),
+      device_pixel_ratio: Number(value?.viewport?.device_pixel_ratio || localEvidence.viewport.device_pixel_ratio || 1),
+      orientation: safeBundleText(value?.viewport?.orientation || localEvidence.viewport.orientation, "unknown"),
+    },
+    touch_target: {
+      min_target_css_px: Number(value?.touch_target?.min_target_css_px || localEvidence.touch_target.min_target_css_px),
+      coarse_pointer: value?.touch_target?.coarse_pointer === true || localEvidence.touch_target.coarse_pointer === true,
+      max_touch_points: Number(value?.touch_target?.max_touch_points || localEvidence.touch_target.max_touch_points || 0),
+      touch_capable: value?.touch_target?.touch_capable === true || localEvidence.touch_target.touch_capable === true,
+    },
+    display_mode: safeBundleText(value?.display_mode || localEvidence.display_mode, "browser"),
+    pwa: {
+      manifest_link_present: value?.pwa?.manifest_link_present === true || localEvidence.pwa.manifest_link_present === true,
+      install_prompt_status: safeBundleText(value?.pwa?.install_prompt_status, localEvidence.pwa.install_prompt_status),
+      production_app_ready: value?.pwa?.production_app_ready === true,
+    },
+    service_worker: {
+      status: safeBundleText(value?.service_worker?.status || localEvidence.service_worker.status, "not_supported"),
+      offline_shell_status: safeBundleText(
+        value?.service_worker?.offline_shell_status || localEvidence.service_worker.offline_shell_status,
+        "static_shell_only",
+      ),
+      dynamic_control_cache_policy: "no_store_required",
+    },
+    client_timestamp: safeBundleText(value?.client_timestamp || localEvidence.client_timestamp, localEvidence.client_timestamp),
+    overall_status: safeBundleText(value?.overall_status || value?.status, "blocked"),
+    safe_phone_copy: safeBundleText(
+      value?.safe_phone_copy || value?.safe_summary,
+      "手机设备证据包只记录 phone-safe 浏览器元数据；真实手机/browser、production app 和真实 PWA install prompt 仍未证明。",
+    ),
+    recovery_hint: safeBundleText(
+      value?.recovery_hint || value?.retry_hint,
+      "把证据包交给支持人员复现；主操作仍由 readiness 和 command_safety fail closed。",
+    ),
+    ack_semantics: safeBundleText(value?.ack_semantics, ACK_PROCESSING_COPY),
+    evidence_boundary: safeBundleText(value?.evidence_boundary, MOBILE_DEVICE_EVIDENCE_BOUNDARY),
+    not_proven: notProven,
+  };
+}
+
+function mobileDeviceEvidencePackageFromStatus(status, readiness, diagnostics) {
+  const localEvidence = collectLocalDeviceEvidence();
+  const provided = mobileDeviceEvidenceCandidate(status, readiness, diagnostics);
+  return normalizeDeviceEvidence(provided || {}, localEvidence);
 }
 
 function bundleFieldSummary(value, fallback = "not_proven") {
@@ -1159,6 +1282,51 @@ function bundleCopyPayload(bundle) {
   };
 }
 
+function deviceEvidencePackageCopyPayload(packagePayload) {
+  // 复制包固定为白名单 schema，过滤凭证、机器人原始字段和完整证据文件。
+  return {
+    schema: DEVICE_EVIDENCE_PACKAGE_SCHEMA,
+    schema_version: packagePayload.schema_version,
+    capture_schema: packagePayload.schema,
+    capture_summary_schema: packagePayload.capture_summary_schema,
+    overall_status: packagePayload.overall_status,
+    viewport: packagePayload.viewport,
+    touch_target: packagePayload.touch_target,
+    display_mode: packagePayload.display_mode,
+    pwa: packagePayload.pwa,
+    service_worker: packagePayload.service_worker,
+    client_timestamp: packagePayload.client_timestamp,
+    safe_phone_copy: packagePayload.safe_phone_copy,
+    recovery_hint: packagePayload.recovery_hint,
+    ack_semantics: packagePayload.ack_semantics,
+    evidence_boundary: packagePayload.evidence_boundary,
+    not_proven: packagePayload.not_proven,
+  };
+}
+
+function renderMobileDeviceEvidence(status) {
+  const readiness = readinessFromStatus(status);
+  const packagePayload = mobileDeviceEvidencePackageFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("mobileDeviceEvidenceBadge");
+  latestDeviceEvidencePackage = packagePayload;
+
+  badge.className = "gate-badge gate-blocked";
+  badge.textContent = packagePayload.overall_status === "ready" ? "仍需实机复核" : "证据未证明";
+  $("mobileDeviceEvidenceCopy").textContent = packagePayload.safe_phone_copy;
+  $("mobileDeviceEvidenceViewportTouch").textContent =
+    `${packagePayload.viewport.width_css_px}x${packagePayload.viewport.height_css_px} @${packagePayload.viewport.device_pixel_ratio} / touch=${packagePayload.touch_target.touch_capable}`;
+  $("mobileDeviceEvidenceDisplayPwa").textContent =
+    `display=${packagePayload.display_mode} / install_prompt=${packagePayload.pwa.install_prompt_status}`;
+  $("mobileDeviceEvidenceServiceWorker").textContent =
+    `sw=${packagePayload.service_worker.status} / offline=${packagePayload.service_worker.offline_shell_status}`;
+  $("mobileDeviceEvidenceTimestamp").textContent = packagePayload.client_timestamp;
+  $("mobileDeviceEvidenceAck").textContent = packagePayload.ack_semantics;
+  $("mobileDeviceEvidenceBoundary").textContent = packagePayload.evidence_boundary;
+  $("mobileDeviceEvidenceNotProven").textContent = packagePayload.not_proven.join("、");
+  $("mobileDeviceEvidenceSafeCopy").textContent =
+    JSON.stringify(deviceEvidencePackageCopyPayload(packagePayload), null, 2);
+}
+
 function renderMobileBrowserAcceptanceBundle(status) {
   const readiness = readinessFromStatus(status);
   const bundle = mobileBrowserAcceptanceBundleFromStatus(status, readiness, latestDiagnostics);
@@ -1349,6 +1517,7 @@ function renderOfflineFailure() {
   $("operationSupportEntry").textContent = "离线时可保留恢复提示，但不发送控制请求。";
   renderCloudReadiness({});
   renderMobileDeviceAcceptance({});
+  renderMobileDeviceEvidence({});
   renderMobileBrowserAcceptanceBundle({});
   renderRecoveryDecision({ connection_state: "offline" });
   latestActionFeedback = normalizeActionFeedback({
@@ -1379,6 +1548,7 @@ function renderStatus(status) {
   renderRecoveryDecision(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
+  renderMobileDeviceEvidence(status);
   renderMobileBrowserAcceptanceBundle(status);
   renderTaskFlow(status);
   renderStartConfirmation(status);
@@ -1566,6 +1736,7 @@ async function openDiagnostics() {
     renderPrimaryJourney(latestStatus || {});
     renderRecoveryDecision(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
+    renderMobileDeviceEvidence(latestStatus || {});
     renderMobileBrowserAcceptanceBundle(latestStatus || {});
     renderCommandSafety(latestStatus || {});
     renderDiagnosticsSummary(latestDiagnostics);
@@ -1619,6 +1790,17 @@ function wireEvents() {
       $("mobileBrowserCopyStatus").textContent = "已复制脱敏验收包。";
     } catch (_error) {
       $("mobileBrowserCopyStatus").textContent = "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("copyDeviceEvidencePackageButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(deviceEvidencePackageCopyPayload(latestDeviceEvidencePackage || {}), null, 2);
+    $("mobileDeviceEvidenceSafeCopy").textContent = payload;
+    // 剪贴板失败不影响验收，pre 区域始终保留 phone-safe 手动复制路径。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("mobileDeviceEvidenceCopyStatus").textContent = "已复制脱敏设备证据包。";
+    } catch (_error) {
+      $("mobileDeviceEvidenceCopyStatus").textContent = "浏览器未授权剪贴板；请从下方文本框手动复制。";
     }
   });
   $("supportButton").addEventListener("click", () => {

@@ -135,6 +135,105 @@
       "真实送达"
     ]
   },
+  "mobile_device_evidence_capture": {
+    "schema": "trashbot.mobile_device_evidence_capture.v1",
+    "schema_version": 1,
+    "overall_status": "blocked",
+    "viewport": {
+      "width_css_px": 390,
+      "height_css_px": 844,
+      "device_pixel_ratio": 3,
+      "orientation": "portrait-primary"
+    },
+    "touch_target": {
+      "min_target_css_px": 48,
+      "coarse_pointer": true,
+      "max_touch_points": 5,
+      "touch_capable": true
+    },
+    "display_mode": "browser",
+    "pwa": {
+      "manifest_link_present": true,
+      "install_prompt_status": "not_proven",
+      "production_app_ready": false
+    },
+    "service_worker": {
+      "status": "registered_or_pending",
+      "offline_shell_status": "static_shell_only",
+      "dynamic_control_cache_policy": "no_store_required"
+    },
+    "client_timestamp": "2026-05-13T23:24:00+08:00",
+    "safe_phone_copy": "手机设备证据采集 blocked-by-design：这里只能复制 phone-safe viewport、touch、display-mode、PWA/offline 和客户端时间。",
+    "recovery_hint": "请在真实 iPhone/Android 浏览器或 production app 入口采集并复核；Start、Confirm、Cancel 继续 fail closed。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成、取消完成或真实手机验收通过。",
+    "evidence_boundary": "software_proof_docker_mobile_device_evidence_capture_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "真实云/4G",
+      "Nav2/fixed-route",
+      "真实底盘运动",
+      "HIL",
+      "真实送达"
+    ]
+  },
+  "mobile_device_evidence_capture_summary": {
+    "schema": "trashbot.mobile_device_evidence_capture_summary.v1",
+    "schema_version": 1,
+    "safe_phone_copy": "证据采集摘要只说明可复制 phone-safe 元数据，不证明真实手机验收。",
+    "evidence_boundary": "software_proof_docker_mobile_device_evidence_capture_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt"
+    ]
+  },
+  "mobile_device_evidence_package": {
+    "schema": "trashbot.mobile_device_evidence_package.v1",
+    "schema_version": 1,
+    "capture_schema": "trashbot.mobile_device_evidence_capture.v1",
+    "capture_summary_schema": "trashbot.mobile_device_evidence_capture_summary.v1",
+    "overall_status": "blocked",
+    "viewport": {
+      "width_css_px": 390,
+      "height_css_px": 844,
+      "device_pixel_ratio": 3,
+      "orientation": "portrait-primary"
+    },
+    "touch_target": {
+      "min_target_css_px": 48,
+      "coarse_pointer": true,
+      "max_touch_points": 5,
+      "touch_capable": true
+    },
+    "display_mode": "browser",
+    "pwa": {
+      "manifest_link_present": true,
+      "install_prompt_status": "not_proven",
+      "production_app_ready": false
+    },
+    "service_worker": {
+      "status": "registered_or_pending",
+      "offline_shell_status": "static_shell_only",
+      "dynamic_control_cache_policy": "no_store_required"
+    },
+    "client_timestamp": "2026-05-13T23:24:00+08:00",
+    "safe_phone_copy": "可复制的手机设备证据包只包含脱敏 phone-safe 元数据。",
+    "recovery_hint": "缺少真实手机/browser 与 production app 前不得把该包写成验收通过。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+    "evidence_boundary": "software_proof_docker_mobile_device_evidence_capture_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "真实云/4G",
+      "Nav2/fixed-route",
+      "真实底盘运动",
+      "HIL",
+      "真实送达"
+    ]
+  },
   "mobile_browser_acceptance_bundle": {
     "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
     "schema_version": 1,
@@ -353,6 +452,41 @@
       "recovery_hint": "请在真实 iPhone/Android 浏览器与 production app 入口完成验收；在此之前 Start、Confirm、Cancel 保持禁用，Diagnostics 和 Support Handoff 仍可见。",
       "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成、取消完成或真实手机验收通过。",
       "evidence_boundary": "software_proof_docker_mobile_device_acceptance_readiness_gate"
+    },
+    "mobile_device_evidence_capture": {
+      "schema": "trashbot.mobile_device_evidence_capture.v1",
+      "schema_version": 1,
+      "overall_status": "blocked",
+      "display_mode": "browser",
+      "pwa": {
+        "manifest_link_present": true,
+        "install_prompt_status": "not_proven",
+        "production_app_ready": false
+      },
+      "safe_phone_copy": "phone_readiness 内的设备证据采集同样只代表 Docker/local phone-safe 元数据。",
+      "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表真实手机验收通过。",
+      "evidence_boundary": "software_proof_docker_mobile_device_evidence_capture_gate",
+      "not_proven": [
+        "真实手机设备/browser",
+        "production app",
+        "真实 PWA install prompt"
+      ]
+    },
+    "mobile_device_evidence_capture_summary": {
+      "schema": "trashbot.mobile_device_evidence_capture_summary.v1",
+      "schema_version": 1,
+      "safe_phone_copy": "证据采集摘要可复制给支持人员，但不放行控制动作。",
+      "evidence_boundary": "software_proof_docker_mobile_device_evidence_capture_gate"
+    },
+    "mobile_device_evidence_package": {
+      "schema": "trashbot.mobile_device_evidence_package.v1",
+      "schema_version": 1,
+      "capture_schema": "trashbot.mobile_device_evidence_capture.v1",
+      "capture_summary_schema": "trashbot.mobile_device_evidence_capture_summary.v1",
+      "overall_status": "blocked",
+      "client_timestamp": "2026-05-13T23:24:00+08:00",
+      "safe_phone_copy": "嵌套证据包同样只包含 phone-safe 元数据。",
+      "evidence_boundary": "software_proof_docker_mobile_device_evidence_capture_gate"
     },
     "mobile_browser_acceptance_bundle": {
       "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
