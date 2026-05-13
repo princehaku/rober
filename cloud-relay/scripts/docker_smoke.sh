@@ -25,6 +25,10 @@ fi
 export TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL="${TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL:-http://127.0.0.1:${PORT}}"
 export TRASHBOT_REMOTE_CLOUD_TLS_MODE="${TRASHBOT_REMOTE_CLOUD_TLS_MODE:-future_reverse_proxy}"
 export TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS="${TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS:-missing}"
+export TRASHBOT_REMOTE_CLOUD_DB_CONFIG="${TRASHBOT_REMOTE_CLOUD_DB_CONFIG:-missing}"
+export TRASHBOT_REMOTE_CLOUD_QUEUE_CONFIG="${TRASHBOT_REMOTE_CLOUD_QUEUE_CONFIG:-missing}"
+export TRASHBOT_REMOTE_CLOUD_DB_MIGRATION_CONFIG="${TRASHBOT_REMOTE_CLOUD_DB_MIGRATION_CONFIG:-missing}"
+export TRASHBOT_REMOTE_CLOUD_QUEUE_WORKER_CONFIG="${TRASHBOT_REMOTE_CLOUD_QUEUE_WORKER_CONFIG:-missing}"
 export TRASHBOT_REMOTE_CLOUD_OSS_BUCKET="${TRASHBOT_REMOTE_CLOUD_OSS_BUCKET:-bytegallop}"
 export TRASHBOT_REMOTE_CLOUD_OSS_REGION="${TRASHBOT_REMOTE_CLOUD_OSS_REGION:-oss-cn-hangzhou}"
 export TRASHBOT_REMOTE_CLOUD_OSS_PREFIX="${TRASHBOT_REMOTE_CLOUD_OSS_PREFIX:-rober/<robot_id>/<date>/<task_id>/}"
@@ -81,9 +85,12 @@ import sys
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
 encoded = json.dumps(payload, ensure_ascii=False)
 required = (
+    "software_proof_docker_cloud_db_queue_config_gate",
     "software_proof_docker_cloud_public_ingress_tls_gate",
     "cloud_deployment_readiness",
     "cloud_public_ingress_tls",
+    "cloud_db_queue_config",
+    "missing_cloud_db_queue_config",
     "missing_public_ingress_tls_config",
     "missing_or_placeholder_credential",
     "https_public_ingress_missing",
@@ -102,6 +109,109 @@ for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "baudrate", "
         raise SystemExit(f"preflight leaked forbidden marker: {forbidden}")
 if payload.get("production_ready"):
     raise SystemExit("preflight must not pass for Docker/local placeholder config")
+PY
+
+echo "== cloud DB/queue config gate distinguishes missing config =="
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  rm -f /tmp/trashbot_cloud_db_queue_config_missing.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+    --write-cloud-db-queue-config-artifact /tmp/trashbot_cloud_db_queue_config_missing.json \
+    >/tmp/trashbot_cloud_db_queue_config_missing_result.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  cat /tmp/trashbot_cloud_db_queue_config_missing.json \
+    >/tmp/trashbot_cloud_db_queue_config_missing.json
+cat /tmp/trashbot_cloud_db_queue_config_missing.json
+echo
+python3 - /tmp/trashbot_cloud_db_queue_config_missing.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+encoded = json.dumps(payload, ensure_ascii=False)
+if payload.get("schema") != "trashbot.cloud_db_queue_config_gate":
+    raise SystemExit("wrong cloud DB/queue config schema")
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_db_queue_config_gate":
+    raise SystemExit("wrong cloud DB/queue config evidence boundary")
+if payload.get("state") != "missing_cloud_db_queue_config":
+    raise SystemExit("missing-config state was not reported")
+if payload.get("production_ready") or payload.get("overall_status") != "blocked":
+    raise SystemExit("cloud DB/queue config gate must remain production blocked")
+for marker in ("production_db_or_queue", "multi_instance_consistency", "production_backup_policy"):
+    if marker not in encoded:
+        raise SystemExit(f"missing cloud DB/queue config marker: {marker}")
+for forbidden in ("Authorization", "Bearer", "postgres://", "mysql://", "redis://", "amqp://", "queue URL", "database URL", "/cmd_vel", "ttyUSB", "baudrate", "WAVE ROVER", "/tmp/"):
+    if forbidden in encoded:
+        raise SystemExit(f"cloud DB/queue config leaked forbidden marker: {forbidden}")
+PY
+
+echo "== cloud DB/queue config gate distinguishes config package without external proof =="
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T \
+  -e TRASHBOT_REMOTE_CLOUD_DB_CONFIG=present \
+  -e TRASHBOT_REMOTE_CLOUD_QUEUE_CONFIG=present \
+  -e TRASHBOT_REMOTE_CLOUD_DB_MIGRATION_CONFIG=present \
+  -e TRASHBOT_REMOTE_CLOUD_QUEUE_WORKER_CONFIG=present \
+  remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+    --write-cloud-db-queue-config-artifact /tmp/trashbot_cloud_db_queue_config_present.json \
+    >/tmp/trashbot_cloud_db_queue_config_present_result.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  cat /tmp/trashbot_cloud_db_queue_config_present.json \
+    >/tmp/trashbot_cloud_db_queue_config_present.json
+cat /tmp/trashbot_cloud_db_queue_config_present.json
+echo
+python3 - /tmp/trashbot_cloud_db_queue_config_present.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+encoded = json.dumps(payload, ensure_ascii=False)
+if payload.get("state") != "cloud_db_queue_config_present_not_externally_proven":
+    raise SystemExit("config-present-not-proven state was not reported")
+if not payload.get("config_package_present"):
+    raise SystemExit("config package presence was not reported")
+if payload.get("external_db_queue_probe_proven"):
+    raise SystemExit("external DB/queue proof must remain false")
+if payload.get("production_ready") or payload.get("overall_status") != "blocked":
+    raise SystemExit("config-present gate must remain production blocked")
+for forbidden in ("Authorization", "Bearer", "postgres://", "mysql://", "redis://", "amqp://", "queue URL", "database URL", "/cmd_vel", "ttyUSB", "baudrate", "WAVE ROVER", "/tmp/"):
+    if forbidden in encoded:
+        raise SystemExit(f"config-present DB/queue gate leaked forbidden marker: {forbidden}")
+PY
+
+echo "== production preflight CLI consumes cloud DB/queue config gate without production ready =="
+set +e
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T \
+  -e TRASHBOT_REMOTE_CLOUD_DB_QUEUE_CONFIG_ARTIFACT=/tmp/trashbot_cloud_db_queue_config_present.json \
+  remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight \
+  >/tmp/remote_cloud_relay_preflight_cloud_db_queue_config.json
+PREFLIGHT_CLOUD_DB_QUEUE_STATUS="$?"
+set -e
+cat /tmp/remote_cloud_relay_preflight_cloud_db_queue_config.json
+echo
+if [ "${PREFLIGHT_CLOUD_DB_QUEUE_STATUS}" != "0" ]; then
+  echo "cloud DB/queue config preflight CLI unexpectedly returned ${PREFLIGHT_CLOUD_DB_QUEUE_STATUS}" >&2
+  exit 1
+fi
+python3 - /tmp/remote_cloud_relay_preflight_cloud_db_queue_config.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+checks = {check["name"]: check for check in payload.get("checks", [])}
+encoded = json.dumps(payload, ensure_ascii=False)
+if payload.get("production_ready") or payload.get("overall_status") != "blocked":
+    raise SystemExit("cloud DB/queue config preflight must remain blocked")
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_db_queue_config_gate":
+    raise SystemExit("preflight did not report cloud DB/queue config boundary")
+if checks.get("cloud_db_queue_config", {}).get("code") != "cloud_db_queue_config_present_not_externally_proven":
+    raise SystemExit("preflight did not preserve DB/queue config-present-not-proven state")
+if checks.get("cloud_db_queue_config", {}).get("details", {}).get("external_db_queue_probe_proven"):
+    raise SystemExit("preflight must not claim external DB/queue proof")
+for forbidden in ("Authorization", "Bearer", "postgres://", "mysql://", "redis://", "amqp://", "queue URL", "database URL", "/cmd_vel", "ttyUSB", "baudrate", "WAVE ROVER", "/tmp/"):
+    if forbidden in encoded:
+        raise SystemExit(f"cloud DB/queue config preflight leaked forbidden marker: {forbidden}")
 PY
 
 echo "== cloud public ingress TLS gate distinguishes missing config =="
@@ -349,7 +459,7 @@ payload = json.load(open(sys.argv[1], encoding="utf-8"))
 checks = {check["name"]: check for check in payload.get("checks", [])}
 if checks.get("state_store", {}).get("code") != "state_store_not_writable":
     raise SystemExit("unwritable state store was not reported as blocked")
-if payload.get("evidence_boundary") != "software_proof_docker_cloud_public_ingress_tls_gate":
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_db_queue_config_gate":
     raise SystemExit("wrong evidence boundary")
 PY
 

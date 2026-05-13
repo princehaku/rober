@@ -422,6 +422,49 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("credential_url", encoded_command)
         self.assertNotIn("/cmd_vel", encoded_command)
 
+    def test_validate_command_ignores_cloud_db_queue_config_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-cloud-db-queue-config-metadata",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "cloud_db_queue_config": {
+                "schema": "trashbot.cloud_db_queue_config.v1",
+                "overall_status": "blocked",
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+                "db_url": "postgres://user:secret@example.invalid/db",
+                "queue_url": "amqp://user:secret@example.invalid/q",
+            },
+            "cloud_db_queue_config_gate": {
+                "schema": "trashbot.cloud_db_queue_config_gate.v1",
+                "production_ready": False,
+                "next_action": "confirm_dropoff",
+                "Authorization": "Bearer must-not-leak",
+            },
+            "db_queue_config": {
+                "schema": "trashbot.db_queue_config.v1",
+                "queue_contract_status": "configured_in_cloud_only",
+                "raw_ros_topic": "/cmd_vel",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-cloud-db-queue-config-metadata")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # DB/queue readiness 是云控制面配置证明，parser 只能保留 robot command envelope。
+        self.assertNotIn("cloud_db_queue_config", encoded_command)
+        self.assertNotIn("cloud_db_queue_config_gate", encoded_command)
+        self.assertNotIn("db_queue_config", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("postgres://", encoded_command)
+        self.assertNotIn("amqp://", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+
     def test_validate_command_keeps_command_id_order_as_supplied(self):
         command = validate_command({
             "id": "cmd-10",

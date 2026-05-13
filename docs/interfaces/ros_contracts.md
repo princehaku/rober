@@ -413,11 +413,12 @@ Cloud responses may include optional status, preflight, diagnostics, queue,
 mobile-web-entrypoint, PWA-entrypoint, voice-prompt-readiness,
 production-recovery, transaction-isolation, cloud external probe,
 deployment-readiness, mobile task-start confirmation, mobile action feedback,
-or operation-log metadata beside the `trashbot.remote.v1` command/status/ACK
-envelope. Robot clients must treat those fields as ignorable diagnostics for
-forward compatibility. A metadata-only response with `command=null` or no
-command object must not start a robot action, must not emit ACK, and must not
-advance or persist `last_terminal_ack_id`.
+operation-log, or DB/queue config-gate metadata beside the
+`trashbot.remote.v1` command/status/ACK envelope. Robot clients must treat
+those fields as ignorable diagnostics for forward compatibility. A
+metadata-only response with `command=null` or no command object must not start a
+robot action, must not emit ACK, and must not advance or persist
+`last_terminal_ack_id`.
 Cloud external probe metadata, including `cloud_external_probe` and
 `cloud_external_probe_bundle`, is diagnostic/deployment metadata for
 `/healthz`, `/readyz`, and `/preflightz` probe summaries. It is not a robot
@@ -446,6 +447,21 @@ describe local Docker recovery gate state, `production_ready=false`, or
 `overall_status=blocked`, but it is not part of the remote command envelope, is
 safe for older robot clients to ignore, and must not trigger `collect`,
 `confirm_dropoff`, `cancel`, ACK emission, or cursor advancement on its own.
+DB/queue config-gate metadata, including `cloud_db_queue_config`,
+`cloud_db_queue_config_gate`, and `db_queue_config`, is phone-safe/cloud
+readiness metadata for cloud database and queue configuration proof. It may
+describe `production_ready=false`, blocked readiness, redacted config checks, or
+software-proof evidence boundaries, but it is not a robot command, ACK payload,
+status-post extension, backend action result, cursor instruction, ROS2 action
+result, WAVE ROVER feedback, HIL result, or delivery success proof. Robot-side
+protocol normalization must strip those fields from valid command objects, and
+metadata-only responses must not invoke `collect`, `confirm_dropoff`, or
+`cancel`, must not POST ACK, and must not advance or persist
+`last_terminal_ack_id`. DB URLs, queue URLs, credentials, Authorization headers,
+raw ROS topics, `/cmd_vel`, serial devices, hardware parameters,
+`trigger_robot_action`, `cursor_override`, and `delivery_success` must not be
+copied into robot status, ACK, backend action result, or normalized command
+payload.
 Mobile task-start confirmation metadata, including
 `mobile_task_start_confirmation`,
 `mobile_task_start_confirmation_readiness`, and

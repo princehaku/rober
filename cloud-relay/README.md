@@ -20,6 +20,7 @@
   - `trashbot.cloud_deployment_readiness` artifact，汇总公网入口、TLS、healthcheck、凭证、state backend、生产 DB/queue、OSS/CDN、4G/SIM 和 runbook/smoke 缺口；证据边界固定为 `software_proof_docker_cloud_deployment_readiness_gate`
   - `trashbot.cloud_external_probe_bundle` artifact，用 base URL 探测 `/healthz`、`/readyz`、`/preflightz` 并只记录 endpoint path、HTTP 状态、JSON 合同和脱敏状态；证据边界固定为 `software_proof_docker_cloud_external_probe_bundle_gate`，`production_ready=false` 必须保持
   - `trashbot.cloud_public_ingress_tls_gate` artifact，区分完全缺公网入口/TLS/反向代理配置与配置包存在但缺真实外部 HTTPS、DNS、反向代理、防火墙实证；证据边界固定为 `software_proof_docker_cloud_public_ingress_tls_gate`，`overall_status=blocked` 必须保持
+  - `trashbot.cloud_db_queue_config_gate` artifact，区分完全缺生产 DB/queue 配置包与配置包存在但缺真实连接、多实例、一致性、备份和灾备实证；证据边界固定为 `software_proof_docker_cloud_db_queue_config_gate`，`production_ready=false` 和 `overall_status=blocked` 必须保持
 
 ## 子目录
 
@@ -115,6 +116,30 @@ python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 
 该 gate 的 `state` 只允许 `missing_public_ingress_tls_config` 或 `public_ingress_tls_config_present_not_externally_proven`。前者表示还没有形成配置包；后者表示 HTTPS 公网入口、TLS mode、反向代理和防火墙配置形态存在，但仍没有真实外部 HTTPS/TLS、公网入口、DNS、反向代理转发或防火墙实证。两种状态都必须保持 `production_ready=false`、`overall_status=blocked`，并且不得输出真实 URL、Authorization、Bearer、证书私钥、私钥路径、DB/queue URL、本地 state path、串口、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`。
 
+生成 cloud DB/queue config gate artifact：
+
+```bash
+cd cloud-relay
+PYTHONPATH=src:../onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_DB_CONFIG=present \
+TRASHBOT_REMOTE_CLOUD_QUEUE_CONFIG=present \
+TRASHBOT_REMOTE_CLOUD_DB_MIGRATION_CONFIG=present \
+TRASHBOT_REMOTE_CLOUD_QUEUE_WORKER_CONFIG=present \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --write-cloud-db-queue-config-artifact /tmp/trashbot_cloud_db_queue_config.json
+```
+
+Preflight 消费该 artifact：
+
+```bash
+cd cloud-relay
+PYTHONPATH=src:../onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_DB_QUEUE_CONFIG_ARTIFACT=/tmp/trashbot_cloud_db_queue_config.json \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
+```
+
+该 gate 的 `state` 只允许 `missing_cloud_db_queue_config` 或 `cloud_db_queue_config_present_not_externally_proven`。前者表示生产 DB/queue 配置包仍缺失；后者表示配置包形态存在，但仍没有真实连接探测、多实例一致性、生产队列顺序、事务隔离、备份策略或灾备实证。两种状态都必须保持 `production_ready=false`、`overall_status=blocked`，并且不得输出 DB/queue endpoint、credential-bearing endpoint、Authorization、Bearer、token、root password、本地 state path、串口、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`。
+
 ## 运行时契约（Runtime contracts）
 
 - **与 `onboard/` 的契约**：
@@ -140,6 +165,7 @@ python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 - Deployment readiness / preflight 输出不得泄漏 bearer token、Authorization header、OSS secret、AK/SK、root password、DB URL、queue URL、credential-bearing URL、raw state path、串口、baudrate、WAVE ROVER 参数、ROS topic、`/cmd_vel` 或 traceback。
 - Cloud external probe bundle 不得写入 base URL、Authorization header、响应体、credential-bearing URL、本地 state path、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；只允许 endpoint path、HTTP status、JSON 合同状态和脱敏状态进入 artifact。
 - Cloud public ingress/TLS gate 不得写入真实 URL、Authorization header、Bearer token、证书私钥、证书私钥路径、root password、OSS AK/SK、DB/queue URL、本地 state path、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；只允许枚举化配置状态和外部实证缺口进入 artifact。
+- Cloud DB/queue config gate 不得写入 DB/queue endpoint、credential-bearing endpoint、Authorization header、Bearer token、root password、本地 state path、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；只允许枚举化配置状态和外部实证缺口进入 artifact。
 - 修改 Docker / compose / scripts / Dockerfile 时必须更新本 README 的"标准入口"段落。
 - 中文注释比例 >20%，注释解释"为什么"而非"做什么"。
 

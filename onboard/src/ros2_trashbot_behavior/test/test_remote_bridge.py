@@ -689,6 +689,122 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertIn("last_ack_id=cmd-10", self.cloud.get_paths[1])
         self.assertEqual(self.worker.last_ack_id, "cmd-9")
 
+    def test_cloud_db_queue_config_metadata_only_response_does_not_move_robot(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-db-queue-config",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras["command_response"] = {
+                "cloud_db_queue_config": {
+                    "schema": "trashbot.cloud_db_queue_config.v1",
+                    "overall_status": "blocked",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-config-override",
+                    "delivery_success": True,
+                    "db_url": "postgres://user:secret@example.invalid/db",
+                    "queue_url": "amqp://user:secret@example.invalid/q",
+                },
+                "cloud_db_queue_config_gate": {
+                    "schema": "trashbot.cloud_db_queue_config_gate.v1",
+                    "evidence_boundary": "software_proof_docker_cloud_db_queue_config_gate",
+                    "production_ready": False,
+                    "next_action": "confirm_dropoff",
+                },
+                "db_queue_config": {
+                    "schema": "trashbot.db_queue_config.v1",
+                    "raw_ros_topic": "/cmd_vel",
+                    "Authorization": "Bearer must-not-leak",
+                },
+            }
+
+            handled = worker.poll_once()
+
+            self.assertFalse(handled)
+            self.assertEqual(self.backend.calls, [])
+            self.assertEqual(self.cloud.ack_posts, [])
+            self.assertEqual(worker.last_ack_id, "cmd-before-db-queue-config")
+            self.assertFalse(state_path.exists())
+            self.assertIn("last_ack_id=cmd-before-db-queue-config", self.cloud.get_paths[-1])
+            encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+            # DB/queue config gate 是云 readiness 元数据；没有 command envelope 时不能触发动作或 ACK。
+            self.assertNotIn("cloud_db_queue_config", encoded_status)
+            self.assertNotIn("cloud_db_queue_config_gate", encoded_status)
+            self.assertNotIn("db_queue_config", encoded_status)
+            self.assertNotIn("trigger_robot_action", encoded_status)
+            self.assertNotIn("cursor_override", encoded_status)
+            self.assertNotIn("delivery_success", encoded_status)
+            self.assertNotIn("postgres://", encoded_status)
+            self.assertNotIn("amqp://", encoded_status)
+            self.assertNotIn("/cmd_vel", encoded_status)
+            self.assertNotIn("Authorization", encoded_status)
+
+    def test_cloud_db_queue_config_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "cloud_db_queue_config": {
+                    "schema": "trashbot.cloud_db_queue_config.v1",
+                    "overall_status": "blocked",
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "cloud_db_queue_config_gate": {
+                    "schema": "trashbot.cloud_db_queue_config_gate.v1",
+                    "production_ready": False,
+                    "next_action": "cancel",
+                    "cursor_override": "cmd-future",
+                },
+                "db_queue_config": {
+                    "schema": "trashbot.db_queue_config.v1",
+                    "queue_contract_status": "configured_in_cloud_only",
+                    "trigger_robot_action": "confirm_dropoff",
+                },
+            },
+            "ack_response": {
+                "cloud_db_queue_config": {
+                    "schema": "trashbot.cloud_db_queue_config.v1",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+                "db_queue_config": {"queue_ready": True},
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-db-queue-config-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-db-queue-config-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-db-queue-config-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # ACK 只回传本地 command 处理结果，不能带回 DB/queue readiness 证明或送达语义。
+        self.assertNotIn("cloud_db_queue_config", encoded_ack)
+        self.assertNotIn("cloud_db_queue_config_gate", encoded_ack)
+        self.assertNotIn("db_queue_config", encoded_ack)
+        self.assertNotIn("queue_contract_status", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("cloud_db_queue_config", encoded_status)
+        self.assertNotIn("db_queue_config", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_phone_task_flow_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {

@@ -34,6 +34,8 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 
 本轮 `2026.05.13_08-09_cloud-public-ingress-tls-gate` 新增 cloud public ingress/TLS/reverse-proxy 配置 gate，证据边界是 `software_proof_docker_cloud_public_ingress_tls_gate`。Artifact schema 为 `trashbot.cloud_public_ingress_tls_gate`、`schema_version=1`，只保存枚举化配置状态和缺口摘要，用来区分 `missing_public_ingress_tls_config` 与 `public_ingress_tls_config_present_not_externally_proven`。前者表示公网入口/TLS/反向代理配置包仍缺失；后者表示配置包形态存在，但没有真实外部 HTTPS/TLS、公网入口、DNS、反向代理转发或防火墙实证。两种状态都必须保持 `production_ready=false`、`overall_status=blocked`；artifact、preflight 和 phone-safe summary 不得输出真实 URL、credential-bearing URL、Authorization header、bearer token、TLS private key、证书私钥路径、root password、OSS AK/SK、DB/queue URL、本地 state path、串口、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`。
 
+本轮 `2026.05.13_10-11_cloud-db-queue-config-gate` 新增 cloud DB/queue 配置 gate，证据边界是 `software_proof_docker_cloud_db_queue_config_gate`。Artifact schema 为 `trashbot.cloud_db_queue_config_gate`、`schema_version=1`，只保存枚举化配置状态和缺口摘要，用来区分 `missing_cloud_db_queue_config` 与 `cloud_db_queue_config_present_not_externally_proven`。前者表示生产 DB/queue 配置包仍缺失；后者表示配置包形态存在，但没有真实连接探测、多实例一致性、生产队列顺序、事务隔离、备份策略或灾备实证。两种状态都必须保持 `production_ready=false`、`overall_status=blocked`；artifact 和 preflight 不得输出 DB/queue endpoint、credential-bearing endpoint、Authorization header、bearer token、token、root password、本地 state path、串口、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`。
+
 ## 云端基线规格
 
 目标服务端基线：
@@ -171,6 +173,11 @@ Operator/API 消费 manifest artifact 时输出的是更小的 phone-safe summar
 - `TRASHBOT_REMOTE_CLOUD_REVERSE_PROXY_CONFIG`：可选枚举，`missing`、`planned` 或 `present`；只参与 public ingress/TLS 配置包形态判断，不读取或输出真实反向代理配置正文。
 - `TRASHBOT_REMOTE_CLOUD_FIREWALL_CONFIG`：可选枚举，`missing`、`planned` 或 `present`；只参与 public ingress/TLS 配置包形态判断，不读取或输出真实防火墙规则。
 - `TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS_TLS_ARTIFACT`：可选的本地 public ingress/TLS/reverse-proxy 配置 gate artifact 路径，只供 preflight 消费脱敏摘要；不得作为真实 HTTPS/TLS、公网入口、DNS、反向代理、防火墙、真实云或真实 4G/SIM 证据。
+- `TRASHBOT_REMOTE_CLOUD_DB_CONFIG`：可选枚举，`missing`、`planned` 或 `present`；只参与生产 DB 配置包形态判断，不读取或输出真实连接信息。
+- `TRASHBOT_REMOTE_CLOUD_QUEUE_CONFIG`：可选枚举，`missing`、`planned` 或 `present`；只参与生产 queue 配置包形态判断，不读取或输出真实连接信息。
+- `TRASHBOT_REMOTE_CLOUD_DB_MIGRATION_CONFIG`：可选枚举，`missing`、`planned` 或 `present`；只记录迁移配置形态，不代表生产迁移已执行。
+- `TRASHBOT_REMOTE_CLOUD_QUEUE_WORKER_CONFIG`：可选枚举，`missing`、`planned` 或 `present`；只记录队列 worker 配置形态，不代表生产 worker 已上线。
+- `TRASHBOT_REMOTE_CLOUD_DB_QUEUE_CONFIG_ARTIFACT`：可选的本地 cloud DB/queue config gate artifact 路径，只供 preflight 消费脱敏摘要；不得作为真实生产 DB/queue、多实例一致性、生产队列顺序、事务隔离、备份策略或灾备恢复证据。
 - `.env` 不入仓库；`.env.example` 只能放占位符。
 - 错误响应和 state file 不得包含 bearer token、Authorization header、credential-bearing URL、串口设备、baudrate、WAVE ROVER 参数、底层速度控制入口或 raw ROS topic 名。
 - token rotate、账号分级、机器人 provisioning 和审计日志是后续真实云 sprint 的范围。

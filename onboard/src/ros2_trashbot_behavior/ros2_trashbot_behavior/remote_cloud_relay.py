@@ -43,6 +43,7 @@ PRODUCTION_RECOVERY_PHONE_EVIDENCE_BOUNDARY = "software_proof_docker_production_
 CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_deployment_readiness_gate"
 CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_external_probe_bundle_gate"
 CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_public_ingress_tls_gate"
+CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_db_queue_config_gate"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -76,6 +77,8 @@ CLOUD_EXTERNAL_PROBE_SCHEMA = "trashbot.cloud_external_probe_bundle"
 CLOUD_EXTERNAL_PROBE_SCHEMA_VERSION = 1
 CLOUD_PUBLIC_INGRESS_TLS_SCHEMA = "trashbot.cloud_public_ingress_tls_gate"
 CLOUD_PUBLIC_INGRESS_TLS_SCHEMA_VERSION = 1
+CLOUD_DB_QUEUE_CONFIG_SCHEMA = "trashbot.cloud_db_queue_config_gate"
+CLOUD_DB_QUEUE_CONFIG_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -236,6 +239,24 @@ CLOUD_PUBLIC_INGRESS_TLS_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+CLOUD_DB_QUEUE_CONFIG_NOT_PROVEN = [
+    "production_db_or_queue",
+    "production_db_connection",
+    "production_queue_connection",
+    "multi_instance_consistency",
+    "production_queue_ordering",
+    "production_transaction_isolation",
+    "production_backup_policy",
+    "real_disaster_recovery",
+    "real_cloud",
+    "real_4g_sim",
+    "https_tls_public_ingress",
+    "real_oss_upload",
+    "cdn_origin_fetch",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -259,6 +280,7 @@ PHONE_COPY = {
     "cloud_deployment_readiness_blocked": "云部署就绪检查仍未通过，请补齐公网、TLS、4G 和生产存储证据。",
     "cloud_external_probe_blocked": "云端外部探测 bundle 未通过校验，请重新生成后再试。",
     "cloud_public_ingress_tls_blocked": "公网入口/TLS 配置 gate 仍未通过外部实证，请补齐 DNS、反向代理和防火墙证据。",
+    "cloud_db_queue_config_blocked": "生产 DB/queue 配置 gate 仍未通过外部实证，请补齐真实数据库和队列证据。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -2153,6 +2175,227 @@ def cloud_public_ingress_tls_artifact_summary(artifact_path):
         }
 
 
+def _cloud_db_queue_config_forbidden_markers(payload):
+    # DB/queue 配置 gate 只能输出枚举化 readiness，不允许把连接串、凭证或本机路径写入 proof。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "secret",
+        "password",
+        "root password",
+        "postgres://",
+        "mysql://",
+        "redis://",
+        "amqp://",
+        "kafka://",
+        "database url",
+        "database_url",
+        "db url",
+        "db_url",
+        "queue url",
+        "queue_url",
+        "credential-bearing",
+        "raw state path",
+        "state path",
+        "/tmp/",
+        "/etc/",
+        "/dev/",
+        "serial",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+        "traceback",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def _cloud_db_queue_config(env):
+    # 这里用显式枚举表示“配置包形态”，避免从 DB/queue URL 推断并泄漏真实连接信息。
+    db_config = _safe_enum(
+        _env_value(env, "TRASHBOT_REMOTE_CLOUD_DB_CONFIG", "missing"),
+        {"missing", "planned", "present"},
+        "missing",
+    )
+    queue_config = _safe_enum(
+        _env_value(env, "TRASHBOT_REMOTE_CLOUD_QUEUE_CONFIG", "missing"),
+        {"missing", "planned", "present"},
+        "missing",
+    )
+    migration_config = _safe_enum(
+        _env_value(env, "TRASHBOT_REMOTE_CLOUD_DB_MIGRATION_CONFIG", "missing"),
+        {"missing", "planned", "present"},
+        "missing",
+    )
+    worker_config = _safe_enum(
+        _env_value(env, "TRASHBOT_REMOTE_CLOUD_QUEUE_WORKER_CONFIG", "missing"),
+        {"missing", "planned", "present"},
+        "missing",
+    )
+    db_config_present = db_config == "present"
+    queue_config_present = queue_config == "present"
+    migration_config_present = migration_config == "present"
+    worker_config_present = worker_config == "present"
+    config_package_present = db_config_present and queue_config_present
+    if config_package_present:
+        state = "cloud_db_queue_config_present_not_externally_proven"
+        summary = "生产 DB/queue 配置包形态存在，但还没有真实连接、多实例、一致性、备份或灾备实证。"
+        retry = "run_external_db_queue_connectivity_migration_consistency_and_recovery_probe"
+    else:
+        state = "missing_cloud_db_queue_config"
+        summary = "尚未形成生产 DB/queue 配置包，不能进入真实数据库和队列验收。"
+        retry = "create_production_db_queue_config_package_without_embedding_credentials"
+    return {
+        "state": state,
+        "db_config": db_config,
+        "queue_config": queue_config,
+        "migration_config": migration_config,
+        "queue_worker_config": worker_config,
+        "db_config_present": db_config_present,
+        "queue_config_present": queue_config_present,
+        "migration_config_present": migration_config_present,
+        "queue_worker_config_present": worker_config_present,
+        "config_package_present": config_package_present,
+        "external_db_queue_probe_proven": False,
+        "safe_summary": summary,
+        "retry_hint": retry,
+    }
+
+
+def build_cloud_db_queue_config_artifact_payload(env=None, *, generated_at=None):
+    """生成生产 DB/queue 配置 gate artifact；它不连接真实数据库或队列。"""
+    env = os.environ if env is None else env
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    config = _cloud_db_queue_config(env)
+    body = {
+        "schema": CLOUD_DB_QUEUE_CONFIG_SCHEMA,
+        "schema_version": CLOUD_DB_QUEUE_CONFIG_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY,
+        "generated_at": generated_value,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "state": config["state"],
+        "db_config_present": config["db_config_present"],
+        "queue_config_present": config["queue_config_present"],
+        "migration_config_present": config["migration_config_present"],
+        "queue_worker_config_present": config["queue_worker_config_present"],
+        "config_package_present": config["config_package_present"],
+        "external_db_queue_probe_proven": False,
+        "details": {
+            "db_config": config["db_config"],
+            "queue_config": config["queue_config"],
+            "migration_config": config["migration_config"],
+            "queue_worker_config": config["queue_worker_config"],
+        },
+        "not_proven": list(CLOUD_DB_QUEUE_CONFIG_NOT_PROVEN),
+        "safe_summary": config["safe_summary"],
+        "retry_hint": config["retry_hint"],
+    }
+    forbidden = _cloud_db_queue_config_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("cloud DB queue config artifact contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_cloud_db_queue_config_artifact_payload(artifact):
+    # preflight 只消费摘要；完整 artifact、连接串、路径或凭证永远不能进入输出。
+    if not isinstance(artifact, dict):
+        raise ValueError("cloud DB queue config artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != CLOUD_DB_QUEUE_CONFIG_SCHEMA:
+        raise ValueError("cloud DB queue config schema mismatch")
+    if artifact.get("schema_version") != CLOUD_DB_QUEUE_CONFIG_SCHEMA_VERSION:
+        raise ValueError("cloud DB queue config schema version mismatch")
+    if artifact.get("evidence_boundary") != CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY:
+        raise ValueError("cloud DB queue config evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("cloud DB queue config checksum mismatch")
+    if artifact.get("production_ready") is not False or artifact.get("overall_status") != "blocked":
+        raise ValueError("cloud DB queue config must stay production blocked")
+    state = str(artifact.get("state") or "")
+    if state not in {
+        "missing_cloud_db_queue_config",
+        "cloud_db_queue_config_present_not_externally_proven",
+    }:
+        raise ValueError("cloud DB queue config state mismatch")
+    if artifact.get("external_db_queue_probe_proven") is not False:
+        raise ValueError("cloud DB queue external proof must stay false")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in CLOUD_DB_QUEUE_CONFIG_NOT_PROVEN if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("cloud DB queue config not_proven list is incomplete")
+    safe_summary = str(artifact.get("safe_summary") or "")
+    retry_hint = str(artifact.get("retry_hint") or "")
+    if not safe_summary or not retry_hint:
+        raise ValueError("cloud DB queue config phone copy missing")
+    forbidden = _cloud_db_queue_config_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("cloud DB queue config artifact contains forbidden phone-unsafe markers")
+    return {
+        "ok": True,
+        "schema": CLOUD_DB_QUEUE_CONFIG_SCHEMA,
+        "schema_version": CLOUD_DB_QUEUE_CONFIG_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "state": state,
+        "db_config_present": bool(artifact.get("db_config_present")),
+        "queue_config_present": bool(artifact.get("queue_config_present")),
+        "migration_config_present": bool(artifact.get("migration_config_present")),
+        "queue_worker_config_present": bool(artifact.get("queue_worker_config_present")),
+        "config_package_present": bool(artifact.get("config_package_present")),
+        "external_db_queue_probe_proven": False,
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "generated_at": str(artifact.get("generated_at") or ""),
+        "not_proven": list(CLOUD_DB_QUEUE_CONFIG_NOT_PROVEN),
+    }
+
+
+def create_cloud_db_queue_config_artifact(artifact_path, env=None):
+    # CLI 和 inline preflight 共用一个生成函数，防止 missing/present-not-proven 分类漂移。
+    artifact = build_cloud_db_queue_config_artifact_payload(env)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_cloud_db_queue_config_artifact_payload(artifact)
+    return {
+        "ok": True,
+        "cloud_db_queue_config_status": "blocked",
+        "evidence_boundary": CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "state": artifact.get("state"),
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(CLOUD_DB_QUEUE_CONFIG_NOT_PROVEN),
+    }
+
+
+def cloud_db_queue_config_artifact_summary(artifact_path):
+    # artifact 路径本身可能泄漏本机结构，因此失败时只返回原因枚举和手机文案。
+    try:
+        artifact = _load_json_file(artifact_path, "cloud DB queue config artifact")
+        return validate_cloud_db_queue_config_artifact_payload(artifact)
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "cloud_db_queue_config_invalid",
+            "safe_summary": _safe_error_reason(exc),
+            "retry_hint": "重新生成 cloud DB/queue config artifact 后重跑 preflight。",
+            "not_proven": list(CLOUD_DB_QUEUE_CONFIG_NOT_PROVEN),
+        }
+
+
 def _production_store_queue_forbidden_markers(payload):
     # 该 artifact 会进入手机和 preflight，必须拒绝真实连接串、队列地址、路径和底层控制词。
     encoded = json.dumps(payload, ensure_ascii=False).lower()
@@ -3589,6 +3832,10 @@ def production_preflight_payload(env=None):
         env,
         "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS_TLS_ARTIFACT",
     )
+    cloud_db_queue_config_artifact_path = _env_value(
+        env,
+        "TRASHBOT_REMOTE_CLOUD_DB_QUEUE_CONFIG_ARTIFACT",
+    )
     cloud_deployment_readiness_artifact_path = _env_value(
         env,
         "TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT",
@@ -3765,6 +4012,76 @@ def production_preflight_payload(env=None):
                     "firewall_config_present": inline_ingress_tls_summary.get("firewall_config_present"),
                     "config_package_present": inline_ingress_tls_summary.get("config_package_present"),
                     "external_probe_proven": False,
+                    "software_proof_only": True,
+                },
+            )
+        )
+
+    if cloud_db_queue_config_artifact_path:
+        # 该 gate 只确认 DB/queue 配置包形态，不连接真实生产数据库或队列。
+        db_queue_summary = cloud_db_queue_config_artifact_summary(cloud_db_queue_config_artifact_path)
+        if db_queue_summary.get("ok"):
+            state = str(db_queue_summary.get("state") or "missing_cloud_db_queue_config")
+            checks.append(
+                _check(
+                    "cloud_db_queue_config",
+                    "blocked",
+                    state,
+                    str(db_queue_summary.get("safe_summary") or "生产 DB/queue 配置 gate 仍未通过外部实证。"),
+                    str(db_queue_summary.get("retry_hint") or "补齐真实 DB/queue 证据后重跑 preflight。"),
+                    {
+                        "artifact_schema": CLOUD_DB_QUEUE_CONFIG_SCHEMA,
+                        "schema_version": CLOUD_DB_QUEUE_CONFIG_SCHEMA_VERSION,
+                        "evidence_boundary": CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY,
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "db_config_present": db_queue_summary.get("db_config_present"),
+                        "queue_config_present": db_queue_summary.get("queue_config_present"),
+                        "migration_config_present": db_queue_summary.get("migration_config_present"),
+                        "queue_worker_config_present": db_queue_summary.get("queue_worker_config_present"),
+                        "config_package_present": db_queue_summary.get("config_package_present"),
+                        "external_db_queue_probe_proven": False,
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "cloud_db_queue_config",
+                    "blocked",
+                    "cloud_db_queue_config_artifact_invalid",
+                    str(db_queue_summary.get("safe_summary") or "生产 DB/queue 配置 artifact 不可用。"),
+                    str(
+                        db_queue_summary.get("retry_hint")
+                        or "重新生成 cloud DB/queue config artifact 后重跑 preflight。"
+                    ),
+                    {"artifact_present": True, "software_proof_only": True},
+                )
+            )
+    else:
+        inline_db_queue_summary = validate_cloud_db_queue_config_artifact_payload(
+            build_cloud_db_queue_config_artifact_payload(env)
+        )
+        checks.append(
+            _check(
+                "cloud_db_queue_config",
+                "blocked",
+                str(inline_db_queue_summary.get("state") or "missing_cloud_db_queue_config"),
+                str(inline_db_queue_summary.get("safe_summary") or "生产 DB/queue 配置 gate 仍未通过外部实证。"),
+                str(inline_db_queue_summary.get("retry_hint") or "补齐真实 DB/queue 证据后重跑 preflight。"),
+                {
+                    "artifact_schema": CLOUD_DB_QUEUE_CONFIG_SCHEMA,
+                    "schema_version": CLOUD_DB_QUEUE_CONFIG_SCHEMA_VERSION,
+                    "evidence_boundary": CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY,
+                    "production_ready": False,
+                    "overall_status": "blocked",
+                    "db_config_present": inline_db_queue_summary.get("db_config_present"),
+                    "queue_config_present": inline_db_queue_summary.get("queue_config_present"),
+                    "migration_config_present": inline_db_queue_summary.get("migration_config_present"),
+                    "queue_worker_config_present": inline_db_queue_summary.get("queue_worker_config_present"),
+                    "config_package_present": inline_db_queue_summary.get("config_package_present"),
+                    "external_db_queue_probe_proven": False,
                     "software_proof_only": True,
                 },
             )
@@ -4497,6 +4814,15 @@ def production_preflight_payload(env=None):
         in {"missing_public_ingress_tls_config", "public_ingress_tls_config_present_not_externally_proven"}
         for check in checks
     )
+    local_cloud_db_queue_config_seen = any(
+        check["name"] == "cloud_db_queue_config"
+        and check["code"]
+        in {"missing_cloud_db_queue_config", "cloud_db_queue_config_present_not_externally_proven"}
+        for check in checks
+    )
+    local_cloud_db_queue_config_boundary = local_cloud_db_queue_config_seen and (
+        bool(cloud_db_queue_config_artifact_path) or not bool(cloud_public_ingress_tls_artifact_path)
+    )
     not_proven = [
         "production_credential_rotation",
         "production_robot_provisioning",
@@ -4541,6 +4867,8 @@ def production_preflight_payload(env=None):
         not_proven.insert(16, "cloud_external_probe_bundle")
     if local_cloud_public_ingress_tls_seen:
         not_proven.insert(16, "cloud_public_ingress_tls_external_proof")
+    if local_cloud_db_queue_config_seen:
+        not_proven.insert(16, "cloud_db_queue_config_external_proof")
     payload = {
         "ok": production_ready,
         "software_proof_ready": bool(
@@ -4553,6 +4881,7 @@ def production_preflight_payload(env=None):
             or local_production_recovery_ok
             or local_cloud_external_probe_ok
             or local_cloud_public_ingress_tls_seen
+            or local_cloud_db_queue_config_seen
         ),
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
@@ -4578,6 +4907,8 @@ def production_preflight_payload(env=None):
             if local_network_recovery_ok
             else BACKUP_RESTORE_EVIDENCE_BOUNDARY
             if local_backup_drill_ok
+            else CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY
+            if local_cloud_db_queue_config_boundary
             else CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY
             if local_cloud_public_ingress_tls_seen
             else CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY
@@ -5811,6 +6142,11 @@ def main(argv=None):
         help="phone-safe public ingress/TLS/reverse-proxy artifact consumed by preflight",
     )
     parser.add_argument(
+        "--cloud-db-queue-config-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_DB_QUEUE_CONFIG_ARTIFACT", ""),
+        help="phone-safe cloud DB/queue config artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
@@ -5859,6 +6195,11 @@ def main(argv=None):
         "--write-cloud-public-ingress-tls-artifact",
         default="",
         help="write a phone-safe public ingress/TLS/reverse-proxy config gate artifact",
+    )
+    parser.add_argument(
+        "--write-cloud-db-queue-config-artifact",
+        default="",
+        help="write a phone-safe cloud DB/queue config gate artifact",
     )
     parser.add_argument(
         "--cloud-external-probe-base-url",
@@ -6012,9 +6353,23 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS_TLS_ARTIFACT"] = (
                 args.cloud_public_ingress_tls_artifact
             )
+        if args.cloud_db_queue_config_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_DB_QUEUE_CONFIG_ARTIFACT"] = (
+                args.cloud_db_queue_config_artifact
+            )
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
+    if args.write_cloud_db_queue_config_artifact:
+        try:
+            payload = create_cloud_db_queue_config_artifact(
+                args.write_cloud_db_queue_config_artifact,
+                dict(os.environ),
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error("cloud_db_queue_config_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     if args.write_cloud_public_ingress_tls_artifact:
         try:
             payload = create_cloud_public_ingress_tls_artifact(

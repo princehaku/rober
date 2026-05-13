@@ -162,6 +162,39 @@ headers, bearer tokens, TLS private keys, private-key paths, root passwords,
 OSS AK/SK, DB/queue URLs, local state paths, serial ports, WAVE ROVER
 parameters, ROS topic names, `/cmd_vel`, or tracebacks.
 
+The relay also exposes a cloud DB/queue config gate with
+`schema=trashbot.cloud_db_queue_config_gate`, `schema_version=1`, and
+`evidence_boundary=software_proof_docker_cloud_db_queue_config_gate`. It
+separates two blocked production-readiness states:
+
+- `missing_cloud_db_queue_config`: no production DB/queue configuration package exists.
+- `cloud_db_queue_config_present_not_externally_proven`: the configuration package shape exists, but there is still no real connectivity, multi-instance consistency, queue ordering, transaction isolation, backup, or disaster-recovery proof.
+
+Generate the artifact locally:
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_DB_CONFIG=present \
+TRASHBOT_REMOTE_CLOUD_QUEUE_CONFIG=present \
+TRASHBOT_REMOTE_CLOUD_DB_MIGRATION_CONFIG=present \
+TRASHBOT_REMOTE_CLOUD_QUEUE_WORKER_CONFIG=present \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --write-cloud-db-queue-config-artifact /tmp/trashbot_cloud_db_queue_config.json
+```
+
+Consume it in preflight:
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_DB_QUEUE_CONFIG_ARTIFACT=/tmp/trashbot_cloud_db_queue_config.json \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
+```
+
+Both states must keep `production_ready=false` and `overall_status=blocked`.
+This gate must not expose DB/queue endpoints, credential-bearing endpoints,
+Authorization headers, bearer tokens, root passwords, local state paths, serial
+ports, WAVE ROVER parameters, ROS topic names, `/cmd_vel`, or tracebacks.
+
 When `TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite`, the same preflight uses
 `evidence_boundary=software_proof_docker_sqlite_state_store`. That boundary
 means the relay can prove single-node command/status/ack recovery across store

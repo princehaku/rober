@@ -43,6 +43,8 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     BACKUP_RESTORE_EVIDENCE_BOUNDARY,
     CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY,
     CLOUD_DEPLOYMENT_READINESS_SCHEMA,
+    CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY,
+    CLOUD_DB_QUEUE_CONFIG_SCHEMA,
     CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
     CLOUD_EXTERNAL_PROBE_SCHEMA,
     CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY,
@@ -93,9 +95,11 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     build_phone_queue_ordering_drill_summary,
     build_phone_transaction_isolation_summary,
     build_cloud_deployment_readiness_artifact_payload,
+    build_cloud_db_queue_config_artifact_payload,
     build_cloud_external_probe_bundle_payload,
     build_cloud_public_ingress_tls_artifact_payload,
     cloud_deployment_readiness_artifact_summary,
+    cloud_db_queue_config_artifact_summary,
     cloud_external_probe_bundle_summary,
     cloud_public_ingress_tls_artifact_summary,
     build_production_store_queue_artifact_payload,
@@ -115,6 +119,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     create_sqlite_backup_artifact,
     create_transaction_isolation_artifact,
     create_cloud_deployment_readiness_artifact,
+    create_cloud_db_queue_config_artifact,
     create_cloud_external_probe_bundle_artifact,
     create_cloud_public_ingress_tls_artifact,
     network_recovery_artifact_summary,
@@ -266,7 +271,7 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
 
         self.assertEqual(status, 503)
         self.assertFalse(payload["production_ready"])
-        self.assertEqual(payload["evidence_boundary"], CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY)
+        self.assertEqual(payload["evidence_boundary"], CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY)
         self.assertGreaterEqual(payload["blocked_count"], 1)
         self.assertIn("Docker/local 软件 proof", payload["safe_summary"])
         self.assertIn("real_cloud", payload["not_proven"])
@@ -801,7 +806,7 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             self.assertIn("real_4g_sim", artifact["not_proven"])
             self.assertEqual(summary["check_count"], 8)
             self.assertFalse(payload["production_ready"])
-            self.assertEqual(payload["evidence_boundary"], CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY)
+            self.assertEqual(payload["evidence_boundary"], CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY)
             self.assertEqual(checks["cloud_deployment_readiness"]["status"], "pass")
             self.assertFalse(checks["cloud_deployment_readiness"]["details"]["production_ready"])
             for required in (
@@ -1176,6 +1181,151 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             ):
                 self.assertNotIn(forbidden, encoded)
 
+    def test_cloud_db_queue_config_gate_distinguishes_missing_and_config_present_without_proof(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            missing_path = root / "cloud_db_queue_missing.json"
+            present_path = root / "cloud_db_queue_present.json"
+            missing_env = {
+                "TRASHBOT_REMOTE_CLOUD_DB_CONFIG": "missing",
+                "TRASHBOT_REMOTE_CLOUD_QUEUE_CONFIG": "missing",
+                "TRASHBOT_REMOTE_CLOUD_DB_MIGRATION_CONFIG": "missing",
+                "TRASHBOT_REMOTE_CLOUD_QUEUE_WORKER_CONFIG": "missing",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "missing_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+            present_env = {
+                "TRASHBOT_REMOTE_CLOUD_DB_CONFIG": "present",
+                "TRASHBOT_REMOTE_CLOUD_QUEUE_CONFIG": "present",
+                "TRASHBOT_REMOTE_CLOUD_DB_MIGRATION_CONFIG": "present",
+                "TRASHBOT_REMOTE_CLOUD_QUEUE_WORKER_CONFIG": "present",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "present_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+
+            missing_result = create_cloud_db_queue_config_artifact(missing_path, missing_env)
+            present_result = create_cloud_db_queue_config_artifact(present_path, present_env)
+            missing_artifact = json.loads(missing_path.read_text(encoding="utf-8"))
+            present_artifact = json.loads(present_path.read_text(encoding="utf-8"))
+            present_payload_env = dict(present_env)
+            present_payload_env["TRASHBOT_REMOTE_CLOUD_DB_QUEUE_CONFIG_ARTIFACT"] = str(present_path)
+            present_payload = production_preflight_payload(present_payload_env)
+            present_checks = {check["name"]: check for check in present_payload["checks"]}
+            encoded = json.dumps(
+                {
+                    "missing_result": missing_result,
+                    "present_result": present_result,
+                    "missing_artifact": missing_artifact,
+                    "present_artifact": present_artifact,
+                    "present_preflight": present_payload,
+                },
+                ensure_ascii=False,
+            )
+
+            self.assertTrue(missing_result["ok"])
+            self.assertTrue(present_result["ok"])
+            self.assertEqual(missing_artifact["schema"], CLOUD_DB_QUEUE_CONFIG_SCHEMA)
+            self.assertEqual(present_artifact["evidence_boundary"], CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY)
+            self.assertEqual(missing_artifact["state"], "missing_cloud_db_queue_config")
+            self.assertEqual(present_artifact["state"], "cloud_db_queue_config_present_not_externally_proven")
+            self.assertFalse(missing_artifact["production_ready"])
+            self.assertFalse(present_artifact["production_ready"])
+            self.assertEqual(missing_artifact["overall_status"], "blocked")
+            self.assertEqual(present_artifact["overall_status"], "blocked")
+            self.assertTrue(present_artifact["config_package_present"])
+            self.assertFalse(present_artifact["external_db_queue_probe_proven"])
+            self.assertFalse(present_payload["production_ready"])
+            self.assertEqual(present_payload["overall_status"], "blocked")
+            self.assertEqual(present_payload["evidence_boundary"], CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY)
+            self.assertEqual(
+                present_checks["cloud_db_queue_config"]["code"],
+                "cloud_db_queue_config_present_not_externally_proven",
+            )
+            self.assertFalse(present_checks["cloud_db_queue_config"]["details"]["external_db_queue_probe_proven"])
+            for marker in (
+                "production_db_or_queue",
+                "production_queue_connection",
+                "multi_instance_consistency",
+                "production_backup_policy",
+                "real_disaster_recovery",
+            ):
+                self.assertIn(marker, encoded)
+            for forbidden in (
+                str(missing_path),
+                str(present_path),
+                str(root / "missing_state.sqlite"),
+                str(root / "present_state.sqlite"),
+                "Authorization",
+                "Bearer",
+                "token",
+                "postgres://",
+                "mysql://",
+                "redis://",
+                "amqp://",
+                "queue URL",
+                "database URL",
+                "root password",
+                "raw state path",
+                "/cmd_vel",
+                "ttyUSB",
+                "baudrate",
+                "WAVE ROVER",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_db_queue_config_blocks_hostile_artifact_without_leaks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            hostile_path = root / "hostile_cloud_db_queue_config.json"
+            hostile = build_cloud_db_queue_config_artifact_payload(
+                {
+                    "TRASHBOT_REMOTE_CLOUD_DB_CONFIG": "present",
+                    "TRASHBOT_REMOTE_CLOUD_QUEUE_CONFIG": "present",
+                },
+                generated_at="2026-05-13T10:00:00Z",
+            )
+            hostile["safe_summary"] = (
+                "Authorization Bearer token postgres://db secret queue URL database URL "
+                "raw state path /dev/ttyUSB0 baudrate WAVE ROVER ROS topic /cmd_vel"
+            )
+            body = {key: value for key, value in hostile.items() if key != "checksum"}
+            hostile["checksum"] = _sha256_checksum(body)
+            hostile_path.write_text(json.dumps(hostile, ensure_ascii=False), encoding="utf-8")
+
+            summary = cloud_db_queue_config_artifact_summary(hostile_path)
+            payload = production_preflight_payload(
+                {
+                    "TRASHBOT_REMOTE_CLOUD_DB_CONFIG": "present",
+                    "TRASHBOT_REMOTE_CLOUD_QUEUE_CONFIG": "present",
+                    "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "relay_state.sqlite"),
+                    "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                    "TRASHBOT_REMOTE_CLOUD_DB_QUEUE_CONFIG_ARTIFACT": str(hostile_path),
+                }
+            )
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps({"summary": summary, "preflight": payload}, ensure_ascii=False)
+
+            self.assertFalse(summary["ok"])
+            self.assertEqual(checks["cloud_db_queue_config"]["status"], "blocked")
+            self.assertEqual(checks["cloud_db_queue_config"]["code"], "cloud_db_queue_config_artifact_invalid")
+            for forbidden in (
+                str(hostile_path),
+                "Authorization",
+                "Bearer",
+                "token",
+                "postgres://",
+                "secret",
+                "queue URL",
+                "database URL",
+                "raw state path",
+                "/dev/ttyUSB0",
+                "baudrate",
+                "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
     def test_preflight_reports_local_http_secret_oss_and_file_store_boundary(self):
         with tempfile.TemporaryDirectory() as tmp:
             env = {
@@ -1198,7 +1348,7 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
 
             self.assertFalse(payload["production_ready"])
             self.assertEqual(payload["overall_status"], "blocked")
-            self.assertEqual(payload["evidence_boundary"], CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY)
+            self.assertEqual(payload["evidence_boundary"], CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY)
             self.assertEqual(checks["cloud_deployment_readiness"]["status"], "pass")
             self.assertEqual(checks["credential_provisioning"]["status"], "blocked")
             self.assertEqual(checks["tls_public_ingress"]["status"], "blocked")
@@ -1306,7 +1456,7 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             encoded = json.dumps(payload, ensure_ascii=False)
 
             self.assertFalse(payload["production_ready"])
-            self.assertEqual(payload["evidence_boundary"], CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY)
+            self.assertEqual(payload["evidence_boundary"], CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY)
             self.assertEqual(checks["state_store"]["status"], "warning")
             self.assertEqual(checks["state_store"]["code"], "sqlite_state_store_proof_only")
             self.assertEqual(checks["backup_restore_drill"]["code"], "backup_restore_drill_not_run")
