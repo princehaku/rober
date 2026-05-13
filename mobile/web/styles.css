@@ -132,6 +132,7 @@ h2 {
 .cloud-panel,
 .mobile-device-panel,
 .acceptance-bundle-panel,
+.terminal-action-panel,
 .action-feedback-panel,
 .task-panel,
 .gate-panel,
@@ -224,6 +225,7 @@ h2 {
 .mobile-device-grid,
 .acceptance-bundle-grid,
 .feedback-grid,
+.terminal-action-grid,
 .diagnostics-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -237,6 +239,7 @@ h2 {
 .mobile-device-grid div,
 .acceptance-bundle-grid div,
 .feedback-grid div,
+.terminal-action-grid div,
 .diagnostics-grid div {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -286,6 +289,17 @@ dd {
 
 .feedback-grid {
   grid-template-columns: 1fr;
+}
+
+.terminal-action-grid {
+  grid-template-columns: 1fr;
+}
+
+.terminal-action-controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .acceptance-bundle-grid {
@@ -411,6 +425,14 @@ dd {
 
   .feedback-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .terminal-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .terminal-action-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
   }
 
   .acceptance-bundle-grid {

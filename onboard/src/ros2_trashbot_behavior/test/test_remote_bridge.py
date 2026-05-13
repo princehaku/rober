@@ -2837,6 +2837,192 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertNotIn("/cmd_vel", encoded_ack)
             self.assertNotIn("DELIVERED", encoded_ack)
 
+    def test_metadata_only_mobile_terminal_action_confirmation_response_does_not_start_ack_or_persist_cursor(self):
+        metadata_cases = (
+            (
+                "mobile_terminal_action_confirmation_gate",
+                {
+                    "schema": "trashbot.mobile_terminal_action_confirmation_gate.v1",
+                    "action": "confirm_dropoff",
+                    "risk_copy": "确认投放会通知机器人处理，但不代表投放完成。",
+                    "ack_semantics": "accepted_processing_only",
+                    "client_reference": "terminal-action-gate-001",
+                    "evidence_boundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
+                    "not_proven": [
+                        "robot_command",
+                        "ack",
+                        "cursor",
+                        "delivery_success",
+                        "dropoff_success",
+                        "cancel_completion",
+                        "production_readiness",
+                        "hil_pass",
+                    ],
+                    "safe_phone_copy": "二次确认面板只供手机显示，不会直接控制机器人。",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-terminal-action-gate",
+                    "delivery_success": True,
+                },
+            ),
+            (
+                "mobile_terminal_action_confirmation_summary",
+                {
+                    "schema": "trashbot.mobile_terminal_action_confirmation_summary.v1",
+                    "action": "cancel",
+                    "risk_copy": "取消提交后仍需等待状态回传，不能视为取消完成。",
+                    "ack_semantics": "accepted_processing_only",
+                    "client_reference": "terminal-action-summary-001",
+                    "evidence_boundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
+                    "not_proven": [
+                        "robot_command",
+                        "ack",
+                        "cursor",
+                        "delivery_success",
+                        "dropoff_success",
+                        "cancel_completion",
+                        "production_readiness",
+                        "hil_pass",
+                    ],
+                    "safe_phone_copy": "终端动作摘要是手机/支持信息，不是 ACK 或 cursor。",
+                    "dropoff_success": True,
+                    "cancel_completed": True,
+                    "production_ready": True,
+                    "hil_pass": True,
+                    "raw_ros_topic": "/cmd_vel",
+                    "Authorization": "Bearer must-not-leak",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    self.backend.calls.clear()
+                    self.cloud.status_posts.clear()
+                    self.cloud.ack_posts.clear()
+                    self.cloud.get_paths.clear()
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {metadata_name: metadata}
+
+                    handled = worker.poll_once()
+
+                    # 终端动作二次确认只服务手机面板；没有 command envelope 时不能有副作用。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("risk_copy", encoded_status)
+                    self.assertNotIn("client_reference", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("dropoff_success", encoded_status)
+                    self.assertNotIn("cancel_completed", encoded_status)
+                    self.assertNotIn("production_ready", encoded_status)
+                    self.assertNotIn("hil_pass", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
+    def test_mobile_terminal_action_confirmation_metadata_is_ignored_by_valid_command_envelope(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-terminal-action",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras.update({
+                "status_response": {
+                    "mobile_terminal_action_confirmation_summary": {
+                        "schema": "trashbot.mobile_terminal_action_confirmation_summary.v1",
+                        "delivery_success": True,
+                        "trigger_robot_action": "collect",
+                    },
+                },
+                "command_response": {
+                    "mobile_terminal_action_confirmation_gate": {
+                        "schema": "trashbot.mobile_terminal_action_confirmation_gate.v1",
+                        "action": "confirm_dropoff",
+                        "risk_copy": "确认投放需要用户二次确认。",
+                        "ack_semantics": "delivery_success",
+                        "client_reference": "terminal-action-gate-002",
+                        "evidence_boundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
+                        "not_proven": ["delivery_success", "dropoff_success", "hil_pass"],
+                        "safe_phone_copy": "ACK 只代表 accepted/processing。",
+                        "trigger_robot_action": "collect",
+                        "cursor_override": "cmd-terminal-action-override",
+                        "delivery_success": True,
+                    },
+                    "mobile_terminal_action_confirmation_summary": {
+                        "schema": "trashbot.mobile_terminal_action_confirmation_summary.v1",
+                        "action": "cancel",
+                        "risk_copy": "取消完成需要后续状态证明。",
+                        "ack_semantics": "delivery_success",
+                        "client_reference": "terminal-action-summary-002",
+                        "evidence_boundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
+                        "dropoff_success": True,
+                        "cancel_completed": True,
+                        "production_ready": True,
+                        "hil_pass": True,
+                        "raw_ros_topic": "/cmd_vel",
+                    },
+                },
+                "ack_response": {
+                    "mobile_terminal_action_confirmation_summary": {
+                        "schema": "trashbot.mobile_terminal_action_confirmation_summary.v1",
+                        "delivery_success": True,
+                        "final_state": "DELIVERED",
+                    },
+                },
+            })
+            self.cloud.commands.append({
+                "id": "cmd-terminal-action-confirm-dropoff",
+                "type": "confirm_dropoff",
+                "payload": {"accepted": True},
+            })
+
+            self.assertTrue(worker.poll_once())
+
+            self.assertEqual(self.backend.calls, [("confirm_dropoff", True)])
+            self.assertEqual(worker.last_ack_id, "cmd-terminal-action-confirm-dropoff")
+            self.assertIn("last_ack_id=cmd-before-terminal-action", self.cloud.get_paths[-1])
+            cursor_payload = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(cursor_payload["last_terminal_ack_id"], "cmd-terminal-action-confirm-dropoff")
+            ack_payload = self.cloud.ack_posts[0]
+            self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+            self.assertEqual(ack_payload["command_id"], "cmd-terminal-action-confirm-dropoff")
+            self.assertEqual(ack_payload["state"], "acked")
+            self.assertEqual(ack_payload["message"], "confirm_dropoff")
+            encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+            # 有效 command 混入终端动作 metadata 时，执行、ACK、cursor 仍只跟随 command envelope。
+            self.assertNotIn("mobile_terminal_action_confirmation_gate", encoded_ack)
+            self.assertNotIn("mobile_terminal_action_confirmation_summary", encoded_ack)
+            self.assertNotIn("risk_copy", encoded_ack)
+            self.assertNotIn("client_reference", encoded_ack)
+            self.assertNotIn("trigger_robot_action", encoded_ack)
+            self.assertNotIn("cursor_override", encoded_ack)
+            self.assertNotIn("delivery_success", encoded_ack)
+            self.assertNotIn("dropoff_success", encoded_ack)
+            self.assertNotIn("cancel_completed", encoded_ack)
+            self.assertNotIn("production_ready", encoded_ack)
+            self.assertNotIn("hil_pass", encoded_ack)
+            self.assertNotIn("/cmd_vel", encoded_ack)
+            self.assertNotIn("DELIVERED", encoded_ack)
+
     def test_metadata_only_cloud_external_probe_response_does_not_start_ack_or_persist_cursor(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = pathlib.Path(tmpdir) / "remote_cursor.json"

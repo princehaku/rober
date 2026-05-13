@@ -274,6 +274,47 @@
         </button>
       </section>
 
+      <section id="terminalActionPanel" class="terminal-action-panel" hidden aria-labelledby="terminalActionTitle">
+        <div class="section-heading">
+          <h2 id="terminalActionTitle">终端动作二次确认</h2>
+          <span id="terminalActionBadge" class="gate-badge gate-blocked">等待确认</span>
+        </div>
+        <p id="terminalActionCopy" class="message">
+          终端动作首次点击只进入确认，不提交 Confirm Dropoff / Cancel endpoint。
+        </p>
+        <dl class="terminal-action-grid">
+          <div>
+            <dt>Action</dt>
+            <dd id="terminalActionName">暂无</dd>
+          </div>
+          <div>
+            <dt>用户风险</dt>
+            <dd id="terminalActionRisk">等待安全摘要。</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="terminalActionAck">ACK 只代表 accepted/processing。</dd>
+          </div>
+          <div>
+            <dt>Client reference</dt>
+            <dd id="terminalActionClientReference">确认后生成</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="terminalActionBoundary">software_proof_docker_mobile_terminal_action_confirmation_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="terminalActionNotProven">真实投放完成、真实取消完成、真实送达未证明。</dd>
+          </div>
+        </dl>
+        <p id="terminalActionReason" class="hint">缺少 command_safety 或存在 pending ACK 时保持 fail closed。</p>
+        <div class="terminal-action-controls">
+          <button id="terminalActionBackButton" type="button">返回</button>
+          <button id="terminalActionConfirmButton" class="primary-action" type="button" disabled>确认提交终端动作</button>
+        </div>
+      </section>
+
       <section class="action-feedback-panel" aria-labelledby="actionFeedbackTitle">
         <div class="section-heading">
           <h2 id="actionFeedbackTitle">动作回执</h2>

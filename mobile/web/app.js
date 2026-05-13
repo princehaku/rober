@@ -19,15 +19,18 @@ const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_a
 const MOBILE_BROWSER_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_browser_acceptance_bundle_gate";
 const PRIMARY_JOURNEY_BOUNDARY = "software_proof_docker_mobile_primary_journey_gate";
 const RECOVERY_DECISION_BOUNDARY = "software_proof_docker_mobile_recovery_decision_gate";
+const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACCEPTANCE_BUNDLE_SCHEMA = "trashbot.mobile_browser_acceptance_bundle.v1";
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|artifact)/i;
 const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
+const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 
 let latestStatus = null;
 let latestDiagnostics = null;
 let latestActionFeedback = null;
 let latestAcceptanceBundle = null;
+let pendingTerminalAction = null;
 let latestStartGate = {
   destination: null,
   destinationReady: false,
@@ -63,6 +66,15 @@ function safeRecoveryText(value, fallback = "等待安全摘要") {
   // 恢复决策会放在首屏，命中成功/硬件/凭证等高风险词时只能显示保守文案。
   const text = safeText(value, fallback);
   if (UNSAFE_RECOVERY_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeTerminalActionText(value, fallback = "等待安全摘要") {
+  // 终端动作确认直接影响投放/取消入口，任何成功暗示或内部细节都降级为保守文案。
+  const text = safeText(value, fallback);
+  if (UNSAFE_TERMINAL_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -621,6 +633,101 @@ function actionFeedbackReadyForPrimaryJourney(status, readiness) {
   return { ready: true, copy: `动作回执安全：${feedback.state}。` };
 }
 
+function actionFeedbackBlocksTerminalAction(status, readiness) {
+  // Confirm/Cancel 也不能在等待 ACK 或失败未处理时重复提交终端动作。
+  const feedback = actionFeedbackFromStatus(status, readiness) || latestActionFeedback;
+  if (!feedback) {
+    return null;
+  }
+  const state = String(feedback.state || "").toLowerCase();
+  if (["submitted", "waiting_ack", "accepted_or_processing"].includes(state)) {
+    return "存在 pending ACK / accepted-processing 回执，终端动作确认 fail closed。";
+  }
+  if (["failed", "blocked", "rejected", "local_submit_failed"].includes(state)) {
+    return `最近动作回执为 ${feedback.state}，请先按恢复建议处理。`;
+  }
+  return null;
+}
+
+function terminalActionGateFromStatus(status, actionName) {
+  const readiness = readinessFromStatus(status);
+  const commandSafety = commandSafetyFromReadiness(readiness);
+  const actions = commandSafety.actions && typeof commandSafety.actions === "object" ? commandSafety.actions : {};
+  const actionGate = actions[actionName] && typeof actions[actionName] === "object" ? actions[actionName] : {};
+  const cloudSummary = cloudReadinessSummaryFromStatus(status, readiness);
+  const mobileDeviceAcceptance = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics);
+  const mobileBrowserAcceptance = mobileBrowserAcceptanceBundleFromStatus(status, readiness, latestDiagnostics);
+  const offline = offlineResumeFromStatus(status, readiness);
+  const permitted = actionPermission(status, readiness, actionName);
+  const hasCommandSafety = commandSafety.schema === "trashbot.command_safety.v1" || Boolean(commandSafety.actions);
+  const raw = `${readiness?.primary_state || ""} ${readiness?.next_action || ""} ${readiness?.support_level || ""} ${commandSafety?.global_block_reason || ""}`.toLowerCase();
+  const connection = `${offline.connection_state || status?.connection_state || ""}`.toLowerCase();
+  const blockers = [];
+
+  if (!["confirm_dropoff", "cancel"].includes(actionName)) {
+    blockers.push("该 gate 只处理 Confirm Dropoff / Cancel。");
+  }
+  if (!hasCommandSafety) {
+    blockers.push("缺少 command_safety，终端动作确认 fail closed。");
+  }
+  if (actionGate.enabled !== true) {
+    blockers.push(safeTerminalActionText(actionGate.blocking_reason || commandSafety.global_block_reason, "action disabled。"));
+  }
+  if (permitted !== true) {
+    blockers.push(`旧权限 ${ACTIONS[actionName]?.permission || "can_*"} 未放行。`);
+  }
+  if (!cloudSummaryAllowsPrimaryActions(cloudSummary)) {
+    blockers.push("cloud readiness 未显式放行终端动作。");
+  }
+  if (!mobileDeviceAcceptanceAllowsPrimaryActions(mobileDeviceAcceptance)) {
+    blockers.push("device readiness 未显式放行终端动作。");
+  }
+  if (!mobileBrowserAcceptanceBundleAllowsPrimaryActions(mobileBrowserAcceptance)) {
+    blockers.push("browser acceptance bundle 未显式放行终端动作。");
+  }
+  if (connection && connection !== "online" || /offline|stale|unreachable|disconnect|network/.test(raw)) {
+    blockers.push("状态 offline/stale/unreachable，终端动作确认 fail closed。");
+  }
+  if (/waiting_ack|pending_ack|ack_pending/.test(raw)) {
+    blockers.push("当前仍在等待 ACK，终端动作确认 fail closed。");
+  }
+  if (/manual_takeover|human_help|support_required/.test(raw)) {
+    blockers.push("当前需要人工接管或支持处理，终端动作确认 fail closed。");
+  }
+  if (/blocked/.test(raw) || status?.overall_status === "blocked") {
+    blockers.push("当前 blocked state 未解除，终端动作确认 fail closed。");
+  }
+  const feedbackBlocker = actionFeedbackBlocksTerminalAction(status, readiness);
+  if (feedbackBlocker) {
+    blockers.push(feedbackBlocker);
+  }
+
+  return {
+    enabled: blockers.length === 0,
+    blockedReason: blockers.join("；") || "可以进入终端动作二次确认。",
+    action: actionName,
+    actionCopy: actionLabel(actionName),
+    riskCopy: actionName === "cancel"
+      ? "取消任务可能停止当前用户流程；确认后仍只得到 accepted/processing evidence。"
+      : "确认投放会进入终端投放确认流程；确认后仍不能当作 dropoff success。",
+    safePhoneCopy: `${actionLabel(actionName)} 需要用户显式确认；提交后只表示 accepted/processing evidence。`,
+    ackSemantics: safeTerminalActionText(commandSafety.ack_semantics, ACK_PROCESSING_COPY),
+    evidenceBoundary: TERMINAL_ACTION_BOUNDARY,
+    notProven: [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "真实云/4G",
+      "Nav2/fixed-route",
+      "WAVE ROVER",
+      "HIL",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "真实 delivery",
+    ],
+  };
+}
+
 function journeyStateBlocksStart(readiness, commandSafety) {
   // 后端 primary_state 是用户旅程的粗粒度状态；这些状态都不能被按钮层绕过。
   const raw = `${readiness?.primary_state || ""} ${readiness?.next_action || ""} ${readiness?.support_level || ""} ${commandSafety?.global_block_reason || ""}`.toLowerCase();
@@ -874,11 +981,15 @@ function renderCommandSafety(status) {
     const actionGate = actions[name] && typeof actions[name] === "object" ? actions[name] : {};
     const permitted = actionPermission(status, readiness, name);
     const startGate = name === "start" ? latestStartGate : null;
+    const terminalGate = ["confirm_dropoff", "cancel"].includes(name)
+      ? terminalActionGateFromStatus(status, name)
+      : null;
     const enabled = actionGate.enabled === true && permitted === true &&
       cloudAllowsPrimaryActions &&
       mobileDeviceAllowsPrimaryActions &&
       browserBundleAllowsPrimaryActions &&
-      (startGate ? startGate.startEnabled : true);
+      (startGate ? startGate.startEnabled : true) &&
+      (terminalGate ? terminalGate.enabled : true);
     // blocked、离线、等待 ACK、人工接管都会通过 command_safety 关闭按钮。
     button.disabled = !enabled;
     button.dataset.endpoint = ENDPOINTS[name];
@@ -887,7 +998,9 @@ function renderCommandSafety(status) {
     const item = document.createElement("li");
     const reason = name === "start" && startGate
       ? startGate.blockedReason
-      : safeText(actionGate.blocking_reason || commandSafety.global_block_reason, "blocked");
+      : (terminalGate
+        ? terminalGate.blockedReason
+        : safeText(actionGate.blocking_reason || commandSafety.global_block_reason, "blocked"));
     const cloudReason = cloudAllowsPrimaryActions ? "" : "；云中转摘要未放行主操作。";
     const mobileDeviceReason = mobileDeviceAllowsPrimaryActions ? "" : "；手机验收准备未放行主操作。";
     const browserBundleReason = browserBundleAllowsPrimaryActions ? "" : "；浏览器验收包未放行主操作。";
@@ -1275,6 +1388,7 @@ function renderStatus(status) {
   renderActionFeedback(status);
   renderOperationLog(status);
   renderSupport(status);
+  renderTerminalActionPanel();
 }
 
 function makeClientReference(actionName) {
@@ -1309,9 +1423,9 @@ function buildGenericActionPayload(actionName, clientReference) {
     user_confirmed: true,
     client_reference: clientReference,
     client_timestamp: new Date().toISOString(),
-    safe_phone_copy: `${actionLabel(actionName)} 已由用户二次确认提交，等待 accepted/processing 证据。`,
+    safe_phone_copy: `${actionLabel(actionName)} 已由用户二次确认提交，等待 accepted/processing evidence；这不是 delivery success、dropoff success 或 cancel completed。`,
     ack_semantics: "accepted_processing_only_not_delivery_success",
-    evidence_boundary: ACTION_FEEDBACK_BOUNDARY,
+    evidence_boundary: TERMINAL_ACTION_BOUNDARY,
   };
 }
 
@@ -1349,6 +1463,94 @@ function setLocalActionFeedback(actionName, state, payload, overrides = {}) {
   renderActionFeedback(latestStatus || {});
 }
 
+function renderTerminalActionPanel() {
+  const panel = $("terminalActionPanel");
+  const badge = $("terminalActionBadge");
+  const confirmButton = $("terminalActionConfirmButton");
+  const state = pendingTerminalAction;
+  if (!state) {
+    panel.hidden = true;
+    confirmButton.disabled = true;
+    return;
+  }
+  const gate = terminalActionGateFromStatus(latestStatus || {}, state.actionName);
+  panel.hidden = false;
+  badge.className = "gate-badge";
+  badge.classList.add(gate.enabled ? "gate-ready" : "gate-blocked");
+  badge.textContent = gate.enabled ? "等待用户确认" : "fail closed";
+  $("terminalActionCopy").textContent = safeTerminalActionText(gate.safePhoneCopy);
+  $("terminalActionName").textContent = gate.actionCopy;
+  $("terminalActionRisk").textContent = safeTerminalActionText(gate.riskCopy);
+  $("terminalActionAck").textContent = safeTerminalActionText(gate.ackSemantics, ACK_PROCESSING_COPY);
+  $("terminalActionClientReference").textContent = state.clientReference;
+  $("terminalActionBoundary").textContent = gate.evidenceBoundary;
+  $("terminalActionNotProven").textContent = gate.notProven.join("、");
+  $("terminalActionReason").textContent = gate.blockedReason;
+  confirmButton.disabled = !gate.enabled;
+}
+
+function closeTerminalActionPanel() {
+  // 返回只清除本地 pending 确认，不调用 endpoint，也不写成本地失败。
+  pendingTerminalAction = null;
+  renderTerminalActionPanel();
+}
+
+function openTerminalActionConfirmation(actionName) {
+  const action = ACTIONS[actionName];
+  const button = $(action.buttonId);
+  const gate = terminalActionGateFromStatus(latestStatus || {}, actionName);
+  if (button.disabled || !gate.enabled) {
+    setLocalActionFeedback(actionName, "blocked", null, {
+      safe_phone_copy: `${action.label} 未提交；终端动作二次确认 gate fail closed。`,
+      failure_reason: gate.blockedReason,
+      recovery_hint: "先处理 command_safety、pending ACK、离线、人工接管或 blocked 状态后再试。",
+    });
+    renderTerminalActionPanel();
+    return;
+  }
+  pendingTerminalAction = {
+    actionName,
+    clientReference: makeClientReference(actionName),
+  };
+  renderTerminalActionPanel();
+}
+
+async function postAction(actionName, clientReference) {
+  const action = ACTIONS[actionName];
+  const button = $(action.buttonId);
+  const payload = buildActionPayload(actionName, clientReference);
+  setLocalActionFeedback(actionName, "submitted", payload);
+  button.disabled = true;
+  button.textContent = "提交中";
+  try {
+    const responsePayload = await fetchJson(ENDPOINTS[actionName], requestOptionsForAction(actionName, payload));
+    if (responsePayload && typeof responsePayload === "object") {
+      latestActionFeedback = normalizeActionFeedback({
+        action: actionName,
+        action_copy: action.label,
+        submission_status: responsePayload.submission_status || responsePayload.status || "accepted_or_processing",
+        safe_phone_copy: responsePayload.safe_phone_copy || `${action.label} 请求已被接口接收，等待机器人状态继续更新。`,
+        failure_reason: responsePayload.failure_reason || responsePayload.blocking_reason || "接口已返回 accepted/processing 证据；不是完成证明。",
+        recovery_hint: responsePayload.recovery_hint || "继续观察任务状态；需要时打开诊断。",
+        client_reference: responsePayload.client_reference || payload.client_reference,
+        ack_semantics: responsePayload.ack_semantics || ACK_PROCESSING_COPY,
+        evidence_boundary: responsePayload.evidence_boundary || payload.evidence_boundary || ACTION_FEEDBACK_BOUNDARY,
+      }, "http_success");
+      renderActionFeedback(latestStatus || {});
+    }
+    await refreshStatus();
+  } catch (_error) {
+    $("commandSafetyCopy").textContent = `${action.label} 提交失败，请打开诊断或稍后重试。`;
+    setLocalActionFeedback(actionName, "local_submit_failed", payload, {
+      safe_phone_copy: `${action.label} 提交失败；手机端没有收到 accepted/processing 证据。`,
+      failure_reason: "HTTP 请求失败或本地网络不可用。",
+      recovery_hint: "不要重复点击；先刷新状态，仍失败时打开诊断或联系支持。",
+    });
+  } finally {
+    button.textContent = action.label;
+  }
+}
+
 async function refreshStatus() {
   try {
     const payload = await fetchJson(ENDPOINTS.status);
@@ -1381,6 +1583,10 @@ async function submitAction(actionName) {
   if (button.disabled) {
     return;
   }
+  if (["confirm_dropoff", "cancel"].includes(actionName)) {
+    openTerminalActionConfirmation(actionName);
+    return;
+  }
   if (actionName === "start") {
     latestStartGate = startGateFromStatus(latestStatus || {});
     renderStartConfirmation(latestStatus || {});
@@ -1399,38 +1605,7 @@ async function submitAction(actionName) {
   if (!window.confirm(`${action.label}？请确认现场安全。`)) {
     return;
   }
-  const clientReference = makeClientReference(actionName);
-  const payload = buildActionPayload(actionName, clientReference);
-  setLocalActionFeedback(actionName, "submitted", payload);
-  button.disabled = true;
-  button.textContent = "提交中";
-  try {
-    const responsePayload = await fetchJson(ENDPOINTS[actionName], requestOptionsForAction(actionName, payload));
-    if (responsePayload && typeof responsePayload === "object") {
-      latestActionFeedback = normalizeActionFeedback({
-        action: actionName,
-        action_copy: action.label,
-        submission_status: responsePayload.submission_status || responsePayload.status || "accepted_or_processing",
-        safe_phone_copy: responsePayload.safe_phone_copy || `${action.label} 请求已被接口接收，等待机器人状态继续更新。`,
-        failure_reason: responsePayload.failure_reason || responsePayload.blocking_reason || "接口已返回 accepted/processing 证据；不是完成证明。",
-        recovery_hint: responsePayload.recovery_hint || "继续观察任务状态；需要时打开诊断。",
-        client_reference: responsePayload.client_reference || payload.client_reference,
-        ack_semantics: responsePayload.ack_semantics || ACK_PROCESSING_COPY,
-        evidence_boundary: responsePayload.evidence_boundary || ACTION_FEEDBACK_BOUNDARY,
-      }, "http_success");
-      renderActionFeedback(latestStatus || {});
-    }
-    await refreshStatus();
-  } catch (_error) {
-    $("commandSafetyCopy").textContent = `${action.label} 提交失败，请打开诊断或稍后重试。`;
-    setLocalActionFeedback(actionName, "local_submit_failed", payload, {
-      safe_phone_copy: `${action.label} 提交失败；手机端没有收到 accepted/processing 证据。`,
-      failure_reason: "HTTP 请求失败或本地网络不可用。",
-      recovery_hint: "不要重复点击；先刷新状态，仍失败时打开诊断或联系支持。",
-    });
-  } finally {
-    button.textContent = action.label;
-  }
+  await postAction(actionName, makeClientReference(actionName));
 }
 
 function wireEvents() {
@@ -1449,6 +1624,21 @@ function wireEvents() {
   $("supportButton").addEventListener("click", () => {
     const bundle = latestStatus?.phone_support_bundle || latestStatus?.phone_readiness?.phone_support_bundle || {};
     $("supportSafeCopy").textContent = safeText(bundle.safe_copy, "暂无脱敏支持摘要。");
+  });
+  $("terminalActionBackButton").addEventListener("click", closeTerminalActionPanel);
+  $("terminalActionConfirmButton").addEventListener("click", async () => {
+    if (!pendingTerminalAction) {
+      return;
+    }
+    const { actionName, clientReference } = pendingTerminalAction;
+    const gate = terminalActionGateFromStatus(latestStatus || {}, actionName);
+    if (!gate.enabled) {
+      renderTerminalActionPanel();
+      return;
+    }
+    pendingTerminalAction = null;
+    renderTerminalActionPanel();
+    await postAction(actionName, clientReference);
   });
   Object.keys(ACTIONS).forEach((name) => {
     $(ACTIONS[name].buttonId).addEventListener("click", () => submitAction(name));

@@ -533,6 +533,111 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("/cmd_vel", encoded_command)
         self.assertNotIn("/dev/ttyUSB0", encoded_command)
 
+    def test_validate_command_ignores_mobile_terminal_action_confirmation_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-terminal-action-confirmation",
+            "type": "cancel",
+            "payload": {},
+            "mobile_terminal_action_confirmation_gate": {
+                "schema": "trashbot.mobile_terminal_action_confirmation_gate.v1",
+                "action": "confirm_dropoff",
+                "risk_copy": "确认后仍只代表提交终端动作，不代表投放成功。",
+                "ack_semantics": "accepted_processing_only",
+                "client_reference": "mobile-terminal-action-123",
+                "evidence_boundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
+                "not_proven": ["robot_command", "ack", "cursor", "delivery_success", "hil_pass"],
+                "safe_phone_copy": "二次确认只服务手机提示，不是机器人命令。",
+                "trigger_robot_action": "collect",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+            },
+            "mobile_terminal_action_confirmation_summary": {
+                "schema": "trashbot.mobile_terminal_action_confirmation_summary.v1",
+                "action": "cancel",
+                "risk_copy": "取消提交仍需等待机器人状态确认。",
+                "ack_semantics": "delivery_success",
+                "client_reference": "mobile-terminal-summary-456",
+                "evidence_boundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
+                "not_proven": ["dropoff_success", "cancel_completion", "production_readiness", "hil_pass"],
+                "safe_phone_copy": "手机摘要不能升级为投放或取消完成。",
+                "dropoff_success": True,
+                "cancel_completed": True,
+                "production_ready": True,
+                "hil_pass": True,
+                "raw_ros_topic": "/cmd_vel",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-terminal-action-confirmation")
+        self.assertEqual(command["type"], "cancel")
+        self.assertEqual(command["payload"], {})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 终端动作二次确认是手机/支持 metadata，normalization 只能保留 robot command envelope。
+        self.assertNotIn("mobile_terminal_action_confirmation_gate", encoded_command)
+        self.assertNotIn("mobile_terminal_action_confirmation_summary", encoded_command)
+        self.assertNotIn("risk_copy", encoded_command)
+        self.assertNotIn("client_reference", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("dropoff_success", encoded_command)
+        self.assertNotIn("cancel_completed", encoded_command)
+        self.assertNotIn("production_ready", encoded_command)
+        self.assertNotIn("hil_pass", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+
+    def test_mobile_terminal_action_confirmation_response_metadata_does_not_create_command_or_ack(self):
+        self.cloud.response_extras.update({
+            "command_response": {
+                "mobile_terminal_action_confirmation_gate": {
+                    "schema": "trashbot.mobile_terminal_action_confirmation_gate.v1",
+                    "action": "confirm_dropoff",
+                    "risk_copy": "用户确认前不能调用终端动作 endpoint。",
+                    "ack_semantics": "accepted_processing_only",
+                    "client_reference": "terminal-gate-001",
+                    "evidence_boundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
+                    "not_proven": ["robot_command", "ack", "cursor", "delivery_success", "hil_pass"],
+                    "safe_phone_copy": "二次确认只供手机显示。",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-future",
+                    "delivery_success": True,
+                },
+                "mobile_terminal_action_confirmation_summary": {
+                    "schema": "trashbot.mobile_terminal_action_confirmation_summary.v1",
+                    "action": "cancel",
+                    "risk_copy": "取消完成需要后续机器人状态证明。",
+                    "ack_semantics": "delivery_success",
+                    "client_reference": "terminal-summary-001",
+                    "evidence_boundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
+                    "not_proven": ["dropoff_success", "cancel_completion", "production_readiness", "hil_pass"],
+                    "safe_phone_copy": "ACK 不是取消完成。",
+                },
+            },
+            "status_response": {
+                "mobile_terminal_action_confirmation_summary": {"delivery_success": True},
+            },
+            "ack_response": {
+                "mobile_terminal_action_confirmation_gate": {
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                },
+            },
+        })
+        client = RemoteCloudClient(self.base_url, "robot-1", timeout_sec=2)
+
+        status_response = client.post_status(make_status("robot-1", "waiting_for_trash", "ready"))
+        command = client.get_next_command()
+
+        self.assertIsNone(command)
+        self.assertEqual(self.cloud.acks, [])
+        self.assertTrue(status_response["ok"])
+        encoded_status = json.dumps(self.cloud.statuses[0], ensure_ascii=False)
+        self.assertNotIn("mobile_terminal_action_confirmation_gate", encoded_status)
+        self.assertNotIn("mobile_terminal_action_confirmation_summary", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        # protocol client 不能从终端动作 metadata-only 回包合成 command id 或 terminal ACK。
+        self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
+
     def test_validate_command_ignores_mobile_primary_journey_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-mobile-primary-journey",

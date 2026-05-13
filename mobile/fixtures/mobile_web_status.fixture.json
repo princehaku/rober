@@ -43,6 +43,46 @@
     "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
     "evidence_boundary": "software_proof_docker_mobile_action_feedback_gate"
   },
+  "mobile_terminal_action_confirmation_gate": {
+    "schema": "trashbot.mobile_terminal_action_confirmation_gate.v1",
+    "schema_version": 1,
+    "overall_status": "blocked",
+    "actions": {
+      "confirm_dropoff": {
+        "enabled": false,
+        "risk_copy": "确认投放必须先看到 command_safety 和状态允许；确认后也只是 accepted/processing evidence。",
+        "blocking_reason": "尚未到达投放步骤，终端动作二次确认 fail closed。"
+      },
+      "cancel": {
+        "enabled": false,
+        "risk_copy": "取消任务必须先看到 command_safety 和状态允许；确认后也不是 cancel completed。",
+        "blocking_reason": "当前没有可取消任务，终端动作二次确认 fail closed。"
+      }
+    },
+    "safe_phone_copy": "终端动作首次点击只进入二次确认，不提交 Confirm Dropoff / Cancel endpoint；用户显式确认后才提交。ACK 只代表 accepted/processing evidence，不是 delivery success、dropoff success 或 cancel completed。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+    "client_reference_preview": "mobile_web_<confirm_dropoff|cancel>_<timestamp>",
+    "evidence_boundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "真实云/4G",
+      "Nav2/fixed-route",
+      "真实底盘运动",
+      "HIL",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "真实 delivery"
+    ]
+  },
+  "mobile_terminal_action_confirmation_summary": {
+    "schema": "trashbot.mobile_terminal_action_confirmation_summary.v1",
+    "schema_version": 1,
+    "safe_phone_copy": "终端动作二次确认是 Docker/local mobile software proof；它只证明首次点击不提交、确认后才提交 compatible payload、返回不提交。",
+    "ack_semantics": "accepted/processing evidence only; not delivery success, dropoff success, or cancel completed.",
+    "evidence_boundary": "software_proof_docker_mobile_terminal_action_confirmation_gate"
+  },
   "phone_cloud_readiness_summary": {
     "schema": "trashbot.phone_cloud_readiness_summary.v1",
     "schema_version": 1,
@@ -374,6 +414,19 @@
         "真实手机设备/browser",
         "真实送达",
         "真实取消完成"
+      ]
+    },
+    "mobile_terminal_action_confirmation_gate": {
+      "schema": "trashbot.mobile_terminal_action_confirmation_gate.v1",
+      "schema_version": 1,
+      "overall_status": "blocked",
+      "safe_phone_copy": "终端动作二次确认 gate blocked-by-design；Confirm Dropoff / Cancel 缺少动作级放行时不提交 endpoint。",
+      "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+      "evidence_boundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
+      "not_proven": [
+        "真实 dropoff completion",
+        "真实 cancel completion",
+        "真实 delivery"
       ]
     }
   },

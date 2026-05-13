@@ -345,9 +345,10 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("client_timestamp", app)
         self.assertIn("safe_phone_copy", app)
         self.assertIn("accepted_processing_only_not_delivery_success", app)
-        self.assertIn("ACTION_FEEDBACK_BOUNDARY", app)
+        self.assertIn("TERMINAL_ACTION_BOUNDARY", app)
         self.assertIn("buildActionPayload(actionName, clientReference)", app)
         self.assertIn("requestOptionsForAction(actionName, payload)", app)
+        self.assertIn("software_proof_docker_mobile_terminal_action_confirmation_gate", app)
 
         generic_builder = re.search(
             r"function buildGenericActionPayload\(actionName, clientReference\) \{(.*?)\n\}",
@@ -371,6 +372,63 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "artifact",
         ):
             self.assertNotIn(forbidden, generic_source)
+
+    def test_terminal_action_confirmation_gate_is_visible_and_two_step(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        # Confirm/Cancel 首次点击只能打开本地确认 panel；真正 POST 被确认按钮二次触发。
+        self.assertIn("terminalActionTitle", index)
+        self.assertIn("终端动作二次确认", index)
+        self.assertIn("terminalActionConfirmButton", index)
+        self.assertIn("terminalActionBackButton", index)
+        self.assertIn("terminalActionClientReference", index)
+        self.assertIn("terminalActionNotProven", index)
+        self.assertIn("software_proof_docker_mobile_terminal_action_confirmation_gate", index)
+        self.assertIn("pendingTerminalAction", app)
+        self.assertIn("terminalActionGateFromStatus", app)
+        self.assertIn("openTerminalActionConfirmation(actionName)", app)
+        self.assertIn("closeTerminalActionPanel", app)
+        self.assertIn("postAction(actionName, clientReference)", app)
+        self.assertIn("终端动作首次点击只进入确认，不提交 Confirm Dropoff / Cancel endpoint", index)
+        self.assertRegex(
+            app,
+            r'if \(\["confirm_dropoff", "cancel"\]\.includes\(actionName\)\) \{\s+openTerminalActionConfirmation\(actionName\);\s+return;\s+\}',
+        )
+        self.assertRegex(
+            app,
+            r'terminalActionBackButton"\)\.addEventListener\("click", closeTerminalActionPanel\)',
+        )
+        self.assertRegex(
+            app,
+            re.compile(
+                r'terminalActionConfirmButton"\)\.addEventListener\("click", async \(\) => \{.*?await postAction\(actionName, clientReference\);',
+                re.S,
+            ),
+        )
+
+    def test_terminal_action_gate_copy_filters_success_words_and_fails_closed(self):
+        app = self.read("app.js")
+
+        # 终端动作 gate 必须覆盖缺 command_safety、action disabled、pending ACK、离线、人工接管和 blocked。
+        self.assertIn("UNSAFE_TERMINAL_TEXT", app)
+        self.assertIn("safeTerminalActionText", app)
+        self.assertIn("delivery success", app)
+        self.assertIn("dropoff success", app)
+        self.assertIn("cancel completed", app)
+        self.assertIn("缺少 command_safety，终端动作确认 fail closed", app)
+        self.assertIn("action disabled", app)
+        self.assertIn("存在 pending ACK / accepted-processing 回执", app)
+        self.assertIn("状态 offline/stale/unreachable", app)
+        self.assertIn("当前需要人工接管或支持处理", app)
+        self.assertIn("当前 blocked state 未解除", app)
+        self.assertIn("cloud readiness 未显式放行终端动作", app)
+        self.assertIn("device readiness 未显式放行终端动作", app)
+        self.assertIn("browser acceptance bundle 未显式放行终端动作", app)
+        self.assertIn("终端动作二次确认 gate fail closed", app)
+        self.assertIn("这不是 delivery success、dropoff success 或 cancel completed", app)
+        self.assertNotIn("投放已完成", self.read("index.html"))
+        self.assertNotIn("取消已完成", self.read("index.html"))
 
     def test_service_worker_bypasses_dynamic_control_routes(self):
         service_worker = self.read("service-worker.js")
@@ -486,6 +544,23 @@ class MobileWebEntrypointTest(unittest.TestCase):
             payload["phone_readiness"]["mobile_recovery_decision_gate"]["evidence_boundary"],
             "software_proof_docker_mobile_recovery_decision_gate",
         )
+        self.assertEqual(
+            payload["mobile_terminal_action_confirmation_gate"]["schema"],
+            "trashbot.mobile_terminal_action_confirmation_gate.v1",
+        )
+        self.assertEqual(payload["mobile_terminal_action_confirmation_gate"]["overall_status"], "blocked")
+        self.assertEqual(
+            payload["mobile_terminal_action_confirmation_gate"]["evidence_boundary"],
+            "software_proof_docker_mobile_terminal_action_confirmation_gate",
+        )
+        self.assertEqual(
+            payload["mobile_terminal_action_confirmation_summary"]["schema"],
+            "trashbot.mobile_terminal_action_confirmation_summary.v1",
+        )
+        self.assertEqual(
+            payload["phone_readiness"]["mobile_terminal_action_confirmation_gate"]["evidence_boundary"],
+            "software_proof_docker_mobile_terminal_action_confirmation_gate",
+        )
         for field in (
             "viewport",
             "touch_target",
@@ -517,6 +592,10 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("trashbot.mobile_recovery_decision_gate.v1", encoded)
         self.assertIn("trashbot.mobile_recovery_decision_summary.v1", encoded)
         self.assertIn("software_proof_docker_mobile_recovery_decision_gate", encoded)
+        self.assertIn("trashbot.mobile_terminal_action_confirmation_gate.v1", encoded)
+        self.assertIn("trashbot.mobile_terminal_action_confirmation_summary.v1", encoded)
+        self.assertIn("software_proof_docker_mobile_terminal_action_confirmation_gate", encoded)
+        self.assertIn("首次点击不提交", encoded)
         self.assertIn("local_submit_failed", encoded)
         self.assertIn("刷新状态后再决定是否重试", encoded)
         self.assertIn("真实取消完成", encoded)
