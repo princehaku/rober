@@ -2652,6 +2652,191 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertNotIn("/cmd_vel", encoded_ack)
             self.assertNotIn("DELIVERED", encoded_ack)
 
+    def test_metadata_only_mobile_recovery_decision_response_does_not_start_ack_or_persist_cursor(self):
+        metadata_cases = (
+            (
+                "mobile_recovery_decision_gate",
+                {
+                    "schema": "trashbot.mobile_recovery_decision_gate.v1",
+                    "recovery_state": "pending_ack",
+                    "next_action": "wait_for_command_ack",
+                    "blocking_reason": "cloud_ack_pending",
+                    "support_entry": {"available": True, "reason": "pending_ack_timeout"},
+                    "ack_semantics": "accepted_processing_only",
+                    "evidence_boundary": "software_proof_docker_mobile_recovery_decision_gate",
+                    "not_proven": [
+                        "robot_command",
+                        "ack",
+                        "cursor",
+                        "delivery_success",
+                        "dropoff_success",
+                        "cancel_completion",
+                        "production_readiness",
+                        "hil_pass",
+                    ],
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-recovery-decision-gate",
+                    "delivery_success": True,
+                },
+            ),
+            (
+                "mobile_recovery_decision_summary",
+                {
+                    "schema": "trashbot.mobile_recovery_decision_summary.v1",
+                    "recovery_state": "manual_takeover",
+                    "safe_phone_copy": "恢复决策只说明下一步，不是机器人执行结果。",
+                    "next_action": "manual_takeover",
+                    "blocking_reason": "operator_intervention_required",
+                    "support_entry": {"label": "联系支持", "next_action": "contact_support"},
+                    "ack_semantics": "accepted_processing_only",
+                    "evidence_boundary": "software_proof_docker_mobile_recovery_decision_gate",
+                    "not_proven": [
+                        "real_phone_device",
+                        "robot_command",
+                        "delivery_success",
+                        "dropoff_success",
+                        "cancel_completion",
+                        "production_readiness",
+                        "hil_pass",
+                    ],
+                    "dropoff_success": True,
+                    "cancel_completed": True,
+                    "production_ready": True,
+                    "hil_pass": True,
+                    "raw_ros_topic": "/cmd_vel",
+                    "Authorization": "Bearer must-not-leak",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    self.backend.calls.clear()
+                    self.cloud.status_posts.clear()
+                    self.cloud.ack_posts.clear()
+                    self.cloud.get_paths.clear()
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {metadata_name: metadata}
+
+                    handled = worker.poll_once()
+
+                    # 恢复决策摘要只服务手机/支持面；没有 command envelope 时不能驱动 action/ACK/cursor。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("support_entry", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("dropoff_success", encoded_status)
+                    self.assertNotIn("cancel_completed", encoded_status)
+                    self.assertNotIn("production_ready", encoded_status)
+                    self.assertNotIn("hil_pass", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
+    def test_mobile_recovery_decision_metadata_is_ignored_by_valid_collect_envelope(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-recovery-decision",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras.update({
+                "status_response": {
+                    "mobile_recovery_decision_summary": {
+                        "schema": "trashbot.mobile_recovery_decision_summary.v1",
+                        "recovery_state": "pending_ack",
+                        "delivery_success": True,
+                        "trigger_robot_action": "cancel",
+                    },
+                },
+                "command_response": {
+                    "mobile_recovery_decision_gate": {
+                        "schema": "trashbot.mobile_recovery_decision_gate.v1",
+                        "recovery_state": "offline",
+                        "next_action": "wait_reconnect",
+                        "blocking_reason": "status_stale",
+                        "support_entry": {"available": True},
+                        "ack_semantics": "accepted_processing_only",
+                        "evidence_boundary": "software_proof_docker_mobile_recovery_decision_gate",
+                        "not_proven": ["delivery_success", "cancel_completion", "hil_pass"],
+                        "trigger_robot_action": "cancel",
+                        "cursor_override": "cmd-recovery-decision-override",
+                        "delivery_success": True,
+                    },
+                    "mobile_recovery_decision_summary": {
+                        "schema": "trashbot.mobile_recovery_decision_summary.v1",
+                        "recovery_state": "blocked",
+                        "next_action": "manual_takeover",
+                        "blocking_reason": "manual_takeover_required",
+                        "support_entry": {"next_action": "contact_support"},
+                        "ack_semantics": "delivery_success",
+                        "dropoff_success": True,
+                        "cancel_completed": True,
+                        "production_ready": True,
+                        "hil_pass": True,
+                        "raw_ros_topic": "/cmd_vel",
+                    },
+                },
+                "ack_response": {
+                    "mobile_recovery_decision_summary": {
+                        "schema": "trashbot.mobile_recovery_decision_summary.v1",
+                        "delivery_success": True,
+                        "final_state": "DELIVERED",
+                    },
+                },
+            })
+            self.cloud.commands.append({
+                "id": "cmd-recovery-decision-collect",
+                "type": "collect",
+                "payload": {"target": "trash_station", "trash_type": 0},
+            })
+
+            self.assertTrue(worker.poll_once())
+
+            self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+            self.assertEqual(worker.last_ack_id, "cmd-recovery-decision-collect")
+            self.assertIn("last_ack_id=cmd-before-recovery-decision", self.cloud.get_paths[-1])
+            cursor_payload = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(cursor_payload["last_terminal_ack_id"], "cmd-recovery-decision-collect")
+            ack_payload = self.cloud.ack_posts[0]
+            self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+            self.assertEqual(ack_payload["command_id"], "cmd-recovery-decision-collect")
+            self.assertEqual(ack_payload["state"], "acked")
+            self.assertEqual(ack_payload["message"], "collect")
+            encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+            # 有效 collect 混入恢复决策 metadata 时，执行、ACK、cursor 仍只跟随 command envelope。
+            self.assertNotIn("mobile_recovery_decision_gate", encoded_ack)
+            self.assertNotIn("mobile_recovery_decision_summary", encoded_ack)
+            self.assertNotIn("support_entry", encoded_ack)
+            self.assertNotIn("trigger_robot_action", encoded_ack)
+            self.assertNotIn("cursor_override", encoded_ack)
+            self.assertNotIn("delivery_success", encoded_ack)
+            self.assertNotIn("dropoff_success", encoded_ack)
+            self.assertNotIn("cancel_completed", encoded_ack)
+            self.assertNotIn("production_ready", encoded_ack)
+            self.assertNotIn("hil_pass", encoded_ack)
+            self.assertNotIn("/cmd_vel", encoded_ack)
+            self.assertNotIn("DELIVERED", encoded_ack)
+
     def test_metadata_only_cloud_external_probe_response_does_not_start_ack_or_persist_cursor(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = pathlib.Path(tmpdir) / "remote_cursor.json"

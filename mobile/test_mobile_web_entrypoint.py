@@ -67,6 +67,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("mobile_action_receipt", app)
         self.assertIn("phone_action_feedback", app)
         self.assertIn("mobile_primary_journey_gate", json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8"))))
+        self.assertIn("mobile_recovery_decision_gate", app)
+        self.assertIn("mobile_recovery_decision_summary", app)
+        self.assertIn("mobile_recovery_decision_gate", json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8"))))
         self.assertIn("primaryJourneyTitle", index)
         self.assertEqual(manifest["evidence_boundary"], "software_proof_docker_mobile_web_entrypoint_gate")
         self.assertEqual(
@@ -148,6 +151,52 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("accepted/processing evidence", app)
         self.assertIn("不是自动载荷检测", index)
         self.assertNotIn("自动检测到垃圾", index)
+
+    def test_recovery_decision_panel_is_visible_read_only_and_fail_closed(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        self.assertIn("recoveryDecisionTitle", index)
+        self.assertIn("恢复决策", index)
+        self.assertIn("recoveryDecisionState", index)
+        self.assertIn("recoveryDecisionNextAction", index)
+        self.assertIn("recoveryDecisionBlockingReason", index)
+        self.assertIn("recoveryDecisionSupportEntry", index)
+        self.assertIn("recoveryDecisionAck", index)
+        self.assertIn("software_proof_docker_mobile_recovery_decision_gate", index)
+        self.assertIn("RECOVERY_DECISION_BOUNDARY", app)
+        self.assertIn("recoveryDecisionFromStatus", app)
+        self.assertIn("mobile_recovery_decision_gate", app)
+        self.assertIn("mobile_recovery_decision_summary", app)
+        self.assertIn("derivedRecoveryDecision", app)
+        self.assertIn("blocked-by-design", app)
+        self.assertIn("pending_ack", app)
+        self.assertIn("offline_status_stale", app)
+        self.assertIn("manual_takeover_required", app)
+        self.assertIn("local_submit_failed", app)
+        self.assertIn("missing_primary_journey_readiness", app)
+        self.assertIn("missing_support_handoff", app)
+        self.assertIn("ACK 只代表 accepted/processing evidence", app)
+        self.assertIn("notProvenList", app)
+        self.assertIn("UNSAFE_RECOVERY_TEXT", app)
+        self.assertIn("safe_to_control: false", app)
+        self.assertNotRegex(app, r"recoveryDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+    def test_recovery_decision_filters_success_words_and_keeps_ack_narrow(self):
+        app = self.read("app.js")
+
+        self.assertIn("delivery success", app)
+        self.assertIn("dropoff success", app)
+        self.assertIn("cancel completed", app)
+        self.assertIn("送达已?成功", app)
+        self.assertIn("投放已?完成", app)
+        self.assertIn("取消已?完成", app)
+        self.assertIn("return fallback", app)
+        self.assertIn("不证明真实验收或机器人完成", app)
+        self.assertIn("不代表送达成功、投放完成或取消已落地", app)
+        self.assertNotIn("送达已成功", self.read("index.html"))
+        self.assertNotIn("投放已完成", self.read("index.html"))
+        self.assertNotIn("取消已完成", self.read("index.html"))
 
     def test_operation_log_panel_is_visible_and_read_only(self):
         app = self.read("app.js")
@@ -421,6 +470,22 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "trashbot.mobile_primary_journey_summary.v1",
         )
         self.assertEqual(len(payload["mobile_primary_journey_summary"]["steps"]), 3)
+        self.assertEqual(payload["mobile_recovery_decision_gate"]["schema"], "trashbot.mobile_recovery_decision_gate.v1")
+        self.assertEqual(payload["mobile_recovery_decision_gate"]["overall_status"], "blocked")
+        self.assertEqual(payload["mobile_recovery_decision_gate"]["safe_to_control"], False)
+        self.assertEqual(payload["mobile_recovery_decision_gate"]["recovery_state"], "local_submit_failed")
+        self.assertEqual(
+            payload["mobile_recovery_decision_gate"]["evidence_boundary"],
+            "software_proof_docker_mobile_recovery_decision_gate",
+        )
+        self.assertEqual(
+            payload["mobile_recovery_decision_summary"]["schema"],
+            "trashbot.mobile_recovery_decision_summary.v1",
+        )
+        self.assertEqual(
+            payload["phone_readiness"]["mobile_recovery_decision_gate"]["evidence_boundary"],
+            "software_proof_docker_mobile_recovery_decision_gate",
+        )
         for field in (
             "viewport",
             "touch_target",
@@ -449,6 +514,12 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("software_proof_docker_mobile_device_acceptance_readiness_gate", encoded)
         self.assertIn("software_proof_docker_mobile_browser_acceptance_bundle_gate", encoded)
         self.assertIn("software_proof_docker_mobile_primary_journey_gate", encoded)
+        self.assertIn("trashbot.mobile_recovery_decision_gate.v1", encoded)
+        self.assertIn("trashbot.mobile_recovery_decision_summary.v1", encoded)
+        self.assertIn("software_proof_docker_mobile_recovery_decision_gate", encoded)
+        self.assertIn("local_submit_failed", encoded)
+        self.assertIn("刷新状态后再决定是否重试", encoded)
+        self.assertIn("真实取消完成", encoded)
         self.assertIn("trashbot.mobile_primary_journey_gate.v1", encoded)
         self.assertIn("trashbot.mobile_primary_journey_summary.v1", encoded)
         self.assertIn("software_proof_docker_cloud_db_queue_config_gate", encoded)

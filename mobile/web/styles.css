@@ -128,6 +128,7 @@ h2 {
 
 .hero-panel,
 .primary-journey-panel,
+.recovery-decision-panel,
 .cloud-panel,
 .mobile-device-panel,
 .acceptance-bundle-panel,
@@ -219,6 +220,7 @@ h2 {
 
 .status-grid,
 .cloud-grid,
+.recovery-decision-grid,
 .mobile-device-grid,
 .acceptance-bundle-grid,
 .feedback-grid,
@@ -231,6 +233,7 @@ h2 {
 
 .status-grid div,
 .cloud-grid div,
+.recovery-decision-grid div,
 .mobile-device-grid div,
 .acceptance-bundle-grid div,
 .feedback-grid div,

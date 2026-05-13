@@ -18,9 +18,11 @@ const CLOUD_READINESS_BOUNDARY = "software_proof_docker_mobile_cloud_readiness_s
 const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_acceptance_readiness_gate";
 const MOBILE_BROWSER_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_browser_acceptance_bundle_gate";
 const PRIMARY_JOURNEY_BOUNDARY = "software_proof_docker_mobile_primary_journey_gate";
+const RECOVERY_DECISION_BOUNDARY = "software_proof_docker_mobile_recovery_decision_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACCEPTANCE_BUNDLE_SCHEMA = "trashbot.mobile_browser_acceptance_bundle.v1";
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|artifact)/i;
+const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 
 let latestStatus = null;
 let latestDiagnostics = null;
@@ -52,6 +54,15 @@ function safeBundleText(value, fallback = "未证明") {
   // 验收包面向手机用户和支持人员复制；命中敏感词时直接降级为安全摘要。
   const text = safeText(value, fallback);
   if (UNSAFE_BUNDLE_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeRecoveryText(value, fallback = "等待安全摘要") {
+  // 恢复决策会放在首屏，命中成功/硬件/凭证等高风险词时只能显示保守文案。
+  const text = safeText(value, fallback);
+  if (UNSAFE_RECOVERY_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -241,6 +252,148 @@ function notProvenList(value) {
     "HIL",
     "真实送达",
   ];
+}
+
+function recoveryDecisionCandidate(status, readiness, diagnostics) {
+  // 后端显式 recovery gate/summary 优先；diagnostics 只作为同源 phone-safe 后备。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const candidates = [
+    status?.mobile_recovery_decision_gate,
+    status?.mobile_recovery_decision_summary,
+    readiness?.mobile_recovery_decision_gate,
+    readiness?.mobile_recovery_decision_summary,
+    diagnostics?.mobile_recovery_decision_gate,
+    diagnostics?.mobile_recovery_decision_summary,
+    diagnosticsReadiness.mobile_recovery_decision_gate,
+    diagnosticsReadiness.mobile_recovery_decision_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function recoveryDecisionStateFromPhoneSafe(status, readiness) {
+  const offline = offlineResumeFromStatus(status, readiness);
+  const feedback = actionFeedbackFromStatus(status, readiness) || latestActionFeedback;
+  const raw = `${readiness?.primary_state || ""} ${readiness?.next_action || ""} ${readiness?.support_level || ""} ${commandSafetyFromReadiness(readiness)?.global_block_reason || ""}`.toLowerCase();
+  const connection = `${offline.connection_state || status?.connection_state || ""}`.toLowerCase();
+  const feedbackState = `${feedback?.state || ""}`.toLowerCase();
+  if (["submitted", "waiting_ack", "accepted_or_processing"].includes(feedbackState) || /waiting_ack|pending_ack|ack_pending/.test(raw)) {
+    return "pending_ack";
+  }
+  if (connection && connection !== "online" || /offline|stale|unreachable|disconnect|network/.test(raw)) {
+    return "offline_status_stale";
+  }
+  if (/manual_takeover|human_help|support_required/.test(raw)) {
+    return "manual_takeover_required";
+  }
+  if (feedbackState === "local_submit_failed" || feedbackState === "failed") {
+    return "local_submit_failed";
+  }
+  if (!status?.mobile_primary_journey_gate && !status?.mobile_primary_journey_summary &&
+      !readiness?.mobile_primary_journey_gate && !readiness?.mobile_primary_journey_summary) {
+    return "missing_primary_journey_readiness";
+  }
+  if (!status?.phone_support_bundle && !readiness?.phone_support_bundle) {
+    return "missing_support_handoff";
+  }
+  return "blocked_by_design";
+}
+
+function recoveryDecisionCopyForState(state) {
+  // 中文优先恢复建议覆盖本轮要求的典型阻塞场景；这些文案不放行任何动作。
+  const copy = {
+    pending_ack: {
+      nextAction: "等待 ACK 或刷新状态，暂时不要重复提交。",
+      blockingReason: "最近动作仍是 accepted/processing evidence，不能当作任务完成。",
+      hint: "超过预期仍无变化时打开诊断，把 client_reference 交给支持人员。",
+    },
+    offline_status_stale: {
+      nextAction: "恢复网络后刷新状态。",
+      blockingReason: "手机端状态离线或过期，不能确认机器人当前状态。",
+      hint: "离线壳不会缓存、排队或重放控制请求。",
+    },
+    manual_takeover_required: {
+      nextAction: "先人工接管或联系现场支持。",
+      blockingReason: "当前需要 human help / manual takeover，手机端不能继续主操作。",
+      hint: "使用 Support Handoff 复制脱敏摘要，不要重复点击控制按钮。",
+    },
+    local_submit_failed: {
+      nextAction: "刷新状态后再决定是否重试。",
+      blockingReason: "本地提交失败，手机端没有收到 accepted/processing evidence。",
+      hint: "若连续失败，请打开诊断并联系支持。",
+    },
+    missing_primary_journey_readiness: {
+      nextAction: "等待后端补齐三步主路径摘要。",
+      blockingReason: "缺少 mobile_primary_journey_gate / summary，不能说明目标、载荷确认和发车 gate。",
+      hint: "页面只展示 blocked-by-design，不自行推断机器人状态。",
+    },
+    missing_support_handoff: {
+      nextAction: "等待或请求后端提供支持交接摘要。",
+      blockingReason: "缺少 phone_support_bundle，用户无法安全复现问题给支持人员。",
+      hint: "Diagnostics 仍可尝试打开；主操作保持 fail closed。",
+    },
+    blocked_by_design: {
+      nextAction: "按页面阻塞原因逐项处理。",
+      blockingReason: "恢复决策是 Docker/local software proof，不是放行控制动作。",
+      hint: "真实验收摘要缺失时只显示 not_proven 边界。",
+    },
+  };
+  return copy[state] || copy.blocked_by_design;
+}
+
+function derivedRecoveryDecision(status, readiness, diagnostics) {
+  const state = recoveryDecisionStateFromPhoneSafe(status, readiness);
+  const copy = recoveryDecisionCopyForState(state);
+  const support = status?.phone_support_bundle || readiness?.phone_support_bundle || diagnostics?.phone_support_bundle || {};
+  const primary = status?.mobile_primary_journey_gate || readiness?.mobile_primary_journey_gate || {};
+  const browser = mobileBrowserAcceptanceBundleFromStatus(status, readiness, diagnostics);
+  return {
+    missing: true,
+    schema: "trashbot.mobile_recovery_decision_gate.v1",
+    schema_version: 1,
+    recovery_state: state,
+    overall_status: "blocked",
+    safe_to_control: false,
+    next_action: copy.nextAction,
+    blocking_reason: primary.safe_phone_copy || copy.blockingReason,
+    support_entry: support.safe_copy || support.status_summary || "Diagnostics / Support Handoff 可用时只用于脱敏交接。",
+    safe_phone_copy: "恢复决策 blocked-by-design：当前只从既有 phone-safe 字段派生，不证明真实验收或机器人完成。",
+    recovery_hint: copy.hint,
+    ack_semantics: ACK_PROCESSING_COPY,
+    evidence_boundary: RECOVERY_DECISION_BOUNDARY,
+    not_proven: notProvenList(browser.not_proven),
+  };
+}
+
+function normalizeRecoveryDecision(value, fallback) {
+  // 显式 summary 也只取白名单字段，防止后端误塞入成功语义或内部调试内容。
+  const state = safeRecoveryText(
+    value?.recovery_state || value?.status || value?.overall_status || fallback.recovery_state,
+    fallback.recovery_state,
+  );
+  return {
+    missing: value?.missing === true,
+    schema: "trashbot.mobile_recovery_decision_gate.v1",
+    schema_version: 1,
+    recovery_state: state,
+    overall_status: safeRecoveryText(value?.overall_status || value?.status, fallback.overall_status),
+    safe_to_control: false,
+    next_action: safeRecoveryText(value?.next_action || value?.recommended_next_action, fallback.next_action),
+    blocking_reason: safeRecoveryText(value?.blocking_reason || value?.reason, fallback.blocking_reason),
+    support_entry: safeRecoveryText(value?.support_entry || value?.support_handoff, fallback.support_entry),
+    safe_phone_copy: safeRecoveryText(value?.safe_phone_copy || value?.safe_summary, fallback.safe_phone_copy),
+    recovery_hint: safeRecoveryText(value?.recovery_hint || value?.retry_hint, fallback.recovery_hint),
+    ack_semantics: safeRecoveryText(value?.ack_semantics, ACK_PROCESSING_COPY),
+    evidence_boundary: safeRecoveryText(value?.evidence_boundary, RECOVERY_DECISION_BOUNDARY),
+    not_proven: notProvenList(value?.not_proven || fallback.not_proven),
+  };
+}
+
+function recoveryDecisionFromStatus(status, readiness, diagnostics) {
+  const fallback = derivedRecoveryDecision(status, readiness, diagnostics);
+  const provided = recoveryDecisionCandidate(status, readiness, diagnostics);
+  return provided ? normalizeRecoveryDecision(provided, fallback) : fallback;
 }
 
 function derivedMobileBrowserAcceptanceBundle(status, readiness, diagnostics) {
@@ -613,6 +766,26 @@ function renderPrimaryJourney(status) {
     ? "三步主路径已满足；提交后仍只等待 accepted/processing evidence。"
     : "三步主路径缺少安全条件，Start Delivery 保持关闭。";
   $("primaryJourneyBoundary").textContent = PRIMARY_JOURNEY_BOUNDARY;
+}
+
+function renderRecoveryDecision(status) {
+  const readiness = readinessFromStatus(status);
+  const decision = recoveryDecisionFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("recoveryDecisionBadge");
+  const ready = decision.overall_status === "ready" && decision.safe_to_control === true;
+
+  badge.className = "gate-badge";
+  badge.classList.add(ready ? "gate-ready" : (decision.missing ? "gate-waiting" : "gate-blocked"));
+  badge.textContent = decision.missing ? "安全派生" : (ready ? "恢复允许" : "恢复阻塞");
+  $("recoveryDecisionCopy").textContent = decision.safe_phone_copy;
+  $("recoveryDecisionState").textContent = decision.recovery_state;
+  $("recoveryDecisionNextAction").textContent = decision.next_action;
+  $("recoveryDecisionBlockingReason").textContent = decision.blocking_reason;
+  $("recoveryDecisionSupportEntry").textContent = decision.support_entry;
+  $("recoveryDecisionAck").textContent = decision.ack_semantics;
+  $("recoveryDecisionBoundary").textContent = decision.evidence_boundary;
+  $("recoveryDecisionHint").textContent = decision.recovery_hint;
+  $("recoveryDecisionNotProven").textContent = decision.not_proven.join("、");
 }
 
 function setBadge(state, copy) {
@@ -1064,6 +1237,7 @@ function renderOfflineFailure() {
   renderCloudReadiness({});
   renderMobileDeviceAcceptance({});
   renderMobileBrowserAcceptanceBundle({});
+  renderRecoveryDecision({ connection_state: "offline" });
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -1089,6 +1263,7 @@ function renderStatus(status) {
   latestStatus = status;
   renderReadiness(status);
   renderPrimaryJourney(status);
+  renderRecoveryDecision(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
   renderMobileBrowserAcceptanceBundle(status);
@@ -1170,6 +1345,7 @@ function setLocalActionFeedback(actionName, state, payload, overrides = {}) {
     ack_semantics: ACK_PROCESSING_COPY,
     evidence_boundary: ACTION_FEEDBACK_BOUNDARY,
   }, "local");
+  renderRecoveryDecision(latestStatus || {});
   renderActionFeedback(latestStatus || {});
 }
 
@@ -1186,6 +1362,7 @@ async function openDiagnostics() {
   try {
     latestDiagnostics = await fetchJson(ENDPOINTS.diagnostics);
     renderPrimaryJourney(latestStatus || {});
+    renderRecoveryDecision(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileBrowserAcceptanceBundle(latestStatus || {});
     renderCommandSafety(latestStatus || {});

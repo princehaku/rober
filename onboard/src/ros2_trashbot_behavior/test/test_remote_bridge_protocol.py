@@ -584,6 +584,58 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("/cmd_vel", encoded_command)
         self.assertNotIn("Authorization", encoded_command)
 
+    def test_validate_command_ignores_mobile_recovery_decision_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-mobile-recovery-decision",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "mobile_recovery_decision_gate": {
+                "schema": "trashbot.mobile_recovery_decision_gate.v1",
+                "recovery_state": "pending_ack",
+                "next_action": "wait_for_command_ack",
+                "blocking_reason": "cloud_ack_pending",
+                "support_entry": {"available": True, "next_action": "contact_support"},
+                "ack_semantics": "accepted_processing_only",
+                "evidence_boundary": "software_proof_docker_mobile_recovery_decision_gate",
+                "not_proven": ["robot_command", "cursor", "delivery_success", "hil_pass"],
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+            },
+            "mobile_recovery_decision_summary": {
+                "schema": "trashbot.mobile_recovery_decision_summary.v1",
+                "recovery_state": "manual_takeover",
+                "safe_phone_copy": "恢复决策只供手机和支持侧展示。",
+                "next_action": "manual_takeover",
+                "blocking_reason": "operator_intervention_required",
+                "ack_semantics": "delivery_success",
+                "dropoff_success": True,
+                "cancel_completed": True,
+                "production_ready": True,
+                "hil_pass": True,
+                "raw_ros_topic": "/cmd_vel",
+                "Authorization": "Bearer must-not-leak",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-mobile-recovery-decision")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 恢复决策摘要是 phone/support metadata，normalization 只能保留 robot command envelope。
+        self.assertNotIn("mobile_recovery_decision_gate", encoded_command)
+        self.assertNotIn("mobile_recovery_decision_summary", encoded_command)
+        self.assertNotIn("support_entry", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("dropoff_success", encoded_command)
+        self.assertNotIn("cancel_completed", encoded_command)
+        self.assertNotIn("production_ready", encoded_command)
+        self.assertNotIn("hil_pass", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+
     def test_validate_command_ignores_operation_log_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-operation-log-metadata",

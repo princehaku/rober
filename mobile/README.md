@@ -21,6 +21,8 @@
 > 当前增量：sprint `2026.05.13_19-20_mobile-pwa-installability-gate` 新增 cloud-relay hosted PWA installability/browser gate。证据边界是 `software_proof_docker_cloud_hosted_mobile_pwa_installability_gate`，只证明 Docker/local relay hosted URL 上的 manifest、icons、service worker 动静分离、offline shell、静态 assets、390x844/768x900 本机 Chromium-family 浏览器和 fail-closed 主操作；不等于真实 iPhone/Android device、production app、真实 PWA install prompt、真实公网 HTTPS/TLS、真实云/4G、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 >
 > 当前增量：sprint `2026.05.13_20-21_mobile-primary-journey-gate` 将首屏组织成“目标垃圾站 -> 已放入垃圾确认 -> 发车安全 gate”的三步主路径。证据边界是 `software_proof_docker_mobile_primary_journey_gate`，只证明 Docker/local static fixture 与 targeted unittest 能渲染主路径 summary、保持 Start fail closed、提交 `/api/collect` 的 `target` 兼容 payload 且 ACK 仍是 accepted/processing；不等于真实手机设备/browser、production app、真实 PWA install prompt、真实送达、Nav2/fixed-route、WAVE ROVER 或 HIL。
+>
+> 当前增量：sprint `2026.05.13_21-22_mobile-recovery-decision-gate` 在三步主路径之后新增“恢复决策”首屏 panel。证据边界是 `software_proof_docker_mobile_recovery_decision_gate`，只证明 Docker/local static fixture 与 targeted unittest 能展示恢复状态、建议下一步、阻塞原因、支持入口、ACK 语义和 not_proven 边界；不等于真实手机设备/browser、production app、真实 PWA install prompt、真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL、真实 cancel completion、真实 dropoff completion 或真实送达。
 
 ## 用途（What lives here）
 
@@ -96,6 +98,7 @@ cloud-relay hosted PWA installability/browser gate：
 - 可选：`mobile_device_acceptance_readiness`、`phone_device_acceptance_readiness`、`mobile_browser_acceptance_readiness` 或 `/api/status.phone_readiness.*_acceptance_readiness`
 - 可选：`mobile_browser_acceptance_bundle`、`phone_browser_acceptance_bundle`、`mobile_acceptance_evidence_bundle` 或 `/api/status.phone_readiness.*_acceptance_bundle`
 - 可选：`mobile_primary_journey_gate`、`mobile_primary_journey_summary` 作为 phone-safe 支持摘要；Start 是否允许仍由既有 destination、manual load confirmation、`command_safety`、cloud/device/browser readiness、operation log 和 action feedback 共同决定
+- 可选：`mobile_recovery_decision_gate`、`mobile_recovery_decision_summary` 作为 phone-safe 恢复决策摘要；缺失时只能从既有 offline、command safety、operation log、action feedback、support handoff 和 primary journey 字段派生 blocked-by-design 摘要
 - `/api/diagnostics` 的脱敏摘要字段
 
 三步主路径规则：
@@ -107,6 +110,16 @@ cloud-relay hosted PWA installability/browser gate：
 - 缺少任一安全字段、`overall_status=blocked`、offline/unreachable、pending ACK、manual takeover / human help、missing destination、unchecked load confirmation 都 fail closed。
 - `POST /api/collect` 保持 `target` 字段以兼容现有后端，同时使用 `evidence_boundary=software_proof_docker_mobile_primary_journey_gate`；ACK 文案只能表达 accepted/processing evidence，不能表达 delivery success、dropoff success、cancel completed、HIL 或真实送达。
 - `mobile_primary_journey_gate` / `mobile_primary_journey_summary` 是手机/支持 summary metadata，不是 robot command、ACK、cursor、delivery success 或 production readiness grant。
+
+恢复决策规则：
+
+- 首屏“恢复决策”优先消费 `mobile_recovery_decision_gate` / `mobile_recovery_decision_summary`，并兼容这些字段出现在 `phone_readiness` 或 `/api/diagnostics`。
+- schema 为 `trashbot.mobile_recovery_decision_gate.v1`，本地证据边界为 `software_proof_docker_mobile_recovery_decision_gate`。
+- 面板展示恢复状态、建议下一步、阻塞原因、支持入口、ACK 语义、evidence boundary 和 `not_proven` 摘要。
+- 缺少显式恢复摘要时，前端只从既有 phone-safe 字段派生 blocked-by-design：`phone_offline_resume_readiness`、`command_safety`、`operation_log` / `phone_operation_log`、`mobile_action_receipt` / `phone_action_feedback`、`phone_support_bundle`、`mobile_primary_journey_gate` / `mobile_primary_journey_summary`。
+- pending ACK、offline/status stale、manual takeover / human help、local submit failed、missing primary journey readiness、missing support handoff 都必须给出中文优先恢复建议，并保持 Start、Confirm、Cancel fail closed。
+- 恢复决策 panel 是只读解释和支持交接入口，不发送 Start、Confirm、Cancel，不 POST ACK，不推进 cursor，不声明 delivery success、dropoff success、cancel completed、production readiness、HIL 或真实送达。
+- ACK、receipt 或 HTTP accepted 只能写成 accepted/processing evidence；不能写成真实送达、真实投放完成、真实取消完成或机器人动作完成。
 
 云中转摘要规则：
 
@@ -203,5 +216,6 @@ PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gat
 | 当前 cloud-hosted-mobile-web gate | cloud-relay 同源托管 `mobile/web/` 静态壳、API/probe 路由优先、静态路径围栏 |
 | 当前 cloud-hosted-pwa-installability gate | cloud-relay hosted PWA manifest/SW/offline/assets/browser acceptance 软件证明 |
 | 当前 mobile-primary-journey gate | 首屏三步主路径 summary、Start fail-closed gate、`/api/collect target` 兼容 payload |
+| 当前 mobile-recovery-decision gate | 首屏恢复决策 summary、blocked/offline/pending ACK/manual takeover/local submit failed 的中文恢复建议 |
 | 下一个 sprint | 真实手机设备验收、production app、真实 PWA install prompt 和弱网体验 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |

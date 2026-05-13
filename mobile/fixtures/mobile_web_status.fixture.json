@@ -171,6 +171,42 @@
     ],
     "evidence_boundary": "software_proof_docker_mobile_primary_journey_gate"
   },
+  "mobile_recovery_decision_gate": {
+    "schema": "trashbot.mobile_recovery_decision_gate.v1",
+    "schema_version": 1,
+    "overall_status": "blocked",
+    "recovery_state": "local_submit_failed",
+    "safe_to_control": false,
+    "next_action": "刷新状态后再决定是否重试；仍失败时打开诊断或联系支持。",
+    "blocking_reason": "本地提交失败，手机端没有收到 accepted/processing evidence，不能当作任务完成。",
+    "support_entry": "Support Handoff 可复制脱敏摘要给支持人员；不会触发机器人动作。",
+    "safe_phone_copy": "恢复决策 blocked-by-design：当前只有 Docker/local fixture，不证明真实送达、投放完成或取消完成。",
+    "recovery_hint": "先查看动作回执和操作日志；确认状态刷新后再按页面 gate 操作。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+    "evidence_boundary": "software_proof_docker_mobile_recovery_decision_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "真实云/4G",
+      "production DB/queue",
+      "Nav2/fixed-route",
+      "真实底盘运动",
+      "HIL",
+      "真实送达",
+      "真实取消完成"
+    ]
+  },
+  "mobile_recovery_decision_summary": {
+    "schema": "trashbot.mobile_recovery_decision_summary.v1",
+    "schema_version": 1,
+    "recovery_state": "local_submit_failed",
+    "next_action": "刷新状态后再决定是否重试；仍失败时打开诊断或联系支持。",
+    "blocking_reason": "本地提交失败，不能把 ACK 或 receipt 写成 delivery success。",
+    "support_entry": "Diagnostics / Support Handoff 保持可见。",
+    "ack_semantics": "accepted/processing evidence only",
+    "evidence_boundary": "software_proof_docker_mobile_recovery_decision_gate"
+  },
   "operation_log": {
     "schema": "trashbot.phone_operation_log.v1",
     "evidence_boundary": "software_proof_docker_mobile_operation_log_gate",
@@ -320,6 +356,25 @@
       "recovery_hint": "补齐真实后端 readiness 与用户手动确认后再尝试。",
       "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功。",
       "evidence_boundary": "software_proof_docker_mobile_primary_journey_gate"
+    },
+    "mobile_recovery_decision_gate": {
+      "schema": "trashbot.mobile_recovery_decision_gate.v1",
+      "schema_version": 1,
+      "overall_status": "blocked",
+      "recovery_state": "local_submit_failed",
+      "safe_to_control": false,
+      "next_action": "刷新状态后再决定是否重试。",
+      "blocking_reason": "本地提交失败，手机端没有 accepted/processing evidence。",
+      "support_entry": "Support Handoff 可用；不会触发机器人动作。",
+      "safe_phone_copy": "恢复决策只读展示，不放行 Start、Confirm 或 Cancel。",
+      "recovery_hint": "打开诊断并复制脱敏摘要给支持人员。",
+      "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+      "evidence_boundary": "software_proof_docker_mobile_recovery_decision_gate",
+      "not_proven": [
+        "真实手机设备/browser",
+        "真实送达",
+        "真实取消完成"
+      ]
     }
   },
   "phone_offline_resume_readiness": {
