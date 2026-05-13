@@ -55,6 +55,8 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY,
     CREDENTIAL_ROTATION_PHONE_EVIDENCE_BOUNDARY,
     CREDENTIAL_ROTATION_SCHEMA,
+    EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY,
+    EXTERNAL_EVIDENCE_INTAKE_SCHEMA,
     FileBackedRelayStore,
     NETWORK_RECOVERY_EVIDENCE_BOUNDARY,
     NETWORK_RECOVERY_PHONE_EVIDENCE_BOUNDARY,
@@ -105,6 +107,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     build_cloud_db_queue_external_probe_bundle_payload,
     build_cloud_external_probe_bundle_payload,
     build_cloud_public_ingress_tls_artifact_payload,
+    build_external_evidence_intake_artifact_payload,
     cloud_deployment_readiness_artifact_summary,
     cloud_db_queue_config_artifact_summary,
     cloud_db_queue_external_probe_bundle_summary,
@@ -132,6 +135,8 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     create_cloud_db_queue_external_probe_bundle_artifact,
     create_cloud_external_probe_bundle_artifact,
     create_cloud_public_ingress_tls_artifact,
+    create_external_evidence_intake_artifact,
+    external_evidence_intake_artifact_summary,
     network_recovery_artifact_summary,
     network_recovery_drill_payload,
     oss_cdn_live_probe_summary,
@@ -3250,6 +3255,147 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
                 "/dev/ttyUSB0",
                 "baudrate",
                 "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_external_evidence_intake_artifact_and_preflight_are_blocked_by_design(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            artifact_path = root / "external_evidence_intake.json"
+            env = {
+                "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_PUBLIC_INGRESS_TLS_STATUS": "not_proven",
+                "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_OSS_CDN_STATUS": "not_proven",
+                "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_DB_QUEUE_STATUS": "not_proven",
+                "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_4G_SIM_STATUS": "not_proven",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "relay_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+
+            result = create_external_evidence_intake_artifact(artifact_path, env)
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            summary = external_evidence_intake_artifact_summary(artifact_path)
+            preflight_env = dict(env)
+            preflight_env["TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT"] = str(artifact_path)
+            payload = production_preflight_payload(preflight_env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps(
+                {"result": result, "artifact": artifact, "summary": summary, "preflight": payload},
+                ensure_ascii=False,
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(summary["ok"])
+            self.assertEqual(artifact["schema"], EXTERNAL_EVIDENCE_INTAKE_SCHEMA)
+            self.assertEqual(artifact["schema_version"], 1)
+            self.assertEqual(artifact["evidence_boundary"], EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY)
+            self.assertFalse(artifact["production_ready"])
+            self.assertFalse(artifact["external_evidence_complete"])
+            self.assertEqual(artifact["overall_status"], "blocked")
+            self.assertEqual(summary["material_count"], 4)
+            self.assertEqual(summary["public_ingress_tls_status"], "not_proven")
+            self.assertEqual(summary["oss_cdn_status"], "not_proven")
+            self.assertEqual(summary["production_db_queue_status"], "not_proven")
+            self.assertEqual(summary["four_g_sim_status"], "not_proven")
+            self.assertFalse(payload["production_ready"])
+            self.assertTrue(payload["software_proof_ready"])
+            self.assertEqual(payload["overall_status"], "blocked")
+            self.assertEqual(payload["evidence_boundary"], EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY)
+            self.assertEqual(checks["external_evidence_intake"]["status"], "pass")
+            self.assertFalse(checks["external_evidence_intake"]["details"]["production_ready"])
+            self.assertFalse(checks["external_evidence_intake"]["details"]["external_evidence_complete"])
+            self.assertEqual(
+                checks["external_evidence_intake"]["details"]["redaction_status"]["status"],
+                "pass",
+            )
+            for marker in (
+                "public_ingress_tls",
+                "oss_cdn",
+                "production_db_queue",
+                "four_g_sim",
+                "real_cloud",
+                "real_4g_sim",
+                "delivery_success",
+            ):
+                self.assertIn(marker, encoded)
+            for forbidden in (
+                str(artifact_path),
+                str(root / "relay_state.sqlite"),
+                "Authorization",
+                "Bearer",
+                "token",
+                "https://",
+                "credential-bearing endpoint",
+                "OSS_ACCESS_KEY_SECRET",
+                "AK/SK",
+                "postgres://",
+                "redis://",
+                "response body",
+                "traceback",
+                "/dev/ttyUSB0",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_external_evidence_intake_blocks_hostile_artifact_without_leaks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            base_env = {
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "relay_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+            missing_payload = production_preflight_payload(base_env)
+            missing_checks = {check["name"]: check for check in missing_payload["checks"]}
+            self.assertEqual(missing_checks["external_evidence_intake"]["status"], "warning")
+            self.assertEqual(
+                missing_checks["external_evidence_intake"]["code"],
+                "external_evidence_intake_artifact_missing",
+            )
+
+            hostile_path = root / "hostile_external_evidence_intake.json"
+            hostile = build_external_evidence_intake_artifact_payload(
+                base_env,
+                generated_at="2026-05-13T12:00:00Z",
+            )
+            hostile["safe_summary"] = (
+                "Authorization Bearer token https://cloud.example.com credential-bearing endpoint "
+                "OSS_ACCESS_KEY_SECRET AK/SK postgres://db redis://queue response body traceback "
+                "/dev/ttyUSB0 ROS topic /cmd_vel"
+            )
+            body = {key: value for key, value in hostile.items() if key != "checksum"}
+            hostile["checksum"] = _sha256_checksum(body)
+            hostile_path.write_text(json.dumps(hostile, ensure_ascii=False), encoding="utf-8")
+            hostile_env = dict(base_env)
+            hostile_env["TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT"] = str(hostile_path)
+
+            summary = external_evidence_intake_artifact_summary(hostile_path)
+            payload = production_preflight_payload(hostile_env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps({"summary": summary, "preflight": payload}, ensure_ascii=False)
+
+            self.assertFalse(summary["ok"])
+            self.assertEqual(checks["external_evidence_intake"]["status"], "blocked")
+            self.assertEqual(
+                checks["external_evidence_intake"]["code"],
+                "external_evidence_intake_artifact_invalid",
+            )
+            for forbidden in (
+                str(hostile_path),
+                str(root / "relay_state.sqlite"),
+                "Authorization",
+                "Bearer",
+                "token",
+                "https://cloud.example.com",
+                "credential-bearing endpoint",
+                "OSS_ACCESS_KEY_SECRET",
+                "AK/SK",
+                "postgres://",
+                "redis://",
+                "response body",
+                "traceback",
+                "/dev/ttyUSB0",
                 "ROS topic",
                 "/cmd_vel",
             ):

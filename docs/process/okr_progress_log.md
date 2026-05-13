@@ -10,6 +10,20 @@
 
 更新时间：2026-05-13（本系列持续追加）。本系列下"补充"段落原本写在 `OKR.md` §4.1，2026-05-13 00:00 之后迁入本日志。
 
+### 2026-05-13 17-18｜O5 external evidence intake gate
+
+本轮 `sprints/2026.05.13_17-18_o5_external-evidence-intake-gate/` 按 `OKR.md` 4.1 的最低完成度继续推进 Objective 5。`remote_cloud_relay.py` 新增 `trashbot.external_evidence_intake` artifact、writer、validator、summary helper、CLI 参数和 preflight consumption，覆盖 `public_ingress_tls`、`oss_cdn`、`production_db_queue`、`four_g_sim` 四类未来外部材料状态；`docs/interfaces/ros_contracts.md` 和 remote bridge/protocol tests 同步新增 metadata-only compatibility fence，证明该 metadata 不触发 backend action、不 POST ACK、不推进或持久化 cursor。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 约 75% | 本轮未改硬件、WAVE ROVER、UART、Orange Pi、launch 参数或 HIL 证据；真实串口与 `hil_pass` 仍缺。 |
+| Objective 2：可送垃圾任务完整闭环 | 约 77% | Robot fence 只证明 external evidence intake metadata 不触发机器人动作或 ACK，不提升真实送达任务闭环；仍缺真实 Nav2/fixed-route、任务复盘和失败恢复实测。 |
+| Objective 3：可验证导航与固定路线 | 约 77% | 本轮未改导航、route、keyframe 或 replay 工具；真实路线采集和上车复账仍缺。 |
+| Objective 4：手机用户体验与低成本量产边界 | 约 70% | 本轮未改 mobile/web；此前本地 Chromium-family browser proof 保持，真实 iPhone/Android、production app 和 PWA install prompt 仍缺。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 约 67% | 完成 `software_proof_docker_external_evidence_intake_gate`：external evidence intake schema/checksum/redaction/preflight consumption 可验证，robot metadata-only fence 通过；但没有真实云、真实 4G/SIM、真实 OSS/CDN live traffic、真实 HTTPS/TLS 公网入口或真实 production DB/queue connectivity，因此不调整进度。 |
+
+本轮验证：Task A relay unittest `Ran 66 tests ... OK`、py_compile、CLI artifact writer、preflight consumption 和 scoped diff check 通过；Task B remote bridge/protocol unittest `Ran 97 tests ... OK`、py_compile 和 scoped diff check 通过。证据边界严格为 `software_proof_docker_external_evidence_intake_gate`，不是真实云、真实 4G/SIM、OSS/CDN live traffic、production DB/queue、HIL 或真实送达。
+
 ### 2026-05-13 16-17｜mobile-web-browser-proof-gate｜O4 current mobile/web real local browser proof，手机体验由约 68% 上调到约 70%
 
 `sprints/2026.05.13_16-17_mobile-web-browser-proof-gate` 完成 `software_proof_docker_mobile_web_browser_proof_gate`：Full-stack worker 更新 `pc-tools/evidence/phone_browser_acceptance_gate.py`、`mobile/README.md`、`docs/product/mobile_user_flow.md`、`mobile/test_mobile_web_entrypoint.py`，并产出 `evidence/mobile_web_browser_390x844.json/png`、`evidence/mobile_web_browser_768x900.json/png`、`evidence/mobile_web_browser_acceptance_summary.json`。Browser gate 现在服务当前 `mobile/web/` PWA，使用 `mobile/fixtures/mobile_web_status.fixture.json` 作为 `/api/status` 与 `/api/diagnostics` phone-safe fixture；summary `ok=true`，browser 为 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`。390x844 与 768x900 均 passed：44px hit area、无 overlap、无 horizontal overflow、ACK visible 且 not delivery success、Diagnostics accessible、Support Handoff available、browser acceptance bundle visible/copyable、Start/Confirm/Cancel disabled、phone-safe visible text passed。Full-stack 验证输出 browser gate passed、mobile static smoke `Ran 13 tests ... OK`、`py_compile` passed、scoped diff check passed。Robot worker 更新 `docs/interfaces/ros_contracts.md`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge_protocol.py`，文档化 `mobile_web_browser_proof`、`phone_browser_proof`、`mobile_browser_proof_summary` 为 metadata-only，并新增 bridge/protocol fence；验证输出 remote bridge/protocol unittest `Ran 94 tests in 47.671s OK`、`py_compile` passed、scoped diff check passed。Robot fence 证明 metadata-only responses 不调用 backend actions、不 POST ACK、不推进 `last_ack_id`、不持久化 `last_terminal_ack_id`，valid command mixed metadata 只保留 command envelope。该证据只支持 Objective 4 从约 68% 保守上调到约 70%；Objective 1/2/3/5 不提升。本轮仍没有真实 iPhone/Android device behavior、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达；ACK 仍只是 accepted/processing evidence，不是 delivery success。

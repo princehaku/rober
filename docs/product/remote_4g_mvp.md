@@ -232,6 +232,37 @@ credential-bearing endpoints, Authorization headers, bearer tokens, root
 passwords, local state paths, serial ports, WAVE ROVER parameters, ROS topic
 names, `/cmd_vel`, or tracebacks.
 
+The relay now adds an external evidence intake gate with
+`schema=trashbot.external_evidence_intake`, `schema_version=1`, and
+`evidence_boundary=software_proof_docker_external_evidence_intake_gate`. It is
+the safe handoff surface for future real public ingress/TLS, OSS/CDN,
+production DB/queue, and 4G/SIM evidence. In the current Docker-only
+environment it stores only enum statuses, material time, fixed redacted
+summaries, `safe_summary`, `retry_hint`, `not_proven`, `redaction_status`, and
+checksum. It must keep `production_ready=false`, `overall_status=blocked`, and
+`external_evidence_complete=false`.
+
+Generate and consume the intake artifact:
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --write-external-evidence-intake-artifact /tmp/trashbot_external_evidence_intake.json
+
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT=/tmp/trashbot_external_evidence_intake.json \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
+```
+
+The CLI also accepts `--external-evidence-intake-artifact` for preflight. A
+valid intake artifact only proves schema, checksum, redaction, and preflight
+consumption. It does not prove real cloud, HTTPS/TLS, public ingress, OSS
+upload, CDN origin fetch, STS issuance, production DB/queue, queue ordering,
+transaction isolation, real 4G/SIM, Nav2/fixed-route delivery, WAVE ROVER/HIL,
+or delivery success. It must not expose URLs, credential-bearing endpoints,
+Authorization headers, bearer tokens, OSS AK/SK, DB/queue URLs, local paths,
+response bodies, tracebacks, serial ports, ROS topic names, or `/cmd_vel`.
+
 When `TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite`, the same preflight uses
 `evidence_boundary=software_proof_docker_sqlite_state_store`. That boundary
 means the relay can prove single-node command/status/ack recovery across store

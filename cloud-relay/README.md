@@ -23,6 +23,7 @@
   - `trashbot.cloud_db_queue_config_gate` artifact，区分完全缺生产 DB/queue 配置包与配置包存在但缺真实连接、多实例、一致性、备份和灾备实证；证据边界固定为 `software_proof_docker_cloud_db_queue_config_gate`，`production_ready=false` 和 `overall_status=blocked` 必须保持
   - `trashbot.cloud_db_queue_external_probe_bundle` artifact，记录 DB/queue connectivity、migration、worker、多实例、ordering、transaction isolation、backup/recovery 外部探测入口的枚举状态；证据边界固定为 `software_proof_docker_cloud_db_queue_external_probe_gate`，只证明 schema/checksum/redaction/preflight consumption
   - `trashbot.oss_cdn_live_probe` artifact，复用 OSS/CDN manifest 输入，只记录 endpoint path、object key hash、HTTP 状态和脱敏摘要；证据边界固定为 `software_proof_docker_oss_cdn_live_probe_gate`，`production_ready=false`、`overall_status=blocked`、`live_probe_complete=false` 必须保持
+  - `trashbot.external_evidence_intake` artifact，为未来公网入口/TLS、OSS/CDN、production DB/queue、4G/SIM 真实外部材料提供安全收件 gate；证据边界固定为 `software_proof_docker_external_evidence_intake_gate`，只证明 schema/checksum/redaction/preflight consumption，`production_ready=false`、`overall_status=blocked`、`external_evidence_complete=false` 必须保持
 
 ## 子目录
 
@@ -183,6 +184,26 @@ python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 
 该 artifact 的 `schema=trashbot.oss_cdn_live_probe`、`schema_version=1`、`evidence_boundary=software_proof_docker_oss_cdn_live_probe_gate`。它复用 manifest artifact 的对象引用，但结果只允许保存 endpoint path、object key hash、HTTP status、reachable、method、latency、redaction 状态和 not_proven；不得保存完整 CDN URL、完整 object key、Authorization、Bearer、token、OSS secret、AK/SK、credential-bearing URL、本地路径、响应体、串口、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`。即使本地或 mock HTTP probe 返回 2xx，也必须保持 `production_ready=false`、`overall_status=blocked` 和 `live_probe_complete=false`，不能声明真实 OSS/CDN live traffic。
 
+生成 external evidence intake artifact：
+
+```bash
+cd cloud-relay
+PYTHONPATH=src:../onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --write-external-evidence-intake-artifact /tmp/trashbot_external_evidence_intake.json
+```
+
+Preflight 消费该 artifact：
+
+```bash
+cd cloud-relay
+PYTHONPATH=src:../onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT=/tmp/trashbot_external_evidence_intake.json \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
+```
+
+该 artifact 的 `schema=trashbot.external_evidence_intake`、`schema_version=1`、`evidence_boundary=software_proof_docker_external_evidence_intake_gate`。它覆盖 `public_ingress_tls`、`oss_cdn`、`production_db_queue`、`four_g_sim` 四类未来外部材料状态，但当前只保存枚举状态、材料时间、固定脱敏摘要、`safe_summary`、`retry_hint`、`not_proven`、`redaction_status` 和 checksum。有效 artifact 也必须保持 `production_ready=false`、`overall_status=blocked`、`external_evidence_complete=false`，只说明外部材料 intake schema、checksum、脱敏规则和 preflight consumption 可验证；不得输出 URL、credential-bearing endpoint、Authorization、Bearer、token、OSS AK/SK、DB/queue URL、本地路径、响应体、traceback、串口、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`。
+
 ## 运行时契约（Runtime contracts）
 
 - **与 `onboard/` 的契约**：
@@ -211,6 +232,7 @@ python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 - Cloud DB/queue config gate 不得写入 DB/queue endpoint、credential-bearing endpoint、Authorization header、Bearer token、root password、本地 state path、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；只允许枚举化配置状态和外部实证缺口进入 artifact。
 - Cloud DB/queue external probe bundle 不得写入 DB/queue endpoint、credential-bearing endpoint、Authorization header、Bearer token、root password、本地 state path、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；当前只允许枚举化 probe 状态、脱敏状态、not_proven 和恢复建议进入 artifact。
 - OSS/CDN live probe artifact 不得写入完整 CDN URL、完整 object key、Authorization header、Bearer token、OSS secret、AK/SK、credential-bearing URL、本地路径、响应体、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；当前只允许 endpoint path、object key hash、HTTP 状态、脱敏状态和恢复建议进入 artifact。
+- External evidence intake artifact 不得写入 URL、credential-bearing endpoint、Authorization header、Bearer token、OSS AK/SK、DB/queue URL、本地路径、响应体、traceback、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；当前只允许四类外部材料的枚举状态、固定脱敏摘要、not_proven 和恢复建议进入 artifact。
 - 修改 Docker / compose / scripts / Dockerfile 时必须更新本 README 的"标准入口"段落。
 - 中文注释比例 >20%，注释解释"为什么"而非"做什么"。
 

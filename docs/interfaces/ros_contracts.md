@@ -456,15 +456,15 @@ The optional `remote_bridge` node is the formal 4G-oriented remote MVP path. It 
 Cloud responses may include optional status, preflight, diagnostics, queue,
 mobile-web-entrypoint, PWA-entrypoint, voice-prompt-readiness,
 production-recovery, transaction-isolation, cloud external probe,
-cloud DB/queue external probe, OSS/CDN live probe, deployment-readiness, mobile
-task-start confirmation, mobile action feedback, operation-log, DB/queue
-config-gate, phone/mobile cloud-readiness summary, or mobile/browser
-acceptance-bundle metadata beside the
+cloud DB/queue external probe, OSS/CDN live probe, external evidence intake,
+deployment-readiness, mobile task-start confirmation, mobile action feedback,
+operation-log, DB/queue config-gate, phone/mobile cloud-readiness summary, or
+mobile/browser acceptance-bundle metadata beside the
 `trashbot.remote.v1` command/status/ACK envelope. Robot clients must treat
 those fields as ignorable diagnostics for forward compatibility. A
 metadata-only response with `command=null` or no command object must not start a
-robot action, must not emit ACK, and must not advance or persist
-`last_terminal_ack_id`.
+robot action, must not emit ACK, and must not advance in-memory `last_ack_id`
+or persist `last_terminal_ack_id`.
 Cloud external probe metadata, including `cloud_external_probe` and
 `cloud_external_probe_bundle`, is diagnostic/deployment metadata for
 `/healthz`, `/readyz`, and `/preflightz` probe summaries. It is not a robot
@@ -547,6 +547,28 @@ raw ROS topics, `/cmd_vel`, serial devices, hardware parameters,
 copied into robot status, ACK, backend action result, or normalized command
 payload. ACK remains accepted/processing evidence only and must not be
 interpreted as delivery success or real OSS/CDN production readiness.
+External evidence intake metadata, including `external_evidence_intake`,
+`external_evidence_intake_artifact`, and `cloud_external_evidence`, is the
+cloud-readiness proof intake for future public ingress/TLS, OSS/CDN,
+production DB/queue, and 4G/SIM materials. It may describe
+`production_ready=false`, `overall_status=blocked`,
+`external_evidence_complete=false`, redacted material summaries, retry hints,
+checksums, or the evidence boundary
+`software_proof_docker_external_evidence_intake_gate`, but it is not part of
+the `trashbot.remote.v1` command/status/ACK envelope. It must not be treated as
+a robot command, backend action result, ACK payload, cursor instruction, ROS2
+action result, Nav2/fixed-route result, WAVE ROVER feedback, HIL result, real
+cloud/4G proof, real OSS/CDN/DB/queue proof, or delivery success proof.
+Robot-side protocol normalization must strip those fields from valid command
+objects, and metadata-only responses must not invoke `collect`,
+`confirm_dropoff`, or `cancel`, must not POST ACK, must not advance in-memory
+`last_ack_id`, and must not persist `last_terminal_ack_id`. Credential-bearing
+URLs, Authorization headers, OSS AK/SK, DB or queue URLs, raw ROS topics,
+`/cmd_vel`, serial devices, hardware parameters, `trigger_robot_action`,
+`cursor_override`, and `delivery_success` must not be copied into robot status,
+ACK, backend action result, or normalized command payload. ACK remains
+accepted/processing evidence only and must not be interpreted as delivery
+success or external evidence production readiness.
 Cloud-readiness summary metadata, including
 `phone_cloud_readiness_summary`, `mobile_cloud_readiness_summary`, and
 `cloud_readiness_summary`, is phone-safe support/readiness summary for the

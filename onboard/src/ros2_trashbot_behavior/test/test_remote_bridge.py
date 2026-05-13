@@ -938,6 +938,77 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_external_evidence_intake_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "external_evidence_intake": {
+                    "schema": "trashbot.external_evidence_intake.v1",
+                    "overall_status": "blocked",
+                    "production_ready": False,
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "external_evidence_intake_artifact": {
+                    "schema": "trashbot.external_evidence_intake_artifact.v1",
+                    "evidence_boundary": "software_proof_docker_external_evidence_intake_gate",
+                    "external_evidence_complete": False,
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "credential_url": "https://user:secret@example.invalid/proof",
+                },
+                "cloud_external_evidence": {
+                    "schema": "trashbot.cloud_external_evidence.v1",
+                    "public_ingress_tls": "not_proven",
+                    "oss_cdn": "not_proven",
+                    "production_db_queue": "not_proven",
+                    "four_g_sim": "not_proven",
+                    "next_action": "confirm_dropoff",
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            },
+            "ack_response": {
+                "external_evidence_intake": {
+                    "schema": "trashbot.external_evidence_intake.v1",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-external-evidence-intake-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-external-evidence-intake-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-external-evidence-intake-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # external evidence intake 只是云 readiness proof，ACK 只能表达 command envelope 的本地处理结果。
+        self.assertNotIn("external_evidence_intake", encoded_ack)
+        self.assertNotIn("external_evidence_intake_artifact", encoded_ack)
+        self.assertNotIn("cloud_external_evidence", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        self.assertNotIn("credential_url", encoded_ack)
+        self.assertNotIn("/cmd_vel", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("external_evidence_intake", encoded_status)
+        self.assertNotIn("external_evidence_intake_artifact", encoded_status)
+        self.assertNotIn("cloud_external_evidence", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_cloud_readiness_summary_metadata_only_response_does_not_move_robot(self):
         metadata_cases = (
             (
@@ -2596,6 +2667,90 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
                     handled = worker.poll_once()
 
                     # 只有 OSS/CDN live probe metadata 时，robot 侧必须保持 command/cursor fail-closed。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("preflight", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("credential_url", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
+    def test_metadata_only_external_evidence_intake_response_does_not_start_ack_or_persist_cursor(self):
+        metadata_cases = (
+            (
+                "external_evidence_intake",
+                {
+                    "schema": "trashbot.external_evidence_intake.v1",
+                    "schema_version": 1,
+                    "evidence_boundary": "software_proof_docker_external_evidence_intake_gate",
+                    "overall_status": "blocked",
+                    "production_ready": False,
+                    "external_evidence_complete": False,
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-external-evidence",
+                    "delivery_success": True,
+                    "credential_url": "https://user:secret@example.invalid/proof",
+                },
+            ),
+            (
+                "external_evidence_intake_artifact",
+                {
+                    "schema": "trashbot.external_evidence_intake_artifact.v1",
+                    "safe_summary": "外部证据 intake 只是云 readiness 证明入口。",
+                    "public_ingress_tls": "not_proven",
+                    "oss_cdn": "not_proven",
+                    "production_db_queue": "not_proven",
+                    "four_g_sim": "not_proven",
+                    "trigger_robot_action": "confirm_dropoff",
+                    "delivery_success": True,
+                    "Authorization": "Bearer must-not-leak",
+                },
+            ),
+            (
+                "cloud_external_evidence",
+                {
+                    "schema": "trashbot.cloud_external_evidence.v1",
+                    "external_evidence_complete": False,
+                    "next_action": "cancel",
+                    "cursor_override": "cmd-cloud-external-evidence",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    self.backend.calls.clear()
+                    self.cloud.status_posts.clear()
+                    self.cloud.ack_posts.clear()
+                    self.cloud.get_paths.clear()
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        metadata_name: metadata,
+                        "preflight": {"production_ready": False, "overall_status": "blocked"},
+                    }
+
+                    handled = worker.poll_once()
+
+                    # 只有 external evidence intake metadata 时，不能触发动作、ACK 或游标推进。
                     self.assertFalse(handled)
                     self.assertEqual(self.backend.calls, [])
                     self.assertEqual(self.cloud.ack_posts, [])

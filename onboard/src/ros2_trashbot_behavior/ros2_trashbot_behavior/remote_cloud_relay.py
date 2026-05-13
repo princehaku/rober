@@ -46,6 +46,7 @@ CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_public
 CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_db_queue_config_gate"
 CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_db_queue_external_probe_gate"
 OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_oss_cdn_live_probe_gate"
+EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY = "software_proof_docker_external_evidence_intake_gate"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -85,6 +86,8 @@ CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA = "trashbot.cloud_db_queue_external_probe_b
 CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA_VERSION = 1
 OSS_CDN_LIVE_PROBE_SCHEMA = "trashbot.oss_cdn_live_probe"
 OSS_CDN_LIVE_PROBE_SCHEMA_VERSION = 1
+EXTERNAL_EVIDENCE_INTAKE_SCHEMA = "trashbot.external_evidence_intake"
+EXTERNAL_EVIDENCE_INTAKE_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -296,6 +299,25 @@ OSS_CDN_LIVE_PROBE_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+EXTERNAL_EVIDENCE_INTAKE_NOT_PROVEN = [
+    "real_cloud",
+    "real_https_tls",
+    "public_ingress_external_probe",
+    "real_oss_upload",
+    "cdn_origin_fetch",
+    "sts_issuance",
+    "production_db_or_queue",
+    "real_production_db_connectivity",
+    "real_production_queue_connectivity",
+    "production_queue_ordering",
+    "production_transaction_isolation",
+    "real_4g_sim",
+    "sim_card_activation",
+    "carrier_network_attachment",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -322,6 +344,7 @@ PHONE_COPY = {
     "cloud_db_queue_config_blocked": "生产 DB/queue 配置 gate 仍未通过外部实证，请补齐真实数据库和队列证据。",
     "cloud_db_queue_external_probe_blocked": "生产 DB/queue 外部探测 bundle 仍未通过实证，请补齐真实数据库和队列探测证据。",
     "oss_cdn_live_probe_blocked": "OSS/CDN live probe gate 未通过校验，请重新生成后再试。",
+    "external_evidence_intake_blocked": "外部证据 intake artifact 未通过校验，请重新生成脱敏材料后再试。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -2714,6 +2737,248 @@ def cloud_db_queue_external_probe_bundle_summary(artifact_path):
         }
 
 
+def _external_evidence_intake_forbidden_markers(payload):
+    # intake 是未来真实外部证据的入口，宁可拒绝也不能保存 URL、凭证、响应体、路径或 traceback。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "secret",
+        "password",
+        "ak/sk",
+        "access_key",
+        "oss_access_key",
+        "oss_secret",
+        "postgres://",
+        "mysql://",
+        "redis://",
+        "amqp://",
+        "kafka://",
+        "database url",
+        "database_url",
+        "db url",
+        "db_url",
+        "queue url",
+        "queue_url",
+        "endpoint",
+        "http://",
+        "https://",
+        "response body",
+        "raw response",
+        "credential-bearing",
+        "/tmp/",
+        "/etc/",
+        "/dev/",
+        "traceback",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+EXTERNAL_EVIDENCE_INTAKE_STATUS_VALUES = {
+    "missing",
+    "not_proven",
+    "redacted_summary_received",
+    "invalid_or_unsupported",
+}
+EXTERNAL_EVIDENCE_INTAKE_MATERIALS = (
+    (
+        "public_ingress_tls",
+        "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_PUBLIC_INGRESS_TLS_STATUS",
+        "公网入口/TLS 真实外部材料尚未提交；当前仅保留缺失状态。",
+    ),
+    (
+        "oss_cdn",
+        "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_OSS_CDN_STATUS",
+        "OSS/CDN 真实上传、回源或访问材料尚未提交；当前仅保留缺失状态。",
+    ),
+    (
+        "production_db_queue",
+        "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_DB_QUEUE_STATUS",
+        "生产 DB/queue 真实连接、迁移、worker 或一致性材料尚未提交；当前仅保留缺失状态。",
+    ),
+    (
+        "four_g_sim",
+        "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_4G_SIM_STATUS",
+        "4G/SIM 入网、链路和运营商材料尚未提交；当前仅保留缺失状态。",
+    ),
+)
+
+
+def _external_evidence_intake_materials(env, material_time):
+    # 每类材料只接收枚举状态和固定脱敏摘要，不把 operator 输入的 URL/endpoint/response 写入 artifact。
+    materials = []
+    for name, env_name, summary in EXTERNAL_EVIDENCE_INTAKE_MATERIALS:
+        status = _safe_enum(
+            _env_value(env, env_name, "not_proven"),
+            EXTERNAL_EVIDENCE_INTAKE_STATUS_VALUES,
+            "invalid_or_unsupported",
+        )
+        materials.append(
+            {
+                "name": name,
+                "status": status,
+                "material_time": material_time,
+                "evidence_boundary": EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY,
+                "not_proven": True,
+                "redacted_summary": summary,
+                "safe_summary": summary,
+                "retry_hint": f"submit_redacted_external_{name}_evidence_without_urls_credentials_or_response_body",
+            }
+        )
+    return materials
+
+
+def build_external_evidence_intake_artifact_payload(env=None, *, generated_at=None):
+    """生成 external evidence intake artifact；当前只证明安全收件 schema，不证明任何真实外部环境。"""
+    env = os.environ if env is None else env
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    materials = _external_evidence_intake_materials(env, generated_value)
+    body = {
+        "schema": EXTERNAL_EVIDENCE_INTAKE_SCHEMA,
+        "schema_version": EXTERNAL_EVIDENCE_INTAKE_SCHEMA_VERSION,
+        "evidence_boundary": EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY,
+        "generated_at": generated_value,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "external_evidence_complete": False,
+        "material_statuses": materials,
+        "not_proven": list(EXTERNAL_EVIDENCE_INTAKE_NOT_PROVEN),
+        "safe_summary": "External evidence intake artifact 已生成；当前只证明 schema、checksum、redaction 和 preflight consumption。",
+        "retry_hint": "collect_real_cloud_oss_db_queue_4g_materials_and_submit_redacted_summaries_only",
+        "redaction_status": {
+            "status": "pass",
+            "urls_recorded": False,
+            "credential_headers_recorded": False,
+            "opaque_auth_values_recorded": False,
+            "oss_private_values_recorded": False,
+            "db_queue_locations_recorded": False,
+            "response_bodies_recorded": False,
+            "local_paths_recorded": False,
+            "stack_traces_recorded": False,
+        },
+    }
+    forbidden = _external_evidence_intake_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("external evidence intake artifact contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_external_evidence_intake_artifact_payload(artifact):
+    # preflight 只回显枚举状态和安全摘要；完整材料也必须保持脱敏，不可携带 URL/凭证/响应体。
+    if not isinstance(artifact, dict):
+        raise ValueError("external evidence intake artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != EXTERNAL_EVIDENCE_INTAKE_SCHEMA:
+        raise ValueError("external evidence intake schema mismatch")
+    if artifact.get("schema_version") != EXTERNAL_EVIDENCE_INTAKE_SCHEMA_VERSION:
+        raise ValueError("external evidence intake schema version mismatch")
+    if artifact.get("evidence_boundary") != EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY:
+        raise ValueError("external evidence intake evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("external evidence intake checksum mismatch")
+    if artifact.get("production_ready") is not False or artifact.get("overall_status") != "blocked":
+        raise ValueError("external evidence intake must stay production blocked")
+    if artifact.get("external_evidence_complete") is not False:
+        raise ValueError("external evidence intake must not claim complete external evidence")
+    materials = artifact.get("material_statuses")
+    if not isinstance(materials, list):
+        raise ValueError("external evidence intake material statuses must be a list")
+    material_by_name = {str(item.get("name") or ""): item for item in materials if isinstance(item, dict)}
+    required_names = {item[0] for item in EXTERNAL_EVIDENCE_INTAKE_MATERIALS}
+    if set(material_by_name) != required_names:
+        raise ValueError("external evidence intake coverage mismatch")
+    for item in material_by_name.values():
+        if str(item.get("status") or "") not in EXTERNAL_EVIDENCE_INTAKE_STATUS_VALUES:
+            raise ValueError("external evidence intake status mismatch")
+        if item.get("not_proven") is not True:
+            raise ValueError("external evidence intake material must stay not_proven")
+        if item.get("evidence_boundary") != EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY:
+            raise ValueError("external evidence intake material boundary mismatch")
+        if not str(item.get("material_time") or ""):
+            raise ValueError("external evidence intake material time missing")
+        if not str(item.get("safe_summary") or "") or not str(item.get("retry_hint") or ""):
+            raise ValueError("external evidence intake phone copy missing")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in EXTERNAL_EVIDENCE_INTAKE_NOT_PROVEN if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("external evidence intake not_proven list is incomplete")
+    redaction = artifact.get("redaction_status")
+    if not isinstance(redaction, dict) or redaction.get("status") != "pass":
+        raise ValueError("external evidence intake redaction status missing")
+    safe_summary = str(artifact.get("safe_summary") or "")
+    retry_hint = str(artifact.get("retry_hint") or "")
+    if not safe_summary or not retry_hint:
+        raise ValueError("external evidence intake summary missing")
+    forbidden = _external_evidence_intake_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("external evidence intake artifact contains forbidden phone-unsafe markers")
+    return {
+        "ok": True,
+        "schema": EXTERNAL_EVIDENCE_INTAKE_SCHEMA,
+        "schema_version": EXTERNAL_EVIDENCE_INTAKE_SCHEMA_VERSION,
+        "evidence_boundary": EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "external_evidence_complete": False,
+        "material_names": sorted(material_by_name),
+        "material_count": len(material_by_name),
+        "public_ingress_tls_status": material_by_name["public_ingress_tls"].get("status"),
+        "oss_cdn_status": material_by_name["oss_cdn"].get("status"),
+        "production_db_queue_status": material_by_name["production_db_queue"].get("status"),
+        "four_g_sim_status": material_by_name["four_g_sim"].get("status"),
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "generated_at": str(artifact.get("generated_at") or ""),
+        "redaction_status": safe_value(redaction),
+        "not_proven": list(EXTERNAL_EVIDENCE_INTAKE_NOT_PROVEN),
+    }
+
+
+def create_external_evidence_intake_artifact(artifact_path, env=None):
+    # CLI 写入的 artifact 是未来外部材料的安全交接单，不保存原始外部材料或任何可连接地址。
+    artifact = build_external_evidence_intake_artifact_payload(env)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_external_evidence_intake_artifact_payload(artifact)
+    return {
+        "ok": True,
+        "external_evidence_intake_status": "blocked",
+        "evidence_boundary": EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "external_evidence_complete": False,
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(EXTERNAL_EVIDENCE_INTAKE_NOT_PROVEN),
+    }
+
+
+def external_evidence_intake_artifact_summary(artifact_path):
+    # 失败摘要不回显 artifact 路径或原始异常，只给手机可读的安全原因和重试方向。
+    try:
+        artifact = _load_json_file(artifact_path, "external evidence intake artifact")
+        return validate_external_evidence_intake_artifact_payload(artifact)
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "external_evidence_intake_invalid",
+            "safe_summary": _safe_error_reason(exc),
+            "retry_hint": "重新生成 external evidence intake artifact 后重跑 preflight。",
+            "not_proven": list(EXTERNAL_EVIDENCE_INTAKE_NOT_PROVEN),
+        }
+
+
 def _production_store_queue_forbidden_markers(payload):
     # 该 artifact 会进入手机和 preflight，必须拒绝真实连接串、队列地址、路径和底层控制词。
     encoded = json.dumps(payload, ensure_ascii=False).lower()
@@ -4386,6 +4651,10 @@ def production_preflight_payload(env=None):
         env,
         "TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT",
     )
+    external_evidence_intake_artifact_path = _env_value(
+        env,
+        "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT",
+    )
     cloud_deployment_readiness_artifact_path = _env_value(
         env,
         "TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT",
@@ -4703,6 +4972,60 @@ def production_preflight_payload(env=None):
                 "cloud_db_queue_external_probe_artifact_missing",
                 "尚未提供 DB/queue external probe bundle artifact，不能声明外部 DB/queue 探测入口软件证明。",
                 "生成 cloud DB/queue external probe bundle artifact，并用 TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT 传给 preflight。",
+                {"artifact_present": False, "software_proof_only": True},
+            )
+        )
+
+    if external_evidence_intake_artifact_path:
+        # intake gate 只证明外部材料可被安全接收和脱敏消费，不能把材料存在等同于真实云已通过。
+        intake_summary = external_evidence_intake_artifact_summary(external_evidence_intake_artifact_path)
+        if intake_summary.get("ok"):
+            checks.append(
+                _check(
+                    "external_evidence_intake",
+                    "pass",
+                    "local_external_evidence_intake_artifact_valid",
+                    str(
+                        intake_summary.get("safe_summary")
+                        or "External evidence intake artifact 已通过 schema、checksum 和脱敏校验。"
+                    ),
+                    str(intake_summary.get("retry_hint") or "继续提交真实外部材料的脱敏摘要。"),
+                    {
+                        "artifact_schema": EXTERNAL_EVIDENCE_INTAKE_SCHEMA,
+                        "schema_version": EXTERNAL_EVIDENCE_INTAKE_SCHEMA_VERSION,
+                        "evidence_boundary": EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY,
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "external_evidence_complete": False,
+                        "material_count": intake_summary.get("material_count"),
+                        "public_ingress_tls_status": intake_summary.get("public_ingress_tls_status"),
+                        "oss_cdn_status": intake_summary.get("oss_cdn_status"),
+                        "production_db_queue_status": intake_summary.get("production_db_queue_status"),
+                        "four_g_sim_status": intake_summary.get("four_g_sim_status"),
+                        "redaction_status": intake_summary.get("redaction_status"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "external_evidence_intake",
+                    "blocked",
+                    "external_evidence_intake_artifact_invalid",
+                    str(intake_summary.get("safe_summary") or "External evidence intake artifact 不可用。"),
+                    str(intake_summary.get("retry_hint") or "重新生成 external evidence intake artifact 后重跑 preflight。"),
+                    {"artifact_present": True, "software_proof_only": True},
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "external_evidence_intake",
+                "warning",
+                "external_evidence_intake_artifact_missing",
+                "尚未提供 external evidence intake artifact，不能声明外部材料收件口软件证明。",
+                "生成 external evidence intake artifact，并用 TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT 传给 preflight。",
                 {"artifact_present": False, "software_proof_only": True},
             )
         )
@@ -5500,6 +5823,10 @@ def production_preflight_payload(env=None):
         check["name"] == "cloud_db_queue_external_probe_bundle" and check["status"] == "pass"
         for check in checks
     )
+    local_external_evidence_intake_ok = any(
+        check["name"] == "external_evidence_intake" and check["status"] == "pass"
+        for check in checks
+    )
     local_cloud_db_queue_config_boundary = local_cloud_db_queue_config_seen and (
         bool(cloud_db_queue_config_artifact_path) or not bool(cloud_public_ingress_tls_artifact_path)
     )
@@ -5553,10 +5880,13 @@ def production_preflight_payload(env=None):
         not_proven.insert(16, "cloud_db_queue_external_probe_bundle")
     if not local_oss_cdn_live_probe_ok:
         not_proven.insert(16, "oss_cdn_live_probe_gate")
+    if not local_external_evidence_intake_ok:
+        not_proven.insert(16, "external_evidence_intake_gate")
     payload = {
         "ok": production_ready,
         "software_proof_ready": bool(
             local_oss_cdn_live_probe_ok
+            or local_external_evidence_intake_ok
             or local_network_recovery_ok
             or local_credential_rotation_ok
             or local_provisioning_audit_ok
@@ -5573,7 +5903,9 @@ def production_preflight_payload(env=None):
         "service": "remote_cloud_relay",
         "protocol_version": PROTOCOL_VERSION,
         "evidence_boundary": (
-            OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY
+            EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY
+            if local_external_evidence_intake_ok
+            else OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY
             if local_oss_cdn_live_probe_ok
             else PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY
             if local_production_recovery_ok
@@ -6847,6 +7179,11 @@ def main(argv=None):
         help="phone-safe cloud DB/queue external probe bundle artifact consumed by preflight",
     )
     parser.add_argument(
+        "--external-evidence-intake-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT", ""),
+        help="phone-safe external evidence intake artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
@@ -6910,6 +7247,11 @@ def main(argv=None):
         "--write-cloud-db-queue-external-probe-artifact",
         default="",
         help="write a phone-safe cloud DB/queue external probe bundle artifact",
+    )
+    parser.add_argument(
+        "--write-external-evidence-intake-artifact",
+        default="",
+        help="write a phone-safe external evidence intake artifact",
     )
     parser.add_argument(
         "--cloud-external-probe-base-url",
@@ -7081,9 +7423,23 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT"] = (
                 args.cloud_db_queue_external_probe_artifact
             )
+        if args.external_evidence_intake_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT"] = (
+                args.external_evidence_intake_artifact
+            )
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
+    if args.write_external_evidence_intake_artifact:
+        try:
+            payload = create_external_evidence_intake_artifact(
+                args.write_external_evidence_intake_artifact,
+                dict(os.environ),
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error("external_evidence_intake_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     if args.write_cloud_db_queue_external_probe_artifact:
         try:
             payload = create_cloud_db_queue_external_probe_bundle_artifact(

@@ -739,6 +739,51 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("Authorization", encoded_command)
         self.assertNotIn("/cmd_vel", encoded_command)
 
+    def test_validate_command_ignores_external_evidence_intake_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-external-evidence-intake-metadata",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "external_evidence_intake": {
+                "schema": "trashbot.external_evidence_intake.v1",
+                "overall_status": "blocked",
+                "production_ready": False,
+                "external_evidence_complete": False,
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+                "credential_url": "https://user:secret@example.invalid/proof",
+            },
+            "external_evidence_intake_artifact": {
+                "schema": "trashbot.external_evidence_intake_artifact.v1",
+                "evidence_boundary": "software_proof_docker_external_evidence_intake_gate",
+                "Authorization": "Bearer must-not-leak",
+            },
+            "cloud_external_evidence": {
+                "schema": "trashbot.cloud_external_evidence.v1",
+                "public_ingress_tls": "not_proven",
+                "oss_cdn": "not_proven",
+                "production_db_queue": "not_proven",
+                "four_g_sim": "not_proven",
+                "raw_ros_topic": "/cmd_vel",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-external-evidence-intake-metadata")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 外部证据 intake 是云 readiness 证明入口，normalization 只能留下 robot command envelope。
+        self.assertNotIn("external_evidence_intake", encoded_command)
+        self.assertNotIn("external_evidence_intake_artifact", encoded_command)
+        self.assertNotIn("cloud_external_evidence", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("credential_url", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+
     def test_validate_command_ignores_cloud_readiness_summary_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-cloud-readiness-summary-metadata",
