@@ -468,6 +468,85 @@
       "真实送达"
     ]
   },
+  "mobile_real_device_acceptance_decision": {
+    "schema": "trashbot.mobile_real_device_acceptance_decision.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.mobile_real_device_acceptance_decision_summary.v1",
+    "package_schema": "trashbot.mobile_real_device_acceptance_decision_package.v1",
+    "source": "mobile_web_fixture",
+    "decision": "blocked_missing_evidence",
+    "overall_status": "blocked_missing_evidence",
+    "accepted_for_review": false,
+    "safe_to_control": false,
+    "blocker_list": [
+      "缺少真实 iPhone/Android device behavior 摘要",
+      "缺少 production app release summary",
+      "缺少真实 PWA install prompt capture 和 user choice"
+    ],
+    "next_required_evidence": [
+      "真实 iPhone/Android device behavior 摘要",
+      "production app 入口与 release summary",
+      "真实 PWA install prompt capture status",
+      "真实 install prompt user choice",
+      "脱敏 screenshot summary",
+      "脱敏 production HTTPS URL summary"
+    ],
+    "redaction_status": "passed",
+    "linked_intake_package": {
+      "schema": "trashbot.mobile_real_device_evidence_package.v1",
+      "intake_schema": "trashbot.mobile_real_device_evidence_intake.v1",
+      "summary_schema": "trashbot.mobile_real_device_evidence_intake_summary.v1",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate",
+      "safe_to_control": false
+    },
+    "safe_phone_copy": "真实设备验收决策 blocked_missing_evidence：fixture 材料已脱敏但缺真实设备、production app 和真实 PWA install prompt 关键证据。",
+    "recovery_hint": "补齐 next_required_evidence 后可进入 accepted_for_review；该状态仍不是 delivery success 或 production app ready。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成、取消完成或真实设备验收通过。",
+    "evidence_boundary": "software_proof_docker_mobile_real_device_acceptance_decision_gate",
+    "source_evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate",
+    "not_proven": [
+      "真实手机设备",
+      "真实 iPhone/Android device behavior",
+      "production app",
+      "PWA install prompt",
+      "真实 PWA install prompt/user choice",
+      "真实送达"
+    ]
+  },
+  "mobile_real_device_acceptance_decision_summary": {
+    "schema": "trashbot.mobile_real_device_acceptance_decision_summary.v1",
+    "schema_version": 1,
+    "decision": "blocked_missing_evidence",
+    "safe_phone_copy": "真实设备验收决策摘要只说明材料可否进入人工复核，不证明真实验收通过。",
+    "redaction_status": "passed",
+    "evidence_boundary": "software_proof_docker_mobile_real_device_acceptance_decision_gate",
+    "source_evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate",
+    "not_proven": [
+      "真实手机设备",
+      "production app",
+      "PWA install prompt"
+    ]
+  },
+  "mobile_real_device_acceptance_decision_package": {
+    "schema": "trashbot.mobile_real_device_acceptance_decision_package.v1",
+    "schema_version": 1,
+    "decision_schema": "trashbot.mobile_real_device_acceptance_decision.v1",
+    "summary_schema": "trashbot.mobile_real_device_acceptance_decision_summary.v1",
+    "decision": "blocked_missing_evidence",
+    "accepted_for_review": false,
+    "safe_to_control": false,
+    "redaction_status": "passed",
+    "safe_phone_copy": "可复制的真实设备验收决策包只包含 phone-safe decision 字段。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+    "evidence_boundary": "software_proof_docker_mobile_real_device_acceptance_decision_gate",
+    "source_evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate",
+    "not_proven": [
+      "真实手机设备",
+      "production app",
+      "PWA install prompt",
+      "真实送达"
+    ]
+  },
   "mobile_browser_acceptance_bundle": {
     "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
     "schema_version": 1,
@@ -865,6 +944,58 @@
       "safe_phone_copy": "嵌套真实设备材料包同样只包含 redacted phone-safe metadata。",
       "redaction_status": "passed",
       "evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate"
+    },
+    "mobile_real_device_acceptance_decision": {
+      "schema": "trashbot.mobile_real_device_acceptance_decision.v1",
+      "schema_version": 1,
+      "summary_schema": "trashbot.mobile_real_device_acceptance_decision_summary.v1",
+      "package_schema": "trashbot.mobile_real_device_acceptance_decision_package.v1",
+      "decision": "blocked_missing_evidence",
+      "accepted_for_review": false,
+      "safe_to_control": false,
+      "blocker_list": [
+        "缺少真实设备行为摘要",
+        "缺少 production app release summary",
+        "缺少真实 PWA install prompt"
+      ],
+      "next_required_evidence": [
+        "真实 iPhone/Android device behavior 摘要",
+        "production app 入口与 release summary",
+        "真实 PWA install prompt capture status"
+      ],
+      "redaction_status": "passed",
+      "safe_phone_copy": "phone_readiness 内的真实设备验收决策仍是 blocked_missing_evidence，不放行控制动作。",
+      "recovery_hint": "补齐真实手机、production app 和 install prompt 脱敏材料后再复核。",
+      "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表真实设备验收通过。",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_acceptance_decision_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate",
+      "not_proven": [
+        "真实手机设备",
+        "production app",
+        "PWA install prompt"
+      ]
+    },
+    "mobile_real_device_acceptance_decision_summary": {
+      "schema": "trashbot.mobile_real_device_acceptance_decision_summary.v1",
+      "schema_version": 1,
+      "decision": "blocked_missing_evidence",
+      "redaction_status": "passed",
+      "safe_phone_copy": "嵌套真实设备验收决策摘要只说明可否人工复核。",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_acceptance_decision_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate"
+    },
+    "mobile_real_device_acceptance_decision_package": {
+      "schema": "trashbot.mobile_real_device_acceptance_decision_package.v1",
+      "schema_version": 1,
+      "decision_schema": "trashbot.mobile_real_device_acceptance_decision.v1",
+      "summary_schema": "trashbot.mobile_real_device_acceptance_decision_summary.v1",
+      "decision": "blocked_missing_evidence",
+      "accepted_for_review": false,
+      "safe_to_control": false,
+      "redaction_status": "passed",
+      "safe_phone_copy": "嵌套真实设备验收决策包只包含 phone-safe decision 字段。",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_acceptance_decision_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_evidence_intake_gate"
     },
     "mobile_browser_acceptance_bundle": {
       "schema": "trashbot.mobile_browser_acceptance_bundle.v1",

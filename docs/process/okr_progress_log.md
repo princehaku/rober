@@ -8,7 +8,15 @@
 
 ## 2026-05-14 系列
 
-更新时间：2026-05-14 03:19 Asia/Shanghai。
+更新时间：2026-05-14 04:15 Asia/Shanghai。
+
+### 2026-05-14 04-05｜mobile-real-device-acceptance-decision-gate｜O4 real-device acceptance decision software proof，手机体验由约 80% 上调到约 81%
+
+`sprints/2026.05.14_04-05_mobile-real-device-acceptance-decision-gate` 完成 `software_proof_docker_mobile_real_device_acceptance_decision_gate`：Task A Full-stack 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/test_mobile_web_entrypoint.py`、`mobile/README.md`、`docs/product/mobile_user_flow.md`，在 `mobile/web` 首屏新增“真实设备验收决策”panel，消费或派生 `mobile_real_device_acceptance_decision`、`mobile_real_device_acceptance_decision_summary`、`mobile_real_device_acceptance_decision_package`。该 panel 展示 `accepted_for_review`、`blocked_missing_evidence`、`rejected_unsafe_or_unredacted`、blocker list、next required evidence、redaction status、source boundary、ACK semantics 和 `not_proven`；`accepted_for_review` 只表示材料可进入人工评审，不是真实设备验收通过。Task A 验证输出 `mobile.test_mobile_web_entrypoint` 25 tests OK、`py_compile` pass、`node --check mobile/web/app.js` pass、rg pass、scoped diff check pass。
+
+Task B Robot 更新 `onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge_protocol.py`、`docs/interfaces/ros_contracts.md`，新增 `mobile_real_device_acceptance_decision*` metadata-only compatibility fence。Robot fence 证明 decision metadata-only response 不触发 collect、confirm_dropoff、cancel、ACK POST、cursor advance、cursor persistence、terminal ACK、production readiness、HIL、dropoff success、cancel completed 或 delivery success；valid command mixed metadata 只按 `trashbot.remote.v1` command envelope 执行，不把 acceptance decision metadata 编入 ACK/status/cursor/terminal result。Task B 验证输出 remote bridge/protocol targeted unittest `Ran 137 tests in 70.310s OK`、`py_compile` pass、rg pass、scoped diff check pass。
+
+该证据只支持 Objective 4 从约 80% 保守上调到约 81%，理由是 Docker/local `mobile/web` 已把真实设备验收材料从 intake 推进到可判定、可复制、phone-safe 的 acceptance decision gate，并由 blocker list、next required evidence、redaction status、source boundary、`not_proven` 和 Robot metadata-only fence 限定边界。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1/2/3 不提升。本轮 `software_proof_docker_mobile_real_device_acceptance_decision_gate` 只证明 Docker/local mobile software proof 和 robot metadata-only fence，不证明真实手机设备、真实 iPhone/Android device behavior、production app、真实 PWA install prompt/user choice、真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、production worker/migration、Nav2/fixed-route、WAVE ROVER、HIL、真实 dropoff/cancel completion 或真实 delivery。ACK、HTTP accepted、receipt、intake package、acceptance decision package、browser proof、handoff session 和 install prompt evidence 仍只是 accepted/processing/support metadata，不是 delivery success。
 
 ### 2026-05-14 03-04｜mobile-real-device-evidence-intake-gate｜O4 real-device evidence intake software proof，手机体验由约 79% 上调到约 80%
 

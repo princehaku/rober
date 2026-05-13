@@ -135,6 +135,7 @@ h2 {
 .handoff-session-panel,
 .pwa-install-panel,
 .real-device-evidence-panel,
+.real-device-decision-panel,
 .acceptance-bundle-panel,
 .terminal-action-panel,
 .action-feedback-panel,
@@ -231,6 +232,7 @@ h2 {
 .handoff-session-grid,
 .pwa-install-grid,
 .real-device-evidence-grid,
+.real-device-decision-grid,
 .acceptance-bundle-grid,
 .feedback-grid,
 .terminal-action-grid,
@@ -249,6 +251,7 @@ h2 {
 .handoff-session-grid div,
 .pwa-install-grid div,
 .real-device-evidence-grid div,
+.real-device-decision-grid div,
 .acceptance-bundle-grid div,
 .feedback-grid div,
 .terminal-action-grid div,
@@ -509,6 +512,10 @@ dd {
   }
 
   .real-device-evidence-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .real-device-decision-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

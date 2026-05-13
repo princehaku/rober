@@ -399,6 +399,60 @@
         <pre id="mobileRealDeviceEvidenceSafeCopy" class="safe-copy" aria-label="redacted 真实设备验收材料包">暂无真实设备验收材料包。</pre>
       </section>
 
+      <section class="real-device-decision-panel" aria-labelledby="mobileRealDeviceAcceptanceDecisionTitle">
+        <div class="section-heading">
+          <h2 id="mobileRealDeviceAcceptanceDecisionTitle">真实设备验收决策</h2>
+          <span id="mobileRealDeviceAcceptanceDecisionBadge" class="gate-badge gate-blocked">blocked_missing_evidence</span>
+        </div>
+        <p id="mobileRealDeviceAcceptanceDecisionCopy" class="message">
+          基于真实设备验收材料 intake 输出 phone-safe decision；不是 production app、PWA install prompt 或真实送达通过。
+        </p>
+        <dl class="real-device-decision-grid">
+          <div>
+            <dt>Decision</dt>
+            <dd id="mobileRealDeviceAcceptanceDecisionState">blocked_missing_evidence</dd>
+          </div>
+          <div>
+            <dt>Review / Safe Control</dt>
+            <dd id="mobileRealDeviceAcceptanceDecisionReview">accepted_for_review=false / safe_to_control=false</dd>
+          </div>
+          <div>
+            <dt>Blocker List</dt>
+            <dd id="mobileRealDeviceAcceptanceDecisionBlockers">缺少真实设备验收材料。</dd>
+          </div>
+          <div>
+            <dt>Next Required Evidence</dt>
+            <dd id="mobileRealDeviceAcceptanceDecisionNextEvidence">真实 iPhone/Android device behavior、production app、PWA install prompt。</dd>
+          </div>
+          <div>
+            <dt>Redaction Status</dt>
+            <dd id="mobileRealDeviceAcceptanceDecisionRedaction">missing</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileRealDeviceAcceptanceDecisionAck">ACK 只代表 accepted/processing。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileRealDeviceAcceptanceDecisionBoundary">software_proof_docker_mobile_real_device_acceptance_decision_gate</dd>
+          </div>
+          <div>
+            <dt>Source Boundary</dt>
+            <dd id="mobileRealDeviceAcceptanceDecisionSourceBoundary">software_proof_docker_mobile_real_device_evidence_intake_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileRealDeviceAcceptanceDecisionNotProven">真实手机设备、production app、PWA install prompt、真实送达未证明。</dd>
+          </div>
+        </dl>
+        <p id="mobileRealDeviceAcceptanceDecisionRecoveryHint" class="hint">accepted_for_review 只表示可人工复核，不放行 Start、Confirm 或 Cancel。</p>
+        <div class="bundle-copy-row">
+          <button id="copyRealDeviceAcceptanceDecisionButton" type="button">复制 decision package</button>
+          <span id="mobileRealDeviceAcceptanceDecisionCopyStatus" class="hint">复制内容只包含 phone-safe decision 字段。</span>
+        </div>
+        <pre id="mobileRealDeviceAcceptanceDecisionSafeCopy" class="safe-copy" aria-label="真实设备验收 decision package">暂无真实设备验收决策包。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>

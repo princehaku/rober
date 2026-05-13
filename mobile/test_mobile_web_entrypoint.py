@@ -450,6 +450,34 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertNotIn("mobileRealDeviceEvidenceAllowsPrimaryActions", app)
         self.assertNotRegex(app, r"mobileRealDeviceEvidence.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
 
+    def test_mobile_real_device_acceptance_decision_is_phone_safe_and_not_control_grant(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        self.assertIn("mobileRealDeviceAcceptanceDecisionTitle", index)
+        self.assertIn("真实设备验收决策", index)
+        self.assertIn("copyRealDeviceAcceptanceDecisionButton", index)
+        self.assertIn("mobileRealDeviceAcceptanceDecisionSafeCopy", index)
+        self.assertIn("software_proof_docker_mobile_real_device_acceptance_decision_gate", index)
+        self.assertIn("trashbot.mobile_real_device_acceptance_decision.v1", app)
+        self.assertIn("trashbot.mobile_real_device_acceptance_decision_summary.v1", app)
+        self.assertIn("trashbot.mobile_real_device_acceptance_decision_package.v1", app)
+        self.assertIn("mobileRealDeviceAcceptanceDecisionCandidate", app)
+        self.assertIn("mobileRealDeviceAcceptanceDecisionFromStatus", app)
+        self.assertIn("realDeviceAcceptanceDecisionPackageCopyPayload", app)
+        self.assertIn("mobile_real_device_acceptance_decision", app)
+        self.assertIn("mobile_real_device_acceptance_decision_summary", app)
+        self.assertIn("mobile_real_device_acceptance_decision_package", app)
+        self.assertIn("accepted_for_review", app)
+        self.assertIn("blocked_missing_evidence", app)
+        self.assertIn("rejected_unsafe_or_unredacted", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("source_evidence_boundary", app)
+        self.assertIn("safe_to_control: false", app)
+        self.assertIn("accepted_for_review 只表示可人工复核", index)
+        self.assertNotIn("mobileRealDeviceAcceptanceDecisionAllowsPrimaryActions", app)
+        self.assertNotRegex(app, r"mobileRealDeviceAcceptanceDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
     def test_action_feedback_panel_consumes_receipt_and_fail_closed_copy(self):
         app = self.read("app.js")
         index = self.read("index.html")
@@ -760,8 +788,41 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertEqual(payload["mobile_real_device_evidence_package"]["safe_to_control"], False)
         self.assertEqual(payload["mobile_real_device_evidence_package"]["redaction_status"], "passed")
         self.assertEqual(
+            payload["mobile_real_device_acceptance_decision"]["schema"],
+            "trashbot.mobile_real_device_acceptance_decision.v1",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_acceptance_decision"]["summary_schema"],
+            "trashbot.mobile_real_device_acceptance_decision_summary.v1",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_acceptance_decision"]["package_schema"],
+            "trashbot.mobile_real_device_acceptance_decision_package.v1",
+        )
+        self.assertEqual(payload["mobile_real_device_acceptance_decision"]["decision"], "blocked_missing_evidence")
+        self.assertEqual(payload["mobile_real_device_acceptance_decision"]["accepted_for_review"], False)
+        self.assertEqual(payload["mobile_real_device_acceptance_decision"]["safe_to_control"], False)
+        self.assertEqual(payload["mobile_real_device_acceptance_decision"]["redaction_status"], "passed")
+        self.assertIn("next_required_evidence", payload["mobile_real_device_acceptance_decision"])
+        self.assertEqual(
+            payload["mobile_real_device_acceptance_decision"]["evidence_boundary"],
+            "software_proof_docker_mobile_real_device_acceptance_decision_gate",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_acceptance_decision_summary"]["schema"],
+            "trashbot.mobile_real_device_acceptance_decision_summary.v1",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_acceptance_decision_package"]["schema"],
+            "trashbot.mobile_real_device_acceptance_decision_package.v1",
+        )
+        self.assertEqual(
             payload["phone_readiness"]["mobile_real_device_evidence_intake"]["evidence_boundary"],
             "software_proof_docker_mobile_real_device_evidence_intake_gate",
+        )
+        self.assertEqual(
+            payload["phone_readiness"]["mobile_real_device_acceptance_decision"]["evidence_boundary"],
+            "software_proof_docker_mobile_real_device_acceptance_decision_gate",
         )
         self.assertEqual(
             payload["phone_readiness"]["mobile_pwa_install_prompt_evidence"]["evidence_boundary"],
@@ -869,6 +930,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("trashbot.mobile_real_device_evidence_intake.v1", encoded)
         self.assertIn("trashbot.mobile_real_device_evidence_intake_summary.v1", encoded)
         self.assertIn("trashbot.mobile_real_device_evidence_package.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_acceptance_decision.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_acceptance_decision_summary.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_acceptance_decision_package.v1", encoded)
         self.assertIn("trashbot.mobile_browser_acceptance_bundle.v1", encoded)
         self.assertIn("blocked-by-design", encoded)
         self.assertIn("真实 pwa install prompt", encoded)
@@ -877,6 +941,7 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("software_proof_docker_mobile_device_handoff_session_gate", encoded)
         self.assertIn("software_proof_docker_mobile_pwa_install_prompt_evidence_gate", encoded)
         self.assertIn("software_proof_docker_mobile_real_device_evidence_intake_gate", encoded)
+        self.assertIn("software_proof_docker_mobile_real_device_acceptance_decision_gate", encoded)
         self.assertIn("software_proof_docker_mobile_browser_acceptance_bundle_gate", encoded)
         self.assertIn("redaction", encoded)
         self.assertIn("software_proof_docker_mobile_primary_journey_gate", encoded)

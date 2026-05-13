@@ -219,6 +219,15 @@ PWA 安装提示证据规则：
 - 导入和复制路径必须过滤 token、Authorization、OSS AK/SK、root password、DB/queue URL、ROS topic、`/cmd_vel`、serial、baudrate、WAVE ROVER、本地路径、traceback、checksum、complete artifacts 和 raw robot response；命中敏感输入时只返回 blocked redaction failure summary。
 - 本 gate 不新增控制放行条件；缺失、blocked 或 `not_proven` 时 Start、Confirm、Cancel 继续由既有 command_safety、cloud/device/browser readiness、handoff session、operation log 和 action feedback fail closed。
 
+真实设备验收决策 gate 规则：
+
+- 首屏“真实设备验收决策”panel 消费或派生 `mobile_real_device_acceptance_decision`、`mobile_real_device_acceptance_decision_summary`、`mobile_real_device_acceptance_decision_package`，输入来源是上一轮 `mobile_real_device_evidence_intake` / summary / package。
+- schema 为 `trashbot.mobile_real_device_acceptance_decision.v1`、`trashbot.mobile_real_device_acceptance_decision_summary.v1`、`trashbot.mobile_real_device_acceptance_decision_package.v1`，本地证据边界为 `software_proof_docker_mobile_real_device_acceptance_decision_gate`，source boundary 必须保留 `software_proof_docker_mobile_real_device_evidence_intake_gate`。
+- decision 只允许 phone-safe 三态：`accepted_for_review`、`blocked_missing_evidence`、`rejected_unsafe_or_unredacted`。`accepted_for_review` 只表示材料可进入人工复核，不表示真实手机验收、production app、PWA install prompt、HIL 或 delivery success 通过。
+- 决策包白名单字段为 decision、accepted_for_review、safe_to_control=false、blocker list、next required evidence、redaction status、linked intake package 摘要、safe phone copy、recovery hint、ACK 语义、evidence boundary、source evidence boundary 和 `not_proven`。
+- 缺 production app、真实 iPhone/Android device behavior、真实 PWA install prompt/user choice、脱敏截图摘要或 production HTTPS URL 摘要时，输出 `blocked_missing_evidence`；命中未脱敏或敏感字段时输出 `rejected_unsafe_or_unredacted`。
+- 本 gate 不新增控制放行条件；Start、Confirm、Cancel 继续只由既有 command_safety、cloud/device/browser readiness、handoff session、operation log 和 action feedback fail closed。ACK、HTTP accepted、receipt、intake package 或 decision package 都不能写成 delivery success、dropoff success、cancel completed、真实设备验收通过或 production app ready。
+
 operation log 规则：
 
 - 优先展示后端或 fixture 提供的 `operation_log` / `phone_operation_log`。
