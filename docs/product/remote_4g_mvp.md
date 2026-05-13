@@ -195,6 +195,43 @@ This gate must not expose DB/queue endpoints, credential-bearing endpoints,
 Authorization headers, bearer tokens, root passwords, local state paths, serial
 ports, WAVE ROVER parameters, ROS topic names, `/cmd_vel`, or tracebacks.
 
+The relay now adds a cloud DB/queue external probe bundle gate with
+`schema=trashbot.cloud_db_queue_external_probe_bundle`, `schema_version=1`, and
+`evidence_boundary=software_proof_docker_cloud_db_queue_external_probe_gate`.
+The bundle is the reusable entrypoint for future production DB/queue probes:
+DB connectivity, queue connectivity, migration check, worker check,
+multi-instance consistency, ordering, transaction isolation, and
+backup/recovery. In the current Docker-only environment those statuses remain
+`not_run` or `not_externally_proven`; a valid artifact still keeps
+`production_ready=false`, `overall_status=blocked`, and
+`external_probe_complete=false`.
+
+Generate the artifact locally:
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --write-cloud-db-queue-external-probe-artifact /tmp/trashbot_cloud_db_queue_external_probe.json
+```
+
+Consume it in preflight:
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT=/tmp/trashbot_cloud_db_queue_external_probe.json \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
+```
+
+The preflight check may pass only as software proof: schema, checksum,
+redaction, and preflight consumption are verified, while real DB/queue
+connectivity, production queue ordering, transaction isolation,
+multi-instance consistency, backup policy, disaster recovery, real cloud, real
+4G/SIM, Nav2/fixed-route delivery, WAVE ROVER/HIL, and delivery success remain
+`not_proven`. The bundle must not expose DB/queue endpoints,
+credential-bearing endpoints, Authorization headers, bearer tokens, root
+passwords, local state paths, serial ports, WAVE ROVER parameters, ROS topic
+names, `/cmd_vel`, or tracebacks.
+
 When `TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite`, the same preflight uses
 `evidence_boundary=software_proof_docker_sqlite_state_store`. That boundary
 means the relay can prove single-node command/status/ack recovery across store
@@ -714,6 +751,12 @@ Important product boundary:
   keeps `production_ready=false` and lists production queue ordering,
   transaction isolation, production DB/queue, multi-instance consistency, real
   cloud, real 4G/SIM, WAVE ROVER/HIL, and delivery success as not proven.
+- `cloud_db_queue_external_probe_bundle` is the phone-safe DB/queue external
+  probe entrypoint. `ready` or `pass` means only that artifact schema,
+  checksum, redaction, and preflight consumption are valid; it must still keep
+  `production_ready=false`, `overall_status=blocked`, and real production
+  DB/queue, ordering, transaction isolation, backup/recovery, real cloud,
+  real 4G/SIM, WAVE ROVER/HIL, and delivery success as not proven.
 - `not_proven` must continue to include production phone app, real cloud,
   real 4G/SIM, OSS/CDN, Nav2/fixed-route delivery, WAVE ROVER motion, and HIL
   until those paths have separate evidence.

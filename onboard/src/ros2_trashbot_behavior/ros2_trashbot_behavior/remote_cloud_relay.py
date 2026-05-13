@@ -44,6 +44,7 @@ CLOUD_DEPLOYMENT_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_depl
 CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_external_probe_bundle_gate"
 CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_public_ingress_tls_gate"
 CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_db_queue_config_gate"
+CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_db_queue_external_probe_gate"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -79,6 +80,8 @@ CLOUD_PUBLIC_INGRESS_TLS_SCHEMA = "trashbot.cloud_public_ingress_tls_gate"
 CLOUD_PUBLIC_INGRESS_TLS_SCHEMA_VERSION = 1
 CLOUD_DB_QUEUE_CONFIG_SCHEMA = "trashbot.cloud_db_queue_config_gate"
 CLOUD_DB_QUEUE_CONFIG_SCHEMA_VERSION = 1
+CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA = "trashbot.cloud_db_queue_external_probe_bundle"
+CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -257,6 +260,25 @@ CLOUD_DB_QUEUE_CONFIG_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+CLOUD_DB_QUEUE_EXTERNAL_PROBE_NOT_PROVEN = [
+    "real_production_db_connectivity",
+    "real_production_queue_connectivity",
+    "production_migration_run",
+    "production_queue_worker_run",
+    "multi_instance_consistency",
+    "production_queue_ordering",
+    "production_transaction_isolation",
+    "production_backup_policy",
+    "real_disaster_recovery",
+    "real_cloud",
+    "real_4g_sim",
+    "https_tls_public_ingress",
+    "real_oss_upload",
+    "cdn_origin_fetch",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -281,6 +303,7 @@ PHONE_COPY = {
     "cloud_external_probe_blocked": "云端外部探测 bundle 未通过校验，请重新生成后再试。",
     "cloud_public_ingress_tls_blocked": "公网入口/TLS 配置 gate 仍未通过外部实证，请补齐 DNS、反向代理和防火墙证据。",
     "cloud_db_queue_config_blocked": "生产 DB/queue 配置 gate 仍未通过外部实证，请补齐真实数据库和队列证据。",
+    "cloud_db_queue_external_probe_blocked": "生产 DB/queue 外部探测 bundle 仍未通过实证，请补齐真实数据库和队列探测证据。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -2396,6 +2419,283 @@ def cloud_db_queue_config_artifact_summary(artifact_path):
         }
 
 
+def _cloud_db_queue_external_probe_forbidden_markers(payload):
+    # 外部探测 bundle 是给 preflight 和手机摘要消费的，只能保存枚举状态，不能保存连接目标。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "secret",
+        "password",
+        "root password",
+        "postgres://",
+        "mysql://",
+        "redis://",
+        "amqp://",
+        "kafka://",
+        "database url",
+        "database_url",
+        "db url",
+        "db_url",
+        "db endpoint",
+        "queue url",
+        "queue_url",
+        "queue endpoint",
+        "credential-bearing",
+        "raw state path",
+        "state path",
+        "/tmp/",
+        "/etc/",
+        "/dev/",
+        "serial",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+        "traceback",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+CLOUD_DB_QUEUE_EXTERNAL_PROBE_STATUS_VALUES = {
+    "not_run",
+    "not_externally_proven",
+    "blocked_not_proven",
+    "local_contract_only",
+}
+CLOUD_DB_QUEUE_EXTERNAL_PROBE_FIELDS = (
+    ("db_connectivity_status", "TRASHBOT_REMOTE_CLOUD_DB_CONNECTIVITY_PROBE_STATUS", "not_run"),
+    ("queue_connectivity_status", "TRASHBOT_REMOTE_CLOUD_QUEUE_CONNECTIVITY_PROBE_STATUS", "not_run"),
+    ("migration_check_status", "TRASHBOT_REMOTE_CLOUD_DB_MIGRATION_PROBE_STATUS", "not_run"),
+    ("worker_check_status", "TRASHBOT_REMOTE_CLOUD_QUEUE_WORKER_PROBE_STATUS", "not_run"),
+    (
+        "multi_instance_consistency_status",
+        "TRASHBOT_REMOTE_CLOUD_MULTI_INSTANCE_CONSISTENCY_PROBE_STATUS",
+        "not_externally_proven",
+    ),
+    (
+        "ordering_check_status",
+        "TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_EXTERNAL_PROBE_STATUS",
+        "not_externally_proven",
+    ),
+    (
+        "transaction_isolation_status",
+        "TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_EXTERNAL_PROBE_STATUS",
+        "not_externally_proven",
+    ),
+    (
+        "backup_recovery_status",
+        "TRASHBOT_REMOTE_CLOUD_BACKUP_RECOVERY_EXTERNAL_PROBE_STATUS",
+        "not_externally_proven",
+    ),
+)
+
+
+def _cloud_db_queue_external_probe_statuses(env):
+    # 这些 env 只是记录外部 probe 入口的枚举状态；本函数不读取或连接任何真实 DB/queue URL。
+    statuses = {}
+    for field_name, env_name, default in CLOUD_DB_QUEUE_EXTERNAL_PROBE_FIELDS:
+        statuses[field_name] = _safe_enum(
+            _env_value(env, env_name, default),
+            CLOUD_DB_QUEUE_EXTERNAL_PROBE_STATUS_VALUES,
+            default,
+        )
+    return statuses
+
+
+def build_cloud_db_queue_external_probe_bundle_payload(env=None, *, generated_at=None):
+    """生成 DB/queue external probe bundle；当前只证明 artifact 形态和脱敏，不连接真实资源。"""
+    env = os.environ if env is None else env
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    statuses = _cloud_db_queue_external_probe_statuses(env)
+    probe_results = [
+        {
+            "name": "db_connectivity",
+            "status": statuses["db_connectivity_status"],
+            "safe_summary": "生产数据库连接探测尚未形成真实外部证据。",
+        },
+        {
+            "name": "queue_connectivity",
+            "status": statuses["queue_connectivity_status"],
+            "safe_summary": "生产队列连接探测尚未形成真实外部证据。",
+        },
+        {
+            "name": "migration_check",
+            "status": statuses["migration_check_status"],
+            "safe_summary": "生产迁移检查尚未在真实外部环境运行。",
+        },
+        {
+            "name": "worker_check",
+            "status": statuses["worker_check_status"],
+            "safe_summary": "生产队列 worker 检查尚未在真实外部环境运行。",
+        },
+        {
+            "name": "multi_instance_consistency",
+            "status": statuses["multi_instance_consistency_status"],
+            "safe_summary": "多实例一致性仍未通过真实外部 DB/queue 证明。",
+        },
+        {
+            "name": "ordering_check",
+            "status": statuses["ordering_check_status"],
+            "safe_summary": "生产队列顺序仍未通过真实外部队列证明。",
+        },
+        {
+            "name": "transaction_isolation",
+            "status": statuses["transaction_isolation_status"],
+            "safe_summary": "生产事务隔离仍未通过真实外部 DB/queue 证明。",
+        },
+        {
+            "name": "backup_recovery",
+            "status": statuses["backup_recovery_status"],
+            "safe_summary": "生产备份/灾备恢复仍未通过真实外部恢复证明。",
+        },
+    ]
+    body = {
+        "schema": CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA,
+        "schema_version": CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
+        "generated_at": generated_value,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "external_probe_complete": False,
+        "probe_results": probe_results,
+        "not_proven": list(CLOUD_DB_QUEUE_EXTERNAL_PROBE_NOT_PROVEN),
+        "safe_summary": "DB/queue external probe bundle 已生成；当前只证明 schema、checksum、redaction 和 preflight consumption。",
+        "retry_hint": "run_real_external_db_queue_probe_with_production_credentials_outside_docker_proof",
+        "redaction_status": {
+            "status": "pass",
+            "db_queue_endpoints_redacted": True,
+            "credential_headers_recorded": False,
+            "raw_connection_strings_recorded": False,
+            "local_paths_recorded": False,
+        },
+    }
+    forbidden = _cloud_db_queue_external_probe_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("cloud DB queue external probe bundle contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_cloud_db_queue_external_probe_bundle_payload(artifact):
+    # preflight 只回显小摘要；完整 probe_results 也必须保持枚举化，避免误传真实连接信息。
+    if not isinstance(artifact, dict):
+        raise ValueError("cloud DB queue external probe bundle must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA:
+        raise ValueError("cloud DB queue external probe schema mismatch")
+    if artifact.get("schema_version") != CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA_VERSION:
+        raise ValueError("cloud DB queue external probe schema version mismatch")
+    if artifact.get("evidence_boundary") != CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY:
+        raise ValueError("cloud DB queue external probe evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("cloud DB queue external probe checksum mismatch")
+    if artifact.get("production_ready") is not False or artifact.get("overall_status") != "blocked":
+        raise ValueError("cloud DB queue external probe must stay production blocked")
+    if artifact.get("external_probe_complete") is not False:
+        raise ValueError("cloud DB queue external probe must not claim completion")
+    results = artifact.get("probe_results")
+    if not isinstance(results, list):
+        raise ValueError("cloud DB queue external probe results must be a list")
+    result_by_name = {str(result.get("name") or ""): result for result in results if isinstance(result, dict)}
+    required_names = {
+        "db_connectivity",
+        "queue_connectivity",
+        "migration_check",
+        "worker_check",
+        "multi_instance_consistency",
+        "ordering_check",
+        "transaction_isolation",
+        "backup_recovery",
+    }
+    if set(result_by_name) != required_names:
+        raise ValueError("cloud DB queue external probe coverage mismatch")
+    for result in result_by_name.values():
+        if str(result.get("status") or "") not in CLOUD_DB_QUEUE_EXTERNAL_PROBE_STATUS_VALUES:
+            raise ValueError("cloud DB queue external probe status mismatch")
+        if not str(result.get("safe_summary") or ""):
+            raise ValueError("cloud DB queue external probe phone copy missing")
+    redaction = artifact.get("redaction_status")
+    if not isinstance(redaction, dict) or redaction.get("status") != "pass":
+        raise ValueError("cloud DB queue external probe redaction status missing")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in CLOUD_DB_QUEUE_EXTERNAL_PROBE_NOT_PROVEN if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("cloud DB queue external probe not_proven list is incomplete")
+    safe_summary = str(artifact.get("safe_summary") or "")
+    retry_hint = str(artifact.get("retry_hint") or "")
+    if not safe_summary or not retry_hint:
+        raise ValueError("cloud DB queue external probe summary missing")
+    forbidden = _cloud_db_queue_external_probe_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("cloud DB queue external probe bundle contains forbidden phone-unsafe markers")
+    return {
+        "ok": True,
+        "schema": CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA,
+        "schema_version": CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "external_probe_complete": False,
+        "probe_names": sorted(result_by_name),
+        "probe_count": len(result_by_name),
+        "db_connectivity_status": result_by_name["db_connectivity"].get("status"),
+        "queue_connectivity_status": result_by_name["queue_connectivity"].get("status"),
+        "migration_check_status": result_by_name["migration_check"].get("status"),
+        "worker_check_status": result_by_name["worker_check"].get("status"),
+        "multi_instance_consistency_status": result_by_name["multi_instance_consistency"].get("status"),
+        "ordering_check_status": result_by_name["ordering_check"].get("status"),
+        "transaction_isolation_status": result_by_name["transaction_isolation"].get("status"),
+        "backup_recovery_status": result_by_name["backup_recovery"].get("status"),
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "generated_at": str(artifact.get("generated_at") or ""),
+        "redaction_status": safe_value(redaction),
+        "not_proven": list(CLOUD_DB_QUEUE_EXTERNAL_PROBE_NOT_PROVEN),
+    }
+
+
+def create_cloud_db_queue_external_probe_bundle_artifact(artifact_path, env=None):
+    # CLI 写入只落 phone-safe artifact；真实 probe 后续必须通过受控外部证据链路补充。
+    artifact = build_cloud_db_queue_external_probe_bundle_payload(env)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_cloud_db_queue_external_probe_bundle_payload(artifact)
+    return {
+        "ok": True,
+        "cloud_db_queue_external_probe_status": "blocked",
+        "evidence_boundary": CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(CLOUD_DB_QUEUE_EXTERNAL_PROBE_NOT_PROVEN),
+    }
+
+
+def cloud_db_queue_external_probe_bundle_summary(artifact_path):
+    # 失败摘要只给枚举和安全文案，不回显 artifact 路径、连接串或原始异常。
+    try:
+        artifact = _load_json_file(artifact_path, "cloud DB queue external probe bundle artifact")
+        return validate_cloud_db_queue_external_probe_bundle_payload(artifact)
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "cloud_db_queue_external_probe_invalid",
+            "safe_summary": _safe_error_reason(exc),
+            "retry_hint": "重新生成 cloud DB/queue external probe bundle artifact 后重跑 preflight。",
+            "not_proven": list(CLOUD_DB_QUEUE_EXTERNAL_PROBE_NOT_PROVEN),
+        }
+
+
 def _production_store_queue_forbidden_markers(payload):
     # 该 artifact 会进入手机和 preflight，必须拒绝真实连接串、队列地址、路径和底层控制词。
     encoded = json.dumps(payload, ensure_ascii=False).lower()
@@ -3836,6 +4136,10 @@ def production_preflight_payload(env=None):
         env,
         "TRASHBOT_REMOTE_CLOUD_DB_QUEUE_CONFIG_ARTIFACT",
     )
+    cloud_db_queue_external_probe_artifact_path = _env_value(
+        env,
+        "TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT",
+    )
     cloud_deployment_readiness_artifact_path = _env_value(
         env,
         "TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT",
@@ -4084,6 +4388,76 @@ def production_preflight_payload(env=None):
                     "external_db_queue_probe_proven": False,
                     "software_proof_only": True,
                 },
+            )
+        )
+
+    if cloud_db_queue_external_probe_artifact_path:
+        # 该 bundle 只证明外部 DB/queue probe artifact 可被校验和消费，不连接真实生产资源。
+        external_probe_summary = cloud_db_queue_external_probe_bundle_summary(
+            cloud_db_queue_external_probe_artifact_path
+        )
+        if external_probe_summary.get("ok"):
+            checks.append(
+                _check(
+                    "cloud_db_queue_external_probe_bundle",
+                    "pass",
+                    "local_cloud_db_queue_external_probe_bundle_valid",
+                    str(
+                        external_probe_summary.get("safe_summary")
+                        or "DB/queue external probe bundle 已通过 schema、checksum 和脱敏校验。"
+                    ),
+                    str(
+                        external_probe_summary.get("retry_hint")
+                        or "继续补真实生产 DB/queue 外部探测证据。"
+                    ),
+                    {
+                        "artifact_schema": CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA,
+                        "schema_version": CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA_VERSION,
+                        "evidence_boundary": CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "external_probe_complete": False,
+                        "probe_count": external_probe_summary.get("probe_count"),
+                        "db_connectivity_status": external_probe_summary.get("db_connectivity_status"),
+                        "queue_connectivity_status": external_probe_summary.get("queue_connectivity_status"),
+                        "migration_check_status": external_probe_summary.get("migration_check_status"),
+                        "worker_check_status": external_probe_summary.get("worker_check_status"),
+                        "multi_instance_consistency_status": external_probe_summary.get(
+                            "multi_instance_consistency_status"
+                        ),
+                        "ordering_check_status": external_probe_summary.get("ordering_check_status"),
+                        "transaction_isolation_status": external_probe_summary.get(
+                            "transaction_isolation_status"
+                        ),
+                        "backup_recovery_status": external_probe_summary.get("backup_recovery_status"),
+                        "redaction_status": external_probe_summary.get("redaction_status"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "cloud_db_queue_external_probe_bundle",
+                    "blocked",
+                    "cloud_db_queue_external_probe_artifact_invalid",
+                    str(external_probe_summary.get("safe_summary") or "DB/queue external probe bundle 不可用。"),
+                    str(
+                        external_probe_summary.get("retry_hint")
+                        or "重新生成 cloud DB/queue external probe bundle artifact 后重跑 preflight。"
+                    ),
+                    {"artifact_present": True, "software_proof_only": True},
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "cloud_db_queue_external_probe_bundle",
+                "warning",
+                "cloud_db_queue_external_probe_artifact_missing",
+                "尚未提供 DB/queue external probe bundle artifact，不能声明外部 DB/queue 探测入口软件证明。",
+                "生成 cloud DB/queue external probe bundle artifact，并用 TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT 传给 preflight。",
+                {"artifact_present": False, "software_proof_only": True},
             )
         )
 
@@ -4820,6 +5194,10 @@ def production_preflight_payload(env=None):
         in {"missing_cloud_db_queue_config", "cloud_db_queue_config_present_not_externally_proven"}
         for check in checks
     )
+    local_cloud_db_queue_external_probe_ok = any(
+        check["name"] == "cloud_db_queue_external_probe_bundle" and check["status"] == "pass"
+        for check in checks
+    )
     local_cloud_db_queue_config_boundary = local_cloud_db_queue_config_seen and (
         bool(cloud_db_queue_config_artifact_path) or not bool(cloud_public_ingress_tls_artifact_path)
     )
@@ -4869,6 +5247,8 @@ def production_preflight_payload(env=None):
         not_proven.insert(16, "cloud_public_ingress_tls_external_proof")
     if local_cloud_db_queue_config_seen:
         not_proven.insert(16, "cloud_db_queue_config_external_proof")
+    if not local_cloud_db_queue_external_probe_ok:
+        not_proven.insert(16, "cloud_db_queue_external_probe_bundle")
     payload = {
         "ok": production_ready,
         "software_proof_ready": bool(
@@ -4882,6 +5262,7 @@ def production_preflight_payload(env=None):
             or local_cloud_external_probe_ok
             or local_cloud_public_ingress_tls_seen
             or local_cloud_db_queue_config_seen
+            or local_cloud_db_queue_external_probe_ok
         ),
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
@@ -4889,6 +5270,8 @@ def production_preflight_payload(env=None):
         "evidence_boundary": (
             PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY
             if local_production_recovery_ok
+            else CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY
+            if local_cloud_db_queue_external_probe_ok
             else CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY
             if local_cloud_external_probe_ok
             else TRANSACTION_ISOLATION_EVIDENCE_BOUNDARY
@@ -6147,6 +6530,11 @@ def main(argv=None):
         help="phone-safe cloud DB/queue config artifact consumed by preflight",
     )
     parser.add_argument(
+        "--cloud-db-queue-external-probe-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT", ""),
+        help="phone-safe cloud DB/queue external probe bundle artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
@@ -6200,6 +6588,11 @@ def main(argv=None):
         "--write-cloud-db-queue-config-artifact",
         default="",
         help="write a phone-safe cloud DB/queue config gate artifact",
+    )
+    parser.add_argument(
+        "--write-cloud-db-queue-external-probe-artifact",
+        default="",
+        help="write a phone-safe cloud DB/queue external probe bundle artifact",
     )
     parser.add_argument(
         "--cloud-external-probe-base-url",
@@ -6357,9 +6750,23 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_DB_QUEUE_CONFIG_ARTIFACT"] = (
                 args.cloud_db_queue_config_artifact
             )
+        if args.cloud_db_queue_external_probe_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT"] = (
+                args.cloud_db_queue_external_probe_artifact
+            )
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
+    if args.write_cloud_db_queue_external_probe_artifact:
+        try:
+            payload = create_cloud_db_queue_external_probe_bundle_artifact(
+                args.write_cloud_db_queue_external_probe_artifact,
+                dict(os.environ),
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error("cloud_db_queue_external_probe_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     if args.write_cloud_db_queue_config_artifact:
         try:
             payload = create_cloud_db_queue_config_artifact(

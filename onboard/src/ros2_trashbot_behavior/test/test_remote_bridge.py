@@ -805,6 +805,71 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_cloud_db_queue_external_probe_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "cloud_db_queue_external_probe": {
+                    "schema": "trashbot.cloud_db_queue_external_probe.v1",
+                    "overall_status": "blocked",
+                    "production_ready": False,
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "cloud_db_queue_external_probe_bundle": {
+                    "schema": "trashbot.cloud_db_queue_external_probe_bundle",
+                    "evidence_boundary": "software_proof_docker_cloud_db_queue_external_probe_gate",
+                    "production_ready": False,
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                },
+                "db_queue_external_probe": {
+                    "schema": "trashbot.db_queue_external_probe.v1",
+                    "external_probe_status": "not_proven",
+                    "next_action": "confirm_dropoff",
+                },
+            },
+            "ack_response": {
+                "cloud_db_queue_external_probe": {
+                    "schema": "trashbot.cloud_db_queue_external_probe.v1",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+                "db_queue_external_probe": {"queue_probe_ready": True},
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-db-queue-external-probe-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-db-queue-external-probe-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-db-queue-external-probe-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # ACK 只表达本地 command envelope 处理结果，不能夹带 DB/queue 外部探测或送达语义。
+        self.assertNotIn("cloud_db_queue_external_probe", encoded_ack)
+        self.assertNotIn("cloud_db_queue_external_probe_bundle", encoded_ack)
+        self.assertNotIn("db_queue_external_probe", encoded_ack)
+        self.assertNotIn("external_probe_status", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("cloud_db_queue_external_probe", encoded_status)
+        self.assertNotIn("cloud_db_queue_external_probe_bundle", encoded_status)
+        self.assertNotIn("db_queue_external_probe", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_cloud_readiness_summary_metadata_only_response_does_not_move_robot(self):
         metadata_cases = (
             (
@@ -1973,6 +2038,70 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertNotIn("trigger_robot_action", encoded_status)
             self.assertNotIn("cursor_override", encoded_status)
             self.assertNotIn("delivery_success", encoded_status)
+            self.assertNotIn("Authorization", encoded_status)
+
+    def test_metadata_only_cloud_db_queue_external_probe_response_does_not_start_ack_or_persist_cursor(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-db-queue-external-probe",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras["command_response"] = {
+                "cloud_db_queue_external_probe": {
+                    "schema": "trashbot.cloud_db_queue_external_probe.v1",
+                    "schema_version": 1,
+                    "evidence_boundary": "software_proof_docker_cloud_db_queue_external_probe_gate",
+                    "overall_status": "blocked",
+                    "production_ready": False,
+                    "db_probe_status": "not_proven",
+                    "queue_probe_status": "not_proven",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-db-queue-external-probe",
+                    "delivery_success": True,
+                    "db_probe_url": "postgres://user:secret@example.invalid/db",
+                    "queue_probe_url": "amqp://user:secret@example.invalid/q",
+                },
+                "cloud_db_queue_external_probe_bundle": {
+                    "schema": "trashbot.cloud_db_queue_external_probe_bundle",
+                    "safe_summary": "DB/queue external probe 只是云端 readiness 元数据。",
+                    "retry_hint": "configure_external_db_queue_probe",
+                    "trigger_robot_action": "cancel",
+                    "delivery_success": True,
+                    "Authorization": "Bearer must-not-leak",
+                },
+                "db_queue_external_probe": {
+                    "schema": "trashbot.db_queue_external_probe.v1",
+                    "external_probe_status": "blocked",
+                    "raw_ros_topic": "/cmd_vel",
+                },
+                "preflight": {"production_ready": False, "overall_status": "blocked"},
+            }
+
+            handled = worker.poll_once()
+
+            # 只有 DB/queue external probe metadata 时，robot 侧必须保持 command/cursor fail-closed。
+            self.assertFalse(handled)
+            self.assertEqual(self.backend.calls, [])
+            self.assertEqual(self.cloud.ack_posts, [])
+            self.assertEqual(worker.last_ack_id, "cmd-before-db-queue-external-probe")
+            self.assertFalse(state_path.exists())
+            self.assertEqual(len(self.cloud.status_posts), 1)
+            self.assertIn("last_ack_id=cmd-before-db-queue-external-probe", self.cloud.get_paths[-1])
+            encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+            self.assertNotIn("cloud_db_queue_external_probe", encoded_status)
+            self.assertNotIn("cloud_db_queue_external_probe_bundle", encoded_status)
+            self.assertNotIn("db_queue_external_probe", encoded_status)
+            self.assertNotIn("preflight", encoded_status)
+            self.assertNotIn("trigger_robot_action", encoded_status)
+            self.assertNotIn("cursor_override", encoded_status)
+            self.assertNotIn("delivery_success", encoded_status)
+            self.assertNotIn("postgres://", encoded_status)
+            self.assertNotIn("amqp://", encoded_status)
+            self.assertNotIn("/cmd_vel", encoded_status)
             self.assertNotIn("Authorization", encoded_status)
 
     def test_public_ingress_tls_fields_are_ignored_by_command_status_ack_envelope(self):

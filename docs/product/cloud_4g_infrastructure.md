@@ -36,6 +36,8 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 
 本轮 `2026.05.13_10-11_cloud-db-queue-config-gate` 新增 cloud DB/queue 配置 gate，证据边界是 `software_proof_docker_cloud_db_queue_config_gate`。Artifact schema 为 `trashbot.cloud_db_queue_config_gate`、`schema_version=1`，只保存枚举化配置状态和缺口摘要，用来区分 `missing_cloud_db_queue_config` 与 `cloud_db_queue_config_present_not_externally_proven`。前者表示生产 DB/queue 配置包仍缺失；后者表示配置包形态存在，但没有真实连接探测、多实例一致性、生产队列顺序、事务隔离、备份策略或灾备实证。两种状态都必须保持 `production_ready=false`、`overall_status=blocked`；artifact 和 preflight 不得输出 DB/queue endpoint、credential-bearing endpoint、Authorization header、bearer token、token、root password、本地 state path、串口、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`。
 
+本轮 `2026.05.13_12-13_cloud-db-queue-external-probe-gate` 新增 cloud DB/queue external probe bundle gate，证据边界是 `software_proof_docker_cloud_db_queue_external_probe_gate`。Artifact schema 为 `trashbot.cloud_db_queue_external_probe_bundle`、`schema_version=1`，只保存 DB connectivity、queue connectivity、migration check、worker check、multi-instance consistency、ordering、transaction isolation、backup/recovery 的枚举化外部探测入口状态、`redaction_status`、`safe_summary`、`retry_hint` 和 `not_proven`。当前本机只有 Docker，没有真实云、真实 DB/queue 或凭证，因此有效 artifact 也必须保持 `production_ready=false`、`overall_status=blocked`、`external_probe_complete=false`；preflight 只能说明 schema、checksum、redaction 和 consumption 可验证，不得声明真实 production DB/queue、真实队列顺序、真实事务隔离、生产备份/灾备、多实例一致性、真实云、真实 4G/SIM、OSS/CDN 实流量、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
 ## 云端基线规格
 
 目标服务端基线：

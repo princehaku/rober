@@ -465,6 +465,51 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("Authorization", encoded_command)
         self.assertNotIn("/cmd_vel", encoded_command)
 
+    def test_validate_command_ignores_cloud_db_queue_external_probe_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-cloud-db-queue-external-probe-metadata",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "cloud_db_queue_external_probe": {
+                "schema": "trashbot.cloud_db_queue_external_probe.v1",
+                "overall_status": "blocked",
+                "production_ready": False,
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+                "db_probe_url": "postgres://user:secret@example.invalid/db",
+                "queue_probe_url": "amqp://user:secret@example.invalid/q",
+            },
+            "cloud_db_queue_external_probe_bundle": {
+                "schema": "trashbot.cloud_db_queue_external_probe_bundle",
+                "schema_version": 1,
+                "evidence_boundary": "software_proof_docker_cloud_db_queue_external_probe_gate",
+                "endpoint_results": {"db": {"status": "blocked"}, "queue": {"status": "blocked"}},
+                "Authorization": "Bearer must-not-leak",
+            },
+            "db_queue_external_probe": {
+                "schema": "trashbot.db_queue_external_probe.v1",
+                "external_probe_status": "not_proven",
+                "raw_ros_topic": "/cmd_vel",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-cloud-db-queue-external-probe-metadata")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # DB/queue external probe 只证明云端探测元数据，normalization 只能留下 command envelope。
+        self.assertNotIn("cloud_db_queue_external_probe", encoded_command)
+        self.assertNotIn("cloud_db_queue_external_probe_bundle", encoded_command)
+        self.assertNotIn("db_queue_external_probe", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("postgres://", encoded_command)
+        self.assertNotIn("amqp://", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+
     def test_validate_command_ignores_cloud_readiness_summary_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-cloud-readiness-summary-metadata",

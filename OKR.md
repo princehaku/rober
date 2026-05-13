@@ -149,7 +149,7 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-05-13 11:12 Asia/Shanghai。最新 sprint：`2026.05.13_11-12_mobile-cloud-readiness-summary-gate`。详细历史见 `docs/process/okr_progress_log.md`。
+更新时间：2026-05-13 12:16 Asia/Shanghai。最新 sprint：`2026.05.13_12-13_cloud-db-queue-external-probe-gate`。详细历史见 `docs/process/okr_progress_log.md`。
 
 | Objective | 当前进度 | 本轮证据与边界 | 主要缺口 |
 | --- | --- | --- | --- |
@@ -157,9 +157,9 @@
 | Objective 2：可送垃圾任务完整闭环 | 约 77% | 本轮未改 `task_orchestrator`、delivery action、Nav2/fixed-route 或任务复盘；robot compatibility fence 只证明 mobile action feedback metadata-only responses 不触发 backend action、不 POST ACK、不推进或持久化 cursor，不提升任务闭环完成度。 | 仍缺真实 Nav2/fixed-route 运行、同一 `evidence_ref` 的任务复盘、真实送达和失败恢复实测。 |
 | Objective 3：可验证导航与固定路线 | 约 77% | 本轮未改导航、route、keyframe 或 replay 工具；既有软件对账能力保持。 | 仍缺真实路线采集、Nav2 waypoint/fixed-route 实跑、关键帧实景证据与上车复账。 |
 | Objective 4：手机用户体验与低成本量产边界 | 约 64% | `2026.05.13_11-12_mobile-cloud-readiness-summary-gate` 完成 `software_proof_docker_mobile_cloud_readiness_summary_gate`：手机首屏新增“云中转状态”，把 cloud/preflight/DB/queue readiness 转成中文摘要、阻塞原因、恢复建议和 ACK 语义；缺失摘要、`production_ready=false`、`overall_status=blocked` 或未显式放行时，Start/Confirm/Cancel 继续 fail closed，Diagnostics/Support 仍可用。robot compatibility fence 证明 `phone_cloud_readiness_summary` / `mobile_cloud_readiness_summary` / `cloud_readiness_summary` metadata-only responses 不触发 backend action、不 POST ACK、不推进或持久化 cursor，protocol normalization 剥离 command envelope 外 cloud-readiness metadata。ACK 仍只是 accepted/processing evidence。 | 仍缺真实手机设备/browser、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、production DB/queue、TTS/喇叭实放、Nav2/fixed-route、WAVE ROVER、HIL、真实投放、真实取消完成、真实送达与量产实物验收。 |
-| Objective 5：云中转 + OSS/CDN 数据通路产品化（历史 O6） | 约 63% | `2026.05.13_10-11_cloud-db-queue-config-gate` 完成 `software_proof_docker_cloud_db_queue_config_gate`：新增 `trashbot.cloud_db_queue_config_gate`，支持 env/CLI artifact generation、validation、redaction，并让 `production_preflight_payload` 消费 inline/artifact gate；preflight 能区分 `missing_cloud_db_queue_config` 与 `cloud_db_queue_config_present_not_externally_proven`，保持 `production_ready=false`、`overall_status=blocked`。Robot compatibility fence 证明 `cloud_db_queue_config` / `cloud_db_queue_config_gate` / `db_queue_config` metadata-only responses 不触发 backend action、不 POST ACK、不推进或持久化 cursor、不污染 normalized command payload。 | 仍没有真实 HTTPS/TLS、公网入口、真实云、真实 4G/SIM、OSS/CDN live traffic、真实 production DB/queue、多实例一致性、queue ordering、transaction isolation、production disaster recovery、真实手机设备/browser、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化（历史 O6） | 约 65% | `2026.05.13_12-13_cloud-db-queue-external-probe-gate` 完成 `software_proof_docker_cloud_db_queue_external_probe_gate`：新增 `trashbot.cloud_db_queue_external_probe_bundle` schema v1，支持 `--write-cloud-db-queue-external-probe-artifact`、`--cloud-db-queue-external-probe-artifact` 和 `TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT` preflight consumption；valid artifact 仍保持 `production_ready=false`、`overall_status=blocked`、`external_probe_complete=false`。Robot compatibility fence 证明 `cloud_db_queue_external_probe` / `cloud_db_queue_external_probe_bundle` / `db_queue_external_probe` metadata-only responses 不触发 backend action、不 POST ACK、不推进或持久化 cursor，protocol normalization 剥离 command envelope 外 metadata。 | 仍没有真实 HTTPS/TLS、公网入口、真实云、真实 4G/SIM、OSS/CDN live traffic、真实 production DB/queue connectivity、migration、worker、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机设备/browser、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。 |
 
-本轮 OKR 口径：Objective 4 因 mobile cloud readiness summary gate、手机首屏云中转可解释性、fail-closed 控制边界和 robot metadata-only compatibility fence 完成，从约 62% 保守上调到约 64%。证据边界是 `software_proof_docker_mobile_cloud_readiness_summary_gate`；这不是真实手机设备/browser、production app、真实云/4G、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达证据。ACK 仍只是 accepted/processing evidence，不是 delivery success。Objective 1/2/3/5 完成度不调整。
+本轮 OKR 口径：Objective 5 因 cloud DB/queue external probe bundle、preflight consumption、blocked-by-design 摘要、phone-safe redaction 和 robot metadata-only compatibility fence 完成，从约 63% 保守上调到约 65%。证据边界是 `software_proof_docker_cloud_db_queue_external_probe_gate`；这不是真实 DB/queue、真实云、4G、手机、OSS/CDN live traffic、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达证据。ACK 仍只是 accepted/processing evidence，不是 delivery success。Objective 1/2/3/4 完成度不调整。
 
 ## 5. OKR完成路线
 
@@ -201,8 +201,8 @@
 
 ## 6. 当前最高优先级
 
-- 下一轮按  `OKR.md` 完成
+- 下一轮按 `OKR.md` 4.1 重新排序。Objective 5 上调后，当前最低完成度为 Objective 4（约 64%），除非 CEO 指定继续攻坚真实云 DB/queue 外部环境，否则优先推进手机用户体验与低成本量产边界中尚未有真实设备或 production app 证据的缺口。
 
 ## 7. 整体风险与待办
 
-- 下一轮按  `OKR.md` 完成
+- 当前仍缺真实手机设备/browser、production app、真实云/4G、production DB/queue、OSS/CDN live traffic、Nav2/fixed-route、WAVE ROVER、HIL 和真实送达证据。

@@ -412,9 +412,9 @@ The optional `remote_bridge` node is the formal 4G-oriented remote MVP path. It 
 Cloud responses may include optional status, preflight, diagnostics, queue,
 mobile-web-entrypoint, PWA-entrypoint, voice-prompt-readiness,
 production-recovery, transaction-isolation, cloud external probe,
-deployment-readiness, mobile task-start confirmation, mobile action feedback,
-operation-log, DB/queue config-gate, or phone/mobile cloud-readiness summary
-metadata beside the
+cloud DB/queue external probe, deployment-readiness, mobile task-start
+confirmation, mobile action feedback, operation-log, DB/queue config-gate, or
+phone/mobile cloud-readiness summary metadata beside the
 `trashbot.remote.v1` command/status/ACK envelope. Robot clients must treat
 those fields as ignorable diagnostics for forward compatibility. A
 metadata-only response with `command=null` or no command object must not start a
@@ -463,6 +463,25 @@ raw ROS topics, `/cmd_vel`, serial devices, hardware parameters,
 `trigger_robot_action`, `cursor_override`, and `delivery_success` must not be
 copied into robot status, ACK, backend action result, or normalized command
 payload.
+DB/queue external-probe metadata, including
+`cloud_db_queue_external_probe`, `cloud_db_queue_external_probe_bundle`, and
+`db_queue_external_probe`, is the follow-on readiness proof for externally
+probing cloud database and queue dependencies. It may describe
+`production_ready=false`, `overall_status=blocked`, redacted probe results,
+retry hints, or the evidence boundary
+`software_proof_docker_cloud_db_queue_external_probe_gate`, but it is not part
+of the `trashbot.remote.v1` command/status/ACK envelope. It must not be treated
+as a robot command, backend action result, ACK payload, cursor instruction,
+ROS2 action result, WAVE ROVER feedback, HIL result, real production DB/queue
+proof, or delivery success proof. Robot-side protocol normalization must strip
+those fields from valid command objects, and metadata-only responses must not
+invoke `collect`, `confirm_dropoff`, or `cancel`, must not POST ACK, and must
+not advance or persist `last_terminal_ack_id`. DB/queue URLs, credentials,
+Authorization headers, raw ROS topics, `/cmd_vel`, serial devices, hardware
+parameters, `trigger_robot_action`, `cursor_override`, and `delivery_success`
+must not be copied into robot status, ACK, backend action result, or normalized
+command payload. ACK remains accepted/processing evidence only and must not be
+interpreted as delivery success or external DB/queue production readiness.
 Cloud-readiness summary metadata, including
 `phone_cloud_readiness_summary`, `mobile_cloud_readiness_summary`, and
 `cloud_readiness_summary`, is phone-safe support/readiness summary for the

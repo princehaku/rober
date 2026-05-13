@@ -45,6 +45,8 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     CLOUD_DEPLOYMENT_READINESS_SCHEMA,
     CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY,
     CLOUD_DB_QUEUE_CONFIG_SCHEMA,
+    CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
+    CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA,
     CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
     CLOUD_EXTERNAL_PROBE_SCHEMA,
     CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY,
@@ -96,10 +98,12 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     build_phone_transaction_isolation_summary,
     build_cloud_deployment_readiness_artifact_payload,
     build_cloud_db_queue_config_artifact_payload,
+    build_cloud_db_queue_external_probe_bundle_payload,
     build_cloud_external_probe_bundle_payload,
     build_cloud_public_ingress_tls_artifact_payload,
     cloud_deployment_readiness_artifact_summary,
     cloud_db_queue_config_artifact_summary,
+    cloud_db_queue_external_probe_bundle_summary,
     cloud_external_probe_bundle_summary,
     cloud_public_ingress_tls_artifact_summary,
     build_production_store_queue_artifact_payload,
@@ -120,6 +124,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     create_transaction_isolation_artifact,
     create_cloud_deployment_readiness_artifact,
     create_cloud_db_queue_config_artifact,
+    create_cloud_db_queue_external_probe_bundle_artifact,
     create_cloud_external_probe_bundle_artifact,
     create_cloud_public_ingress_tls_artifact,
     network_recovery_artifact_summary,
@@ -2925,6 +2930,152 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
                 "backup path",
                 "/dev/ttyUSB0",
                 "serial",
+                "baudrate",
+                "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_db_queue_external_probe_bundle_and_preflight_are_blocked_by_design(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            artifact_path = root / "cloud_db_queue_external_probe.json"
+            env = {
+                "TRASHBOT_REMOTE_CLOUD_DB_CONNECTIVITY_PROBE_STATUS": "not_run",
+                "TRASHBOT_REMOTE_CLOUD_QUEUE_CONNECTIVITY_PROBE_STATUS": "not_run",
+                "TRASHBOT_REMOTE_CLOUD_DB_MIGRATION_PROBE_STATUS": "not_externally_proven",
+                "TRASHBOT_REMOTE_CLOUD_QUEUE_WORKER_PROBE_STATUS": "not_externally_proven",
+                "TRASHBOT_REMOTE_CLOUD_MULTI_INSTANCE_CONSISTENCY_PROBE_STATUS": "not_externally_proven",
+                "TRASHBOT_REMOTE_CLOUD_QUEUE_ORDERING_EXTERNAL_PROBE_STATUS": "not_externally_proven",
+                "TRASHBOT_REMOTE_CLOUD_TRANSACTION_ISOLATION_EXTERNAL_PROBE_STATUS": "not_externally_proven",
+                "TRASHBOT_REMOTE_CLOUD_BACKUP_RECOVERY_EXTERNAL_PROBE_STATUS": "not_externally_proven",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "relay_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+
+            result = create_cloud_db_queue_external_probe_bundle_artifact(artifact_path, env)
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            summary = cloud_db_queue_external_probe_bundle_summary(artifact_path)
+            preflight_env = dict(env)
+            preflight_env["TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT"] = str(artifact_path)
+            payload = production_preflight_payload(preflight_env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps(
+                {"result": result, "artifact": artifact, "summary": summary, "preflight": payload},
+                ensure_ascii=False,
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(summary["ok"])
+            self.assertEqual(artifact["schema"], CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA)
+            self.assertEqual(artifact["schema_version"], 1)
+            self.assertEqual(artifact["evidence_boundary"], CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY)
+            self.assertFalse(artifact["production_ready"])
+            self.assertFalse(artifact["external_probe_complete"])
+            self.assertEqual(artifact["overall_status"], "blocked")
+            self.assertEqual(summary["probe_count"], 8)
+            self.assertEqual(summary["db_connectivity_status"], "not_run")
+            self.assertEqual(summary["queue_connectivity_status"], "not_run")
+            self.assertFalse(payload["production_ready"])
+            self.assertTrue(payload["software_proof_ready"])
+            self.assertEqual(payload["overall_status"], "blocked")
+            self.assertEqual(payload["evidence_boundary"], CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY)
+            self.assertEqual(checks["cloud_db_queue_external_probe_bundle"]["status"], "pass")
+            self.assertFalse(
+                checks["cloud_db_queue_external_probe_bundle"]["details"]["production_ready"]
+            )
+            self.assertFalse(
+                checks["cloud_db_queue_external_probe_bundle"]["details"]["external_probe_complete"]
+            )
+            self.assertEqual(
+                checks["cloud_db_queue_external_probe_bundle"]["details"]["redaction_status"]["status"],
+                "pass",
+            )
+            for marker in (
+                "real_production_db_connectivity",
+                "real_production_queue_connectivity",
+                "multi_instance_consistency",
+                "production_transaction_isolation",
+                "real_disaster_recovery",
+            ):
+                self.assertIn(marker, encoded)
+            for forbidden in (
+                str(artifact_path),
+                str(root / "relay_state.sqlite"),
+                "Authorization",
+                "Bearer",
+                "postgres://",
+                "mysql://",
+                "redis://",
+                "amqp://",
+                "database URL",
+                "queue URL",
+                "credential-bearing endpoint",
+                "root password",
+                "raw state path",
+                "/dev/ttyUSB0",
+                "baudrate",
+                "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_db_queue_external_probe_warns_missing_and_blocks_hostile_artifact_without_leaks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            base_env = {
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "relay_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+            missing_payload = production_preflight_payload(base_env)
+            missing_checks = {check["name"]: check for check in missing_payload["checks"]}
+            self.assertEqual(missing_checks["cloud_db_queue_external_probe_bundle"]["status"], "warning")
+            self.assertEqual(
+                missing_checks["cloud_db_queue_external_probe_bundle"]["code"],
+                "cloud_db_queue_external_probe_artifact_missing",
+            )
+
+            hostile_path = root / "hostile_cloud_db_queue_external_probe.json"
+            hostile = build_cloud_db_queue_external_probe_bundle_payload(
+                base_env,
+                generated_at="2026-05-13T12:00:00Z",
+            )
+            hostile["safe_summary"] = (
+                "Authorization Bearer token postgres://db secret queue URL database URL "
+                "credential-bearing endpoint raw state path /dev/ttyUSB0 baudrate WAVE ROVER ROS topic /cmd_vel"
+            )
+            body = {key: value for key, value in hostile.items() if key != "checksum"}
+            hostile["checksum"] = _sha256_checksum(body)
+            hostile_path.write_text(json.dumps(hostile, ensure_ascii=False), encoding="utf-8")
+            hostile_env = dict(base_env)
+            hostile_env["TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT"] = str(hostile_path)
+
+            summary = cloud_db_queue_external_probe_bundle_summary(hostile_path)
+            payload = production_preflight_payload(hostile_env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps({"summary": summary, "preflight": payload}, ensure_ascii=False)
+
+            self.assertFalse(summary["ok"])
+            self.assertEqual(checks["cloud_db_queue_external_probe_bundle"]["status"], "blocked")
+            self.assertEqual(
+                checks["cloud_db_queue_external_probe_bundle"]["code"],
+                "cloud_db_queue_external_probe_artifact_invalid",
+            )
+            for forbidden in (
+                str(hostile_path),
+                str(root / "relay_state.sqlite"),
+                "Authorization",
+                "Bearer",
+                "token",
+                "postgres://",
+                "secret",
+                "queue URL",
+                "database URL",
+                "credential-bearing endpoint",
+                "raw state path",
+                "/dev/ttyUSB0",
                 "baudrate",
                 "WAVE ROVER",
                 "ROS topic",
