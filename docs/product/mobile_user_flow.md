@@ -77,6 +77,22 @@ Start Delivery now has an explicit mobile task-start confirmation gate before th
 
 The Start button is enabled only when all four gates pass: `command_safety.actions.start.enabled=true`, legacy `can_collect=true`, a safe destination is present, and the user has checked the load confirmation. Missing `command_safety`, missing destination, unchecked load confirmation, offline state, blocked state, pending ACK, or manual takeover all fail closed. ACK copy must remain visible as command accepted/processing evidence only and must not be described as delivery success.
 
+The mobile PWA now makes that rule visible as a first-screen three-step primary journey summary:
+
+1. Target trash station.
+2. Manual trash-loaded confirmation.
+3. Start safety gate.
+
+This is `software_proof_docker_mobile_primary_journey_gate`. It proves only that the Docker/local `mobile/web/` shell and targeted unit test can render the primary journey, keep Start fail closed, and submit the existing `/api/collect` compatible `target` field inside a phone-safe confirmation envelope. It is not a real iPhone/Android test, not a production app, not a real PWA install prompt, not Nav2/fixed-route execution, not WAVE ROVER/HIL, and not delivery success.
+
+The target trash station in this summary must come only from existing phone-safe fields: `phone_task_flow_readiness.destination_summary`, a confirmed `destination_confirmed` step, `phone_readiness.destination`, `status.destination`, or the same sanitized destination reused as `/api/collect.target` for compatibility. The page must not expose raw ROS topics, `/cmd_vel`, serial device names, baudrate values, WAVE ROVER parameters, credentials, DB/queue URLs, local paths, tracebacks, checksums, or complete artifacts.
+
+The trash-loaded step is a user confirmation only. The UI must not claim automatic load detection, automatic weighing, camera detection, or any sensor-derived proof of loaded trash unless a future backend contract explicitly provides that capability and the evidence boundary is updated.
+
+The start safety gate must consume existing `phone_task_flow_readiness`, `command_safety`, cloud readiness, device/browser readiness, `operation_log` / `phone_operation_log`, and `mobile_action_receipt` / `phone_action_feedback`. Missing fields, blocked status, offline/unreachable state, pending ACK, manual takeover or human-help state, missing destination, and unchecked load confirmation all fail closed. ACK, HTTP accepted, and receipts remain accepted/processing evidence only; they do not prove delivery success, dropoff success, cancel completion, HIL, production readiness, or true robot motion.
+
+`mobile_primary_journey_gate` and `mobile_primary_journey_summary` may appear in `/api/status` or `/api/diagnostics` as phone-safe support metadata. They are not robot commands, remote ACKs, cursors, delivery results, production readiness grants, or robot compatibility proof by themselves.
+
 The mobile PWA service worker caches only the static shell. It bypasses `/api/*`, `/robots/*`, command routes, ACK routes, diagnostics, and all non-GET requests with `no-store`. The offline shell does not cache, queue, or replay control requests; it shows recovery copy and keeps primary actions disabled.
 
 The cloud-relay runtime can now host this same `mobile/web/` shell at `/` and `/index.html`, with assets at `/app.js`, `/styles.css`, `/manifest.webmanifest`, `/service-worker.js`, `/offline.html`, `/icon-192.svg`, and `/icon-512.svg`. API/probe/control routes keep priority: `/robots/*`, `/healthz`, `/readyz`, `/preflightz`, command routes, ACK routes, and unknown `/api/*` paths must not be served by static fallback. Missing static assets and path traversal attempts return phone-safe JSON 404 without local absolute paths.

@@ -42,6 +42,38 @@
         </dl>
       </section>
 
+      <section class="primary-journey-panel" aria-labelledby="primaryJourneyTitle">
+        <div class="section-heading">
+          <h2 id="primaryJourneyTitle">三步主路径</h2>
+          <span id="primaryJourneyBadge" class="gate-badge gate-blocked">等待 gate</span>
+        </div>
+        <ol id="primaryJourneySteps" class="journey-steps">
+          <li>
+            <span class="step-index">1</span>
+            <span>
+              <strong>目标垃圾站</strong>
+              <em>等待后端 phone-safe 目标。</em>
+            </span>
+          </li>
+          <li>
+            <span class="step-index">2</span>
+            <span>
+              <strong>已放入垃圾确认</strong>
+              <em>需要用户手动勾选，不是自动载荷检测。</em>
+            </span>
+          </li>
+          <li>
+            <span class="step-index">3</span>
+            <span>
+              <strong>发车安全 gate</strong>
+              <em>等待 command_safety、云、设备、浏览器、日志和回执放行。</em>
+            </span>
+          </li>
+        </ol>
+        <p id="primaryJourneyCopy" class="message">主路径缺少任一安全字段时，Start Delivery 保持关闭。</p>
+        <p id="primaryJourneyBoundary" class="boundary">software_proof_docker_mobile_primary_journey_gate</p>
+      </section>
+
       <section class="cloud-panel" aria-labelledby="cloudReadinessTitle">
         <div class="section-heading">
           <h2 id="cloudReadinessTitle">云中转状态</h2>

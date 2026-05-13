@@ -125,6 +125,52 @@
       "真实送达"
     ]
   },
+  "mobile_primary_journey_gate": {
+    "schema": "trashbot.mobile_primary_journey_gate.v1",
+    "schema_version": 1,
+    "overall_status": "blocked",
+    "safe_to_start": false,
+    "destination_summary": "一号楼东侧垃圾站",
+    "load_confirmation": "manual_required_unchecked",
+    "start_gate": "fail_closed",
+    "safe_phone_copy": "三步主路径 blocked-by-design：目标垃圾站已来自 phone-safe 字段，但仍需要用户手动确认已放入垃圾，且云/设备/浏览器 readiness 未放行。",
+    "recovery_hint": "勾选已放入垃圾后仍需等待 command_safety、cloud/device/browser readiness、operation log 和 action feedback 全部放行。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+    "evidence_boundary": "software_proof_docker_mobile_primary_journey_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "真实云/4G",
+      "production DB/queue",
+      "Nav2/fixed-route",
+      "真实底盘运动",
+      "HIL",
+      "真实送达"
+    ]
+  },
+  "mobile_primary_journey_summary": {
+    "schema": "trashbot.mobile_primary_journey_summary.v1",
+    "schema_version": 1,
+    "steps": [
+      {
+        "step": "destination",
+        "status": "ready",
+        "safe_phone_copy": "目标垃圾站：一号楼东侧垃圾站。"
+      },
+      {
+        "step": "load_confirmation",
+        "status": "manual_required",
+        "safe_phone_copy": "需要用户手动确认已放入垃圾；这不是自动载荷检测。"
+      },
+      {
+        "step": "start_safety_gate",
+        "status": "blocked",
+        "safe_phone_copy": "发车 gate 需要 command_safety、云、设备、浏览器、日志和回执全部放行。"
+      }
+    ],
+    "evidence_boundary": "software_proof_docker_mobile_primary_journey_gate"
+  },
   "operation_log": {
     "schema": "trashbot.phone_operation_log.v1",
     "evidence_boundary": "software_proof_docker_mobile_operation_log_gate",
@@ -261,6 +307,19 @@
         "HIL",
         "真实送达"
       ]
+    },
+    "mobile_primary_journey_gate": {
+      "schema": "trashbot.mobile_primary_journey_gate.v1",
+      "schema_version": 1,
+      "overall_status": "blocked",
+      "safe_to_start": false,
+      "destination_summary": "一号楼东侧垃圾站",
+      "load_confirmation": "manual_required_unchecked",
+      "start_gate": "fail_closed",
+      "safe_phone_copy": "三步主路径是 Docker/local software proof；当前 fixture 不放行真实发车。",
+      "recovery_hint": "补齐真实后端 readiness 与用户手动确认后再尝试。",
+      "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功。",
+      "evidence_boundary": "software_proof_docker_mobile_primary_journey_gate"
     }
   },
   "phone_offline_resume_readiness": {

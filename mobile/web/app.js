@@ -17,6 +17,7 @@ const ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_g
 const CLOUD_READINESS_BOUNDARY = "software_proof_docker_mobile_cloud_readiness_summary_gate";
 const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_acceptance_readiness_gate";
 const MOBILE_BROWSER_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_browser_acceptance_bundle_gate";
+const PRIMARY_JOURNEY_BOUNDARY = "software_proof_docker_mobile_primary_journey_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACCEPTANCE_BUNDLE_SCHEMA = "trashbot.mobile_browser_acceptance_bundle.v1";
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|artifact)/i;
@@ -436,12 +437,64 @@ function loadConfirmationChecked() {
   return checkbox ? checkbox.checked === true : false;
 }
 
+function operationLogReadyForPrimaryJourney(status, readiness) {
+  // 主路径要能复现问题，所以只把显式 operation_log / phone_operation_log 当作可追溯证据。
+  const hasExplicitLog = Boolean(status?.operation_log || status?.phone_operation_log ||
+    readiness?.operation_log || readiness?.phone_operation_log);
+  const log = operationLogFromStatus(status, readiness);
+  return {
+    ready: hasExplicitLog && log.entries.length > 0,
+    copy: hasExplicitLog
+      ? `operation log 可用：${log.entries.length} 条 phone-safe 事件。`
+      : "缺少 operation log / phone_operation_log，Start 安全关闭。",
+  };
+}
+
+function actionFeedbackReadyForPrimaryJourney(status, readiness) {
+  // 回执 gate 防止 pending ACK 或本地失败被用户误读成可以继续发车。
+  const feedback = actionFeedbackFromStatus(status, readiness);
+  if (!feedback) {
+    return { ready: false, copy: "缺少 action feedback / receipt 摘要，Start 安全关闭。" };
+  }
+  const state = String(feedback.state || "").toLowerCase();
+  const pending = ["submitted", "waiting_ack", "accepted_or_processing"].includes(state);
+  const blocked = ["failed", "blocked", "rejected", "local_submit_failed"].includes(state);
+  if (pending) {
+    return { ready: false, copy: "存在 pending ACK / accepted-processing 回执，Start 安全关闭。" };
+  }
+  if (blocked) {
+    return { ready: false, copy: `最近动作回执为 ${feedback.state}，请先按恢复建议处理。` };
+  }
+  return { ready: true, copy: `动作回执安全：${feedback.state}。` };
+}
+
+function journeyStateBlocksStart(readiness, commandSafety) {
+  // 后端 primary_state 是用户旅程的粗粒度状态；这些状态都不能被按钮层绕过。
+  const raw = `${readiness?.primary_state || ""} ${readiness?.next_action || ""} ${readiness?.support_level || ""} ${commandSafety?.global_block_reason || ""}`.toLowerCase();
+  const blockers = [];
+  if (/offline|disconnect|unreachable|network/.test(raw)) {
+    blockers.push("当前状态包含 offline/unreachable，Start 安全关闭。");
+  }
+  if (/waiting_ack|pending_ack|ack_pending/.test(raw)) {
+    blockers.push("当前仍在等待 ACK，Start 安全关闭。");
+  }
+  if (/manual_takeover|human_help|support_required/.test(raw)) {
+    blockers.push("当前需要人工接管或支持处理，Start 安全关闭。");
+  }
+  return blockers;
+}
+
 function startGateFromStatus(status) {
   const readiness = readinessFromStatus(status);
   const commandSafety = commandSafetyFromReadiness(readiness);
   const actions = commandSafety.actions && typeof commandSafety.actions === "object" ? commandSafety.actions : {};
   const startGate = actions.start && typeof actions.start === "object" ? actions.start : {};
   const destination = destinationFromStatus(status, readiness);
+  const cloudSummary = cloudReadinessSummaryFromStatus(status, readiness);
+  const mobileDeviceAcceptance = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics);
+  const mobileBrowserAcceptance = mobileBrowserAcceptanceBundleFromStatus(status, readiness, latestDiagnostics);
+  const operationLogGate = operationLogReadyForPrimaryJourney(status, readiness);
+  const actionFeedbackGate = actionFeedbackReadyForPrimaryJourney(status, readiness);
   const permitted = actionPermission(status, readiness, "start");
   const hasCommandSafety = commandSafety.schema === "trashbot.command_safety.v1" || Boolean(commandSafety.actions);
   const loadConfirmed = loadConfirmationChecked();
@@ -462,6 +515,22 @@ function startGateFromStatus(status) {
   if (!loadConfirmed) {
     blockers.push("请先显式确认垃圾已放入。");
   }
+  if (!cloudSummaryAllowsPrimaryActions(cloudSummary)) {
+    blockers.push("cloud readiness 未显式放行主操作。");
+  }
+  if (!mobileDeviceAcceptanceAllowsPrimaryActions(mobileDeviceAcceptance)) {
+    blockers.push("device readiness 未显式放行主操作。");
+  }
+  if (!mobileBrowserAcceptanceBundleAllowsPrimaryActions(mobileBrowserAcceptance)) {
+    blockers.push("browser acceptance bundle 未显式放行主操作。");
+  }
+  if (!operationLogGate.ready) {
+    blockers.push(operationLogGate.copy);
+  }
+  if (!actionFeedbackGate.ready) {
+    blockers.push(actionFeedbackGate.copy);
+  }
+  blockers.push(...journeyStateBlocksStart(readiness, commandSafety));
 
   return {
     destination: destination.value,
@@ -470,8 +539,10 @@ function startGateFromStatus(status) {
     startEnabled: blockers.length === 0,
     blockedReason: blockers.join("；") || "可以提交发车请求。",
     commandSafetyAck: safeText(commandSafety.ack_semantics, "ACK 只表示指令受理或处理中，不代表送达成功。"),
-    evidenceBoundary: "software_proof_docker_mobile_task_start_confirmation_gate",
+    evidenceBoundary: PRIMARY_JOURNEY_BOUNDARY,
     destinationSource: destination.source,
+    operationLogReady: operationLogGate.ready,
+    actionFeedbackReady: actionFeedbackGate.ready,
   };
 }
 
@@ -489,6 +560,59 @@ function renderStartConfirmation(status) {
     badge.classList.add("gate-blocked");
     badge.textContent = "未确认目的地";
   }
+}
+
+function renderPrimaryJourney(status) {
+  // 首屏三步主路径复用同一套 Start gate，避免 summary 与实际按钮状态分叉。
+  const gate = startGateFromStatus(status);
+  const steps = [
+    {
+      title: "目标垃圾站",
+      ready: gate.destinationReady,
+      copy: gate.destinationReady
+        ? `目标：${gate.destination}。来源：${gate.destinationSource}。`
+        : "缺少后端 phone-safe 目标垃圾站。",
+    },
+    {
+      title: "已放入垃圾确认",
+      ready: gate.loadConfirmed,
+      copy: gate.loadConfirmed
+        ? "用户已手动确认垃圾已放入；这不是自动载荷检测。"
+        : "需要用户手动勾选“垃圾已放入”。",
+    },
+    {
+      title: "发车安全 gate",
+      ready: gate.startEnabled,
+      copy: gate.startEnabled
+        ? "command_safety、旧权限、云、设备、浏览器、日志和回执均已放行。"
+        : gate.blockedReason,
+    },
+  ];
+  const badge = $("primaryJourneyBadge");
+  const list = $("primaryJourneySteps");
+  list.textContent = "";
+  steps.forEach((step, index) => {
+    const item = document.createElement("li");
+    const marker = document.createElement("span");
+    const body = document.createElement("span");
+    const title = document.createElement("strong");
+    const copy = document.createElement("em");
+    item.className = step.ready ? "ready" : "blocked";
+    marker.className = "step-index";
+    marker.textContent = String(index + 1);
+    title.textContent = step.title;
+    copy.textContent = step.copy;
+    body.append(title, copy);
+    item.append(marker, body);
+    list.appendChild(item);
+  });
+  badge.className = "gate-badge";
+  badge.classList.add(gate.startEnabled ? "gate-ready" : "gate-blocked");
+  badge.textContent = gate.startEnabled ? "可提交" : "fail closed";
+  $("primaryJourneyCopy").textContent = gate.startEnabled
+    ? "三步主路径已满足；提交后仍只等待 accepted/processing evidence。"
+    : "三步主路径缺少安全条件，Start Delivery 保持关闭。";
+  $("primaryJourneyBoundary").textContent = PRIMARY_JOURNEY_BOUNDARY;
 }
 
 function setBadge(state, copy) {
@@ -955,6 +1079,7 @@ function renderOfflineFailure() {
   $("startBlockReason").textContent = "离线状态下 Start 安全关闭。";
   $("destinationGateBadge").textContent = "未确认目的地";
   $("destinationGateBadge").className = "gate-badge gate-blocked";
+  renderPrimaryJourney({});
   Object.keys(ACTIONS).forEach((name) => {
     $(ACTIONS[name].buttonId).disabled = true;
   });
@@ -963,6 +1088,7 @@ function renderOfflineFailure() {
 function renderStatus(status) {
   latestStatus = status;
   renderReadiness(status);
+  renderPrimaryJourney(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
   renderMobileBrowserAcceptanceBundle(status);
@@ -1059,6 +1185,7 @@ async function refreshStatus() {
 async function openDiagnostics() {
   try {
     latestDiagnostics = await fetchJson(ENDPOINTS.diagnostics);
+    renderPrimaryJourney(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileBrowserAcceptanceBundle(latestStatus || {});
     renderCommandSafety(latestStatus || {});
@@ -1151,6 +1278,7 @@ function wireEvents() {
   });
   $("trashLoadedCheckbox").addEventListener("change", () => {
     if (latestStatus) {
+      renderPrimaryJourney(latestStatus);
       renderStartConfirmation(latestStatus);
       renderCommandSafety(latestStatus);
     }

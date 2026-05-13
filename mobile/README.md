@@ -19,6 +19,8 @@
 > 当前增量：sprint `2026.05.13_18-19_cloud-hosted-mobile-web-gate` 让 cloud-relay HTTP runtime 托管同一份 `mobile/web/` PWA 静态壳，并提供 phone-safe `/api/status` 与 `/api/diagnostics` fail-closed adapter。证据边界是 `software_proof_docker_cloud_hosted_mobile_web_gate`，只证明本地/Docker relay 可返回静态 shell、同源只读状态/诊断 adapter、API/probe 路由优先、missing static 和 traversal 返回 phone-safe 404；不等于真实公网、TLS、4G/SIM、真实手机设备/browser、production app、真实 PWA install prompt、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 >
 > 当前增量：sprint `2026.05.13_19-20_mobile-pwa-installability-gate` 新增 cloud-relay hosted PWA installability/browser gate。证据边界是 `software_proof_docker_cloud_hosted_mobile_pwa_installability_gate`，只证明 Docker/local relay hosted URL 上的 manifest、icons、service worker 动静分离、offline shell、静态 assets、390x844/768x900 本机 Chromium-family 浏览器和 fail-closed 主操作；不等于真实 iPhone/Android device、production app、真实 PWA install prompt、真实公网 HTTPS/TLS、真实云/4G、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+>
+> 当前增量：sprint `2026.05.13_20-21_mobile-primary-journey-gate` 将首屏组织成“目标垃圾站 -> 已放入垃圾确认 -> 发车安全 gate”的三步主路径。证据边界是 `software_proof_docker_mobile_primary_journey_gate`，只证明 Docker/local static fixture 与 targeted unittest 能渲染主路径 summary、保持 Start fail closed、提交 `/api/collect` 的 `target` 兼容 payload 且 ACK 仍是 accepted/processing；不等于真实手机设备/browser、production app、真实 PWA install prompt、真实送达、Nav2/fixed-route、WAVE ROVER 或 HIL。
 
 ## 用途（What lives here）
 
@@ -93,7 +95,18 @@ cloud-relay hosted PWA installability/browser gate：
 - 可选：`phone_cloud_readiness_summary`、`mobile_cloud_readiness_summary`、`cloud_readiness_summary` 或 `/api/status.phone_readiness.cloud_readiness`
 - 可选：`mobile_device_acceptance_readiness`、`phone_device_acceptance_readiness`、`mobile_browser_acceptance_readiness` 或 `/api/status.phone_readiness.*_acceptance_readiness`
 - 可选：`mobile_browser_acceptance_bundle`、`phone_browser_acceptance_bundle`、`mobile_acceptance_evidence_bundle` 或 `/api/status.phone_readiness.*_acceptance_bundle`
+- 可选：`mobile_primary_journey_gate`、`mobile_primary_journey_summary` 作为 phone-safe 支持摘要；Start 是否允许仍由既有 destination、manual load confirmation、`command_safety`、cloud/device/browser readiness、operation log 和 action feedback 共同决定
 - `/api/diagnostics` 的脱敏摘要字段
+
+三步主路径规则：
+
+- 首屏“三步主路径”固定为：目标垃圾站、已放入垃圾确认、发车安全 gate。
+- 目标垃圾站只能来自既有 phone-safe 字段：`phone_task_flow_readiness.destination_summary`、`destination_confirmed` step、`phone_readiness.destination`、`status.destination` 或 `/api/collect` 兼容所需 `target`。
+- 已放入垃圾确认必须由用户手动勾选；页面不得写成自动载荷检测、自动称重或自动识别垃圾已放入。
+- 发车安全 gate 必须同时消费 `phone_task_flow_readiness`、`command_safety`、cloud readiness、device/browser readiness、`operation_log` / `phone_operation_log`、`mobile_action_receipt` / `phone_action_feedback`。
+- 缺少任一安全字段、`overall_status=blocked`、offline/unreachable、pending ACK、manual takeover / human help、missing destination、unchecked load confirmation 都 fail closed。
+- `POST /api/collect` 保持 `target` 字段以兼容现有后端，同时使用 `evidence_boundary=software_proof_docker_mobile_primary_journey_gate`；ACK 文案只能表达 accepted/processing evidence，不能表达 delivery success、dropoff success、cancel completed、HIL 或真实送达。
+- `mobile_primary_journey_gate` / `mobile_primary_journey_summary` 是手机/支持 summary metadata，不是 robot command、ACK、cursor、delivery success 或 production readiness grant。
 
 云中转摘要规则：
 
@@ -189,5 +202,6 @@ PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gat
 | 当前 mobile-web-browser-proof gate | `mobile/web/` 静态 PWA 的本机 Chromium-family 真实 browser proof、viewport 截图、JSON/summary evidence |
 | 当前 cloud-hosted-mobile-web gate | cloud-relay 同源托管 `mobile/web/` 静态壳、API/probe 路由优先、静态路径围栏 |
 | 当前 cloud-hosted-pwa-installability gate | cloud-relay hosted PWA manifest/SW/offline/assets/browser acceptance 软件证明 |
+| 当前 mobile-primary-journey gate | 首屏三步主路径 summary、Start fail-closed gate、`/api/collect target` 兼容 payload |
 | 下一个 sprint | 真实手机设备验收、production app、真实 PWA install prompt 和弱网体验 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |

@@ -533,6 +533,57 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("/cmd_vel", encoded_command)
         self.assertNotIn("/dev/ttyUSB0", encoded_command)
 
+    def test_validate_command_ignores_mobile_primary_journey_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-mobile-primary-journey",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "mobile_primary_journey_gate": {
+                "schema": "trashbot.mobile_primary_journey_gate.v1",
+                "destination": "trash_station",
+                "load_confirmation_required": True,
+                "command_safety": {"start_enabled": True},
+                "browser_gate": "software_proof_only",
+                "device_gate": "not_proven",
+                "cloud_gate": "not_proven",
+                "operation_log": {"pending_ack": True},
+                "action_feedback": {"receipt_state": "accepted"},
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+            },
+            "mobile_primary_journey_summary": {
+                "schema": "trashbot.mobile_primary_journey_summary.v1",
+                "safe_phone_copy": "主路径摘要只供手机和支持侧展示。",
+                "ack_semantics": "delivery_success",
+                "dropoff_success": True,
+                "cancel_completed": True,
+                "production_ready": True,
+                "hil_pass": True,
+                "raw_ros_topic": "/cmd_vel",
+                "Authorization": "Bearer must-not-leak",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-mobile-primary-journey")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 手机主路径摘要是 support metadata，normalization 只能保留 robot command envelope。
+        self.assertNotIn("mobile_primary_journey_gate", encoded_command)
+        self.assertNotIn("mobile_primary_journey_summary", encoded_command)
+        self.assertNotIn("operation_log", encoded_command)
+        self.assertNotIn("action_feedback", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("dropoff_success", encoded_command)
+        self.assertNotIn("cancel_completed", encoded_command)
+        self.assertNotIn("production_ready", encoded_command)
+        self.assertNotIn("hil_pass", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+
     def test_validate_command_ignores_operation_log_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-operation-log-metadata",

@@ -66,6 +66,8 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("phone_operation_log", app)
         self.assertIn("mobile_action_receipt", app)
         self.assertIn("phone_action_feedback", app)
+        self.assertIn("mobile_primary_journey_gate", json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8"))))
+        self.assertIn("primaryJourneyTitle", index)
         self.assertEqual(manifest["evidence_boundary"], "software_proof_docker_mobile_web_entrypoint_gate")
         self.assertEqual(
             manifest["installability_evidence_boundary"],
@@ -110,6 +112,14 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("cloudSummaryAllowsPrimaryActions", app)
         self.assertIn("mobileDeviceAcceptanceAllowsPrimaryActions", app)
         self.assertIn("mobileBrowserAcceptanceBundleAllowsPrimaryActions", app)
+        self.assertIn("operationLogReadyForPrimaryJourney", app)
+        self.assertIn("actionFeedbackReadyForPrimaryJourney", app)
+        self.assertIn("journeyStateBlocksStart", app)
+        self.assertIn("cloud readiness 未显式放行主操作", app)
+        self.assertIn("device readiness 未显式放行主操作", app)
+        self.assertIn("browser acceptance bundle 未显式放行主操作", app)
+        self.assertIn("缺少 operation log / phone_operation_log", app)
+        self.assertIn("缺少 action feedback / receipt 摘要", app)
         self.assertIn("云中转摘要未放行主操作", app)
         self.assertIn("手机验收准备未放行主操作", app)
         self.assertIn("浏览器验收包未放行主操作", app)
@@ -119,6 +129,25 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("请先显式确认垃圾已放入", app)
         self.assertIn("renderOfflineFailure", app)
         self.assertIn("button.disabled = true", app)
+
+    def test_primary_journey_summary_renders_three_step_gate(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        self.assertIn("primaryJourneyTitle", index)
+        self.assertIn("三步主路径", index)
+        self.assertIn("目标垃圾站", index)
+        self.assertIn("已放入垃圾确认", index)
+        self.assertIn("发车安全 gate", index)
+        self.assertIn("primaryJourneySteps", index)
+        self.assertIn("primaryJourneyBadge", index)
+        self.assertIn("software_proof_docker_mobile_primary_journey_gate", index)
+        self.assertIn("PRIMARY_JOURNEY_BOUNDARY", app)
+        self.assertIn("renderPrimaryJourney", app)
+        self.assertIn("Start Delivery 保持关闭", app)
+        self.assertIn("accepted/processing evidence", app)
+        self.assertIn("不是自动载荷检测", index)
+        self.assertNotIn("自动检测到垃圾", index)
 
     def test_operation_log_panel_is_visible_and_read_only(self):
         app = self.read("app.js")
@@ -241,7 +270,7 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("target: latestStartGate.destination", app)
         self.assertIn("client_timestamp", app)
         self.assertIn("client_reference", app)
-        self.assertIn("software_proof_docker_mobile_task_start_confirmation_gate", app)
+        self.assertIn("software_proof_docker_mobile_primary_journey_gate", app)
         self.assertIn("accepted_processing_only_not_delivery_success", app)
         self.assertIn('"Content-Type": "application/json"', app)
         self.assertNotRegex(app, r"fetchJson\\(ENDPOINTS\\[actionName\\], \\{ method: \"POST\" \\}\\)")
@@ -380,6 +409,18 @@ class MobileWebEntrypointTest(unittest.TestCase):
             payload["mobile_browser_acceptance_bundle"]["evidence_boundary"],
             "software_proof_docker_mobile_browser_acceptance_bundle_gate",
         )
+        self.assertEqual(payload["mobile_primary_journey_gate"]["schema"], "trashbot.mobile_primary_journey_gate.v1")
+        self.assertEqual(payload["mobile_primary_journey_gate"]["overall_status"], "blocked")
+        self.assertEqual(payload["mobile_primary_journey_gate"]["safe_to_start"], False)
+        self.assertEqual(
+            payload["mobile_primary_journey_gate"]["evidence_boundary"],
+            "software_proof_docker_mobile_primary_journey_gate",
+        )
+        self.assertEqual(
+            payload["mobile_primary_journey_summary"]["schema"],
+            "trashbot.mobile_primary_journey_summary.v1",
+        )
+        self.assertEqual(len(payload["mobile_primary_journey_summary"]["steps"]), 3)
         for field in (
             "viewport",
             "touch_target",
@@ -407,6 +448,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("真实 pwa install prompt", encoded)
         self.assertIn("software_proof_docker_mobile_device_acceptance_readiness_gate", encoded)
         self.assertIn("software_proof_docker_mobile_browser_acceptance_bundle_gate", encoded)
+        self.assertIn("software_proof_docker_mobile_primary_journey_gate", encoded)
+        self.assertIn("trashbot.mobile_primary_journey_gate.v1", encoded)
+        self.assertIn("trashbot.mobile_primary_journey_summary.v1", encoded)
         self.assertIn("software_proof_docker_cloud_db_queue_config_gate", encoded)
         self.assertIn("production_ready", encoded)
         self.assertIn("真实云就绪", encoded)
