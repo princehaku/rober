@@ -116,6 +116,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("mobile_real_device_review_execution", app)
         self.assertIn("mobile_real_device_review_execution_summary", app)
         self.assertIn("mobile_real_device_review_execution_package", app)
+        self.assertIn("mobile_real_device_retest_request", app)
+        self.assertIn("mobile_real_device_retest_request_summary", app)
+        self.assertIn("mobile_real_device_retest_request_package", app)
         self.assertIn("mobile_browser_acceptance_bundle", app)
         self.assertIn("phone_browser_acceptance_bundle", app)
         self.assertIn("mobile_acceptance_evidence_bundle", app)
@@ -553,6 +556,39 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("navigator.clipboard.writeText", app)
         self.assertNotRegex(app, r"mobileRealDeviceReviewExecution.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
 
+    def test_mobile_real_device_retest_request_is_copyable_request_only_and_fail_closed(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        self.assertIn("mobileRealDeviceRetestRequestTitle", index)
+        self.assertIn("真实设备复测请求", index)
+        self.assertIn("copyRealDeviceRetestRequestButton", index)
+        self.assertIn("mobileRealDeviceRetestRequestSafeCopy", index)
+        self.assertIn("software_proof_docker_mobile_real_device_retest_request_gate", index)
+        self.assertIn("trashbot.mobile_real_device_retest_request.v1", app)
+        self.assertIn("trashbot.mobile_real_device_retest_request_summary.v1", app)
+        self.assertIn("trashbot.mobile_real_device_retest_request_package.v1", app)
+        self.assertIn("mobileRealDeviceRetestRequestCandidate", app)
+        self.assertIn("mobileRealDeviceRetestRequestFromStatus", app)
+        self.assertIn("realDeviceRetestRequestPackageCopyPayload", app)
+        self.assertIn("mobile_real_device_retest_request", app)
+        self.assertIn("mobile_real_device_retest_request_summary", app)
+        self.assertIn("mobile_real_device_retest_request_package", app)
+        self.assertIn("retest checklist", app)
+        self.assertIn("missing evidence", app)
+        self.assertIn("owner", app)
+        self.assertIn("next_action", app)
+        self.assertIn("blocked_reason", app)
+        self.assertIn("rejection_reason", app)
+        self.assertIn("source_evidence_boundary", app)
+        self.assertIn("safe_to_control: false", app)
+        self.assertIn("mobile real device retest request 未显式放行主操作", app)
+        self.assertIn("mobile real device retest request 未显式放行终端动作", app)
+        self.assertIn("retest request package 只表示下一轮真实设备复测材料请求", app)
+        self.assertIn("Objective 5 外部材料", app)
+        self.assertIn("navigator.clipboard.writeText", app)
+        self.assertNotRegex(app, r"mobileRealDeviceRetestRequest.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
     def test_action_feedback_panel_consumes_receipt_and_fail_closed_copy(self):
         app = self.read("app.js")
         index = self.read("index.html")
@@ -923,6 +959,47 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "trashbot.mobile_real_device_review_handoff_package.v1",
         )
         self.assertEqual(
+            payload["mobile_real_device_review_execution"]["schema"],
+            "trashbot.mobile_real_device_review_execution.v1",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_review_execution"]["evidence_boundary"],
+            "software_proof_docker_mobile_real_device_review_execution_gate",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_retest_request"]["schema"],
+            "trashbot.mobile_real_device_retest_request.v1",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_retest_request"]["summary_schema"],
+            "trashbot.mobile_real_device_retest_request_summary.v1",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_retest_request"]["package_schema"],
+            "trashbot.mobile_real_device_retest_request_package.v1",
+        )
+        self.assertEqual(payload["mobile_real_device_retest_request"]["request_status"], "blocked_missing_evidence")
+        self.assertEqual(payload["mobile_real_device_retest_request"]["safe_to_control"], False)
+        self.assertEqual(payload["mobile_real_device_retest_request"]["redaction_status"], "passed")
+        self.assertIn("missing_evidence_list", payload["mobile_real_device_retest_request"])
+        self.assertIn("retest_checklist", payload["mobile_real_device_retest_request"])
+        self.assertEqual(
+            payload["mobile_real_device_retest_request"]["evidence_boundary"],
+            "software_proof_docker_mobile_real_device_retest_request_gate",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_retest_request"]["source_evidence_boundary"],
+            "software_proof_docker_mobile_real_device_review_execution_gate",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_retest_request_summary"]["schema"],
+            "trashbot.mobile_real_device_retest_request_summary.v1",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_retest_request_package"]["schema"],
+            "trashbot.mobile_real_device_retest_request_package.v1",
+        )
+        self.assertEqual(
             payload["phone_readiness"]["mobile_real_device_evidence_intake"]["evidence_boundary"],
             "software_proof_docker_mobile_real_device_evidence_intake_gate",
         )
@@ -933,6 +1010,10 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertEqual(
             payload["phone_readiness"]["mobile_real_device_review_handoff"]["evidence_boundary"],
             "software_proof_docker_mobile_real_device_review_handoff_gate",
+        )
+        self.assertEqual(
+            payload["phone_readiness"]["mobile_real_device_retest_request"]["evidence_boundary"],
+            "software_proof_docker_mobile_real_device_retest_request_gate",
         )
         self.assertEqual(
             payload["phone_readiness"]["mobile_pwa_install_prompt_evidence"]["evidence_boundary"],
@@ -1046,6 +1127,12 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("trashbot.mobile_real_device_review_handoff.v1", encoded)
         self.assertIn("trashbot.mobile_real_device_review_handoff_summary.v1", encoded)
         self.assertIn("trashbot.mobile_real_device_review_handoff_package.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_review_execution.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_review_execution_summary.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_review_execution_package.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_retest_request.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_retest_request_summary.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_retest_request_package.v1", encoded)
         self.assertIn("trashbot.mobile_browser_acceptance_bundle.v1", encoded)
         self.assertIn("blocked-by-design", encoded)
         self.assertIn("真实 pwa install prompt", encoded)
@@ -1056,6 +1143,8 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("software_proof_docker_mobile_real_device_evidence_intake_gate", encoded)
         self.assertIn("software_proof_docker_mobile_real_device_acceptance_decision_gate", encoded)
         self.assertIn("software_proof_docker_mobile_real_device_review_handoff_gate", encoded)
+        self.assertIn("software_proof_docker_mobile_real_device_review_execution_gate", encoded)
+        self.assertIn("software_proof_docker_mobile_real_device_retest_request_gate", encoded)
         self.assertIn("software_proof_docker_mobile_browser_acceptance_bundle_gate", encoded)
         self.assertIn("redaction", encoded)
         self.assertIn("software_proof_docker_mobile_primary_journey_gate", encoded)

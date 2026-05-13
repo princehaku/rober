@@ -8,6 +8,16 @@
 
 ## 2026-05-14 系列
 
+更新时间：2026-05-14 07:21 Asia/Shanghai。
+
+### 2026-05-14 07-08｜mobile-real-device-retest-request-gate｜O4 real-device retest request software proof，手机体验由约 83% 上调到约 84%
+
+`sprints/2026.05.14_07-08_mobile-real-device-retest-request-gate` 完成 `software_proof_docker_mobile_real_device_retest_request_gate`：Task A Full-stack 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/test_mobile_web_entrypoint.py`、`mobile/README.md`、`docs/product/mobile_user_flow.md`，新增/派生 `mobile_real_device_retest_request`、`mobile_real_device_retest_request_summary`、`mobile_real_device_retest_request_package`，把上一轮 review execution 的 blocked reason、next evidence request、evidence readiness、operator/reviewer notes、redaction/source boundary 和 `not_proven` 转成下一轮真实设备复测请求 checklist/package。首屏展示 retest checklist、missing evidence list、material readiness/status、owner/next action、blocked reason、rejection reason、redaction/source boundary、ACK-not-delivery 和 `not_proven`；copy package 保持 whitelist/phone-safe；Start/Confirm/Cancel 继续 fail closed。Task A 验证输出 `mobile.test_mobile_web_entrypoint` `Ran 28 tests in 0.029s OK`、`py_compile` pass、`node --check mobile/web/app.js` pass、rg pass、scoped diff check pass。首次失败为 `terminalActionGateFromStatus` 中重复声明 `mobileRealDeviceRetestRequest`，以及 O5 中文边界锚点缺失；均已修复并复验通过。
+
+Task B Robot 更新 `onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge_protocol.py`、`docs/interfaces/ros_contracts.md`，新增 `mobile_real_device_retest_request*` metadata-only / valid-command mixed-envelope fences。Robot fence 证明无 command envelope 时 retest request metadata 不触发 collect、dropoff、cancel、ACK、cursor、terminal ACK、production readiness、HIL、dropoff/cancel completion 或 delivery success；valid command mixed metadata 只执行 command envelope，不把 retest request metadata 编入 normalized command、ACK、status、cursor 或 terminal result；文档明确该 metadata 只服务 phone/support/product retest request。Task B 验证输出 remote bridge/protocol targeted unittest `Ran 149 tests in 76.425s OK`、`py_compile` pass、rg pass、scoped diff check pass。
+
+该证据只支持 Objective 4 从约 83% 保守上调到约 84%，理由是 Docker/local `mobile/web` 已把真实设备验收材料从 review execution 推进到下一轮真实设备复测材料请求包，并由 missing evidence、material readiness/status、owner/next action、blocked/rejection reason、redaction/source boundary、`not_proven` 和 Robot metadata-only fence 限定边界。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1/2/3 不提升。本轮 `software_proof_docker_mobile_real_device_retest_request_gate` 只证明 Docker/local mobile software proof 和 robot metadata-only fence；retest request package 是下一轮真实设备复测材料请求，不是验收通过、真实 PWA prompt/user choice、O5 外部 proof、HIL、真实 dropoff/cancel completion 或 delivery success。ACK、HTTP accepted、receipt、intake package、acceptance decision package、review handoff package、review execution package、retest request package、browser proof、handoff session 和 install prompt evidence 仍只是 accepted/processing/support metadata，不是 delivery success。
+
 更新时间：2026-05-14 06:00 Asia/Shanghai。
 
 ### 2026-05-14 06-07｜mobile-real-device-review-execution-gate｜O4 real-device review execution software proof，手机体验由约 82% 上调到约 83%

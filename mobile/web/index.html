@@ -585,6 +585,74 @@
         <pre id="mobileRealDeviceReviewExecutionSafeCopy" class="safe-copy" aria-label="真实设备 review execution package">暂无真实设备评审执行包。</pre>
       </section>
 
+      <section class="real-device-retest-panel" aria-labelledby="mobileRealDeviceRetestRequestTitle">
+        <div class="section-heading">
+          <h2 id="mobileRealDeviceRetestRequestTitle">真实设备复测请求</h2>
+          <span id="mobileRealDeviceRetestRequestBadge" class="gate-badge gate-blocked">blocked_missing_evidence</span>
+        </div>
+        <p id="mobileRealDeviceRetestRequestCopy" class="message">
+          retest request package 只表示下一轮真实设备复测材料请求；不是真实设备验收通过、PWA install prompt 或 delivery success。
+        </p>
+        <dl class="real-device-retest-grid">
+          <div>
+            <dt>Request Status</dt>
+            <dd id="mobileRealDeviceRetestRequestStatus">blocked_missing_evidence</dd>
+          </div>
+          <div>
+            <dt>Owner / Next Action</dt>
+            <dd id="mobileRealDeviceRetestRequestOwner">owner=review_owner_unassigned / next action=补齐真实设备材料</dd>
+          </div>
+          <div>
+            <dt>Missing Evidence</dt>
+            <dd id="mobileRealDeviceRetestRequestMissingEvidence">真实设备、production app、PWA install prompt/user choice。</dd>
+          </div>
+          <div>
+            <dt>Material Readiness</dt>
+            <dd id="mobileRealDeviceRetestRequestReadiness">device=not_proven / production_app=not_proven / PWA install prompt=not_proven</dd>
+          </div>
+          <div>
+            <dt>Blocked Reason</dt>
+            <dd id="mobileRealDeviceRetestRequestBlockedReason">缺少真实设备复测材料。</dd>
+          </div>
+          <div>
+            <dt>Rejection Reason</dt>
+            <dd id="mobileRealDeviceRetestRequestRejectionReason">not_rejected</dd>
+          </div>
+          <div>
+            <dt>Redaction Status</dt>
+            <dd id="mobileRealDeviceRetestRequestRedaction">missing</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileRealDeviceRetestRequestAck">ACK 只代表 accepted/processing。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileRealDeviceRetestRequestBoundary">software_proof_docker_mobile_real_device_retest_request_gate</dd>
+          </div>
+          <div>
+            <dt>Source Boundary</dt>
+            <dd id="mobileRealDeviceRetestRequestSourceBoundary">software_proof_docker_mobile_real_device_review_execution_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileRealDeviceRetestRequestNotProven">真实手机设备、production app、PWA install prompt、O5、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <ol id="mobileRealDeviceRetestRequestChecklist" class="handoff-checklist">
+          <li>
+            <strong>retest checklist：blocked_missing_evidence</strong>
+            <em>复测请求必须列出 missing evidence、owner、next action、blocked/rejection reason 和 not_proven。</em>
+          </li>
+        </ol>
+        <p id="mobileRealDeviceRetestRequestRecoveryHint" class="hint">缺真实设备材料、production app 或真实 PWA install prompt/user choice 时，Start、Confirm、Cancel 继续 fail closed。</p>
+        <div class="bundle-copy-row">
+          <button id="copyRealDeviceRetestRequestButton" type="button">复制 retest request package</button>
+          <span id="mobileRealDeviceRetestRequestCopyStatus" class="hint">复制内容只包含 phone-safe 复测请求字段。</span>
+        </div>
+        <pre id="mobileRealDeviceRetestRequestSafeCopy" class="safe-copy" aria-label="真实设备 retest request package">暂无真实设备复测请求包。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>
