@@ -1422,6 +1422,73 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_mobile_browser_acceptance_bundle_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "mobile_browser_acceptance_bundle": {
+                    "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
+                    "overall_status": "blocked",
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "phone_browser_acceptance_bundle": {
+                    "schema": "trashbot.phone_browser_acceptance_bundle.v1",
+                    "safe_phone_copy": "手机浏览器验收摘要只能给 UI/diagnostics 展示。",
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                },
+                "mobile_acceptance_evidence_bundle": {
+                    "schema": "trashbot.mobile_acceptance_evidence_bundle.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_browser_acceptance_bundle_gate",
+                    "next_action": "confirm_dropoff",
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            },
+            "ack_response": {
+                "mobile_browser_acceptance_bundle": {
+                    "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-mobile-browser-acceptance-bundle-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-mobile-browser-acceptance-bundle-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-mobile-browser-acceptance-bundle-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        self.assertEqual(ack_payload["message"], "collect")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # ACK 只表达 command envelope 被本地接收/处理，不能吸收手机浏览器验收 bundle。
+        self.assertNotIn("mobile_browser_acceptance_bundle", encoded_ack)
+        self.assertNotIn("phone_browser_acceptance_bundle", encoded_ack)
+        self.assertNotIn("mobile_acceptance_evidence_bundle", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        self.assertNotIn("/cmd_vel", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("mobile_browser_acceptance_bundle", encoded_status)
+        self.assertNotIn("phone_browser_acceptance_bundle", encoded_status)
+        self.assertNotIn("mobile_acceptance_evidence_bundle", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_voice_prompt_readiness_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {
@@ -1819,6 +1886,108 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
                     self.assertNotIn("cursor_override", encoded_status)
                     self.assertNotIn("delivery_success", encoded_status)
                     self.assertNotIn("/trashbot/collect_trash", encoded_status)
+                    self.assertNotIn("/dev/ttyUSB0", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
+    def test_metadata_only_mobile_browser_acceptance_bundle_response_does_not_start_ack_or_persist_cursor(self):
+        metadata_cases = (
+            (
+                "mobile_browser_acceptance_bundle",
+                {
+                    "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
+                    "schema_version": 1,
+                    "overall_status": "blocked",
+                    "production_app_ready": False,
+                    "safe_to_control": False,
+                    "viewport": {"status": "not_proven", "sample": "390x844"},
+                    "touch_target": {"status": "software_checked", "min_px": 44},
+                    "pwa_install_prompt": {"status": "not_proven"},
+                    "offline_shell": {"status": "software_checked"},
+                    "diagnostics": {"status": "available_without_control"},
+                    "cloud_gate": {"status": "blocked"},
+                    "action_gate": {"start": "fail_closed", "confirm": "fail_closed", "cancel": "fail_closed"},
+                    "ack_semantics": "accepted_or_processing_only",
+                    "client_timestamp": "2026-05-13T15:16:00+08:00",
+                    "safe_phone_copy": "浏览器验收包仅供手机端展示，不能触发机器人动作。",
+                    "recovery_hint": "使用真实手机浏览器复测后再开放控制。",
+                    "not_proven": ["real_phone_browser", "production_app", "delivery_success"],
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-mobile-browser-bundle",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+            (
+                "phone_browser_acceptance_bundle",
+                {
+                    "schema": "trashbot.phone_browser_acceptance_bundle.v1",
+                    "schema_version": 1,
+                    "overall_status": "blocked",
+                    "safe_to_control": False,
+                    "support_handoff": {"available": True, "next_action": "confirm_dropoff"},
+                    "ack_semantics": "delivery_success",
+                    "safe_phone_copy": "ACK 仅代表命令已接收或处理中，不代表送达成功。",
+                    "trigger_robot_action": "confirm_dropoff",
+                    "cursor_override": "cmd-phone-browser-bundle",
+                    "delivery_success": True,
+                    "serial_device": "/dev/ttyUSB0",
+                },
+            ),
+            (
+                "mobile_acceptance_evidence_bundle",
+                {
+                    "schema": "trashbot.mobile_acceptance_evidence_bundle.v1",
+                    "schema_version": 1,
+                    "evidence_boundary": "software_proof_docker_mobile_browser_acceptance_bundle_gate",
+                    "overall_status": "blocked",
+                    "safe_to_control": False,
+                    "redacted_artifacts": ["viewport_summary", "diagnostics_summary"],
+                    "not_proven": ["real_pwa_install_prompt", "real_cloud_4g", "wave_rover_hil"],
+                    "next_action": "cancel",
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-mobile-evidence-bundle",
+                    "delivery_success": True,
+                    "Authorization": "Bearer must-not-leak",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.backend.calls.clear()
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        metadata_name: metadata,
+                        "preflight": {"overall_status": "blocked", "production_ready": False},
+                    }
+
+                    handled = worker.poll_once()
+
+                    # 浏览器验收 bundle 只属于 phone/support metadata；没有 command envelope 时必须保持 no-op。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("preflight", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
                     self.assertNotIn("/dev/ttyUSB0", encoded_status)
                     self.assertNotIn("Authorization", encoded_status)
                     self.cloud.response_extras["command_response"] = {}

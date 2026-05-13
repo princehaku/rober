@@ -95,6 +95,36 @@
       "真实送达"
     ]
   },
+  "mobile_browser_acceptance_bundle": {
+    "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
+    "schema_version": 1,
+    "overall_status": "blocked",
+    "production_app_ready": false,
+    "safe_to_control": false,
+    "viewport": "software_smoke_only",
+    "touch_target": "software_smoke_only",
+    "pwa_install_prompt": "not_proven",
+    "offline_shell": "static_shell_only",
+    "diagnostics": "phone_safe_visible",
+    "cloud_gate": "blocked",
+    "action_gate": "blocked-by-design",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+    "client_timestamp": "2026-05-13T15:20:00+08:00",
+    "safe_phone_copy": "浏览器验收包 blocked-by-design：当前只有 Docker/local 软件证明，没有真实手机设备/browser、production app 或真实 PWA install prompt。",
+    "recovery_hint": "请在真实手机浏览器和 production app 入口完成验收；在此之前 Start、Confirm、Cancel fail closed，Diagnostics 和 Support Handoff 可用。",
+    "evidence_boundary": "software_proof_docker_mobile_browser_acceptance_bundle_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "真实云/4G",
+      "production DB/queue",
+      "Nav2/fixed-route",
+      "真实底盘运动",
+      "HIL",
+      "真实送达"
+    ]
+  },
   "operation_log": {
     "schema": "trashbot.phone_operation_log.v1",
     "evidence_boundary": "software_proof_docker_mobile_operation_log_gate",
@@ -201,6 +231,36 @@
       "recovery_hint": "请在真实 iPhone/Android 浏览器与 production app 入口完成验收；在此之前 Start、Confirm、Cancel 保持禁用，Diagnostics 和 Support Handoff 仍可见。",
       "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成、取消完成或真实手机验收通过。",
       "evidence_boundary": "software_proof_docker_mobile_device_acceptance_readiness_gate"
+    },
+    "mobile_browser_acceptance_bundle": {
+      "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
+      "schema_version": 1,
+      "overall_status": "blocked",
+      "production_app_ready": false,
+      "safe_to_control": false,
+      "viewport": "software_smoke_only",
+      "touch_target": "software_smoke_only",
+      "pwa_install_prompt": "not_proven",
+      "offline_shell": "static_shell_only",
+      "diagnostics": "phone_safe_visible",
+      "cloud_gate": "blocked",
+      "action_gate": "blocked-by-design",
+      "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+      "client_timestamp": "2026-05-13T15:20:00+08:00",
+      "safe_phone_copy": "浏览器验收包 blocked-by-design：当前只有 Docker/local 软件证明，没有真实手机设备/browser、production app 或真实 PWA install prompt。",
+      "recovery_hint": "请在真实手机浏览器和 production app 入口完成验收；在此之前 Start、Confirm、Cancel fail closed，Diagnostics 和 Support Handoff 可用。",
+      "evidence_boundary": "software_proof_docker_mobile_browser_acceptance_bundle_gate",
+      "not_proven": [
+        "真实手机设备/browser",
+        "production app",
+        "真实 PWA install prompt",
+        "真实云/4G",
+        "production DB/queue",
+        "Nav2/fixed-route",
+        "真实底盘运动",
+        "HIL",
+        "真实送达"
+      ]
     }
   },
   "phone_offline_resume_readiness": {

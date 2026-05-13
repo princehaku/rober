@@ -129,6 +129,7 @@ h2 {
 .hero-panel,
 .cloud-panel,
 .mobile-device-panel,
+.acceptance-bundle-panel,
 .action-feedback-panel,
 .task-panel,
 .gate-panel,
@@ -163,6 +164,7 @@ h2 {
 .status-grid,
 .cloud-grid,
 .mobile-device-grid,
+.acceptance-bundle-grid,
 .feedback-grid,
 .diagnostics-grid {
   display: grid;
@@ -174,6 +176,7 @@ h2 {
 .status-grid div,
 .cloud-grid div,
 .mobile-device-grid div,
+.acceptance-bundle-grid div,
 .feedback-grid div,
 .diagnostics-grid div {
   border: 1px solid var(--line);
@@ -224,6 +227,18 @@ dd {
 
 .feedback-grid {
   grid-template-columns: 1fr;
+}
+
+.acceptance-bundle-grid {
+  grid-template-columns: 1fr;
+}
+
+.bundle-copy-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
 }
 
 .load-confirmation {
@@ -333,5 +348,13 @@ dd {
 
   .feedback-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .acceptance-bundle-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bundle-copy-row {
+    grid-template-columns: minmax(150px, 190px) 1fr;
   }
 }

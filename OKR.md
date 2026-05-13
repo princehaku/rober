@@ -149,17 +149,17 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-05-13 14:16 Asia/Shanghai。最新 sprint：`2026.05.13_14-15_oss-cdn-live-probe-gate`。详细历史见 `docs/process/okr_progress_log.md`。
+更新时间：2026-05-13 15:19 Asia/Shanghai。最新 sprint：`2026.05.13_15-16_mobile-browser-acceptance-bundle-gate`。详细历史见 `docs/process/okr_progress_log.md`。
 
 | Objective | 当前进度 | 本轮证据与边界 | 主要缺口 |
 | --- | --- | --- | --- |
 | Objective 1：硬件协议可信底盘 | 约 75% | 本轮未改硬件、WAVE ROVER、UART、Orange Pi、launch 参数或 HIL 证据；保留此前 Docker/Humble 与 hardware smoke 软件护栏。 | 仍缺真实 WAVE ROVER `hil_pass`、真实串口日志、`T=1001` feedback、`/odom`、`/imu/data`、`/battery` 实机样本。 |
-| Objective 2：可送垃圾任务完整闭环 | 约 77% | 本轮未改 `task_orchestrator`、delivery action、Nav2/fixed-route 或任务复盘；robot compatibility fence 只证明 mobile action feedback metadata-only responses 不触发 backend action、不 POST ACK、不推进或持久化 cursor，不提升任务闭环完成度。 | 仍缺真实 Nav2/fixed-route 运行、同一 `evidence_ref` 的任务复盘、真实送达和失败恢复实测。 |
+| Objective 2：可送垃圾任务完整闭环 | 约 77% | 本轮未改 `task_orchestrator`、delivery action、Nav2/fixed-route 或任务复盘；robot compatibility fence 只证明 mobile browser acceptance bundle metadata-only responses 不触发 backend action、不 POST ACK、不推进或持久化 cursor，不提升任务闭环完成度。 | 仍缺真实 Nav2/fixed-route 运行、同一 `evidence_ref` 的任务复盘、真实送达和失败恢复实测。 |
 | Objective 3：可验证导航与固定路线 | 约 77% | 本轮未改导航、route、keyframe 或 replay 工具；既有软件对账能力保持。 | 仍缺真实路线采集、Nav2 waypoint/fixed-route 实跑、关键帧实景证据与上车复账。 |
-| Objective 4：手机用户体验与低成本量产边界 | 约 66% | 本轮未改手机 UI、真实设备/browser、production app 或 PWA install prompt；保留上一轮 `software_proof_docker_mobile_device_acceptance_readiness_gate` 的首屏 readiness、fail-closed action 与 robot metadata-only compatibility fence。ACK 仍只是 accepted/processing evidence。 | 仍缺真实手机设备/browser、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、production DB/queue、TTS/喇叭实放、Nav2/fixed-route、WAVE ROVER、HIL、真实投放、真实取消完成、真实送达与量产实物验收。 |
+| Objective 4：手机用户体验与低成本量产边界 | 约 68% | `2026.05.13_15-16_mobile-browser-acceptance-bundle-gate` 完成 `software_proof_docker_mobile_browser_acceptance_bundle_gate`：手机首屏新增“浏览器验收包”面板和复制入口，优先消费 `mobile_browser_acceptance_bundle` / `phone_browser_acceptance_bundle` / `mobile_acceptance_evidence_bundle`，缺失时从 phone-safe fields 派生 blocked 摘要；缺真实手机/browser、production app 或真实 PWA install prompt 时保持 blocked-by-design，Start/Confirm/Cancel fail closed，Diagnostics/Support Handoff 可用。Robot compatibility fence 证明这些 bundle metadata-only responses 不触发 backend action、不 POST ACK、不推进内存 cursor、不持久化 `last_terminal_ack_id`，protocol normalization 不把 bundle 放进 command envelope。ACK 仍只是 accepted/processing evidence。 | 仍缺真实手机设备/browser、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、production DB/queue、TTS/喇叭实放、Nav2/fixed-route、WAVE ROVER、HIL、真实投放、真实取消完成、真实送达与量产实物验收。 |
 | Objective 5：云中转 + OSS/CDN 数据通路产品化（历史 O6） | 约 67% | `2026.05.13_14-15_oss-cdn-live-probe-gate` 完成 `software_proof_docker_oss_cdn_live_probe_gate`：新增 `trashbot.oss_cdn_live_probe` schema v1、artifact writer、validator、preflight consumption、CLI/env 支持；valid artifact 在无真实 OSS/CDN 凭证、真实云、4G/SIM 或公网 CDN 回源证据时保持 `production_ready=false`、`overall_status=blocked`、`live_probe_complete=false`。Robot compatibility fence 证明 `oss_cdn_live_probe` / `oss_cdn_live_probe_artifact` / `cdn_live_probe` metadata-only responses 不触发 backend action、不 POST ACK、不推进或持久化 cursor，protocol normalization 保持 command/status/ACK envelope 边界。 | 仍没有真实 OSS/CDN live traffic、真实云、真实 4G/SIM、真实 HTTPS/TLS 公网入口、真实 production DB/queue connectivity、migration、worker、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机设备/browser、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。 |
 
-本轮 OKR 口径：Objective 5 因 OSS/CDN live probe artifact/preflight 入口和 robot metadata-only compatibility fence 同时完成，从约 65% 保守上调到约 67%。证据边界是 `software_proof_docker_oss_cdn_live_probe_gate`；这不是真实 OSS/CDN live traffic、真实云、真实 4G/SIM、production DB/queue、真实手机设备/browser、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达证据。ACK 仍只是 accepted/processing evidence，不是 delivery success。Objective 1/2/3/4 完成度不调整。
+本轮 OKR 口径：Objective 4 因 browser acceptance bundle UI、复制入口、phone-safe copy、fail-closed action gate 与 robot metadata-only compatibility fence 同时完成，从约 66% 保守上调到约 68%。证据边界是 `software_proof_docker_mobile_browser_acceptance_bundle_gate`；这不是真实手机/browser、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达证据。ACK 仍只是 accepted/processing evidence，不是 delivery success。Objective 1/2/3/5 完成度不调整。
 
 ## 5. OKR完成路线
 
@@ -201,8 +201,8 @@
 
 ## 6. 当前最高优先级
 
-- 下一轮按 `OKR.md` 4.1 重新排序。Objective 5 上调后，当前最低完成度为 Objective 4（约 66%）。除非 CEO 指定继续攻坚真实云、4G、OSS/CDN live traffic 或 production DB/queue 外部环境，否则优先推进真实手机设备/browser、production app 或 PWA install prompt 验收；如继续 Objective 5，下一轮必须引入真实 OSS/CDN、4G/SIM、云账号或 production DB/queue 外部证据，避免继续只增加本地 metadata 深度。
+- 下一轮按 `OKR.md` 4.1 重新排序。Objective 4 上调后，当前最低完成度为 Objective 5（约 67%）。如继续 Objective 5，下一轮必须引入真实 OSS/CDN、4G/SIM、云账号或 production DB/queue 外部证据，避免继续只增加本地 metadata 深度；如外部云/4G/DB/queue 条件仍不可用，则应回到 Objective 4 的真实手机设备/browser、production app 或 PWA install prompt 验收缺口。
 
 ## 7. 整体风险与待办
 
-- 当前仍缺真实手机设备/browser、production app、真实云/4G、production DB/queue、OSS/CDN live traffic、Nav2/fixed-route、WAVE ROVER、HIL 和真实送达证据。
+- 当前仍缺真实手机设备/browser、production app、真实 PWA install prompt、真实云/4G、production DB/queue、OSS/CDN live traffic、Nav2/fixed-route、WAVE ROVER、HIL 和真实送达证据。

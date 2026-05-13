@@ -36,6 +36,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("mobile_device_acceptance_readiness", app)
         self.assertIn("phone_device_acceptance_readiness", app)
         self.assertIn("mobile_browser_acceptance_readiness", app)
+        self.assertIn("mobile_browser_acceptance_bundle", app)
+        self.assertIn("phone_browser_acceptance_bundle", app)
+        self.assertIn("mobile_acceptance_evidence_bundle", app)
         self.assertIn("operation_log", app)
         self.assertIn("phone_operation_log", app)
         self.assertIn("mobile_action_receipt", app)
@@ -58,8 +61,10 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("latestStartGate.startEnabled", app)
         self.assertIn("cloudSummaryAllowsPrimaryActions", app)
         self.assertIn("mobileDeviceAcceptanceAllowsPrimaryActions", app)
+        self.assertIn("mobileBrowserAcceptanceBundleAllowsPrimaryActions", app)
         self.assertIn("云中转摘要未放行主操作", app)
         self.assertIn("手机验收准备未放行主操作", app)
+        self.assertIn("浏览器验收包未放行主操作", app)
         self.assertIn("缺少 command_safety", app)
         self.assertIn("旧权限 can_collect", app)
         self.assertIn("缺少后端 phone-safe 目标垃圾站", app)
@@ -130,6 +135,30 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("真实 PWA install prompt", app)
         self.assertIn("ACK_PROCESSING_COPY", app)
         self.assertNotRegex(app, r"mobileDeviceAcceptance.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+    def test_mobile_browser_acceptance_bundle_is_visible_copyable_and_fail_closed(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        self.assertIn("mobileBrowserAcceptanceTitle", index)
+        self.assertIn("浏览器验收包", index)
+        self.assertIn("copyAcceptanceBundleButton", index)
+        self.assertIn("mobileBrowserSafeCopy", index)
+        self.assertIn("mobileBrowserNotProven", index)
+        self.assertIn("software_proof_docker_mobile_browser_acceptance_bundle_gate", index)
+        self.assertIn("trashbot.mobile_browser_acceptance_bundle.v1", app)
+        self.assertIn("mobileBrowserAcceptanceBundleFromStatus", app)
+        self.assertIn("mobile_browser_acceptance_bundle", app)
+        self.assertIn("phone_browser_acceptance_bundle", app)
+        self.assertIn("mobile_acceptance_evidence_bundle", app)
+        self.assertIn("bundleCopyPayload", app)
+        self.assertIn("UNSAFE_BUNDLE_TEXT", app)
+        self.assertIn("safe_to_control === true", app)
+        self.assertIn("production_app_ready === true", app)
+        self.assertIn("blocked-by-design", app)
+        self.assertIn("ACK_PROCESSING_COPY", app)
+        self.assertIn("navigator.clipboard.writeText", app)
+        self.assertNotRegex(app, r"mobileBrowserAcceptance.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
 
     def test_action_feedback_panel_consumes_receipt_and_fail_closed_copy(self):
         app = self.read("app.js")
@@ -291,12 +320,45 @@ class MobileWebEntrypointTest(unittest.TestCase):
             payload["phone_readiness"]["mobile_device_acceptance_readiness"]["evidence_boundary"],
             "software_proof_docker_mobile_device_acceptance_readiness_gate",
         )
+        self.assertEqual(
+            payload["mobile_browser_acceptance_bundle"]["schema"],
+            "trashbot.mobile_browser_acceptance_bundle.v1",
+        )
+        self.assertEqual(payload["mobile_browser_acceptance_bundle"]["schema_version"], 1)
+        self.assertEqual(payload["mobile_browser_acceptance_bundle"]["overall_status"], "blocked")
+        self.assertEqual(payload["mobile_browser_acceptance_bundle"]["production_app_ready"], False)
+        self.assertEqual(payload["mobile_browser_acceptance_bundle"]["safe_to_control"], False)
+        self.assertEqual(
+            payload["mobile_browser_acceptance_bundle"]["evidence_boundary"],
+            "software_proof_docker_mobile_browser_acceptance_bundle_gate",
+        )
+        for field in (
+            "viewport",
+            "touch_target",
+            "pwa_install_prompt",
+            "offline_shell",
+            "diagnostics",
+            "cloud_gate",
+            "action_gate",
+            "ack_semantics",
+            "client_timestamp",
+            "safe_phone_copy",
+            "recovery_hint",
+            "not_proven",
+        ):
+            self.assertIn(field, payload["mobile_browser_acceptance_bundle"])
+        self.assertEqual(
+            payload["phone_readiness"]["mobile_browser_acceptance_bundle"]["evidence_boundary"],
+            "software_proof_docker_mobile_browser_acceptance_bundle_gate",
+        )
         self.assertIn("trashbot.command_safety.v1", encoded)
         self.assertIn("trashbot.phone_cloud_readiness_summary.v1", encoded)
         self.assertIn("trashbot.mobile_device_acceptance_readiness.v1", encoded)
+        self.assertIn("trashbot.mobile_browser_acceptance_bundle.v1", encoded)
         self.assertIn("blocked-by-design", encoded)
         self.assertIn("真实 pwa install prompt", encoded)
         self.assertIn("software_proof_docker_mobile_device_acceptance_readiness_gate", encoded)
+        self.assertIn("software_proof_docker_mobile_browser_acceptance_bundle_gate", encoded)
         self.assertIn("software_proof_docker_cloud_db_queue_config_gate", encoded)
         self.assertIn("production_ready", encoded)
         self.assertIn("真实云就绪", encoded)

@@ -31,6 +31,7 @@ class MockCloud:
         self.commands = []
         self.statuses = []
         self.acks = []
+        self.response_extras = {}
 
     def handler(self):
         cloud = self
@@ -51,7 +52,10 @@ class MockCloud:
                         self._send_json(404, {"error": "unknown robot"})
                         return
                     command = cloud.commands.pop(0) if cloud.commands else None
-                    self._send_json(200, {"command": command})
+                    payload = {"command": command}
+                    # command_response 只模拟云端 sidecar metadata，不能改变 command envelope 选择。
+                    payload.update(cloud.response_extras.get("command_response", {}))
+                    self._send_json(200, payload)
                     return
                 self._send_json(404, {"error": "not found"})
 
@@ -64,14 +68,20 @@ class MockCloud:
                         self._send_json(404, {"error": "unknown robot"})
                         return
                     cloud.statuses.append(payload)
-                    self._send_json(200, {"ok": True})
+                    response = {"ok": True}
+                    # status_response 是云端回包元数据，不能反向污染 robot POST 的 status envelope。
+                    response.update(cloud.response_extras.get("status_response", {}))
+                    self._send_json(200, response)
                     return
                 if len(parts) == 5 and parts[0] == "robots" and parts[2] == "commands" and parts[4] == "ack":
                     if unquote(parts[1]) != "robot-1" and unquote(parts[1]) != "robot/with space":
                         self._send_json(404, {"error": "unknown robot"})
                         return
                     cloud.acks.append(payload)
-                    self._send_json(200, {"ok": True})
+                    response = {"ok": True}
+                    # ack_response 只能证明云端收包，不能把 ACK 升级成 delivery success。
+                    response.update(cloud.response_extras.get("ack_response", {}))
+                    self._send_json(200, response)
                     return
                 self._send_json(404, {"error": "not found"})
 
@@ -220,6 +230,96 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("/trashbot/collect_trash", encoded_command)
         self.assertNotIn("/dev/ttyUSB0", encoded_command)
         self.assertNotIn("Authorization", encoded_command)
+
+    def test_validate_command_ignores_mobile_browser_acceptance_bundle_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-mobile-browser-acceptance-bundle",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "mobile_browser_acceptance_bundle": {
+                "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
+                "overall_status": "blocked",
+                "safe_to_control": False,
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "ack_semantics": "delivery_success",
+                "delivery_success": True,
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "phone_browser_acceptance_bundle": {
+                "schema": "trashbot.phone_browser_acceptance_bundle.v1",
+                "safe_phone_copy": "ACK 仅代表命令已接收或处理中，不代表送达成功。",
+                "support_handoff": {"next_action": "confirm_dropoff"},
+                "serial_device": "/dev/ttyUSB0",
+            },
+            "mobile_acceptance_evidence_bundle": {
+                "schema": "trashbot.mobile_acceptance_evidence_bundle.v1",
+                "evidence_boundary": "software_proof_docker_mobile_browser_acceptance_bundle_gate",
+                "Authorization": "Bearer must-not-leak",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-mobile-browser-acceptance-bundle")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 浏览器验收 bundle 是 phone/support metadata，normalization 只能保留 command envelope。
+        self.assertNotIn("mobile_browser_acceptance_bundle", encoded_command)
+        self.assertNotIn("phone_browser_acceptance_bundle", encoded_command)
+        self.assertNotIn("mobile_acceptance_evidence_bundle", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("/dev/ttyUSB0", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+
+    def test_mobile_browser_acceptance_bundle_response_metadata_does_not_create_command_or_ack(self):
+        self.cloud.response_extras.update({
+            "command_response": {
+                "mobile_browser_acceptance_bundle": {
+                    "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
+                    "overall_status": "blocked",
+                    "safe_to_control": False,
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-future",
+                    "delivery_success": True,
+                },
+                "phone_browser_acceptance_bundle": {
+                    "schema": "trashbot.phone_browser_acceptance_bundle.v1",
+                    "safe_phone_copy": "仅供手机诊断展示。",
+                    "next_action": "confirm_dropoff",
+                },
+                "mobile_acceptance_evidence_bundle": {
+                    "schema": "trashbot.mobile_acceptance_evidence_bundle.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_browser_acceptance_bundle_gate",
+                },
+            },
+            "status_response": {
+                "mobile_browser_acceptance_bundle": {"delivery_success": True},
+            },
+            "ack_response": {
+                "mobile_acceptance_evidence_bundle": {
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                },
+            },
+        })
+        client = RemoteCloudClient(self.base_url, "robot-1", timeout_sec=2)
+
+        status_response = client.post_status(make_status("robot-1", "waiting_for_trash", "ready"))
+        command = client.get_next_command()
+
+        self.assertIsNone(command)
+        self.assertEqual(self.cloud.acks, [])
+        encoded_status = json.dumps(self.cloud.statuses[0], ensure_ascii=False)
+        self.assertNotIn("mobile_browser_acceptance_bundle", encoded_status)
+        self.assertNotIn("phone_browser_acceptance_bundle", encoded_status)
+        self.assertNotIn("mobile_acceptance_evidence_bundle", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertTrue(status_response["ok"])
+        # protocol client 不会从 metadata-only response 合成 command id 或 terminal ACK。
+        self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
 
     def test_validate_command_ignores_mobile_task_start_confirmation_metadata_outside_envelope(self):
         command = validate_command({

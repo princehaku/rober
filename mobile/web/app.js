@@ -16,11 +16,15 @@ const SAFE_EMPTY = "等待后端提供安全摘要。";
 const ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
 const CLOUD_READINESS_BOUNDARY = "software_proof_docker_mobile_cloud_readiness_summary_gate";
 const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_acceptance_readiness_gate";
+const MOBILE_BROWSER_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_browser_acceptance_bundle_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
+const ACCEPTANCE_BUNDLE_SCHEMA = "trashbot.mobile_browser_acceptance_bundle.v1";
+const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|artifact)/i;
 
 let latestStatus = null;
 let latestDiagnostics = null;
 let latestActionFeedback = null;
+let latestAcceptanceBundle = null;
 let latestStartGate = {
   destination: null,
   destinationReady: false,
@@ -41,6 +45,20 @@ function safeText(value, fallback = SAFE_EMPTY) {
     return String(value);
   }
   return fallback;
+}
+
+function safeBundleText(value, fallback = "未证明") {
+  // 验收包面向手机用户和支持人员复制；命中敏感词时直接降级为安全摘要。
+  const text = safeText(value, fallback);
+  if (UNSAFE_BUNDLE_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeBundleBoolean(value) {
+  // 只有显式布尔 true 才能参与放行，避免字符串或缺字段误开主操作。
+  return value === true;
 }
 
 async function fetchJson(url, options = {}) {
@@ -168,6 +186,124 @@ function mobileDeviceAcceptanceReadinessFromStatus(status, readiness, diagnostic
   };
 }
 
+function mobileBrowserAcceptanceBundleCandidate(status, readiness, diagnostics) {
+  // 新 bundle 可能来自 status、phone_readiness 或 diagnostics；按后端显式字段优先消费。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const candidates = [
+    status?.mobile_browser_acceptance_bundle,
+    status?.phone_browser_acceptance_bundle,
+    status?.mobile_acceptance_evidence_bundle,
+    readiness?.mobile_browser_acceptance_bundle,
+    readiness?.phone_browser_acceptance_bundle,
+    readiness?.mobile_acceptance_evidence_bundle,
+    diagnostics?.mobile_browser_acceptance_bundle,
+    diagnostics?.phone_browser_acceptance_bundle,
+    diagnostics?.mobile_acceptance_evidence_bundle,
+    diagnosticsReadiness.mobile_browser_acceptance_bundle,
+    diagnosticsReadiness.phone_browser_acceptance_bundle,
+    diagnosticsReadiness.mobile_acceptance_evidence_bundle,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function bundleFieldSummary(value, fallback = "not_proven") {
+  // 字段可能是安全字符串，也可能是状态对象；只抽取摘要键，不展示原始对象。
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return safeBundleText(value, fallback);
+  }
+  if (value && typeof value === "object") {
+    return safeBundleText(
+      value.status || value.state || value.overall_status || value.safe_phone_copy || value.safe_summary,
+      fallback,
+    );
+  }
+  return fallback;
+}
+
+function notProvenList(value) {
+  // not_proven 是边界声明，不允许塞入路径、凭证、硬件参数或完整证据内容。
+  const list = Array.isArray(value) ? value : [];
+  const safe = list.map((item) => safeBundleText(item, "")).filter(Boolean);
+  if (safe.length) {
+    return safe.slice(0, 10);
+  }
+  return [
+    "真实手机设备/browser",
+    "production app",
+    "真实 PWA install prompt",
+    "真实云/4G",
+    "production DB/queue",
+    "Nav2/fixed-route",
+    "真实底盘运动",
+    "HIL",
+    "真实送达",
+  ];
+}
+
+function derivedMobileBrowserAcceptanceBundle(status, readiness, diagnostics) {
+  // 缺显式 bundle 时，从既有 phone-safe gate 派生 blocked 摘要，不能自行证明真机或生产入口。
+  const device = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, diagnostics);
+  const cloud = cloudReadinessSummaryFromStatus(status, readiness);
+  const offline = offlineResumeFromStatus(status, readiness);
+  const commandSafety = commandSafetyFromReadiness(readiness);
+  return {
+    missing: true,
+    schema: ACCEPTANCE_BUNDLE_SCHEMA,
+    schema_version: 1,
+    overall_status: "blocked",
+    production_app_ready: false,
+    safe_to_control: false,
+    viewport: bundleFieldSummary(device.viewport_status || device.viewport_gate || device.viewport, "not_proven"),
+    touch_target: bundleFieldSummary(device.touch_target_status || device.touch_gate || device.touch, "not_proven"),
+    pwa_install_prompt: bundleFieldSummary(device.pwa_install_prompt_status || device.pwa_status, "not_proven"),
+    offline_shell: bundleFieldSummary(offline.connection_state || device.offline_status || device.offline_gate, "not_proven"),
+    diagnostics: bundleFieldSummary(device.diagnostics_status || device.diagnostics_gate, latestDiagnostics ? "phone_safe_visible" : "not_proven"),
+    cloud_gate: bundleFieldSummary(cloud.overall_status || cloud.preflight_status, "blocked"),
+    action_gate: bundleFieldSummary(commandSafety.global_block_reason, "blocked_by_design"),
+    ack_semantics: ACK_PROCESSING_COPY,
+    client_timestamp: new Date().toISOString(),
+    safe_phone_copy: "浏览器验收包 blocked-by-design：当前只有 Docker/local 软件证明，没有真实手机设备/browser、production app 或真实 PWA install prompt。",
+    recovery_hint: "请在真实手机浏览器和 production app 入口完成验收；在此之前 Start、Confirm、Cancel fail closed，Diagnostics 和 Support Handoff 可用。",
+    evidence_boundary: MOBILE_BROWSER_ACCEPTANCE_BOUNDARY,
+    not_proven: notProvenList(device.not_proven),
+  };
+}
+
+function normalizeMobileBrowserAcceptanceBundle(value, fallback) {
+  // 即使后端给了 bundle，前端也只保留白名单字段，复制包不带原始响应结构。
+  return {
+    missing: value?.missing === true,
+    schema: ACCEPTANCE_BUNDLE_SCHEMA,
+    schema_version: 1,
+    overall_status: safeBundleText(value?.overall_status || value?.status || fallback.overall_status, "blocked"),
+    production_app_ready: safeBundleBoolean(value?.production_app_ready),
+    safe_to_control: safeBundleBoolean(value?.safe_to_control),
+    viewport: bundleFieldSummary(value?.viewport, fallback.viewport),
+    touch_target: bundleFieldSummary(value?.touch_target, fallback.touch_target),
+    pwa_install_prompt: bundleFieldSummary(value?.pwa_install_prompt, fallback.pwa_install_prompt),
+    offline_shell: bundleFieldSummary(value?.offline_shell, fallback.offline_shell),
+    diagnostics: bundleFieldSummary(value?.diagnostics, fallback.diagnostics),
+    cloud_gate: bundleFieldSummary(value?.cloud_gate, fallback.cloud_gate),
+    action_gate: bundleFieldSummary(value?.action_gate, fallback.action_gate),
+    ack_semantics: safeBundleText(value?.ack_semantics, ACK_PROCESSING_COPY),
+    client_timestamp: new Date().toISOString(),
+    safe_phone_copy: safeBundleText(value?.safe_phone_copy || value?.safe_summary, fallback.safe_phone_copy),
+    recovery_hint: safeBundleText(value?.recovery_hint || value?.retry_hint, fallback.recovery_hint),
+    evidence_boundary: safeBundleText(value?.evidence_boundary, MOBILE_BROWSER_ACCEPTANCE_BOUNDARY),
+    not_proven: notProvenList(value?.not_proven || fallback.not_proven),
+  };
+}
+
+function mobileBrowserAcceptanceBundleFromStatus(status, readiness, diagnostics) {
+  const fallback = derivedMobileBrowserAcceptanceBundle(status, readiness, diagnostics);
+  const provided = mobileBrowserAcceptanceBundleCandidate(status, readiness, diagnostics);
+  return provided
+    ? normalizeMobileBrowserAcceptanceBundle(provided, fallback)
+    : fallback;
+}
+
 function cloudSummaryAllowsPrimaryActions(summary) {
   // Docker/local proof 不能自动开控制动作；只有后端显式 phone-safe 放行才允许继续。
   if (!summary || summary.missing === true) {
@@ -188,6 +324,16 @@ function mobileDeviceAcceptanceAllowsPrimaryActions(summary) {
     return summary.overall_status !== "blocked";
   }
   return summary.primary_actions_enabled === true &&
+    summary.production_app_ready === true &&
+    summary.overall_status !== "blocked";
+}
+
+function mobileBrowserAcceptanceBundleAllowsPrimaryActions(summary) {
+  // 浏览器验收包是新增最终 gate；blocked-by-design 时不能被其他权限绕过。
+  if (!summary || summary.missing === true) {
+    return false;
+  }
+  return summary.safe_to_control === true &&
     summary.production_app_ready === true &&
     summary.overall_status !== "blocked";
 }
@@ -412,8 +558,10 @@ function renderCommandSafety(status) {
   const commandSafety = commandSafetyFromReadiness(readiness);
   const cloudSummary = cloudReadinessSummaryFromStatus(status, readiness);
   const mobileDeviceAcceptance = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics);
+  const mobileBrowserAcceptance = mobileBrowserAcceptanceBundleFromStatus(status, readiness, latestDiagnostics);
   const cloudAllowsPrimaryActions = cloudSummaryAllowsPrimaryActions(cloudSummary);
   const mobileDeviceAllowsPrimaryActions = mobileDeviceAcceptanceAllowsPrimaryActions(mobileDeviceAcceptance);
+  const browserBundleAllowsPrimaryActions = mobileBrowserAcceptanceBundleAllowsPrimaryActions(mobileBrowserAcceptance);
   const actions = commandSafety.actions && typeof commandSafety.actions === "object" ? commandSafety.actions : {};
   $("commandSafetyCopy").textContent = safeText(commandSafety.safe_phone_copy, "主操作保持禁用。");
   $("ackCopy").textContent = safeText(
@@ -432,6 +580,7 @@ function renderCommandSafety(status) {
     const enabled = actionGate.enabled === true && permitted === true &&
       cloudAllowsPrimaryActions &&
       mobileDeviceAllowsPrimaryActions &&
+      browserBundleAllowsPrimaryActions &&
       (startGate ? startGate.startEnabled : true);
     // blocked、离线、等待 ACK、人工接管都会通过 command_safety 关闭按钮。
     button.disabled = !enabled;
@@ -444,7 +593,8 @@ function renderCommandSafety(status) {
       : safeText(actionGate.blocking_reason || commandSafety.global_block_reason, "blocked");
     const cloudReason = cloudAllowsPrimaryActions ? "" : "；云中转摘要未放行主操作。";
     const mobileDeviceReason = mobileDeviceAllowsPrimaryActions ? "" : "；手机验收准备未放行主操作。";
-    item.textContent = `${actionMeta.label}：${enabled ? "可操作" : `${reason}${cloudReason}${mobileDeviceReason}`}`;
+    const browserBundleReason = browserBundleAllowsPrimaryActions ? "" : "；浏览器验收包未放行主操作。";
+    item.textContent = `${actionMeta.label}：${enabled ? "可操作" : `${reason}${cloudReason}${mobileDeviceReason}${browserBundleReason}`}`;
     reasons.appendChild(item);
   });
 
@@ -513,11 +663,12 @@ function deriveOperationLogEntries(status, readiness) {
   pushDerivedEvent(entries, "操作安全", commandSafetyFromReadiness(readiness));
   pushDerivedEvent(entries, "任务流程", taskFlowObjectFromStatus(status, readiness));
   pushDerivedEvent(entries, "云中转状态", cloudReadinessSummaryFromStatus(status, readiness));
+  pushDerivedEvent(entries, "浏览器验收包", mobileBrowserAcceptanceBundleFromStatus(status, readiness, latestDiagnostics));
   pushDerivedEvent(entries, "离线恢复", offlineResumeFromStatus(status, readiness));
   pushDerivedEvent(entries, "支持交接", status?.phone_support_bundle || readiness?.phone_support_bundle);
   pushDerivedEvent(entries, "语音提示", voicePromptFromStatus(status, readiness));
   pushDerivedEvent(entries, "手机验收准备", mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics));
-  return entries.slice(0, 6);
+  return entries.slice(0, 7);
 }
 
 function renderCloudReadiness(status) {
@@ -572,6 +723,60 @@ function renderMobileDeviceAcceptance(status) {
     summary.recovery_hint || summary.retry_hint,
     "缺少真实手机验收摘要时，Start、Confirm、Cancel 保持禁用。",
   );
+}
+
+function bundleCopyPayload(bundle) {
+  // 复制内容只包含验收白名单；这是支持交接和单测共用的稳定 contract。
+  return {
+    schema: bundle.schema,
+    schema_version: bundle.schema_version,
+    overall_status: bundle.overall_status,
+    production_app_ready: bundle.production_app_ready,
+    safe_to_control: bundle.safe_to_control,
+    viewport: bundle.viewport,
+    touch_target: bundle.touch_target,
+    pwa_install_prompt: bundle.pwa_install_prompt,
+    offline_shell: bundle.offline_shell,
+    diagnostics: bundle.diagnostics,
+    cloud_gate: bundle.cloud_gate,
+    action_gate: bundle.action_gate,
+    ack_semantics: bundle.ack_semantics,
+    client_timestamp: bundle.client_timestamp,
+    safe_phone_copy: bundle.safe_phone_copy,
+    recovery_hint: bundle.recovery_hint,
+    evidence_boundary: bundle.evidence_boundary,
+    not_proven: bundle.not_proven,
+  };
+}
+
+function renderMobileBrowserAcceptanceBundle(status) {
+  const readiness = readinessFromStatus(status);
+  const bundle = mobileBrowserAcceptanceBundleFromStatus(status, readiness, latestDiagnostics);
+  const allowed = mobileBrowserAcceptanceBundleAllowsPrimaryActions(bundle);
+  const badge = $("mobileBrowserAcceptanceBadge");
+  latestAcceptanceBundle = bundle;
+
+  badge.className = "gate-badge";
+  badge.classList.add(allowed ? "gate-ready" : "gate-blocked");
+  badge.textContent = allowed ? "验收包允许" : "验收包阻塞";
+  $("mobileBrowserAcceptanceCopy").textContent = bundle.safe_phone_copy;
+  $("mobileBrowserOverall").textContent = bundle.overall_status;
+  $("mobileBrowserProductionApp").textContent = bundle.production_app_ready
+    ? "production_app_ready=true"
+    : "production_app_ready=false / 未证明";
+  $("mobileBrowserSafeControl").textContent = bundle.safe_to_control
+    ? "safe_to_control=true"
+    : "safe_to_control=false / fail closed";
+  $("mobileBrowserViewportTouch").textContent = `viewport=${bundle.viewport} / touch=${bundle.touch_target}`;
+  $("mobileBrowserPwaOffline").textContent = `PWA=${bundle.pwa_install_prompt} / offline=${bundle.offline_shell}`;
+  $("mobileBrowserDiagnosticsCloud").textContent = `diagnostics=${bundle.diagnostics} / cloud=${bundle.cloud_gate}`;
+  $("mobileBrowserActionGate").textContent = bundle.action_gate;
+  $("mobileBrowserAck").textContent = bundle.ack_semantics;
+  $("mobileBrowserTimestamp").textContent = bundle.client_timestamp;
+  $("mobileBrowserBoundary").textContent = bundle.evidence_boundary;
+  $("mobileBrowserRecoveryHint").textContent = bundle.recovery_hint;
+  $("mobileBrowserNotProven").textContent = bundle.not_proven.join("、");
+  $("mobileBrowserSafeCopy").textContent = JSON.stringify(bundleCopyPayload(bundle), null, 2);
 }
 
 function renderOperationLog(status) {
@@ -734,6 +939,7 @@ function renderOfflineFailure() {
   $("operationSupportEntry").textContent = "离线时可保留恢复提示，但不发送控制请求。";
   renderCloudReadiness({});
   renderMobileDeviceAcceptance({});
+  renderMobileBrowserAcceptanceBundle({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -759,6 +965,7 @@ function renderStatus(status) {
   renderReadiness(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
+  renderMobileBrowserAcceptanceBundle(status);
   renderTaskFlow(status);
   renderStartConfirmation(status);
   renderCommandSafety(status);
@@ -853,6 +1060,7 @@ async function openDiagnostics() {
   try {
     latestDiagnostics = await fetchJson(ENDPOINTS.diagnostics);
     renderMobileDeviceAcceptance(latestStatus || {});
+    renderMobileBrowserAcceptanceBundle(latestStatus || {});
     renderCommandSafety(latestStatus || {});
     renderDiagnosticsSummary(latestDiagnostics);
   } catch (_error) {
@@ -923,6 +1131,17 @@ async function submitAction(actionName) {
 
 function wireEvents() {
   $("diagnosticsButton").addEventListener("click", openDiagnostics);
+  $("copyAcceptanceBundleButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(bundleCopyPayload(latestAcceptanceBundle || {}), null, 2);
+    $("mobileBrowserSafeCopy").textContent = payload;
+    // Clipboard 权限不是验收前提；pre 区域始终保留可手动复制的脱敏内容。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("mobileBrowserCopyStatus").textContent = "已复制脱敏验收包。";
+    } catch (_error) {
+      $("mobileBrowserCopyStatus").textContent = "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
   $("supportButton").addEventListener("click", () => {
     const bundle = latestStatus?.phone_support_bundle || latestStatus?.phone_readiness?.phone_support_bundle || {};
     $("supportSafeCopy").textContent = safeText(bundle.safe_copy, "暂无脱敏支持摘要。");

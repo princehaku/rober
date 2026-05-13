@@ -109,6 +109,65 @@
         <p id="mobileDeviceRecoveryHint" class="hint">缺少真实设备/browser 验收摘要时，主操作保持禁用。</p>
       </section>
 
+      <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
+        <div class="section-heading">
+          <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>
+          <span id="mobileBrowserAcceptanceBadge" class="gate-badge gate-blocked">验收包阻塞</span>
+        </div>
+        <p id="mobileBrowserAcceptanceCopy" class="message">
+          等待后端提供 phone-safe 浏览器验收包；缺失时按 blocked-by-design 展示。
+        </p>
+        <dl class="acceptance-bundle-grid">
+          <div>
+            <dt>Overall</dt>
+            <dd id="mobileBrowserOverall">blocked</dd>
+          </div>
+          <div>
+            <dt>Production App</dt>
+            <dd id="mobileBrowserProductionApp">production_app_ready=false / 未证明</dd>
+          </div>
+          <div>
+            <dt>Safe Control</dt>
+            <dd id="mobileBrowserSafeControl">safe_to_control=false / fail closed</dd>
+          </div>
+          <div>
+            <dt>Viewport / Touch</dt>
+            <dd id="mobileBrowserViewportTouch">未证明</dd>
+          </div>
+          <div>
+            <dt>PWA / Offline</dt>
+            <dd id="mobileBrowserPwaOffline">未证明</dd>
+          </div>
+          <div>
+            <dt>Diagnostics / Cloud</dt>
+            <dd id="mobileBrowserDiagnosticsCloud">未证明</dd>
+          </div>
+          <div>
+            <dt>Action Gate</dt>
+            <dd id="mobileBrowserActionGate">blocked-by-design</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileBrowserAck">ACK 只代表 accepted/processing。</dd>
+          </div>
+          <div>
+            <dt>Client Timestamp</dt>
+            <dd id="mobileBrowserTimestamp">等待生成</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileBrowserBoundary">software_proof_docker_mobile_browser_acceptance_bundle_gate</dd>
+          </div>
+        </dl>
+        <p id="mobileBrowserRecoveryHint" class="hint">验收包 blocked 时 Start、Confirm、Cancel 保持关闭。</p>
+        <p id="mobileBrowserNotProven" class="hint">真实手机设备/browser、production app、真实 PWA install prompt 未证明。</p>
+        <div class="bundle-copy-row">
+          <button id="copyAcceptanceBundleButton" type="button">复制验收包</button>
+          <span id="mobileBrowserCopyStatus" class="hint">复制内容只包含脱敏 phone-safe 字段。</span>
+        </div>
+        <pre id="mobileBrowserSafeCopy" class="safe-copy" aria-label="脱敏浏览器验收包">暂无浏览器验收包。</pre>
+      </section>
+
       <section class="action-panel" aria-label="主操作">
         <div class="start-confirmation" aria-labelledby="startGateTitle">
           <div class="section-heading">
