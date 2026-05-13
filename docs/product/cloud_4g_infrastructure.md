@@ -38,6 +38,8 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 
 本轮 `2026.05.13_12-13_cloud-db-queue-external-probe-gate` 新增 cloud DB/queue external probe bundle gate，证据边界是 `software_proof_docker_cloud_db_queue_external_probe_gate`。Artifact schema 为 `trashbot.cloud_db_queue_external_probe_bundle`、`schema_version=1`，只保存 DB connectivity、queue connectivity、migration check、worker check、multi-instance consistency、ordering、transaction isolation、backup/recovery 的枚举化外部探测入口状态、`redaction_status`、`safe_summary`、`retry_hint` 和 `not_proven`。当前本机只有 Docker，没有真实云、真实 DB/queue 或凭证，因此有效 artifact 也必须保持 `production_ready=false`、`overall_status=blocked`、`external_probe_complete=false`；preflight 只能说明 schema、checksum、redaction 和 consumption 可验证，不得声明真实 production DB/queue、真实队列顺序、真实事务隔离、生产备份/灾备、多实例一致性、真实云、真实 4G/SIM、OSS/CDN 实流量、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 
+本轮 `2026.05.13_14-15_oss-cdn-live-probe-gate` 新增 OSS/CDN live probe gate，证据边界是 `software_proof_docker_oss_cdn_live_probe_gate`。Artifact schema 为 `trashbot.oss_cdn_live_probe`、`schema_version=1`，可复用现有 `trashbot.oss_cdn_manifest` artifact 作为对象输入，并只保存 endpoint path、object key hash、HTTP 状态枚举、object count、`redaction_status`、`safe_summary`、`retry_hint` 和 `not_proven`。当前本机只有 Docker，没有真实 OSS/CDN 凭证、真实云或 4G/SIM；因此即使本地或 future mock HTTP HEAD 返回 2xx，有效 artifact 也必须保持 `production_ready=false`、`overall_status=blocked`、`live_probe_complete=false`。该 gate 只证明 live probe artifact、脱敏规则和 preflight consumption 可验证，不得声明真实 OSS 上传、STS 签发、CDN 回源、真实 CDN live traffic、真实云、真实 4G/SIM、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+
 ## 云端基线规格
 
 目标服务端基线：
@@ -149,6 +151,25 @@ Operator/API 消费 manifest artifact 时输出的是更小的 phone-safe summar
 
 该 summary 字段包括 `schema=trashbot.oss_cdn_manifest`、`schema_version=1`、`object_count`、`cdn_url_rule`、`evidence_boundary=software_proof_docker_phone_manifest_consumption`、`safe_summary`、`retry_hint`、`updated_at`、`staleness` 和 `not_proven`。它不得返回 full manifest、object key、checksum、bearer token、Authorization header、OSS secret、AK/SK、root password、raw state path、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`。
 
+OSS/CDN live probe gate 复用 manifest artifact 作为输入，并生成更小的 probe artifact：
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --write-oss-cdn-live-probe-artifact /tmp/trashbot_oss_cdn_live_probe.json \
+  --oss-cdn-manifest-artifact /tmp/trashbot_oss_cdn_manifest.json
+```
+
+Preflight 消费 live probe artifact：
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_ARTIFACT=/tmp/trashbot_oss_cdn_live_probe.json \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
+```
+
+Artifact 必须包含 `schema=trashbot.oss_cdn_live_probe`、`schema_version=1`、`evidence_boundary=software_proof_docker_oss_cdn_live_probe_gate`、`object_count`、`probe_results`、`redaction_status`、`not_proven` 和 `checksum`。`probe_results` 只允许保存 endpoint path、object key hash、HTTP status、reachable、method 和 latency，不保存完整 CDN URL、完整 object key、Authorization header、bearer token、OSS secret、AK/SK、credential-bearing URL、本地路径或响应体。Preflight 中有效 artifact 会新增 `oss_cdn_live_probe` pass check，但仍必须保持 `production_ready=false`、`overall_status=blocked`、`live_probe_complete=false`；它是 `software_proof_docker_oss_cdn_live_probe_gate`，不是真实 CDN live traffic 证据。
+
 ## 凭证边界
 
 服务端、CI 和上车机器人均通过环境变量或安全配置注入凭证：
@@ -160,6 +181,7 @@ Operator/API 消费 manifest artifact 时输出的是更小的 phone-safe summar
 - `TRASHBOT_REMOTE_CLOUD_STATE_BACKEND`：`file` 或 `sqlite`。未知值会降级为 phone-safe 的 proof 口径，不回显原始 env 文本。
 - `TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT`：可选的本地 backup/restore drill artifact 路径，只供 preflight 验证 schema/checksum 和软件演练状态；不得作为生产备份策略或真实 DR 证据。
 - `TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT`：可选的本地 OSS/CDN manifest artifact 路径，只供 preflight 验证对象引用 schema、prefix、CDN URL 和 checksum；不得作为真实 OSS 上传、STS 或 CDN 回源证据。
+- `TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_ARTIFACT`：可选的本地 OSS/CDN live probe artifact 路径，只供 preflight 消费 endpoint path、object key hash 和 HTTP 状态摘要；不得作为真实 OSS 上传、STS、CDN 回源、真实 CDN live traffic 或 4G 证据。
 - `TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT`：可选的本地 network recovery drill artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为真实云、真实 4G、生产 incident recovery 或真实送达证据。
 - `TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT`：可选的本地 credential rotation artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为生产 token rotate、真实 STS 签发、真实 OSS 上传、生产账号 provisioning 或真实审计日志证据。
 - `TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT`：可选的本地 provisioning audit artifact 路径，只供 preflight、operator status 和 diagnostics 消费脱敏摘要；不得作为生产账号发放、真实 STS 签发、真实审计日志、真实云或真实 4G 证据。

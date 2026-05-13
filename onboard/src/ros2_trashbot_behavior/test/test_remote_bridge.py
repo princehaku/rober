@@ -870,6 +870,74 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_oss_cdn_live_probe_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "oss_cdn_live_probe": {
+                    "schema": "trashbot.oss_cdn_live_probe.v1",
+                    "overall_status": "blocked",
+                    "production_ready": False,
+                    "delivery_success": True,
+                },
+            },
+            "command_response": {
+                "oss_cdn_live_probe_artifact": {
+                    "schema": "trashbot.oss_cdn_live_probe_artifact.v1",
+                    "evidence_boundary": "software_proof_docker_oss_cdn_live_probe_gate",
+                    "live_probe_complete": False,
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "credential_url": "https://user:secret@cdn.example.invalid/rober/private",
+                },
+                "cdn_live_probe": {
+                    "schema": "trashbot.cdn_live_probe.v1",
+                    "probe_status": "not_proven",
+                    "next_action": "confirm_dropoff",
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            },
+            "ack_response": {
+                "oss_cdn_live_probe": {
+                    "schema": "trashbot.oss_cdn_live_probe.v1",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+                "cdn_live_probe": {"probe_status": "ready"},
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-oss-cdn-live-probe-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-oss-cdn-live-probe-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-oss-cdn-live-probe-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # ACK 只表达 command envelope 处理结果，不能夹带 OSS/CDN live probe 或送达语义。
+        self.assertNotIn("oss_cdn_live_probe", encoded_ack)
+        self.assertNotIn("oss_cdn_live_probe_artifact", encoded_ack)
+        self.assertNotIn("cdn_live_probe", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("credential_url", encoded_ack)
+        self.assertNotIn("/cmd_vel", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("oss_cdn_live_probe", encoded_status)
+        self.assertNotIn("oss_cdn_live_probe_artifact", encoded_status)
+        self.assertNotIn("cdn_live_probe", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_cloud_readiness_summary_metadata_only_response_does_not_move_robot(self):
         metadata_cases = (
             (
@@ -2182,6 +2250,85 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertNotIn("amqp://", encoded_status)
             self.assertNotIn("/cmd_vel", encoded_status)
             self.assertNotIn("Authorization", encoded_status)
+
+    def test_metadata_only_oss_cdn_live_probe_response_does_not_start_ack_or_persist_cursor(self):
+        metadata_cases = (
+            (
+                "oss_cdn_live_probe",
+                {
+                    "schema": "trashbot.oss_cdn_live_probe.v1",
+                    "schema_version": 1,
+                    "evidence_boundary": "software_proof_docker_oss_cdn_live_probe_gate",
+                    "overall_status": "blocked",
+                    "production_ready": False,
+                    "live_probe_complete": False,
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-oss-cdn-live-probe",
+                    "delivery_success": True,
+                    "credential_url": "https://user:secret@cdn.example.invalid/rober/private",
+                },
+            ),
+            (
+                "oss_cdn_live_probe_artifact",
+                {
+                    "schema": "trashbot.oss_cdn_live_probe_artifact.v1",
+                    "safe_summary": "OSS/CDN live probe 只是手机/支持侧 readiness 元数据。",
+                    "object_key_hash": "sha256:redacted",
+                    "trigger_robot_action": "confirm_dropoff",
+                    "delivery_success": True,
+                    "Authorization": "Bearer must-not-leak",
+                },
+            ),
+            (
+                "cdn_live_probe",
+                {
+                    "schema": "trashbot.cdn_live_probe.v1",
+                    "probe_status": "blocked",
+                    "next_action": "cancel",
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    self.backend.calls.clear()
+                    self.cloud.status_posts.clear()
+                    self.cloud.ack_posts.clear()
+                    self.cloud.get_paths.clear()
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        metadata_name: metadata,
+                        "preflight": {"production_ready": False, "overall_status": "blocked"},
+                    }
+
+                    handled = worker.poll_once()
+
+                    # 只有 OSS/CDN live probe metadata 时，robot 侧必须保持 command/cursor fail-closed。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("preflight", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("credential_url", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
 
     def test_public_ingress_tls_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({

@@ -45,6 +45,7 @@ CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_external_p
 CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_public_ingress_tls_gate"
 CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_db_queue_config_gate"
 CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_db_queue_external_probe_gate"
+OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_oss_cdn_live_probe_gate"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -82,6 +83,8 @@ CLOUD_DB_QUEUE_CONFIG_SCHEMA = "trashbot.cloud_db_queue_config_gate"
 CLOUD_DB_QUEUE_CONFIG_SCHEMA_VERSION = 1
 CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA = "trashbot.cloud_db_queue_external_probe_bundle"
 CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA_VERSION = 1
+OSS_CDN_LIVE_PROBE_SCHEMA = "trashbot.oss_cdn_live_probe"
+OSS_CDN_LIVE_PROBE_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -279,6 +282,20 @@ CLOUD_DB_QUEUE_EXTERNAL_PROBE_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+OSS_CDN_LIVE_PROBE_NOT_PROVEN = [
+    "real_oss_upload",
+    "sts_issuance",
+    "cdn_origin_fetch",
+    "lifecycle_policy",
+    "production_account",
+    "real_cloud",
+    "real_4g_sim",
+    "https_tls_public_ingress",
+    "production_db_or_queue",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -304,6 +321,7 @@ PHONE_COPY = {
     "cloud_public_ingress_tls_blocked": "公网入口/TLS 配置 gate 仍未通过外部实证，请补齐 DNS、反向代理和防火墙证据。",
     "cloud_db_queue_config_blocked": "生产 DB/queue 配置 gate 仍未通过外部实证，请补齐真实数据库和队列证据。",
     "cloud_db_queue_external_probe_blocked": "生产 DB/queue 外部探测 bundle 仍未通过实证，请补齐真实数据库和队列探测证据。",
+    "oss_cdn_live_probe_blocked": "OSS/CDN live probe gate 未通过校验，请重新生成后再试。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -3977,6 +3995,233 @@ def oss_cdn_manifest_summary(artifact_path):
         }
 
 
+def _oss_cdn_live_probe_forbidden_markers(payload):
+    # live probe artifact 只能留下枚举、HTTP 状态和摘要，不能把 URL、凭证或本机路径写进证据。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "secret",
+        "password",
+        "access_key",
+        "ak/sk",
+        "root password",
+        "http://",
+        "https://",
+        "://",
+        "credential-bearing",
+        "raw state path",
+        "state path",
+        "/tmp/",
+        "/etc/",
+        "/dev/",
+        "response body",
+        "serial",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+        "traceback",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def _oss_cdn_object_key_digest(object_key):
+    # 对象 key 本身可能暴露任务结构；live probe 只保留摘要便于对账。
+    return "sha256:" + hashlib.sha256(str(object_key or "").encode("utf-8")).hexdigest()[:16]
+
+
+def _probe_oss_cdn_object(cdn_url, *, timeout_sec=2.0):
+    # 真实请求只在生成 artifact 时发生；artifact 里不保存 URL、header 或响应体。
+    started = time.monotonic()
+    status_code = 0
+    reachable = False
+    try:
+        request = urllib.request.Request(str(cdn_url), method="HEAD")
+        with urllib.request.urlopen(request, timeout=float(timeout_sec)) as response:
+            status_code = int(response.status)
+            reachable = True
+    except urllib.error.HTTPError as exc:
+        status_code = int(exc.code)
+        reachable = True
+    except (OSError, ValueError, TimeoutError):
+        reachable = False
+    passed = reachable and 200 <= status_code < 400
+    return {
+        "status": "passed" if passed else "blocked",
+        "code": "http_head_observed" if passed else "http_head_not_observed",
+        "http_status": status_code,
+        "reachable": reachable,
+        "method": "HEAD",
+        "latency_ms": int((time.monotonic() - started) * 1000),
+    }
+
+
+def build_oss_cdn_live_probe_payload(manifest_artifact_path, *, generated_at=None, timeout_sec=2.0, probe_fn=None):
+    """用 manifest 对象引用生成 OSS/CDN live probe gate；证据仍保持 Docker/local software proof。"""
+    manifest = _load_json_file(manifest_artifact_path, "manifest artifact")
+    manifest_summary = validate_oss_cdn_manifest_payload(manifest)
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    probe_fn = _probe_oss_cdn_object if probe_fn is None else probe_fn
+    probe_results = []
+    for item in manifest.get("objects") or []:
+        cdn_url = str(item.get("cdn_url") or "")
+        object_key = str(item.get("object_key") or "")
+        parsed = urlparse(cdn_url)
+        probe = probe_fn(cdn_url, timeout_sec=timeout_sec)
+        # endpoint path 是公开只读 CDN 路径；object key 只留 hash，避免把完整对象名扩散到 preflight。
+        probe_results.append(
+            {
+                "endpoint_path": parsed.path or "/",
+                "object_key_sha256": _oss_cdn_object_key_digest(object_key),
+                "status": str(probe.get("status") or "blocked"),
+                "code": str(probe.get("code") or "http_head_not_observed"),
+                "http_status": int(probe.get("http_status") or 0),
+                "reachable": bool(probe.get("reachable")),
+                "method": str(probe.get("method") or "HEAD"),
+                "latency_ms": int(probe.get("latency_ms") or 0),
+            }
+        )
+    all_probe_observed = bool(probe_results) and all(result.get("status") == "passed" for result in probe_results)
+    body = {
+        "schema": OSS_CDN_LIVE_PROBE_SCHEMA,
+        "schema_version": OSS_CDN_LIVE_PROBE_SCHEMA_VERSION,
+        "evidence_boundary": OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY,
+        "generated_at": generated_value,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "live_probe_complete": False,
+        "probe_source": "oss_cdn_manifest_artifact",
+        "manifest_schema": OSS_CDN_MANIFEST_SCHEMA,
+        "manifest_schema_version": OSS_CDN_MANIFEST_VERSION,
+        "manifest_evidence_boundary": OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY,
+        "object_count": int(manifest_summary.get("object_count") or 0),
+        "probe_results": safe_value(probe_results),
+        "object_probe_observed": bool(all_probe_observed),
+        "not_proven": list(OSS_CDN_LIVE_PROBE_NOT_PROVEN),
+        "safe_summary": "OSS/CDN live probe gate 已生成；当前只证明 probe artifact、redaction 和 preflight consumption。",
+        "retry_hint": "run_real_oss_upload_and_cdn_fetch_from_production_network_before_claiming_live_traffic",
+        "redaction_status": {
+            "status": "pass",
+            "full_urls_recorded": False,
+            "object_keys_recorded": False,
+            "credential_headers_recorded": False,
+            "response_bodies_recorded": False,
+            "local_paths_recorded": False,
+        },
+    }
+    forbidden = _oss_cdn_live_probe_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("OSS/CDN live probe artifact contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_oss_cdn_live_probe_payload(artifact):
+    # validator 只返回 preflight 需要的小摘要；完整 probe 也不含 URL、header 或响应体。
+    if not isinstance(artifact, dict):
+        raise ValueError("OSS/CDN live probe artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != OSS_CDN_LIVE_PROBE_SCHEMA:
+        raise ValueError("OSS/CDN live probe schema mismatch")
+    if artifact.get("schema_version") != OSS_CDN_LIVE_PROBE_SCHEMA_VERSION:
+        raise ValueError("OSS/CDN live probe schema version mismatch")
+    if artifact.get("evidence_boundary") != OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY:
+        raise ValueError("OSS/CDN live probe evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("OSS/CDN live probe checksum mismatch")
+    if artifact.get("production_ready") is not False or artifact.get("overall_status") != "blocked":
+        raise ValueError("OSS/CDN live probe must stay production blocked")
+    if artifact.get("live_probe_complete") is not False:
+        raise ValueError("OSS/CDN live probe must not claim real live traffic completion")
+    results = artifact.get("probe_results")
+    if not isinstance(results, list) or not results:
+        raise ValueError("OSS/CDN live probe results must be a non-empty list")
+    for result in results:
+        if not isinstance(result, dict):
+            raise ValueError("OSS/CDN live probe result must be an object")
+        if str(result.get("status") or "") not in {"passed", "blocked"}:
+            raise ValueError("OSS/CDN live probe status mismatch")
+        endpoint_path = str(result.get("endpoint_path") or "")
+        digest = str(result.get("object_key_sha256") or "")
+        if not endpoint_path.startswith("/") or "://" in endpoint_path:
+            raise ValueError("OSS/CDN live probe endpoint path mismatch")
+        if not digest.startswith("sha256:") or len(digest) < len("sha256:") + 16:
+            raise ValueError("OSS/CDN live probe object digest missing")
+    redaction = artifact.get("redaction_status")
+    if not isinstance(redaction, dict) or redaction.get("status") != "pass":
+        raise ValueError("OSS/CDN live probe redaction status missing")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in OSS_CDN_LIVE_PROBE_NOT_PROVEN if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("OSS/CDN live probe not_proven list is incomplete")
+    safe_summary = str(artifact.get("safe_summary") or "")
+    retry_hint = str(artifact.get("retry_hint") or "")
+    if not safe_summary or not retry_hint:
+        raise ValueError("OSS/CDN live probe summary missing")
+    forbidden = _oss_cdn_live_probe_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("OSS/CDN live probe artifact contains forbidden phone-unsafe markers")
+    return {
+        "ok": True,
+        "schema": OSS_CDN_LIVE_PROBE_SCHEMA,
+        "schema_version": OSS_CDN_LIVE_PROBE_SCHEMA_VERSION,
+        "evidence_boundary": OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "live_probe_complete": False,
+        "object_count": int(artifact.get("object_count") or len(results)),
+        "probe_count": len(results),
+        "object_probe_observed": bool(artifact.get("object_probe_observed")),
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "generated_at": str(artifact.get("generated_at") or ""),
+        "redaction_status": safe_value(redaction),
+        "not_proven": list(OSS_CDN_LIVE_PROBE_NOT_PROVEN),
+    }
+
+
+def create_oss_cdn_live_probe_artifact(artifact_path, manifest_artifact_path, *, timeout_sec=2.0):
+    # CLI 写入的 live probe artifact 复用 manifest 输入，但不会把 manifest 路径或对象 key 原文写入结果。
+    artifact = build_oss_cdn_live_probe_payload(manifest_artifact_path, timeout_sec=timeout_sec)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_oss_cdn_live_probe_payload(artifact)
+    return {
+        "ok": True,
+        "oss_cdn_live_probe_status": "blocked",
+        "evidence_boundary": OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(OSS_CDN_LIVE_PROBE_NOT_PROVEN),
+    }
+
+
+def oss_cdn_live_probe_summary(artifact_path):
+    # 失败摘要不回显 artifact 路径、manifest 路径、URL 或底层 urllib 异常。
+    try:
+        artifact = _load_json_file(artifact_path, "OSS/CDN live probe artifact")
+        return validate_oss_cdn_live_probe_payload(artifact)
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "oss_cdn_live_probe_invalid",
+            "safe_summary": _safe_error_reason(exc),
+            "retry_hint": "重新生成 OSS/CDN live probe artifact 后重跑 preflight。",
+            "not_proven": list(OSS_CDN_LIVE_PROBE_NOT_PROVEN),
+        }
+
+
 def _phone_manifest_base(state, safe_summary, retry_hint):
     # 手机摘要使用独立 proof 边界，避免把上一轮 artifact proof 误读成真实 OSS/CDN 可达。
     return {
@@ -4120,6 +4365,7 @@ def production_preflight_payload(env=None):
     state_backend_safe = _state_backend_from_env(env)
     backup_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT")
     oss_cdn_manifest_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT")
+    oss_cdn_live_probe_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_ARTIFACT")
     network_recovery_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT")
     credential_rotation_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT")
     provisioning_audit_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT")
@@ -4728,6 +4974,58 @@ def production_preflight_payload(env=None):
             )
         )
 
+    if oss_cdn_live_probe_artifact_path:
+        # live probe gate 只消费脱敏 artifact；即使 HTTP HEAD 有结果，也不能升级为真实 OSS/CDN 生产证明。
+        live_probe_summary = oss_cdn_live_probe_summary(oss_cdn_live_probe_artifact_path)
+        if live_probe_summary.get("ok"):
+            checks.append(
+                _check(
+                    "oss_cdn_live_probe",
+                    "pass",
+                    "local_oss_cdn_live_probe_artifact_valid",
+                    str(
+                        live_probe_summary.get("safe_summary")
+                        or "OSS/CDN live probe artifact 已通过 schema、checksum 和脱敏校验。"
+                    ),
+                    str(live_probe_summary.get("retry_hint") or "继续补真实 OSS 上传和 CDN 回源证据。"),
+                    {
+                        "artifact_schema": OSS_CDN_LIVE_PROBE_SCHEMA,
+                        "schema_version": OSS_CDN_LIVE_PROBE_SCHEMA_VERSION,
+                        "evidence_boundary": OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY,
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "live_probe_complete": False,
+                        "object_count": live_probe_summary.get("object_count"),
+                        "probe_count": live_probe_summary.get("probe_count"),
+                        "object_probe_observed": live_probe_summary.get("object_probe_observed"),
+                        "redaction_status": live_probe_summary.get("redaction_status"),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "oss_cdn_live_probe",
+                    "blocked",
+                    "oss_cdn_live_probe_artifact_invalid",
+                    str(live_probe_summary.get("safe_summary") or "OSS/CDN live probe artifact 不可用。"),
+                    str(live_probe_summary.get("retry_hint") or "重新生成 OSS/CDN live probe artifact 后重跑 preflight。"),
+                    {"artifact_present": True, "software_proof_only": True},
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "oss_cdn_live_probe",
+                "warning",
+                "oss_cdn_live_probe_artifact_missing",
+                "尚未提供 OSS/CDN live probe artifact，不能声明 CDN live traffic 软件证明入口。",
+                "生成 OSS/CDN live probe artifact，并用 TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_ARTIFACT 传给 preflight。",
+                {"artifact_present": False, "software_proof_only": True},
+            )
+        )
+
     if network_recovery_artifact_path:
         # recovery gate 只校验本地 artifact，不把 steps 或 state path 放进 preflight 输出。
         recovery_summary = network_recovery_artifact_summary(network_recovery_artifact_path)
@@ -5150,6 +5448,10 @@ def production_preflight_payload(env=None):
         check["name"] == "oss_cdn_manifest" and check["status"] == "pass"
         for check in checks
     )
+    local_oss_cdn_live_probe_ok = any(
+        check["name"] == "oss_cdn_live_probe" and check["status"] == "pass"
+        for check in checks
+    )
     local_network_recovery_ok = any(
         check["name"] == "network_recovery_drill" and check["status"] == "pass"
         for check in checks
@@ -5249,10 +5551,13 @@ def production_preflight_payload(env=None):
         not_proven.insert(16, "cloud_db_queue_config_external_proof")
     if not local_cloud_db_queue_external_probe_ok:
         not_proven.insert(16, "cloud_db_queue_external_probe_bundle")
+    if not local_oss_cdn_live_probe_ok:
+        not_proven.insert(16, "oss_cdn_live_probe_gate")
     payload = {
         "ok": production_ready,
         "software_proof_ready": bool(
-            local_network_recovery_ok
+            local_oss_cdn_live_probe_ok
+            or local_network_recovery_ok
             or local_credential_rotation_ok
             or local_provisioning_audit_ok
             or local_production_store_queue_ok
@@ -5268,7 +5573,9 @@ def production_preflight_payload(env=None):
         "service": "remote_cloud_relay",
         "protocol_version": PROTOCOL_VERSION,
         "evidence_boundary": (
-            PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY
+            OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY
+            if local_oss_cdn_live_probe_ok
+            else PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY
             if local_production_recovery_ok
             else CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY
             if local_cloud_db_queue_external_probe_ok
@@ -6475,6 +6782,11 @@ def main(argv=None):
         help="phone-safe OSS/CDN manifest artifact consumed by preflight",
     )
     parser.add_argument(
+        "--oss-cdn-live-probe-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_ARTIFACT", ""),
+        help="phone-safe OSS/CDN live probe artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--network-recovery-artifact",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT", ""),
         help="phone-safe network recovery drill artifact consumed by preflight",
@@ -6538,6 +6850,11 @@ def main(argv=None):
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
+    )
+    parser.add_argument(
+        "--write-oss-cdn-live-probe-artifact",
+        default="",
+        help="write a phone-safe OSS/CDN live probe artifact JSON and exit",
     )
     parser.add_argument(
         "--write-credential-rotation-artifact",
@@ -6604,6 +6921,12 @@ def main(argv=None):
         type=float,
         default=float(os.environ.get("TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_TIMEOUT", "2.0")),
         help="per-endpoint probe timeout in seconds",
+    )
+    parser.add_argument(
+        "--oss-cdn-live-probe-timeout",
+        type=float,
+        default=float(os.environ.get("TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_TIMEOUT", "2.0")),
+        help="per-object OSS/CDN live probe timeout in seconds",
     )
     parser.add_argument(
         "--credential-rotation-robot-id",
@@ -6714,6 +7037,10 @@ def main(argv=None):
         preflight_env = dict(os.environ)
         if args.oss_cdn_manifest_artifact:
             preflight_env["TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT"] = args.oss_cdn_manifest_artifact
+        if args.oss_cdn_live_probe_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_ARTIFACT"] = (
+                args.oss_cdn_live_probe_artifact
+            )
         if args.network_recovery_artifact:
             preflight_env["TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT"] = args.network_recovery_artifact
         if args.credential_rotation_artifact:
@@ -6765,6 +7092,21 @@ def main(argv=None):
             )
         except (ValueError, OSError) as exc:
             payload = phone_error("cloud_db_queue_external_probe_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
+    if args.write_oss_cdn_live_probe_artifact:
+        try:
+            manifest_artifact = args.oss_cdn_manifest_artifact or os.environ.get(
+                "TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT",
+                "",
+            )
+            payload = create_oss_cdn_live_probe_artifact(
+                args.write_oss_cdn_live_probe_artifact,
+                manifest_artifact,
+                timeout_sec=args.oss_cdn_live_probe_timeout,
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error("oss_cdn_live_probe_blocked", _safe_error_reason(exc))
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("ok") else 2
     if args.write_cloud_db_queue_config_artifact:

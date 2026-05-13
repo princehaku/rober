@@ -7,6 +7,7 @@ import time
 import unittest
 import urllib.error
 import urllib.request
+from unittest import mock
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -60,6 +61,8 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     NETWORK_RECOVERY_SCHEMA,
     OSS_CDN_BASE_URL,
     OSS_CDN_BUCKET,
+    OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY,
+    OSS_CDN_LIVE_PROBE_SCHEMA,
     OSS_CDN_MANIFEST_EVIDENCE_BOUNDARY,
     OSS_CDN_MANIFEST_SCHEMA,
     OSS_CDN_PHONE_MANIFEST_EVIDENCE_BOUNDARY,
@@ -90,6 +93,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     build_phone_credential_rotation_summary,
     build_phone_production_store_queue_summary,
     build_phone_production_recovery_summary,
+    build_oss_cdn_live_probe_payload,
     build_oss_cdn_manifest_payload,
     build_phone_network_recovery_summary,
     build_phone_oss_cdn_manifest_summary,
@@ -115,6 +119,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     credential_rotation_artifact_summary,
     create_credential_rotation_artifact,
     create_network_recovery_artifact,
+    create_oss_cdn_live_probe_artifact,
     create_oss_cdn_manifest_artifact,
     create_production_store_queue_artifact,
     create_production_recovery_artifact,
@@ -129,6 +134,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     create_cloud_public_ingress_tls_artifact,
     network_recovery_artifact_summary,
     network_recovery_drill_payload,
+    oss_cdn_live_probe_summary,
     oss_cdn_manifest_summary,
     production_preflight_payload,
     production_recovery_artifact_summary,
@@ -138,6 +144,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     restore_sqlite_backup_artifact,
     transaction_isolation_artifact_summary,
 )
+from ros2_trashbot_behavior import remote_cloud_relay as relay_module  # noqa: E402
 
 
 class RelayHttpClient:
@@ -1841,6 +1848,171 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             self.assertEqual(invalid_checks["oss_cdn_manifest"]["status"], "blocked")
             self.assertEqual(invalid_checks["oss_cdn_manifest"]["code"], "oss_cdn_manifest_artifact_invalid")
             self.assertNotIn(str(invalid_path), encoded)
+
+    def test_oss_cdn_live_probe_artifact_and_preflight_stay_blocked_by_design(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            manifest_path = root / "oss_cdn_manifest.json"
+            live_probe_path = root / "oss_cdn_live_probe.json"
+            create_oss_cdn_manifest_artifact(
+                manifest_path,
+                "robot-local-proof",
+                "task-local-proof",
+                date_text="2026-05-13",
+            )
+            fake_probe = {
+                "status": "passed",
+                "code": "http_head_observed",
+                "http_status": 200,
+                "reachable": True,
+                "method": "HEAD",
+                "latency_ms": 3,
+            }
+            with mock.patch.object(relay_module, "_probe_oss_cdn_object", return_value=fake_probe):
+                result = create_oss_cdn_live_probe_artifact(live_probe_path, manifest_path, timeout_sec=0.01)
+            artifact = json.loads(live_probe_path.read_text(encoding="utf-8"))
+            summary = oss_cdn_live_probe_summary(live_probe_path)
+            env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "production-token-value",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "https://relay.example.invalid",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "terminated",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "public_https",
+                "TRASHBOT_REMOTE_CLOUD_OSS_BUCKET": "bytegallop",
+                "TRASHBOT_REMOTE_CLOUD_OSS_REGION": "oss-cn-hangzhou",
+                "TRASHBOT_REMOTE_CLOUD_OSS_PREFIX": "rober/robot-local-proof/2026-05-13/task-local-proof/",
+                "TRASHBOT_REMOTE_CLOUD_CDN_BASE_URL": "https://cdn.bytegallop.com/rober/",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CREDENTIAL_MODE": "sts",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "relay_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT": str(manifest_path),
+                "TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_ARTIFACT": str(live_probe_path),
+            }
+
+            payload = production_preflight_payload(env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps(
+                {"result": result, "artifact": artifact, "summary": summary, "preflight": payload},
+                ensure_ascii=False,
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(summary["ok"])
+            self.assertEqual(artifact["schema"], OSS_CDN_LIVE_PROBE_SCHEMA)
+            self.assertEqual(artifact["schema_version"], 1)
+            self.assertEqual(artifact["evidence_boundary"], OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY)
+            self.assertFalse(artifact["production_ready"])
+            self.assertFalse(artifact["live_probe_complete"])
+            self.assertEqual(artifact["overall_status"], "blocked")
+            self.assertEqual(summary["object_count"], 1)
+            self.assertEqual(summary["probe_count"], 1)
+            self.assertTrue(summary["object_probe_observed"])
+            self.assertFalse(payload["production_ready"])
+            self.assertTrue(payload["software_proof_ready"])
+            self.assertEqual(payload["overall_status"], "blocked")
+            self.assertEqual(payload["evidence_boundary"], OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY)
+            self.assertEqual(checks["oss_cdn_live_probe"]["status"], "pass")
+            self.assertFalse(checks["oss_cdn_live_probe"]["details"]["production_ready"])
+            self.assertFalse(checks["oss_cdn_live_probe"]["details"]["live_probe_complete"])
+            for marker in (
+                "real_oss_upload",
+                "sts_issuance",
+                "cdn_origin_fetch",
+                "real_cloud",
+                "real_4g_sim",
+                "wave_rover_or_hil",
+            ):
+                self.assertIn(marker, encoded)
+            for forbidden in (
+                str(manifest_path),
+                str(live_probe_path),
+                str(root / "relay_state.sqlite"),
+                "https://cdn.bytegallop.com/rober/",
+                '"object_key":',
+                "production-token-value",
+                "Authorization",
+                "Bearer",
+                "token",
+                "OSS secret",
+                "response body",
+                "/dev/ttyUSB0",
+                "baudrate",
+                "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_oss_cdn_live_probe_blocks_hostile_artifact_without_leaks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            manifest_path = root / "oss_cdn_manifest.json"
+            hostile_path = root / "hostile_oss_cdn_live_probe.json"
+            create_oss_cdn_manifest_artifact(
+                manifest_path,
+                "robot-local-proof",
+                "task-local-proof",
+                date_text="2026-05-13",
+            )
+            hostile = build_oss_cdn_live_probe_payload(
+                manifest_path,
+                generated_at="2026-05-13T14:00:00Z",
+                probe_fn=lambda _url, timeout_sec=2.0: {
+                    "status": "passed",
+                    "code": "http_head_observed",
+                    "http_status": 200,
+                    "reachable": True,
+                    "method": "HEAD",
+                    "latency_ms": 1,
+                },
+            )
+            hostile["safe_summary"] = (
+                "Authorization Bearer token https://cdn.bytegallop.com/rober/ "
+                "credential-bearing response body raw state path /dev/ttyUSB0 baudrate WAVE ROVER ROS topic /cmd_vel"
+            )
+            body = {key: value for key, value in hostile.items() if key != "checksum"}
+            hostile["checksum"] = _sha256_checksum(body)
+            hostile_path.write_text(json.dumps(hostile, ensure_ascii=False), encoding="utf-8")
+            env = {
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "relay_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                "TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_ARTIFACT": str(hostile_path),
+            }
+
+            missing_payload = production_preflight_payload(
+                {
+                    "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "relay_state.sqlite"),
+                    "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                }
+            )
+            missing_checks = {check["name"]: check for check in missing_payload["checks"]}
+            summary = oss_cdn_live_probe_summary(hostile_path)
+            payload = production_preflight_payload(env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps({"summary": summary, "preflight": payload}, ensure_ascii=False)
+
+            self.assertEqual(missing_checks["oss_cdn_live_probe"]["status"], "warning")
+            self.assertEqual(missing_checks["oss_cdn_live_probe"]["code"], "oss_cdn_live_probe_artifact_missing")
+            self.assertFalse(summary["ok"])
+            self.assertEqual(checks["oss_cdn_live_probe"]["status"], "blocked")
+            self.assertEqual(checks["oss_cdn_live_probe"]["code"], "oss_cdn_live_probe_artifact_invalid")
+            for forbidden in (
+                str(manifest_path),
+                str(hostile_path),
+                str(root / "relay_state.sqlite"),
+                "Authorization",
+                "Bearer",
+                "token",
+                "https://cdn.bytegallop.com/rober/",
+                "credential-bearing",
+                "response body",
+                "raw state path",
+                "/dev/ttyUSB0",
+                "baudrate",
+                "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
 
     def test_credential_rotation_artifact_generation_and_phone_summary_are_safe(self):
         with tempfile.TemporaryDirectory() as tmp:

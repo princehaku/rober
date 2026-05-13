@@ -287,6 +287,31 @@ It reports only `state=ready|missing|invalid|stale`, schema/version,
 local paths, credentials, raw ROS topics, `/cmd_vel`, serial data, or hardware
 configuration.
 
+The relay also supports an OSS/CDN live probe artifact with
+`schema=trashbot.oss_cdn_live_probe` and
+`evidence_boundary=software_proof_docker_oss_cdn_live_probe_gate`. It consumes
+the existing manifest artifact as input, can issue safe HEAD probes, and writes
+only endpoint paths, object key hashes, HTTP status, object count,
+`redaction_status`, `safe_summary`, `retry_hint`, and `not_proven`. It never
+writes complete CDN URLs, complete object keys, Authorization headers, bearer
+tokens, OSS credentials, local paths, response bodies, ROS topics, serial data,
+or `/cmd_vel`. In the Docker-only environment the artifact and preflight check
+must keep `production_ready=false`, `overall_status=blocked`, and
+`live_probe_complete=false` even if a local/mock HTTP probe observes 2xx.
+
+Generate and consume the live probe artifact:
+
+```bash
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --write-oss-cdn-live-probe-artifact /tmp/trashbot_oss_cdn_live_probe.json \
+  --oss-cdn-manifest-artifact /tmp/trashbot_oss_cdn_manifest.json
+
+PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior \
+TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_ARTIFACT=/tmp/trashbot_oss_cdn_live_probe.json \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
+```
+
 Example local proof launch:
 
 ```bash

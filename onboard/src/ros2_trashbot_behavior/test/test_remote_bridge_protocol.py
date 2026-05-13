@@ -552,6 +552,49 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("Authorization", encoded_command)
         self.assertNotIn("/cmd_vel", encoded_command)
 
+    def test_validate_command_ignores_oss_cdn_live_probe_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-oss-cdn-live-probe-metadata",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "oss_cdn_live_probe": {
+                "schema": "trashbot.oss_cdn_live_probe.v1",
+                "overall_status": "blocked",
+                "production_ready": False,
+                "live_probe_complete": False,
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+                "credential_url": "https://user:secret@cdn.example.invalid/rober/private",
+            },
+            "oss_cdn_live_probe_artifact": {
+                "schema": "trashbot.oss_cdn_live_probe_artifact.v1",
+                "evidence_boundary": "software_proof_docker_oss_cdn_live_probe_gate",
+                "object_key_hash": "sha256:redacted",
+                "Authorization": "Bearer must-not-leak",
+            },
+            "cdn_live_probe": {
+                "schema": "trashbot.cdn_live_probe.v1",
+                "probe_status": "not_proven",
+                "raw_ros_topic": "/cmd_vel",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-oss-cdn-live-probe-metadata")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # OSS/CDN live probe 只是手机/支持侧 readiness 元数据，不能扩展 robot command envelope。
+        self.assertNotIn("oss_cdn_live_probe", encoded_command)
+        self.assertNotIn("oss_cdn_live_probe_artifact", encoded_command)
+        self.assertNotIn("cdn_live_probe", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("credential_url", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+
     def test_validate_command_ignores_cloud_readiness_summary_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-cloud-readiness-summary-metadata",
