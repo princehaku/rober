@@ -274,6 +274,56 @@
         <pre id="mobileDeviceHandoffSafeCopy" class="safe-copy" aria-label="脱敏真实手机验收交接包">暂无真实手机验收交接包。</pre>
       </section>
 
+      <section class="pwa-install-panel" aria-labelledby="mobilePwaInstallPromptTitle">
+        <div class="section-heading">
+          <h2 id="mobilePwaInstallPromptTitle">PWA 安装提示证据</h2>
+          <span id="mobilePwaInstallPromptBadge" class="gate-badge gate-blocked">install prompt 未证明</span>
+        </div>
+        <p id="mobilePwaInstallPromptCopy" class="message">
+          等待 phone-safe install prompt evidence；缺真实手机/browser、production app 和真实 PWA install prompt 时不放行主操作。
+        </p>
+        <dl class="pwa-install-grid">
+          <div>
+            <dt>Install Prompt Capture</dt>
+            <dd id="mobilePwaInstallPromptCapture">not_proven</dd>
+          </div>
+          <div>
+            <dt>User Outcome</dt>
+            <dd id="mobilePwaInstallPromptOutcome">not_proven</dd>
+          </div>
+          <div>
+            <dt>Display / Installability / Offline</dt>
+            <dd id="mobilePwaInstallPromptDisplay">display=browser / installability=not_proven / offline=static_shell_only</dd>
+          </div>
+          <div>
+            <dt>Manifest / Service Worker</dt>
+            <dd id="mobilePwaInstallPromptShell">manifest=true / sw=registered_or_pending</dd>
+          </div>
+          <div>
+            <dt>Production App / Safe Control</dt>
+            <dd id="mobilePwaInstallPromptControl">production_app_ready=false / safe_to_control=false</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobilePwaInstallPromptAck">ACK 只代表 accepted/processing。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobilePwaInstallPromptBoundary">software_proof_docker_mobile_pwa_install_prompt_evidence_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobilePwaInstallPromptNotProven">真实手机设备/browser、production app、真实 PWA install prompt 未证明。</dd>
+          </div>
+        </dl>
+        <p id="mobilePwaInstallPromptRecoveryHint" class="hint">安装提示证据只用于验收复现，不是 Start、Confirm 或 Cancel 放行条件。</p>
+        <div class="bundle-copy-row">
+          <button id="copyPwaInstallPromptPackageButton" type="button">复制安装提示证据包</button>
+          <span id="mobilePwaInstallPromptCopyStatus" class="hint">复制内容只包含脱敏 phone-safe 字段。</span>
+        </div>
+        <pre id="mobilePwaInstallPromptSafeCopy" class="safe-copy" aria-label="脱敏 PWA 安装提示证据包">暂无 PWA 安装提示证据包。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>

@@ -1628,6 +1628,171 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
         self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_mobile_pwa_install_prompt_evidence_metadata_only_response_does_not_move_robot(self):
+        metadata_cases = (
+            (
+                "mobile_pwa_install_prompt_evidence",
+                {
+                    "schema": "trashbot.mobile_pwa_install_prompt_evidence.v1",
+                    "install_prompt_capture_status": "blocked_no_real_device",
+                    "install_prompt_user_outcome": "not_proven",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-install-prompt-override",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "production_ready": True,
+                    "hil_pass": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+            (
+                "mobile_pwa_install_prompt_evidence_summary",
+                {
+                    "schema": "trashbot.mobile_pwa_install_prompt_evidence_summary.v1",
+                    "display_mode": "browser",
+                    "manifest_present": True,
+                    "service_worker_status": "registered",
+                    "next_action": "confirm_dropoff",
+                    "cursor_override": "cmd-install-prompt-summary",
+                    "delivery_success": True,
+                    "real_device_proof": True,
+                },
+            ),
+            (
+                "mobile_pwa_install_prompt_evidence_package",
+                {
+                    "schema": "trashbot.mobile_pwa_install_prompt_evidence_package.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_gate",
+                    "safe_to_control": True,
+                    "linked_handoff_session": "handoff-123",
+                    "trigger_robot_action": "cancel",
+                    "production_ready": True,
+                    "Authorization": "Bearer must-not-leak",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.backend.calls.clear()
+                self.cloud.response_extras["command_response"] = {
+                    metadata_name: metadata,
+                    "preflight": {"overall_status": "blocked", "production_ready": False},
+                }
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+
+                    handled = worker.poll_once()
+
+                    # PWA 安装提示证据只给手机/支持侧展示；缺少 command envelope 时不能产生机器人副作用。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("install_prompt_capture_status", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("production_ready", encoded_status)
+                    self.assertNotIn("hil_pass", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
+    def test_mobile_pwa_install_prompt_evidence_fields_are_ignored_by_command_status_ack_envelope(self):
+        self.cloud.response_extras.update({
+            "status_response": {
+                "mobile_pwa_install_prompt_evidence_summary": {
+                    "schema": "trashbot.mobile_pwa_install_prompt_evidence_summary.v1",
+                    "install_prompt_user_outcome": "accepted",
+                    "delivery_success": True,
+                    "production_ready": True,
+                },
+            },
+            "command_response": {
+                "mobile_pwa_install_prompt_evidence": {
+                    "schema": "trashbot.mobile_pwa_install_prompt_evidence.v1",
+                    "install_prompt_capture_status": "captured",
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+                "mobile_pwa_install_prompt_evidence_package": {
+                    "schema": "trashbot.mobile_pwa_install_prompt_evidence_package.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_gate",
+                    "next_action": "confirm_dropoff",
+                    "production_ready": True,
+                    "real_device_proof": True,
+                    "hil_pass": True,
+                },
+            },
+            "ack_response": {
+                "mobile_pwa_install_prompt_evidence_summary": {
+                    "schema": "trashbot.mobile_pwa_install_prompt_evidence_summary.v1",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "final_state": "DELIVERED",
+                },
+            },
+        })
+        self.cloud.commands.append({
+            "id": "cmd-install-prompt-extra",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "mobile_pwa_install_prompt_evidence": {
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+            },
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.worker.last_ack_id, "cmd-install-prompt-extra")
+        ack_payload = self.cloud.ack_posts[0]
+        self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+        self.assertEqual(ack_payload["command_id"], "cmd-install-prompt-extra")
+        self.assertEqual(ack_payload["state"], "acked")
+        self.assertEqual(ack_payload["message"], "collect")
+        encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+        # ACK 只能描述 command envelope 的本地处理结果，不能吸收安装提示证据或送达语义。
+        self.assertNotIn("mobile_pwa_install_prompt_evidence", encoded_ack)
+        self.assertNotIn("mobile_pwa_install_prompt_evidence_summary", encoded_ack)
+        self.assertNotIn("mobile_pwa_install_prompt_evidence_package", encoded_ack)
+        self.assertNotIn("software_proof_docker_mobile_pwa_install_prompt_evidence_gate", encoded_ack)
+        self.assertNotIn("install_prompt_capture_status", encoded_ack)
+        self.assertNotIn("trigger_robot_action", encoded_ack)
+        self.assertNotIn("cursor_override", encoded_ack)
+        self.assertNotIn("delivery_success", encoded_ack)
+        self.assertNotIn("production_ready", encoded_ack)
+        self.assertNotIn("real_device_proof", encoded_ack)
+        self.assertNotIn("hil_pass", encoded_ack)
+        self.assertNotIn("DELIVERED", encoded_ack)
+        self.assertNotIn("/cmd_vel", encoded_ack)
+        encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+        self.assertNotIn("mobile_pwa_install_prompt_evidence", encoded_status)
+        self.assertNotIn("mobile_pwa_install_prompt_evidence_summary", encoded_status)
+        self.assertNotIn("mobile_pwa_install_prompt_evidence_package", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+        self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_voice_prompt_readiness_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {

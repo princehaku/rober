@@ -19,6 +19,7 @@ const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_a
 const MOBILE_DEVICE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_device_evidence_capture_gate";
 const MOBILE_DEVICE_HANDOFF_SESSION_BOUNDARY = "software_proof_docker_mobile_device_handoff_session_gate";
 const MOBILE_BROWSER_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_browser_acceptance_bundle_gate";
+const MOBILE_PWA_INSTALL_PROMPT_BOUNDARY = "software_proof_docker_mobile_pwa_install_prompt_evidence_gate";
 const PRIMARY_JOURNEY_BOUNDARY = "software_proof_docker_mobile_primary_journey_gate";
 const RECOVERY_DECISION_BOUNDARY = "software_proof_docker_mobile_recovery_decision_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
@@ -28,6 +29,9 @@ const DEVICE_EVIDENCE_PACKAGE_SCHEMA = "trashbot.mobile_device_evidence_package.
 const DEVICE_HANDOFF_SESSION_SCHEMA = "trashbot.mobile_device_handoff_session.v1";
 const DEVICE_HANDOFF_PACKAGE_SCHEMA = "trashbot.mobile_device_handoff_package.v1";
 const ACCEPTANCE_BUNDLE_SCHEMA = "trashbot.mobile_browser_acceptance_bundle.v1";
+const PWA_INSTALL_PROMPT_SCHEMA = "trashbot.mobile_pwa_install_prompt_evidence.v1";
+const PWA_INSTALL_PROMPT_SUMMARY_SCHEMA = "trashbot.mobile_pwa_install_prompt_evidence_summary.v1";
+const PWA_INSTALL_PROMPT_PACKAGE_SCHEMA = "trashbot.mobile_pwa_install_prompt_evidence_package.v1";
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|artifact)/i;
 const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
@@ -38,6 +42,7 @@ let latestActionFeedback = null;
 let latestAcceptanceBundle = null;
 let latestDeviceEvidencePackage = null;
 let latestDeviceHandoffSession = null;
+let latestPwaInstallPromptPackage = null;
 let pendingTerminalAction = null;
 let stableHandoffClientReference = `mobile_web_handoff_${Date.now()}`;
 let latestStartGate = {
@@ -285,6 +290,28 @@ function mobileDeviceHandoffSessionCandidate(status, readiness, diagnostics) {
   return candidates.find((value) => value && typeof value === "object") || null;
 }
 
+function mobilePwaInstallPromptEvidenceCandidate(status, readiness, diagnostics) {
+  // install prompt evidence 可能由 status、phone_readiness 或 diagnostics 提供；前端只消费 phone-safe 摘要。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const candidates = [
+    status?.mobile_pwa_install_prompt_evidence,
+    status?.mobile_pwa_install_prompt_evidence_summary,
+    status?.mobile_pwa_install_prompt_evidence_package,
+    readiness?.mobile_pwa_install_prompt_evidence,
+    readiness?.mobile_pwa_install_prompt_evidence_summary,
+    readiness?.mobile_pwa_install_prompt_evidence_package,
+    diagnostics?.mobile_pwa_install_prompt_evidence,
+    diagnostics?.mobile_pwa_install_prompt_evidence_summary,
+    diagnostics?.mobile_pwa_install_prompt_evidence_package,
+    diagnosticsReadiness.mobile_pwa_install_prompt_evidence,
+    diagnosticsReadiness.mobile_pwa_install_prompt_evidence_summary,
+    diagnosticsReadiness.mobile_pwa_install_prompt_evidence_package,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
 function currentDisplayMode() {
   // display-mode 只能说明当前浏览器上下文，不能证明 production app 或真实 install prompt。
   const modes = ["standalone", "fullscreen", "minimal-ui", "browser"];
@@ -473,6 +500,82 @@ function mobileDeviceHandoffSessionFromStatus(status, readiness, diagnostics) {
   const browserBundle = mobileBrowserAcceptanceBundleFromStatus(status, readiness, diagnostics);
   const provided = mobileDeviceHandoffSessionCandidate(status, readiness, diagnostics) || {};
   return normalizeDeviceHandoffSession(provided, evidence, acceptance, browserBundle);
+}
+
+function normalizePwaInstallPromptEvidence(value, localEvidence, handoffSession, browserBundle) {
+  // 该包只记录 install prompt 验收证据边界；不能把 handoff/browser bundle 升格成真实 prompt 通过。
+  const pwa = value?.pwa && typeof value.pwa === "object" ? value.pwa : {};
+  const serviceWorker = value?.service_worker && typeof value.service_worker === "object" ? value.service_worker : {};
+  return {
+    schema: PWA_INSTALL_PROMPT_SCHEMA,
+    schema_version: 1,
+    summary_schema: PWA_INSTALL_PROMPT_SUMMARY_SCHEMA,
+    package_schema: PWA_INSTALL_PROMPT_PACKAGE_SCHEMA,
+    source: safeBundleText(value?.source, "mobile_web"),
+    overall_status: safeBundleText(value?.overall_status || value?.status, "blocked"),
+    install_prompt_capture_status: safeBundleText(
+      value?.install_prompt_capture_status || value?.capture_status || pwa.install_prompt_status,
+      "not_proven",
+    ),
+    install_prompt_user_outcome: safeBundleText(
+      value?.install_prompt_user_outcome || value?.user_outcome || value?.prompt_outcome,
+      "not_proven",
+    ),
+    display_mode: safeBundleText(value?.display_mode || localEvidence.display_mode, "browser"),
+    installability_status: safeBundleText(value?.installability_status || value?.installability, "not_proven"),
+    offline_shell_status: safeBundleText(
+      value?.offline_shell_status || serviceWorker.offline_shell_status || localEvidence.service_worker.offline_shell_status,
+      "static_shell_only",
+    ),
+    manifest_present: value?.manifest_present === true ||
+      value?.manifest_link_present === true ||
+      pwa.manifest_link_present === true ||
+      localEvidence.pwa.manifest_link_present === true,
+    service_worker_status: safeBundleText(
+      value?.service_worker_status || serviceWorker.status || localEvidence.service_worker.status,
+      "registered_or_pending",
+    ),
+    production_app_ready: value?.production_app_ready === true,
+    safe_to_control: value?.safe_to_control === true,
+    linked_handoff_session: {
+      schema: handoffSession.schema,
+      session_id: handoffSession.session_id,
+      overall_status: handoffSession.overall_status,
+      evidence_boundary: handoffSession.evidence_boundary,
+      pwa_install_prompt_observed: handoffSession.pwa_install_prompt_observed,
+    },
+    linked_device_evidence_capture: {
+      schema: DEVICE_EVIDENCE_SCHEMA,
+      evidence_boundary: localEvidence.evidence_boundary,
+      display_mode: localEvidence.display_mode,
+      install_prompt_status: localEvidence.pwa.install_prompt_status,
+    },
+    linked_browser_acceptance_bundle: {
+      schema: browserBundle.schema,
+      overall_status: browserBundle.overall_status,
+      pwa_install_prompt: browserBundle.pwa_install_prompt,
+      evidence_boundary: browserBundle.evidence_boundary,
+    },
+    safe_phone_copy: safeBundleText(
+      value?.safe_phone_copy || value?.safe_summary,
+      "PWA 安装提示证据 blocked-by-design：当前只整理 phone-safe install prompt capture metadata，不证明真实 PWA install prompt 通过。",
+    ),
+    recovery_hint: safeBundleText(
+      value?.recovery_hint || value?.retry_hint,
+      "请在真实 iPhone/Android 浏览器或 production app 入口触发并记录真实 install prompt；缺失时主操作继续 fail closed。",
+    ),
+    ack_semantics: safeBundleText(value?.ack_semantics, ACK_PROCESSING_COPY),
+    evidence_boundary: safeBundleText(value?.evidence_boundary, MOBILE_PWA_INSTALL_PROMPT_BOUNDARY),
+    not_proven: notProvenList(value?.not_proven),
+  };
+}
+
+function mobilePwaInstallPromptEvidenceFromStatus(status, readiness, diagnostics) {
+  const localEvidence = mobileDeviceEvidencePackageFromStatus(status, readiness, diagnostics);
+  const handoffSession = mobileDeviceHandoffSessionFromStatus(status, readiness, diagnostics);
+  const browserBundle = mobileBrowserAcceptanceBundleFromStatus(status, readiness, diagnostics);
+  const provided = mobilePwaInstallPromptEvidenceCandidate(status, readiness, diagnostics) || {};
+  return normalizePwaInstallPromptEvidence(provided, localEvidence, handoffSession, browserBundle);
 }
 
 function bundleFieldSummary(value, fallback = "not_proven") {
@@ -1346,6 +1449,7 @@ function deriveOperationLogEntries(status, readiness) {
   pushDerivedEvent(entries, "语音提示", voicePromptFromStatus(status, readiness));
   pushDerivedEvent(entries, "手机验收准备", mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics));
   pushDerivedEvent(entries, "真实手机验收交接会话", mobileDeviceHandoffSessionFromStatus(status, readiness, latestDiagnostics));
+  pushDerivedEvent(entries, "PWA 安装提示证据", mobilePwaInstallPromptEvidenceFromStatus(status, readiness, latestDiagnostics));
   return entries.slice(0, 8);
 }
 
@@ -1476,6 +1580,35 @@ function deviceHandoffPackageCopyPayload(session) {
   };
 }
 
+function pwaInstallPromptPackageCopyPayload(packagePayload) {
+  // install prompt 复制包只保留白名单字段；不复制 raw browser、robot 或 artifact 内容。
+  return {
+    schema: PWA_INSTALL_PROMPT_PACKAGE_SCHEMA,
+    schema_version: packagePayload.schema_version,
+    evidence_schema: packagePayload.schema,
+    summary_schema: packagePayload.summary_schema,
+    source: packagePayload.source,
+    overall_status: packagePayload.overall_status,
+    install_prompt_capture_status: packagePayload.install_prompt_capture_status,
+    install_prompt_user_outcome: packagePayload.install_prompt_user_outcome,
+    display_mode: packagePayload.display_mode,
+    installability_status: packagePayload.installability_status,
+    offline_shell_status: packagePayload.offline_shell_status,
+    manifest_present: packagePayload.manifest_present,
+    service_worker_status: packagePayload.service_worker_status,
+    production_app_ready: packagePayload.production_app_ready,
+    safe_to_control: packagePayload.safe_to_control,
+    linked_handoff_session: packagePayload.linked_handoff_session,
+    linked_device_evidence_capture: packagePayload.linked_device_evidence_capture,
+    linked_browser_acceptance_bundle: packagePayload.linked_browser_acceptance_bundle,
+    safe_phone_copy: packagePayload.safe_phone_copy,
+    recovery_hint: packagePayload.recovery_hint,
+    ack_semantics: packagePayload.ack_semantics,
+    evidence_boundary: packagePayload.evidence_boundary,
+    not_proven: packagePayload.not_proven,
+  };
+}
+
 function renderMobileDeviceEvidence(status) {
   const readiness = readinessFromStatus(status);
   const packagePayload = mobileDeviceEvidencePackageFromStatus(status, readiness, latestDiagnostics);
@@ -1497,6 +1630,34 @@ function renderMobileDeviceEvidence(status) {
   $("mobileDeviceEvidenceNotProven").textContent = packagePayload.not_proven.join("、");
   $("mobileDeviceEvidenceSafeCopy").textContent =
     JSON.stringify(deviceEvidencePackageCopyPayload(packagePayload), null, 2);
+}
+
+function renderMobilePwaInstallPromptEvidence(status) {
+  const readiness = readinessFromStatus(status);
+  const packagePayload = mobilePwaInstallPromptEvidenceFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("mobilePwaInstallPromptBadge");
+  latestPwaInstallPromptPackage = packagePayload;
+
+  badge.className = "gate-badge gate-blocked";
+  badge.textContent = packagePayload.install_prompt_capture_status === "captured" &&
+    packagePayload.install_prompt_user_outcome !== "not_proven"
+    ? "仍需实机复核"
+    : "install prompt 未证明";
+  $("mobilePwaInstallPromptCopy").textContent = packagePayload.safe_phone_copy;
+  $("mobilePwaInstallPromptCapture").textContent = packagePayload.install_prompt_capture_status;
+  $("mobilePwaInstallPromptOutcome").textContent = packagePayload.install_prompt_user_outcome;
+  $("mobilePwaInstallPromptDisplay").textContent =
+    `display=${packagePayload.display_mode} / installability=${packagePayload.installability_status} / offline=${packagePayload.offline_shell_status}`;
+  $("mobilePwaInstallPromptShell").textContent =
+    `manifest=${packagePayload.manifest_present} / sw=${packagePayload.service_worker_status}`;
+  $("mobilePwaInstallPromptControl").textContent =
+    `production_app_ready=${packagePayload.production_app_ready} / safe_to_control=${packagePayload.safe_to_control}`;
+  $("mobilePwaInstallPromptAck").textContent = packagePayload.ack_semantics;
+  $("mobilePwaInstallPromptBoundary").textContent = packagePayload.evidence_boundary;
+  $("mobilePwaInstallPromptNotProven").textContent = packagePayload.not_proven.join("、");
+  $("mobilePwaInstallPromptRecoveryHint").textContent = packagePayload.recovery_hint;
+  $("mobilePwaInstallPromptSafeCopy").textContent =
+    JSON.stringify(pwaInstallPromptPackageCopyPayload(packagePayload), null, 2);
 }
 
 function renderMobileDeviceHandoffSession(status) {
@@ -1729,6 +1890,7 @@ function renderOfflineFailure() {
   renderMobileDeviceAcceptance({});
   renderMobileDeviceEvidence({});
   renderMobileDeviceHandoffSession({});
+  renderMobilePwaInstallPromptEvidence({});
   renderMobileBrowserAcceptanceBundle({});
   renderRecoveryDecision({ connection_state: "offline" });
   latestActionFeedback = normalizeActionFeedback({
@@ -1761,6 +1923,7 @@ function renderStatus(status) {
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
   renderMobileDeviceHandoffSession(status);
+  renderMobilePwaInstallPromptEvidence(status);
   renderMobileBrowserAcceptanceBundle(status);
   renderTaskFlow(status);
   renderStartConfirmation(status);
@@ -1950,6 +2113,7 @@ async function openDiagnostics() {
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileDeviceEvidence(latestStatus || {});
     renderMobileDeviceHandoffSession(latestStatus || {});
+    renderMobilePwaInstallPromptEvidence(latestStatus || {});
     renderMobileBrowserAcceptanceBundle(latestStatus || {});
     renderCommandSafety(latestStatus || {});
     renderDiagnosticsSummary(latestDiagnostics);
@@ -2025,6 +2189,17 @@ function wireEvents() {
       $("mobileDeviceHandoffCopyStatus").textContent = "已复制脱敏交接包。";
     } catch (_error) {
       $("mobileDeviceHandoffCopyStatus").textContent = "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("copyPwaInstallPromptPackageButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(pwaInstallPromptPackageCopyPayload(latestPwaInstallPromptPackage || {}), null, 2);
+    $("mobilePwaInstallPromptSafeCopy").textContent = payload;
+    // install prompt evidence 只服务验收复现；剪贴板失败时仍保留手动复制路径。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("mobilePwaInstallPromptCopyStatus").textContent = "已复制脱敏安装提示证据包。";
+    } catch (_error) {
+      $("mobilePwaInstallPromptCopyStatus").textContent = "浏览器未授权剪贴板；请从下方文本框手动复制。";
     }
   });
   $("supportButton").addEventListener("click", () => {

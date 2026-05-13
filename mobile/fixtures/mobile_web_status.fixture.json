@@ -290,6 +290,101 @@
       "真实送达"
     ]
   },
+  "mobile_pwa_install_prompt_evidence": {
+    "schema": "trashbot.mobile_pwa_install_prompt_evidence.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.mobile_pwa_install_prompt_evidence_summary.v1",
+    "package_schema": "trashbot.mobile_pwa_install_prompt_evidence_package.v1",
+    "source": "mobile_web",
+    "overall_status": "blocked",
+    "install_prompt_capture_status": "not_proven",
+    "install_prompt_user_outcome": "not_proven",
+    "display_mode": "browser",
+    "installability_status": "software_shell_only",
+    "offline_shell_status": "static_shell_only",
+    "manifest_present": true,
+    "service_worker_status": "registered_or_pending",
+    "production_app_ready": false,
+    "safe_to_control": false,
+    "linked_handoff_session": {
+      "schema": "trashbot.mobile_device_handoff_session.v1",
+      "session_id": "handoff_mobile_fixture_20260514_0001",
+      "overall_status": "blocked",
+      "evidence_boundary": "software_proof_docker_mobile_device_handoff_session_gate",
+      "pwa_install_prompt_observed": false
+    },
+    "linked_device_evidence_capture": {
+      "schema": "trashbot.mobile_device_evidence_capture.v1",
+      "evidence_boundary": "software_proof_docker_mobile_device_evidence_capture_gate",
+      "display_mode": "browser",
+      "install_prompt_status": "not_proven"
+    },
+    "linked_browser_acceptance_bundle": {
+      "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
+      "overall_status": "blocked",
+      "pwa_install_prompt": "not_proven",
+      "evidence_boundary": "software_proof_docker_mobile_browser_acceptance_bundle_gate"
+    },
+    "safe_phone_copy": "PWA 安装提示证据 blocked-by-design：当前只有 Docker/local software shell 和 phone-safe 引用，没有真实 PWA install prompt capture 或用户选择结果。",
+    "recovery_hint": "请在真实 iPhone/Android 浏览器或 production app 入口触发并记录真实 install prompt；缺失时 Start、Confirm、Cancel 继续 fail closed。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成、取消完成或真实 PWA install prompt 通过。",
+    "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "真实 install prompt user outcome",
+      "真实云/4G",
+      "Nav2/fixed-route",
+      "真实底盘运动",
+      "HIL",
+      "真实送达"
+    ]
+  },
+  "mobile_pwa_install_prompt_evidence_summary": {
+    "schema": "trashbot.mobile_pwa_install_prompt_evidence_summary.v1",
+    "schema_version": 1,
+    "safe_phone_copy": "安装提示证据摘要只说明可复制 phone-safe install prompt metadata，不证明真实 PWA 安装提示通过。",
+    "ack_semantics": "accepted/processing evidence only",
+    "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt"
+    ]
+  },
+  "mobile_pwa_install_prompt_evidence_package": {
+    "schema": "trashbot.mobile_pwa_install_prompt_evidence_package.v1",
+    "schema_version": 1,
+    "evidence_schema": "trashbot.mobile_pwa_install_prompt_evidence.v1",
+    "summary_schema": "trashbot.mobile_pwa_install_prompt_evidence_summary.v1",
+    "source": "mobile_web",
+    "overall_status": "blocked",
+    "install_prompt_capture_status": "not_proven",
+    "install_prompt_user_outcome": "not_proven",
+    "display_mode": "browser",
+    "installability_status": "software_shell_only",
+    "offline_shell_status": "static_shell_only",
+    "manifest_present": true,
+    "service_worker_status": "registered_or_pending",
+    "production_app_ready": false,
+    "safe_to_control": false,
+    "safe_phone_copy": "可复制的 PWA 安装提示证据包只包含脱敏 phone-safe metadata。",
+    "recovery_hint": "缺少真实 install prompt capture 前不得把该包写成 PWA install prompt 通过。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+    "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "真实 install prompt user outcome",
+      "真实云/4G",
+      "Nav2/fixed-route",
+      "真实底盘运动",
+      "HIL",
+      "真实送达"
+    ]
+  },
   "mobile_browser_acceptance_bundle": {
     "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
     "schema_version": 1,
@@ -579,6 +674,47 @@
         "production app",
         "真实 PWA install prompt"
       ]
+    },
+    "mobile_pwa_install_prompt_evidence": {
+      "schema": "trashbot.mobile_pwa_install_prompt_evidence.v1",
+      "schema_version": 1,
+      "summary_schema": "trashbot.mobile_pwa_install_prompt_evidence_summary.v1",
+      "package_schema": "trashbot.mobile_pwa_install_prompt_evidence_package.v1",
+      "source": "mobile_web",
+      "overall_status": "blocked",
+      "install_prompt_capture_status": "not_proven",
+      "install_prompt_user_outcome": "not_proven",
+      "display_mode": "browser",
+      "installability_status": "software_shell_only",
+      "offline_shell_status": "static_shell_only",
+      "manifest_present": true,
+      "service_worker_status": "registered_or_pending",
+      "production_app_ready": false,
+      "safe_to_control": false,
+      "safe_phone_copy": "phone_readiness 内的 PWA install prompt evidence 只说明可复制脱敏 metadata，不证明真实 install prompt 通过。",
+      "recovery_hint": "真实手机/browser、production app 和真实 PWA install prompt 缺失时主操作继续 fail closed。",
+      "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表真实 PWA install prompt 通过。",
+      "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_gate",
+      "not_proven": [
+        "真实手机设备/browser",
+        "production app",
+        "真实 PWA install prompt"
+      ]
+    },
+    "mobile_pwa_install_prompt_evidence_summary": {
+      "schema": "trashbot.mobile_pwa_install_prompt_evidence_summary.v1",
+      "schema_version": 1,
+      "safe_phone_copy": "嵌套安装提示证据摘要不放行控制动作。",
+      "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_gate"
+    },
+    "mobile_pwa_install_prompt_evidence_package": {
+      "schema": "trashbot.mobile_pwa_install_prompt_evidence_package.v1",
+      "schema_version": 1,
+      "evidence_schema": "trashbot.mobile_pwa_install_prompt_evidence.v1",
+      "summary_schema": "trashbot.mobile_pwa_install_prompt_evidence_summary.v1",
+      "overall_status": "blocked",
+      "safe_phone_copy": "嵌套安装提示证据包同样只包含 phone-safe metadata。",
+      "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_gate"
     },
     "mobile_browser_acceptance_bundle": {
       "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
