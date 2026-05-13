@@ -5,6 +5,8 @@
 > 当前状态：sprint `2026.05.13_03-04_mobile-web-entrypoint-gate` 已新增 `mobile/web/` dependency-free PWA 静态入口。证据边界是 `software_proof_docker_mobile_web_entrypoint_gate`，不等于真实手机设备、production app、真实云、4G、OSS/CDN、HIL 或真实送达。
 >
 > 当前增量：sprint `2026.05.13_07-08_mobile-operation-log-gate` 在静态入口中新增 operation log 面板。证据边界是 `software_proof_docker_mobile_operation_log_gate`，只证明 local/Docker fixture 与 static smoke 可展示 phone-safe 最近事件、恢复提示和支持交接入口；不等于真实手机设备/浏览器、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
+>
+> 当前增量：sprint `2026.05.13_09-10_mobile-action-feedback-gate` 在静态入口中新增动作回执面板，并让 Confirm Dropoff / Cancel 携带 generic mobile action confirmation payload。证据边界是 `software_proof_docker_mobile_action_feedback_gate`，只证明 local/static fixture 与 targeted unittest 能展示提交状态、失败原因、恢复建议、client reference 和 ACK 语义；不等于真实手机设备/browser、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 
 ## 用途（What lives here）
 
@@ -49,6 +51,7 @@ python3 -m http.server 8088
 - `/api/status.phone_readiness.command_safety`
 - `/api/status.phone_offline_resume_readiness` 或 `/api/status.phone_readiness.phone_offline_resume_readiness`
 - 可选：`operation_log`、`phone_operation_log`、`phone_task_flow_readiness`、`phone_support_bundle`、`voice_prompt_readiness`
+- 可选：`mobile_action_receipt`、`phone_action_feedback`
 - `/api/diagnostics` 的脱敏摘要字段
 
 operation log 规则：
@@ -57,6 +60,15 @@ operation log 规则：
 - 缺少显式日志时，只从既有 phone-safe 字段派生最小事件：`phone_readiness`、`command_safety`、`phone_task_flow_readiness`、`phone_offline_resume_readiness`、`phone_support_bundle`、`voice_prompt_readiness`。
 - 派生事件只显示 `safe_phone_copy`、`recovery_hint`、`ack_semantics`、`next_action`、`support_level` 等安全摘要，不展示原始 JSON、ROS topic、硬件参数、凭证、路径、traceback、checksum 或完整 artifact。
 - operation log 面板是只读解释入口，不会启用 Start Delivery、Confirm Dropoff 或 Cancel，也不会发送 ACK、推进 cursor 或声明 delivery success。
+
+动作回执规则：
+
+- 首屏动作回执面板展示最近一次用户动作、提交状态、失败/阻塞原因、恢复建议、`client_reference`、ACK 语义和 `evidence_boundary`。
+- 面板优先消费后端或 fixture 的 `mobile_action_receipt` / `phone_action_feedback`。如果本地提交失败，则显示本地 `failed` / `blocked` copy；本地 copy 只说明手机提交层失败，不推断机器人执行状态。
+- Start Delivery 继续使用 `schema=trashbot.mobile_task_start_confirmation.v1` body，并保留 destination 与 trash-loaded confirmation gate。
+- Confirm Dropoff 和 Cancel 使用 `schema=trashbot.mobile_action_confirmation.v1`、`schema_version=1`、`source=mobile_web`、`action`、`user_confirmed=true`、`client_reference`、`client_timestamp`、`safe_phone_copy`、`ack_semantics`、`evidence_boundary=software_proof_docker_mobile_action_feedback_gate`。
+- generic action payload 不包含 raw ROS topic、`/cmd_vel`、serial device、baudrate、WAVE ROVER 参数、token、Authorization header、OSS AK/SK、DB/queue URL、本地路径、完整 artifact 或 checksum。
+- HTTP accepted、receipt 或 ACK 文案只能写成 accepted/processing evidence，不得写成 delivery success、dropoff success、cancel completed 或真实机器人动作完成。
 
 按钮安全规则：
 
@@ -94,5 +106,6 @@ PWA / offline 边界：
 | cloud-relay gate | cloud-relay runtime 入口独立，mobile 继续只消费 phone-safe schema，不发明状态 |
 | 当前 mobile-web-entrypoint gate | `mobile/web/` dependency-free PWA 入口、offline shell、manifest、service worker、fixture smoke |
 | 当前 mobile-operation-log gate | `mobile/web/` operation log 面板、恢复提示、支持交接入口、fixture smoke |
+| 当前 mobile-action-feedback gate | `mobile/web/` 动作回执面板、Confirm/Cancel generic confirmation payload、失败提示和 ACK 语义 fixture smoke |
 | 下一个 sprint | 真实手机浏览器/设备验收、安装提示和弱网体验 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |

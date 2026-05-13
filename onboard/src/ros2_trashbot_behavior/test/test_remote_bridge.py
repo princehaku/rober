@@ -782,6 +782,87 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertNotIn("delivery_success", encoded_status)
             self.assertNotIn("/trashbot/collect_trash", encoded_status)
 
+    def test_mobile_action_feedback_metadata_only_response_does_not_move_robot(self):
+        metadata_cases = (
+            (
+                "mobile_action_confirmation",
+                {
+                    "schema": "trashbot.mobile_action_confirmation.v1",
+                    "source": "mobile_web",
+                    "action": "confirm_dropoff",
+                    "user_confirmed": True,
+                    "trigger_robot_action": "confirm_dropoff",
+                    "cursor_override": "cmd-future",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/trashbot/confirm_dropoff",
+                },
+            ),
+            (
+                "mobile_action_receipt",
+                {
+                    "schema": "trashbot.mobile_action_receipt.v1",
+                    "action": "cancel",
+                    "receipt_state": "accepted",
+                    "next_action": "cancel",
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "delivery_success": True,
+                    "serial_device": "/dev/ttyUSB0",
+                },
+            ),
+            (
+                "phone_action_feedback",
+                {
+                    "schema": "trashbot.phone_action_feedback.v1",
+                    "safe_phone_copy": "命令已提交，等待机器人处理。",
+                    "recovery_hint": "继续观察状态。",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-future",
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.backend.calls.clear()
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        metadata_name: metadata,
+                        "preflight": {"overall_status": "blocked", "production_ready": False},
+                    }
+
+                    handled = worker.poll_once()
+
+                    # 动作反馈是手机端回执/支持摘要；没有 command envelope 时不能触发机器人动作。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.assertNotIn("/dev/ttyUSB0", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
     def test_operation_log_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {

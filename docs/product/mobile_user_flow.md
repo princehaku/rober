@@ -73,7 +73,7 @@ Start Delivery, Confirm Dropoff, and Cancel are disabled by default. The browser
 
 Start Delivery now has an explicit mobile task-start confirmation gate before the primary action button. The page must show the phone-safe target trash station or destination, require the user to check "trash loaded" manually, and show the current blocking reason. The destination can come from `phone_task_flow_readiness.destination_summary`, a `destination_confirmed` step, `phone_readiness.destination`, or `status.destination`; if none of those safe fields exist, Start remains disabled. This confirmation is a user action only, not automatic load detection.
 
-`POST /api/collect` from `mobile/web/` is no longer body-less. The request body uses `schema=trashbot.mobile_task_start_confirmation.v1`, `schema_version=1`, `source=mobile_web`, a phone-safe `destination`, `target` with the same phone-safe destination for `/api/collect` compatibility, `trash_loaded_confirmed=true`, client timestamp/reference, `evidence_boundary=software_proof_docker_mobile_task_start_confirmation_gate`, and ACK semantics stating accepted/processing only. Other control actions do not need this start-confirmation body. The payload must not include raw ROS topic names, `/cmd_vel`, serial devices, baudrate values, WAVE ROVER parameters, credentials, local paths, complete artifacts, or checksums.
+`POST /api/collect` from `mobile/web/` is no longer body-less. The request body uses `schema=trashbot.mobile_task_start_confirmation.v1`, `schema_version=1`, `source=mobile_web`, a phone-safe `destination`, `target` with the same phone-safe destination for `/api/collect` compatibility, `trash_loaded_confirmed=true`, client timestamp/reference, `evidence_boundary=software_proof_docker_mobile_task_start_confirmation_gate`, and ACK semantics stating accepted/processing only. The payload must not include raw ROS topic names, `/cmd_vel`, serial devices, baudrate values, WAVE ROVER parameters, credentials, local paths, complete artifacts, or checksums.
 
 The Start button is enabled only when all four gates pass: `command_safety.actions.start.enabled=true`, legacy `can_collect=true`, a safe destination is present, and the user has checked the load confirmation. Missing `command_safety`, missing destination, unchecked load confirmation, offline state, blocked state, pending ACK, or manual takeover all fail closed. ACK copy must remain visible as command accepted/processing evidence only and must not be described as delivery success.
 
@@ -84,6 +84,31 @@ The mobile PWA now includes a read-only operation log panel. It first consumes `
 The operation log evidence boundary is `software_proof_docker_mobile_operation_log_gate`. This proves the local/static mobile page can render phone-safe recent events, recovery hints, and support handoff entry from fixture/status payloads while keeping Start/Confirm/Cancel fail-closed. It does not prove real phone device/browser behavior, a production app, a real PWA install prompt, real cloud/4G, OSS/CDN live traffic, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or real delivery.
 
 Operation log content must not expose tokens, Authorization headers, OSS AK/SK, root passwords, DB or queue URLs, raw ROS topic names, `/cmd_vel`, serial devices, baudrate values, WAVE ROVER parameters, local filesystem paths, tracebacks, checksums, full artifacts, or any wording that turns ACK into delivery success.
+
+The mobile PWA now includes an action feedback panel for Start Delivery, Confirm Dropoff, and Cancel. It shows the most recent user action, submission state, failure or blocking reason, recovery hint, `client_reference`, ACK semantics, and the evidence boundary. The panel consumes `mobile_action_receipt` or `phone_action_feedback` when the status payload provides them; if a local submit request fails, the page shows local `failed` / `blocked` copy. Local failure copy is deliberately narrow: it only says the phone/API submit layer failed or did not receive accepted/processing evidence. It does not say that the robot moved, arrived, dropped off, stopped, canceled, or completed the task.
+
+Confirm Dropoff and Cancel now use a generic mobile action confirmation body:
+
+```json
+{
+  "schema": "trashbot.mobile_action_confirmation.v1",
+  "schema_version": 1,
+  "source": "mobile_web",
+  "action": "confirm_dropoff",
+  "user_confirmed": true,
+  "client_reference": "mobile_web_confirm_dropoff_...",
+  "client_timestamp": "ISO-8601 timestamp",
+  "safe_phone_copy": "确认投放 已由用户二次确认提交，等待 accepted/processing 证据。",
+  "ack_semantics": "accepted_processing_only_not_delivery_success",
+  "evidence_boundary": "software_proof_docker_mobile_action_feedback_gate"
+}
+```
+
+The same schema is used for `action=cancel`. It is a phone-safe confirmation envelope only. It must not include raw ROS topic names, `/cmd_vel`, serial devices, baudrate values, WAVE ROVER parameters, token values, Authorization headers, OSS AK/SK, DB or queue URLs, local filesystem paths, complete artifacts, or checksums.
+
+The action feedback evidence boundary is `software_proof_docker_mobile_action_feedback_gate`. This proves the local/static mobile page can render phone-safe action receipts, local submit failures, recovery hints, client references, and ACK wording from fixture/status payloads. It does not prove real phone device/browser behavior, a production app, a real PWA install prompt, real cloud/4G, OSS/CDN live traffic, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, real dropoff, real cancel completion, or real delivery.
+
+ACK, HTTP accepted, or receipt copy must remain accepted/processing evidence only. The page must not describe those events as delivery success, dropoff success, cancel completed, Nav2/fixed-route success, WAVE ROVER movement, real cloud/4G readiness, HIL pass, or true task completion.
 
 Evidence boundary: `software_proof_docker_mobile_web_entrypoint_gate`. This proves the static entrypoint and smoke checks exist; it does not prove production app readiness, real iPhone/Android browser behavior, real service-worker install prompt, real cloud/4G, OSS/CDN live traffic, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or delivery success.
 

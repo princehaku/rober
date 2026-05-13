@@ -13,9 +13,12 @@ const ACTIONS = {
 };
 
 const SAFE_EMPTY = "等待后端提供安全摘要。";
+const ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
+const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 
 let latestStatus = null;
 let latestDiagnostics = null;
+let latestActionFeedback = null;
 let latestStartGate = {
   destination: null,
   destinationReady: false,
@@ -94,6 +97,18 @@ function operationLogFromStatus(status, readiness) {
     return { source: "operation_log", entries: normalizeOperationLogEntries(provided) };
   }
   return { source: "derived_phone_safe_fields", entries: deriveOperationLogEntries(status, readiness) };
+}
+
+function actionFeedbackFromStatus(status, readiness) {
+  // 动作回执只消费 phone-safe metadata；没有后端字段时保留本地提交结果，不发明机器人执行状态。
+  const candidates = [
+    status?.mobile_action_receipt,
+    status?.phone_action_feedback,
+    readiness?.mobile_action_receipt,
+    readiness?.phone_action_feedback,
+  ];
+  const provided = candidates.find((value) => value && typeof value === "object");
+  return provided ? normalizeActionFeedback(provided, "status") : null;
 }
 
 function commandSafetyFromReadiness(readiness) {
@@ -428,6 +443,72 @@ function renderOperationLog(status) {
   );
 }
 
+function actionLabel(actionName) {
+  return ACTIONS[actionName]?.label || safeText(actionName, "用户动作");
+}
+
+function normalizeActionFeedback(value, source) {
+  const actionName = safeText(value.action || value.user_action || value.command, "unknown");
+  const state = safeText(
+    value.submission_status || value.state || value.status || value.ack_state,
+    "waiting_ack",
+  );
+  // 失败原因与恢复建议必须来自安全字段或本地请求错误；不要展示原始异常、路径或硬件细节。
+  return {
+    source,
+    action: actionName,
+    actionCopy: safeText(value.action_copy || value.label, actionLabel(actionName)),
+    state,
+    safePhoneCopy: safeText(value.safe_phone_copy || value.summary, "动作已提交，等待 accepted/processing 证据。"),
+    failureReason: safeText(
+      value.failure_reason || value.blocking_reason || value.reason || value.error_safe_copy,
+      "无后端失败原因；请继续观察状态。",
+    ),
+    recoveryHint: safeText(
+      value.recovery_hint || value.next_action || value.retry_hint,
+      "等待状态刷新；如长时间无 ACK，请打开诊断或联系支持。",
+    ),
+    clientReference: safeText(value.client_reference || value.request_id, "未提供"),
+    ackSemantics: safeText(value.ack_semantics, ACK_PROCESSING_COPY),
+    evidenceBoundary: safeText(value.evidence_boundary, ACTION_FEEDBACK_BOUNDARY),
+  };
+}
+
+function renderActionFeedback(status) {
+  const readiness = readinessFromStatus(status);
+  const feedback = actionFeedbackFromStatus(status, readiness) || latestActionFeedback;
+  const badge = $("actionFeedbackStatusBadge");
+
+  if (!feedback) {
+    badge.className = "gate-badge gate-blocked";
+    badge.textContent = "等待动作";
+    $("actionFeedbackCopy").textContent = "提交 Start、Confirm 或 Cancel 后，这里只显示 phone-safe 回执和恢复建议。";
+    $("actionFeedbackAction").textContent = "暂无";
+    $("actionFeedbackState").textContent = "等待提交";
+    $("actionFeedbackClientReference").textContent = "暂无";
+    $("actionFeedbackAck").textContent = ACK_PROCESSING_COPY;
+    $("actionFeedbackReason").textContent = "失败原因会由后端或本地提交错误提供。";
+    $("actionFeedbackRecovery").textContent = "恢复建议会保持可读、可重试、可交接。";
+    $("actionFeedbackBoundary").textContent = ACTION_FEEDBACK_BOUNDARY;
+    return;
+  }
+
+  latestActionFeedback = feedback;
+  const failed = ["failed", "blocked", "rejected", "local_submit_failed"].includes(feedback.state);
+  const waiting = ["submitted", "waiting_ack", "accepted_or_processing"].includes(feedback.state);
+  badge.className = "gate-badge";
+  badge.classList.add(failed ? "gate-blocked" : (waiting ? "gate-waiting" : "gate-ready"));
+  badge.textContent = failed ? "需要处理" : "处理中";
+  $("actionFeedbackCopy").textContent = feedback.safePhoneCopy;
+  $("actionFeedbackAction").textContent = feedback.actionCopy;
+  $("actionFeedbackState").textContent = feedback.state;
+  $("actionFeedbackClientReference").textContent = feedback.clientReference;
+  $("actionFeedbackAck").textContent = feedback.ackSemantics;
+  $("actionFeedbackReason").textContent = `失败/阻塞原因：${feedback.failureReason}`;
+  $("actionFeedbackRecovery").textContent = `恢复建议：${feedback.recoveryHint}`;
+  $("actionFeedbackBoundary").textContent = feedback.evidenceBoundary;
+}
+
 function renderSupport(status) {
   const readiness = readinessFromStatus(status);
   const bundle = status?.phone_support_bundle || readiness.phone_support_bundle || {};
@@ -478,6 +559,17 @@ function renderOfflineFailure() {
   offlineEvent.textContent = "无法读取后端 operation log；请恢复网络后刷新。";
   $("operationLogList").appendChild(offlineEvent);
   $("operationSupportEntry").textContent = "离线时可保留恢复提示，但不发送控制请求。";
+  latestActionFeedback = normalizeActionFeedback({
+    action: "status_refresh",
+    submission_status: "blocked",
+    safe_phone_copy: "状态刷新失败，手机端不会提交或重放控制请求。",
+    failure_reason: "无法读取后端 /api/status。",
+    recovery_hint: "恢复网络后刷新页面；需要时打开诊断或联系支持。",
+    client_reference: "local_offline",
+    ack_semantics: ACK_PROCESSING_COPY,
+    evidence_boundary: ACTION_FEEDBACK_BOUNDARY,
+  }, "local");
+  renderActionFeedback({});
   $("destinationSummary").textContent = "离线，无法确认目标垃圾站。";
   $("startBlockReason").textContent = "离线状态下 Start 安全关闭。";
   $("destinationGateBadge").textContent = "未确认目的地";
@@ -495,11 +587,17 @@ function renderStatus(status) {
   renderCommandSafety(status);
   renderOfflineResume(status);
   renderVoicePrompt(status);
+  renderActionFeedback(status);
   renderOperationLog(status);
   renderSupport(status);
 }
 
-function buildStartPayload() {
+function makeClientReference(actionName) {
+  // client_reference 只用于手机端追溯，不携带本地路径、artifact、checksum 或后端秘密。
+  return `mobile_web_${actionName}_${Date.now()}`;
+}
+
+function buildStartPayload(clientReference) {
   // collect body 是手机确认 envelope，不是 ROS2 action result，也不证明送达成功。
   return {
     schema: "trashbot.mobile_task_start_confirmation.v1",
@@ -510,21 +608,59 @@ function buildStartPayload() {
     destination_source: latestStartGate.destinationSource,
     trash_loaded_confirmed: true,
     client_timestamp: new Date().toISOString(),
-    client_reference: `mobile_web_${Date.now()}`,
+    client_reference: clientReference,
     evidence_boundary: latestStartGate.evidenceBoundary,
     ack_semantics: "accepted_processing_only_not_delivery_success",
   };
 }
 
-function requestOptionsForAction(actionName) {
-  if (actionName !== "start") {
+function buildGenericActionPayload(actionName, clientReference) {
+  // Confirm/Cancel 使用通用手机动作确认 envelope；ACK 仍只是接收/处理中证据。
+  return {
+    schema: "trashbot.mobile_action_confirmation.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    action: actionName,
+    user_confirmed: true,
+    client_reference: clientReference,
+    client_timestamp: new Date().toISOString(),
+    safe_phone_copy: `${actionLabel(actionName)} 已由用户二次确认提交，等待 accepted/processing 证据。`,
+    ack_semantics: "accepted_processing_only_not_delivery_success",
+    evidence_boundary: ACTION_FEEDBACK_BOUNDARY,
+  };
+}
+
+function buildActionPayload(actionName, clientReference) {
+  return actionName === "start"
+    ? buildStartPayload(clientReference)
+    : buildGenericActionPayload(actionName, clientReference);
+}
+
+function requestOptionsForAction(actionName, payload) {
+  if (!payload) {
     return { method: "POST" };
   }
   return {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(buildStartPayload()),
+    body: JSON.stringify(payload),
   };
+}
+
+function setLocalActionFeedback(actionName, state, payload, overrides = {}) {
+  // 本地反馈只描述手机提交层，不越权写成机器人已执行、已到站或已取消。
+  latestActionFeedback = normalizeActionFeedback({
+    action: actionName,
+    action_copy: actionLabel(actionName),
+    submission_status: state,
+    safe_phone_copy: overrides.safe_phone_copy || `${actionLabel(actionName)} 已提交，等待 accepted/processing 证据。`,
+    failure_reason: overrides.failure_reason || "无本地失败原因；继续等待后端回执。",
+    recovery_hint: overrides.recovery_hint || "等待状态刷新；如长时间无 ACK，请打开诊断。",
+    client_reference: payload?.client_reference,
+    ack_semantics: ACK_PROCESSING_COPY,
+    evidence_boundary: ACTION_FEEDBACK_BOUNDARY,
+  }, "local");
+  renderActionFeedback(latestStatus || {});
 }
 
 async function refreshStatus() {
@@ -559,6 +695,11 @@ async function submitAction(actionName) {
     renderStartConfirmation(latestStatus || {});
     if (!latestStartGate.startEnabled) {
       $("commandSafetyCopy").textContent = latestStartGate.blockedReason;
+      setLocalActionFeedback(actionName, "blocked", null, {
+        safe_phone_copy: "Start 未提交；手机端安全 gate fail closed。",
+        failure_reason: latestStartGate.blockedReason,
+        recovery_hint: "补齐目的地、垃圾已放入确认和 command_safety 后再试。",
+      });
       button.disabled = true;
       return;
     }
@@ -567,13 +708,35 @@ async function submitAction(actionName) {
   if (!window.confirm(`${action.label}？请确认现场安全。`)) {
     return;
   }
+  const clientReference = makeClientReference(actionName);
+  const payload = buildActionPayload(actionName, clientReference);
+  setLocalActionFeedback(actionName, "submitted", payload);
   button.disabled = true;
   button.textContent = "提交中";
   try {
-    await fetchJson(ENDPOINTS[actionName], requestOptionsForAction(actionName));
+    const responsePayload = await fetchJson(ENDPOINTS[actionName], requestOptionsForAction(actionName, payload));
+    if (responsePayload && typeof responsePayload === "object") {
+      latestActionFeedback = normalizeActionFeedback({
+        action: actionName,
+        action_copy: action.label,
+        submission_status: responsePayload.submission_status || responsePayload.status || "accepted_or_processing",
+        safe_phone_copy: responsePayload.safe_phone_copy || `${action.label} 请求已被接口接收，等待机器人状态继续更新。`,
+        failure_reason: responsePayload.failure_reason || responsePayload.blocking_reason || "接口已返回 accepted/processing 证据；不是完成证明。",
+        recovery_hint: responsePayload.recovery_hint || "继续观察任务状态；需要时打开诊断。",
+        client_reference: responsePayload.client_reference || payload.client_reference,
+        ack_semantics: responsePayload.ack_semantics || ACK_PROCESSING_COPY,
+        evidence_boundary: responsePayload.evidence_boundary || ACTION_FEEDBACK_BOUNDARY,
+      }, "http_success");
+      renderActionFeedback(latestStatus || {});
+    }
     await refreshStatus();
   } catch (_error) {
     $("commandSafetyCopy").textContent = `${action.label} 提交失败，请打开诊断或稍后重试。`;
+    setLocalActionFeedback(actionName, "local_submit_failed", payload, {
+      safe_phone_copy: `${action.label} 提交失败；手机端没有收到 accepted/processing 证据。`,
+      failure_reason: "HTTP 请求失败或本地网络不可用。",
+      recovery_hint: "不要重复点击；先刷新状态，仍失败时打开诊断或联系支持。",
+    });
   } finally {
     button.textContent = action.label;
   }

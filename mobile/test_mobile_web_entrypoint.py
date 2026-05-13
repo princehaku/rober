@@ -32,6 +32,8 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("voice_prompt_readiness", app)
         self.assertIn("operation_log", app)
         self.assertIn("phone_operation_log", app)
+        self.assertIn("mobile_action_receipt", app)
+        self.assertIn("phone_action_feedback", app)
         self.assertEqual(manifest["evidence_boundary"], "software_proof_docker_mobile_web_entrypoint_gate")
         self.assertIn("manifest.webmanifest", index)
 
@@ -74,6 +76,26 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("voice_prompt_readiness", app)
         self.assertNotRegex(app, r"operationLog.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
 
+    def test_action_feedback_panel_consumes_receipt_and_fail_closed_copy(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        self.assertIn("actionFeedbackTitle", index)
+        self.assertIn("动作回执", index)
+        self.assertIn("actionFeedbackClientReference", index)
+        self.assertIn("actionFeedbackAck", index)
+        self.assertIn("software_proof_docker_mobile_action_feedback_gate", index)
+        self.assertIn("actionFeedbackFromStatus", app)
+        self.assertIn("normalizeActionFeedback", app)
+        self.assertIn("mobile_action_receipt", app)
+        self.assertIn("phone_action_feedback", app)
+        self.assertIn("local_submit_failed", app)
+        self.assertIn("ACK 只代表 accepted/processing evidence", app)
+        self.assertIn("不是完成证明", app)
+        self.assertNotIn("投放已完成", app)
+        self.assertNotIn("取消已完成", app)
+        self.assertNotIn("送达已成功", app)
+
     def test_start_confirmation_panel_and_payload_are_phone_safe(self):
         app = self.read("app.js")
         index = self.read("index.html")
@@ -99,6 +121,46 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "status?.destination",
         ):
             self.assertIn(compatible_field, app)
+
+    def test_confirm_and_cancel_use_generic_mobile_action_confirmation_payload(self):
+        app = self.read("app.js")
+
+        self.assertIn("buildGenericActionPayload", app)
+        self.assertIn('schema: "trashbot.mobile_action_confirmation.v1"', app)
+        self.assertIn("schema_version: 1", app)
+        self.assertIn('source: "mobile_web"', app)
+        self.assertIn("action: actionName", app)
+        self.assertIn("user_confirmed: true", app)
+        self.assertIn("client_reference: clientReference", app)
+        self.assertIn("client_timestamp", app)
+        self.assertIn("safe_phone_copy", app)
+        self.assertIn("accepted_processing_only_not_delivery_success", app)
+        self.assertIn("ACTION_FEEDBACK_BOUNDARY", app)
+        self.assertIn("buildActionPayload(actionName, clientReference)", app)
+        self.assertIn("requestOptionsForAction(actionName, payload)", app)
+
+        generic_builder = re.search(
+            r"function buildGenericActionPayload\(actionName, clientReference\) \{(.*?)\n\}",
+            app,
+            re.S,
+        )
+        self.assertIsNotNone(generic_builder)
+        generic_source = generic_builder.group(1).lower()
+        for forbidden in (
+            "destination:",
+            "target:",
+            "ros",
+            "/cmd_vel",
+            "serial",
+            "baudrate",
+            "wave rover",
+            "authorization",
+            "token",
+            "oss",
+            "checksum",
+            "artifact",
+        ):
+            self.assertNotIn(forbidden, generic_source)
 
     def test_service_worker_bypasses_dynamic_control_routes(self):
         service_worker = self.read("service-worker.js")
@@ -140,9 +202,19 @@ class MobileWebEntrypointTest(unittest.TestCase):
             payload["operation_log"]["evidence_boundary"],
             "software_proof_docker_mobile_operation_log_gate",
         )
+        self.assertEqual(payload["mobile_action_receipt"]["schema"], "trashbot.mobile_action_receipt.v1")
+        self.assertEqual(
+            payload["mobile_action_receipt"]["evidence_boundary"],
+            "software_proof_docker_mobile_action_feedback_gate",
+        )
+        self.assertEqual(payload["phone_action_feedback"]["schema"], "trashbot.phone_action_feedback.v1")
         self.assertIn("trashbot.command_safety.v1", encoded)
+        self.assertIn("trashbot.mobile_action_confirmation.v1", encoded)
         self.assertIn("最近状态：等待用户确认垃圾已放入", encoded)
         self.assertIn("勾选已放入垃圾后再尝试开始送达", encoded)
+        self.assertIn("accepted/processing evidence", encoded)
+        self.assertIn("client_reference", encoded)
+        self.assertIn("提交失败", encoded)
         self.assertIn("支持交接：可复制脱敏摘要给支持人员", encoded)
         self.assertIn("destination_summary", encoded)
         self.assertIn("destination_confirmed", encoded)

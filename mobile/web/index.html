@@ -78,6 +78,37 @@
         </button>
       </section>
 
+      <section class="action-feedback-panel" aria-labelledby="actionFeedbackTitle">
+        <div class="section-heading">
+          <h2 id="actionFeedbackTitle">动作回执</h2>
+          <span id="actionFeedbackStatusBadge" class="gate-badge gate-blocked">等待动作</span>
+        </div>
+        <p id="actionFeedbackCopy" class="message">
+          提交 Start、Confirm 或 Cancel 后，这里只显示 phone-safe 回执和恢复建议。
+        </p>
+        <dl class="feedback-grid">
+          <div>
+            <dt>最近动作</dt>
+            <dd id="actionFeedbackAction">暂无</dd>
+          </div>
+          <div>
+            <dt>提交状态</dt>
+            <dd id="actionFeedbackState">等待提交</dd>
+          </div>
+          <div>
+            <dt>Client reference</dt>
+            <dd id="actionFeedbackClientReference">暂无</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="actionFeedbackAck">ACK 只代表 accepted/processing，不代表送达成功。</dd>
+          </div>
+        </dl>
+        <p id="actionFeedbackReason" class="hint">失败原因会由后端或本地提交错误提供。</p>
+        <p id="actionFeedbackRecovery" class="hint">恢复建议会保持可读、可重试、可交接。</p>
+        <p id="actionFeedbackBoundary" class="boundary">software_proof_docker_mobile_action_feedback_gate</p>
+      </section>
+
       <section class="task-panel" aria-labelledby="taskFlowTitle">
         <h2 id="taskFlowTitle">任务流程</h2>
         <ol id="taskFlowList" class="task-flow">

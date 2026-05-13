@@ -218,6 +218,50 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("delivery_success", encoded_command)
         self.assertNotIn("/trashbot/collect_trash", encoded_command)
 
+    def test_validate_command_ignores_mobile_action_feedback_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-mobile-action-feedback",
+            "type": "confirm_dropoff",
+            "payload": {"accepted": True},
+            "mobile_action_confirmation": {
+                "schema": "trashbot.mobile_action_confirmation.v1",
+                "source": "mobile_web",
+                "action": "confirm_dropoff",
+                "user_confirmed": True,
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "ack_semantics": "delivery_success",
+                "delivery_success": True,
+            },
+            "mobile_action_receipt": {
+                "schema": "trashbot.mobile_action_receipt.v1",
+                "action": "cancel",
+                "receipt_state": "accepted",
+                "serial_device": "/dev/ttyUSB0",
+                "raw_ros_topic": "/trashbot/cancel",
+            },
+            "phone_action_feedback": {
+                "schema": "trashbot.phone_action_feedback.v1",
+                "safe_phone_copy": "命令已提交，等待机器人处理。",
+                "recovery_hint": "继续观察状态。",
+                "raw_ros_topic": "/cmd_vel",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-mobile-action-feedback")
+        self.assertEqual(command["type"], "confirm_dropoff")
+        self.assertEqual(command["payload"], {"accepted": True})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 动作回执是 phone-safe metadata，不能扩展或覆盖 robot command envelope。
+        self.assertNotIn("mobile_action_confirmation", encoded_command)
+        self.assertNotIn("mobile_action_receipt", encoded_command)
+        self.assertNotIn("phone_action_feedback", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("/dev/ttyUSB0", encoded_command)
+
     def test_validate_command_ignores_operation_log_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-operation-log-metadata",

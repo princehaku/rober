@@ -7,6 +7,42 @@
   "can_collect": true,
   "can_confirm_dropoff": false,
   "can_cancel": false,
+  "mobile_action_confirmation": {
+    "schema": "trashbot.mobile_action_confirmation.v1",
+    "schema_version": 1,
+    "source": "mobile_web",
+    "action": "confirm_dropoff",
+    "user_confirmed": true,
+    "client_reference": "mobile_web_confirm_dropoff_fixture",
+    "client_timestamp": "2026-05-13T09:12:00+08:00",
+    "safe_phone_copy": "确认投放请求已由用户二次确认提交，等待 accepted/processing evidence。",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "evidence_boundary": "software_proof_docker_mobile_action_feedback_gate"
+  },
+  "mobile_action_receipt": {
+    "schema": "trashbot.mobile_action_receipt.v1",
+    "schema_version": 1,
+    "action": "confirm_dropoff",
+    "submission_status": "accepted_or_processing",
+    "client_reference": "mobile_web_confirm_dropoff_fixture",
+    "safe_phone_copy": "确认投放请求已被接口接收，继续等待机器人状态刷新。",
+    "failure_reason": "无失败；该回执仍不是投放完成证明。",
+    "recovery_hint": "继续观察任务流程；若长时间无状态变化，请打开诊断。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+    "evidence_boundary": "software_proof_docker_mobile_action_feedback_gate"
+  },
+  "phone_action_feedback": {
+    "schema": "trashbot.phone_action_feedback.v1",
+    "schema_version": 1,
+    "action": "cancel",
+    "submission_status": "failed",
+    "client_reference": "mobile_web_cancel_failed_fixture",
+    "safe_phone_copy": "取消请求提交失败；手机端没有收到 accepted/processing evidence。",
+    "failure_reason": "本地静态 smoke 展示失败提示，不代表机器人已取消。",
+    "recovery_hint": "刷新状态后再试；仍失败时打开诊断或联系支持。",
+    "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
+    "evidence_boundary": "software_proof_docker_mobile_action_feedback_gate"
+  },
   "operation_log": {
     "schema": "trashbot.phone_operation_log.v1",
     "evidence_boundary": "software_proof_docker_mobile_operation_log_gate",
