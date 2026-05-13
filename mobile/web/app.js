@@ -22,6 +22,7 @@ const MOBILE_BROWSER_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_browser
 const MOBILE_PWA_INSTALL_PROMPT_BOUNDARY = "software_proof_docker_mobile_pwa_install_prompt_evidence_gate";
 const MOBILE_REAL_DEVICE_EVIDENCE_INTAKE_BOUNDARY = "software_proof_docker_mobile_real_device_evidence_intake_gate";
 const MOBILE_REAL_DEVICE_ACCEPTANCE_DECISION_BOUNDARY = "software_proof_docker_mobile_real_device_acceptance_decision_gate";
+const MOBILE_REAL_DEVICE_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_mobile_real_device_review_handoff_gate";
 const PRIMARY_JOURNEY_BOUNDARY = "software_proof_docker_mobile_primary_journey_gate";
 const RECOVERY_DECISION_BOUNDARY = "software_proof_docker_mobile_recovery_decision_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
@@ -40,10 +41,13 @@ const REAL_DEVICE_EVIDENCE_PACKAGE_SCHEMA = "trashbot.mobile_real_device_evidenc
 const REAL_DEVICE_ACCEPTANCE_DECISION_SCHEMA = "trashbot.mobile_real_device_acceptance_decision.v1";
 const REAL_DEVICE_ACCEPTANCE_DECISION_SUMMARY_SCHEMA = "trashbot.mobile_real_device_acceptance_decision_summary.v1";
 const REAL_DEVICE_ACCEPTANCE_DECISION_PACKAGE_SCHEMA = "trashbot.mobile_real_device_acceptance_decision_package.v1";
+const REAL_DEVICE_REVIEW_HANDOFF_SCHEMA = "trashbot.mobile_real_device_review_handoff.v1";
+const REAL_DEVICE_REVIEW_HANDOFF_SUMMARY_SCHEMA = "trashbot.mobile_real_device_review_handoff_summary.v1";
+const REAL_DEVICE_REVIEW_HANDOFF_PACKAGE_SCHEMA = "trashbot.mobile_real_device_review_handoff_package.v1";
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|artifact)/i;
 const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
-const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/ws\/|\/var\/|traceback|checksum|artifact|raw robot response|robot response|password)/i;
+const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/ws\/|\/var\/|traceback|checksum|complete artifact|artifact|raw robot response|robot response|password)/i;
 
 let latestStatus = null;
 let latestDiagnostics = null;
@@ -54,6 +58,7 @@ let latestDeviceHandoffSession = null;
 let latestPwaInstallPromptPackage = null;
 let latestRealDeviceEvidencePackage = null;
 let latestRealDeviceAcceptanceDecisionPackage = null;
+let latestRealDeviceReviewHandoffPackage = null;
 let importedRealDeviceEvidence = null;
 let pendingTerminalAction = null;
 let stableHandoffClientReference = `mobile_web_handoff_${Date.now()}`;
@@ -374,6 +379,28 @@ function mobileRealDeviceAcceptanceDecisionCandidate(status, readiness, diagnost
     diagnosticsReadiness.mobile_real_device_acceptance_decision,
     diagnosticsReadiness.mobile_real_device_acceptance_decision_summary,
     diagnosticsReadiness.mobile_real_device_acceptance_decision_package,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function mobileRealDeviceReviewHandoffCandidate(status, readiness, diagnostics) {
+  // review handoff 只消费 phone-safe 评审交接字段；缺失时从 acceptance decision 派生保守会话。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const candidates = [
+    status?.mobile_real_device_review_handoff,
+    status?.mobile_real_device_review_handoff_summary,
+    status?.mobile_real_device_review_handoff_package,
+    readiness?.mobile_real_device_review_handoff,
+    readiness?.mobile_real_device_review_handoff_summary,
+    readiness?.mobile_real_device_review_handoff_package,
+    diagnostics?.mobile_real_device_review_handoff,
+    diagnostics?.mobile_real_device_review_handoff_summary,
+    diagnostics?.mobile_real_device_review_handoff_package,
+    diagnosticsReadiness.mobile_real_device_review_handoff,
+    diagnosticsReadiness.mobile_real_device_review_handoff_summary,
+    diagnosticsReadiness.mobile_real_device_review_handoff_package,
   ];
   return candidates.find((value) => value && typeof value === "object") || null;
 }
@@ -842,6 +869,125 @@ function mobileRealDeviceAcceptanceDecisionFromStatus(status, readiness, diagnos
   return normalizeRealDeviceAcceptanceDecision(provided, packagePayload);
 }
 
+function defaultReviewChecklist(decisionPayload) {
+  // reviewer checklist 明确人工复核要看的材料，不能把 decision package 当自动验收结果。
+  const blockerCount = Array.isArray(decisionPayload.blocker_list) ? decisionPayload.blocker_list.length : 0;
+  return [
+    {
+      item: "decision status",
+      status: decisionPayload.decision,
+      safe_phone_copy: "确认 acceptance decision 是否仅为 accepted_for_review、blocked_missing_evidence 或 rejected_unsafe_or_unredacted。",
+    },
+    {
+      item: "redaction",
+      status: decisionPayload.redaction_status,
+      safe_phone_copy: "确认复制包未包含 token、Authorization、OSS AK/SK、root password、DB/queue URL、raw ROS topic、/cmd_vel、serial、baudrate、WAVE ROVER、本地路径、traceback、checksum、complete artifact 或 raw robot response。",
+    },
+    {
+      item: "evidence blocker",
+      status: blockerCount ? "blocked_missing_evidence" : "ready_for_manual_review",
+      safe_phone_copy: blockerCount ? decisionPayload.blocker_list.join("；") : "没有自动 blocker；仍需人工确认真实设备材料。",
+    },
+    {
+      item: "not_proven",
+      status: "must_remain_visible",
+      safe_phone_copy: "真实设备、production app、真实 PWA install prompt、O5 外部 proof、HIL 和 delivery success 未证明时必须保留。",
+    },
+  ];
+}
+
+function normalizeReviewerChecklist(value, decisionPayload) {
+  // checklist 可以来自后端，但每项仍要经过敏感词过滤，避免复制原始评审材料。
+  const provided = Array.isArray(value?.reviewer_checklist) ? value.reviewer_checklist : defaultReviewChecklist(decisionPayload);
+  return provided.slice(0, 8).map((step) => ({
+    item: safeRealDeviceEvidenceText(step?.item || step?.id || step?.label, "reviewer checklist"),
+    status: safeRealDeviceEvidenceText(step?.status || step?.state, "not_proven"),
+    safe_phone_copy: safeRealDeviceEvidenceText(
+      step?.safe_phone_copy || step?.copy || step?.summary,
+      "等待人工评审补充 phone-safe 结论。",
+    ),
+  }));
+}
+
+function reviewHandoffDefaultStatus(decisionPayload) {
+  // accepted_for_review 只表示可以交给人看；缺材料或未脱敏时必须停在 blocked。
+  if (decisionPayload.decision === "accepted_for_review") {
+    return "ready_for_manual_review";
+  }
+  if (decisionPayload.decision === "rejected_unsafe_or_unredacted") {
+    return "blocked_redaction_required";
+  }
+  return "blocked_missing_evidence";
+}
+
+function normalizeRealDeviceReviewHandoff(value, decisionPayload) {
+  // review handoff package 从 acceptance decision 派生，但固定 safe_to_control=false，避免评审交接变成控制授权。
+  const reviewerChecklist = normalizeReviewerChecklist(value, decisionPayload);
+  const blockerList = Array.isArray(value?.evidence_blocker)
+    ? value.evidence_blocker
+    : (Array.isArray(value?.blocker_list) ? value.blocker_list : decisionPayload.blocker_list);
+  const nextEvidence = Array.isArray(value?.next_required_evidence)
+    ? value.next_required_evidence
+    : decisionPayload.next_required_evidence;
+  const notProven = notProvenList(value?.not_proven || decisionPayload.not_proven);
+  const reviewStatus = safeRealDeviceEvidenceText(
+    value?.review_status || value?.overall_status || value?.status,
+    reviewHandoffDefaultStatus(decisionPayload),
+  );
+  return {
+    schema: REAL_DEVICE_REVIEW_HANDOFF_SCHEMA,
+    schema_version: 1,
+    summary_schema: REAL_DEVICE_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+    package_schema: REAL_DEVICE_REVIEW_HANDOFF_PACKAGE_SCHEMA,
+    source: safeRealDeviceEvidenceText(value?.source, value ? "status_or_diagnostics" : "derived_from_mobile_real_device_acceptance_decision"),
+    handoff_session_id: safeRealDeviceEvidenceText(value?.handoff_session_id || value?.session_id, `review_handoff_${Date.now()}`),
+    decision_status: safeRealDeviceEvidenceText(value?.decision_status || decisionPayload.decision, decisionPayload.decision),
+    review_owner: safeRealDeviceEvidenceText(value?.review_owner || value?.owner, "review_owner_unassigned"),
+    review_status: reviewStatus,
+    safe_to_control: false,
+    evidence_blocker: (blockerList.length ? blockerList : ["等待 reviewer 确认真实设备材料。"])
+      .slice(0, 8)
+      .map((item) => safeRealDeviceEvidenceText(item, "blocked_missing_evidence")),
+    next_required_evidence: nextEvidence
+      .slice(0, 8)
+      .map((item) => safeRealDeviceEvidenceText(item, "真实设备验收材料")),
+    reviewer_checklist: reviewerChecklist,
+    redaction_status: safeRealDeviceEvidenceText(value?.redaction_status || decisionPayload.redaction_status, "missing"),
+    safe_phone_copy: safeRealDeviceEvidenceText(
+      value?.safe_phone_copy || value?.safe_summary,
+      "review handoff package 只表示人工评审交接；不是真实设备验收通过、真实 PWA install prompt、O5 外部 proof、HIL 或 delivery success。",
+    ),
+    recovery_hint: safeRealDeviceEvidenceText(
+      value?.recovery_hint || value?.retry_hint,
+      "请由 review owner 按 reviewer checklist 补齐 next required evidence；ACK 仍不是 delivery success。",
+    ),
+    ack_semantics: safeRealDeviceEvidenceText(value?.ack_semantics, ACK_PROCESSING_COPY),
+    evidence_boundary: safeRealDeviceEvidenceText(value?.evidence_boundary, MOBILE_REAL_DEVICE_REVIEW_HANDOFF_BOUNDARY),
+    source_evidence_boundary: safeRealDeviceEvidenceText(
+      value?.source_evidence_boundary || decisionPayload.evidence_boundary,
+      MOBILE_REAL_DEVICE_ACCEPTANCE_DECISION_BOUNDARY,
+    ),
+    linked_acceptance_decision: {
+      schema: REAL_DEVICE_ACCEPTANCE_DECISION_PACKAGE_SCHEMA,
+      decision_schema: decisionPayload.schema,
+      summary_schema: decisionPayload.summary_schema,
+      decision: decisionPayload.decision,
+      accepted_for_review: decisionPayload.accepted_for_review,
+      redaction_status: decisionPayload.redaction_status,
+      evidence_boundary: decisionPayload.evidence_boundary,
+      source_evidence_boundary: decisionPayload.source_evidence_boundary,
+      safe_to_control: false,
+    },
+    not_proven: notProven,
+  };
+}
+
+function mobileRealDeviceReviewHandoffFromStatus(status, readiness, diagnostics) {
+  const decisionPayload = mobileRealDeviceAcceptanceDecisionFromStatus(status, readiness, diagnostics);
+  const provided = mobileRealDeviceReviewHandoffCandidate(status, readiness, diagnostics);
+  return normalizeRealDeviceReviewHandoff(provided, decisionPayload);
+}
+
 function bundleFieldSummary(value, fallback = "not_proven") {
   // 字段可能是安全字符串，也可能是状态对象；只抽取摘要键，不展示原始对象。
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
@@ -1126,6 +1272,18 @@ function mobileDeviceHandoffSessionAllowsPrimaryActions(summary) {
     summary.overall_status !== "blocked";
 }
 
+function mobileRealDeviceReviewHandoffAllowsPrimaryActions(summary) {
+  // review handoff 默认不是控制授权；只有后端显式清掉 not_proven 且标记控制批准时才可能继续。
+  if (!summary || summary.missing === true) {
+    return false;
+  }
+  const joined = Array.isArray(summary.not_proven) ? summary.not_proven.join(" ").toLowerCase() : "";
+  return summary.safe_to_control === true &&
+    summary.decision_status === "accepted_for_review" &&
+    summary.review_status === "approved_for_control" &&
+    !/真实手机|iphone|android|production app|pwa install prompt|hil|delivery|送达/.test(joined);
+}
+
 function operationLogFromStatus(status, readiness) {
   // 后端显式日志优先；没有日志时才从已知 phone-safe readiness 派生最小事件。
   const candidates = [
@@ -1280,6 +1438,7 @@ function terminalActionGateFromStatus(status, actionName) {
   const mobileDeviceAcceptance = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics);
   const mobileBrowserAcceptance = mobileBrowserAcceptanceBundleFromStatus(status, readiness, latestDiagnostics);
   const mobileDeviceHandoff = mobileDeviceHandoffSessionFromStatus(status, readiness, latestDiagnostics);
+  const mobileRealDeviceReviewHandoff = mobileRealDeviceReviewHandoffFromStatus(status, readiness, latestDiagnostics);
   const offline = offlineResumeFromStatus(status, readiness);
   const permitted = actionPermission(status, readiness, actionName);
   const hasCommandSafety = commandSafety.schema === "trashbot.command_safety.v1" || Boolean(commandSafety.actions);
@@ -1310,6 +1469,9 @@ function terminalActionGateFromStatus(status, actionName) {
   }
   if (!mobileDeviceHandoffSessionAllowsPrimaryActions(mobileDeviceHandoff)) {
     blockers.push("mobile device handoff session 未显式放行终端动作。");
+  }
+  if (!mobileRealDeviceReviewHandoffAllowsPrimaryActions(mobileRealDeviceReviewHandoff)) {
+    blockers.push("mobile real device review handoff 未显式放行终端动作。");
   }
   if (connection && connection !== "online" || /offline|stale|unreachable|disconnect|network/.test(raw)) {
     blockers.push("状态 offline/stale/unreachable，终端动作确认 fail closed。");
@@ -1380,6 +1542,7 @@ function startGateFromStatus(status) {
   const mobileDeviceAcceptance = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics);
   const mobileBrowserAcceptance = mobileBrowserAcceptanceBundleFromStatus(status, readiness, latestDiagnostics);
   const mobileDeviceHandoff = mobileDeviceHandoffSessionFromStatus(status, readiness, latestDiagnostics);
+  const mobileRealDeviceReviewHandoff = mobileRealDeviceReviewHandoffFromStatus(status, readiness, latestDiagnostics);
   const operationLogGate = operationLogReadyForPrimaryJourney(status, readiness);
   const actionFeedbackGate = actionFeedbackReadyForPrimaryJourney(status, readiness);
   const permitted = actionPermission(status, readiness, "start");
@@ -1413,6 +1576,9 @@ function startGateFromStatus(status) {
   }
   if (!mobileDeviceHandoffSessionAllowsPrimaryActions(mobileDeviceHandoff)) {
     blockers.push("mobile device handoff session 未显式放行主操作。");
+  }
+  if (!mobileRealDeviceReviewHandoffAllowsPrimaryActions(mobileRealDeviceReviewHandoff)) {
+    blockers.push("mobile real device review handoff 未显式放行主操作。");
   }
   if (!operationLogGate.ready) {
     blockers.push(operationLogGate.copy);
@@ -1594,10 +1760,12 @@ function renderCommandSafety(status) {
   const mobileDeviceAcceptance = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics);
   const mobileBrowserAcceptance = mobileBrowserAcceptanceBundleFromStatus(status, readiness, latestDiagnostics);
   const mobileDeviceHandoff = mobileDeviceHandoffSessionFromStatus(status, readiness, latestDiagnostics);
+  const mobileRealDeviceReviewHandoff = mobileRealDeviceReviewHandoffFromStatus(status, readiness, latestDiagnostics);
   const cloudAllowsPrimaryActions = cloudSummaryAllowsPrimaryActions(cloudSummary);
   const mobileDeviceAllowsPrimaryActions = mobileDeviceAcceptanceAllowsPrimaryActions(mobileDeviceAcceptance);
   const browserBundleAllowsPrimaryActions = mobileBrowserAcceptanceBundleAllowsPrimaryActions(mobileBrowserAcceptance);
   const handoffSessionAllowsPrimaryActions = mobileDeviceHandoffSessionAllowsPrimaryActions(mobileDeviceHandoff);
+  const reviewHandoffAllowsPrimaryActions = mobileRealDeviceReviewHandoffAllowsPrimaryActions(mobileRealDeviceReviewHandoff);
   const actions = commandSafety.actions && typeof commandSafety.actions === "object" ? commandSafety.actions : {};
   $("commandSafetyCopy").textContent = safeText(commandSafety.safe_phone_copy, "主操作保持禁用。");
   $("ackCopy").textContent = safeText(
@@ -1621,6 +1789,7 @@ function renderCommandSafety(status) {
       mobileDeviceAllowsPrimaryActions &&
       browserBundleAllowsPrimaryActions &&
       handoffSessionAllowsPrimaryActions &&
+      reviewHandoffAllowsPrimaryActions &&
       (startGate ? startGate.startEnabled : true) &&
       (terminalGate ? terminalGate.enabled : true);
     // blocked、离线、等待 ACK、人工接管都会通过 command_safety 关闭按钮。
@@ -1638,7 +1807,8 @@ function renderCommandSafety(status) {
     const mobileDeviceReason = mobileDeviceAllowsPrimaryActions ? "" : "；手机验收准备未放行主操作。";
     const browserBundleReason = browserBundleAllowsPrimaryActions ? "" : "；浏览器验收包未放行主操作。";
     const handoffReason = handoffSessionAllowsPrimaryActions ? "" : "；真实手机验收交接会话未放行主操作。";
-    item.textContent = `${actionMeta.label}：${enabled ? "可操作" : `${reason}${cloudReason}${mobileDeviceReason}${browserBundleReason}${handoffReason}`}`;
+    const reviewHandoffReason = reviewHandoffAllowsPrimaryActions ? "" : "；真实设备 review handoff 未放行主操作。";
+    item.textContent = `${actionMeta.label}：${enabled ? "可操作" : `${reason}${cloudReason}${mobileDeviceReason}${browserBundleReason}${handoffReason}${reviewHandoffReason}`}`;
     reasons.appendChild(item);
   });
 
@@ -1716,6 +1886,7 @@ function deriveOperationLogEntries(status, readiness) {
   pushDerivedEvent(entries, "PWA 安装提示证据", mobilePwaInstallPromptEvidenceFromStatus(status, readiness, latestDiagnostics));
   pushDerivedEvent(entries, "真实设备验收材料", mobileRealDeviceEvidencePackageFromStatus(status, readiness, latestDiagnostics));
   pushDerivedEvent(entries, "真实设备验收决策", mobileRealDeviceAcceptanceDecisionFromStatus(status, readiness, latestDiagnostics));
+  pushDerivedEvent(entries, "真实设备评审交接", mobileRealDeviceReviewHandoffFromStatus(status, readiness, latestDiagnostics));
   return entries.slice(0, 8);
 }
 
@@ -1922,6 +2093,33 @@ function realDeviceAcceptanceDecisionPackageCopyPayload(packagePayload) {
   };
 }
 
+function realDeviceReviewHandoffPackageCopyPayload(packagePayload) {
+  // review handoff package 只保留评审交接白名单，过滤原始 decision/intake、机器人响应和敏感字段。
+  return {
+    schema: REAL_DEVICE_REVIEW_HANDOFF_PACKAGE_SCHEMA,
+    schema_version: packagePayload.schema_version,
+    handoff_schema: packagePayload.schema,
+    summary_schema: packagePayload.summary_schema,
+    source: packagePayload.source,
+    handoff_session_id: packagePayload.handoff_session_id,
+    decision_status: packagePayload.decision_status,
+    review_owner: packagePayload.review_owner,
+    review_status: packagePayload.review_status,
+    safe_to_control: false,
+    evidence_blocker: packagePayload.evidence_blocker,
+    next_required_evidence: packagePayload.next_required_evidence,
+    reviewer_checklist: packagePayload.reviewer_checklist,
+    redaction_status: packagePayload.redaction_status,
+    linked_acceptance_decision: packagePayload.linked_acceptance_decision,
+    safe_phone_copy: packagePayload.safe_phone_copy,
+    recovery_hint: packagePayload.recovery_hint,
+    ack_semantics: packagePayload.ack_semantics,
+    evidence_boundary: packagePayload.evidence_boundary,
+    source_evidence_boundary: packagePayload.source_evidence_boundary,
+    not_proven: packagePayload.not_proven,
+  };
+}
+
 function renderMobileDeviceEvidence(status) {
   const readiness = readinessFromStatus(status);
   const packagePayload = mobileDeviceEvidencePackageFromStatus(status, readiness, latestDiagnostics);
@@ -2027,6 +2225,43 @@ function renderMobileRealDeviceAcceptanceDecision(status) {
   $("mobileRealDeviceAcceptanceDecisionRecoveryHint").textContent = packagePayload.recovery_hint;
   $("mobileRealDeviceAcceptanceDecisionSafeCopy").textContent =
     JSON.stringify(realDeviceAcceptanceDecisionPackageCopyPayload(packagePayload), null, 2);
+}
+
+function renderMobileRealDeviceReviewHandoff(status) {
+  const readiness = readinessFromStatus(status);
+  const packagePayload = mobileRealDeviceReviewHandoffFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("mobileRealDeviceReviewHandoffBadge");
+  latestRealDeviceReviewHandoffPackage = packagePayload;
+
+  badge.className = "gate-badge";
+  badge.classList.add(packagePayload.review_status === "ready_for_manual_review" ? "gate-waiting" : "gate-blocked");
+  badge.textContent = packagePayload.review_status;
+  $("mobileRealDeviceReviewHandoffCopy").textContent = packagePayload.safe_phone_copy;
+  $("mobileRealDeviceReviewHandoffDecision").textContent = packagePayload.decision_status;
+  $("mobileRealDeviceReviewHandoffOwner").textContent =
+    `review owner=${packagePayload.review_owner} / review status=${packagePayload.review_status}`;
+  $("mobileRealDeviceReviewHandoffBlockers").textContent = packagePayload.evidence_blocker.join("；");
+  $("mobileRealDeviceReviewHandoffNextEvidence").textContent = packagePayload.next_required_evidence.join("；");
+  $("mobileRealDeviceReviewHandoffRedaction").textContent = packagePayload.redaction_status;
+  $("mobileRealDeviceReviewHandoffAck").textContent = packagePayload.ack_semantics;
+  $("mobileRealDeviceReviewHandoffBoundary").textContent = packagePayload.evidence_boundary;
+  $("mobileRealDeviceReviewHandoffSourceBoundary").textContent = packagePayload.source_evidence_boundary;
+  $("mobileRealDeviceReviewHandoffNotProven").textContent = packagePayload.not_proven.join("、");
+  $("mobileRealDeviceReviewHandoffRecoveryHint").textContent = packagePayload.recovery_hint;
+
+  const list = $("mobileRealDeviceReviewHandoffChecklist");
+  list.textContent = "";
+  packagePayload.reviewer_checklist.forEach((step) => {
+    const item = document.createElement("li");
+    const title = document.createElement("strong");
+    const copy = document.createElement("em");
+    title.textContent = `${step.item}：${step.status}`;
+    copy.textContent = step.safe_phone_copy;
+    item.append(title, copy);
+    list.appendChild(item);
+  });
+  $("mobileRealDeviceReviewHandoffSafeCopy").textContent =
+    JSON.stringify(realDeviceReviewHandoffPackageCopyPayload(packagePayload), null, 2);
 }
 
 function renderMobileDeviceHandoffSession(status) {
@@ -2262,6 +2497,7 @@ function renderOfflineFailure() {
   renderMobilePwaInstallPromptEvidence({});
   renderMobileRealDeviceEvidenceIntake({});
   renderMobileRealDeviceAcceptanceDecision({});
+  renderMobileRealDeviceReviewHandoff({});
   renderMobileBrowserAcceptanceBundle({});
   renderRecoveryDecision({ connection_state: "offline" });
   latestActionFeedback = normalizeActionFeedback({
@@ -2297,6 +2533,7 @@ function renderStatus(status) {
   renderMobilePwaInstallPromptEvidence(status);
   renderMobileRealDeviceEvidenceIntake(status);
   renderMobileRealDeviceAcceptanceDecision(status);
+  renderMobileRealDeviceReviewHandoff(status);
   renderMobileBrowserAcceptanceBundle(status);
   renderTaskFlow(status);
   renderStartConfirmation(status);
@@ -2489,6 +2726,7 @@ async function openDiagnostics() {
     renderMobilePwaInstallPromptEvidence(latestStatus || {});
     renderMobileRealDeviceEvidenceIntake(latestStatus || {});
     renderMobileRealDeviceAcceptanceDecision(latestStatus || {});
+    renderMobileRealDeviceReviewHandoff(latestStatus || {});
     renderMobileBrowserAcceptanceBundle(latestStatus || {});
     renderCommandSafety(latestStatus || {});
     renderDiagnosticsSummary(latestDiagnostics);
@@ -2588,7 +2826,7 @@ function wireEvents() {
           overall_status: "blocked",
           evidence: { redaction_status: "failed_sensitive_input_filtered" },
           safe_phone_copy: "导入 JSON 含敏感字段，已拒绝复制原文；请提供 redacted phone-safe summary。",
-          recovery_hint: "移除 token、Authorization、OSS AK/SK、root password、DB/queue URL、ROS topic、/cmd_vel、serial、baudrate、WAVE ROVER、local paths、traceback、checksum、artifact 或 raw robot response 后重试。",
+          recovery_hint: "移除 token、Authorization、OSS AK/SK、root password、DB/queue URL、raw ROS topic、/cmd_vel、serial、baudrate、WAVE ROVER、local paths、traceback、checksum、complete artifact 或 raw robot response 后重试。",
         };
       } else {
         importedRealDeviceEvidence = parsed;
@@ -2600,6 +2838,7 @@ function wireEvents() {
     }
     renderMobileRealDeviceEvidenceIntake(latestStatus || {});
     renderMobileRealDeviceAcceptanceDecision(latestStatus || {});
+    renderMobileRealDeviceReviewHandoff(latestStatus || {});
     renderCommandSafety(latestStatus || {});
   });
   $("generateRealDeviceEvidenceButton").addEventListener("click", () => {
@@ -2608,6 +2847,7 @@ function wireEvents() {
     $("mobileRealDeviceEvidenceImportStatus").textContent = "已使用当前本地浏览器 metadata 生成 blocked-by-design package。";
     renderMobileRealDeviceEvidenceIntake(latestStatus || {});
     renderMobileRealDeviceAcceptanceDecision(latestStatus || {});
+    renderMobileRealDeviceReviewHandoff(latestStatus || {});
   });
   $("copyRealDeviceEvidencePackageButton").addEventListener("click", async () => {
     const payload = JSON.stringify(realDeviceEvidencePackageCopyPayload(latestRealDeviceEvidencePackage || {}), null, 2);
@@ -2633,6 +2873,21 @@ function wireEvents() {
       $("mobileRealDeviceAcceptanceDecisionCopyStatus").textContent = "已复制 acceptance decision package。";
     } catch (_error) {
       $("mobileRealDeviceAcceptanceDecisionCopyStatus").textContent = "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("copyRealDeviceReviewHandoffButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(
+      realDeviceReviewHandoffPackageCopyPayload(latestRealDeviceReviewHandoffPackage || {}),
+      null,
+      2,
+    );
+    $("mobileRealDeviceReviewHandoffSafeCopy").textContent = payload;
+    // review handoff package 只给人工评审交接，剪贴板失败时仍能从 pre 手动复制。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("mobileRealDeviceReviewHandoffCopyStatus").textContent = "已复制 review handoff package。";
+    } catch (_error) {
+      $("mobileRealDeviceReviewHandoffCopyStatus").textContent = "浏览器未授权剪贴板；请从下方文本框手动复制。";
     }
   });
   $("supportButton").addEventListener("click", () => {
@@ -2662,6 +2917,7 @@ function wireEvents() {
       renderPrimaryJourney(latestStatus);
       renderStartConfirmation(latestStatus);
       renderMobileDeviceHandoffSession(latestStatus);
+      renderMobileRealDeviceReviewHandoff(latestStatus);
       renderCommandSafety(latestStatus);
     }
   });

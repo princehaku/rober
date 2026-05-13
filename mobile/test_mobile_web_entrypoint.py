@@ -107,6 +107,12 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("mobile_real_device_evidence_intake", app)
         self.assertIn("mobile_real_device_evidence_intake_summary", app)
         self.assertIn("mobile_real_device_evidence_package", app)
+        self.assertIn("mobile_real_device_acceptance_decision", app)
+        self.assertIn("mobile_real_device_acceptance_decision_summary", app)
+        self.assertIn("mobile_real_device_acceptance_decision_package", app)
+        self.assertIn("mobile_real_device_review_handoff", app)
+        self.assertIn("mobile_real_device_review_handoff_summary", app)
+        self.assertIn("mobile_real_device_review_handoff_package", app)
         self.assertIn("mobile_browser_acceptance_bundle", app)
         self.assertIn("phone_browser_acceptance_bundle", app)
         self.assertIn("mobile_acceptance_evidence_bundle", app)
@@ -478,6 +484,39 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertNotIn("mobileRealDeviceAcceptanceDecisionAllowsPrimaryActions", app)
         self.assertNotRegex(app, r"mobileRealDeviceAcceptanceDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
 
+    def test_mobile_real_device_review_handoff_is_copyable_review_only_and_fail_closed(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        self.assertIn("mobileRealDeviceReviewHandoffTitle", index)
+        self.assertIn("真实设备评审交接", index)
+        self.assertIn("copyRealDeviceReviewHandoffButton", index)
+        self.assertIn("mobileRealDeviceReviewHandoffSafeCopy", index)
+        self.assertIn("software_proof_docker_mobile_real_device_review_handoff_gate", index)
+        self.assertIn("trashbot.mobile_real_device_review_handoff.v1", app)
+        self.assertIn("trashbot.mobile_real_device_review_handoff_summary.v1", app)
+        self.assertIn("trashbot.mobile_real_device_review_handoff_package.v1", app)
+        self.assertIn("mobileRealDeviceReviewHandoffCandidate", app)
+        self.assertIn("mobileRealDeviceReviewHandoffFromStatus", app)
+        self.assertIn("realDeviceReviewHandoffPackageCopyPayload", app)
+        self.assertIn("mobile_real_device_review_handoff", app)
+        self.assertIn("mobile_real_device_review_handoff_summary", app)
+        self.assertIn("mobile_real_device_review_handoff_package", app)
+        self.assertIn("reviewer checklist", app)
+        self.assertIn("review owner", app)
+        self.assertIn("decision status", app)
+        self.assertIn("evidence blocker", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("source_evidence_boundary", app)
+        self.assertIn("safe_to_control: false", app)
+        self.assertIn("not_proven", app)
+        self.assertIn("ACK 仍不是 delivery success", app)
+        self.assertIn("mobile real device review handoff 未显式放行主操作", app)
+        self.assertIn("mobile real device review handoff 未显式放行终端动作", app)
+        self.assertIn("真实设备验收通过、真实 PWA install prompt、O5 外部 proof、HIL 或 delivery success", app)
+        self.assertIn("navigator.clipboard.writeText", app)
+        self.assertNotRegex(app, r"mobileRealDeviceReviewHandoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
     def test_action_feedback_panel_consumes_receipt_and_fail_closed_copy(self):
         app = self.read("app.js")
         index = self.read("index.html")
@@ -817,12 +856,47 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "trashbot.mobile_real_device_acceptance_decision_package.v1",
         )
         self.assertEqual(
+            payload["mobile_real_device_review_handoff"]["schema"],
+            "trashbot.mobile_real_device_review_handoff.v1",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_review_handoff"]["summary_schema"],
+            "trashbot.mobile_real_device_review_handoff_summary.v1",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_review_handoff"]["package_schema"],
+            "trashbot.mobile_real_device_review_handoff_package.v1",
+        )
+        self.assertEqual(payload["mobile_real_device_review_handoff"]["decision_status"], "blocked_missing_evidence")
+        self.assertEqual(payload["mobile_real_device_review_handoff"]["review_owner"], "review_owner_unassigned")
+        self.assertEqual(payload["mobile_real_device_review_handoff"]["review_status"], "blocked_missing_evidence")
+        self.assertEqual(payload["mobile_real_device_review_handoff"]["safe_to_control"], False)
+        self.assertEqual(payload["mobile_real_device_review_handoff"]["redaction_status"], "passed")
+        self.assertIn("reviewer_checklist", payload["mobile_real_device_review_handoff"])
+        self.assertIn("next_required_evidence", payload["mobile_real_device_review_handoff"])
+        self.assertEqual(
+            payload["mobile_real_device_review_handoff"]["evidence_boundary"],
+            "software_proof_docker_mobile_real_device_review_handoff_gate",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_review_handoff_summary"]["schema"],
+            "trashbot.mobile_real_device_review_handoff_summary.v1",
+        )
+        self.assertEqual(
+            payload["mobile_real_device_review_handoff_package"]["schema"],
+            "trashbot.mobile_real_device_review_handoff_package.v1",
+        )
+        self.assertEqual(
             payload["phone_readiness"]["mobile_real_device_evidence_intake"]["evidence_boundary"],
             "software_proof_docker_mobile_real_device_evidence_intake_gate",
         )
         self.assertEqual(
             payload["phone_readiness"]["mobile_real_device_acceptance_decision"]["evidence_boundary"],
             "software_proof_docker_mobile_real_device_acceptance_decision_gate",
+        )
+        self.assertEqual(
+            payload["phone_readiness"]["mobile_real_device_review_handoff"]["evidence_boundary"],
+            "software_proof_docker_mobile_real_device_review_handoff_gate",
         )
         self.assertEqual(
             payload["phone_readiness"]["mobile_pwa_install_prompt_evidence"]["evidence_boundary"],
@@ -933,6 +1007,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("trashbot.mobile_real_device_acceptance_decision.v1", encoded)
         self.assertIn("trashbot.mobile_real_device_acceptance_decision_summary.v1", encoded)
         self.assertIn("trashbot.mobile_real_device_acceptance_decision_package.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_review_handoff.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_review_handoff_summary.v1", encoded)
+        self.assertIn("trashbot.mobile_real_device_review_handoff_package.v1", encoded)
         self.assertIn("trashbot.mobile_browser_acceptance_bundle.v1", encoded)
         self.assertIn("blocked-by-design", encoded)
         self.assertIn("真实 pwa install prompt", encoded)
@@ -942,6 +1019,7 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("software_proof_docker_mobile_pwa_install_prompt_evidence_gate", encoded)
         self.assertIn("software_proof_docker_mobile_real_device_evidence_intake_gate", encoded)
         self.assertIn("software_proof_docker_mobile_real_device_acceptance_decision_gate", encoded)
+        self.assertIn("software_proof_docker_mobile_real_device_review_handoff_gate", encoded)
         self.assertIn("software_proof_docker_mobile_browser_acceptance_bundle_gate", encoded)
         self.assertIn("redaction", encoded)
         self.assertIn("software_proof_docker_mobile_primary_journey_gate", encoded)

@@ -35,6 +35,8 @@
 > 当前增量：sprint `2026.05.14_02-03_mobile-current-pwa-browser-proof-refresh` 刷新当前 `mobile/web/` 的本地 Chromium-family browser proof。证据边界是 `software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate`；它覆盖当前首屏的三步主路径、恢复决策、终端动作二次确认、手机设备证据采集、真实手机验收交接会话、PWA 安装提示证据、浏览器验收包、Diagnostics、Support Handoff 和 ACK 文案。旧 `software_proof_docker_mobile_web_browser_proof_gate` 作为兼容边界保留在 summary 中；文件名仍沿用 `mobile_web_browser_*`，但本轮只证明本机 Chromium 渲染当前 PWA，不等于真实 iPhone/Android、production app、真实 PWA install prompt、O5 外部材料、Nav2/fixed-route、WAVE ROVER、HIL 或真实 delivery。
 >
 > 当前增量：sprint `2026.05.14_03-04_mobile-real-device-evidence-intake-gate` 在首屏新增“真实设备验收材料”intake panel。证据边界是 `software_proof_docker_mobile_real_device_evidence_intake_gate`，只证明 Docker/local static fixture 与 targeted unittest 能导入 JSON 摘要、用当前本地浏览器 metadata 生成 blocked-by-design package、输出 redacted phone-safe package，并保持 Start / Confirm / Cancel 不因本 gate 放行；不等于真实 iPhone/Android device behavior、production app、真实 PWA install prompt/user choice、真实公网 HTTPS/TLS、4G/SIM、Nav2/fixed-route、WAVE ROVER、HIL 或真实 delivery。
+>
+> 当前增量：sprint `2026.05.14_05-06_mobile-real-device-review-handoff-gate` 在首屏新增“真实设备评审交接”panel。证据边界是 `software_proof_docker_mobile_real_device_review_handoff_gate`，只证明 Docker/local static fixture 与 targeted unittest 能从 `mobile_real_device_acceptance_decision*` 派生或消费 `mobile_real_device_review_handoff*`，展示 reviewer checklist、decision status、review owner/status、evidence blocker、next required evidence、redaction status、source boundary、ACK-not-delivery 和 `not_proven`，并复制 phone-safe review handoff package；不等于真实设备验收通过、production app、真实 PWA install prompt/user choice、O5 外部 proof、HIL 或真实 delivery。
 
 ## 用途（What lives here）
 
@@ -112,6 +114,8 @@ cloud-relay hosted PWA installability/browser gate：
 - 可选：`mobile_device_handoff_session`、`mobile_device_handoff_session_summary`、`mobile_device_handoff_package` 或 `/api/status.phone_readiness.mobile_device_handoff_*` 作为 phone-safe 真实手机验收交接会话；它可引用 `mobile_device_evidence_capture`，但不能把 evidence capture 写成真实设备验收通过
 - 可选：`mobile_pwa_install_prompt_evidence`、`mobile_pwa_install_prompt_evidence_summary`、`mobile_pwa_install_prompt_evidence_package` 或 `/api/status.phone_readiness.mobile_pwa_install_prompt_evidence*` 作为 phone-safe PWA 安装提示证据包；它可引用 handoff session、device evidence capture 和 browser acceptance bundle，但不能写成真实 PWA install prompt 通过
 - 可选：`mobile_real_device_evidence_intake`、`mobile_real_device_evidence_intake_summary`、`mobile_real_device_evidence_package` 或 `/api/status.phone_readiness.mobile_real_device_evidence_*` 作为真实设备验收材料 intake；它只输出 redacted phone-safe package，不能写成真实设备验收通过或控制放行来源
+- 可选：`mobile_real_device_acceptance_decision`、`mobile_real_device_acceptance_decision_summary`、`mobile_real_device_acceptance_decision_package` 或 `/api/status.phone_readiness.mobile_real_device_acceptance_decision*` 作为真实设备验收决策；它只说明材料是否可进入人工复核，不能写成验收通过
+- 可选：`mobile_real_device_review_handoff`、`mobile_real_device_review_handoff_summary`、`mobile_real_device_review_handoff_package` 或 `/api/status.phone_readiness.mobile_real_device_review_handoff*` 作为真实设备人工评审交接；它可从 acceptance decision 派生 reviewer checklist、review owner/status、evidence blocker 和 next required evidence，但不能写成真实设备验收通过、O5 外部 proof 或控制放行来源
 - 可选：`mobile_browser_acceptance_bundle`、`phone_browser_acceptance_bundle`、`mobile_acceptance_evidence_bundle` 或 `/api/status.phone_readiness.*_acceptance_bundle`
 - 可选：`mobile_primary_journey_gate`、`mobile_primary_journey_summary` 作为 phone-safe 支持摘要；Start 是否允许仍由既有 destination、manual load confirmation、`command_safety`、cloud/device/browser readiness、operation log 和 action feedback 共同决定
 - 可选：`mobile_recovery_decision_gate`、`mobile_recovery_decision_summary` 作为 phone-safe 恢复决策摘要；缺失时只能从既有 offline、command safety、operation log、action feedback、support handoff 和 primary journey 字段派生 blocked-by-design 摘要
@@ -227,6 +231,15 @@ PWA 安装提示证据规则：
 - 决策包白名单字段为 decision、accepted_for_review、safe_to_control=false、blocker list、next required evidence、redaction status、linked intake package 摘要、safe phone copy、recovery hint、ACK 语义、evidence boundary、source evidence boundary 和 `not_proven`。
 - 缺 production app、真实 iPhone/Android device behavior、真实 PWA install prompt/user choice、脱敏截图摘要或 production HTTPS URL 摘要时，输出 `blocked_missing_evidence`；命中未脱敏或敏感字段时输出 `rejected_unsafe_or_unredacted`。
 - 本 gate 不新增控制放行条件；Start、Confirm、Cancel 继续只由既有 command_safety、cloud/device/browser readiness、handoff session、operation log 和 action feedback fail closed。ACK、HTTP accepted、receipt、intake package 或 decision package 都不能写成 delivery success、dropoff success、cancel completed、真实设备验收通过或 production app ready。
+
+真实设备 review handoff gate 规则：
+
+- 首屏“真实设备评审交接”panel 消费或派生 `mobile_real_device_review_handoff`、`mobile_real_device_review_handoff_summary`、`mobile_real_device_review_handoff_package`，输入来源是上一轮 `mobile_real_device_acceptance_decision` / summary / package。
+- schema 为 `trashbot.mobile_real_device_review_handoff.v1`、`trashbot.mobile_real_device_review_handoff_summary.v1`、`trashbot.mobile_real_device_review_handoff_package.v1`，本地证据边界为 `software_proof_docker_mobile_real_device_review_handoff_gate`，source boundary 必须保留 `software_proof_docker_mobile_real_device_acceptance_decision_gate`。
+- 首屏必须展示 reviewer checklist、decision status、review owner/status、evidence blocker、next required evidence、redaction status、source boundary、ACK-not-delivery 和 `not_proven`。
+- review handoff package 白名单字段为 handoff/session schema、handoff session id、decision status、review owner/status、safe_to_control=false、evidence blocker、next required evidence、reviewer checklist、redaction status、linked acceptance decision 摘要、safe phone copy、recovery hint、ACK 语义、evidence boundary、source evidence boundary 和 `not_proven`。
+- 复制包必须过滤 token、Authorization、OSS AK/SK、root password、DB/queue URL、raw ROS topic、`/cmd_vel`、serial、baudrate、WAVE ROVER、本地路径、traceback、checksum、complete artifact 和 raw robot response；命中敏感输入时只能显示 blocked/rejected 摘要。
+- review handoff package 只表示人工评审交接，不是真实设备验收通过、真实 PWA install prompt、HIL、O5 外部 proof 或 delivery success。缺真实设备材料、production app 或真实 PWA install prompt/user choice 时，Start、Confirm、Cancel 必须继续 fail closed。
 
 operation log 规则：
 

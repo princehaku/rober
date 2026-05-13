@@ -453,6 +453,66 @@
         <pre id="mobileRealDeviceAcceptanceDecisionSafeCopy" class="safe-copy" aria-label="真实设备验收 decision package">暂无真实设备验收决策包。</pre>
       </section>
 
+      <section class="real-device-review-panel" aria-labelledby="mobileRealDeviceReviewHandoffTitle">
+        <div class="section-heading">
+          <h2 id="mobileRealDeviceReviewHandoffTitle">真实设备评审交接</h2>
+          <span id="mobileRealDeviceReviewHandoffBadge" class="gate-badge gate-blocked">blocked_missing_evidence</span>
+        </div>
+        <p id="mobileRealDeviceReviewHandoffCopy" class="message">
+          review handoff package 只表示人工评审交接；不是真实设备验收通过、PWA install prompt 或 delivery success。
+        </p>
+        <dl class="real-device-review-grid">
+          <div>
+            <dt>Decision Status</dt>
+            <dd id="mobileRealDeviceReviewHandoffDecision">blocked_missing_evidence</dd>
+          </div>
+          <div>
+            <dt>Review Owner / Status</dt>
+            <dd id="mobileRealDeviceReviewHandoffOwner">review owner=unassigned / review status=blocked</dd>
+          </div>
+          <div>
+            <dt>Evidence Blocker</dt>
+            <dd id="mobileRealDeviceReviewHandoffBlockers">缺少真实设备验收材料。</dd>
+          </div>
+          <div>
+            <dt>Next Required Evidence</dt>
+            <dd id="mobileRealDeviceReviewHandoffNextEvidence">真实设备、production app、PWA install prompt/user choice。</dd>
+          </div>
+          <div>
+            <dt>Redaction Status</dt>
+            <dd id="mobileRealDeviceReviewHandoffRedaction">missing</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileRealDeviceReviewHandoffAck">ACK 只代表 accepted/processing。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileRealDeviceReviewHandoffBoundary">software_proof_docker_mobile_real_device_review_handoff_gate</dd>
+          </div>
+          <div>
+            <dt>Source Boundary</dt>
+            <dd id="mobileRealDeviceReviewHandoffSourceBoundary">software_proof_docker_mobile_real_device_acceptance_decision_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileRealDeviceReviewHandoffNotProven">真实手机设备、production app、PWA install prompt、O5、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <ol id="mobileRealDeviceReviewHandoffChecklist" class="handoff-checklist">
+          <li>
+            <strong>reviewer checklist：not_proven</strong>
+            <em>人工评审必须逐项核对 decision status、redaction、evidence blocker 和 not_proven。</em>
+          </li>
+        </ol>
+        <p id="mobileRealDeviceReviewHandoffRecoveryHint" class="hint">review owner 按 checklist 补齐材料前，Start、Confirm、Cancel 继续 fail closed。</p>
+        <div class="bundle-copy-row">
+          <button id="copyRealDeviceReviewHandoffButton" type="button">复制 review handoff package</button>
+          <span id="mobileRealDeviceReviewHandoffCopyStatus" class="hint">复制内容只包含 phone-safe 评审交接字段。</span>
+        </div>
+        <pre id="mobileRealDeviceReviewHandoffSafeCopy" class="safe-copy" aria-label="真实设备 review handoff package">暂无真实设备评审交接包。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>

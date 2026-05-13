@@ -8,7 +8,15 @@
 
 ## 2026-05-14 系列
 
-更新时间：2026-05-14 04:15 Asia/Shanghai。
+更新时间：2026-05-14 06:00 Asia/Shanghai。
+
+### 2026-05-14 05-06｜mobile-real-device-review-handoff-gate｜O4 real-device review handoff software proof，手机体验由约 81% 上调到约 82%
+
+`sprints/2026.05.14_05-06_mobile-real-device-review-handoff-gate` 完成 `software_proof_docker_mobile_real_device_review_handoff_gate`：Task A Full-stack 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/test_mobile_web_entrypoint.py`、`mobile/README.md`、`docs/product/mobile_user_flow.md`，在 `mobile/web` 消费、派生、展示和复制 `mobile_real_device_review_handoff`、`mobile_real_device_review_handoff_summary`、`mobile_real_device_review_handoff_package`。该 review handoff 从上一轮 `mobile_real_device_acceptance_decision*` 派生，首屏展示 reviewer checklist、decision status、review owner/status、evidence blocker、next required evidence、redaction status、source boundary、ACK-not-delivery 和 `not_proven`；copy package 过滤敏感字段；Start/Confirm/Cancel 继续 fail closed。Task A 验证输出 `mobile.test_mobile_web_entrypoint` `Ran 26 tests in 0.018s OK`、`py_compile` pass、`node --check mobile/web/app.js` pass、rg pass、scoped diff check pass。首次 unit run 因 fixture copy 出现 literal sensitive field names 失败，已改为 category-level wording 并复验通过。
+
+Task B Robot 更新 `onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge_protocol.py`、`docs/interfaces/ros_contracts.md`，新增 `mobile_real_device_review_handoff*` metadata-only compatibility fence。Robot fence 证明无 command envelope 时 review handoff metadata 不触发 collect、dropoff、cancel、ACK、cursor、terminal ACK、production readiness、HIL、dropoff/cancel completion 或 delivery success；valid command mixed metadata 只执行 command envelope；protocol normalization 不让 metadata 进入 normalized command；文档明确该 metadata 只服务 phone/support/product review handoff。Task B 验证输出 remote bridge/protocol targeted unittest `Ran 141 tests in 72.434s OK`、`py_compile` pass、rg pass、scoped diff check pass。
+
+该证据只支持 Objective 4 从约 81% 保守上调到约 82%，理由是 Docker/local `mobile/web` 已把真实设备验收材料从 decision 推进到可复制、可脱敏、可分配 owner 的人工 review handoff package，并由 reviewer checklist、decision status、review owner/status、evidence blocker、next required evidence、redaction status、source boundary、`not_proven` 和 Robot metadata-only fence 限定边界。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1/2/3 不提升。本轮 `software_proof_docker_mobile_real_device_review_handoff_gate` 只证明 Docker/local mobile software proof 和 robot metadata-only fence；review handoff package 是人工评审交接，不是验收通过、真实 PWA prompt/user choice、O5 外部 proof、HIL、真实 dropoff/cancel completion 或 delivery success。ACK、HTTP accepted、receipt、intake package、acceptance decision package、review handoff package、browser proof、handoff session 和 install prompt evidence 仍只是 accepted/processing/support metadata，不是 delivery success。
 
 ### 2026-05-14 04-05｜mobile-real-device-acceptance-decision-gate｜O4 real-device acceptance decision software proof，手机体验由约 80% 上调到约 81%
 

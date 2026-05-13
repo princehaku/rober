@@ -136,6 +136,7 @@ h2 {
 .pwa-install-panel,
 .real-device-evidence-panel,
 .real-device-decision-panel,
+.real-device-review-panel,
 .acceptance-bundle-panel,
 .terminal-action-panel,
 .action-feedback-panel,
@@ -233,6 +234,7 @@ h2 {
 .pwa-install-grid,
 .real-device-evidence-grid,
 .real-device-decision-grid,
+.real-device-review-grid,
 .acceptance-bundle-grid,
 .feedback-grid,
 .terminal-action-grid,
@@ -252,6 +254,7 @@ h2 {
 .pwa-install-grid div,
 .real-device-evidence-grid div,
 .real-device-decision-grid div,
+.real-device-review-grid div,
 .acceptance-bundle-grid div,
 .feedback-grid div,
 .terminal-action-grid div,
@@ -322,6 +325,10 @@ dd {
 }
 
 .real-device-evidence-grid {
+  grid-template-columns: 1fr;
+}
+
+.real-device-review-grid {
   grid-template-columns: 1fr;
 }
 
@@ -516,6 +523,10 @@ dd {
   }
 
   .real-device-decision-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .real-device-review-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
