@@ -265,6 +265,29 @@ review report 使用 `schema=trashbot.route_task_field_run_review_console.v1`，
 
 `ready_for_operator_review` 只表示 Docker/local software proof 的 intake 材料足够进入人工复核；它不是实机 fixed-route/Nav2、真实路线采集、WAVE ROVER/HIL、真实投放、真实取消完成或 delivery success。任何缺 intake、坏 JSON、unsupported schema、unsafe support copy、缺材料或同一 `evidence_ref` 不一致，都必须保持 blocked review report，再按 `operator_next_steps` 补采和重跑。
 
+## 4.6 Field-Run Execution Pack
+
+review console 完成后，现场联跑还需要一份“照着跑”的执行包。`pc-tools/evidence/route_task_field_run_execution_pack.py` 只读 review console JSON，输出现场 manifest、材料模板、first-run/rerun 命令清单和 phone-safe summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_execution_pack.py \
+  --review-json /tmp/route_task_field_run_review.json \
+  --once-json
+```
+
+execution pack 使用 `schema=trashbot.route_task_field_run_execution_pack.v1`，证据边界固定为 `software_proof_docker_route_task_field_run_execution_pack_gate`。核心字段包括：
+
+- `field_run_manifest`: 现场执行总目录，标明 source review 状态、`evidence_ref`、所需材料名称和 blocked/ready 状态。
+- `required_material_templates`: route status、task record、Nav2/fixed-route runtime log、robot-side task evidence、support-safe mobile summary 和 PC review console 的字段模板。
+- `first_run_commands`: 第一次现场联跑的材料采集与 intake/review/execution-pack 生成顺序。
+- `rerun_commands`: review blocked、材料重采或同一 `evidence_ref` 修复后的重跑顺序。
+- `same_evidence_ref_required=true`: 所有现场材料必须沿用同一 `evidence_ref`，不能把不同 run 的材料拼成成功证据。
+- `phone_safe_summary`: support/mobile 可展示的白名单摘要。
+- `not_proven`: 继续列出真实 Nav2/fixed-route、真实路线采集、真实硬件反馈、HIL、dropoff/cancel completion、delivery_success 和 O5 external proof 未证明。
+- `primary_actions_enabled=false` 与 `delivery_success=false`: execution pack 不能放行控制动作，也不能声明送达成功。
+
+`ready_for_field_run_execution_pack` 只表示 Docker/local software proof 的 review console 足以生成现场执行包。该 CLI 不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；它不能证明实机 fixed-route/Nav2、真实路线采集、HIL、真实投放、真实取消完成或 delivery success。任何缺 review、坏 JSON、unsupported schema、unsafe copy、review blocked、`primary_actions_enabled=true` 或 `delivery_success=true` 都必须保持 blocked execution pack，再按 `rerun_commands` 修复和重跑。
+
 ## 5. 关键缺失与超时复现脚本（离线）
 
 ### 5.1 固定路线关键点缺失

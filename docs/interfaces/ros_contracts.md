@@ -231,6 +231,27 @@ delivery success. They are not command/status/ACK robot contract fields and do
 not prove real fixed-route execution, real HIL, delivery success, or Objective
 5 external proof.
 
+Operator diagnostics may also expose `route_task_field_run_execution_pack` and
+the alias `route_task_field_run_execution_pack_summary` from an explicit
+`route_task_field_run_execution_pack_ref` or
+`TRASHBOT_ROUTE_TASK_FIELD_RUN_EXECUTION_PACK`. The source JSON must use
+`schema=trashbot.route_task_field_run_execution_pack.v1` and
+`evidence_boundary=software_proof_docker_route_task_field_run_execution_pack_gate`.
+This summary is metadata-only support material for a route-task field-run
+execution pack: it may expose sanitized status, safe evidence ref,
+`same_evidence_ref_required`, materials status, command summary, `not_proven`,
+safe copy, and evidence-boundary fields only. Raw route logs, task records,
+mobile summary payloads, credentials, local paths, UART/serial details, raw ACK
+payloads, raw command envelopes, production-readiness claims, and traceback
+content must not enter the diagnostics summary. Missing, unreadable,
+unsupported-schema, boundary-mismatch, or unsafe-summary sources remain
+blocked/not_proven. The fields do not trigger `/api/collect`, dropoff, cancel,
+remote ACK, cursor advance/persistence, terminal ACK, Nav2, WAVE ROVER, HIL,
+production readiness, dropoff/cancel completion, or delivery success. They are
+not command/status/ACK robot contract fields and do not prove real fixed-route
+execution, real HIL, production readiness, dropoff/cancel completion, or
+delivery success.
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

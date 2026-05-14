@@ -21,6 +21,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_rehearsal_artifact,
     summarize_route_task_rehearsal_execution_bundle,
     summarize_route_task_rehearsal_operator_review,
+    summarize_route_task_field_run_execution_pack,
     summarize_route_task_field_run_intake,
     summarize_route_task_field_run_readiness,
     summarize_route_task_field_run_review,
@@ -1956,6 +1957,193 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(unsupported_summary["ack_post_allowed"])
         self.assertFalse(unsafe_summary["cursor_updates_allowed"])
         self.assertFalse(unsafe_summary["production_ready"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_run_execution_pack_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            pack_path = Path(td) / "route_task_field_run_execution_pack.json"
+            pack_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_execution_pack.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_execution_pack_gate"
+                        ),
+                        "status": "ready_for_field_run_execution_pack",
+                        "evidence_ref": "evidence://route-task-field-run-execution-pack-1",
+                        "same_evidence_ref_required": True,
+                        "materials_status": {
+                            "status": "available",
+                            "missing_materials": [],
+                            "required_materials": [
+                                "route status",
+                                "task record",
+                                "support-safe mobile summary",
+                            ],
+                        },
+                        "command_summary": [
+                            "python3 pc-tools/evidence/route_task_field_run_execution_pack.py --once-json"
+                        ],
+                        "phone_safe_summary": {
+                            "safe_copy": (
+                                "Route-task field-run execution pack is metadata-only; "
+                                "not delivery success and not HIL."
+                            ),
+                        },
+                        "not_proven": ["delivery_success", "real_hil_pass"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_run_execution_pack_ref=str(pack_path),
+            )
+            summary = payload["route_task_field_run_execution_pack"]
+            summary_alias = payload["route_task_field_run_execution_pack_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["status"], "ready_for_field_run_execution_pack")
+        self.assertEqual(summary["schema"], "trashbot.route_task_field_run_execution_pack_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_run_execution_pack_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_field_run_execution_pack.v1")
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://route-task-field-run-execution-pack-1",
+        )
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertEqual(summary["materials_status"]["status"], "available")
+        self.assertIn("support-safe mobile summary", summary["materials_status"]["required_materials"])
+        self.assertIn("route_task_field_run_execution_pack.py", summary["command_summary"][0])
+        self.assertIn("metadata-only", summary["safe_phone_copy"])
+        self.assertIn("not delivery success", summary["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("remote_ack", summary["not_proven"])
+        self.assertIn("cursor_advance_or_persistence", summary["not_proven"])
+        self.assertIn("terminal_ack", summary["not_proven"])
+        self.assertIn("production_readiness", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        for forbidden_key in (
+            "delivery_success",
+            "primary_actions_enabled",
+            "collect_triggered",
+            "dropoff_triggered",
+            "cancel_triggered",
+            "ack_post_allowed",
+            "cursor_updates_allowed",
+            "persistence_updates_allowed",
+            "terminal_ack_allowed",
+            "hil_pass",
+            "production_ready",
+            "dropoff_completion",
+            "cancel_completion",
+        ):
+            self.assertNotIn(forbidden_key, summary)
+        self.assertNotIn(str(pack_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_run_execution_pack_env_missing_unsupported_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            env_path = Path(td) / "route_task_field_run_execution_pack_env.json"
+            env_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_execution_pack.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_execution_pack_gate"
+                        ),
+                        "status": "blocked_missing_material",
+                        "evidence_ref": "evidence://route-task-field-run-execution-pack-2",
+                        "same_evidence_ref_required": True,
+                        "materials_status": {
+                            "status": "blocked",
+                            "missing_materials": ["field-run route log"],
+                        },
+                        "command_summary": ["collect route status and task record with one evidence_ref"],
+                        "phone_safe_summary": {
+                            "safe_copy": "Route-task field-run execution pack is metadata-only; not_proven.",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_EXECUTION_PACK")
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RUN_EXECUTION_PACK"] = str(env_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_run_execution_pack"
+                ]
+            finally:
+                if previous is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RUN_EXECUTION_PACK", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RUN_EXECUTION_PACK"] = previous
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_execution_pack.json"
+            missing_summary = summarize_route_task_field_run_execution_pack(str(missing_path))
+
+            unsupported_path = Path(td) / "unsupported_execution_pack.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_review_console.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_review_console_gate"
+                        ),
+                        "safe_copy": "Unsupported execution pack is metadata-only; not delivery success.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsupported_summary = summarize_route_task_field_run_execution_pack(str(unsupported_path))
+
+            unsafe_path = Path(td) / "unsafe_execution_pack.json"
+            unsafe_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_execution_pack.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_execution_pack_gate"
+                        ),
+                        "status": "ready_for_field_run_execution_pack",
+                        "production_ready": True,
+                        "phone_safe_summary": {
+                            "safe_copy": "Execution pack confirms delivery success and ACK posted.",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_summary = summarize_route_task_field_run_execution_pack(str(unsafe_path))
+            encoded = json.dumps(
+                [env_summary, missing_summary, unsupported_summary, unsafe_summary],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["status"], "blocked_missing_material")
+        self.assertEqual(env_summary["materials_status"]["status"], "blocked")
+        self.assertIn("field-run route log", env_summary["materials_status"]["missing_materials"])
+        self.assertEqual(missing_summary["status"], "missing")
+        self.assertEqual(unsupported_summary["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["status"], "unsafe_fields")
+        self.assertIn("software_proof_docker_route_task_field_run_execution_pack_gate", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
         self.assertNotIn("secret-token", encoded)

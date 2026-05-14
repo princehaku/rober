@@ -166,6 +166,28 @@ python3 pc-tools/evidence/route_task_field_run_review.py \
 
 该 report 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、硬件、外部云、OSS/CDN、DB/queue 或 4G；`ready_for_operator_review` 只表示 intake 材料足够进入 operator/support 复核，不表示真实 Nav2/fixed-route、真实路线采集、HIL、dropoff/cancel completion、delivery success 或 O5 external proof。缺 intake、坏 JSON、unsupported schema、unsafe phone/support copy、missing materials 或 mismatch 时，CLI 会输出 blocked review report，而不是抛未处理异常或猜测现场成功。
 
+## route/task field-run execution pack
+
+`pc-tools/evidence/route_task_field_run_execution_pack.py` 只读上一节 review console JSON，把 operator/support 下一步整理为现场联跑执行包：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_execution_pack.py \
+  --review-json /tmp/route_task_field_run_review.json \
+  --output /tmp/route_task_field_run_execution_pack.json
+```
+
+需要直接给 diagnostics、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_execution_pack.py \
+  --review-json /tmp/route_task_field_run_review.json \
+  --once-json
+```
+
+输出 `schema=trashbot.route_task_field_run_execution_pack.v1`、`schema_version=1`、`evidence_boundary=software_proof_docker_route_task_field_run_execution_pack_gate`、`field_run_manifest`、`required_material_templates`、`first_run_commands`、`rerun_commands`、`same_evidence_ref_required=true`、`phone_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。`field_run_manifest` 是现场执行总目录，材料模板覆盖 route status、task record、Nav2/fixed-route runtime log、robot-side task evidence、support-safe mobile summary 和 PC review console；`first_run_commands` 与 `rerun_commands` 要求所有材料沿用同一 `evidence_ref`。
+
+该 execution pack 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；`ready_for_field_run_execution_pack` 只表示 review console 足以生成现场联跑材料清单，不表示真实 Nav2/fixed-route、真实路线采集、HIL、dropoff/cancel completion、delivery success 或 O5 external proof。缺 review、坏 JSON、unsupported schema、unsafe copy、review blocked、`primary_actions_enabled=true` 或 `delivery_success=true` 时，CLI 会保守输出 blocked execution pack，并继续保留 `not_proven` 与 `delivery_success=false`。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

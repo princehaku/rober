@@ -314,6 +314,55 @@
         <p id="routeTaskFieldRunReviewHint" class="hint">Field-run review console 只读展示；不触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
       </section>
 
+      <section class="route-field-run-execution-pack-panel" aria-labelledby="routeTaskFieldRunExecutionPackTitle">
+        <div class="section-heading">
+          <h2 id="routeTaskFieldRunExecutionPackTitle">路线任务现场执行包</h2>
+          <span id="routeTaskFieldRunExecutionPackBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="routeTaskFieldRunExecutionPackCopy" class="message">
+          等待后端提供 route_task_field_run_execution_pack 的 phone-safe execution 摘要。
+        </p>
+        <dl class="route-field-run-execution-pack-grid">
+          <div>
+            <dt>Execution Status</dt>
+            <dd id="routeTaskFieldRunExecutionPackStatus">blocked/not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="routeTaskFieldRunExecutionPackEvidenceRef">not_provided</dd>
+          </div>
+          <div>
+            <dt>Same Evidence Ref</dt>
+            <dd id="routeTaskFieldRunExecutionPackSameRef">same evidence ref required=false/not_proven</dd>
+          </div>
+          <div>
+            <dt>Required Materials</dt>
+            <dd id="routeTaskFieldRunExecutionPackMaterials">等待 required materials 摘要。</dd>
+          </div>
+          <div>
+            <dt>First-run Commands</dt>
+            <dd id="routeTaskFieldRunExecutionPackFirstRunCommands">等待 first-run command summary。</dd>
+          </div>
+          <div>
+            <dt>Rerun Commands</dt>
+            <dd id="routeTaskFieldRunExecutionPackRerunCommands">等待 rerun command summary。</dd>
+          </div>
+          <div>
+            <dt>Operator Next Steps</dt>
+            <dd id="routeTaskFieldRunExecutionPackNextSteps">等待 operator next steps 摘要。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="routeTaskFieldRunExecutionPackBoundary">software_proof_docker_route_task_field_run_execution_pack_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="routeTaskFieldRunExecutionPackNotProven">真实路线、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="routeTaskFieldRunExecutionPackHint" class="hint">Field-run execution pack 只读展示；不触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
+      </section>
+
       <section class="cloud-panel" aria-labelledby="cloudReadinessTitle">
         <div class="section-heading">
           <h2 id="cloudReadinessTitle">云中转状态</h2>

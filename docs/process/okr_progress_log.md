@@ -8,7 +8,17 @@
 
 ## 2026-05-15 系列
 
-更新时间：2026-05-15 02:14 Asia/Shanghai。
+更新时间：2026-05-15 02:44 Asia/Shanghai。
+
+### 2026-05-15 03-04｜route-task-field-run-execution-pack｜O2/O3 field-run execution pack software proof，任务闭环与固定路线均由约 62% 上调到约 63%
+
+`sprints/2026.05.15_03-04_route-task-field-run-execution-pack` 完成 `software_proof_docker_route_task_field_run_execution_pack_gate`：Task A `autonomy-engineer` 新增 `pc-tools/evidence/route_task_field_run_execution_pack.py` 和 `pc-tools/evidence/test_route_task_field_run_execution_pack.py`，更新 `pc-tools/README.md`、`docs/navigation/fixed_route_workflow.md`。execution pack artifact 输出 `schema=trashbot.route_task_field_run_execution_pack.v1`、`evidence_boundary=software_proof_docker_route_task_field_run_execution_pack_gate`、`same_evidence_ref_required=true`、required materials templates、first-run commands、rerun commands、operator next steps、phone-safe summary、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。Task A 验证输出 py_compile pass、`test_route_task_field_run_execution_pack.py` `Ran 6 tests OK`、CLI `--help` pass、required `rg` pass、scoped diff check pass；首轮 unsupported schema 误判已修复并复验。
+
+Task B `robot-software-engineer` 更新 diagnostics，新增 `route_task_field_run_execution_pack` / `route_task_field_run_execution_pack_summary` metadata-only consumption，支持 explicit ref 和 `TRASHBOT_ROUTE_TASK_FIELD_RUN_EXECUTION_PACK`；不触发 collect/dropoff/cancel、ACK POST、cursor advance/persistence、terminal ACK、Nav2、HIL、dropoff/cancel completion 或 delivery success。Task B 验证输出 py_compile pass、`test_operator_gateway_diagnostics` `Ran 61 tests OK`、required `rg` pass、scoped diff check pass。
+
+Task C `full-stack-software-engineer` 在 `mobile/web` 新增只读“路线任务现场执行包”panel，消费 status、phone_readiness、diagnostics 和 nested summary 中的 `route_task_field_run_execution_pack*`；缺 summary 时显示 blocked/not_proven，不 fetch raw artifact，不读取本机路径，不改 Start/Confirm/Cancel gating。Task C 验证输出 mobile unittest `Ran 12 tests OK`、py_compile pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 2 和 Objective 3 各从约 62% 保守上调到约 63%。Objective 2 的理由是 task record、robot-side task evidence、dropoff/cancel completion、失败复盘和重跑动作已被整理为下一次现场 route/task run 可执行材料包；Objective 3 的理由是 route status、Nav2/fixed-route runtime log、review console 和固定路线现场材料已进入同一 `evidence_ref` 的 execution pack 入口。Objective 5 保持约 66%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1 和 Objective 4 保持约 73%。本轮 `software_proof_docker_route_task_field_run_execution_pack_gate` 只证明 Docker/local execution pack、diagnostics summary、mobile read-only panel 和只读控制边界，不是真实 Nav2/fixed-route、真实路线采集、WAVE ROVER、真实串口/UART、HIL、同一 `evidence_ref` 上车复账、dropoff/cancel completion、delivery success、Objective 5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue 或 worker/migration。
 
 ### 2026-05-15 02-03｜route-task-field-run-review-console｜O2/O3 field-run review console software proof，任务闭环与固定路线均由约 84% 上调到约 85%
 

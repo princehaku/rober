@@ -102,6 +102,13 @@ ROUTE_TASK_FIELD_RUN_REVIEW_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RUN_REVIEW_GATE = (
     "software_proof_docker_route_task_field_run_review_console_gate"
 )
+ROUTE_TASK_FIELD_RUN_EXECUTION_PACK_SCHEMA = "trashbot.route_task_field_run_execution_pack.v1"
+ROUTE_TASK_FIELD_RUN_EXECUTION_PACK_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_run_execution_pack_summary.v1"
+)
+ROUTE_TASK_FIELD_RUN_EXECUTION_PACK_GATE = (
+    "software_proof_docker_route_task_field_run_execution_pack_gate"
+)
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -243,6 +250,38 @@ def _route_task_field_run_review_not_proven(review=None, phone_summary=None):
     required = (
         "collect_dropoff_cancel_control",
         "ack_post",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "production_readiness",
+        "dropoff_or_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_run_execution_pack_not_proven(pack=None, phone_summary=None):
+    # execution pack 只把现场执行包的材料状态投到 diagnostics；控制面、ACK、HIL 和交付结论都必须显式未证明。
+    pack = pack if isinstance(pack, dict) else {}
+    phone_summary = phone_summary if isinstance(phone_summary, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(pack.get("not_proven"), list):
+        source_values.extend(pack.get("not_proven"))
+    if isinstance(phone_summary.get("not_proven"), list):
+        source_values.extend(phone_summary.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
         "cursor_advance_or_persistence",
         "terminal_ack",
         "real_nav2_fixed_route_run",
@@ -487,6 +526,33 @@ def _default_route_task_field_run_review_summary(path, state="not_configured", r
         "production_ready": False,
         "dropoff_completion": False,
         "cancel_completion": False,
+    }
+
+
+def _default_route_task_field_run_execution_pack_summary(path, status="not_configured", read_error=""):
+    # execution pack 是现场执行材料的只读摘要，不暴露 artifact 路径，避免 diagnostics 被误当成执行入口。
+    return {
+        "schema": ROUTE_TASK_FIELD_RUN_EXECUTION_PACK_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RUN_EXECUTION_PACK_GATE,
+        "status": status,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "materials_status": {
+            "status": "blocked",
+            "reason": "route-task field-run execution pack is not configured",
+        },
+        "command_summary": [],
+        "not_proven": _route_task_field_run_execution_pack_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": "Route-task field-run execution pack is metadata-only; not delivery success.",
+        "safe_phone_copy": "Route-task field-run execution pack is metadata-only; not delivery success.",
+        "metadata_only": True,
     }
 
 
@@ -1809,6 +1875,181 @@ def summarize_route_task_field_run_review(path):
     return summary
 
 
+def summarize_route_task_field_run_execution_pack(path):
+    """构建 route-task field-run execution pack 的 metadata-only diagnostics 摘要。"""
+    pack_path = os.path.expanduser(str(path or ""))
+    summary = _default_route_task_field_run_execution_pack_summary(
+        pack_path,
+        read_error="route-task field-run execution pack is not configured",
+    )
+    if not pack_path:
+        return summary
+    if not os.path.exists(pack_path):
+        summary.update(
+            {
+                "status": "missing",
+                "read_error": "route-task field-run execution pack not found",
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "execution pack artifact missing",
+                },
+                "safe_copy": "Route-task field-run execution pack is missing; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field-run execution pack is missing; metadata remains blocked/not_proven.",
+            }
+        )
+        return summary
+
+    summary["exists"] = True
+    try:
+        with open(pack_path, "r", encoding="utf-8") as f:
+            pack = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        summary.update(
+            {
+                "status": "read_error",
+                "read_error": _redact_route_task_rehearsal_text(
+                    f"failed reading route-task field-run execution pack: {exc}"
+                ),
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "execution pack JSON read error",
+                },
+                "safe_copy": "Route-task field-run execution pack could not be read; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field-run execution pack could not be read; metadata remains blocked/not_proven.",
+            }
+        )
+        return summary
+
+    if not isinstance(pack, dict):
+        summary.update(
+            {
+                "status": "read_error",
+                "read_error": "route-task field-run execution pack JSON must be an object",
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "execution pack JSON shape is invalid",
+                },
+                "safe_copy": "Route-task field-run execution pack shape is invalid; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field-run execution pack shape is invalid; metadata remains blocked/not_proven.",
+            }
+        )
+        return summary
+
+    # 兼容 artifact 顶层摘要、phone-safe 摘要和同名 summary；只白名单读取可给 diagnostics 的字段。
+    phone_summary = {}
+    for candidate in (
+        pack.get("phone_safe_summary"),
+        pack.get("phone_support_safe_summary"),
+        pack.get("route_task_field_run_execution_pack_summary"),
+        pack.get("route_task_field_run_execution_pack"),
+    ):
+        if isinstance(candidate, dict):
+            phone_summary = candidate
+            break
+    source_schema = str(pack.get("schema") or "")
+    source_boundary = str(pack.get("evidence_boundary") or "")
+    status = _redact_route_task_rehearsal_text(
+        phone_summary.get("status")
+        or phone_summary.get("overall_status")
+        or pack.get("status")
+        or pack.get("overall_status")
+        or "blocked"
+    )
+    materials_status = (
+        phone_summary.get("materials_status")
+        if isinstance(phone_summary.get("materials_status"), dict)
+        else pack.get("materials_status") if isinstance(pack.get("materials_status"), dict) else {}
+    )
+    command_source = (
+        phone_summary.get("command_summary")
+        if "command_summary" in phone_summary
+        else phone_summary.get("commands_summary")
+        if "commands_summary" in phone_summary
+        else pack.get("command_summary")
+        if "command_summary" in pack
+        else pack.get("commands_summary")
+    )
+    if isinstance(command_source, list):
+        command_summary = _safe_route_task_rehearsal_list(command_source)
+    elif isinstance(command_source, dict):
+        command_summary = _safe_pc_route_debug_value(command_source)
+    elif str(command_source or "").strip():
+        command_summary = [_redact_route_task_rehearsal_text(command_source)]
+    else:
+        command_summary = []
+    safe_copy = _redact_route_task_rehearsal_text(
+        phone_summary.get("safe_copy")
+        or phone_summary.get("safe_phone_copy")
+        or pack.get("safe_copy")
+        or pack.get("safe_phone_copy")
+        or "Route-task field-run execution pack is metadata-only; not delivery success."
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": pack.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "status": status or "blocked",
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                phone_summary.get("evidence_ref")
+                or phone_summary.get("safe_evidence_ref")
+                or pack.get("evidence_ref", "")
+            ),
+            "same_evidence_ref_required": bool(
+                phone_summary.get(
+                    "same_evidence_ref_required",
+                    pack.get("same_evidence_ref_required", True),
+                )
+            ),
+            "materials_status": _safe_pc_route_debug_dict(materials_status)
+            or {
+                "status": status or "blocked",
+                "reason": "execution pack consumed without explicit materials status",
+            },
+            "command_summary": command_summary,
+            "not_proven": _route_task_field_run_execution_pack_not_proven(pack, phone_summary),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "read_error": "",
+        }
+    )
+    if source_schema != ROUTE_TASK_FIELD_RUN_EXECUTION_PACK_SCHEMA or source_boundary != ROUTE_TASK_FIELD_RUN_EXECUTION_PACK_GATE:
+        summary.update(
+            {
+                "status": "unsupported_schema",
+                "read_error": "route-task field-run execution pack schema or evidence boundary is unsupported",
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "safe_copy": "Route-task field-run execution pack is not a supported diagnostics source; no delivery result is proven.",
+                "safe_phone_copy": "Route-task field-run execution pack is not a supported diagnostics source; no delivery result is proven.",
+            }
+        )
+        return summary
+
+    if (
+        _route_task_field_run_readiness_has_unsafe_fields(phone_summary)
+        or _route_task_field_run_intake_has_unsafe_control_claims(pack)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "status": "unsafe_fields",
+                "read_error": "route-task field-run execution pack contains unsafe summary fields or control claims",
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "unsafe execution pack summary fields",
+                },
+                "safe_copy": "Route-task field-run execution pack was blocked because summary fields could expose control data or imply delivery success.",
+                "safe_phone_copy": "Route-task field-run execution pack was blocked because summary fields could expose control data or imply delivery success.",
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -2923,6 +3164,7 @@ def build_diagnostics_payload(
     route_task_field_run_readiness_ref="",
     route_task_field_run_intake_ref="",
     route_task_field_run_review_ref="",
+    route_task_field_run_execution_pack_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -2992,6 +3234,10 @@ def build_diagnostics_payload(
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW_CONSOLE", "")
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW", "")
     )
+    route_task_field_run_execution_pack_summary = summarize_route_task_field_run_execution_pack(
+        route_task_field_run_execution_pack_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_EXECUTION_PACK", "")
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -3040,6 +3286,8 @@ def build_diagnostics_payload(
         route_task_field_run_intake_summary=route_task_field_run_intake_summary,
         route_task_field_run_review=route_task_field_run_review_summary,
         route_task_field_run_review_summary=route_task_field_run_review_summary,
+        route_task_field_run_execution_pack=route_task_field_run_execution_pack_summary,
+        route_task_field_run_execution_pack_summary=route_task_field_run_execution_pack_summary,
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),
