@@ -896,6 +896,138 @@
         <pre id="mobileRealDeviceFieldTrialRunbookExecutionSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_runbook_execution_copy">暂无 mobile_real_device_field_trial_runbook_execution_copy。</pre>
       </section>
 
+      <section class="real-device-field-trial-evidence-record-panel" aria-labelledby="mobileRealDeviceFieldTrialEvidenceRecordTitle">
+        <div class="section-heading">
+          <h2 id="mobileRealDeviceFieldTrialEvidenceRecordTitle">现场证据记录</h2>
+          <span id="mobileRealDeviceFieldTrialEvidenceRecordBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="mobileRealDeviceFieldTrialEvidenceRecordCopy" class="message">
+          生成 mobile_real_device_field_trial_evidence_record 现场证据记录；它只归档 phone-safe 观察摘要，不是真实手机验收、控制放行或 delivery success。
+        </p>
+        <fieldset class="field-trial-form">
+          <legend>现场记录 observation fields</legend>
+          <label>
+            <span>Real device</span>
+            <select id="evidenceRecordRealDevice">
+              <option value="not_proven">not_proven</option>
+              <option value="observed_summary_only">observed_summary_only</option>
+              <option value="not_observed">not_observed</option>
+            </select>
+          </label>
+          <label>
+            <span>Production app</span>
+            <select id="evidenceRecordProductionApp">
+              <option value="not_proven">not_proven</option>
+              <option value="observed_summary_only">observed_summary_only</option>
+              <option value="not_observed">not_observed</option>
+            </select>
+          </label>
+          <label>
+            <span>PWA install prompt</span>
+            <select id="evidenceRecordPwaPrompt">
+              <option value="not_proven">not_proven</option>
+              <option value="captured_summary_only">captured_summary_only</option>
+              <option value="not_observed">not_observed</option>
+            </select>
+          </label>
+          <label>
+            <span>User choice</span>
+            <select id="evidenceRecordUserChoice">
+              <option value="not_proven">not_proven</option>
+              <option value="accepted_summary_only">accepted_summary_only</option>
+              <option value="dismissed_summary_only">dismissed_summary_only</option>
+              <option value="not_observed">not_observed</option>
+            </select>
+          </label>
+          <label>
+            <span>Offline</span>
+            <select id="evidenceRecordOffline">
+              <option value="not_proven">not_proven</option>
+              <option value="static_shell_loaded_summary_only">static_shell_loaded_summary_only</option>
+              <option value="not_observed">not_observed</option>
+            </select>
+          </label>
+          <label>
+            <span>Touch</span>
+            <select id="evidenceRecordTouch">
+              <option value="not_proven">not_proven</option>
+              <option value="none_observed_summary_only">none_observed_summary_only</option>
+              <option value="issue_observed_summary_only">issue_observed_summary_only</option>
+            </select>
+          </label>
+          <label>
+            <span>Visual</span>
+            <select id="evidenceRecordVisual">
+              <option value="not_proven">not_proven</option>
+              <option value="none_observed_summary_only">none_observed_summary_only</option>
+              <option value="issue_observed_summary_only">issue_observed_summary_only</option>
+            </select>
+          </label>
+          <label>
+            <span>Material redaction</span>
+            <select id="evidenceRecordMaterialRedaction">
+              <option value="not_proven">not_proven</option>
+              <option value="phone_safe_summary_only">phone_safe_summary_only</option>
+              <option value="redaction_failed">redaction_failed</option>
+            </select>
+          </label>
+          <label class="wide-field">
+            <span>Operator note</span>
+            <textarea id="evidenceRecordOperatorNote" rows="3" placeholder="只写现场 phone-safe 观察，不粘贴 token、URL 参数、日志、路径或机器人原始响应。"></textarea>
+          </label>
+          <label class="wide-field">
+            <span>Support note</span>
+            <textarea id="evidenceRecordSupportNote" rows="3" placeholder="只写给支持人员的脱敏复现说明。"></textarea>
+          </label>
+        </fieldset>
+        <dl class="real-device-field-trial-evidence-record-grid">
+          <div>
+            <dt>Real Device / App / Prompt</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceRecordDeviceApp">real_device=not_proven / production_app=not_proven / pwa_prompt=not_proven</dd>
+          </div>
+          <div>
+            <dt>User / Offline / Touch / Visual</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceRecordUserOffline">user_choice=not_proven / offline=not_proven / touch=not_proven / visual=not_proven</dd>
+          </div>
+          <div>
+            <dt>Material Redaction</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceRecordRedaction">not_proven</dd>
+          </div>
+          <div>
+            <dt>Record Summary</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceRecordSummary">mobile_real_device_field_trial_evidence_record_summary 等待生成。</dd>
+          </div>
+          <div>
+            <dt>Safe Control</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceRecordSafeControl">safe_to_control=false</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceRecordAck">accepted_processing_only_not_delivery_success</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceRecordBoundary">software_proof_docker_mobile_real_device_field_trial_evidence_record_gate</dd>
+          </div>
+          <div>
+            <dt>Archive</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceRecordArchive">mobile_real_device_field_trial_evidence_record_archive 未归档。</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceRecordNotProven">真实 iPhone/Android、production app、PWA install prompt/user choice、offline、touch、visual、O5、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="mobileRealDeviceFieldTrialEvidenceRecordRecoveryHint" class="hint">现场证据记录只用于 Product/Support 归档；Start Delivery、Confirm Dropoff、Cancel 继续 fail closed。</p>
+        <div class="bundle-copy-row">
+          <button id="generateRealDeviceFieldTrialEvidenceRecordButton" type="button">生成现场证据记录</button>
+          <button id="copyRealDeviceFieldTrialEvidenceRecordButton" type="button">复制 evidence record</button>
+          <button id="archiveRealDeviceFieldTrialEvidenceRecordButton" type="button">归档 evidence record</button>
+          <span id="mobileRealDeviceFieldTrialEvidenceRecordCopyStatus" class="hint">复制/归档只包含 whitelist-only phone-safe record 字段。</span>
+        </div>
+        <pre id="mobileRealDeviceFieldTrialEvidenceRecordSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_evidence_record_copy">暂无 mobile_real_device_field_trial_evidence_record_copy。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>

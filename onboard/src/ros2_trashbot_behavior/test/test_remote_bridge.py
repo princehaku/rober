@@ -3696,6 +3696,239 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertEqual(self.cloud.status_posts[-1]["state"], "canceling")
             self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_mobile_real_device_field_trial_evidence_record_metadata_only_response_does_not_move_robot(self):
+        metadata_cases = (
+            (
+                "mobile_real_device_field_trial_evidence_record",
+                {
+                    "schema": "trashbot.mobile_real_device_field_trial_evidence_record.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_evidence_record_gate",
+                    "record_state": "drafted",
+                    "safe_to_control": False,
+                    "ack_semantics": "accepted_processing_only_not_delivery_success",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-field-trial-record",
+                    "terminal_ack": "delivered",
+                    "delivery_success": True,
+                    "dropoff_success": True,
+                    "cancel_completed": True,
+                    "production_ready": True,
+                    "hil_pass": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+            (
+                "mobile_real_device_field_trial_evidence_record_summary",
+                {
+                    "schema": "trashbot.mobile_real_device_field_trial_evidence_record_summary.v1",
+                    "safe_phone_copy": "现场证据记录只供支持侧留痕，ACK 不是送达成功。",
+                    "next_action": "confirm_dropoff",
+                    "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_evidence_record_gate",
+                    "field_trial_evidence_recorded": True,
+                    "production_app_ready": True,
+                    "cursor_override": "cmd-field-trial-record-summary",
+                    "terminal_ack": "delivered",
+                    "delivery_success": True,
+                    "dropoff_success": True,
+                },
+            ),
+            (
+                "mobile_real_device_field_trial_evidence_record_copy",
+                {
+                    "schema": "trashbot.mobile_real_device_field_trial_evidence_record_copy.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_evidence_record_gate",
+                    "support_refs": [{"kind": "field_trial_record", "url": "https://user:secret@example.invalid/record"}],
+                    "not_proven": ["production readiness", "HIL", "delivery success"],
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-field-trial-record-copy",
+                    "terminal_ack": "delivered",
+                    "Authorization": "Bearer must-not-leak",
+                    "serial_device": "/dev/ttyUSB0",
+                    "cancel_completed": True,
+                },
+            ),
+            (
+                "mobile_real_device_field_trial_evidence_record_archive",
+                {
+                    "schema": "trashbot.mobile_real_device_field_trial_evidence_record_archive.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_evidence_record_gate",
+                    "archive_status": "saved",
+                    "trigger_robot_action": "confirm_dropoff",
+                    "cursor_override": "cmd-field-trial-record-archive",
+                    "delivery_success": True,
+                    "production_ready": True,
+                    "hil_pass": True,
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.cloud.get_paths.clear()
+                self.backend.calls.clear()
+                self.cloud.response_extras["command_response"] = {metadata_name: metadata}
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+
+                    handled = worker.poll_once()
+
+                    # 现场证据记录 metadata-only 只能作为手机/支持留痕，不能驱动 command、ACK、terminal ACK 或 cursor。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertEqual(self.cloud.status_posts[-1]["state"], "waiting_for_trash")
+                    self.assertNotIn(self.cloud.status_posts[-1]["state"], ("loaded_and_ready", "returning", "canceling", "completed"))
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("software_proof_docker_mobile_real_device_field_trial_evidence_record_gate", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("terminal_ack", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("dropoff_success", encoded_status)
+                    self.assertNotIn("cancel_completed", encoded_status)
+                    self.assertNotIn("production_ready", encoded_status)
+                    self.assertNotIn("production_app_ready", encoded_status)
+                    self.assertNotIn("hil_pass", encoded_status)
+                    self.assertNotIn("field_trial_evidence_recorded", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.assertNotIn("/dev/ttyUSB0", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.assertNotIn("secret", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
+    def test_mobile_real_device_field_trial_evidence_record_metadata_is_ignored_by_valid_command_envelope(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-real-device-field-trial-evidence-record",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras.update({
+                "status_response": {
+                    "mobile_real_device_field_trial_evidence_record_summary": {
+                        "schema": "trashbot.mobile_real_device_field_trial_evidence_record_summary.v1",
+                        "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_evidence_record_gate",
+                        "delivery_success": True,
+                        "trigger_robot_action": "collect",
+                    },
+                },
+                "command_response": {
+                    "mobile_real_device_field_trial_evidence_record": {
+                        "schema": "trashbot.mobile_real_device_field_trial_evidence_record.v1",
+                        "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_evidence_record_gate",
+                        "trigger_robot_action": "cancel",
+                        "cursor_override": "cmd-field-trial-record-override",
+                        "ack_semantics": "delivery_success",
+                        "terminal_ack": "delivered",
+                        "delivery_success": True,
+                        "dropoff_success": True,
+                        "raw_ros_topic": "/cmd_vel",
+                    },
+                    "mobile_real_device_field_trial_evidence_record_summary": {
+                        "schema": "trashbot.mobile_real_device_field_trial_evidence_record_summary.v1",
+                        "safe_phone_copy": "ACK 只代表 accepted_processing_only_not_delivery_success，不代表现场证据记录完成真实送达。",
+                        "next_action": "confirm_dropoff",
+                        "production_app_ready": True,
+                        "field_trial_evidence_recorded": True,
+                        "hil_pass": True,
+                    },
+                    "mobile_real_device_field_trial_evidence_record_copy": {
+                        "schema": "trashbot.mobile_real_device_field_trial_evidence_record_copy.v1",
+                        "support_refs": [{"kind": "field_trial_record", "url": "https://user:secret@example.invalid/record"}],
+                        "Authorization": "Bearer must-not-leak",
+                        "serial_device": "/dev/ttyUSB0",
+                        "cancel_completed": True,
+                    },
+                    "mobile_real_device_field_trial_evidence_record_archive": {
+                        "schema": "trashbot.mobile_real_device_field_trial_evidence_record_archive.v1",
+                        "archive_status": "saved",
+                        "delivery_success": True,
+                    },
+                },
+                "ack_response": {
+                    "mobile_real_device_field_trial_evidence_record_archive": {
+                        "schema": "trashbot.mobile_real_device_field_trial_evidence_record_archive.v1",
+                        "ack_semantics": "delivery_success",
+                        "delivery_success": True,
+                        "final_state": "DELIVERED",
+                    },
+                },
+            })
+            self.cloud.commands.append({
+                "id": "cmd-real-device-field-trial-evidence-record-collect",
+                "type": "collect",
+                "payload": {"target": "trash_station", "trash_type": 0},
+                "mobile_real_device_field_trial_evidence_record": {
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-future",
+                    "delivery_success": True,
+                },
+            })
+
+            self.assertTrue(worker.poll_once())
+
+            self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+            self.assertEqual(worker.last_ack_id, "cmd-real-device-field-trial-evidence-record-collect")
+            self.assertIn("last_ack_id=cmd-before-real-device-field-trial-evidence-record", self.cloud.get_paths[-1])
+            cursor_payload = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(cursor_payload["last_terminal_ack_id"], "cmd-real-device-field-trial-evidence-record-collect")
+            encoded_cursor = json.dumps(cursor_payload, ensure_ascii=False)
+            self.assertNotIn("mobile_real_device_field_trial_evidence_record", encoded_cursor)
+            self.assertNotIn("software_proof_docker_mobile_real_device_field_trial_evidence_record_gate", encoded_cursor)
+            self.assertNotIn("delivery_success", encoded_cursor)
+            ack_payload = self.cloud.ack_posts[0]
+            self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+            self.assertEqual(ack_payload["command_id"], "cmd-real-device-field-trial-evidence-record-collect")
+            self.assertEqual(ack_payload["state"], "acked")
+            self.assertEqual(ack_payload["message"], "collect")
+            encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+            # 有效 command 混入现场证据记录 metadata 时，执行、ACK、cursor 仍只跟随 command envelope。
+            self.assertNotIn("mobile_real_device_field_trial_evidence_record", encoded_ack)
+            self.assertNotIn("mobile_real_device_field_trial_evidence_record_summary", encoded_ack)
+            self.assertNotIn("mobile_real_device_field_trial_evidence_record_copy", encoded_ack)
+            self.assertNotIn("mobile_real_device_field_trial_evidence_record_archive", encoded_ack)
+            self.assertNotIn("software_proof_docker_mobile_real_device_field_trial_evidence_record_gate", encoded_ack)
+            self.assertNotIn("trigger_robot_action", encoded_ack)
+            self.assertNotIn("cursor_override", encoded_ack)
+            self.assertNotIn("terminal_ack", encoded_ack)
+            self.assertNotIn("delivery_success", encoded_ack)
+            self.assertNotIn("dropoff_success", encoded_ack)
+            self.assertNotIn("cancel_completed", encoded_ack)
+            self.assertNotIn("production_ready", encoded_ack)
+            self.assertNotIn("production_app_ready", encoded_ack)
+            self.assertNotIn("field_trial_evidence_recorded", encoded_ack)
+            self.assertNotIn("hil_pass", encoded_ack)
+            self.assertNotIn("/cmd_vel", encoded_ack)
+            self.assertNotIn("/dev/ttyUSB0", encoded_ack)
+            self.assertNotIn("Authorization", encoded_ack)
+            self.assertNotIn("secret", encoded_ack)
+            self.assertNotIn("DELIVERED", encoded_ack)
+            encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+            self.assertNotIn("mobile_real_device_field_trial_evidence_record", encoded_status)
+            self.assertNotIn("mobile_real_device_field_trial_evidence_record_summary", encoded_status)
+            self.assertNotIn("mobile_real_device_field_trial_evidence_record_copy", encoded_status)
+            self.assertNotIn("mobile_real_device_field_trial_evidence_record_archive", encoded_status)
+            self.assertNotIn("software_proof_docker_mobile_real_device_field_trial_evidence_record_gate", encoded_status)
+            self.assertNotIn("delivery_success", encoded_status)
+            self.assertEqual(self.cloud.status_posts[-1]["state"], "loaded_and_ready")
+            self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
+
     def test_mobile_pwa_install_prompt_evidence_metadata_only_response_does_not_move_robot(self):
         metadata_cases = (
             (

@@ -8,6 +8,16 @@
 
 ## 2026-05-14 系列
 
+更新时间：2026-05-14 12:17 Asia/Shanghai。
+
+### 2026-05-14 12-13｜mobile-field-trial-evidence-recorder｜O4 field-trial evidence record software proof，手机体验由约 88% 上调到约 89%
+
+`sprints/2026.05.14_12-13_mobile-field-trial-evidence-recorder` 完成 `software_proof_docker_mobile_real_device_field_trial_evidence_record_gate`：Task A Full-stack 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/test_mobile_web_entrypoint.py`、`mobile/README.md`、`docs/product/mobile_user_flow.md`，新增首屏“现场证据记录”入口，生成、展示、复制、归档 `mobile_real_device_field_trial_evidence_record`、`mobile_real_device_field_trial_evidence_record_summary`、`mobile_real_device_field_trial_evidence_record_copy`、`mobile_real_device_field_trial_evidence_record_archive`，字段覆盖 real device、production app、PWA install prompt、user choice、offline、touch、visual、material redaction、operator note、support note。Evidence record copy/archive 固定 `safe_to_control=false`、`ack_semantics=accepted_processing_only_not_delivery_success`、完整 `not_proven`，保持 whitelist-only 和 Docker/local mobile software proof 边界；没有改变 `/api/collect`、`/api/dropoff/confirm`、`/api/cancel` 控制语义。Task A 验证输出 `mobile.test_mobile_web_entrypoint` `Ran 32 tests in 0.042s OK`、`py_compile` pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。
+
+Task B Robot 更新 `onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge_protocol.py`、`docs/interfaces/ros_contracts.md`，新增 `_record`、`_summary`、`_copy`、`_archive` metadata-only 围栏。Robot fence 证明无 command envelope 时 evidence record metadata 不触发 backend action、ACK POST、cursor advance/persistence、terminal ACK、production readiness、HIL、dropoff/cancel completion 或 delivery success；mixed valid-command 只执行 `trashbot.remote.v1` envelope，不把 evidence record metadata 编入 normalized command、ACK、status、cursor 或 terminal result，不改变 action、target、idempotency、ACK 或 cursor。Task B 验证输出 remote bridge/protocol targeted unittest `Ran 169 tests in 86.466s OK`，有一个既有 ResourceWarning，`py_compile` pass、required `rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 4 从约 88% 保守上调到约 89%，理由是 Docker/local `mobile/web` 已把真实设备现场试跑材料从可执行 runbook execution package 推进到可填写、展示、复制、归档的现场证据记录 package，并由字段覆盖、`safe_to_control=false`、ACK 非 delivery success、`not_proven`、whitelist-only copy/archive 和 Robot metadata-only fence 限定边界。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1/2/3 不提升。本轮 `software_proof_docker_mobile_real_device_field_trial_evidence_record_gate` 只证明 Docker/local mobile software proof 和 robot metadata-only fence；现场证据记录、现场试跑执行清单、现场试跑证据复核、真实设备现场试跑包、browser proof、ACK、HTTP accepted、receipt、intake package、acceptance decision package、review handoff package、review execution package、retest request package、handoff session 和 install prompt evidence 仍只是 accepted/processing/support metadata，不是真实手机验收、production app、真实 PWA install prompt/user choice、公网 TLS/4G/OSS/CDN/DB/queue、WAVE ROVER、HIL、dropoff/cancel completion 或 delivery success。
+
 更新时间：2026-05-14 11:17 Asia/Shanghai。
 
 ### 2026-05-14 11-12｜mobile-field-trial-runbook-execution-gate｜O4 field-trial runbook execution software proof，手机体验由约 87% 上调到约 88%
