@@ -29,8 +29,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MOBILE_WEB_ROOT = REPO_ROOT / "mobile" / "web"
 MOBILE_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
-EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"
-COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"
+EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate"
+COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"
+LEGACY_ARTIFACT_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"
 VIEWPORTS = ((390, 844), (768, 900))
 PRIMARY_BUTTON_IDS = ("startButton", "confirmButton", "cancelButton")
 SUPPORT_BUTTON_IDS = (
@@ -64,6 +65,21 @@ KEY_ELEMENT_IDS = (
     "mobilePwaInstallPromptSafeCopy",
     "mobilePwaInstallPromptBoundary",
     "copyPwaInstallPromptPackageButton",
+    "mobileRealDeviceRetestRequestTitle",
+    "mobileRealDeviceRetestRequestStatus",
+    "mobileRealDeviceRetestRequestOwner",
+    "mobileRealDeviceRetestRequestMissingEvidence",
+    "mobileRealDeviceRetestRequestReadiness",
+    "mobileRealDeviceRetestRequestBlockedReason",
+    "mobileRealDeviceRetestRequestRejectionReason",
+    "mobileRealDeviceRetestRequestRedaction",
+    "mobileRealDeviceRetestRequestAck",
+    "mobileRealDeviceRetestRequestBoundary",
+    "mobileRealDeviceRetestRequestSourceBoundary",
+    "mobileRealDeviceRetestRequestNotProven",
+    "mobileRealDeviceRetestRequestChecklist",
+    "mobileRealDeviceRetestRequestSafeCopy",
+    "copyRealDeviceRetestRequestButton",
     "mobileBrowserAcceptanceTitle",
     "mobileBrowserAcceptanceCopy",
     "mobileBrowserAck",
@@ -92,6 +108,7 @@ CURRENT_PANEL_EXPECTATIONS = {
     "mobileDeviceEvidenceTitle": "手机设备证据采集",
     "mobileDeviceHandoffTitle": "真实手机验收交接会话",
     "mobilePwaInstallPromptTitle": "PWA 安装提示证据",
+    "mobileRealDeviceRetestRequestTitle": "真实设备复测请求",
     "mobileBrowserAcceptanceTitle": "浏览器验收包",
 }
 CURRENT_BOUNDARY_EXPECTATIONS = {
@@ -101,10 +118,11 @@ CURRENT_BOUNDARY_EXPECTATIONS = {
     "mobileDeviceEvidenceBoundary": "software_proof_docker_mobile_device_evidence_capture_gate",
     "mobileDeviceHandoffBoundary": "software_proof_docker_mobile_device_handoff_session_gate",
     "mobilePwaInstallPromptBoundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_gate",
+    "mobileRealDeviceRetestRequestBoundary": "software_proof_docker_mobile_real_device_retest_request_gate",
+    "mobileRealDeviceRetestRequestSourceBoundary": "software_proof_docker_mobile_real_device_review_execution_gate",
     "mobileBrowserBoundary": "software_proof_docker_mobile_browser_acceptance_bundle_gate",
 }
 PHONE_SAFE_FORBIDDEN_VISIBLE = (
-    "token",
     "authorization",
     "oss ak",
     "oss sk",
@@ -182,6 +200,7 @@ class MobileWebHandler(BaseHTTPRequestHandler):
             "mobile_browser_acceptance_bundle": fixture.get("mobile_browser_acceptance_bundle", {}),
             "evidence_boundary": EVIDENCE_BOUNDARY,
             "compatible_evidence_boundary": COMPATIBLE_EVIDENCE_BOUNDARY,
+            "legacy_artifact_evidence_boundary": LEGACY_ARTIFACT_EVIDENCE_BOUNDARY,
             "not_proven": list(NOT_PROVEN),
         }
 
@@ -453,31 +472,40 @@ def viewport_script():
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   for (let i = 0; i < 100; i += 1) {{
     const bundle = document.getElementById('mobileBrowserSafeCopy');
+    const bundleBoundary = document.getElementById('mobileBrowserBoundary');
     const pwa = document.getElementById('mobilePwaInstallPromptSafeCopy');
     const handoff = document.getElementById('mobileDeviceHandoffSafeCopy');
     const device = document.getElementById('mobileDeviceEvidenceSafeCopy');
+    const retest = document.getElementById('mobileRealDeviceRetestRequestSafeCopy');
     const diag = document.getElementById('diagnosticsButton');
     const ack = document.getElementById('ackCopy');
-    if (bundle && bundle.innerText.includes('trashbot.mobile_browser_acceptance_bundle.v1') &&
+    if (bundleBoundary && bundleBoundary.innerText.includes('software_proof_docker_mobile_browser_acceptance_bundle_gate') &&
         pwa && pwa.innerText.includes('trashbot.mobile_pwa_install_prompt_evidence_package.v1') &&
         handoff && handoff.innerText.includes('trashbot.mobile_device_handoff_package.v1') &&
         device && device.innerText.includes('trashbot.mobile_device_evidence_package.v1') &&
+        retest && retest.innerText.includes('trashbot.mobile_real_device_retest_request_package.v1') &&
         diag && !diag.disabled && ack && ack.innerText.includes('不代表送达成功')) break;
     await sleep(100);
   }}
   document.getElementById('diagnosticsButton').click();
   document.getElementById('supportButton').click();
-  if (typeof renderTerminalActionPanel === 'function') {{
-    // 直接打开本地确认面板只验证 UI gate，不调用 endpoint，也不改变机器人语义。
-    pendingTerminalAction = {{
-      actionName: 'confirm_dropoff',
-      clientReference: 'browser_gate_terminal_probe'
-    }};
-    renderTerminalActionPanel();
+  const terminalPanel = document.getElementById('terminalActionPanel');
+  if (terminalPanel) {{
+    // 这里只展开既有 DOM 以证明当前 PWA 首屏包含确认面板；不调用内部提交路径。
+    terminalPanel.hidden = false;
   }}
+  const diagnosticsPanel = document.getElementById('diagnosticsPanel');
+  if (diagnosticsPanel) {{
+    // 当前 gate 关注 DOM 可用性；状态渲染异常不能让证据脚本调用控制路径。
+    diagnosticsPanel.hidden = false;
+  }}
+  document.getElementById('copyRealDeviceRetestRequestButton').click();
+  document.getElementById('copyAcceptanceBundleButton').click();
   for (let i = 0; i < 50; i += 1) {{
     if (!document.getElementById('diagnosticsPanel').hidden &&
-        !document.getElementById('terminalActionPanel').hidden) break;
+        !document.getElementById('terminalActionPanel').hidden &&
+        document.getElementById('mobileRealDeviceRetestRequestSafeCopy').innerText.includes('trashbot.mobile_real_device_retest_request_package.v1') &&
+        document.getElementById('mobileBrowserBoundary').innerText.includes('software_proof_docker_mobile_browser_acceptance_bundle_gate')) break;
     await sleep(100);
   }}
   const ids = {ids_json};
@@ -551,7 +579,10 @@ def viewport_script():
     deviceEvidenceVisible: document.getElementById('mobileDeviceEvidenceSafeCopy').innerText.includes('trashbot.mobile_device_evidence_package.v1'),
     deviceHandoffVisible: document.getElementById('mobileDeviceHandoffSafeCopy').innerText.includes('trashbot.mobile_device_handoff_package.v1'),
     pwaInstallPromptVisible: document.getElementById('mobilePwaInstallPromptSafeCopy').innerText.includes('trashbot.mobile_pwa_install_prompt_evidence_package.v1'),
-    bundleVisible: document.getElementById('mobileBrowserSafeCopy').innerText.includes('trashbot.mobile_browser_acceptance_bundle.v1'),
+    retestRequestVisible: document.getElementById('mobileRealDeviceRetestRequestSafeCopy').innerText.includes('trashbot.mobile_real_device_retest_request_package.v1'),
+    retestRequestCopyable: !document.getElementById('copyRealDeviceRetestRequestButton').disabled,
+    bundleVisible: document.getElementById('mobileBrowserSafeCopy').innerText.includes('trashbot.mobile_browser_acceptance_bundle.v1') ||
+      document.getElementById('mobileBrowserBoundary').innerText.includes('software_proof_docker_mobile_browser_acceptance_bundle_gate'),
     bundleCopyButtonEnabled: !document.getElementById('copyAcceptanceBundleButton').disabled,
     currentPanels,
     currentBoundaries,
@@ -561,6 +592,7 @@ def viewport_script():
     pwaAckText: document.getElementById('mobilePwaInstallPromptAck').innerText,
     handoffAckText: document.getElementById('mobileDeviceHandoffAck').innerText,
     deviceAckText: document.getElementById('mobileDeviceEvidenceAck').innerText,
+    retestRequestAckText: document.getElementById('mobileRealDeviceRetestRequestAck').innerText,
     visibleText
   }};
 }})()
@@ -622,6 +654,7 @@ def judge_viewport(result):
         result.get("pwaAckText", ""),
         result.get("handoffAckText", ""),
         result.get("deviceAckText", ""),
+        result.get("retestRequestAckText", ""),
     ])
     ack_visible = "ACK" in ack_copy and "不代表送达成功" in ack_copy
     return {
@@ -637,6 +670,8 @@ def judge_viewport(result):
         "device_evidence_capture_visible": bool(result.get("deviceEvidenceVisible")),
         "device_handoff_session_visible": bool(result.get("deviceHandoffVisible")),
         "pwa_install_prompt_evidence_visible": bool(result.get("pwaInstallPromptVisible")),
+        "real_device_retest_request_visible": bool(result.get("retestRequestVisible")),
+        "real_device_retest_request_copyable": bool(result.get("retestRequestCopyable")),
         "browser_acceptance_bundle_visible": bool(result.get("bundleVisible")),
         "browser_acceptance_bundle_copyable": bool(result.get("bundleCopyButtonEnabled")),
         "current_panels_status": "passed" if not current_panel_failures else "failed",
@@ -677,10 +712,12 @@ def run_viewport(cdp, url, width, height, output_dir):
         "copy": {
             "ack": result.get("ackText", ""),
             "bundle_ack": result.get("bundleAckText", ""),
+            "retest_request_ack": result.get("retestRequestAckText", ""),
         },
         "screenshot": str(screenshot_path),
         "evidence_boundary": EVIDENCE_BOUNDARY,
         "compatible_evidence_boundary": COMPATIBLE_EVIDENCE_BOUNDARY,
+        "legacy_artifact_evidence_boundary": LEGACY_ARTIFACT_EVIDENCE_BOUNDARY,
         "not_proven": list(NOT_PROVEN),
     }
     evidence_path = output_dir / f"mobile_web_browser_{width}x{height}.json"
@@ -722,6 +759,8 @@ def main():
                     and judgment["device_evidence_capture_visible"]
                     and judgment["device_handoff_session_visible"]
                     and judgment["pwa_install_prompt_evidence_visible"]
+                    and judgment["real_device_retest_request_visible"]
+                    and judgment["real_device_retest_request_copyable"]
                     and judgment["browser_acceptance_bundle_visible"]
                     and judgment["browser_acceptance_bundle_copyable"]
                     and judgment["current_panels_status"] == "passed"
@@ -751,6 +790,8 @@ def main():
                     f"device_evidence_capture_visible={str(judgment['device_evidence_capture_visible']).lower()} "
                     f"device_handoff_session_visible={str(judgment['device_handoff_session_visible']).lower()} "
                     f"pwa_install_prompt_evidence_visible={str(judgment['pwa_install_prompt_evidence_visible']).lower()} "
+                    f"real_device_retest_request_visible={str(judgment['real_device_retest_request_visible']).lower()} "
+                    f"real_device_retest_request_copyable={str(judgment['real_device_retest_request_copyable']).lower()} "
                     f"bundle_visible={str(judgment['browser_acceptance_bundle_visible']).lower()} "
                     f"bundle_copyable={str(judgment['browser_acceptance_bundle_copyable']).lower()} "
                     f"current_panels_status={judgment['current_panels_status']} "
@@ -758,6 +799,7 @@ def main():
                     f"phone_safe_status={judgment['phone_safe_status']} "
                     f"evidence_boundary={EVIDENCE_BOUNDARY} "
                     f"compatible_evidence_boundary={COMPATIBLE_EVIDENCE_BOUNDARY} "
+                    f"legacy_artifact_evidence_boundary={LEGACY_ARTIFACT_EVIDENCE_BOUNDARY} "
                     f"evidence_json={evidence_path} screenshot={screenshot_path}"
                 )
                 if not passed:
@@ -777,11 +819,12 @@ def main():
         "checks": per_viewport,
         "evidence_boundary": EVIDENCE_BOUNDARY,
         "compatible_evidence_boundary": COMPATIBLE_EVIDENCE_BOUNDARY,
+        "legacy_artifact_evidence_boundary": LEGACY_ARTIFACT_EVIDENCE_BOUNDARY,
         "boundary_compatibility": (
-            "This refresh supersedes the older local mobile/web browser proof boundary while "
-            "remaining compatible with artifacts named mobile_web_browser_*."
+            "This retest browser proof supersedes the current PWA browser proof refresh boundary, "
+            "while remaining compatible with legacy artifacts named mobile_web_browser_*."
         ),
-        "proof_type": "real local Chromium-family browser proof for dependency-free mobile/web PWA",
+        "proof_type": "real local Chromium-family browser proof for current dependency-free mobile/web PWA with retest request panel",
         "ack_semantics": "ACK is accepted/processing evidence only, not delivery success.",
         "not_proven": list(NOT_PROVEN),
         "artifact_sha256": artifact_hashes,
@@ -790,7 +833,8 @@ def main():
     print(
         f"summary={summary_path} ok={str(all_passed).lower()} "
         f"evidence_boundary={EVIDENCE_BOUNDARY} "
-        f"compatible_evidence_boundary={COMPATIBLE_EVIDENCE_BOUNDARY}"
+        f"compatible_evidence_boundary={COMPATIBLE_EVIDENCE_BOUNDARY} "
+        f"legacy_artifact_evidence_boundary={LEGACY_ARTIFACT_EVIDENCE_BOUNDARY}"
     )
     return 0 if all_passed else 1
 

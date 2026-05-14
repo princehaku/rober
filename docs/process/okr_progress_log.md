@@ -8,6 +8,16 @@
 
 ## 2026-05-14 系列
 
+更新时间：2026-05-14 08:14 Asia/Shanghai。
+
+### 2026-05-14 08-09｜mobile-current-pwa-retest-browser-proof｜O4 current PWA retest browser proof，手机体验由约 84% 上调到约 85%
+
+`sprints/2026.05.14_08-09_mobile-current-pwa-retest-browser-proof` 完成 `software_proof_docker_mobile_current_pwa_retest_browser_proof_gate`：Task A Full-stack 更新 `pc-tools/evidence/phone_browser_acceptance_gate.py`、`mobile/test_mobile_web_entrypoint.py`、`mobile/README.md`、`docs/product/mobile_user_flow.md`，把上一轮“真实设备复测请求”panel 纳入当前 `mobile/web` PWA 的本地 Chromium-family browser proof。证据产出 `mobile_web_browser_390x844.json/png`、`mobile_web_browser_768x900.json/png`、`mobile_web_browser_acceptance_summary.json`；summary `ok=true`，browser 为 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`，390x844 与 768x900 两个 viewport 均 `passed=true`，覆盖 retest request panel 可见/可复制、ACK 非 delivery success、Diagnostics/Support Handoff、primary actions disabled、phone-safe、hit area、overlap、overflow、current panels、current boundaries 和 `not_proven`。Task A 验证输出 browser gate `390x844 passed=true`、`768x900 passed=true`、summary `ok=true`，`mobile.test_mobile_web_entrypoint` `Ran 28 tests ... OK`，`py_compile` pass，scoped diff check pass。首次失败为 gate 直接调用 `renderTerminalActionPanel()` 触发 out-of-scope `mobile/web/app.js` 内部 `ReferenceError: nextEvidence is not defined`；Task A 改为只展开既有 DOM、不调用内部控制或提交路径后复验通过。
+
+Task B Robot 更新 `onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge_protocol.py`、`docs/interfaces/ros_contracts.md`，新增 `mobile_current_pwa_retest_browser_proof*` protocol/worker 围栏和 mixed valid-command 场景。Robot fence 证明 current PWA retest browser proof / retest request metadata 不触发 collect、dropoff、cancel、ACK、cursor、terminal ACK、production readiness、HIL、dropoff/cancel completion 或 delivery success；valid command mixed metadata 只执行 command envelope，不把 browser proof / retest request metadata 编入 normalized command、ACK、status、cursor 或 terminal result。Task B 验证输出 remote bridge/protocol targeted unittest `Ran 153 tests in 78.872s OK`、`py_compile` pass、scoped diff check pass。
+
+该证据只支持 Objective 4 从约 84% 保守上调到约 85%，理由是当前 `mobile/web/` 已把真实设备复测请求首屏纳入本地 Chromium-family browser proof，并由两组 viewport 截图/JSON、phone-safe checks、fail-closed 主操作、ACK 非 delivery success、`not_proven` 和 Robot metadata-only fence 限定边界。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1/2/3 不提升。本轮 `software_proof_docker_mobile_current_pwa_retest_browser_proof_gate` 只证明 Docker/local current PWA browser proof 和 robot metadata-only fence；真实设备复测请求、browser proof、ACK、HTTP accepted、receipt、intake package、acceptance decision package、review handoff package、review execution package、retest request package、handoff session 和 install prompt evidence 仍只是 accepted/processing/support metadata，不是 delivery success。
+
 更新时间：2026-05-14 07:21 Asia/Shanghai。
 
 ### 2026-05-14 07-08｜mobile-real-device-retest-request-gate｜O4 real-device retest request software proof，手机体验由约 83% 上调到约 84%

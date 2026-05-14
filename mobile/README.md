@@ -41,6 +41,8 @@
 > 当前增量：sprint `2026.05.14_06-07_mobile-real-device-review-execution-gate` 在首屏新增“真实设备评审执行”panel。证据边界是 `software_proof_docker_mobile_real_device_review_execution_gate`，只证明 Docker/local static fixture 与 targeted unittest 能从 `mobile_real_device_review_handoff*` 派生或消费 `mobile_real_device_review_execution*`，展示 review execution checklist、review result/status、evidence items readiness、operator notes、reviewer notes、blocked reason、next evidence request、redaction status、source boundary、ACK-not-delivery 和 `not_proven`，并复制 phone-safe review execution package；不等于真实设备验收通过、production app、真实 PWA install prompt/user choice、O5 外部 proof、HIL 或真实 delivery。
 >
 > 当前增量：sprint `2026.05.14_07-08_mobile-real-device-retest-request-gate` 在首屏新增“真实设备复测请求”panel。证据边界是 `software_proof_docker_mobile_real_device_retest_request_gate`，只证明 Docker/local static fixture 与 targeted unittest 能从 `mobile_real_device_review_execution*` 派生或消费 `mobile_real_device_retest_request*`，展示 retest checklist、missing evidence list、每项材料 readiness/status、owner/next action、blocked reason、rejection reason、redaction status、source boundary、ACK-not-delivery 和 `not_proven`，并复制 phone-safe retest request package；不等于真实设备验收通过、production app、真实 PWA install prompt/user choice、O5 外部 proof、HIL 或真实 delivery。
+>
+> 当前增量：sprint `2026.05.14_08-09_mobile-current-pwa-retest-browser-proof` 将“真实设备复测请求”首屏 panel 纳入当前 `mobile/web/` 本地 Chromium-family browser proof。证据边界是 `software_proof_docker_mobile_current_pwa_retest_browser_proof_gate`，只证明本机 Chromium-family 浏览器可渲染当前 PWA、看到 retest request package、保持主操作 fail closed、Diagnostics/Support Handoff 可用、ACK 仍是 accepted/processing；不等于真实 iPhone/Android、production app、真实 PWA install prompt/user choice、O5 外部材料、HIL 或真实 delivery。
 
 ## 用途（What lives here）
 
@@ -308,7 +310,13 @@ PWA / offline 边界：
 PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gate.py --output-dir sprints/2026.05.14_02-03_mobile-current-pwa-browser-proof-refresh/evidence
 ```
 
-该 gate 自带轻量静态 HTTP server，直接服务 `mobile/web/`，并用 `mobile/fixtures/mobile_web_status.fixture.json` 响应 `/api/status` 与 `/api/diagnostics`。它通过 `--browser` 或 `PHONE_BROWSER_CHROME` 指向 Chromium-family 浏览器；成功后在 sprint `evidence/` 下写入 `mobile_web_browser_390x844.json/png`、`mobile_web_browser_768x900.json/png` 和 `mobile_web_browser_acceptance_summary.json`。summary 的当前证据边界必须是 `software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate`，同时保留旧 `software_proof_docker_mobile_web_browser_proof_gate` 作为兼容说明，方便读取旧 `mobile_web_browser_*` 文件名的流程不漂移。该 gate 只证明本机 Chromium-family browser 渲染当前 PWA，不是真实手机设备、production app、真实 PWA install prompt、O5 外部材料、真实机器人动作或真实送达。
+当前 retest browser proof 运行命令：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gate.py --output-dir sprints/2026.05.14_08-09_mobile-current-pwa-retest-browser-proof/evidence
+```
+
+该 gate 自带轻量静态 HTTP server，直接服务 `mobile/web/`，并用 `mobile/fixtures/mobile_web_status.fixture.json` 响应 `/api/status` 与 `/api/diagnostics`。它通过 `--browser` 或 `PHONE_BROWSER_CHROME` 指向 Chromium-family 浏览器；成功后在 sprint `evidence/` 下写入 `mobile_web_browser_390x844.json/png`、`mobile_web_browser_768x900.json/png` 和 `mobile_web_browser_acceptance_summary.json`。summary 的当前证据边界必须是 `software_proof_docker_mobile_current_pwa_retest_browser_proof_gate`，同时保留 `software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate` 和旧 `software_proof_docker_mobile_web_browser_proof_gate` 作为兼容说明，方便读取旧 `mobile_web_browser_*` 文件名的流程不漂移。该 gate 覆盖三步主路径、恢复决策、终端动作二次确认、手机设备证据采集、真实手机验收交接会话、PWA 安装提示证据、真实设备复测请求、浏览器验收包、Diagnostics、Support Handoff 和 ACK 文案；只证明本机 Chromium-family browser 渲染当前 PWA，不是真实手机设备、production app、真实 PWA install prompt/user choice、O5 外部材料、真实机器人动作或真实送达。
 
 ## Agent 工作纪律
 
@@ -341,5 +349,6 @@ PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gat
 | 当前 mobile-current-pwa-browser-proof-refresh gate | 当前 `mobile/web/` 首屏 panels 的本机 Chromium-family browser proof refresh；保留旧 browser proof boundary 兼容说明 |
 | 当前 mobile-real-device-evidence-intake gate | 首屏真实设备验收材料导入、redacted phone-safe package 复制、not_proven/redaction 边界和非控制放行 |
 | 当前 mobile-real-device-retest-request gate | 首屏真实设备复测请求、phone-safe retest request package 复制、missing evidence/owner/next action 边界和非控制放行 |
+| 当前 mobile-current-pwa-retest-browser-proof gate | 当前 PWA + 真实设备复测请求 panel 的本机 Chromium-family browser proof；保留 current refresh 和旧 browser artifact 兼容说明 |
 | 下一个 sprint | 真实手机设备验收、production app、真实 PWA install prompt 和弱网体验 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |

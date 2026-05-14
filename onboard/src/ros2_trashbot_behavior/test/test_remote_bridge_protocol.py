@@ -410,6 +410,65 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("/dev/ttyUSB0", encoded_command)
         self.assertNotIn("Authorization", encoded_command)
 
+    def test_validate_command_ignores_mobile_current_pwa_retest_browser_proof_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-current-pwa-retest-browser-proof",
+            "type": "cancel",
+            "payload": {},
+            "mobile_current_pwa_retest_browser_proof": {
+                "schema": "trashbot.mobile_current_pwa_retest_browser_proof.v1",
+                "evidence_boundary": "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate",
+                "viewport_results": {"390x844": "passed", "768x900": "passed"},
+                "retest_request_panel_visible": True,
+                "trigger_robot_action": "collect",
+                "cursor_override": "cmd-future",
+                "terminal_ack": "delivered",
+                "delivery_success": True,
+                "dropoff_success": True,
+                "cancel_completed": True,
+                "production_ready": True,
+                "hil_pass": True,
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "mobile_current_pwa_retest_browser_proof_summary": {
+                "schema": "trashbot.mobile_current_pwa_retest_browser_proof_summary.v1",
+                "safe_phone_copy": "当前 PWA retest browser proof 只说明本地浏览器软件证据。",
+                "ack_semantics": "delivery_success",
+                "next_action": "confirm_dropoff",
+                "real_device_proof": True,
+                "ready_for_retest": True,
+            },
+            "phone_current_pwa_retest_browser_proof": {
+                "schema": "trashbot.phone_current_pwa_retest_browser_proof.v1",
+                "evidence_boundary": "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate",
+                "safe_to_control": True,
+                "Authorization": "Bearer must-not-leak",
+                "serial_device": "/dev/ttyUSB0",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-current-pwa-retest-browser-proof")
+        self.assertEqual(command["type"], "cancel")
+        self.assertEqual(command["payload"], {})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # current PWA retest browser proof 是手机/浏览器证据元数据，不能扩展 robot command envelope。
+        self.assertNotIn("mobile_current_pwa_retest_browser_proof", encoded_command)
+        self.assertNotIn("mobile_current_pwa_retest_browser_proof_summary", encoded_command)
+        self.assertNotIn("phone_current_pwa_retest_browser_proof", encoded_command)
+        self.assertNotIn("software_proof_docker_mobile_current_pwa_retest_browser_proof_gate", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("terminal_ack", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("dropoff_success", encoded_command)
+        self.assertNotIn("cancel_completed", encoded_command)
+        self.assertNotIn("production_ready", encoded_command)
+        self.assertNotIn("hil_pass", encoded_command)
+        self.assertNotIn("ready_for_retest", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("/dev/ttyUSB0", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+
     def test_validate_command_ignores_cloud_hosted_pwa_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-cloud-hosted-pwa",
@@ -1144,6 +1203,59 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("phone_current_pwa_browser_proof_refresh", encoded_status)
         self.assertNotIn("delivery_success", encoded_status)
         # protocol client 不能从 current PWA browser proof refresh metadata-only 回包合成 command id 或 ACK。
+        self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
+
+    def test_mobile_current_pwa_retest_browser_proof_response_metadata_does_not_create_command_or_ack(self):
+        self.cloud.response_extras.update({
+            "command_response": {
+                "mobile_current_pwa_retest_browser_proof": {
+                    "schema": "trashbot.mobile_current_pwa_retest_browser_proof.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-current-pwa-retest",
+                    "terminal_ack": "delivered",
+                    "delivery_success": True,
+                    "dropoff_success": True,
+                    "cancel_completed": True,
+                },
+                "mobile_current_pwa_retest_browser_proof_summary": {
+                    "schema": "trashbot.mobile_current_pwa_retest_browser_proof_summary.v1",
+                    "ack_semantics": "delivery_success",
+                    "next_action": "confirm_dropoff",
+                    "production_ready": True,
+                    "hil_pass": True,
+                },
+                "phone_current_pwa_retest_browser_proof": {
+                    "schema": "trashbot.phone_current_pwa_retest_browser_proof.v1",
+                    "safe_to_control": True,
+                    "ready_for_retest": True,
+                },
+            },
+            "status_response": {
+                "mobile_current_pwa_retest_browser_proof_summary": {"delivery_success": True},
+            },
+            "ack_response": {
+                "phone_current_pwa_retest_browser_proof": {
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                },
+            },
+        })
+        client = RemoteCloudClient(self.base_url, "robot-1", timeout_sec=2)
+
+        status_response = client.post_status(make_status("robot-1", "waiting_for_trash", "ready"))
+        command = client.get_next_command()
+
+        self.assertIsNone(command)
+        self.assertEqual(self.cloud.acks, [])
+        self.assertTrue(status_response["ok"])
+        encoded_status = json.dumps(self.cloud.statuses[0], ensure_ascii=False)
+        self.assertNotIn("mobile_current_pwa_retest_browser_proof", encoded_status)
+        self.assertNotIn("mobile_current_pwa_retest_browser_proof_summary", encoded_status)
+        self.assertNotIn("phone_current_pwa_retest_browser_proof", encoded_status)
+        self.assertNotIn("software_proof_docker_mobile_current_pwa_retest_browser_proof_gate", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        # protocol client 不能从 current PWA retest browser proof metadata-only 回包合成 command id 或 terminal ACK。
         self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
 
     def test_validate_command_ignores_mobile_real_device_evidence_intake_metadata_outside_envelope(self):

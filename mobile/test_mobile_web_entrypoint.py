@@ -23,11 +23,15 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn('MOBILE_WEB_ROOT = REPO_ROOT / "mobile" / "web"', script)
         self.assertIn('MOBILE_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"', script)
         self.assertIn(
-            'EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"',
+            'EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate"',
             script,
         )
         self.assertIn(
-            'COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"',
+            'COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"',
+            script,
+        )
+        self.assertIn(
+            'LEGACY_ARTIFACT_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"',
             script,
         )
         self.assertIn('"/api/status"', script)
@@ -41,6 +45,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn('"mobileDeviceEvidenceTitle"', script)
         self.assertIn('"mobileDeviceHandoffTitle"', script)
         self.assertIn('"mobilePwaInstallPromptTitle"', script)
+        self.assertIn('"mobileRealDeviceRetestRequestTitle"', script)
+        self.assertIn('"mobileRealDeviceRetestRequestSafeCopy"', script)
+        self.assertIn('"copyRealDeviceRetestRequestButton"', script)
         self.assertIn('"mobileBrowserSafeCopy"', script)
         self.assertIn('"copyAcceptanceBundleButton"', script)
         self.assertIn('"copyDeviceEvidencePackageButton"', script)
@@ -52,6 +59,8 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("pwa_install_prompt_evidence_visible", script)
         self.assertIn("device_handoff_session_visible", script)
         self.assertIn("device_evidence_capture_visible", script)
+        self.assertIn("real_device_retest_request_visible", script)
+        self.assertIn("real_device_retest_request_copyable", script)
         self.assertIn("current_panels_status", script)
         self.assertIn("current_boundaries_status", script)
         self.assertIn("PHONE_BROWSER_CHROME", script)
@@ -68,7 +77,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("mobile_web_browser_{width}x{height}.json", script)
         self.assertIn("mobile_web_browser_acceptance_summary.json", script)
         self.assertIn("compatible_evidence_boundary", script)
+        self.assertIn("legacy_artifact_evidence_boundary", script)
         self.assertIn("boundary_compatibility", script)
+        self.assertIn("software_proof_docker_mobile_current_pwa_retest_browser_proof_gate", script)
         self.assertIn("software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate", script)
         self.assertIn("software_proof_docker_mobile_web_browser_proof_gate", script)
 
