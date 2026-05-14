@@ -510,6 +510,51 @@
         <p id="routeTaskFieldRunEvidenceKitHint" class="hint">Evidence kit 只读展示；不读取敏感原始材料或机器人控制细节，也不触发 Start、Confirm 或 Cancel。</p>
       </section>
 
+      <section class="route-field-run-material-bundle-panel" aria-labelledby="routeTaskFieldRunMaterialBundleTitle">
+        <div class="section-heading">
+          <h2 id="routeTaskFieldRunMaterialBundleTitle">路线现场材料包</h2>
+          <span id="routeTaskFieldRunMaterialBundleBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="routeTaskFieldRunMaterialBundleCopy" class="message">
+          等待后端提供 route_task_field_run_material_bundle 的 phone-safe 现场材料包摘要。
+        </p>
+        <dl class="route-field-run-material-bundle-grid">
+          <div>
+            <dt>Bundle Status</dt>
+            <dd id="routeTaskFieldRunMaterialBundleStatus">blocked/not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="routeTaskFieldRunMaterialBundleEvidenceRef">not_provided</dd>
+          </div>
+          <div>
+            <dt>Template Files</dt>
+            <dd id="routeTaskFieldRunMaterialBundleTemplates">等待 template files 摘要。</dd>
+          </div>
+          <div>
+            <dt>Missing Materials</dt>
+            <dd id="routeTaskFieldRunMaterialBundleMissing">missing_materials=not_proven</dd>
+          </div>
+          <div>
+            <dt>Operator Next Steps</dt>
+            <dd id="routeTaskFieldRunMaterialBundleNextSteps">等待 operator next steps 摘要。</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="routeTaskFieldRunMaterialBundleControls">delivery_success=false / primary_actions_enabled=false</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="routeTaskFieldRunMaterialBundleBoundary">software_proof_docker_route_task_field_run_material_bundle_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="routeTaskFieldRunMaterialBundleNotProven">真实路线、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="routeTaskFieldRunMaterialBundleHint" class="hint">现场材料包只读展示；不读取 raw artifact、本机路径、token、serial/UART、/cmd_vel、checksum 或 traceback，也不触发 Start、Confirm 或 Cancel。</p>
+      </section>
+
       <section class="route-task-completion-panel" aria-labelledby="routeTaskCompletionSignalTitle">
         <div class="section-heading">
           <h2 id="routeTaskCompletionSignalTitle">路线任务完成信号</h2>

@@ -354,6 +354,35 @@ are not command/status/ACK robot contract fields and do not prove real
 fixed-route execution, real HIL, production readiness, dropoff completion,
 cancel completion, or delivery success.
 
+Operator diagnostics may also expose `route_task_field_run_material_bundle`
+and the alias `route_task_field_run_material_bundle_summary` from an explicit
+`route_task_field_run_material_bundle_ref`,
+`TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE`, or
+`TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE_SUMMARY`. The source JSON must
+use `schema=trashbot.route_task_field_run_material_bundle.v1` and
+`evidence_boundary=software_proof_docker_route_task_field_run_material_bundle_gate`.
+If the source is already a summary wrapper, it must still point to
+`source_schema=trashbot.route_task_field_run_material_bundle.v1` and the same
+evidence boundary. This summary is metadata-only support material for a
+route-task field-run material bundle: it may expose only the summary
+schema/evidence boundary, source schema/evidence boundary, `bundle_verdict`,
+safe evidence ref, `same_evidence_ref_required=true`, materials status,
+material directory scaffold, bundle summary, `operator_next_steps`,
+`robot_diagnostics_summary`, `mobile_readonly_summary`, `not_proven`,
+`delivery_success=false`, and `primary_actions_enabled=false`. Raw route logs,
+task records, mobile summary payloads, credentials, local paths, UART/serial
+details, raw ACK payloads, raw command envelopes, production-readiness claims,
+and traceback content must not enter the diagnostics summary. Missing,
+unreadable, unsupported-schema, boundary-mismatch, unsafe fields,
+`same_evidence_ref_required=false`, `delivery_success=true`, or
+`primary_actions_enabled=true` sources remain blocked/not_proven. The fields do
+not trigger `/api/collect`, dropoff, cancel, remote ACK, cursor
+advance/persistence, terminal ACK, Nav2, WAVE ROVER, HIL, production readiness,
+real dropoff/cancel completion, or delivery success. They are not
+command/status/ACK robot contract fields and do not prove real fixed-route
+execution, real HIL, production readiness, dropoff completion, cancel
+completion, or delivery success.
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

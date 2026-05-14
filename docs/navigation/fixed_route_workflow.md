@@ -636,6 +636,29 @@ evidence kit artifact 使用 `schema=trashbot.route_task_field_run_evidence_kit.
 
 `field_run_evidence_kit_ready_not_proven` 只表示 Docker/local evidence kit 已把上一轮 console 和材料目录整理成现场执行/回填包。它不是实机 field run、不是 HIL、不是真实 dropoff/cancel completion，也不是 delivery success。任何缺材料或安全/同 ref 约束失败都必须先修复并重跑 evidence kit，不得把 evidence kit 当作完成信号。
 
+### 5.13 route/task field-run material bundle
+
+evidence kit 之后，现场同学还需要一份可直接打开和回填的材料目录。`pc-tools/evidence/route_task_field_run_material_bundle.py` 只读上一轮 `trashbot.route_task_field_run_evidence_kit.v1`，生成 `trashbot.route_task_field_run_material_bundle.v1` summary；指定 `--material-dir` 时创建 route/task/completion/operator notes/diagnostics/mobile summary 的模板或占位文件：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_material_bundle.py \
+  --evidence-kit-json /tmp/route_task_field_run_evidence_kit.json \
+  --material-dir /tmp/route_task_field_run_material_bundle \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+material bundle 使用 `evidence_boundary=software_proof_docker_route_task_field_run_material_bundle_gate`。核心字段包括：
+
+- `same_evidence_ref_required=true`: bundle、diagnostics/mobile summary 和所有模板必须沿用同一个 safe `evidence_ref`。
+- `material_directory_scaffold`: 记录模板文件创建或保留状态，不覆盖现场已有 notes。
+- `material_bundle_summary`: `schema=trashbot.route_task_field_run_material_bundle_summary.v1` 的只读消费摘要。
+- `operator_next_steps`: 现场回填 route status、task record、completion material、diagnostics/mobile summary 和 operator notes 的下一步。
+- `not_proven`: 继续列出真实 Nav2/fixed-route、真实路线采集、真实硬件反馈、HIL、dropoff/cancel completion、delivery_success 和 O5 external proof 未证明。
+- `primary_actions_enabled=false` 与 `delivery_success=false`: material bundle 不能放行控制动作，也不能声明送达成功。
+
+`field_run_material_bundle_ready_not_proven` 只表示 Docker/local software proof 的材料包生成能力已经可用。它不访问 ROS graph、Nav2 runtime、serial/UART、硬件、外部云、OSS/CDN、DB/queue 或 4G；它不是真实 fixed-route/Nav2、真实路线采集、真实投放、真实取消完成、HIL 或 delivery success。缺 evidence kit、坏 JSON、unsupported schema/boundary、`evidence_ref` mismatch、unsafe summary、`primary_actions_enabled=true`、输入含 `delivery_success=true` 或目录不可写时，都必须保持 blocked material bundle，再重建同一 `evidence_ref` 的 evidence kit 或换可写材料目录。
+
 ## 6. Debug Web
 
 ### 6.1 Onboard ROS debug page

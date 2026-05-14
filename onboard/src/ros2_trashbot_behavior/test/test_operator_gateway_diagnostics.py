@@ -29,6 +29,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_completion_signal,
     summarize_route_task_field_run_console,
     summarize_route_task_field_run_evidence_kit,
+    summarize_route_task_field_run_material_bundle,
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import (
@@ -2949,6 +2950,203 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["delivery_success"])
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_route_task_field_run_evidence_kit_gate", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_run_material_bundle_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            bundle_path = Path(td) / "route_task_field_run_material_bundle.json"
+            bundle_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_material_bundle.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_material_bundle_gate"
+                        ),
+                        "evidence_ref": "evidence://route-task-field-run-material-bundle-1",
+                        "same_evidence_ref_required": True,
+                        "bundle_verdict": {
+                            "status": "ready",
+                            "verdict": "ready_for_field_run_material_handoff",
+                            "reason": "material bundle uses the same evidence_ref",
+                        },
+                        "materials_status": {
+                            "status": "available",
+                            "required_materials": ["route template", "operator notes"],
+                        },
+                        "material_directory_scaffold": {
+                            "status": "generated",
+                            "files": ["route.md", "task.md", "mobile_summary.md"],
+                        },
+                        "bundle_summary": {
+                            "status": "ready",
+                            "summary": "metadata-only material handoff is ready",
+                        },
+                        "robot_diagnostics_summary": {
+                            "status": "ready",
+                            "reason": "metadata-only material bundle available",
+                        },
+                        "mobile_readonly_summary": {
+                            "safe_copy": (
+                                "Route-task field-run material bundle is metadata-only; "
+                                "delivery_success=false and not delivery success."
+                            ),
+                            "operator_next_steps": ["Keep primary actions blocked."],
+                        },
+                        "not_proven": ["delivery_success", "real_hil_pass"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_run_material_bundle_ref=str(bundle_path),
+            )
+            summary = payload["route_task_field_run_material_bundle"]
+            summary_alias = payload["route_task_field_run_material_bundle_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["schema"], "trashbot.route_task_field_run_material_bundle_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_run_material_bundle_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_field_run_material_bundle.v1")
+        self.assertEqual(summary["bundle_verdict"]["status"], "ready")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://route-task-field-run-material-bundle-1")
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertEqual(summary["materials_status"]["status"], "available")
+        self.assertIn("operator notes", summary["materials_status"]["required_materials"])
+        self.assertEqual(summary["material_directory_scaffold"]["status"], "generated")
+        self.assertEqual(summary["bundle_summary"]["status"], "ready")
+        self.assertIn("delivery_success=false", summary["mobile_readonly_summary"]["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("remote_ack", summary["not_proven"])
+        self.assertIn("terminal_ack", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(bundle_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_run_material_bundle_env_summary_missing_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "route_task_field_run_material_bundle_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_material_bundle_summary.v1",
+                        "source_schema": "trashbot.route_task_field_run_material_bundle.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_material_bundle_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_material_bundle_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://route-task-field-run-material-bundle-2",
+                        "same_evidence_ref_required": True,
+                        "bundle_verdict": {"status": "blocked_missing_material", "verdict": "not_proven"},
+                        "materials_status": {
+                            "status": "blocked",
+                            "missing_materials": ["operator notes"],
+                        },
+                        "mobile_readonly_summary": {
+                            "safe_copy": "Route-task field-run material bundle is metadata-only; delivery_success=false.",
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_bundle = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE")
+            previous_summary = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE_SUMMARY")
+            os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE", None)
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_run_material_bundle"
+                ]
+            finally:
+                if previous_bundle is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE"] = previous_bundle
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE_SUMMARY"] = previous_summary
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_material_bundle.json"
+            missing_summary = summarize_route_task_field_run_material_bundle(str(missing_path))
+
+            unsupported_path = Path(td) / "unsupported_material_bundle.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_evidence_kit.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_evidence_kit_gate"
+                        ),
+                        "safe_copy": "Unsupported material bundle is metadata-only; delivery_success=false.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsupported_summary = summarize_route_task_field_run_material_bundle(str(unsupported_path))
+
+            unsafe_path = Path(td) / "unsafe_material_bundle.json"
+            unsafe_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_material_bundle.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_material_bundle_gate"
+                        ),
+                        "same_evidence_ref_required": False,
+                        "delivery_success": True,
+                        "mobile_readonly_summary": {
+                            "safe_copy": "Material bundle confirms delivery success and ACK posted.",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_summary = summarize_route_task_field_run_material_bundle(str(unsafe_path))
+            encoded = json.dumps(
+                [env_summary, missing_summary, unsupported_summary, unsafe_summary],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["bundle_verdict"]["status"], "blocked_missing_material")
+        self.assertEqual(env_summary["materials_status"]["status"], "blocked")
+        self.assertIn("operator notes", env_summary["materials_status"]["missing_materials"])
+        self.assertEqual(missing_summary["bundle_verdict"]["status"], "missing")
+        self.assertEqual(unsupported_summary["bundle_verdict"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["bundle_verdict"]["status"], "unsafe_fields")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_route_task_field_run_material_bundle_gate", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)

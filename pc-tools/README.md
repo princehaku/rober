@@ -296,6 +296,33 @@ python3 pc-tools/evidence/route_task_field_run_evidence_kit.py \
 
 该 evidence kit 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；`field_run_evidence_kit_ready_not_proven` 只表示上一轮 console 与材料目录可形成现场 handoff。缺 console、坏 JSON、unsupported schema/boundary、`evidence_ref` mismatch、缺材料目录文件、unsafe summary、`primary_actions_enabled=true` 或输入含 `delivery_success=true` 时，CLI 会 fail closed，保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
 
+## route/task field-run material bundle
+
+`pc-tools/evidence/route_task_field_run_material_bundle.py` 只读上一轮 `route_task_field_run_evidence_kit` artifact，输出现场材料包 summary；指定 `--material-dir` 时，会实际创建 route/task/completion/operator notes/diagnostics/mobile summary 的模板或占位文件：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_material_bundle.py \
+  --evidence-kit-json /tmp/route_task_field_run_evidence_kit.json \
+  --material-dir /tmp/route_task_field_run_material_bundle \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_run_material_bundle.json
+```
+
+需要直接给 diagnostics、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_material_bundle.py \
+  --evidence-kit-json /tmp/route_task_field_run_evidence_kit.json \
+  --material-dir /tmp/route_task_field_run_material_bundle \
+  --once-json
+```
+
+输出 `schema=trashbot.route_task_field_run_material_bundle.v1`、`schema_version=1`、`evidence_boundary=software_proof_docker_route_task_field_run_material_bundle_gate`、`same_evidence_ref_required=true`、`material_bundle_verdict`、`source_evidence_kit`、`material_directory_scaffold`、`material_bundle_summary`、`operator_next_steps`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。`material_bundle_summary` 使用 `schema=trashbot.route_task_field_run_material_bundle_summary.v1`，供 Robot diagnostics 和 mobile 只读展示。
+
+指定 `--material-dir` 后，工具会保留已有文件并补齐缺失模板：`route_status_template.json`、`task_record_template.json`、`completion_material_template.json`、`operator_notes.md`、`robot_diagnostics_summary_template.json` 和 `mobile_readonly_summary_template.json`。这些模板全部继承同一 safe `evidence_ref`，并固定 `delivery_success=false`、`primary_actions_enabled=false`、`same_evidence_ref_required=true`。
+
+该 material bundle 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、硬件、外部云、OSS/CDN、DB/queue 或 4G；`field_run_material_bundle_ready_not_proven` 只表示 PC 侧可以从 evidence kit 生成现场材料包和模板。它不是真实 Nav2/fixed-route、真实路线采集、HIL、真实 dropoff/cancel completion、delivery success、真实手机设备或 Objective 5 external proof。缺 evidence kit、坏 JSON、unsupported schema/boundary、`evidence_ref` mismatch、unsafe summary、`primary_actions_enabled=true`、输入含 `delivery_success=true` 或目录不可写时，CLI 会 fail closed，保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。
