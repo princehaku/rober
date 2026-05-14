@@ -1174,6 +1174,61 @@
     "ack_semantics": "accepted/processing evidence only",
     "evidence_boundary": "software_proof_docker_mobile_recovery_decision_gate"
   },
+  "route_task_rehearsal_operator_review": {
+    "schema": "trashbot.route_task_rehearsal_operator_review.v1",
+    "schema_version": 1,
+    "overall_status": "blocked_software_proof_only",
+    "evidence_ref": "route_task_rehearsal_operator_review_fixture_20260514_2203",
+    "crosscheck_status": "pass",
+    "hil_alignment_status": "not_proven",
+    "crosscheck_hil_boundary": "crosscheck=pass / HIL=not_proven",
+    "mismatch_summary": "mismatch_count=0；仅为 Docker/local route/task rehearsal software proof。",
+    "next_rehearsal_decision": "需要真实路线运行、同一 evidence_ref 上车复账或 HIL 材料后再进入下一次实机排练。",
+    "safe_phone_copy": "路线/任务排练复盘只读展示：当前是 software proof，不是 HIL、真实路线运行、dropoff/cancel completion 或 delivery success。",
+    "recovery_hint": "把 safe_copy 交给支持人员复核 crosscheck 和 not_proven；Start、Confirm、Cancel 继续由既有 gates 控制。",
+    "evidence_boundary": "software_proof_docker_route_task_rehearsal_operator_review_gate",
+    "safe_copy": {
+      "schema": "trashbot.route_task_rehearsal_operator_review.safe_copy.v1",
+      "schema_version": 1,
+      "source": "mobile_fixture",
+      "overall_status": "blocked_software_proof_only",
+      "evidence_ref": "route_task_rehearsal_operator_review_fixture_20260514_2203",
+      "crosscheck_status": "pass",
+      "hil_alignment_status": "not_proven",
+      "mismatch_summary": "mismatch_count=0；raw details omitted。",
+      "next_rehearsal_decision": "补齐真实路线/HIL 证据后再复盘。",
+      "safe_phone_copy": "whitelist-only safe_copy：只包含复盘状态、证据引用、crosscheck/HIL 边界、mismatch 摘要和下一步决策。",
+      "evidence_boundary": "software_proof_docker_route_task_rehearsal_operator_review_gate",
+      "not_proven": [
+        "HIL",
+        "真实路线运行",
+        "真实 dropoff completion",
+        "真实 cancel completion",
+        "delivery success"
+      ]
+    },
+    "not_proven": [
+      "HIL",
+      "真实路线运行",
+      "真实 Nav2/fixed-route",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success"
+    ]
+  },
+  "route_task_rehearsal_operator_review_summary": {
+    "schema": "trashbot.route_task_rehearsal_operator_review_summary.v1",
+    "schema_version": 1,
+    "overall_status": "blocked_software_proof_only",
+    "safe_phone_copy": "operator review summary 只说明 software proof 可读，不证明真实路线运行或 HIL。",
+    "next_rehearsal_decision": "等待真实路线/HIL 材料。",
+    "evidence_boundary": "software_proof_docker_route_task_rehearsal_operator_review_gate",
+    "not_proven": [
+      "HIL",
+      "真实路线运行",
+      "delivery success"
+    ]
+  },
   "operation_log": {
     "schema": "trashbot.phone_operation_log.v1",
     "evidence_boundary": "software_proof_docker_mobile_operation_log_gate",

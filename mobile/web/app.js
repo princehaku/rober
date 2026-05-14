@@ -36,6 +36,7 @@ const MOBILE_REAL_DEVICE_FIELD_TRIAL_RETEST_EXECUTION_BOUNDARY = "software_proof
 const MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_SESSION_BOUNDARY = "software_proof_docker_mobile_real_device_field_trial_acceptance_session_gate";
 const PRIMARY_JOURNEY_BOUNDARY = "software_proof_docker_mobile_primary_journey_gate";
 const RECOVERY_DECISION_BOUNDARY = "software_proof_docker_mobile_recovery_decision_gate";
+const ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_BOUNDARY = "software_proof_docker_route_task_rehearsal_operator_review_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -92,6 +93,7 @@ const REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_SESSION_SUMMARY_SCHEMA = "trashbot.mobi
 const REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_SESSION_COPY_SCHEMA = "trashbot.mobile_real_device_field_trial_acceptance_session_copy.v1";
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|complete artifact|artifact|raw browser event|raw event|raw promise|complete ua|full ua|完整 ua|raw robot response|raw intake json|robot\/internal|internal technical)/i;
 const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
+const UNSAFE_OPERATOR_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|raw ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|raw robot response|robot\/internal|internal technical|password)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 
@@ -104,6 +106,7 @@ let latestDeviceHandoffSession = null;
 let latestPwaInstallPromptPackage = null;
 let latestPwaInstallPromptEventCapturePackage = null;
 let latestPwaInstallPromptEvidenceExportPackage = null;
+let latestRouteTaskReview = null;
 let deferredPwaInstallPromptEvent = null;
 let pwaInstallPromptEventState = null;
 let latestRealDeviceEvidencePackage = null;
@@ -163,6 +166,15 @@ function safeRecoveryText(value, fallback = "等待安全摘要") {
   // 恢复决策会放在首屏，命中成功/硬件/凭证等高风险词时只能显示保守文案。
   const text = safeText(value, fallback);
   if (UNSAFE_RECOVERY_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeOperatorReviewText(value, fallback = "not_proven") {
+  // 排练复盘来自诊断/状态摘要，必须过滤路径、raw artifact、完整 bundle 和凭证。
+  const text = safeText(value, fallback);
+  if (UNSAFE_OPERATOR_REVIEW_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -3141,6 +3153,134 @@ function recoveryDecisionFromStatus(status, readiness, diagnostics) {
   return provided ? normalizeRecoveryDecision(provided, fallback) : fallback;
 }
 
+function routeTaskReviewCandidate(status, readiness, diagnostics) {
+  // operator review 只接受 status/readiness/diagnostics 的摘要字段，不读取 raw artifact 或 backend filesystem。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const candidates = [
+    status?.route_task_rehearsal_operator_review,
+    status?.route_task_rehearsal_operator_review_summary,
+    status?.route_task_rehearsal_review_summary,
+    status?.route_task_rehearsal_summary,
+    readiness?.route_task_rehearsal_operator_review,
+    readiness?.route_task_rehearsal_operator_review_summary,
+    readiness?.route_task_rehearsal_review_summary,
+    readiness?.route_task_rehearsal_summary,
+    diagnostics?.route_task_rehearsal_operator_review,
+    diagnostics?.route_task_rehearsal_operator_review_summary,
+    diagnostics?.route_task_rehearsal_review_summary,
+    diagnostics?.route_task_rehearsal_summary,
+    diagnosticsReadiness.route_task_rehearsal_operator_review,
+    diagnosticsReadiness.route_task_rehearsal_operator_review_summary,
+    diagnosticsReadiness.route_task_rehearsal_review_summary,
+    diagnosticsReadiness.route_task_rehearsal_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function routeTaskMismatchSummary(value) {
+  // mismatch 只显示计数/摘要；原始 mismatch 列表和完整执行 bundle 不进入手机页面。
+  if (value?.mismatch_summary || value?.mismatches_summary) {
+    return safeOperatorReviewText(value.mismatch_summary || value.mismatches_summary, "mismatch_summary=not_proven");
+  }
+  if (typeof value?.mismatch_count === "number") {
+    return `mismatch_count=${value.mismatch_count}`;
+  }
+  if (Array.isArray(value?.mismatches)) {
+    return `mismatch_count=${value.mismatches.length} / raw details omitted`;
+  }
+  if (value?.crosscheck_status === "pass" || value?.crosscheck_status === "passed") {
+    return "mismatch_count=0 / crosscheck pass";
+  }
+  return "mismatch_summary=not_proven";
+}
+
+function operatorReviewNotProvenList(value) {
+  // 本 review 的 not_proven 必须固定保留 HIL、真实路线和终端动作缺口。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "HIL",
+    "真实路线运行",
+    "真实 Nav2/fixed-route",
+    "真实 dropoff completion",
+    "真实 cancel completion",
+    "delivery success",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 12);
+}
+
+function routeTaskSafeCopyPayload(value) {
+  // 复制路径只能使用 safe_copy；若后端没给 safe_copy，按钮保持 disabled。
+  const safeCopy = value?.safe_copy;
+  if (!safeCopy) {
+    return null;
+  }
+  const source = typeof safeCopy === "object" ? safeCopy : { safe_phone_copy: safeCopy };
+  return {
+    schema: safeOperatorReviewText(source.schema, "trashbot.route_task_rehearsal_operator_review.safe_copy.v1"),
+    schema_version: Number(source.schema_version || 1),
+    source: safeOperatorReviewText(source.source, "mobile_web"),
+    overall_status: safeOperatorReviewText(source.overall_status || value?.overall_status || value?.status, "blocked"),
+    evidence_ref: safeOperatorReviewText(source.evidence_ref || value?.evidence_ref, "not_provided"),
+    crosscheck_status: safeOperatorReviewText(source.crosscheck_status || value?.crosscheck_status, "not_proven"),
+    hil_alignment_status: safeOperatorReviewText(
+      source.hil_alignment_status || value?.hil_alignment_status || value?.hil_boundary,
+      "not_proven",
+    ),
+    mismatch_summary: safeOperatorReviewText(source.mismatch_summary || routeTaskMismatchSummary(value), "mismatch_summary=not_proven"),
+    next_rehearsal_decision: safeOperatorReviewText(
+      source.next_rehearsal_decision || value?.next_rehearsal_decision,
+      "rehearsal_blocked_until_real_route_or_hil_evidence",
+    ),
+    safe_phone_copy: safeOperatorReviewText(
+      source.safe_phone_copy,
+      "路线/任务排练复盘 safe_copy 只包含 phone-safe 摘要；不是 HIL、真实路线运行或 delivery success。",
+    ),
+    evidence_boundary: safeOperatorReviewText(
+      source.evidence_boundary || value?.evidence_boundary,
+      ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_BOUNDARY,
+    ),
+    not_proven: operatorReviewNotProvenList(source.not_proven ? source : value),
+  };
+}
+
+function routeTaskReviewFromStatus(status, readiness, diagnostics) {
+  const provided = routeTaskReviewCandidate(status, readiness, diagnostics) || {};
+  const safeCopyPayload = routeTaskSafeCopyPayload(provided);
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.route_task_rehearsal_operator_review.v1",
+    schema_version: 1,
+    overall_status: safeOperatorReviewText(provided.overall_status || provided.status, "blocked"),
+    evidence_ref: safeOperatorReviewText(provided.evidence_ref || provided.evidence_reference, "not_provided"),
+    crosscheck_hil_boundary: safeOperatorReviewText(
+      provided.crosscheck_hil_boundary ||
+        `crosscheck=${provided.crosscheck_status || "not_proven"} / HIL=${provided.hil_alignment_status || provided.hil_boundary || "not_proven"}`,
+      "crosscheck=not_proven / HIL=not_proven",
+    ),
+    mismatch_summary: routeTaskMismatchSummary(provided),
+    next_rehearsal_decision: safeOperatorReviewText(
+      provided.next_rehearsal_decision || provided.next_decision || provided.next_step,
+      "rehearsal_blocked_until_real_route_or_hil_evidence",
+    ),
+    safe_phone_copy: safeOperatorReviewText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "路线/任务排练复盘缺少后端 phone-safe 摘要；这里只显示 blocked-by-design。",
+    ),
+    recovery_hint: safeOperatorReviewText(
+      provided.recovery_hint || provided.retry_hint,
+      "需要下一次真实路线/任务排练或 HIL 材料时，由 Robot/Autonomy 提供新的安全摘要。",
+    ),
+    evidence_boundary: safeOperatorReviewText(
+      provided.evidence_boundary,
+      ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_BOUNDARY,
+    ),
+    not_proven: operatorReviewNotProvenList(provided),
+    safe_copy_payload: safeCopyPayload,
+  };
+}
+
 function derivedMobileBrowserAcceptanceBundle(status, readiness, diagnostics) {
   // 缺显式 bundle 时，从既有 phone-safe gate 派生 blocked 摘要，不能自行证明真机或生产入口。
   const device = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, diagnostics);
@@ -3706,6 +3846,35 @@ function renderRecoveryDecision(status) {
   $("recoveryDecisionBoundary").textContent = decision.evidence_boundary;
   $("recoveryDecisionHint").textContent = decision.recovery_hint;
   $("recoveryDecisionNotProven").textContent = decision.not_proven.join("、");
+}
+
+function renderRouteTaskReview(status) {
+  const readiness = readinessFromStatus(status);
+  const review = routeTaskReviewFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("routeTaskReviewBadge");
+  const copyButton = $("copyRouteTaskReviewButton");
+  latestRouteTaskReview = review;
+
+  badge.className = "gate-badge";
+  badge.classList.add(review.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = review.missing ? "等待 review" : "software proof";
+  $("routeTaskReviewCopy").textContent = review.safe_phone_copy;
+  $("routeTaskReviewOverall").textContent = review.overall_status;
+  $("routeTaskReviewEvidenceRef").textContent = review.evidence_ref;
+  $("routeTaskReviewCrosscheckHil").textContent = review.crosscheck_hil_boundary;
+  $("routeTaskReviewMismatch").textContent = review.mismatch_summary;
+  $("routeTaskReviewNextDecision").textContent = review.next_rehearsal_decision;
+  $("routeTaskReviewBoundary").textContent = review.evidence_boundary;
+  $("routeTaskReviewNotProven").textContent = review.not_proven.join("、");
+  if (review.safe_copy_payload) {
+    $("routeTaskReviewSafeCopy").textContent = JSON.stringify(review.safe_copy_payload, null, 2);
+    $("routeTaskReviewCopyStatus").textContent = "safe_copy 可复制；内容仅限后端白名单摘要字段。";
+    copyButton.disabled = false;
+  } else {
+    $("routeTaskReviewSafeCopy").textContent = "blocked copy unavailable";
+    $("routeTaskReviewCopyStatus").textContent = "blocked copy unavailable";
+    copyButton.disabled = true;
+  }
 }
 
 function setBadge(state, copy) {
@@ -5221,6 +5390,7 @@ function renderDiagnosticsSummary(payload) {
   const panel = $("diagnosticsPanel");
   const grid = $("diagnosticsSummary");
   grid.textContent = "";
+  const routeReview = routeTaskReviewFromStatus(latestStatus || {}, readinessFromStatus(latestStatus || {}), payload || {});
   const rows = [
     ["软件版本", payload?.software_version],
     ["地图版本", payload?.map_version],
@@ -5228,6 +5398,7 @@ function renderDiagnosticsSummary(payload) {
     ["当前状态", payload?.latest_status?.phone_copy || payload?.state],
     ["失败原因", payload?.failure?.message || payload?.failure_code],
     ["支持级别", payload?.phone_support_bundle?.support_level],
+    ["路线/任务排练复盘", routeReview.overall_status],
   ];
   rows.forEach(([label, value]) => {
     const box = document.createElement("div");
@@ -5276,6 +5447,7 @@ function renderOfflineFailure() {
   renderMobileRealDeviceFieldTrialAcceptanceSession({});
   renderMobileBrowserAcceptanceBundle({});
   renderRecoveryDecision({ connection_state: "offline" });
+  renderRouteTaskReview({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -5302,6 +5474,7 @@ function renderStatus(status) {
   renderReadiness(status);
   renderPrimaryJourney(status);
   renderRecoveryDecision(status);
+  renderRouteTaskReview(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
@@ -5505,6 +5678,7 @@ async function openDiagnostics() {
     latestDiagnostics = await fetchJson(ENDPOINTS.diagnostics);
     renderPrimaryJourney(latestStatus || {});
     renderRecoveryDecision(latestStatus || {});
+    renderRouteTaskReview(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileDeviceEvidence(latestStatus || {});
     renderMobileDeviceHandoffSession(latestStatus || {});
@@ -5565,6 +5739,21 @@ async function submitAction(actionName) {
 
 function wireEvents() {
   $("diagnosticsButton").addEventListener("click", openDiagnostics);
+  $("copyRouteTaskReviewButton").addEventListener("click", async () => {
+    // operator review 复制只使用后端提供的 safe_copy 白名单对象，缺失时不生成替代 bundle。
+    if (!latestRouteTaskReview?.safe_copy_payload) {
+      $("routeTaskReviewCopyStatus").textContent = "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(latestRouteTaskReview.safe_copy_payload, null, 2);
+    $("routeTaskReviewSafeCopy").textContent = payload;
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("routeTaskReviewCopyStatus").textContent = "已复制 route_task_rehearsal_operator_review safe_copy。";
+    } catch (_error) {
+      $("routeTaskReviewCopyStatus").textContent = "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
   $("copyAcceptanceBundleButton").addEventListener("click", async () => {
     const payload = JSON.stringify(bundleCopyPayload(latestAcceptanceBundle || {}), null, 2);
     $("mobileBrowserSafeCopy").textContent = payload;

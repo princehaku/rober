@@ -8,7 +8,17 @@
 
 ## 2026-05-14 系列
 
-更新时间：2026-05-14 21:17 Asia/Shanghai。
+更新时间：2026-05-14 22:22 Asia/Shanghai。
+
+### 2026-05-14 22-03｜route-task-rehearsal-operator-review｜O2/O3 route task rehearsal operator review software proof，任务闭环与固定路线均由约 80% 上调到约 81%
+
+`sprints/2026.05.14_22-03_route-task-rehearsal-operator-review` 完成 `software_proof_docker_route_task_rehearsal_operator_review_gate`：Task A `autonomy-engineer` 新增 `pc-tools/evidence/route_task_rehearsal_operator_review.py`，消费 `route_task_rehearsal_execution_bundle.json`，输出 `schema=trashbot.route_task_rehearsal_operator_review.v1`，包含 `next_rehearsal_decision`、`not_proven`、whitelist-only `safe_copy`、`primary_actions_enabled=false` 和 `delivery_success=false`。同步更新 `pc-tools/README.md` 与 `docs/navigation/fixed_route_workflow.md`。Task A 验证输出 py_compile pass、CLI `--help` pass、临时 `/tmp` valid bundle drill pass、schema/boundary/decision/not_proven/safe_copy blacklist assertions pass、missing/read_error/unsupported schema smoke pass、required `rg` pass、scoped `git diff --check` pass。
+
+Task B `robot-software-engineer` 更新 `operator_gateway_diagnostics.py`、`test_operator_gateway_diagnostics.py` 与 `docs/interfaces/ros_contracts.md`，新增 diagnostics summary `route_task_rehearsal_operator_review`，支持 explicit `route_task_rehearsal_operator_review_ref` 和 `TRASHBOT_ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW`。missing、read_error、unsupported schema、crosscheck fail、unsafe copy 均保守降级；metadata-only 围栏证明该 summary 不触发 Start/Confirm/Cancel、ACK POST、cursor/persistence、HIL、dropoff/cancel completion 或 delivery success。Task B 验证输出 py_compile pass、`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_operator_gateway_diagnostics` `Ran 51 tests ... OK`、required `rg` pass、scoped diff check pass。
+
+Task C `full-stack-software-engineer` 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`onboard/src/ros2_trashbot_behavior/test/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，首屏新增“路线/任务排练复盘”只读摘要，消费 status、phone_readiness 与 diagnostics 的 `route_task_rehearsal_operator_review*`，展示 `overall_status`、`evidence_ref`、crosscheck/HIL boundary、mismatch、`next_rehearsal_decision`、`not_proven` 和 evidence boundary；copy 只用 `safe_copy`，Start/Confirm/Cancel fail-closed 逻辑未改。Task C 验证输出 `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_mobile_web_entrypoint` `Ran 3 tests ... OK`、py_compile pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 2 和 Objective 3 各从约 80% 保守上调到约 81%，理由是 Docker/local route/task rehearsal 已从可复跑 execution bundle + diagnostics 可消费 manifest，推进到操作员可读的下一轮重跑/补证据决策、diagnostics summary 和手机首屏只读复盘。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1 保持约 75%，Objective 4 保持约 95%。本轮 `software_proof_docker_route_task_rehearsal_operator_review_gate` 只证明 Docker/local execution bundle 可被转成 operator review、phone-safe copy、diagnostics summary 和 mobile 只读摘要，不是真实 Nav2/fixed-route 实跑、真实路线采集、关键帧实景证据、WAVE ROVER、真实串口、HIL、同一 `evidence_ref` 的上车复账、dropoff/cancel completion、delivery success、O5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic 或 production DB/queue。
 
 ### 2026-05-14 21-22｜route-task-rehearsal-execution-bundle｜O2/O3 route task rehearsal execution bundle software proof，任务闭环与固定路线均由约 79% 上调到约 80%
 

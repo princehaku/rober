@@ -19,6 +19,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_hardware_proof,
     summarize_route_task_rehearsal_artifact,
     summarize_route_task_rehearsal_execution_bundle,
+    summarize_route_task_rehearsal_operator_review,
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import (
@@ -1005,6 +1006,185 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("not delivery success", missing_summary["safe_phone_copy"])
         self.assertFalse(missing_summary["primary_actions_enabled"])
         self.assertFalse(invalid_summary["delivery_success"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_rehearsal_operator_review_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            review_path = Path(td) / "route_task_rehearsal_operator_review.json"
+            review_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_rehearsal_operator_review.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_rehearsal_operator_review_gate"
+                        ),
+                        "evidence_ref": str(Path(td) / "route_task_review.ref.json"),
+                        "crosscheck_status": {
+                            "status": "pass",
+                            "scope": "status/replay/task_record software alignment only",
+                            "software_mismatches": [],
+                        },
+                        "hil_alignment_status": {
+                            "status": "software_proof",
+                            "alignment_status": "not_proven",
+                            "evidence_ref_match": False,
+                            "detail": "not real HIL; /dev/ttyUSB0 baudrate=115200",
+                            "mismatches": [],
+                        },
+                        "mismatch_summary": {
+                            "software_mismatch_count": 0,
+                            "hil_mismatch_count": 0,
+                            "items": [],
+                        },
+                        "next_rehearsal_decision": "keep review read-only and collect real HIL later",
+                        "not_proven": ["delivery_success", "real_hil_pass"],
+                        "safe_copy": "Operator review is software proof only; not delivery success.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_rehearsal_operator_review_ref=str(review_path),
+            )
+            summary = payload["route_task_rehearsal_operator_review"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary["overall_status"], "degraded")
+        self.assertEqual(summary["state"], "crosscheck_pass")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_rehearsal_operator_review_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_rehearsal_operator_review.v1")
+        self.assertEqual(summary["crosscheck_status"]["status"], "pass")
+        self.assertEqual(summary["hil_alignment_status"]["alignment_status"], "not_proven")
+        self.assertIn("local_path_redacted:route_task_review.ref.json", summary["evidence_ref"])
+        self.assertEqual(summary["next_rehearsal_decision"], "keep review read-only and collect real HIL later")
+        self.assertIn("not delivery success", summary["safe_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["persistence_updates_allowed"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["dropoff_completion"])
+        self.assertFalse(summary["cancel_completion"])
+        self.assertFalse(summary["delivery_success"])
+        for forbidden in (
+            str(review_path),
+            str(Path(td)),
+            "/dev/ttyUSB0",
+            "baudrate=115200",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_route_task_rehearsal_operator_review_env_fail_and_unsafe_copy_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            fail_path = Path(td) / "route_task_rehearsal_operator_review_fail.json"
+            fail_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_rehearsal_operator_review.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_rehearsal_operator_review_gate"
+                        ),
+                        "evidence_ref": "evidence://route-task-review-1",
+                        "crosscheck_status": {
+                            "status": "fail",
+                            "software_mismatches": ["task_record mismatch at /tmp/raw.json"],
+                        },
+                        "hil_alignment_status": {
+                            "alignment_status": "not_proven",
+                            "mismatches": ["HIL missing at /tmp/hil.json"],
+                        },
+                        "not_proven": ["delivery_success"],
+                        "safe_copy": "Operator review is software proof only; not delivery success.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous = os.environ.get("TRASHBOT_ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW")
+            os.environ["TRASHBOT_ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW"] = str(fail_path)
+            try:
+                payload = self._base_build_payload({"state": "waiting_for_trash"})
+            finally:
+                if previous is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW"] = previous
+            fail_summary = payload["route_task_rehearsal_operator_review"]
+
+            unsafe_path = Path(td) / "unsafe_review.json"
+            unsafe_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_rehearsal_operator_review.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_rehearsal_operator_review_gate"
+                        ),
+                        "crosscheck_status": {"status": "pass"},
+                        "safe_copy": "Operator review confirms delivery success and ACK posted.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_summary = summarize_route_task_rehearsal_operator_review(str(unsafe_path))
+            encoded = json.dumps([fail_summary, unsafe_summary], ensure_ascii=False)
+
+        self.assertEqual(fail_summary["overall_status"], "blocked")
+        self.assertEqual(fail_summary["state"], "crosscheck_fail")
+        self.assertEqual(fail_summary["mismatch_summary"]["software_mismatch_count"], 1)
+        self.assertEqual(fail_summary["mismatch_summary"]["hil_mismatch_count"], 1)
+        self.assertIn("not_proven", fail_summary["safe_copy"])
+        self.assertFalse(fail_summary["primary_actions_enabled"])
+        self.assertEqual(unsafe_summary["state"], "unsafe_copy")
+        self.assertEqual(unsafe_summary["overall_status"], "blocked")
+        self.assertIn("safe_copy is missing or unsafe", unsafe_summary["read_error"])
+        self.assertFalse(unsafe_summary["ack_post_allowed"])
+        self.assertNotIn("/tmp/raw.json", encoded)
+        self.assertNotIn("/tmp/hil.json", encoded)
+
+    def test_route_task_rehearsal_operator_review_missing_and_unsupported_are_conservative(self):
+        with tempfile.TemporaryDirectory() as td:
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_review.json"
+            missing_summary = summarize_route_task_rehearsal_operator_review(str(missing_path))
+            invalid_path = Path(td) / "invalid_review.json"
+            invalid_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_rehearsal_execution_bundle",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_rehearsal_execution_bundle_gate"
+                        ),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            invalid_summary = summarize_route_task_rehearsal_operator_review(str(invalid_path))
+            encoded = json.dumps([missing_summary, invalid_summary], ensure_ascii=False)
+
+        self.assertEqual(missing_summary["state"], "missing")
+        self.assertEqual(invalid_summary["state"], "unsupported_schema")
+        self.assertEqual(missing_summary["overall_status"], "blocked")
+        self.assertEqual(invalid_summary["overall_status"], "blocked")
+        self.assertIn("software_proof_docker_route_task_rehearsal_operator_review_gate", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertFalse(missing_summary["delivery_success"])
+        self.assertFalse(invalid_summary["primary_actions_enabled"])
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
         self.assertNotIn("secret-token", encoded)

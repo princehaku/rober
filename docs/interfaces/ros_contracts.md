@@ -134,6 +134,22 @@ or read_error summaries. A bundle pass is not delivery success, not a ROS
 action/topic/service, not real Nav2/fixed-route execution, not dropoff/cancel
 completion, not WAVE ROVER motion, and not HIL.
 
+Operator diagnostics may also expose
+`route_task_rehearsal_operator_review` from an explicit
+`route_task_rehearsal_operator_review_ref` or
+`TRASHBOT_ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW`. The review package must use
+`schema=trashbot.route_task_rehearsal_operator_review.v1` and
+`evidence_boundary=software_proof_docker_route_task_rehearsal_operator_review_gate`.
+This summary is phone/support-safe metadata only: it may expose sanitized
+`overall_status`, `state`, `evidence_ref`, crosscheck status, HIL alignment
+status, `mismatch_summary`, `next_rehearsal_decision`, `not_proven`,
+`safe_copy`, and boundary fields. Missing, unreadable, unsupported-schema,
+crosscheck-fail, or unsafe-copy packages must remain blocked/degraded and
+must not enable Start Delivery, Confirm Dropoff, Cancel, ACK POST,
+cursor/persistence updates, HIL pass, dropoff/cancel completion, or delivery
+success. It does not change the command/status/ACK envelope or the
+collect/dropoff/cancel behavior.
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

@@ -70,6 +70,20 @@ python3 pc-tools/evidence/route_task_rehearsal_bundle.py \
 
 `status=available_software_proof` 和顶层 `crosscheck_status.status=pass` 只代表 status/replay/task_record 软件对账通过，适合交给 diagnostics 或 sprint closeout 做同一 `evidence_ref` 的材料传递。顶层 `hil_alignment_status.alignment_status=not_proven` 时必须继续显示缺真实 HIL。该 manifest 不证明真实 Nav2/fixed-route 实跑、真实路线采集、WAVE ROVER 运动、真实串口/UART feedback、真实 HIL、dropoff/cancel completion 或 delivery success。
 
+## route/task rehearsal operator review
+
+`pc-tools/evidence/route_task_rehearsal_operator_review.py` 只读取上一节生成的 execution bundle JSON，并生成操作员复盘/下一轮重跑决策包：
+
+```bash
+python3 pc-tools/evidence/route_task_rehearsal_operator_review.py \
+  --execution-bundle /tmp/route_task_rehearsal_bundle/route_task_rehearsal_execution_bundle.json \
+  --output-dir /tmp/route_task_rehearsal_review
+```
+
+默认输出文件名为 `route_task_rehearsal_operator_review.json`；也可以用 `--output` 指定完整输出路径。review package 使用 `schema=trashbot.route_task_rehearsal_operator_review.v1`、`schema_version=1`，证据边界固定为 `software_proof_docker_route_task_rehearsal_operator_review_gate`。该工具只读 JSON，不访问硬件、serial/UART、ROS graph、Nav2 或网络；missing、read_error、unsupported schema 也会写出 `overall_status=blocked_*` 的 review package，避免复盘时只有异常没有材料。
+
+`next_rehearsal_decision` 是给操作员看的下一步分支：crosscheck pass 但 HIL not_proven 时，准备真实路线/任务材料或同 `evidence_ref` 的真实 HIL 复账；crosscheck fail 时，先修 route status/task record mismatch 后重跑 execution bundle；missing/read_error/unsupported schema 时，重建 execution bundle；safe copy whitelist 失败时，先修 whitelist-only 摘要。`safe_copy` 只包含固定白名单摘要，不复制 artifact/raw path、本机绝对路径、凭证、ROS topic、serial/UART、baudrate、WAVE ROVER、traceback、checksum 或 complete artifact。`primary_actions_enabled=false`、`delivery_success=false` 是固定防误读字段，review 不能放行控制动作或声明 delivery success。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

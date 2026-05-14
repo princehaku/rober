@@ -112,6 +112,48 @@
         <p id="recoveryDecisionNotProven" class="hint">真实手机设备/browser、真实送达、真实取消完成未证明。</p>
       </section>
 
+      <section class="route-review-panel" aria-labelledby="routeTaskReviewTitle">
+        <div class="section-heading">
+          <h2 id="routeTaskReviewTitle">路线/任务排练复盘</h2>
+          <span id="routeTaskReviewBadge" class="gate-badge gate-blocked">等待 review</span>
+        </div>
+        <p id="routeTaskReviewCopy" class="message">
+          等待后端提供 route_task_rehearsal_operator_review 的 phone-safe 摘要。
+        </p>
+        <dl class="route-review-grid">
+          <div>
+            <dt>Overall</dt>
+            <dd id="routeTaskReviewOverall">blocked</dd>
+          </div>
+          <div>
+            <dt>Evidence Ref</dt>
+            <dd id="routeTaskReviewEvidenceRef">未提供</dd>
+          </div>
+          <div>
+            <dt>Crosscheck / HIL</dt>
+            <dd id="routeTaskReviewCrosscheckHil">crosscheck=not_proven / HIL=not_proven</dd>
+          </div>
+          <div>
+            <dt>Mismatch 摘要</dt>
+            <dd id="routeTaskReviewMismatch">等待 mismatch 摘要</dd>
+          </div>
+          <div>
+            <dt>Next Decision</dt>
+            <dd id="routeTaskReviewNextDecision">等待 next_rehearsal_decision</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="routeTaskReviewBoundary">software_proof_docker_route_task_rehearsal_operator_review_gate</dd>
+          </div>
+        </dl>
+        <p id="routeTaskReviewNotProven" class="hint">真实路线运行、HIL、dropoff/cancel completion 和 delivery success 未证明。</p>
+        <div class="bundle-copy-row">
+          <button id="copyRouteTaskReviewButton" type="button" disabled>复制复盘 safe_copy</button>
+          <span id="routeTaskReviewCopyStatus" class="hint">blocked copy unavailable</span>
+        </div>
+        <pre id="routeTaskReviewSafeCopy" class="safe-copy" aria-label="route_task_rehearsal_operator_review safe_copy">blocked copy unavailable</pre>
+      </section>
+
       <section class="cloud-panel" aria-labelledby="cloudReadinessTitle">
         <div class="section-heading">
           <h2 id="cloudReadinessTitle">云中转状态</h2>

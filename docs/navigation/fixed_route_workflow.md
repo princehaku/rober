@@ -406,6 +406,20 @@ python3 pc-tools/evidence/route_task_rehearsal_bundle.py \
 
 execution bundle manifest 顶层直接记录 diagnostics 只读消费字段：`route_task_rehearsal_artifact_ref`、`crosscheck_status`、`hil_alignment_status` 和 `diagnostics_summary`；同时保留脱敏路径引用、`evidence_ref`、`not_proven` 和 `next_step`。`status=available_software_proof` 与 `crosscheck_status.status=pass` 只表示 Docker/local route status、software replay 和 task record 软件对账通过；`hil_alignment_status.alignment_status=not_proven` 时仍缺真实 HIL。该 manifest 不是真实 Nav2/fixed-route、真实路线采集、WAVE ROVER 运动、真实串口/UART feedback、真实 HIL、dropoff/cancel completion 或 delivery success。
 
+### 5.6 route/task rehearsal operator review
+
+当 execution bundle 已经生成，需要把本轮软件排练转成操作员复盘/下一轮重跑决策时，使用 operator review 生成器：
+
+```bash
+python3 pc-tools/evidence/route_task_rehearsal_operator_review.py \
+  --execution-bundle /tmp/route_task_rehearsal_bundle/route_task_rehearsal_execution_bundle.json \
+  --output-dir /tmp/route_task_rehearsal_review
+```
+
+输出 `route_task_rehearsal_operator_review.json`，schema 为 `trashbot.route_task_rehearsal_operator_review.v1`，证据边界为 `software_proof_docker_route_task_rehearsal_operator_review_gate`。该工具只读 execution bundle JSON，不读取硬件、不访问 serial/UART、不触发 Nav2/ROS graph/网络；即使 execution bundle missing、read_error 或 unsupported schema，也会写出 blocked review package，便于复盘链路保留材料。
+
+review 顶层包含 `crosscheck_status`、`hil_alignment_status`、`mismatch_summary`、`next_rehearsal_decision`、`not_proven`、`safe_copy`、`primary_actions_enabled=false` 和 `delivery_success=false`。`next_rehearsal_decision` 的分支规则固定为：crosscheck pass 且 HIL not_proven 时准备真实路线/任务材料或真实 HIL 上车复账；crosscheck fail 时先修 route status/task record mismatch 后重跑；missing/read_error/unsupported schema 时重建 execution bundle；safe copy whitelist 失败时先修摘要白名单。`safe_copy` 只允许固定摘要，不包含 artifact/raw path、本机绝对路径、凭证、ROS topic、serial/UART、baudrate、WAVE ROVER、traceback、checksum 或 complete artifact。该 package 仍不能声明真实 fixed-route、真实 HIL、dropoff/cancel completion 或 delivery success。
+
 ## 6. Debug Web
 
 Start the debug page:

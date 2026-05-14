@@ -66,10 +66,17 @@ ROUTE_TASK_REHEARSAL_EXECUTION_BUNDLE_SCHEMA = "trashbot.route_task_rehearsal_ex
 ROUTE_TASK_REHEARSAL_EXECUTION_BUNDLE_SUMMARY_SCHEMA = (
     "trashbot.route_task_rehearsal_execution_bundle_summary.v1"
 )
+ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_SCHEMA = "trashbot.route_task_rehearsal_operator_review.v1"
+ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_SUMMARY_SCHEMA = (
+    "trashbot.route_task_rehearsal_operator_review_summary.v1"
+)
 ROUTE_TASK_REHEARSAL_ARTIFACT_GATE = "software_proof_docker_route_task_rehearsal_artifact_gate"
 ROUTE_TASK_REHEARSAL_DIAGNOSTICS_GATE = "software_proof_docker_route_task_rehearsal_diagnostics_gate"
 ROUTE_TASK_REHEARSAL_EXECUTION_BUNDLE_GATE = (
     "software_proof_docker_route_task_rehearsal_execution_bundle_gate"
+)
+ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_GATE = (
+    "software_proof_docker_route_task_rehearsal_operator_review_gate"
 )
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
@@ -217,6 +224,117 @@ def _default_route_task_rehearsal_execution_bundle_summary(path, state="not_conf
     }
 
 
+def _default_route_task_rehearsal_operator_review_summary(path, state="not_configured", read_error=""):
+    # review package 面向人工复核和手机支持，只能作为 diagnostics metadata，不能触发机器人动作。
+    return {
+        "schema": ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_GATE,
+        "overall_status": "blocked",
+        "state": state,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "review_ref": _safe_route_task_rehearsal_ref(path),
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "evidence_ref": "",
+        "crosscheck_status": {
+            "status": "",
+            "scope": "status/replay/task_record software alignment only",
+            "software_mismatch_count": 0,
+        },
+        "hil_alignment_status": {
+            "status": "",
+            "alignment_status": "not_proven",
+            "evidence_ref_match": False,
+            "not_real_hil_when_status_is_missing_blocked_or_software_proof": True,
+        },
+        "mismatch_summary": {
+            "software_mismatch_count": 0,
+            "hil_mismatch_count": 0,
+            "items": [],
+        },
+        "next_rehearsal_decision": "attach_route_task_rehearsal_operator_review",
+        "not_proven": _route_task_rehearsal_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": "Route/task rehearsal operator review is not configured; this is not delivery success.",
+        "safe_phone_copy": "Route/task rehearsal operator review is not configured; this is not delivery success.",
+        "primary_actions_enabled": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "hil_pass": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+        "delivery_success": False,
+    }
+
+
+def _route_task_rehearsal_review_dict(*values):
+    for value in values:
+        if isinstance(value, dict):
+            return value
+    return {}
+
+
+def _route_task_rehearsal_review_safe_copy_is_unsafe(value):
+    # 手机端 copy 允许说“不是成功”，但不能把 review package 包装成动作、ACK 或真实 HIL 结论。
+    text = _redact_route_task_rehearsal_text(value).strip().lower()
+    if not text:
+        return True
+    guarded_phrases = (
+        "not delivery success",
+        "not a delivery success",
+        "no delivery success",
+        "never delivery success",
+        "not real hil",
+        "not hil",
+        "not a hil",
+        "not start",
+        "not confirm",
+        "not cancel",
+        "must not",
+    )
+    unsafe_phrases = (
+        "delivery success",
+        "hil pass",
+        "real hil",
+        "start delivery enabled",
+        "confirm dropoff enabled",
+        "cancel enabled",
+        "ack posted",
+        "dropoff complete",
+        "cancel complete",
+    )
+    guarded_text = text
+    for guard in guarded_phrases:
+        guarded_text = guarded_text.replace(guard, "")
+    for phrase in unsafe_phrases:
+        if phrase in guarded_text:
+            return True
+    return False
+
+
+def _route_task_rehearsal_review_mismatch_summary(review, crosscheck, hil_alignment):
+    source = review.get("mismatch_summary") if isinstance(review.get("mismatch_summary"), dict) else {}
+    software_mismatches = crosscheck.get("software_mismatches")
+    hil_mismatches = hil_alignment.get("mismatches")
+    source_items = source.get("items") if isinstance(source.get("items"), list) else []
+    items = source_items or (software_mismatches if isinstance(software_mismatches, list) else [])
+    return {
+        "software_mismatch_count": safe_int(
+            source.get("software_mismatch_count"),
+            default=len(software_mismatches) if isinstance(software_mismatches, list) else 0,
+        ),
+        "hil_mismatch_count": safe_int(
+            source.get("hil_mismatch_count"),
+            default=len(hil_mismatches) if isinstance(hil_mismatches, list) else 0,
+        ),
+        "items": _safe_route_task_rehearsal_list(items),
+    }
+
+
 def summarize_route_task_rehearsal_artifact(path):
     """构建只读、phone-safe 的 route/task rehearsal diagnostics summary。"""
     artifact_path = os.path.expanduser(str(path or ""))
@@ -338,6 +456,170 @@ def summarize_route_task_rehearsal_artifact(path):
             "read_error": "route/task rehearsal artifact crosscheck status is missing or unsupported",
             "safe_phone_copy": "Route/task rehearsal artifact has no supported crosscheck result; no route or delivery pass is proven.",
             "next_step": "Regenerate the artifact with crosscheck_status.status pass or fail.",
+        }
+    )
+    return summary
+
+
+def summarize_route_task_rehearsal_operator_review(path):
+    """构建只读、phone/support-safe 的 operator review package 摘要。"""
+    review_path = os.path.expanduser(str(path or ""))
+    summary = _default_route_task_rehearsal_operator_review_summary(
+        review_path,
+        read_error="route/task rehearsal operator review package is not configured",
+    )
+    if not review_path:
+        return summary
+    if not os.path.exists(review_path):
+        summary.update(
+            {
+                "state": "missing",
+                "read_error": "route/task rehearsal operator review package not found",
+                "safe_copy": "Route/task rehearsal operator review is missing; this is not delivery success.",
+                "safe_phone_copy": "Route/task rehearsal operator review is missing; this is not delivery success.",
+                "next_rehearsal_decision": "regenerate_operator_review_package",
+            }
+        )
+        return summary
+
+    summary["exists"] = True
+    try:
+        with open(review_path, "r", encoding="utf-8") as f:
+            review = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        summary.update(
+            {
+                "state": "read_error",
+                "read_error": _redact_route_task_rehearsal_text(
+                    f"failed reading route/task rehearsal operator review package: {exc}"
+                ),
+                "safe_copy": "Route/task rehearsal operator review could not be read; keep proof blocked.",
+                "safe_phone_copy": "Route/task rehearsal operator review could not be read; keep proof blocked.",
+                "next_rehearsal_decision": "fix_operator_review_json",
+            }
+        )
+        return summary
+
+    if not isinstance(review, dict):
+        summary.update(
+            {
+                "state": "read_error",
+                "read_error": "route/task rehearsal operator review JSON must be an object",
+                "safe_copy": "Route/task rehearsal operator review shape is invalid; proof remains blocked.",
+                "safe_phone_copy": "Route/task rehearsal operator review shape is invalid; proof remains blocked.",
+                "next_rehearsal_decision": "regenerate_operator_review_json_object",
+            }
+        )
+        return summary
+
+    source_schema = str(review.get("schema") or "")
+    source_boundary = str(review.get("evidence_boundary") or "")
+    crosscheck = _route_task_rehearsal_review_dict(
+        review.get("crosscheck_status"),
+        review.get("crosscheck"),
+    )
+    hil_alignment = _route_task_rehearsal_review_dict(
+        review.get("hil_alignment_status"),
+        review.get("hil_alignment"),
+    )
+    crosscheck_status = str(crosscheck.get("status") or "").strip().lower()
+    safe_copy = _redact_route_task_rehearsal_text(
+        review.get("safe_copy") or review.get("safe_phone_copy") or ""
+    )
+    next_decision = _redact_route_task_rehearsal_text(
+        review.get("next_rehearsal_decision") or review.get("next_step") or ""
+    )
+    mismatch_summary = _route_task_rehearsal_review_mismatch_summary(
+        review,
+        crosscheck,
+        hil_alignment,
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": review.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "evidence_ref": _safe_route_task_rehearsal_ref(review.get("evidence_ref", "")),
+            "crosscheck_status": {
+                "status": _redact_route_task_rehearsal_text(crosscheck_status),
+                "scope": _redact_route_task_rehearsal_text(
+                    crosscheck.get("scope") or "status/replay/task_record software alignment only"
+                ),
+                "software_mismatch_count": mismatch_summary["software_mismatch_count"],
+            },
+            "hil_alignment_status": {
+                "status": _redact_route_task_rehearsal_text(hil_alignment.get("status", "")),
+                "alignment_status": _redact_route_task_rehearsal_text(
+                    hil_alignment.get("alignment_status") or "not_proven"
+                ),
+                "evidence_ref_match": bool(hil_alignment.get("evidence_ref_match", False)),
+                "not_real_hil_when_status_is_missing_blocked_or_software_proof": bool(
+                    hil_alignment.get("not_real_hil_when_status_is_missing_blocked_or_software_proof", True)
+                ),
+            },
+            "mismatch_summary": mismatch_summary,
+            "next_rehearsal_decision": next_decision or "continue_operator_review",
+            "not_proven": _route_task_rehearsal_not_proven(review),
+            "read_error": "",
+        }
+    )
+    if source_schema != ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_SCHEMA or source_boundary != ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_GATE:
+        summary.update(
+            {
+                "overall_status": "blocked",
+                "state": "unsupported_schema",
+                "read_error": "route/task rehearsal operator review schema or evidence boundary is unsupported",
+                "safe_copy": "Route/task rehearsal operator review is not a supported diagnostics source; no delivery result is proven.",
+                "safe_phone_copy": "Route/task rehearsal operator review is not a supported diagnostics source; no delivery result is proven.",
+                "next_rehearsal_decision": "regenerate_supported_operator_review_package",
+            }
+        )
+        return summary
+
+    if _route_task_rehearsal_review_safe_copy_is_unsafe(safe_copy):
+        summary.update(
+            {
+                "overall_status": "blocked",
+                "state": "unsafe_copy",
+                "read_error": "route/task rehearsal operator review safe_copy is missing or unsafe",
+                "safe_copy": "Route/task rehearsal operator review copy was blocked because it could imply control or delivery success.",
+                "safe_phone_copy": "Route/task rehearsal operator review copy was blocked because it could imply control or delivery success.",
+                "next_rehearsal_decision": "rewrite_phone_safe_operator_review_copy",
+            }
+        )
+        return summary
+
+    summary["safe_copy"] = safe_copy
+    summary["safe_phone_copy"] = safe_copy
+    if crosscheck_status == "pass":
+        summary.update(
+            {
+                "overall_status": "degraded",
+                "state": "crosscheck_pass",
+                "next_rehearsal_decision": next_decision or "continue_rehearsal_review_without_control_actions",
+            }
+        )
+        return summary
+    if crosscheck_status == "fail":
+        summary.update(
+            {
+                "overall_status": "blocked",
+                "state": "crosscheck_fail",
+                "safe_copy": "Route/task rehearsal operator review found mismatches; keep proof blocked and not_proven.",
+                "safe_phone_copy": "Route/task rehearsal operator review found mismatches; keep proof blocked and not_proven.",
+                "next_rehearsal_decision": next_decision or "fix_mismatches_and_regenerate_review_package",
+            }
+        )
+        return summary
+
+    summary.update(
+        {
+            "overall_status": "blocked",
+            "state": "unsupported_status",
+            "read_error": "route/task rehearsal operator review crosscheck status is missing or unsupported",
+            "safe_copy": "Route/task rehearsal operator review has no supported crosscheck result; proof remains blocked.",
+            "safe_phone_copy": "Route/task rehearsal operator review has no supported crosscheck result; proof remains blocked.",
+            "next_rehearsal_decision": "regenerate_review_with_crosscheck_pass_or_fail",
         }
     )
     return summary
@@ -1452,6 +1734,7 @@ def build_diagnostics_payload(
     production_recovery_artifact_ref="",
     route_task_rehearsal_artifact_ref="",
     route_task_rehearsal_bundle_ref="",
+    route_task_rehearsal_operator_review_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -1541,6 +1824,10 @@ def build_diagnostics_payload(
         route_task_rehearsal_execution_bundle=summarize_route_task_rehearsal_execution_bundle(
             route_task_rehearsal_bundle_ref
             or os.environ.get("TRASHBOT_ROUTE_TASK_REHEARSAL_BUNDLE", "")
+        ),
+        route_task_rehearsal_operator_review=summarize_route_task_rehearsal_operator_review(
+            route_task_rehearsal_operator_review_ref
+            or os.environ.get("TRASHBOT_ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW", "")
         ),
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
