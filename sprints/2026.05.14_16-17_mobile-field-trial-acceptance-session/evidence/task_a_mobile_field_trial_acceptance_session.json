@@ -1,0 +1,28 @@
+{
+  "task": "Task A - mobile field trial acceptance session",
+  "owner": "full-stack-software-engineer",
+  "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_session_gate",
+  "schema": "trashbot.mobile_real_device_field_trial_acceptance_session.v1",
+  "status": "software_proof_ready",
+  "safe_to_control": false,
+  "ack_semantics": "accepted_processing_only_not_delivery_success",
+  "copy_policy": "whitelist-only",
+  "not_proven": [
+    "real iPhone/Android device behavior",
+    "production app",
+    "real PWA install prompt/user choice",
+    "Objective 5 external proof",
+    "HIL",
+    "delivery success"
+  ],
+  "scope": [
+    "mobile/web/index.html",
+    "mobile/web/app.js",
+    "mobile/web/styles.css",
+    "mobile/fixtures/mobile_web_status.fixture.json",
+    "mobile/test_mobile_web_entrypoint.py",
+    "mobile/README.md",
+    "docs/product/mobile_user_flow.md"
+  ],
+  "notes": "Local Docker/mobile software proof only; this artifact is not real phone acceptance, production app proof, O5 external proof, HIL, or delivery success."
+}

@@ -144,6 +144,7 @@ h2 {
 .real-device-field-trial-evidence-record-panel,
 .real-device-field-trial-evidence-verdict-panel,
 .real-device-field-trial-retest-execution-panel,
+.real-device-field-trial-acceptance-session-panel,
 .acceptance-bundle-panel,
 .terminal-action-panel,
 .action-feedback-panel,
@@ -249,6 +250,7 @@ h2 {
 .real-device-field-trial-evidence-record-grid,
 .real-device-field-trial-evidence-verdict-grid,
 .real-device-field-trial-retest-execution-grid,
+.real-device-field-trial-acceptance-session-grid,
 .acceptance-bundle-grid,
 .feedback-grid,
 .terminal-action-grid,
@@ -276,6 +278,7 @@ h2 {
 .real-device-field-trial-evidence-record-grid div,
 .real-device-field-trial-evidence-verdict-grid div,
 .real-device-field-trial-retest-execution-grid div,
+.real-device-field-trial-acceptance-session-grid div,
 .acceptance-bundle-grid div,
 .feedback-grid div,
 .terminal-action-grid div,
@@ -362,6 +365,10 @@ dd {
 }
 
 .real-device-field-trial-evidence-verdict-grid {
+  grid-template-columns: 1fr;
+}
+
+.real-device-field-trial-acceptance-session-grid {
   grid-template-columns: 1fr;
 }
 

@@ -1550,6 +1550,141 @@
       "evidence_boundary": "software_proof_docker_mobile_real_device_retest_request_gate",
       "source_evidence_boundary": "software_proof_docker_mobile_real_device_review_execution_gate"
     },
+    "mobile_real_device_field_trial_acceptance_session": {
+      "schema": "trashbot.mobile_real_device_field_trial_acceptance_session.v1",
+      "schema_version": 1,
+      "summary_schema": "trashbot.mobile_real_device_field_trial_acceptance_session_summary.v1",
+      "copy_schema": "trashbot.mobile_real_device_field_trial_acceptance_session_copy.v1",
+      "session_id": "field_trial_acceptance_session_fixture_20260514_0001",
+      "source": "fixture_status",
+      "source_priority": "field_trial_retest_execution",
+      "session_status": "blocked_missing_field_trial_acceptance_materials",
+      "safe_to_control": false,
+      "acceptance_checklist": [
+        {
+          "item": "real_device_observed",
+          "status": "not_proven",
+          "source_hint": "fixture_retest_execution",
+          "safe_phone_copy": "记录真实 iPhone/Android 设备型号和浏览器；fixture 只给出脱敏摘要。"
+        },
+        {
+          "item": "production_app_observed",
+          "status": "not_proven",
+          "source_hint": "fixture_retest_execution",
+          "safe_phone_copy": "确认是否为 production app 入口；未确认时保持 not_proven。"
+        },
+        {
+          "item": "pwa_install_prompt_observed",
+          "status": "not_proven",
+          "source_hint": "fixture_retest_execution",
+          "safe_phone_copy": "记录真实 PWA install prompt 是否出现；fixture 不能替代真实 prompt。"
+        },
+        {
+          "item": "install_user_choice_observed",
+          "status": "not_proven",
+          "source_hint": "fixture_retest_execution",
+          "safe_phone_copy": "记录用户选择 accept/dismiss 的脱敏摘要。"
+        },
+        {
+          "item": "offline_reload_observed",
+          "status": "not_proven",
+          "source_hint": "fixture_retest_execution",
+          "safe_phone_copy": "离线重载只记录 phone-safe 结果摘要。"
+        },
+        {
+          "item": "touch_target_issue",
+          "status": "not_proven",
+          "source_hint": "fixture_retest_execution",
+          "safe_phone_copy": "记录触控目标问题摘要。"
+        },
+        {
+          "item": "visual_issue",
+          "status": "not_proven",
+          "source_hint": "fixture_retest_execution",
+          "safe_phone_copy": "记录首屏视觉问题摘要。"
+        },
+        {
+          "item": "material_redaction_status",
+          "status": "not_proven",
+          "source_hint": "fixture_retest_execution",
+          "safe_phone_copy": "确认材料已 whitelist-only redaction；发现敏感字段则 blocked。"
+        },
+        {
+          "item": "operator_support_note",
+          "status": "not_provided",
+          "source_hint": "fixture_retest_execution",
+          "safe_phone_copy": "记录 operator/support note 的 phone-safe 摘要。"
+        }
+      ],
+      "blocked_items": [
+        "real_device_observed",
+        "production_app_observed",
+        "pwa_install_prompt_observed"
+      ],
+      "material_redaction_status": "not_proven",
+      "operator_note": "not_provided",
+      "support_note": "not_provided",
+      "safe_phone_copy": "现场验收会话 fixture 只把 retest execution 转成 whitelist-only 执行包；这是 Docker/local mobile software proof。",
+      "recovery_hint": "按 checklist 补齐真实手机、production app、真实 PWA prompt/user choice、offline、touch、visual 和 redaction 摘要；主操作继续 fail closed。",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_session_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_retest_execution_gate",
+      "not_proven": [
+        "真实 iPhone/Android device behavior",
+        "production app",
+        "真实 PWA install prompt/user choice",
+        "Objective 5 external proof",
+        "HIL",
+        "delivery success"
+      ]
+    },
+    "mobile_real_device_field_trial_acceptance_session_summary": {
+      "schema": "trashbot.mobile_real_device_field_trial_acceptance_session_summary.v1",
+      "schema_version": 1,
+      "session_schema": "trashbot.mobile_real_device_field_trial_acceptance_session.v1",
+      "session_status": "blocked_missing_field_trial_acceptance_materials",
+      "source_priority": "field_trial_retest_execution",
+      "checklist_blocked_count": 9,
+      "safe_to_control": false,
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_session_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_retest_execution_gate",
+      "not_proven": [
+        "真实 iPhone/Android device behavior",
+        "production app",
+        "真实 PWA install prompt/user choice",
+        "Objective 5 external proof",
+        "HIL",
+        "delivery success"
+      ]
+    },
+    "mobile_real_device_field_trial_acceptance_session_copy": {
+      "schema": "trashbot.mobile_real_device_field_trial_acceptance_session.v1",
+      "schema_version": 1,
+      "copy_schema": "trashbot.mobile_real_device_field_trial_acceptance_session_copy.v1",
+      "summary_schema": "trashbot.mobile_real_device_field_trial_acceptance_session_summary.v1",
+      "session_id": "field_trial_acceptance_session_fixture_20260514_0001",
+      "source": "fixture_status",
+      "source_priority": "field_trial_retest_execution",
+      "session_status": "blocked_missing_field_trial_acceptance_materials",
+      "safe_to_control": false,
+      "material_redaction_status": "not_proven",
+      "operator_note": "not_provided",
+      "support_note": "not_provided",
+      "safe_phone_copy": "fixture copy 只包含 whitelist-only phone-safe acceptance session 字段。",
+      "recovery_hint": "缺真实手机、production app 和 PWA prompt 前不得写成验收通过。",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_session_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_retest_execution_gate",
+      "not_proven": [
+        "真实 iPhone/Android device behavior",
+        "production app",
+        "真实 PWA install prompt/user choice",
+        "Objective 5 external proof",
+        "HIL",
+        "delivery success"
+      ]
+    },
     "mobile_browser_acceptance_bundle": {
       "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
       "schema_version": 1,

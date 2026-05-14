@@ -8,6 +8,16 @@
 
 ## 2026-05-14 系列
 
+更新时间：2026-05-14 16:17 Asia/Shanghai。
+
+### 2026-05-14 16-17｜mobile-field-trial-acceptance-session｜O4 field-trial acceptance session software proof，手机体验由约 92% 上调到约 93%
+
+`sprints/2026.05.14_16-17_mobile-field-trial-acceptance-session` 完成 `software_proof_docker_mobile_real_device_field_trial_acceptance_session_gate`：Task A `full-stack-software-engineer` 新增 `mobile_real_device_field_trial_acceptance_session*` 手机端“现场验收会话”面板，支持显式 session / retest execution / evidence verdict / current PWA field-trial browser proof 派生 whitelist-only package；保持 `safe_to_control=false`、`accepted_processing_only_not_delivery_success`、`not_proven`、Start/Confirm/Cancel fail closed。Task A 验证输出 `mobile.test_mobile_web_entrypoint` `Ran 35 tests OK`、`py_compile` pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。
+
+Task B `robot-software-engineer` 新增 `mobile_real_device_field_trial_acceptance_session*` Robot metadata-only fence。Robot fence 证明 metadata-only response 不触发 collect/dropoff/cancel、ACK POST、cursor advance/persistence、terminal ACK、success/readiness/HIL、dropoff/cancel completion 或 delivery success；mixed valid-command 只执行合法 `trashbot.remote.v1` envelope。Task B 验证输出 remote bridge targeted unittest `Ran 184 tests in 94.243s OK`、`py_compile` pass、required `rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 4 从约 92% 保守上调到约 93%，理由是 Docker/local `mobile/web` 已把 field-trial package、review、runbook execution、evidence record、evidence verdict、retest execution 与 current PWA field-trial browser proof 串成手机端可执行的现场验收会话，并由 `safe_to_control=false`、ACK 非 delivery success、`not_proven`、phone-safe whitelist-only copy、fail-closed 主操作和 Robot metadata-only fence 限定边界。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1/2/3 不提升。本轮 `software_proof_docker_mobile_real_device_field_trial_acceptance_session_gate` 不是真实手机验收、production app、真实 PWA prompt/user choice、O5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、production worker/migration、HIL、WAVE ROVER、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
+
 更新时间：2026-05-14 15:16 Asia/Shanghai。
 
 ### 2026-05-14 15-16｜mobile-current-pwa-field-trial-browser-proof｜O4 current PWA field-trial browser proof，手机体验由约 91% 上调到约 92%

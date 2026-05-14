@@ -1144,6 +1144,67 @@
         <pre id="mobileRealDeviceFieldTrialRetestExecutionSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_retest_execution_copy">暂无 mobile_real_device_field_trial_retest_execution_copy。</pre>
       </section>
 
+      <section class="real-device-field-trial-acceptance-session-panel" aria-labelledby="mobileRealDeviceFieldTrialAcceptanceSessionTitle">
+        <div class="section-heading">
+          <h2 id="mobileRealDeviceFieldTrialAcceptanceSessionTitle">现场验收会话</h2>
+          <span id="mobileRealDeviceFieldTrialAcceptanceSessionBadge" class="gate-badge gate-blocked">blocked_missing_field_trial_acceptance_materials</span>
+        </div>
+        <p id="mobileRealDeviceFieldTrialAcceptanceSessionCopy" class="message">
+          从 mobile_real_device_field_trial_retest_execution、evidence verdict 或 current PWA browser proof 派生现场验收会话；它只生成 whitelist-only 执行包，不是真实手机验收、production app、PWA prompt、O5 external proof、HIL 或 delivery success。
+        </p>
+        <dl class="real-device-field-trial-acceptance-session-grid">
+          <div>
+            <dt>Session Status</dt>
+            <dd id="mobileRealDeviceFieldTrialAcceptanceSessionStatus">blocked_missing_field_trial_acceptance_materials</dd>
+          </div>
+          <div>
+            <dt>Source Priority</dt>
+            <dd id="mobileRealDeviceFieldTrialAcceptanceSessionSource">blocked_by_design_session</dd>
+          </div>
+          <div>
+            <dt>Blocked Items</dt>
+            <dd id="mobileRealDeviceFieldTrialAcceptanceSessionBlocked">real_device_observed / production_app_observed / pwa_install_prompt_observed</dd>
+          </div>
+          <div>
+            <dt>Material Redaction</dt>
+            <dd id="mobileRealDeviceFieldTrialAcceptanceSessionRedaction">not_proven</dd>
+          </div>
+          <div>
+            <dt>Operator / Support Note</dt>
+            <dd id="mobileRealDeviceFieldTrialAcceptanceSessionNotes">operator=not_provided / support=not_provided</dd>
+          </div>
+          <div>
+            <dt>Safe Control</dt>
+            <dd id="mobileRealDeviceFieldTrialAcceptanceSessionSafeControl">safe_to_control=false</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileRealDeviceFieldTrialAcceptanceSessionAck">accepted_processing_only_not_delivery_success</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileRealDeviceFieldTrialAcceptanceSessionBoundary">software_proof_docker_mobile_real_device_field_trial_acceptance_session_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileRealDeviceFieldTrialAcceptanceSessionNotProven">真实 iPhone/Android、production app、真实 PWA install prompt/user choice、O5 external proof、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <ol id="mobileRealDeviceFieldTrialAcceptanceSessionChecklist" class="handoff-checklist">
+          <li>
+            <strong>real_device_observed：not_proven</strong>
+            <em>现场验收会话必须覆盖真实设备、production app、PWA prompt、install/user choice、offline、touch、visual、redaction 和 notes。</em>
+          </li>
+        </ol>
+        <p id="mobileRealDeviceFieldTrialAcceptanceSessionRecoveryHint" class="hint">现场验收会话只用于执行采证；Start Delivery、Confirm Dropoff、Cancel 继续 fail closed。</p>
+        <div class="bundle-copy-row">
+          <button id="generateRealDeviceFieldTrialAcceptanceSessionButton" type="button">生成 acceptance session</button>
+          <button id="copyRealDeviceFieldTrialAcceptanceSessionButton" type="button">复制 acceptance session package</button>
+          <span id="mobileRealDeviceFieldTrialAcceptanceSessionCopyStatus" class="hint">复制只包含 whitelist-only phone-safe acceptance session 字段。</span>
+        </div>
+        <pre id="mobileRealDeviceFieldTrialAcceptanceSessionSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_acceptance_session_copy">暂无 mobile_real_device_field_trial_acceptance_session_copy。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>
