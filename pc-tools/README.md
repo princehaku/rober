@@ -125,6 +125,25 @@ python3 pc-tools/evidence/route_task_field_run_readiness.py \
 
 `required_field_run_materials` 会列出下一次现场联跑必须收集的同一 `evidence_ref` 材料：route status、task record、PC route debug summary、operator review、execution bundle、Nav2/fixed-route runtime log、robot-side task evidence 和 support-safe mobile summary。CLI 不读取 serial/UART、ROS graph、WAVE ROVER、DB/queue、OSS/CDN 或 raw robot response；缺文件、unsupported schema、不同 `evidence_ref` 或 unsafe copy 时会保守输出 blocked/not_proven。
 
+## route/task field-run intake crosscheck
+
+`pc-tools/evidence/route_task_field_run_intake.py` 是 readiness handoff 之后的现场材料入口。它只读接收五份 JSON object：route status、task record、Nav2/fixed-route runtime log、robot-side task evidence 和 support-safe mobile summary，并用同一个 `evidence_ref` 做交叉校验：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_intake.py \
+  --route-status-json /tmp/route_status.json \
+  --task-record-json /tmp/task_record.json \
+  --runtime-log-json /tmp/runtime_log.json \
+  --robot-side-task-evidence-json /tmp/robot_evidence.json \
+  --support-safe-mobile-summary-json /tmp/mobile_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+输出 `schema=trashbot.route_task_field_run_intake_crosscheck.v1`、`schema_version=1`、`evidence_boundary=software_proof_docker_route_task_field_run_intake_crosscheck_gate`、`same_evidence_ref_required=true`、`missing_materials`、`mismatch_reasons`、`commands_to_rerun`、`phone_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。`overall_status=ready_for_review` 只表示五份 Docker/local 软件材料都可读、schema 支持、同一 `evidence_ref` 对齐且手机/售后摘要可安全展示；它不是 HIL、真实 Nav2/fixed-route 实跑、真实路线采集、dropoff/cancel completion、delivery success 或 Objective 5 外部 proof。
+
+缺文件、坏 JSON、非 JSON object、unsupported schema、任一材料缺 `evidence_ref`、同 run 不一致或 support-safe mobile summary 含敏感材料时，CLI 会保守输出 blocked 状态，不抛未处理异常。`phone_safe_summary` 只包含 status、safe evidence ref、材料 present/missing/mismatch、`commands_to_rerun`、`not_proven` 和 accepted/processing support metadata only 语义；不得包含 raw artifact、完整本机路径、ROS 控制 topic、serial/UART、baudrate、WAVE ROVER 参数、token、Authorization、OSS AK/SK、DB/queue URL、traceback、checksum、complete artifact 或 raw robot response。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

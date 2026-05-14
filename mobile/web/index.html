@@ -232,6 +232,47 @@
         <p id="routeTaskFieldRunReadinessHint" class="hint">Field-run readiness 只读展示；不触发 Start、Confirm 或 Cancel。</p>
       </section>
 
+      <section class="route-field-run-intake-panel" aria-labelledby="routeTaskFieldRunIntakeTitle">
+        <div class="section-heading">
+          <h2 id="routeTaskFieldRunIntakeTitle">路线任务现场材料复核</h2>
+          <span id="routeTaskFieldRunIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="routeTaskFieldRunIntakeCopy" class="message">
+          等待后端提供 route_task_field_run_intake 的 phone-safe 复核摘要。
+        </p>
+        <dl class="route-field-run-intake-grid">
+          <div>
+            <dt>Status</dt>
+            <dd id="routeTaskFieldRunIntakeStatus">blocked/not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="routeTaskFieldRunIntakeEvidenceRef">not_provided</dd>
+          </div>
+          <div>
+            <dt>Missing Materials</dt>
+            <dd id="routeTaskFieldRunIntakeMissing">等待 missing_materials 摘要。</dd>
+          </div>
+          <div>
+            <dt>Mismatch Reasons</dt>
+            <dd id="routeTaskFieldRunIntakeMismatch">等待 mismatch_reasons 摘要。</dd>
+          </div>
+          <div>
+            <dt>Commands To Rerun</dt>
+            <dd id="routeTaskFieldRunIntakeCommands">等待 commands_to_rerun 摘要。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="routeTaskFieldRunIntakeBoundary">software_proof_docker_route_task_field_run_intake_crosscheck_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="routeTaskFieldRunIntakeNotProven">真实路线、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="routeTaskFieldRunIntakeHint" class="hint">Field-run intake crosscheck 只读展示；不触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
+      </section>
+
       <section class="cloud-panel" aria-labelledby="cloudReadinessTitle">
         <div class="section-heading">
           <h2 id="cloudReadinessTitle">云中转状态</h2>

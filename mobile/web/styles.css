@@ -132,6 +132,7 @@ h2 {
 .route-review-panel,
 .pc-route-debug-panel,
 .route-field-run-panel,
+.route-field-run-intake-panel,
 .cloud-panel,
 .mobile-device-panel,
 .device-evidence-panel,
@@ -242,6 +243,7 @@ h2 {
 .route-review-grid,
 .pc-route-debug-grid,
 .route-field-run-grid,
+.route-field-run-intake-grid,
 .mobile-device-grid,
 .device-evidence-grid,
 .handoff-session-grid,
@@ -273,6 +275,7 @@ h2 {
 .route-review-grid div,
 .pc-route-debug-grid div,
 .route-field-run-grid div,
+.route-field-run-intake-grid div,
 .mobile-device-grid div,
 .device-evidence-grid div,
 .handoff-session-grid div,
@@ -355,6 +358,10 @@ dd {
 }
 
 .route-field-run-grid {
+  grid-template-columns: 1fr;
+}
+
+.route-field-run-intake-grid {
   grid-template-columns: 1fr;
 }
 

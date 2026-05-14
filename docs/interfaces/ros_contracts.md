@@ -181,6 +181,29 @@ delivery success. They are not command/status/ACK robot contract fields and do
 not prove real fixed-route execution, real HIL, delivery success, or Objective 5
 external proof.
 
+Operator diagnostics may also expose `route_task_field_run_intake` and the
+alias `route_task_field_run_intake_summary` from an explicit
+`route_task_field_run_intake_ref` or `TRASHBOT_ROUTE_TASK_FIELD_RUN_INTAKE`.
+The source JSON must use
+`schema=trashbot.route_task_field_run_intake_crosscheck.v1` and
+`evidence_boundary=software_proof_docker_route_task_field_run_intake_crosscheck_gate`.
+This summary is metadata-only support material for the route-task field-run
+material intake/crosscheck gate: it may include sanitized availability /
+overall status, `evidence_ref`, `same_evidence_ref_required`,
+`missing_materials`, `mismatch_reasons`, `commands_to_rerun`, `not_proven`, and
+safe support copy. Raw route-status, task-record, runtime-log,
+robot-side-task-evidence, mobile-summary, credentials, local paths, UART/serial
+details, raw ACK payloads, raw command envelopes, and traceback content must not
+enter mobile copy or the diagnostics summary. Missing, unreadable,
+unsupported-schema, boundary-mismatch, evidence mismatch, or unsafe-summary
+sources remain blocked/not_proven. The fields must keep
+`delivery_success=false` and `primary_actions_enabled=false`; they do not
+trigger `/api/collect`, dropoff, cancel, ACK POST, cursor advance/persistence,
+terminal ACK, Nav2, WAVE ROVER, HIL, dropoff/cancel completion, or delivery
+success. They are not command/status/ACK robot contract fields and do not prove
+real fixed-route execution, real HIL, delivery success, or Objective 5 external
+proof.
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

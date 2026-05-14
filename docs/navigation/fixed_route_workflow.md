@@ -439,6 +439,34 @@ python3 pc-tools/evidence/route_task_field_run_readiness.py \
 
 缺任何输入文件、JSON 不可读、unsupported schema、source materials 不同 `evidence_ref` 或 phone/support-safe copy 命中敏感词时，readiness gate 必须输出 blocked/not_proven。该 CLI 不读取 ROS graph、不调用 Nav2、不访问 serial/UART、不暴露 `/cmd_vel`、baudrate、WAVE ROVER 参数、本机完整路径、traceback、checksum、complete artifact 或 raw robot response。
 
+### 5.8 route/task field-run intake crosscheck
+
+真实路线-任务联跑材料回到 PC 后，先用 intake crosscheck 做同一 `evidence_ref` 的软件复账：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_intake.py \
+  --route-status-json /tmp/route_status.json \
+  --task-record-json /tmp/task_record.json \
+  --runtime-log-json /tmp/runtime_log.json \
+  --robot-side-task-evidence-json /tmp/robot_evidence.json \
+  --support-safe-mobile-summary-json /tmp/mobile_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+输出 summary 使用 `schema=trashbot.route_task_field_run_intake_crosscheck.v1`，证据边界固定为 `software_proof_docker_route_task_field_run_intake_crosscheck_gate`。顶层固定包含 `same_evidence_ref_required=true`、`source_materials`、`missing_materials`、`mismatch_reasons`、`commands_to_rerun`、`phone_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+`overall_status=ready_for_review` 只表示五份 Docker/local JSON 材料可读、schema 支持、同一 `evidence_ref` 对齐且 phone-safe 摘要可展示。它不表示真实 Nav2/fixed-route 实跑、真实路线采集、WAVE ROVER 运动、真实 serial/UART feedback、真实 HIL、dropoff/cancel completion、cancel completion、delivery success 或 Objective 5 外部云/4G/OSS/CDN/DB/queue proof。
+
+保守阻断规则：
+
+- 任一材料缺失、JSON 不可读或不是 JSON object：`overall_status=blocked_missing_material`，`missing_materials` 写明来源。
+- 任一材料 schema 不支持：`overall_status=blocked_unsupported_schema`。
+- 任一材料的 `evidence_ref` 与目标 run 不一致：`overall_status=blocked_mismatch`，`mismatch_reasons` 写明来源。
+- support-safe mobile summary 命中凭证、raw ROS topic、serial/UART、baudrate、WAVE ROVER、traceback、checksum、complete artifact 或 raw robot response：`overall_status=blocked_unsafe_summary`。
+
+该 gate 仍是 software proof。它用于把现场五份材料变成可复盘入口和重跑清单，不触发 Nav2、不访问硬件、不放行手机主操作，也不能写成真实 fixed-route、真实 HIL、投放完成、取消完成或送达成功。
+
 ## 6. Debug Web
 
 ### 6.1 Onboard ROS debug page
