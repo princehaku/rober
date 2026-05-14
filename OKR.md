@@ -50,7 +50,7 @@
 
 5. **文档同步更新与工程质量**
    - 任何功能开发、修复或架构调整，必须同步更新 `docs/` 目录下的相关文档。文档必须始终反映项目的最新状态。
-   - 采用中文注释规范：代码中的所有技术注释必须使用**中文**，且注释比例必须**超过 20%**，以确保代码的可读性和可维护性。
+   - 采用中文注释规范：代码中的所有技术注释必须使用**中文**，且注释比例必须**超过 20%**，以确保代码的可读性和可维护性；新增模块默认要求接口参数化与可扩展配置，禁止把硬件型号、阈值和状态分支写死在单一路径。
 
 6. **默认安全、低速、可停**
    - 任何自主行为必须有停止路径、超时策略、失败恢复策略。
@@ -95,9 +95,9 @@
 - KR4：硬件桥协议单元测试覆盖 JSON 编码、速度映射、反馈解析、坏数据容错。
 - KR5：launch 参数暴露 `serial_port`、`serial_baudrate`、`command_mode`、`track_width_m`、`max_wheel_speed_mps`，不硬编码 Orange Pi 实际设备名。
 
-### Objective 2：可送垃圾任务完整闭环
+### Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环
 
-**目标说明**：能完成“用户已把垃圾交给小车”之后的送达任务：确认装载、自动识别电梯和电梯的进出、自动导航到垃圾站、投放或提醒人工取走、失败后恢复。
+**目标说明**：能完成“用户已把垃圾交给小车”之后的送达任务，并把电梯 assisted delivery 作为必须实现能力进入主链：确认装载、自动识别电梯和电梯的进出、自动导航到垃圾站、投放或提醒人工取走、失败后恢复。
 
 **Key Results**
 
@@ -107,6 +107,7 @@
 - KR4：投放失败、导航失败、未找到垃圾站/垃圾桶点位、超时取消都返回明确 action result 和 error message。
 - KR5：每次任务产出可复盘记录：起止时间、目标、状态转移、失败原因、导航结果、检测快照引用。
 - KR6：行为状态机必须覆盖 elevator assisted delivery 完整状态链：等待电梯开门 → 进入电梯 → 语音请求"你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯," → 等待目标楼层 → 目标楼层开门后驶出 → 继续送达；失败、超时、未确认目标楼层、未开门必须返回明确 action result + error code，并触发人工接管。MVP 写明必须并不等于已完成受控实景验证，仍需按三层验收推进。
+- KR7：跨楼层任务默认启用电梯状态链（非 feature flag 默认关闭），并在 task record/diagnostics 中落盘门状态、楼层证据、人工接管原因和可回放 evidence_ref；若降级关闭必须给出明确告警与恢复建议。
 
 ### Objective 3：建立可验证导航与固定路线能力
 
@@ -133,6 +134,8 @@
 - KR5：形成用户验收标准：普通用户不接触命令行、不插线调试、不理解 ROS2，也能完成一次送垃圾任务并知道失败时该怎么做。
 - KR6 ：跨楼层 trash delivery 的手机/语音体验必须落地：用户只选择目标楼层和垃圾站，小车在电梯内主动求助按键，失败时能在手机端解释"未开门、未确认目标楼层、需要人工接管"；手机端不暴露 raw JSON 或 ROS topic 名。
 - KR7 ：手机端 UI **美观且能直接使用**：视觉系统统一（配色 token、字号、间距、卡片、按钮态）、主操作主路径 ≤ 3 步、文案中文优先、iPhone/Android 主流尺寸适配、最小可点击区域 ≥ 44pt、首屏可交互 < 3 秒。当前可用流程与 readiness gate 口径见 `docs/product/mobile_user_flow.md`；本地 phone-first HTML 仍是 fallback 调试入口，正式手机端必须另行完成真实手机浏览器/设备验收。
+- KR8：默认导航/感知硬件约束固化为“单目摄像头 + 2D LiDAR + ToF 安全环（可先 2 路后扩 4 路）”：2D LiDAR 负责 SLAM/Nav2 主链，单目负责电梯门/楼层语义证据，ToF 负责近场防撞；不把 ToF 当主建图输入。
+- KR9：电梯 assisted delivery 作为必须实现能力写入工程扩展约束：状态机、感知 contract、手机状态展示均需预留参数化扩展点（传感器数量、阈值、状态枚举可配置），避免写死单机型/单传感器实现。
 
 ### Objective 5 云中转 + OSS/CDN 数据通路产品化
 
@@ -153,13 +156,13 @@
 
 | Objective | 当前进度 | 本轮证据与边界 | 主要缺口 |
 | --- | --- | --- | --- |
-| Objective 1：硬件协议可信底盘 | 约 75% | 本轮未改硬件、WAVE ROVER、UART、Orange Pi、launch 参数或 HIL 证据；`software_proof_docker_route_task_field_run_intake_crosscheck_gate` 继续把 HIL / `not_proven` 写为未证明，不提升硬件完成度。 | 仍缺真实 WAVE ROVER `hil_pass`、真实串口日志、`T=1001` feedback、`/odom`、`/imu/data`、`/battery` 实机样本。 |
-| Objective 2：可送垃圾任务完整闭环 | 约 84% | `2026.05.15_01-02_route-task-field-run-intake-crosscheck` 完成 `software_proof_docker_route_task_field_run_intake_crosscheck_gate`：Task A `autonomy-engineer` 新增 `pc-tools/evidence/route_task_field_run_intake.py` 和 `test_route_task_field_run_intake.py`，输出 `schema=trashbot.route_task_field_run_intake_crosscheck.v1`、`missing_materials`、`mismatch_reasons`、`commands_to_rerun`、`phone_safe_summary`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，并更新 PC/navigation 文档；Task B `robot-software-engineer` 在 diagnostics 中 metadata-only 消费 `route_task_field_run_intake` / summary，不触发 collect/dropoff/cancel、ACK、cursor、Nav2、HIL 或 delivery success；Task C `full-stack-software-engineer` 在 `mobile/web` 增加只读“路线任务现场材料复核” panel，不改变 Start/Confirm/Cancel gating。任务闭环价值是下一次真实 route/task field run 材料能围绕同一 `evidence_ref` 做软件复账。 | 仍缺真实 Nav2/fixed-route 运行、真实路线采集、同一 `evidence_ref` 的上车复账、真实送达、失败恢复实测、dropoff/cancel completion 和 delivery success。 |
-| Objective 3：可验证导航与固定路线 | 约 84% | 同一 `software_proof_docker_route_task_field_run_intake_crosscheck_gate` 把上一轮 field-run readiness handoff 推进为 route status、task record、runtime log、robot-side task evidence、support-safe mobile summary 五类材料 intake/crosscheck artifact。Autonomy 验证 py_compile pass、`test_route_task_field_run_intake.py` `Ran 6 tests OK`、`--help` pass、五份临时材料同 `evidence_ref` `--once-json` drill pass，输出 `overall_status=ready_for_review`、`missing_materials=[]`、`mismatch_reasons=[]`、`delivery_success=false`；Robot 验证 py_compile pass、diagnostics unittest `Ran 57 tests OK`；Full-stack 初验与 nested diagnostics 兼容修复后复验 mobile unittest `Ran 8 tests in 0.022s OK`、py_compile pass、`node --check mobile/web/app.js` pass；三方 required `rg` 与 scoped diff check 均 pass。 | 仍缺真实路线采集、Nav2 waypoint/fixed-route 实跑、关键帧实景证据、WAVE ROVER/HIL、真实串口和上车复账。 |
-| Objective 4：手机用户体验与低成本量产边界 | 约 95% | `2026.05.14_18-19_mobile-pwa-install-prompt-evidence-export` 完成 `software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate`：Task A `full-stack-software-engineer` 新增 `mobile_pwa_install_prompt_evidence_export*` export UI/copy/download，导出材料优先消费显式 export、event capture、install-prompt evidence、handoff/device/browser support metadata，缺材料时保持 blocked-by-design / `not_proven`；copy/download 共用 whitelist-only JSON，固定 `safe_to_control=false`、`accepted_processing_only_not_delivery_success`，不放行 Start/Confirm/Cancel。Task A 验证 `mobile.test_mobile_web_entrypoint` 35 tests OK、`py_compile` pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。Task B `robot-software-engineer` 新增 `mobile_pwa_install_prompt_evidence_export*` Robot metadata-only fence，证明 metadata-only response 不触发 collect/dropoff/cancel、ACK POST、cursor advance/persistence、terminal ACK、production readiness、HIL、dropoff/cancel completion 或 delivery success；mixed valid-command 仍只由合法 `trashbot.remote.v1` collect envelope 决定 action/ACK/cursor。Task B 验证 targeted remote bridge/protocol unittest `Ran 191 tests OK`、`py_compile` pass、required `rg` pass、scoped diff check pass。 | `not_proven` 仍包括真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 现场验收、O5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、production worker/migration、Nav2/fixed-route、WAVE ROVER、HIL、真实 dropoff/cancel completion、真实 delivery 和量产实物验收。 |
-| Objective 5：云中转 + OSS/CDN 数据通路产品化（历史 O6） | 约 68% | 本轮没有新增真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或真实外部 O5 材料；field-run intake/crosscheck 只证明本机 Docker/local 软件材料可被 artifact、diagnostics 和 mobile 只读摘要安全消费，不能替代外部云/4G/OSS/CDN/DB/queue proof。因此 Objective 5 保持约 68%，不因 `software_proof_docker_route_task_field_run_intake_crosscheck_gate` 上调。 | 仍没有真实公网 HTTPS/TLS、真实 4G/SIM、真实手机设备/browser、production app、真实 PWA prompt/user choice、OSS/CDN live traffic、真实 production DB/queue connectivity、migration、worker、多实例一致性、queue ordering、transaction isolation、backup/recovery、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。 |
+| Objective 1：硬件协议可信底盘 | 约 73% | 本轮未改硬件、WAVE ROVER、UART、Orange Pi、launch 参数或 HIL 证据；`software_proof_docker_route_task_field_run_intake_crosscheck_gate` 继续把 HIL / `not_proven` 写为未证明，不提升硬件完成度。 | 仍缺真实 WAVE ROVER `hil_pass`、真实串口日志、`T=1001` feedback、`/odom`、`/imu/data`、`/battery` 实机样本。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 约 62% | `2026.05.15_01-02_route-task-field-run-intake-crosscheck` 完成 `software_proof_docker_route_task_field_run_intake_crosscheck_gate`：Task A `autonomy-engineer` 新增 `pc-tools/evidence/route_task_field_run_intake.py` 和 `test_route_task_field_run_intake.py`，输出 `schema=trashbot.route_task_field_run_intake_crosscheck.v1`、`missing_materials`、`mismatch_reasons`、`commands_to_rerun`、`phone_safe_summary`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，并更新 PC/navigation 文档；Task B `robot-software-engineer` 在 diagnostics 中 metadata-only 消费 `route_task_field_run_intake` / summary，不触发 collect/dropoff/cancel、ACK、cursor、Nav2、HIL 或 delivery success；Task C `full-stack-software-engineer` 在 `mobile/web` 增加只读“路线任务现场材料复核” panel，不改变 Start/Confirm/Cancel gating。任务闭环价值是下一次真实 route/task field run 材料能围绕同一 `evidence_ref` 做软件复账；本轮仅补充 OKR 文案约束（Objective 2 标题/目标说明/KR7），无新增代码与运行证据；按从严口径对该 Objective 一次性下调 20pp。 | 仍缺真实 Nav2/fixed-route 运行、真实路线采集、同一 `evidence_ref` 的上车复账、真实送达、失败恢复实测、dropoff/cancel completion 和 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 约 62% | 同一 `software_proof_docker_route_task_field_run_intake_crosscheck_gate` 把上一轮 field-run readiness handoff 推进为 route status、task record、runtime log、robot-side task evidence、support-safe mobile summary 五类材料 intake/crosscheck artifact。Autonomy 验证 py_compile pass、`test_route_task_field_run_intake.py` `Ran 6 tests OK`、`--help` pass、五份临时材料同 `evidence_ref` `--once-json` drill pass，输出 `overall_status=ready_for_review`、`missing_materials=[]`、`mismatch_reasons=[]`、`delivery_success=false`；Robot 验证 py_compile pass、diagnostics unittest `Ran 57 tests OK`；Full-stack 初验与 nested diagnostics 兼容修复后复验 mobile unittest `Ran 8 tests in 0.022s OK`、py_compile pass、`node --check mobile/web/app.js` pass；三方 required `rg` 与 scoped diff check 均 pass。 | 仍缺真实路线采集、Nav2 waypoint/fixed-route 实跑、关键帧实景证据、WAVE ROVER/HIL、真实串口和上车复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 约 73% | `2026.05.14_18-19_mobile-pwa-install-prompt-evidence-export` 完成 `software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate`：Task A `full-stack-software-engineer` 新增 `mobile_pwa_install_prompt_evidence_export*` export UI/copy/download，导出材料优先消费显式 export、event capture、install-prompt evidence、handoff/device/browser support metadata，缺材料时保持 blocked-by-design / `not_proven`；copy/download 共用 whitelist-only JSON，固定 `safe_to_control=false`、`accepted_processing_only_not_delivery_success`，不放行 Start/Confirm/Cancel。Task A 验证 `mobile.test_mobile_web_entrypoint` 35 tests OK、`py_compile` pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。Task B `robot-software-engineer` 新增 `mobile_pwa_install_prompt_evidence_export*` Robot metadata-only fence，证明 metadata-only response 不触发 collect/dropoff/cancel、ACK POST、cursor advance/persistence、terminal ACK、production readiness、HIL、dropoff/cancel completion 或 delivery success；mixed valid-command 仍只由合法 `trashbot.remote.v1` collect envelope 决定 action/ACK/cursor。本轮同时把单目+2D LiDAR+ToF 安全环与可扩展参数化约束写入 Objective 4 KR8/KR9 与硬件边界文档；该变更属文档约束，且雷达/ToF 相关实现未落地，按从严口径对该 Objective 一次性下调 20pp。Task B 验证 targeted remote bridge/protocol unittest `Ran 191 tests OK`、`py_compile` pass、required `rg` pass、scoped diff check pass。 | `not_proven` 仍包括真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 现场验收、O5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、production worker/migration、Nav2/fixed-route、WAVE ROVER、HIL、真实 dropoff/cancel completion、真实 delivery 和量产实物验收。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化（历史 O6） | 约 66% | 本轮没有新增真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或真实外部 O5 材料；field-run intake/crosscheck 只证明本机 Docker/local 软件材料可被 artifact、diagnostics 和 mobile 只读摘要安全消费，不能替代外部云/4G/OSS/CDN/DB/queue proof。因此 Objective 5 按从严口径下调到约 66%，并且不因 `software_proof_docker_route_task_field_run_intake_crosscheck_gate` 上调。 | 仍没有真实公网 HTTPS/TLS、真实 4G/SIM、真实手机设备/browser、production app、真实 PWA prompt/user choice、OSS/CDN live traffic、真实 production DB/queue connectivity、migration、worker、多实例一致性、queue ordering、transaction isolation、backup/recovery、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。 |
 
-本轮 OKR 口径：Objective 2 和 Objective 3 均从约 83% 谨慎上调到约 84%，理由是 field-run readiness 已推进为 intake/crosscheck artifact、diagnostics metadata-only summary 和 mobile read-only review，能对下一次真实 route/task field run 材料做同一 `evidence_ref` 软件复账。证据边界是 `software_proof_docker_route_task_field_run_intake_crosscheck_gate`；这不是真实 Nav2/fixed-route 实跑、真实路线采集、WAVE ROVER、真实串口/UART、HIL、同一 `evidence_ref` 的上车复账、dropoff/cancel completion 或 delivery success。Objective 5 仍是最低（约 68%），但本轮没有真实外部 O5 材料，tech-plan 中切到 O2/O3 的理由仍成立；Objective 1 和 Objective 4 不调整。
+本轮 OKR 口径：Objective 1 从约 75% 下调到约 73%；与“电梯/雷达基线未实现”直接相关的 Objective 2、3、4 分别从约 82%/82%/93% 进一步下调 20pp 到约 62%/62%/73%；Objective 5 从约 68% 下调到约 66%。理由：本轮仅有文档约束更新，雷达与对应运行链路未实现，按从严口径执行额外 20pp 下调。证据边界是 `software_proof_docker_route_task_field_run_intake_crosscheck_gate`；这不是真实 Nav2/fixed-route 实跑、真实路线采集、WAVE ROVER、真实串口/UART、HIL、同一 `evidence_ref` 的上车复账、dropoff/cancel completion 或 delivery success。Objective 5 仍是最低（约 66%），但本轮没有真实外部 O5 材料，tech-plan 中切到 O2/O3 的理由仍成立。
 
 ## 5. OKR完成路线
 
@@ -191,10 +194,10 @@
 - 梳理安装文档：Orange Pi 系统、串口权限、ROS2 环境、WAVE ROVER 固件、摄像头、地图路径。
 - 形成上车验收清单和回归测试清单。
 
-### 阶段 E：电梯 assisted delivery 受控场景
+### 阶段 E：电梯 assisted delivery 必须能力落地
 
 - 在楼宇内定义可控测试路线：出发点 -> 电梯厅 -> 进入电梯 -> 人工协助按目标楼层 -> 目标楼层驶出 -> 垃圾站/垃圾桶点位。
-- 行为层增加电梯子状态，但默认关闭；只有明确进入 H2 受控测试时启用。
+- 行为层增加电梯子状态，并进入默认主链路；跨楼层任务默认启用电梯流程，受控场景持续验证与收敛。
 - 感知层先验证电梯门开/关、目标楼层到达和可驶出证据，不把楼层识别写成无证据的全自动能力。
 - 语音层由 Orange Pi/ROS2 编排，进入电梯后播放：“你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,”。
 - 人工协助是产品边界：小车不按按钮，不改造电梯，不默认新增机械臂或电梯控制硬件。
