@@ -42,6 +42,7 @@ const ROUTE_TASK_FIELD_RUN_READINESS_BOUNDARY = "software_proof_docker_route_tas
 const ROUTE_TASK_FIELD_RUN_INTAKE_CROSSCHECK_BOUNDARY = "software_proof_docker_route_task_field_run_intake_crosscheck_gate";
 const ROUTE_TASK_FIELD_RUN_REVIEW_BOUNDARY = "software_proof_docker_route_task_field_run_review_console_gate";
 const ROUTE_TASK_FIELD_RUN_EXECUTION_PACK_BOUNDARY = "software_proof_docker_route_task_field_run_execution_pack_gate";
+const ROUTE_TASK_FIELD_RUN_RECONCILIATION_BOUNDARY = "software_proof_docker_route_task_field_run_reconciliation_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -104,6 +105,7 @@ const UNSAFE_FIELD_RUN_READINESS_TEXT = /(authorization|bearer|token|oss\s*(ak|s
 const UNSAFE_FIELD_RUN_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_FIELD_RUN_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_FIELD_RUN_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw execution pack|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|dropoff success|cancel completed|hil_pass)/i;
+const UNSAFE_FIELD_RUN_RECONCILIATION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw reconciliation|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 
@@ -230,6 +232,15 @@ function safeFieldRunExecutionPackText(value, fallback = "not_proven") {
   // execution pack 只展示现场执行摘要；任何本机路径、raw artifact 或成功暗示都降级。
   const text = safeText(value, fallback);
   if (UNSAFE_FIELD_RUN_EXECUTION_PACK_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeFieldRunReconciliationText(value, fallback = "not_proven") {
+  // reconciliation 只展示复账摘要；路径、凭证、硬件细节和完整 artifact 一律降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_FIELD_RUN_RECONCILIATION_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -3835,6 +3846,119 @@ function routeTaskFieldRunExecutionPackFromStatus(status, readiness, diagnostics
   };
 }
 
+function routeTaskFieldRunReconciliationCandidate(status, readiness, diagnostics) {
+  // reconciliation 兼容 status、phone_readiness、diagnostics 以及多层 diagnostics summary。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.route_task_field_run_reconciliation,
+    status?.route_task_field_run_reconciliation_summary,
+    readiness?.route_task_field_run_reconciliation,
+    readiness?.route_task_field_run_reconciliation_summary,
+    diagnostics?.route_task_field_run_reconciliation,
+    diagnostics?.route_task_field_run_reconciliation_summary,
+    diagnosticsReadiness.route_task_field_run_reconciliation,
+    diagnosticsReadiness.route_task_field_run_reconciliation_summary,
+    diagnosticsSummary.route_task_field_run_reconciliation,
+    diagnosticsSummary.route_task_field_run_reconciliation_summary,
+    nestedDiagnosticsSummary.route_task_field_run_reconciliation,
+    nestedDiagnosticsSummary.route_task_field_run_reconciliation_summary,
+    nestedDiagnosticsInnerSummary.route_task_field_run_reconciliation,
+    nestedDiagnosticsInnerSummary.route_task_field_run_reconciliation_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function routeTaskFieldRunReconciliationNotProvenList(value) {
+  // 复账面板证明的是材料摘要可见，不证明现场路线、HIL、投放/取消或送达。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实 Nav2/fixed-route",
+    "真实路线采集",
+    "同一 evidence_ref 上车实机复账",
+    "HIL",
+    "dropoff/cancel completion",
+    "delivery success",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 14);
+}
+
+function routeTaskFieldRunReconciliationSummaryText(value, fallback) {
+  // materials/next steps 可由 artifact 或 diagnostics 摘要提供；这里只拼接 phone-safe 短文本。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeFieldRunReconciliationText(
+        item?.safe_phone_copy || item?.summary || item?.name || item?.material || item?.status || item?.step || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 5).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    return safeFieldRunReconciliationText(
+      value.safe_phone_copy || value.summary || value.status || value.material || value.step || value.reason,
+      fallback,
+    );
+  }
+  return safeFieldRunReconciliationText(value, fallback);
+}
+
+function routeTaskFieldRunReconciliationFromStatus(status, readiness, diagnostics) {
+  const provided = routeTaskFieldRunReconciliationCandidate(status, readiness, diagnostics) || {};
+  const materials = provided.materials_status || provided.materials_status_summary ||
+    provided.required_materials_status || provided.materials || provided.material_status;
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.route_task_field_run_reconciliation_summary.v1",
+    schema_version: 1,
+    reconciliation_verdict: safeFieldRunReconciliationText(
+      provided.reconciliation_verdict || provided.verdict || provided.overall_status || provided.status,
+      "blocked_missing_route_task_field_run_reconciliation_summary",
+    ),
+    evidence_ref: safeFieldRunReconciliationText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "not_provided",
+    ),
+    same_evidence_ref_required: provided.same_evidence_ref_required === true,
+    materials_status_summary: routeTaskFieldRunReconciliationSummaryText(
+      materials,
+      "未提供 materials status 摘要；保持 blocked/not_proven。",
+    ),
+    operator_next_steps_summary: routeTaskFieldRunReconciliationSummaryText(
+      provided.operator_next_steps || provided.next_steps || provided.operator_actions,
+      "等待 operator next steps 摘要；保持只读复账。",
+    ),
+    safe_phone_copy: safeFieldRunReconciliationText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "route-task field-run reconciliation 摘要缺失；手机端只显示 blocked/not_proven，不读取 raw artifact。",
+    ),
+    recovery_hint: safeFieldRunReconciliationText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由 diagnostics 提供 route_task_field_run_reconciliation_summary 后，再按同一 evidence_ref 复核材料。",
+    ),
+    evidence_boundary: safeFieldRunReconciliationText(
+      provided.evidence_boundary,
+      ROUTE_TASK_FIELD_RUN_RECONCILIATION_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: routeTaskFieldRunReconciliationNotProvenList(provided),
+  };
+}
+
 function derivedMobileBrowserAcceptanceBundle(status, readiness, diagnostics) {
   // 缺显式 bundle 时，从既有 phone-safe gate 派生 blocked 摘要，不能自行证明真机或生产入口。
   const device = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, diagnostics);
@@ -4524,6 +4648,28 @@ function renderRouteTaskFieldRunExecutionPack(status) {
   $("routeTaskFieldRunExecutionPackBoundary").textContent = summary.evidence_boundary;
   $("routeTaskFieldRunExecutionPackNotProven").textContent = summary.not_proven.join("、");
   $("routeTaskFieldRunExecutionPackHint").textContent = summary.recovery_hint;
+}
+
+function renderRouteTaskFieldRunReconciliation(status) {
+  const readiness = readinessFromStatus(status);
+  const summary = routeTaskFieldRunReconciliationFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("routeTaskFieldRunReconciliationBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 reconciliation" : "read-only reconciliation";
+  $("routeTaskFieldRunReconciliationCopy").textContent = summary.safe_phone_copy;
+  $("routeTaskFieldRunReconciliationVerdict").textContent = summary.reconciliation_verdict;
+  $("routeTaskFieldRunReconciliationEvidenceRef").textContent = summary.evidence_ref;
+  $("routeTaskFieldRunReconciliationSameRef").textContent = summary.same_evidence_ref_required
+    ? "same evidence ref required=true"
+    : "same evidence ref required=false/not_proven";
+  $("routeTaskFieldRunReconciliationMaterials").textContent = summary.materials_status_summary;
+  $("routeTaskFieldRunReconciliationNextSteps").textContent = summary.operator_next_steps_summary;
+  $("routeTaskFieldRunReconciliationControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("routeTaskFieldRunReconciliationBoundary").textContent = summary.evidence_boundary;
+  $("routeTaskFieldRunReconciliationNotProven").textContent = summary.not_proven.join("、");
+  $("routeTaskFieldRunReconciliationHint").textContent = summary.recovery_hint;
 }
 
 function setBadge(state, copy) {
@@ -6061,6 +6207,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const fieldRunReconciliation = routeTaskFieldRunReconciliationFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const rows = [
     ["软件版本", payload?.software_version],
     ["地图版本", payload?.map_version],
@@ -6074,6 +6225,7 @@ function renderDiagnosticsSummary(payload) {
     ["Field-run intake crosscheck", fieldRunIntake.overall_status],
     ["Field-run review console", fieldRunReview.review_decision],
     ["Field-run execution pack", fieldRunExecutionPack.execution_status],
+    ["Field-run reconciliation", fieldRunReconciliation.reconciliation_verdict],
   ];
   rows.forEach(([label, value]) => {
     const box = document.createElement("div");
@@ -6128,6 +6280,7 @@ function renderOfflineFailure() {
   renderRouteTaskFieldRunIntake({});
   renderRouteTaskFieldRunReview({});
   renderRouteTaskFieldRunExecutionPack({});
+  renderRouteTaskFieldRunReconciliation({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -6160,6 +6313,7 @@ function renderStatus(status) {
   renderRouteTaskFieldRunIntake(status);
   renderRouteTaskFieldRunReview(status);
   renderRouteTaskFieldRunExecutionPack(status);
+  renderRouteTaskFieldRunReconciliation(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
@@ -6369,6 +6523,7 @@ async function openDiagnostics() {
     renderRouteTaskFieldRunIntake(latestStatus || {});
     renderRouteTaskFieldRunReview(latestStatus || {});
     renderRouteTaskFieldRunExecutionPack(latestStatus || {});
+    renderRouteTaskFieldRunReconciliation(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileDeviceEvidence(latestStatus || {});
     renderMobileDeviceHandoffSession(latestStatus || {});

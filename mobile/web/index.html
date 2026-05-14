@@ -363,6 +363,51 @@
         <p id="routeTaskFieldRunExecutionPackHint" class="hint">Field-run execution pack 只读展示；不触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
       </section>
 
+      <section class="route-field-run-reconciliation-panel" aria-labelledby="routeTaskFieldRunReconciliationTitle">
+        <div class="section-heading">
+          <h2 id="routeTaskFieldRunReconciliationTitle">路线任务现场复账</h2>
+          <span id="routeTaskFieldRunReconciliationBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="routeTaskFieldRunReconciliationCopy" class="message">
+          等待后端提供 route_task_field_run_reconciliation 的 phone-safe 复账摘要。
+        </p>
+        <dl class="route-field-run-reconciliation-grid">
+          <div>
+            <dt>Reconciliation Verdict</dt>
+            <dd id="routeTaskFieldRunReconciliationVerdict">blocked/not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="routeTaskFieldRunReconciliationEvidenceRef">not_provided</dd>
+          </div>
+          <div>
+            <dt>Same Evidence Ref</dt>
+            <dd id="routeTaskFieldRunReconciliationSameRef">same evidence ref required=false/not_proven</dd>
+          </div>
+          <div>
+            <dt>Materials Status</dt>
+            <dd id="routeTaskFieldRunReconciliationMaterials">等待 materials status 摘要。</dd>
+          </div>
+          <div>
+            <dt>Operator Next Steps</dt>
+            <dd id="routeTaskFieldRunReconciliationNextSteps">等待 operator next steps 摘要。</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="routeTaskFieldRunReconciliationControls">delivery_success=false / primary_actions_enabled=false</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="routeTaskFieldRunReconciliationBoundary">software_proof_docker_route_task_field_run_reconciliation_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="routeTaskFieldRunReconciliationNotProven">真实路线、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="routeTaskFieldRunReconciliationHint" class="hint">Field-run reconciliation 只读展示；不触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
+      </section>
+
       <section class="cloud-panel" aria-labelledby="cloudReadinessTitle">
         <div class="section-heading">
           <h2 id="cloudReadinessTitle">云中转状态</h2>

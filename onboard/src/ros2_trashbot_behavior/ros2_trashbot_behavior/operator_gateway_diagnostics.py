@@ -109,6 +109,13 @@ ROUTE_TASK_FIELD_RUN_EXECUTION_PACK_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RUN_EXECUTION_PACK_GATE = (
     "software_proof_docker_route_task_field_run_execution_pack_gate"
 )
+ROUTE_TASK_FIELD_RUN_RECONCILIATION_SCHEMA = "trashbot.route_task_field_run_reconciliation.v1"
+ROUTE_TASK_FIELD_RUN_RECONCILIATION_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_run_reconciliation_summary.v1"
+)
+ROUTE_TASK_FIELD_RUN_RECONCILIATION_GATE = (
+    "software_proof_docker_route_task_field_run_reconciliation_gate"
+)
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -277,6 +284,38 @@ def _route_task_field_run_execution_pack_not_proven(pack=None, phone_summary=Non
     source_values = []
     if isinstance(pack.get("not_proven"), list):
         source_values.extend(pack.get("not_proven"))
+    if isinstance(phone_summary.get("not_proven"), list):
+        source_values.extend(phone_summary.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "production_readiness",
+        "dropoff_or_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_run_reconciliation_not_proven(reconciliation=None, phone_summary=None):
+    # reconciliation 只复核现场材料是否一致；真实控制、ACK、Nav2、HIL 和交付结论必须继续外部证明。
+    reconciliation = reconciliation if isinstance(reconciliation, dict) else {}
+    phone_summary = phone_summary if isinstance(phone_summary, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(reconciliation.get("not_proven"), list):
+        source_values.extend(reconciliation.get("not_proven"))
     if isinstance(phone_summary.get("not_proven"), list):
         source_values.extend(phone_summary.get("not_proven"))
     required = (
@@ -553,6 +592,36 @@ def _default_route_task_field_run_execution_pack_summary(path, status="not_confi
         "safe_copy": "Route-task field-run execution pack is metadata-only; not delivery success.",
         "safe_phone_copy": "Route-task field-run execution pack is metadata-only; not delivery success.",
         "metadata_only": True,
+    }
+
+
+def _default_route_task_field_run_reconciliation_summary(path, status="not_configured", read_error=""):
+    # reconciliation 摘要只暴露白名单字段；默认不配置时也必须明确保持 metadata-only 和不可操作。
+    return {
+        "schema": ROUTE_TASK_FIELD_RUN_RECONCILIATION_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RUN_RECONCILIATION_GATE,
+        "source_schema": "",
+        "source_evidence_boundary": "",
+        "reconciliation_verdict": {
+            "status": status,
+            "verdict": "not_proven",
+            "reason": read_error or "route-task field-run reconciliation artifact is not configured",
+        },
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "materials_status": {
+            "status": "blocked",
+            "reason": "route-task field-run reconciliation artifact is not configured",
+        },
+        "operator_next_steps": [],
+        "phone_safe_summary": {
+            "safe_copy": "Route-task field-run reconciliation is metadata-only; not delivery success.",
+            "safe_phone_copy": "Route-task field-run reconciliation is metadata-only; not delivery success.",
+        },
+        "not_proven": _route_task_field_run_reconciliation_not_proven(),
+        "delivery_success": False,
+        "primary_actions_enabled": False,
     }
 
 
@@ -2050,6 +2119,234 @@ def summarize_route_task_field_run_execution_pack(path):
     return summary
 
 
+def summarize_route_task_field_run_reconciliation(path):
+    """构建 route-task field-run reconciliation 的 metadata-only diagnostics 摘要。"""
+    reconciliation_path = os.path.expanduser(str(path or ""))
+    summary = _default_route_task_field_run_reconciliation_summary(
+        reconciliation_path,
+        read_error="route-task field-run reconciliation artifact is not configured",
+    )
+    if not reconciliation_path:
+        return summary
+    if not os.path.exists(reconciliation_path):
+        summary.update(
+            {
+                "reconciliation_verdict": {
+                    "status": "missing",
+                    "verdict": "not_proven",
+                    "reason": "route-task field-run reconciliation artifact missing",
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "reconciliation artifact missing",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Route-task field-run reconciliation is missing; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field-run reconciliation is missing; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    try:
+        with open(reconciliation_path, "r", encoding="utf-8") as f:
+            reconciliation = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        safe_error = _redact_route_task_rehearsal_text(
+            f"failed reading route-task field-run reconciliation artifact: {exc}"
+        )
+        summary.update(
+            {
+                "reconciliation_verdict": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": safe_error,
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "reconciliation JSON read error",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Route-task field-run reconciliation could not be read; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field-run reconciliation could not be read; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    if not isinstance(reconciliation, dict):
+        summary.update(
+            {
+                "reconciliation_verdict": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "route-task field-run reconciliation JSON must be an object",
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "reconciliation JSON shape is invalid",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Route-task field-run reconciliation shape is invalid; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field-run reconciliation shape is invalid; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    # Task A 的产物可能把 phone-safe 摘要放在多个兼容键下；这里只读取白名单摘要字段。
+    phone_summary = {}
+    for candidate in (
+        reconciliation.get("phone_safe_summary"),
+        reconciliation.get("phone_support_safe_summary"),
+        reconciliation.get("route_task_field_run_reconciliation_summary"),
+        reconciliation.get("route_task_field_run_reconciliation"),
+    ):
+        if isinstance(candidate, dict):
+            phone_summary = candidate
+            break
+    source_schema = str(reconciliation.get("schema") or "")
+    source_boundary = str(reconciliation.get("evidence_boundary") or "")
+    source_verdict = phone_summary.get("reconciliation_verdict")
+    if not isinstance(source_verdict, dict):
+        source_verdict = reconciliation.get("reconciliation_verdict")
+    if isinstance(source_verdict, dict):
+        verdict_status = _redact_route_task_rehearsal_text(
+            source_verdict.get("status")
+            or source_verdict.get("verdict")
+            or source_verdict.get("decision")
+            or reconciliation.get("status")
+            or "blocked"
+        )
+        verdict_value = _redact_route_task_rehearsal_text(
+            source_verdict.get("verdict")
+            or source_verdict.get("decision")
+            or verdict_status
+            or "not_proven"
+        )
+        verdict_reason = _redact_route_task_rehearsal_text(
+            source_verdict.get("reason") or source_verdict.get("summary") or ""
+        )
+    else:
+        verdict_status = _redact_route_task_rehearsal_text(
+            phone_summary.get("status")
+            or phone_summary.get("overall_status")
+            or reconciliation.get("status")
+            or "blocked"
+        )
+        verdict_value = _redact_route_task_rehearsal_text(
+            phone_summary.get("verdict")
+            or reconciliation.get("verdict")
+            or verdict_status
+            or "not_proven"
+        )
+        verdict_reason = _redact_route_task_rehearsal_text(
+            phone_summary.get("reason") or reconciliation.get("reason") or ""
+        )
+    materials_status = (
+        phone_summary.get("materials_status")
+        if isinstance(phone_summary.get("materials_status"), dict)
+        else reconciliation.get("materials_status") if isinstance(reconciliation.get("materials_status"), dict) else {}
+    )
+    operator_next_steps = _safe_route_task_rehearsal_list(
+        phone_summary.get("operator_next_steps")
+        if isinstance(phone_summary.get("operator_next_steps"), list)
+        else reconciliation.get("operator_next_steps")
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        phone_summary.get("safe_copy")
+        or phone_summary.get("safe_phone_copy")
+        or reconciliation.get("safe_copy")
+        or reconciliation.get("safe_phone_copy")
+        or "Route-task field-run reconciliation is metadata-only; not delivery success."
+    )
+    # phone_safe_summary 只保留面向操作员的安全文案，避免把 Task A artifact 的任意字段透传到 diagnostics。
+    safe_phone_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(phone_summary.get(key) or "").strip():
+            safe_phone_summary[key] = _redact_route_task_rehearsal_text(phone_summary.get(key))
+    safe_phone_summary["safe_copy"] = safe_copy
+    safe_phone_summary["safe_phone_copy"] = safe_copy
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "reconciliation_verdict": {
+                "status": verdict_status or "blocked",
+                "verdict": verdict_value or "not_proven",
+                "reason": verdict_reason or "route-task field-run reconciliation consumed without explicit reason",
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                phone_summary.get("safe_evidence_ref")
+                or phone_summary.get("evidence_ref")
+                or reconciliation.get("safe_evidence_ref")
+                or reconciliation.get("evidence_ref", "")
+            ),
+            "same_evidence_ref_required": bool(
+                phone_summary.get(
+                    "same_evidence_ref_required",
+                    reconciliation.get("same_evidence_ref_required", True),
+                )
+            ),
+            "materials_status": _safe_pc_route_debug_dict(materials_status)
+            or {
+                "status": verdict_status or "blocked",
+                "reason": "reconciliation consumed without explicit materials status",
+            },
+            "operator_next_steps": operator_next_steps,
+            "phone_safe_summary": safe_phone_summary,
+            "not_proven": _route_task_field_run_reconciliation_not_proven(reconciliation, phone_summary),
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    if source_schema != ROUTE_TASK_FIELD_RUN_RECONCILIATION_SCHEMA or source_boundary != ROUTE_TASK_FIELD_RUN_RECONCILIATION_GATE:
+        summary.update(
+            {
+                "reconciliation_verdict": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "route-task field-run reconciliation schema or evidence boundary is unsupported",
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Route-task field-run reconciliation is not a supported diagnostics source; no delivery result is proven.",
+                    "safe_phone_copy": "Route-task field-run reconciliation is not a supported diagnostics source; no delivery result is proven.",
+                },
+            }
+        )
+        return summary
+
+    if (
+        _route_task_field_run_readiness_has_unsafe_fields(phone_summary)
+        or _route_task_field_run_intake_has_unsafe_control_claims(reconciliation)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "reconciliation_verdict": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": "route-task field-run reconciliation contains unsafe summary fields or control claims",
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "unsafe reconciliation summary fields",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Route-task field-run reconciliation was blocked because summary fields could expose control data or imply delivery success.",
+                    "safe_phone_copy": "Route-task field-run reconciliation was blocked because summary fields could expose control data or imply delivery success.",
+                },
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -3165,6 +3462,7 @@ def build_diagnostics_payload(
     route_task_field_run_intake_ref="",
     route_task_field_run_review_ref="",
     route_task_field_run_execution_pack_ref="",
+    route_task_field_run_reconciliation_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -3238,6 +3536,10 @@ def build_diagnostics_payload(
         route_task_field_run_execution_pack_ref
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_EXECUTION_PACK", "")
     )
+    route_task_field_run_reconciliation_summary = summarize_route_task_field_run_reconciliation(
+        route_task_field_run_reconciliation_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_RECONCILIATION", "")
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -3288,6 +3590,8 @@ def build_diagnostics_payload(
         route_task_field_run_review_summary=route_task_field_run_review_summary,
         route_task_field_run_execution_pack=route_task_field_run_execution_pack_summary,
         route_task_field_run_execution_pack_summary=route_task_field_run_execution_pack_summary,
+        route_task_field_run_reconciliation=route_task_field_run_reconciliation_summary,
+        route_task_field_run_reconciliation_summary=route_task_field_run_reconciliation_summary,
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),

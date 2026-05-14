@@ -252,6 +252,29 @@ not command/status/ACK robot contract fields and do not prove real fixed-route
 execution, real HIL, production readiness, dropoff/cancel completion, or
 delivery success.
 
+Operator diagnostics may also expose `route_task_field_run_reconciliation` and
+the alias `route_task_field_run_reconciliation_summary` from an explicit
+`route_task_field_run_reconciliation_ref` or
+`TRASHBOT_ROUTE_TASK_FIELD_RUN_RECONCILIATION`. The source JSON must use
+`schema=trashbot.route_task_field_run_reconciliation.v1` and
+`evidence_boundary=software_proof_docker_route_task_field_run_reconciliation_gate`.
+This summary is metadata-only support material for Task A route-task field-run
+reconciliation: it may expose only the summary schema/evidence boundary, source
+schema/evidence boundary, reconciliation verdict, safe evidence ref,
+`same_evidence_ref_required`, materials status, operator next steps,
+phone-safe summary, `not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. Raw route logs, task records, mobile summary
+payloads, credentials, local paths, UART/serial details, raw ACK payloads, raw
+command envelopes, production-readiness claims, and traceback content must not
+enter the diagnostics summary. Missing, unreadable, unsupported-schema,
+boundary-mismatch, or unsafe-summary sources remain blocked/not_proven. The
+fields do not trigger collect/dropoff/cancel, remote ACK, cursor
+advance/persistence, terminal ACK, Nav2, WAVE ROVER, HIL, production
+readiness, dropoff/cancel completion, or delivery success. They are not
+command/status/ACK robot contract fields and do not prove real fixed-route
+execution, real HIL, production readiness, dropoff/cancel completion, or
+delivery success.
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

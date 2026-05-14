@@ -135,6 +135,7 @@ h2 {
 .route-field-run-intake-panel,
 .route-field-run-review-panel,
 .route-field-run-execution-pack-panel,
+.route-field-run-reconciliation-panel,
 .cloud-panel,
 .mobile-device-panel,
 .device-evidence-panel,
@@ -248,6 +249,7 @@ h2 {
 .route-field-run-intake-grid,
 .route-field-run-review-grid,
 .route-field-run-execution-pack-grid,
+.route-field-run-reconciliation-grid,
 .mobile-device-grid,
 .device-evidence-grid,
 .handoff-session-grid,
@@ -282,6 +284,7 @@ h2 {
 .route-field-run-intake-grid div,
 .route-field-run-review-grid div,
 .route-field-run-execution-pack-grid div,
+.route-field-run-reconciliation-grid div,
 .mobile-device-grid div,
 .device-evidence-grid div,
 .handoff-session-grid div,
@@ -376,6 +379,10 @@ dd {
 }
 
 .route-field-run-execution-pack-grid {
+  grid-template-columns: 1fr;
+}
+
+.route-field-run-reconciliation-grid {
   grid-template-columns: 1fr;
 }
 
@@ -652,6 +659,10 @@ dd {
   }
 
   .route-field-run-execution-pack-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .route-field-run-reconciliation-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

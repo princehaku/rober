@@ -188,6 +188,31 @@ python3 pc-tools/evidence/route_task_field_run_execution_pack.py \
 
 该 execution pack 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；`ready_for_field_run_execution_pack` 只表示 review console 足以生成现场联跑材料清单，不表示真实 Nav2/fixed-route、真实路线采集、HIL、dropoff/cancel completion、delivery success 或 O5 external proof。缺 review、坏 JSON、unsupported schema、unsafe copy、review blocked、`primary_actions_enabled=true` 或 `delivery_success=true` 时，CLI 会保守输出 blocked execution pack，并继续保留 `not_proven` 与 `delivery_success=false`。
 
+## route/task field-run reconciliation
+
+`pc-tools/evidence/route_task_field_run_reconciliation.py` 只读 execution pack JSON 与 intake/review JSON，做同一 `evidence_ref` 的现场材料复账：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_reconciliation.py \
+  --execution-pack-json /tmp/route_task_field_run_execution_pack.json \
+  --intake-json /tmp/route_task_field_run_intake.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_run_reconciliation.json
+```
+
+需要直接给 diagnostics、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_reconciliation.py \
+  --execution-pack-json /tmp/route_task_field_run_execution_pack.json \
+  --intake-json /tmp/route_task_field_run_review.json \
+  --once-json
+```
+
+输出 `schema=trashbot.route_task_field_run_reconciliation.v1`、`schema_version=1`、`evidence_boundary=software_proof_docker_route_task_field_run_reconciliation_gate`、`same_evidence_ref_required=true`、`reconciliation_verdict`、`materials_status`、`operator_next_steps`、`phone_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。`--intake-json` 支持 intake crosscheck 或 review console，两者都只按白名单字段进入复账报告。
+
+该 reconciliation gate 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；`ready_for_route_task_field_run_reconciliation` 只表示 execution pack 与 intake/review 材料可读、schema/boundary 支持、同一 safe `evidence_ref` 对齐且 phone-safe 摘要可展示。它不是真实 fixed-route/Nav2、真实路线采集、HIL、dropoff/cancel completion、delivery success 或 O5 external proof。缺 execution pack、缺 intake/review、坏 JSON、unsupported schema、unsupported boundary、缺 `evidence_ref`、`evidence_ref` mismatch、unsafe summary 或 missing materials 时，CLI 会输出 blocked reconciliation artifact，并继续保留 `not_proven` 与 `delivery_success=false`。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

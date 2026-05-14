@@ -23,6 +23,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_rehearsal_operator_review,
     summarize_route_task_field_run_execution_pack,
     summarize_route_task_field_run_intake,
+    summarize_route_task_field_run_reconciliation,
     summarize_route_task_field_run_readiness,
     summarize_route_task_field_run_review,
     summarize_vision_manifest,
@@ -2143,6 +2144,205 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(unsupported_summary["status"], "unsupported_schema")
         self.assertEqual(unsafe_summary["status"], "unsafe_fields")
         self.assertIn("software_proof_docker_route_task_field_run_execution_pack_gate", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_run_reconciliation_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            reconciliation_path = Path(td) / "route_task_field_run_reconciliation.json"
+            reconciliation_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_reconciliation.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_reconciliation_gate"
+                        ),
+                        "evidence_ref": "evidence://route-task-field-run-reconciliation-1",
+                        "same_evidence_ref_required": True,
+                        "reconciliation_verdict": {
+                            "status": "ready",
+                            "verdict": "same_evidence_ref_materials_reconciled",
+                            "reason": "all support-safe materials use the same evidence_ref",
+                        },
+                        "materials_status": {
+                            "status": "available",
+                            "missing_materials": [],
+                            "required_materials": [
+                                "route status",
+                                "task record",
+                                "execution pack summary",
+                            ],
+                        },
+                        "operator_next_steps": [
+                            "Keep this as metadata-only support evidence before any real field run."
+                        ],
+                        "phone_safe_summary": {
+                            "safe_copy": (
+                                "Route-task field-run reconciliation is metadata-only; "
+                                "not delivery success and not HIL."
+                            ),
+                        },
+                        "not_proven": ["delivery_success", "real_hil_pass"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_run_reconciliation_ref=str(reconciliation_path),
+            )
+            summary = payload["route_task_field_run_reconciliation"]
+            summary_alias = payload["route_task_field_run_reconciliation_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["schema"], "trashbot.route_task_field_run_reconciliation_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_run_reconciliation_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_field_run_reconciliation.v1")
+        self.assertEqual(summary["reconciliation_verdict"]["status"], "ready")
+        self.assertEqual(
+            summary["reconciliation_verdict"]["verdict"],
+            "same_evidence_ref_materials_reconciled",
+        )
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://route-task-field-run-reconciliation-1",
+        )
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertEqual(summary["materials_status"]["status"], "available")
+        self.assertIn("execution pack summary", summary["materials_status"]["required_materials"])
+        self.assertIn("metadata-only", summary["phone_safe_summary"]["safe_phone_copy"])
+        self.assertIn("not delivery success", summary["phone_safe_summary"]["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("remote_ack", summary["not_proven"])
+        self.assertIn("cursor_advance_or_persistence", summary["not_proven"])
+        self.assertIn("terminal_ack", summary["not_proven"])
+        self.assertIn("production_readiness", summary["not_proven"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        for forbidden_key in (
+            "collect_triggered",
+            "dropoff_triggered",
+            "cancel_triggered",
+            "ack_post_allowed",
+            "cursor_updates_allowed",
+            "persistence_updates_allowed",
+            "terminal_ack_allowed",
+            "nav2_triggered",
+            "hil_pass",
+            "production_ready",
+            "dropoff_completion",
+            "cancel_completion",
+        ):
+            self.assertNotIn(forbidden_key, summary)
+        self.assertNotIn(str(reconciliation_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_run_reconciliation_env_missing_unsupported_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            env_path = Path(td) / "route_task_field_run_reconciliation_env.json"
+            env_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_reconciliation.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_reconciliation_gate"
+                        ),
+                        "evidence_ref": "evidence://route-task-field-run-reconciliation-2",
+                        "same_evidence_ref_required": True,
+                        "reconciliation_verdict": {
+                            "status": "blocked_missing_material",
+                            "verdict": "not_proven",
+                            "reason": "missing execution pack summary",
+                        },
+                        "materials_status": {
+                            "status": "blocked",
+                            "missing_materials": ["execution pack summary"],
+                        },
+                        "operator_next_steps": ["Regenerate Task A reconciliation artifact."],
+                        "phone_safe_summary": {
+                            "safe_copy": "Route-task field-run reconciliation is metadata-only; not_proven.",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_RECONCILIATION")
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RUN_RECONCILIATION"] = str(env_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_run_reconciliation"
+                ]
+            finally:
+                if previous is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RUN_RECONCILIATION", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RUN_RECONCILIATION"] = previous
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_reconciliation.json"
+            missing_summary = summarize_route_task_field_run_reconciliation(str(missing_path))
+
+            unsupported_path = Path(td) / "unsupported_reconciliation.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_execution_pack.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_execution_pack_gate"
+                        ),
+                        "safe_copy": "Unsupported reconciliation is metadata-only; not delivery success.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsupported_summary = summarize_route_task_field_run_reconciliation(str(unsupported_path))
+
+            unsafe_path = Path(td) / "unsafe_reconciliation.json"
+            unsafe_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_reconciliation.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_reconciliation_gate"
+                        ),
+                        "production_ready": True,
+                        "phone_safe_summary": {
+                            "safe_copy": "Reconciliation confirms delivery success and terminal ACK posted.",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_summary = summarize_route_task_field_run_reconciliation(str(unsafe_path))
+            encoded = json.dumps(
+                [env_summary, missing_summary, unsupported_summary, unsafe_summary],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["reconciliation_verdict"]["status"], "blocked_missing_material")
+        self.assertEqual(env_summary["materials_status"]["status"], "blocked")
+        self.assertIn("execution pack summary", env_summary["materials_status"]["missing_materials"])
+        self.assertEqual(missing_summary["reconciliation_verdict"]["status"], "missing")
+        self.assertEqual(unsupported_summary["reconciliation_verdict"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["reconciliation_verdict"]["status"], "unsafe_fields")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_route_task_field_run_reconciliation_gate", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
