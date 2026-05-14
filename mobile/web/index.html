@@ -232,6 +232,55 @@
         <p id="routeTaskFieldRunReadinessHint" class="hint">Field-run readiness 只读展示；不触发 Start、Confirm 或 Cancel。</p>
       </section>
 
+      <section class="route-field-run-console-panel" aria-labelledby="routeTaskFieldRunConsoleTitle">
+        <div class="section-heading">
+          <h2 id="routeTaskFieldRunConsoleTitle">路线现场运行准备</h2>
+          <span id="routeTaskFieldRunConsoleBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="routeTaskFieldRunConsoleCopy" class="message">
+          等待后端提供 route_task_field_run_console 的 phone-safe console summary。
+        </p>
+        <dl class="route-field-run-console-grid">
+          <div>
+            <dt>Console Verdict</dt>
+            <dd id="routeTaskFieldRunConsoleVerdict">blocked/not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="routeTaskFieldRunConsoleEvidenceRef">not_provided</dd>
+          </div>
+          <div>
+            <dt>Field-run Plan</dt>
+            <dd id="routeTaskFieldRunConsolePlan">等待 field_run_plan 摘要。</dd>
+          </div>
+          <div>
+            <dt>Capture Checklist</dt>
+            <dd id="routeTaskFieldRunConsoleChecklist">等待 capture_checklist 摘要。</dd>
+          </div>
+          <div>
+            <dt>Dropoff / Cancel Material</dt>
+            <dd id="routeTaskFieldRunConsoleMaterialStatus">dropoff=not_proven / cancel=not_proven</dd>
+          </div>
+          <div>
+            <dt>Operator Next Steps</dt>
+            <dd id="routeTaskFieldRunConsoleNextSteps">等待 operator next steps 摘要。</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="routeTaskFieldRunConsoleControls">delivery_success=false / primary_actions_enabled=false</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="routeTaskFieldRunConsoleBoundary">software_proof_docker_route_task_field_run_console_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="routeTaskFieldRunConsoleNotProven">真实路线、HIL、dropoff/cancel completion 和 delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="routeTaskFieldRunConsoleHint" class="hint">Field-run console 只读展示；不触发 Start Delivery、Confirm Dropoff、Cancel、ACK 或 cursor route。</p>
+      </section>
+
       <section class="route-field-run-intake-panel" aria-labelledby="routeTaskFieldRunIntakeTitle">
         <div class="section-heading">
           <h2 id="routeTaskFieldRunIntakeTitle">路线任务现场材料复核</h2>

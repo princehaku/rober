@@ -592,6 +592,26 @@ python3 pc-tools/evidence/route_task_completion_signal.py \
 
 该 gate 仍是 software proof。`completed_not_proven` 只表示 Docker/local 材料形状足够进入人工复核，不触发 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；它不是真实 delivery、真实 dropoff/cancel completion、真实 fixed-route/Nav2、真实路线采集、HIL、真实手机设备或 Objective 5 external proof。
 
+### 5.11 route/task field-run console
+
+completion signal 之后，PC/operator 还需要一份可直接查看的现场运行准备 console。`pc-tools/evidence/route_task_field_run_console.py` 只读 execution pack、route status/replay、task record 和 completion signal，生成现场准备计划、采集清单、same `evidence_ref` verdict、robot diagnostics 只读摘要和 mobile readonly 摘要：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_console.py \
+  --execution-pack-json /tmp/route_task_field_run_execution_pack.json \
+  --route-status-json /tmp/route_status.json \
+  --task-record-json /tmp/task_record.json \
+  --completion-signal-json /tmp/route_task_completion_signal.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_run_console.v1`，证据边界固定为 `software_proof_docker_route_task_field_run_console_gate`。顶层固定包含 `schema_version=1`、`same_evidence_ref_required=true`、`console_verdict`、`field_run_plan`、`capture_checklist`、`execution_pack_summary`、`route_status_summary`、`task_record_summary`、`completion_signal_summary`、`dropoff_completion`、`cancel_completion`、`operator_next_steps`、`robot_diagnostics_summary`、`mobile_readonly_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+`field_run_materials_prepared_not_proven` 只表示 Docker/local console 已把同一 `evidence_ref` 的四份材料整理成 operator-facing 计划和采集模板。它不表示真实 Nav2/fixed-route 已运行，不表示真实路线采集、WAVE ROVER 运动、真实 serial/UART feedback、真实 HIL、真实 dropoff/cancel completion、delivery success、真实手机设备或 Objective 5 外部云/4G/OSS/CDN/DB/queue proof。
+
+该 CLI 不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G。缺 execution pack、route status、task record 或 completion signal、坏 JSON、unsupported schema/boundary、`evidence_ref` mismatch、unsafe summary、`primary_actions_enabled=true` 或输入含 `delivery_success=true` 时，console 必须 fail closed，并保留 `not_proven`、`primary_actions_enabled=false`、`delivery_success=false` 和修复用的 `operator_next_steps`。
+
 ## 6. Debug Web
 
 ### 6.1 Onboard ROS debug page

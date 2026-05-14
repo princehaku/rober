@@ -242,6 +242,35 @@ python3 pc-tools/evidence/route_task_completion_signal.py \
 
 该 completion signal gate 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；它不是真实 delivery、真实 dropoff/cancel completion、真实 fixed-route/Nav2、真实路线采集、HIL、真实手机设备或 O5 external proof。缺 route/task/summary 必需材料、坏 JSON、unsupported schema、`evidence_ref` mismatch、unsafe phone summary、输入含 `delivery_success=true`，或状态机进入 dropoff/cancel 但缺对应 completion material 时，CLI 会 fail closed，保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
 
+## route/task field-run console
+
+`pc-tools/evidence/route_task_field_run_console.py` 只读上一轮 execution pack、fixed-route status/replay、task record 和 completion signal，把它们整理成 PC/operator-facing 的现场运行准备 console：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_console.py \
+  --execution-pack-json /tmp/route_task_field_run_execution_pack.json \
+  --route-status-json /tmp/route_status.json \
+  --task-record-json /tmp/task_record.json \
+  --completion-signal-json /tmp/route_task_completion_signal.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_run_console.json
+```
+
+需要直接给 diagnostics、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_console.py \
+  --execution-pack-json /tmp/route_task_field_run_execution_pack.json \
+  --route-status-json /tmp/route_status.json \
+  --task-record-json /tmp/task_record.json \
+  --completion-signal-json /tmp/route_task_completion_signal.json \
+  --once-json
+```
+
+输出 `schema=trashbot.route_task_field_run_console.v1`、`schema_version=1`、`evidence_boundary=software_proof_docker_route_task_field_run_console_gate`、`same_evidence_ref_required=true`、`console_verdict`、`field_run_plan`、`capture_checklist`、`execution_pack_summary`、`route_status_summary`、`task_record_summary`、`completion_signal_summary`、`dropoff_completion`、`cancel_completion`、`operator_next_steps`、`robot_diagnostics_summary`、`mobile_readonly_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。`field_run_plan` 是操作员准备顺序，`capture_checklist` 是下一次真实现场材料采集模板；两者都只要求沿用同一 `evidence_ref`，不会访问运行时系统。
+
+该 field-run console 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；`field_run_materials_prepared_not_proven` 只表示本地材料可读、schema/boundary 支持、same `evidence_ref` 对齐且摘要安全。它不是真实 Nav2/fixed-route、真实路线采集、真实 dropoff/cancel completion、HIL、delivery success、真实手机设备或 Objective 5 external proof。缺 execution pack、route status、task record 或 completion signal、坏 JSON、unsupported schema/boundary、`evidence_ref` mismatch、unsafe summary、`primary_actions_enabled=true` 或输入含 `delivery_success=true` 时，CLI 会 fail closed，保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

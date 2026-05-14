@@ -132,6 +132,7 @@ h2 {
 .route-review-panel,
 .pc-route-debug-panel,
 .route-field-run-panel,
+.route-field-run-console-panel,
 .route-field-run-intake-panel,
 .route-field-run-review-panel,
 .route-field-run-execution-pack-panel,
@@ -247,6 +248,7 @@ h2 {
 .route-review-grid,
 .pc-route-debug-grid,
 .route-field-run-grid,
+.route-field-run-console-grid,
 .route-field-run-intake-grid,
 .route-field-run-review-grid,
 .route-field-run-execution-pack-grid,
@@ -283,6 +285,7 @@ h2 {
 .route-review-grid div,
 .pc-route-debug-grid div,
 .route-field-run-grid div,
+.route-field-run-console-grid div,
 .route-field-run-intake-grid div,
 .route-field-run-review-grid div,
 .route-field-run-execution-pack-grid div,
@@ -370,6 +373,10 @@ dd {
 }
 
 .route-field-run-grid {
+  grid-template-columns: 1fr;
+}
+
+.route-field-run-console-grid {
   grid-template-columns: 1fr;
 }
 

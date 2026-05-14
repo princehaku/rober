@@ -27,6 +27,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_run_readiness,
     summarize_route_task_field_run_review,
     summarize_route_task_completion_signal,
+    summarize_route_task_field_run_console,
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import (
@@ -2552,6 +2553,208 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["delivery_success"])
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_route_task_completion_signal_gate", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_run_console_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            console_path = Path(td) / "route_task_field_run_console.json"
+            console_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_console.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_console_gate"
+                        ),
+                        "evidence_ref": "evidence://route-task-field-run-console-1",
+                        "same_evidence_ref_required": True,
+                        "console_verdict": {
+                            "status": "ready",
+                            "verdict": "ready_for_operator_field_run",
+                            "reason": "field-run console can guide metadata capture only",
+                        },
+                        "field_run_plan": {
+                            "status": "ready",
+                            "steps": ["Review route pack", "Capture checklist before claims"],
+                        },
+                        "capture_checklist": {
+                            "status": "ready",
+                            "items": ["route status", "task record", "dropoff/cancel material"],
+                        },
+                        "dropoff_completion": {"status": "not_proven"},
+                        "cancel_completion": {"status": "not_proven"},
+                        "operator_next_steps": [
+                            "Run real field collection before claiming delivery."
+                        ],
+                        "robot_diagnostics_summary": {
+                            "status": "ready",
+                            "reason": "metadata-only route-task field-run console",
+                        },
+                        "mobile_readonly_summary": {
+                            "safe_copy": (
+                                "Route-task field-run console is metadata-only; "
+                                "delivery_success=false and not_proven."
+                            ),
+                            "operator_next_steps": ["Keep primary actions blocked."],
+                        },
+                        "not_proven": ["delivery_success", "real_hil_pass"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_run_console_ref=str(console_path),
+            )
+            summary = payload["route_task_field_run_console"]
+            summary_alias = payload["route_task_field_run_console_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["schema"], "trashbot.route_task_field_run_console_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_run_console_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_field_run_console.v1")
+        self.assertEqual(summary["console_verdict"]["status"], "ready")
+        self.assertEqual(summary["console_verdict"]["verdict"], "ready_for_operator_field_run")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://route-task-field-run-console-1")
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertEqual(summary["field_run_plan"]["status"], "ready")
+        self.assertIn("route status", summary["capture_checklist"]["items"])
+        self.assertEqual(summary["dropoff_completion"]["status"], "not_proven")
+        self.assertEqual(summary["cancel_completion"]["status"], "not_proven")
+        self.assertIn("Keep primary actions blocked.", summary["operator_next_steps"])
+        self.assertEqual(summary["robot_diagnostics_summary"]["status"], "ready")
+        self.assertIn("delivery_success=false", summary["mobile_readonly_summary"]["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("remote_ack", summary["not_proven"])
+        self.assertIn("terminal_ack", summary["not_proven"])
+        self.assertIn("real_dropoff_completion", summary["not_proven"])
+        self.assertIn("real_cancel_completion", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertNotIn(str(console_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_run_console_env_missing_bad_json_unsupported_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            env_path = Path(td) / "route_task_field_run_console_env.json"
+            env_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_console.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_console_gate"
+                        ),
+                        "evidence_ref": "evidence://route-task-field-run-console-2",
+                        "console_verdict": {
+                            "status": "blocked_missing_field_materials",
+                            "verdict": "not_proven",
+                            "reason": "missing field-run capture checklist",
+                        },
+                        "capture_checklist": {
+                            "status": "blocked",
+                            "missing_materials": ["field-run capture checklist"],
+                        },
+                        "mobile_readonly_summary": {
+                            "safe_copy": "Route-task field-run console is metadata-only; delivery_success=false.",
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_CONSOLE")
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RUN_CONSOLE"] = str(env_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_run_console"
+                ]
+            finally:
+                if previous is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RUN_CONSOLE", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RUN_CONSOLE"] = previous
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_field_console.json"
+            missing_summary = summarize_route_task_field_run_console(str(missing_path))
+
+            bad_json_path = Path(td) / "bad_field_console.json"
+            bad_json_path.write_text("{bad-json", encoding="utf-8")
+            bad_json_summary = summarize_route_task_field_run_console(str(bad_json_path))
+
+            unsupported_path = Path(td) / "unsupported_field_console.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_completion_signal.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_completion_signal_gate"
+                        ),
+                        "safe_copy": "Unsupported field-run console is metadata-only; delivery_success=false.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsupported_summary = summarize_route_task_field_run_console(str(unsupported_path))
+
+            unsafe_path = Path(td) / "unsafe_field_console.json"
+            unsafe_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_console.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_console_gate"
+                        ),
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                        "mobile_readonly_summary": {
+                            "safe_copy": "Field-run console confirms delivery success and ACK posted.",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_summary = summarize_route_task_field_run_console(str(unsafe_path))
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    missing_summary,
+                    bad_json_summary,
+                    unsupported_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["console_verdict"]["status"], "blocked_missing_field_materials")
+        self.assertEqual(env_summary["capture_checklist"]["status"], "blocked")
+        self.assertIn("field-run capture checklist", env_summary["capture_checklist"]["missing_materials"])
+        self.assertEqual(missing_summary["console_verdict"]["status"], "missing")
+        self.assertEqual(bad_json_summary["console_verdict"]["status"], "read_error")
+        self.assertEqual(unsupported_summary["console_verdict"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["console_verdict"]["status"], "unsafe_fields")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_route_task_field_run_console_gate", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
