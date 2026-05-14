@@ -2174,6 +2174,121 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         # protocol client 不能从 runbook 执行 metadata-only 回包合成 command id、ACK 或 terminal ACK。
         self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
 
+    def test_validate_command_ignores_mobile_real_device_field_trial_retest_execution_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-mobile-real-device-field-trial-retest-execution",
+            "type": "cancel",
+            "payload": {},
+            "mobile_real_device_field_trial_retest_execution": {
+                "schema": "trashbot.mobile_real_device_field_trial_retest_execution.v1",
+                "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_retest_execution_gate",
+                "retest_step": "operator_repeat_start_check",
+                "safe_to_control": False,
+                "trigger_robot_action": "collect",
+                "cursor_override": "cmd-future",
+                "ack_semantics": "delivery_success",
+                "terminal_ack": "delivered",
+                "delivery_success": True,
+                "dropoff_success": True,
+                "cancel_completed": True,
+                "production_ready": True,
+                "hil_pass": True,
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "mobile_real_device_field_trial_retest_execution_summary": {
+                "schema": "trashbot.mobile_real_device_field_trial_retest_execution_summary.v1",
+                "safe_phone_copy": "现场复测执行记录不是 delivery success。",
+                "next_action": "confirm_dropoff",
+                "terminal_ack": "delivered",
+                "production_app_ready": True,
+                "field_trial_retest_executed": True,
+            },
+            "mobile_real_device_field_trial_retest_execution_copy": {
+                "schema": "trashbot.mobile_real_device_field_trial_retest_execution_copy.v1",
+                "support_refs": [{"kind": "field_trial_retest", "url": "https://user:secret@example.invalid/retest"}],
+                "Authorization": "Bearer must-not-leak",
+                "serial_device": "/dev/ttyUSB0",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-mobile-real-device-field-trial-retest-execution")
+        self.assertEqual(command["type"], "cancel")
+        self.assertEqual(command["payload"], {})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # 现场复测执行是 metadata-only，normalization 只能保留 trashbot.remote.v1 command envelope。
+        self.assertNotIn("mobile_real_device_field_trial_retest_execution", encoded_command)
+        self.assertNotIn("mobile_real_device_field_trial_retest_execution_summary", encoded_command)
+        self.assertNotIn("mobile_real_device_field_trial_retest_execution_copy", encoded_command)
+        self.assertNotIn("software_proof_docker_mobile_real_device_field_trial_retest_execution_gate", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("terminal_ack", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("dropoff_success", encoded_command)
+        self.assertNotIn("cancel_completed", encoded_command)
+        self.assertNotIn("production_ready", encoded_command)
+        self.assertNotIn("production_app_ready", encoded_command)
+        self.assertNotIn("hil_pass", encoded_command)
+        self.assertNotIn("field_trial_retest_executed", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("/dev/ttyUSB0", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("secret", encoded_command)
+
+    def test_mobile_real_device_field_trial_retest_execution_response_metadata_does_not_create_command_or_ack(self):
+        self.cloud.response_extras.update({
+            "command_response": {
+                "mobile_real_device_field_trial_retest_execution": {
+                    "schema": "trashbot.mobile_real_device_field_trial_retest_execution.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_retest_execution_gate",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-field-trial-retest-execution",
+                    "terminal_ack": "delivered",
+                    "delivery_success": True,
+                    "dropoff_success": True,
+                    "cancel_completed": True,
+                    "production_ready": True,
+                    "hil_pass": True,
+                },
+                "mobile_real_device_field_trial_retest_execution_summary": {
+                    "schema": "trashbot.mobile_real_device_field_trial_retest_execution_summary.v1",
+                    "ack_semantics": "delivery_success",
+                    "next_action": "confirm_dropoff",
+                    "production_app_ready": True,
+                },
+                "mobile_real_device_field_trial_retest_execution_copy": {
+                    "schema": "trashbot.mobile_real_device_field_trial_retest_execution_copy.v1",
+                    "safe_to_control": True,
+                    "field_trial_retest_executed": True,
+                },
+            },
+            "status_response": {
+                "mobile_real_device_field_trial_retest_execution_summary": {"delivery_success": True},
+            },
+            "ack_response": {
+                "mobile_real_device_field_trial_retest_execution_copy": {
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                },
+            },
+        })
+        client = RemoteCloudClient(self.base_url, "robot-1", timeout_sec=2)
+
+        status_response = client.post_status(make_status("robot-1", "waiting_for_trash", "ready"))
+        command = client.get_next_command()
+
+        self.assertIsNone(command)
+        self.assertEqual(self.cloud.acks, [])
+        self.assertTrue(status_response["ok"])
+        encoded_status = json.dumps(self.cloud.statuses[0], ensure_ascii=False)
+        self.assertNotIn("mobile_real_device_field_trial_retest_execution", encoded_status)
+        self.assertNotIn("mobile_real_device_field_trial_retest_execution_summary", encoded_status)
+        self.assertNotIn("mobile_real_device_field_trial_retest_execution_copy", encoded_status)
+        self.assertNotIn("software_proof_docker_mobile_real_device_field_trial_retest_execution_gate", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        # protocol client 不能从现场复测执行 metadata-only 回包合成 command id、ACK 或 terminal ACK。
+        self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
+
     def test_validate_command_ignores_mobile_real_device_field_trial_evidence_record_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-mobile-real-device-field-trial-evidence-record",

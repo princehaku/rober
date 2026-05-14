@@ -8,6 +8,16 @@
 
 ## 2026-05-14 系列
 
+更新时间：2026-05-14 14:15 Asia/Shanghai。
+
+### 2026-05-14 14-15｜mobile-field-trial-retest-execution-gate｜O4 field-trial retest execution software proof，手机体验由约 90% 上调到约 91%
+
+`sprints/2026.05.14_14-15_mobile-field-trial-retest-execution-gate` 完成 `software_proof_docker_mobile_real_device_field_trial_retest_execution_gate`：Task A Full-stack 新增 `mobile_real_device_field_trial_retest_execution*` 首屏 panel、summary 和 whitelist-only copy package，把上一轮 evidence verdict 的 `retest_request` / `material_request` 推进成复测执行状态、材料请求、缺口摘要和 execution checklist。Retest execution package 固定 `safe_to_control=false`、`ack_semantics=accepted_processing_only_not_delivery_success`、完整 `not_proven` 和 `software_proof_docker_mobile_real_device_field_trial_retest_execution_gate`；只表达现场复测执行材料链路，不改变 `/api/collect`、`/api/dropoff/confirm`、`/api/cancel` 控制语义。Task A 验证输出 `mobile.test_mobile_web_entrypoint` `Ran 34 tests OK`、`py_compile` pass、`node --check` pass、required `rg` pass、scoped diff check pass。
+
+Task B Robot 新增 retest execution family metadata-only tests/docs，覆盖 `mobile_real_device_field_trial_retest_execution`、`mobile_real_device_field_trial_retest_execution_summary`、`mobile_real_device_field_trial_retest_execution_copy`。Robot fence 证明无 command envelope 时 retest execution metadata 不触发 backend action、ACK POST、cursor advance/persistence、terminal ACK、production readiness、HIL、dropoff/cancel completion 或 delivery success；mixed valid-command 只执行 `trashbot.remote.v1` envelope，不把 retest execution metadata 编入 normalized command、ACK、status、cursor 或 terminal result，不改变 action、target、idempotency、ACK 或 cursor。Task B 验证输出 remote bridge/protocol targeted unittest `Ran 176 tests OK`、`py_compile` pass、required `rg` pass、scoped diff check pass；有一条 Python `ResourceWarning`，但命令退出码为 0。
+
+该证据只支持 Objective 4 从约 90% 保守上调到约 91%，理由是 Docker/local `mobile/web` 已把真实设备现场材料链从 evidence verdict / retest request 推进到可执行记录的 retest execution package，并由 `safe_to_control=false`、ACK 非 delivery success、`not_proven`、phone-safe copy 和 Robot metadata-only fence 限定边界。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1/2/3 不提升。本轮 `software_proof_docker_mobile_real_device_field_trial_retest_execution_gate` 不是真实手机验收、production app、真实 PWA install prompt/user choice、真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL、dropoff/cancel completion 或 delivery success。
+
 更新时间：2026-05-14 13:11 Asia/Shanghai。
 
 ### 2026-05-14 13-14｜mobile-field-trial-evidence-verdict｜O4 field-trial evidence verdict software proof，手机体验由约 89% 上调到约 90%

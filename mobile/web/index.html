@@ -1083,6 +1083,67 @@
         <pre id="mobileRealDeviceFieldTrialEvidenceVerdictSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_evidence_verdict_copy">暂无 mobile_real_device_field_trial_evidence_verdict_copy。</pre>
       </section>
 
+      <section class="real-device-field-trial-retest-execution-panel" aria-labelledby="mobileRealDeviceFieldTrialRetestExecutionTitle">
+        <div class="section-heading">
+          <h2 id="mobileRealDeviceFieldTrialRetestExecutionTitle">现场复测执行</h2>
+          <span id="mobileRealDeviceFieldTrialRetestExecutionBadge" class="gate-badge gate-blocked">blocked_waiting_retest_materials</span>
+        </div>
+        <p id="mobileRealDeviceFieldTrialRetestExecutionCopy" class="message">
+          从 mobile_real_device_field_trial_evidence_verdict 派生 retest execution；它只把 retest/material request 变成现场执行清单，不是真实手机验收或 delivery success。
+        </p>
+        <dl class="real-device-field-trial-retest-execution-grid">
+          <div>
+            <dt>Execution Status</dt>
+            <dd id="mobileRealDeviceFieldTrialRetestExecutionStatus">blocked_waiting_retest_materials</dd>
+          </div>
+          <div>
+            <dt>Retest Request</dt>
+            <dd id="mobileRealDeviceFieldTrialRetestExecutionRetest">按 verdict missing_evidence 补齐后重新执行真实手机 field trial。</dd>
+          </div>
+          <div>
+            <dt>Material Request</dt>
+            <dd id="mobileRealDeviceFieldTrialRetestExecutionMaterial">提交脱敏 real device、production app、PWA prompt/user choice、offline、touch、visual 和 O5 外部材料摘要。</dd>
+          </div>
+          <div>
+            <dt>Missing Evidence</dt>
+            <dd id="mobileRealDeviceFieldTrialRetestExecutionMissing">real_device=not_proven / production_app=not_proven / pwa_prompt=not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Control</dt>
+            <dd id="mobileRealDeviceFieldTrialRetestExecutionSafeControl">safe_to_control=false</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileRealDeviceFieldTrialRetestExecutionAck">accepted_processing_only_not_delivery_success</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileRealDeviceFieldTrialRetestExecutionBoundary">software_proof_docker_mobile_real_device_field_trial_retest_execution_gate</dd>
+          </div>
+          <div>
+            <dt>Source Boundary</dt>
+            <dd id="mobileRealDeviceFieldTrialRetestExecutionSourceBoundary">software_proof_docker_mobile_real_device_field_trial_evidence_verdict_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileRealDeviceFieldTrialRetestExecutionNotProven">真实 iPhone/Android、production app、PWA install prompt/user choice、公网 HTTPS/TLS、4G/SIM、OSS/CDN live、production DB/queue、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <ol id="mobileRealDeviceFieldTrialRetestExecutionChecklist" class="handoff-checklist">
+          <li>
+            <strong>field_trial_retest：not_proven</strong>
+            <em>按 verdict 缺口补齐真实手机复测材料。</em>
+          </li>
+        </ol>
+        <p id="mobileRealDeviceFieldTrialRetestExecutionRecoveryHint" class="hint">retest execution 只安排下一轮现场复测执行；Start Delivery、Confirm Dropoff、Cancel 继续 fail closed。</p>
+        <div class="bundle-copy-row">
+          <button id="generateRealDeviceFieldTrialRetestExecutionButton" type="button">生成 retest execution summary</button>
+          <button id="copyRealDeviceFieldTrialRetestExecutionButton" type="button">复制 retest execution package</button>
+          <span id="mobileRealDeviceFieldTrialRetestExecutionCopyStatus" class="hint">复制只包含 whitelist-only phone-safe retest execution 字段。</span>
+        </div>
+        <pre id="mobileRealDeviceFieldTrialRetestExecutionSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_retest_execution_copy">暂无 mobile_real_device_field_trial_retest_execution_copy。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>

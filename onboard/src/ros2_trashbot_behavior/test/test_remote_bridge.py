@@ -3696,6 +3696,106 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertEqual(self.cloud.status_posts[-1]["state"], "canceling")
             self.assertNotEqual(self.cloud.status_posts[-1]["state"], "completed")
 
+    def test_mobile_real_device_field_trial_retest_execution_metadata_only_response_does_not_move_robot(self):
+        metadata_cases = (
+            (
+                "mobile_real_device_field_trial_retest_execution",
+                {
+                    "schema": "trashbot.mobile_real_device_field_trial_retest_execution.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_retest_execution_gate",
+                    "retest_step": "operator_repeat_start_check",
+                    "safe_to_control": False,
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-field-trial-retest-execution",
+                    "ack_semantics": "delivery_success",
+                    "terminal_ack": "delivered",
+                    "delivery_success": True,
+                    "dropoff_success": True,
+                    "cancel_completed": True,
+                    "production_ready": True,
+                    "hil_pass": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+            (
+                "mobile_real_device_field_trial_retest_execution_summary",
+                {
+                    "schema": "trashbot.mobile_real_device_field_trial_retest_execution_summary.v1",
+                    "safe_phone_copy": "现场复测执行记录只供手机和支持侧复核。",
+                    "next_action": "confirm_dropoff",
+                    "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_retest_execution_gate",
+                    "field_trial_retest_executed": True,
+                    "production_app_ready": True,
+                    "cursor_override": "cmd-field-trial-retest-summary",
+                    "terminal_ack": "delivered",
+                    "delivery_success": True,
+                    "dropoff_success": True,
+                },
+            ),
+            (
+                "mobile_real_device_field_trial_retest_execution_copy",
+                {
+                    "schema": "trashbot.mobile_real_device_field_trial_retest_execution_copy.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_retest_execution_gate",
+                    "support_refs": [{"kind": "field_trial_retest", "url": "https://user:secret@example.invalid/retest"}],
+                    "not_proven": ["production readiness", "HIL", "delivery success"],
+                    "trigger_robot_action": "cancel",
+                    "cursor_override": "cmd-field-trial-retest-copy",
+                    "terminal_ack": "delivered",
+                    "Authorization": "Bearer must-not-leak",
+                    "serial_device": "/dev/ttyUSB0",
+                    "cancel_completed": True,
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.cloud.get_paths.clear()
+                self.backend.calls.clear()
+                self.cloud.response_extras["command_response"] = {metadata_name: metadata}
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+
+                    handled = worker.poll_once()
+
+                    # 现场复测执行 metadata-only 只做手机/支持留痕，不能触发控制、ACK 或游标推进。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertEqual(self.cloud.status_posts[-1]["state"], "waiting_for_trash")
+                    self.assertNotIn(self.cloud.status_posts[-1]["state"], ("loaded_and_ready", "returning", "canceling", "completed"))
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("software_proof_docker_mobile_real_device_field_trial_retest_execution_gate", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("terminal_ack", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("dropoff_success", encoded_status)
+                    self.assertNotIn("cancel_completed", encoded_status)
+                    self.assertNotIn("production_ready", encoded_status)
+                    self.assertNotIn("production_app_ready", encoded_status)
+                    self.assertNotIn("hil_pass", encoded_status)
+                    self.assertNotIn("field_trial_retest_executed", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.assertNotIn("/dev/ttyUSB0", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.assertNotIn("secret", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
     def test_mobile_real_device_field_trial_evidence_record_metadata_only_response_does_not_move_robot(self):
         metadata_cases = (
             (
