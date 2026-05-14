@@ -840,6 +840,62 @@
         <pre id="mobileRealDeviceFieldTrialReviewSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_review_copy">暂无 mobile_real_device_field_trial_review_copy。</pre>
       </section>
 
+      <section class="real-device-field-trial-runbook-execution-panel" aria-labelledby="mobileRealDeviceFieldTrialRunbookExecutionTitle">
+        <div class="section-heading">
+          <h2 id="mobileRealDeviceFieldTrialRunbookExecutionTitle">现场试跑执行清单</h2>
+          <span id="mobileRealDeviceFieldTrialRunbookExecutionBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="mobileRealDeviceFieldTrialRunbookExecutionCopy" class="message">
+          生成 mobile_real_device_field_trial_runbook_execution 执行清单；它只指导下一次真实手机现场试跑采证，不是真实手机验收、真实 PWA prompt、控制放行或 delivery success。
+        </p>
+        <dl class="real-device-field-trial-runbook-execution-grid">
+          <div>
+            <dt>Real Device / App / Prompt</dt>
+            <dd id="mobileRealDeviceFieldTrialRunbookExecutionReadiness">device=not_proven / production_app=not_proven / pwa_prompt=not_proven</dd>
+          </div>
+          <div>
+            <dt>Offline / Touch / Visual</dt>
+            <dd id="mobileRealDeviceFieldTrialRunbookExecutionOfflineTouch">offline=not_proven / touch=not_proven / visual=not_proven</dd>
+          </div>
+          <div>
+            <dt>Material Redaction</dt>
+            <dd id="mobileRealDeviceFieldTrialRunbookExecutionRedaction">phone_safe_review_only</dd>
+          </div>
+          <div>
+            <dt>Open Items</dt>
+            <dd id="mobileRealDeviceFieldTrialRunbookExecutionOpenItems">等待生成 execution checklist。</dd>
+          </div>
+          <div>
+            <dt>Safe Control</dt>
+            <dd id="mobileRealDeviceFieldTrialRunbookExecutionSafeControl">safe_to_control=false</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileRealDeviceFieldTrialRunbookExecutionAck">accepted_processing_only_not_delivery_success</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileRealDeviceFieldTrialRunbookExecutionBoundary">software_proof_docker_mobile_real_device_field_trial_runbook_execution_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileRealDeviceFieldTrialRunbookExecutionNotProven">真实 iPhone/Android、production app、PWA install prompt/user choice、offline、touch、visual、O5、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <ol id="mobileRealDeviceFieldTrialRunbookExecutionChecklist" class="handoff-checklist">
+          <li>
+            <strong>runbook execution checklist：not_proven</strong>
+            <em>执行清单必须覆盖 real device、production app、PWA install prompt、user choice、offline、touch、visual 和 material redaction。</em>
+          </li>
+        </ol>
+        <p id="mobileRealDeviceFieldTrialRunbookExecutionRecoveryHint" class="hint">执行清单只用于下一次现场试跑排程和采证；Start Delivery、Confirm Dropoff、Cancel 继续 fail closed。</p>
+        <div class="bundle-copy-row">
+          <button id="copyRealDeviceFieldTrialRunbookExecutionButton" type="button">复制 runbook execution package</button>
+          <span id="mobileRealDeviceFieldTrialRunbookExecutionCopyStatus" class="hint">复制内容只包含 whitelist-only phone-safe execution 字段。</span>
+        </div>
+        <pre id="mobileRealDeviceFieldTrialRunbookExecutionSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_runbook_execution_copy">暂无 mobile_real_device_field_trial_runbook_execution_copy。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>
