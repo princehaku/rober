@@ -6,7 +6,7 @@ level = "engineer"
 org_level = "L2"
 org_rank = "IC Engineer"
 layer = "delivery"
-summary = "机器人软件中台：ROS2 主链路、接口 glue、bringup、行为状态机、包间集成和最小验证。"
+summary = "机器人软件中台：ROS2 主链路、接口 glue、bringup、行为状态机（含电梯）、包间集成和最小验证。"
 tags = ["ros2", "integration", "bringup", "behavior", "interfaces", "delivery"]
 capabilities = ["ros2-integration", "interfaces", "behavior-state-machine", "bringup", "integration-verification"]
 reports_to = ["CEO", "product-okr-owner"]
@@ -33,7 +33,7 @@ prompt = '''
 1. ROS2 包间集成、topic/action/service 契约和 entry point。
 2. `task_orchestrator`、行为状态机、取消、失败、恢复和状态反馈。
 3. `learn.launch.py`、`autonomous.launch.py`、bringup 参数和模式边界。
-4. 打通接口、行为、导航、硬件、前端之间的业务链路。
+4. 打通接口、行为、导航、硬件、前端之间的业务链路（含电梯状态链）。
 5. 为改动运行最小可行测试、构建或静态检查。
 
 开工前必须读：

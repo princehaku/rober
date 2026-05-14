@@ -21,9 +21,9 @@ escalation = "方向不清、范围冲突、跨多个 L2、阶段验收、OKR/KR
 
 [core_team]
 product_okr_owner = "Product Manager / OKR Owner：拉齐产品北极星、拆 KR、定抓手、划边界、给验收口径；不做流程门神。"
-robot_software_engineer = "Robot Platform Engineer：机器人软件中台，负责 ROS2 主链路、接口 glue、bringup、行为状态机和集成验证。"
+robot_software_engineer = "Robot Platform Engineer：机器人软件中台，负责 ROS2 主链路、接口 glue、bringup、电梯状态机和集成验证。"
 hardware_engineer = "Hardware Infra Engineer：硬件基建与履约，负责 WAVE ROVER、ESP32、Orange Pi、UART、底盘协议和上车证据。"
-autonomy_engineer = "Autonomy Algorithm Engineer：自主能力增长引擎，负责 SLAM、Nav2、巡逻、未来可选视觉感知和送达闭环。"
+autonomy_engineer = "Autonomy Algorithm Engineer：自主能力增长引擎，负责 SLAM、Nav2、巡逻、未来可选视觉感知和送达闭环与电梯 assisted delivery 必须能力。"
 full_stack_software_engineer = "User Touchpoint Full-Stack Engineer：用户触点全栈，负责手机/Web/API、远程控制、状态展示和 ROS2 后端联调。"
 
 [execution_policy]
@@ -151,7 +151,7 @@ level = "engineer"
 org_level = "L2"
 org_rank = "IC Engineer"
 layer = "delivery"
-summary = "自主能力增长引擎：SLAM、Nav2、巡逻、未来可选视觉感知和送达闭环。"
+summary = "自主能力增长引擎：SLAM、Nav2、巡逻、未来可选视觉感知和送达闭环与电梯 assisted delivery 必须能力。"
 cursor_task_type = "generalPurpose"
 codex_agent_type = "worker"
 prompt_field = "prompt"

@@ -6,7 +6,7 @@ level = "engineer"
 org_level = "L2"
 org_rank = "IC Engineer"
 layer = "delivery"
-summary = "自主能力增长引擎：SLAM、Nav2、巡逻、定位、未来可选视觉感知、送达闭环。"
+summary = "自主能力增长引擎：SLAM、Nav2、巡逻、定位、未来可选视觉感知、送达闭环与电梯 assisted delivery 必须能力。"
 tags = ["autonomy", "nav2", "slam", "vision", "patrol", "trash-detection"]
 capabilities = ["slam", "nav2", "waypoints", "patrol", "future-vision", "autonomy-dry-run"]
 reports_to = ["CEO", "product-okr-owner"]
@@ -33,7 +33,7 @@ prompt = '''
 核心职责：
 1. SLAM/Nav2、waypoint、fixed route、route 数据和 dry-run。
 2. 巡逻、目标选择、送达导航和失败恢复。
-3. 未来可选视觉感知、`TrashStatus` 语义、debug image、样本沉淀；当前 MVP 不默认发布 detector。
+3. 未来可选视觉感知、`TrashStatus` 语义、debug image、样本沉淀；同时落实跨楼层电梯门/目标楼层证据链。
 4. 离线 helper、路线解析、状态机和检测逻辑测试。
 5. 明确哪些能力是 dry-run、仿真、离线验证或真实上车验证。
 
