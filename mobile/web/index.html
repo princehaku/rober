@@ -273,6 +273,47 @@
         <p id="routeTaskFieldRunIntakeHint" class="hint">Field-run intake crosscheck 只读展示；不触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
       </section>
 
+      <section class="route-field-run-review-panel" aria-labelledby="routeTaskFieldRunReviewTitle">
+        <div class="section-heading">
+          <h2 id="routeTaskFieldRunReviewTitle">路线任务现场复盘 Console</h2>
+          <span id="routeTaskFieldRunReviewBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="routeTaskFieldRunReviewCopy" class="message">
+          等待后端提供 route_task_field_run_review 的 phone-safe review 摘要。
+        </p>
+        <dl class="route-field-run-review-grid">
+          <div>
+            <dt>Review Decision</dt>
+            <dd id="routeTaskFieldRunReviewDecision">blocked/not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="routeTaskFieldRunReviewEvidenceRef">not_provided</dd>
+          </div>
+          <div>
+            <dt>Missing / Mismatch</dt>
+            <dd id="routeTaskFieldRunReviewMissingMismatch">等待 missing/mismatch 摘要。</dd>
+          </div>
+          <div>
+            <dt>Commands To Rerun</dt>
+            <dd id="routeTaskFieldRunReviewCommands">等待 commands_to_rerun 摘要。</dd>
+          </div>
+          <div>
+            <dt>Operator Next Steps</dt>
+            <dd id="routeTaskFieldRunReviewNextSteps">等待 operator_next_steps 摘要。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="routeTaskFieldRunReviewBoundary">software_proof_docker_route_task_field_run_review_console_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="routeTaskFieldRunReviewNotProven">真实路线、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="routeTaskFieldRunReviewHint" class="hint">Field-run review console 只读展示；不触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
+      </section>
+
       <section class="cloud-panel" aria-labelledby="cloudReadinessTitle">
         <div class="section-heading">
           <h2 id="cloudReadinessTitle">云中转状态</h2>

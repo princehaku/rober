@@ -23,6 +23,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_rehearsal_operator_review,
     summarize_route_task_field_run_intake,
     summarize_route_task_field_run_readiness,
+    summarize_route_task_field_run_review,
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import (
@@ -1747,6 +1748,214 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(missing_summary["delivery_success"])
         self.assertFalse(unsupported_summary["ack_post_allowed"])
         self.assertFalse(unsafe_summary["cursor_updates_allowed"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_run_review_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            review_path = Path(td) / "route_task_field_run_review.json"
+            review_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_review_console.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_review_console_gate"
+                        ),
+                        "overall_status": "ready_for_operator_review",
+                        "review_decision": "needs_operator_review",
+                        "evidence_ref": "evidence://route-task-field-run-review-1",
+                        "same_evidence_ref_required": True,
+                        "missing_materials": ["real HIL packet"],
+                        "mismatch_reasons": ["mobile summary still missing"],
+                        "commands_to_rerun": [
+                            "python3 pc-tools/evidence/route_task_field_run_review.py --once-json"
+                        ],
+                        "operator_next_steps": ["Review missing material list before a real field run."],
+                        "phone_safe_summary": {
+                            "availability": {
+                                "status": "available",
+                                "reason": "metadata-only review report ready for support",
+                            },
+                            "safe_copy": (
+                                "Route-task field-run review is metadata-only; "
+                                "not delivery success and not HIL."
+                            ),
+                        },
+                        "raw_review_log": f"{td}/raw-review.json",
+                        "not_proven": ["delivery_success", "real_hil_pass"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_run_review_ref=str(review_path),
+            )
+            summary = payload["route_task_field_run_review"]
+            summary_alias = payload["route_task_field_run_review_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["overall_status"], "ready_for_operator_review")
+        self.assertEqual(summary["state"], "available")
+        self.assertEqual(summary["schema"], "trashbot.route_task_field_run_review_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_run_review_console_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_field_run_review_console.v1")
+        self.assertEqual(summary["availability"]["status"], "available")
+        self.assertEqual(summary["evidence_ref"], "evidence://route-task-field-run-review-1")
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertEqual(summary["review"]["decision"], "needs_operator_review")
+        self.assertIn("real HIL packet", summary["review"]["missing_materials"])
+        self.assertIn("mobile summary still missing", summary["review"]["mismatch_reasons"])
+        self.assertIn("route_task_field_run_review.py", summary["review"]["commands_to_rerun"][0])
+        self.assertIn("Review missing material list", summary["review"]["operator_next_steps"][0])
+        self.assertIn("metadata-only", summary["safe_phone_copy"])
+        self.assertIn("not delivery success", summary["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("ack_post", summary["not_proven"])
+        self.assertIn("cursor_advance_or_persistence", summary["not_proven"])
+        self.assertIn("terminal_ack", summary["not_proven"])
+        self.assertIn("production_readiness", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["persistence_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["production_ready"])
+        self.assertFalse(summary["dropoff_completion"])
+        self.assertFalse(summary["cancel_completion"])
+        for forbidden in (
+            str(review_path),
+            str(Path(td)),
+            "raw-review.json",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_route_task_field_run_review_env_missing_unsupported_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            env_path = Path(td) / "route_task_field_run_review_env.json"
+            env_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_review_console.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_review_console_gate"
+                        ),
+                        "overall_status": "blocked_mismatch",
+                        "review_decision": "rerun_required",
+                        "evidence_ref": "evidence://route-task-field-run-review-2",
+                        "mismatch_reasons": ["intake report mismatch"],
+                        "commands_to_rerun": ["collect route status and review report again"],
+                        "phone_safe_summary": {
+                            "availability": {
+                                "status": "blocked",
+                                "reason": "review mismatch",
+                            },
+                            "safe_copy": "Route-task field-run review is metadata-only; not_proven.",
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_console = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW_CONSOLE")
+            previous_review = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW")
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW_CONSOLE"] = str(env_path)
+            os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW", None)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_run_review"
+                ]
+            finally:
+                if previous_console is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW_CONSOLE", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW_CONSOLE"] = previous_console
+                if previous_review is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW"] = previous_review
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_review.json"
+            missing_summary = summarize_route_task_field_run_review(str(missing_path))
+
+            unsupported_path = Path(td) / "unsupported_review.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_intake_crosscheck.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_intake_crosscheck_gate"
+                        ),
+                        "safe_copy": "Unsupported review is metadata-only; not delivery success.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsupported_summary = summarize_route_task_field_run_review(str(unsupported_path))
+
+            unsafe_path = Path(td) / "unsafe_review.json"
+            unsafe_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_run_review_console.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_run_review_console_gate"
+                        ),
+                        "overall_status": "ready_for_operator_review",
+                        "review_decision": "approved",
+                        "production_ready": True,
+                        "phone_safe_summary": {
+                            "safe_copy": "Review confirms delivery success and ACK posted.",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_summary = summarize_route_task_field_run_review(str(unsafe_path))
+            encoded = json.dumps(
+                [env_summary, missing_summary, unsupported_summary, unsafe_summary],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["overall_status"], "blocked_mismatch")
+        self.assertEqual(env_summary["state"], "blocked")
+        self.assertEqual(env_summary["review"]["decision"], "rerun_required")
+        self.assertIn("intake report mismatch", env_summary["review"]["mismatch_reasons"])
+        self.assertEqual(missing_summary["state"], "missing")
+        self.assertEqual(unsupported_summary["state"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["state"], "unsafe_fields")
+        self.assertIn("software_proof_docker_route_task_field_run_review_console_gate", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertFalse(missing_summary["delivery_success"])
+        self.assertFalse(unsupported_summary["ack_post_allowed"])
+        self.assertFalse(unsafe_summary["cursor_updates_allowed"])
+        self.assertFalse(unsafe_summary["production_ready"])
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
         self.assertNotIn("secret-token", encoded)

@@ -95,6 +95,13 @@ ROUTE_TASK_FIELD_RUN_INTAKE_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RUN_INTAKE_GATE = (
     "software_proof_docker_route_task_field_run_intake_crosscheck_gate"
 )
+ROUTE_TASK_FIELD_RUN_REVIEW_SCHEMA = "trashbot.route_task_field_run_review_console.v1"
+ROUTE_TASK_FIELD_RUN_REVIEW_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_run_review_summary.v1"
+)
+ROUTE_TASK_FIELD_RUN_REVIEW_GATE = (
+    "software_proof_docker_route_task_field_run_review_console_gate"
+)
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -212,6 +219,38 @@ def _route_task_field_run_intake_not_proven(intake=None):
         "wave_rover_motion",
         "real_serial_or_uart_feedback",
         "real_hil_pass",
+        "dropoff_or_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_run_review_not_proven(review=None, phone_summary=None):
+    # review console 是人工复核摘要，不参与控制面；所有真实动作、ACK、HIL 和交付结论都必须保留未证明。
+    review = review if isinstance(review, dict) else {}
+    phone_summary = phone_summary if isinstance(phone_summary, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(review.get("not_proven"), list):
+        source_values.extend(review.get("not_proven"))
+    if isinstance(phone_summary.get("not_proven"), list):
+        source_values.extend(phone_summary.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "ack_post",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "production_readiness",
         "dropoff_or_cancel_completion",
         "delivery_success",
         "objective_5_external_proof",
@@ -401,6 +440,56 @@ def _default_route_task_field_run_intake_summary(path, state="not_configured", r
     }
 
 
+def _default_route_task_field_run_review_summary(path, state="not_configured", read_error=""):
+    # review console 只把 Autonomy 产出的人工复核报告变成 diagnostics 摘要；默认必须保持控制面全关。
+    return {
+        "schema": ROUTE_TASK_FIELD_RUN_REVIEW_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RUN_REVIEW_GATE,
+        "overall_status": "blocked",
+        "availability": {
+            "status": "blocked",
+            "reason": "route-task field-run review report is not configured",
+        },
+        "state": state,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "review_ref": _safe_route_task_rehearsal_ref(path),
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "review": {
+            "decision": "not_proven",
+            "missing_materials": [],
+            "mismatch_reasons": [],
+            "commands_to_rerun": [],
+            "operator_next_steps": [],
+        },
+        "phone_safe_summary": {},
+        "not_proven": _route_task_field_run_review_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": "Route-task field-run review is not configured; this is metadata-only and not delivery success.",
+        "safe_phone_copy": "Route-task field-run review is not configured; this is metadata-only and not delivery success.",
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -453,6 +542,10 @@ def _route_task_field_run_readiness_has_unsafe_fields(value, key_path=""):
         "terminal_ack_allowed",
         "nav2_triggered",
         "hil_pass",
+        "production_ready",
+        "collect_triggered",
+        "dropoff_triggered",
+        "cancel_triggered",
         "dropoff_completion",
         "cancel_completion",
     }
@@ -534,6 +627,10 @@ def _route_task_field_run_intake_has_unsafe_control_claims(value):
         "terminal_ack_allowed",
         "nav2_triggered",
         "hil_pass",
+        "production_ready",
+        "collect_triggered",
+        "dropoff_triggered",
+        "cancel_triggered",
         "dropoff_completion",
         "cancel_completion",
     }
@@ -1500,6 +1597,198 @@ def summarize_route_task_field_run_intake(path):
                 "availability": {
                     "status": "blocked",
                     "reason": "unsafe intake summary fields",
+                },
+            }
+        )
+        return summary
+
+    blocked_statuses = {
+        "",
+        "blocked",
+        "blocked_missing_material",
+        "blocked_mismatch",
+        "missing",
+        "mismatch",
+        "read_error",
+        "not_proven",
+    }
+    status_text = str(overall_status or "").strip().lower()
+    summary["state"] = "blocked" if status_text in blocked_statuses else "available"
+    return summary
+
+
+def summarize_route_task_field_run_review(path):
+    """构建 route-task field-run review console 的 phone/support-safe 摘要。"""
+    review_path = os.path.expanduser(str(path or ""))
+    summary = _default_route_task_field_run_review_summary(
+        review_path,
+        read_error="route-task field-run review report is not configured",
+    )
+    if not review_path:
+        return summary
+    if not os.path.exists(review_path):
+        summary.update(
+            {
+                "state": "missing",
+                "read_error": "route-task field-run review report not found",
+                "safe_copy": "Route-task field-run review report is missing; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field-run review report is missing; metadata remains blocked/not_proven.",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "review report missing",
+                },
+            }
+        )
+        return summary
+
+    summary["exists"] = True
+    try:
+        with open(review_path, "r", encoding="utf-8") as f:
+            review = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        summary.update(
+            {
+                "state": "read_error",
+                "read_error": _redact_route_task_rehearsal_text(
+                    f"failed reading route-task field-run review report: {exc}"
+                ),
+                "safe_copy": "Route-task field-run review report could not be read; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field-run review report could not be read; metadata remains blocked/not_proven.",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "review JSON read error",
+                },
+            }
+        )
+        return summary
+
+    if not isinstance(review, dict):
+        summary.update(
+            {
+                "state": "read_error",
+                "read_error": "route-task field-run review JSON must be an object",
+                "safe_copy": "Route-task field-run review shape is invalid; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field-run review shape is invalid; metadata remains blocked/not_proven.",
+            }
+        )
+        return summary
+
+    # Task A 可能输出 phone_safe_summary，也可能为了兼容使用既有 phone_support_safe_summary 或同名 summary。
+    phone_summary = {}
+    for candidate in (
+        review.get("phone_safe_summary"),
+        review.get("phone_support_safe_summary"),
+        review.get("route_task_field_run_review_summary"),
+        review.get("route_task_field_run_review"),
+    ):
+        if isinstance(candidate, dict):
+            phone_summary = candidate
+            break
+    source_schema = str(review.get("schema") or "")
+    source_boundary = str(review.get("evidence_boundary") or "")
+    overall_status = _redact_route_task_rehearsal_text(
+        phone_summary.get("overall_status") or review.get("overall_status") or "blocked"
+    )
+    review_decision = _redact_route_task_rehearsal_text(
+        phone_summary.get("review_decision") or review.get("review_decision") or "not_proven"
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        phone_summary.get("safe_copy")
+        or phone_summary.get("safe_phone_copy")
+        or review.get("safe_copy")
+        or review.get("safe_phone_copy")
+        or "Route-task field-run review is metadata-only; not delivery success."
+    )
+    availability = (
+        phone_summary.get("availability")
+        if isinstance(phone_summary.get("availability"), dict)
+        else review.get("availability") if isinstance(review.get("availability"), dict) else {}
+    )
+    missing_materials = _safe_route_task_rehearsal_list(
+        phone_summary.get("missing_materials")
+        if isinstance(phone_summary.get("missing_materials"), list)
+        else review.get("missing_materials")
+    )
+    mismatch_reasons = _safe_route_task_rehearsal_list(
+        phone_summary.get("mismatch_reasons")
+        if isinstance(phone_summary.get("mismatch_reasons"), list)
+        else review.get("mismatch_reasons")
+    )
+    commands_to_rerun = _safe_route_task_rehearsal_list(
+        phone_summary.get("commands_to_rerun")
+        if isinstance(phone_summary.get("commands_to_rerun"), list)
+        else review.get("commands_to_rerun")
+    )
+    operator_next_steps = _safe_route_task_rehearsal_list(
+        phone_summary.get("operator_next_steps")
+        if isinstance(phone_summary.get("operator_next_steps"), list)
+        else review.get("operator_next_steps")
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": review.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "overall_status": overall_status or "blocked",
+            "availability": _safe_pc_route_debug_dict(availability)
+            or {
+                "status": overall_status or "blocked",
+                "reason": "review summary consumed without explicit availability",
+            },
+            "evidence_ref": _safe_route_task_rehearsal_ref(
+                phone_summary.get("evidence_ref") or review.get("evidence_ref", "")
+            ),
+            "same_evidence_ref_required": bool(
+                phone_summary.get(
+                    "same_evidence_ref_required",
+                    review.get("same_evidence_ref_required", True),
+                )
+            ),
+            "review": {
+                "decision": review_decision or "not_proven",
+                "missing_materials": missing_materials,
+                "mismatch_reasons": mismatch_reasons,
+                "commands_to_rerun": commands_to_rerun,
+                "operator_next_steps": operator_next_steps,
+            },
+            "phone_safe_summary": _safe_pc_route_debug_dict(phone_summary),
+            "not_proven": _route_task_field_run_review_not_proven(review, phone_summary),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "read_error": "",
+        }
+    )
+    if source_schema != ROUTE_TASK_FIELD_RUN_REVIEW_SCHEMA or source_boundary != ROUTE_TASK_FIELD_RUN_REVIEW_GATE:
+        summary.update(
+            {
+                "overall_status": "blocked",
+                "state": "unsupported_schema",
+                "read_error": "route-task field-run review schema or evidence boundary is unsupported",
+                "safe_copy": "Route-task field-run review is not a supported diagnostics source; no delivery result is proven.",
+                "safe_phone_copy": "Route-task field-run review is not a supported diagnostics source; no delivery result is proven.",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+            }
+        )
+        return summary
+
+    if (
+        _route_task_field_run_readiness_has_unsafe_fields(phone_summary)
+        or _route_task_field_run_intake_has_unsafe_control_claims(review)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "overall_status": "blocked",
+                "state": "unsafe_fields",
+                "read_error": "route-task field-run review contains unsafe summary fields or control claims",
+                "safe_copy": "Route-task field-run review was blocked because summary fields could expose raw/control data or imply delivery success.",
+                "safe_phone_copy": "Route-task field-run review was blocked because summary fields could expose raw/control data or imply delivery success.",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "unsafe review summary fields",
                 },
             }
         )
@@ -2633,6 +2922,7 @@ def build_diagnostics_payload(
     pc_route_debug_console_ref="",
     route_task_field_run_readiness_ref="",
     route_task_field_run_intake_ref="",
+    route_task_field_run_review_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -2697,6 +2987,11 @@ def build_diagnostics_payload(
         route_task_field_run_intake_ref
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_INTAKE", "")
     )
+    route_task_field_run_review_summary = summarize_route_task_field_run_review(
+        route_task_field_run_review_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW_CONSOLE", "")
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW", "")
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -2743,6 +3038,8 @@ def build_diagnostics_payload(
         route_task_field_run_readiness_summary=route_task_field_run_readiness_summary,
         route_task_field_run_intake=route_task_field_run_intake_summary,
         route_task_field_run_intake_summary=route_task_field_run_intake_summary,
+        route_task_field_run_review=route_task_field_run_review_summary,
+        route_task_field_run_review_summary=route_task_field_run_review_summary,
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),
