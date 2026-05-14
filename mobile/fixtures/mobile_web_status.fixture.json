@@ -460,6 +460,76 @@
       "delivery success"
     ]
   },
+  "mobile_pwa_install_prompt_evidence_export": {
+    "schema": "trashbot.mobile_pwa_install_prompt_evidence_export.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.mobile_pwa_install_prompt_evidence_export_summary.v1",
+    "copy_schema": "trashbot.mobile_pwa_install_prompt_evidence_export_copy.v1",
+    "source": "mobile_web",
+    "source_layer": "mobile_pwa_install_prompt_event_capture",
+    "overall_status": "blocked",
+    "install_prompt_capture_status": "missing",
+    "install_prompt_user_choice": "not_proven",
+    "appinstalled_status": "not_proven",
+    "display_mode": "browser",
+    "manifest_present": true,
+    "service_worker_status": "registered_or_pending",
+    "client_reference": "mobile_web_pwa_install_export_fixture",
+    "client_timestamp": "2026-05-14T18:19:00+08:00",
+    "safe_to_control": false,
+    "safe_phone_copy": "PWA 安装提示导出 blocked-by-design：fixture 只导出 whitelist-only phone-safe metadata，不证明真实安装提示、production app、HIL 或 delivery success。",
+    "recovery_hint": "请在真实手机/browser 环境补齐 beforeinstallprompt、userChoice 和 appinstalled 现场材料；Start、Confirm、Cancel 继续 fail closed。",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "真实 install prompt userChoice",
+      "O5 external proof",
+      "HIL",
+      "delivery success"
+    ]
+  },
+  "mobile_pwa_install_prompt_evidence_export_summary": {
+    "schema": "trashbot.mobile_pwa_install_prompt_evidence_export_summary.v1",
+    "schema_version": 1,
+    "overall_status": "blocked",
+    "safe_phone_copy": "导出摘要只说明可复制现场验收 metadata，不证明真实 PWA install prompt 或 delivery success。",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "delivery success"
+    ]
+  },
+  "mobile_pwa_install_prompt_evidence_export_copy": {
+    "schema": "trashbot.mobile_pwa_install_prompt_evidence_export_copy.v1",
+    "schema_version": 1,
+    "source": "mobile_web",
+    "overall_status": "blocked",
+    "install_prompt_capture_status": "missing",
+    "install_prompt_user_choice": "not_proven",
+    "appinstalled_status": "not_proven",
+    "display_mode": "browser",
+    "manifest_present": true,
+    "service_worker_status": "registered_or_pending",
+    "client_reference": "mobile_web_pwa_install_export_fixture",
+    "client_timestamp": "2026-05-14T18:19:00+08:00",
+    "safe_to_control": false,
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "O5 external proof",
+      "HIL",
+      "delivery success"
+    ],
+    "safe_phone_copy": "whitelist-only export copy：不包含原始事件、robot/internal 字段、凭证、本机路径或完整材料。"
+  },
   "mobile_real_device_evidence_intake": {
     "schema": "trashbot.mobile_real_device_evidence_intake.v1",
     "schema_version": 1,

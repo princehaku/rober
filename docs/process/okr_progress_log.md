@@ -8,6 +8,16 @@
 
 ## 2026-05-14 系列
 
+更新时间：2026-05-14 18:18 Asia/Shanghai。
+
+### 2026-05-14 18-19｜mobile-pwa-install-prompt-evidence-export｜O4 PWA install prompt evidence export software proof，手机体验由约 94% 上调到约 95%
+
+`sprints/2026.05.14_18-19_mobile-pwa-install-prompt-evidence-export` 完成 `software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate`：Task A `full-stack-software-engineer` 更新 `mobile/web/app.js`、`mobile/web/index.html`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/test_mobile_web_entrypoint.py`、`mobile/README.md`、`docs/product/mobile_user_flow.md` 和 sprint evidence，新增 `mobile_pwa_install_prompt_evidence_export*` export UI/copy/download。导出材料优先消费显式 export、event capture、install-prompt evidence、handoff/device/browser support metadata，缺材料时保持 blocked-by-design / `not_proven`；copy/download 共用 whitelist-only JSON，固定 `safe_to_control=false`、`accepted_processing_only_not_delivery_success`、`software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate`，不放行 Start/Confirm/Cancel。Task A 验证输出 `mobile.test_mobile_web_entrypoint` 35 tests OK、`py_compile` pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。
+
+Task B `robot-software-engineer` 更新 `onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge_protocol.py`、`docs/interfaces/ros_contracts.md`，新增 `mobile_pwa_install_prompt_evidence_export*` metadata-only fence。Robot fence 证明纯 metadata response 不触发 collect/dropoff/cancel、ACK POST、cursor advance/persistence、terminal ACK、production readiness、HIL、dropoff/cancel completion 或 delivery success；mixed valid-command 仍只由合法 `trashbot.remote.v1` collect envelope 决定 action/ACK/cursor。Task B 验证输出 targeted remote bridge/protocol unittest `Ran 191 tests OK`、`py_compile` pass、required `rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 4 从约 94% 保守上调到约 95%，理由是 Docker/local `mobile/web` 已把 PWA install prompt 现场材料从事件捕获推进到可复制/下载的验收导出包，并由 `safe_to_control=false`、ACK 非 delivery success、`not_proven`、phone-safe whitelist-only copy、fail-closed 主操作和 Robot metadata-only fence 限定边界。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1/2/3 不提升。本轮不是真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 现场验收、O5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、production worker/migration、Nav2/fixed-route、WAVE ROVER、HIL、dropoff/cancel completion 或 delivery success。
+
 更新时间：2026-05-14 17:20 Asia/Shanghai。
 
 ### 2026-05-14 17-18｜mobile-pwa-install-prompt-event-capture｜O4 PWA install prompt event capture software proof，手机体验由约 93% 上调到约 94%

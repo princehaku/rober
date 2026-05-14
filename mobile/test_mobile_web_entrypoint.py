@@ -142,6 +142,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("mobile_pwa_install_prompt_event_capture", app)
         self.assertIn("mobile_pwa_install_prompt_event_capture_summary", app)
         self.assertIn("mobile_pwa_install_prompt_event_capture_copy", app)
+        self.assertIn("mobile_pwa_install_prompt_evidence_export", app)
+        self.assertIn("mobile_pwa_install_prompt_evidence_export_summary", app)
+        self.assertIn("mobile_pwa_install_prompt_evidence_export_copy", app)
         self.assertIn("mobile_real_device_evidence_intake", app)
         self.assertIn("mobile_real_device_evidence_intake_summary", app)
         self.assertIn("mobile_real_device_evidence_package", app)
@@ -468,32 +471,43 @@ class MobileWebEntrypointTest(unittest.TestCase):
         index = self.read("index.html")
 
         self.assertIn("mobilePwaInstallPromptTitle", index)
-        self.assertIn("PWA 安装提示事件捕获", index)
+        self.assertIn("PWA 安装提示导出", index)
         self.assertIn("mobilePwaInstallPromptCapture", index)
         self.assertIn("mobilePwaInstallPromptOutcome", index)
         self.assertIn("mobilePwaInstallPromptDisplay", index)
         self.assertIn("mobilePwaInstallPromptShell", index)
         self.assertIn("mobilePwaInstallPromptControl", index)
         self.assertIn("copyPwaInstallPromptPackageButton", index)
+        self.assertIn("downloadPwaInstallPromptPackageButton", index)
         self.assertIn("mobilePwaInstallPromptSafeCopy", index)
         self.assertIn("software_proof_docker_mobile_pwa_install_prompt_evidence_gate", app)
-        self.assertIn("software_proof_docker_mobile_pwa_install_prompt_event_capture_gate", index)
+        self.assertIn("software_proof_docker_mobile_pwa_install_prompt_event_capture_gate", app)
         self.assertIn("trashbot.mobile_pwa_install_prompt_evidence.v1", app)
         self.assertIn("trashbot.mobile_pwa_install_prompt_evidence_summary.v1", app)
         self.assertIn("trashbot.mobile_pwa_install_prompt_evidence_package.v1", app)
         self.assertIn("trashbot.mobile_pwa_install_prompt_event_capture.v1", app)
         self.assertIn("trashbot.mobile_pwa_install_prompt_event_capture_summary.v1", app)
         self.assertIn("trashbot.mobile_pwa_install_prompt_event_capture_copy.v1", app)
+        self.assertIn("trashbot.mobile_pwa_install_prompt_evidence_export.v1", app)
+        self.assertIn("trashbot.mobile_pwa_install_prompt_evidence_export_summary.v1", app)
+        self.assertIn("trashbot.mobile_pwa_install_prompt_evidence_export_copy.v1", app)
         self.assertIn("mobilePwaInstallPromptEvidenceFromStatus", app)
         self.assertIn("mobilePwaInstallPromptEventCaptureFromStatus", app)
+        self.assertIn("mobilePwaInstallPromptEvidenceExportFromStatus", app)
         self.assertIn("mobile_pwa_install_prompt_evidence", app)
         self.assertIn("mobile_pwa_install_prompt_evidence_summary", app)
         self.assertIn("mobile_pwa_install_prompt_evidence_package", app)
         self.assertIn("mobile_pwa_install_prompt_event_capture", app)
         self.assertIn("mobile_pwa_install_prompt_event_capture_summary", app)
         self.assertIn("mobile_pwa_install_prompt_event_capture_copy", app)
+        self.assertIn("mobile_pwa_install_prompt_evidence_export", app)
+        self.assertIn("mobile_pwa_install_prompt_evidence_export_summary", app)
+        self.assertIn("mobile_pwa_install_prompt_evidence_export_copy", app)
         self.assertIn("pwaInstallPromptPackageCopyPayload", app)
         self.assertIn("pwaInstallPromptEventCaptureCopyPayload", app)
+        self.assertIn("pwaInstallPromptEvidenceExportCopyPayload", app)
+        self.assertIn("downloadJsonPackage", app)
+        self.assertIn("mobile_pwa_install_prompt_evidence_export_copy.json", app)
         self.assertIn("beforeinstallprompt", app)
         self.assertIn("appinstalled", app)
         self.assertIn("userChoice", app)
@@ -504,7 +518,8 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("linked_device_evidence_capture", app)
         self.assertIn("linked_browser_acceptance_bundle", app)
         self.assertIn("真实 PWA install prompt 通过", app)
-        self.assertIn("安装提示事件捕获只用于验收复现，不是 Start、Confirm 或 Cancel 放行条件", index)
+        self.assertIn("安装提示导出只用于验收复现，不是 Start、Confirm 或 Cancel 放行条件", index)
+        self.assertIn("software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate", index)
         self.assertIn("navigator.clipboard.writeText", app)
         self.assertNotIn("mobilePwaInstallPromptAllowsPrimaryActions", app)
         self.assertNotRegex(app, r"mobilePwaInstallPrompt.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
@@ -1247,6 +1262,37 @@ class MobileWebEntrypointTest(unittest.TestCase):
             payload["mobile_pwa_install_prompt_event_capture_copy"]["schema"],
             "trashbot.mobile_pwa_install_prompt_event_capture_copy.v1",
         )
+        self.assertEqual(
+            payload["mobile_pwa_install_prompt_evidence_export"]["schema"],
+            "trashbot.mobile_pwa_install_prompt_evidence_export.v1",
+        )
+        self.assertEqual(
+            payload["mobile_pwa_install_prompt_evidence_export"]["summary_schema"],
+            "trashbot.mobile_pwa_install_prompt_evidence_export_summary.v1",
+        )
+        self.assertEqual(
+            payload["mobile_pwa_install_prompt_evidence_export"]["copy_schema"],
+            "trashbot.mobile_pwa_install_prompt_evidence_export_copy.v1",
+        )
+        self.assertEqual(
+            payload["mobile_pwa_install_prompt_evidence_export"]["evidence_boundary"],
+            "software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate",
+        )
+        self.assertEqual(payload["mobile_pwa_install_prompt_evidence_export"]["safe_to_control"], False)
+        self.assertEqual(
+            payload["mobile_pwa_install_prompt_evidence_export"]["ack_semantics"],
+            "accepted_processing_only_not_delivery_success",
+        )
+        self.assertEqual(
+            payload["mobile_pwa_install_prompt_evidence_export_summary"]["schema"],
+            "trashbot.mobile_pwa_install_prompt_evidence_export_summary.v1",
+        )
+        self.assertEqual(
+            payload["mobile_pwa_install_prompt_evidence_export_copy"]["schema"],
+            "trashbot.mobile_pwa_install_prompt_evidence_export_copy.v1",
+        )
+        self.assertEqual(payload["mobile_pwa_install_prompt_evidence_export_copy"]["source"], "mobile_web")
+        self.assertIn("not_proven", payload["mobile_pwa_install_prompt_evidence_export_copy"])
         self.assertEqual(
             payload["mobile_real_device_evidence_intake"]["schema"],
             "trashbot.mobile_real_device_evidence_intake.v1",

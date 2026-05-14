@@ -294,6 +294,69 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("Authorization", encoded_command)
         self.assertNotIn("credential_url", encoded_command)
 
+    def test_validate_command_ignores_mobile_pwa_install_prompt_evidence_export_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-pwa-install-prompt-evidence-export",
+            "type": "collect",
+            "payload": {
+                "target": "trash_station",
+                "trash_type": 0,
+                "idempotency_key": "idem-prompt-export",
+            },
+            "mobile_pwa_install_prompt_evidence_export": {
+                "schema": "trashbot.mobile_pwa_install_prompt_evidence_export.v1",
+                "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate",
+                "export_state": "ready_for_copy",
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "terminal_ack": {"state": "acked", "message": "delivered"},
+                "delivery_success": True,
+                "dropoff_success": True,
+                "cancel_completed": True,
+                "production_ready": True,
+                "hil_pass": True,
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "mobile_pwa_install_prompt_evidence_export_summary": {
+                "schema": "trashbot.mobile_pwa_install_prompt_evidence_export_summary.v1",
+                "ack_semantics": "delivery_success",
+                "next_action": "confirm_dropoff",
+                "safe_to_control": True,
+                "production_readiness": "ready",
+            },
+            "mobile_pwa_install_prompt_evidence_export_copy": {
+                "schema": "trashbot.mobile_pwa_install_prompt_evidence_export_copy.v1",
+                "safe_phone_copy": "ACK POST、terminal ACK 和 delivery success 都不是机器人完成证据。",
+                "Authorization": "Bearer must-not-leak",
+                "credential_url": "https://user:secret@example.invalid/prompt-export",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-pwa-install-prompt-evidence-export")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {
+            "target": "trash_station",
+            "trash_type": 0,
+            "idempotency_key": "idem-prompt-export",
+        })
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # Install prompt evidence export 是 PWA 证据导出元数据，normalization 只能保留 command envelope。
+        self.assertNotIn("mobile_pwa_install_prompt_evidence_export", encoded_command)
+        self.assertNotIn("mobile_pwa_install_prompt_evidence_export_summary", encoded_command)
+        self.assertNotIn("mobile_pwa_install_prompt_evidence_export_copy", encoded_command)
+        self.assertNotIn("software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("terminal_ack", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("dropoff_success", encoded_command)
+        self.assertNotIn("cancel_completed", encoded_command)
+        self.assertNotIn("production_ready", encoded_command)
+        self.assertNotIn("hil_pass", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("credential_url", encoded_command)
+
     def test_validate_command_ignores_mobile_device_acceptance_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-mobile-device-acceptance-metadata",
@@ -1318,6 +1381,60 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("software_proof_docker_mobile_current_pwa_retest_browser_proof_gate", encoded_status)
         self.assertNotIn("delivery_success", encoded_status)
         # protocol client 不能从 current PWA retest browser proof metadata-only 回包合成 command id 或 terminal ACK。
+        self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
+
+    def test_mobile_pwa_install_prompt_evidence_export_response_metadata_does_not_create_command_or_ack(self):
+        self.cloud.response_extras.update({
+            "command_response": {
+                "mobile_pwa_install_prompt_evidence_export": {
+                    "schema": "trashbot.mobile_pwa_install_prompt_evidence_export.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate",
+                    "export_state": "ready_for_copy",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-install-prompt-export",
+                    "terminal_ack": {"state": "acked"},
+                    "delivery_success": True,
+                    "dropoff_success": True,
+                    "cancel_completed": True,
+                },
+                "mobile_pwa_install_prompt_evidence_export_summary": {
+                    "schema": "trashbot.mobile_pwa_install_prompt_evidence_export_summary.v1",
+                    "ack_semantics": "delivery_success",
+                    "next_action": "confirm_dropoff",
+                    "production_ready": True,
+                    "hil_pass": True,
+                },
+                "mobile_pwa_install_prompt_evidence_export_copy": {
+                    "schema": "trashbot.mobile_pwa_install_prompt_evidence_export_copy.v1",
+                    "safe_to_control": True,
+                    "Authorization": "Bearer must-not-leak",
+                },
+            },
+            "status_response": {
+                "mobile_pwa_install_prompt_evidence_export_summary": {"delivery_success": True},
+            },
+            "ack_response": {
+                "mobile_pwa_install_prompt_evidence_export_copy": {
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                },
+            },
+        })
+        client = RemoteCloudClient(self.base_url, "robot-1", timeout_sec=2)
+
+        status_response = client.post_status(make_status("robot-1", "waiting_for_trash", "ready"))
+        command = client.get_next_command()
+
+        self.assertIsNone(command)
+        self.assertEqual(self.cloud.acks, [])
+        self.assertTrue(status_response["ok"])
+        encoded_status = json.dumps(self.cloud.statuses[0], ensure_ascii=False)
+        self.assertNotIn("mobile_pwa_install_prompt_evidence_export", encoded_status)
+        self.assertNotIn("mobile_pwa_install_prompt_evidence_export_summary", encoded_status)
+        self.assertNotIn("mobile_pwa_install_prompt_evidence_export_copy", encoded_status)
+        self.assertNotIn("software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        # protocol client 不能从 evidence export metadata-only 回包合成 command id 或 terminal ACK。
         self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
 
     def test_validate_command_ignores_mobile_real_device_evidence_intake_metadata_outside_envelope(self):
