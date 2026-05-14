@@ -385,6 +385,81 @@
       "真实送达"
     ]
   },
+  "mobile_pwa_install_prompt_event_capture": {
+    "schema": "trashbot.mobile_pwa_install_prompt_event_capture.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.mobile_pwa_install_prompt_event_capture_summary.v1",
+    "copy_schema": "trashbot.mobile_pwa_install_prompt_event_capture_copy.v1",
+    "source": "mobile_web_fixture",
+    "overall_status": "blocked",
+    "beforeinstallprompt_status": "missing",
+    "beforeinstallprompt_client_timestamp": "2026-05-14T17:18:00+08:00",
+    "display_mode": "browser",
+    "platform_summary": "fixture_platform_summary",
+    "browser_summary": "chromium_family",
+    "prompt_availability": "blocked_or_missing_browser_event",
+    "user_choice_outcome": "not_proven",
+    "user_choice_client_timestamp": "not_proven",
+    "appinstalled_observed": false,
+    "appinstalled_client_timestamp": "not_proven",
+    "production_app_ready": false,
+    "safe_to_control": false,
+    "safe_phone_copy": "PWA 安装提示事件捕获 blocked-by-design：fixture 没有真实 beforeinstallprompt、userChoice 或 appinstalled 事件。",
+    "recovery_hint": "请在真实浏览器环境继续采集事件；Start、Confirm、Cancel 继续 fail closed。",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_event_capture_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "真实 install prompt userChoice",
+      "真实云/4G",
+      "HIL",
+      "delivery success"
+    ]
+  },
+  "mobile_pwa_install_prompt_event_capture_summary": {
+    "schema": "trashbot.mobile_pwa_install_prompt_event_capture_summary.v1",
+    "schema_version": 1,
+    "safe_phone_copy": "事件捕获摘要只说明 mobile/web 可生成 whitelist-only copy package，不证明真实手机验收。",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_event_capture_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "delivery success"
+    ]
+  },
+  "mobile_pwa_install_prompt_event_capture_copy": {
+    "schema": "trashbot.mobile_pwa_install_prompt_event_capture_copy.v1",
+    "schema_version": 1,
+    "event_capture_schema": "trashbot.mobile_pwa_install_prompt_event_capture.v1",
+    "summary_schema": "trashbot.mobile_pwa_install_prompt_event_capture_summary.v1",
+    "source": "mobile_web_fixture",
+    "overall_status": "blocked",
+    "beforeinstallprompt_status": "missing",
+    "beforeinstallprompt_client_timestamp": "2026-05-14T17:18:00+08:00",
+    "display_mode": "browser",
+    "platform_summary": "fixture_platform_summary",
+    "browser_summary": "chromium_family",
+    "prompt_availability": "blocked_or_missing_browser_event",
+    "user_choice_outcome": "not_proven",
+    "user_choice_client_timestamp": "not_proven",
+    "appinstalled_observed": false,
+    "appinstalled_client_timestamp": "not_proven",
+    "production_app_ready": false,
+    "safe_to_control": false,
+    "safe_phone_copy": "whitelist-only copy package：不包含 raw browser event、raw Promise、完整 UA、robot/internal 字段或凭证。",
+    "recovery_hint": "缺事件时继续 not_proven；该包不新增控制 grant。",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_event_capture_gate",
+    "not_proven": [
+      "真实手机设备/browser",
+      "production app",
+      "真实 PWA install prompt",
+      "delivery success"
+    ]
+  },
   "mobile_real_device_evidence_intake": {
     "schema": "trashbot.mobile_real_device_evidence_intake.v1",
     "schema_version": 1,

@@ -7175,6 +7175,180 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertNotIn("/cmd_vel", encoded_ack)
         self.assertNotIn("DELIVERED", encoded_ack)
 
+    def test_metadata_only_mobile_pwa_install_prompt_event_capture_response_does_not_start_ack_or_persist_cursor(self):
+        metadata_cases = (
+            (
+                "mobile_pwa_install_prompt_event_capture",
+                {
+                    "schema": "trashbot.mobile_pwa_install_prompt_event_capture.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_event_capture_gate",
+                    "event_type": "beforeinstallprompt",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-pwa-install-prompt-event",
+                    "terminal_ack": {"state": "acked", "message": "delivered"},
+                    "delivery_success": True,
+                    "dropoff_success": True,
+                    "cancel_completed": True,
+                    "production_ready": True,
+                    "hil_pass": True,
+                    "raw_ros_topic": "/cmd_vel",
+                },
+            ),
+            (
+                "mobile_pwa_install_prompt_event_capture_summary",
+                {
+                    "schema": "trashbot.mobile_pwa_install_prompt_event_capture_summary.v1",
+                    "capture_status": "software_proof_only",
+                    "safe_to_control": True,
+                    "next_action": "confirm_dropoff",
+                    "ack_semantics": "delivery_success",
+                    "cursor": {"last_terminal_ack_id": "cmd-future"},
+                    "production_readiness": "ready",
+                },
+            ),
+            (
+                "mobile_pwa_install_prompt_event_capture_copy",
+                {
+                    "schema": "trashbot.mobile_pwa_install_prompt_event_capture_copy.v1",
+                    "safe_phone_copy": "ACK POST、terminal ACK 和 delivery success 都只是元数据诱饵。",
+                    "next_action": "cancel",
+                    "Authorization": "Bearer must-not-leak",
+                    "credential_url": "https://user:secret@example.invalid/prompt-event",
+                },
+            ),
+        )
+        for metadata_name, metadata in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    self.backend.calls.clear()
+                    self.cloud.status_posts.clear()
+                    self.cloud.ack_posts.clear()
+                    self.cloud.get_paths.clear()
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {metadata_name: metadata}
+
+                    handled = worker.poll_once()
+
+                    # Install prompt event capture 是手机/PWA 事件元数据；没有 command envelope 时必须保持 fail-closed。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    self.assertEqual(len(self.cloud.status_posts), 1)
+                    self.assertIn(f"last_ack_id=cmd-before-{metadata_name}", self.cloud.get_paths[-1])
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("software_proof_docker_mobile_pwa_install_prompt_event_capture_gate", encoded_status)
+                    self.assertNotIn("trigger_robot_action", encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("terminal_ack", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("dropoff_success", encoded_status)
+                    self.assertNotIn("cancel_completed", encoded_status)
+                    self.assertNotIn("production_ready", encoded_status)
+                    self.assertNotIn("hil_pass", encoded_status)
+                    self.assertNotIn("credential_url", encoded_status)
+                    self.assertNotIn("Authorization", encoded_status)
+                    self.assertNotIn("/cmd_vel", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
+    def test_mobile_pwa_install_prompt_event_capture_metadata_is_ignored_by_valid_collect_envelope(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-event-capture",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras.update({
+                "status_response": {
+                    "mobile_pwa_install_prompt_event_capture": {
+                        "schema": "trashbot.mobile_pwa_install_prompt_event_capture.v1",
+                        "trigger_robot_action": "cancel",
+                        "delivery_success": True,
+                    },
+                },
+                "command_response": {
+                    "mobile_pwa_install_prompt_event_capture": {
+                        "schema": "trashbot.mobile_pwa_install_prompt_event_capture.v1",
+                        "trigger_robot_action": "cancel",
+                        "cursor_override": "cmd-future",
+                        "delivery_success": True,
+                        "dropoff_success": True,
+                        "cancel_completed": True,
+                        "production_ready": True,
+                        "hil_pass": True,
+                        "raw_ros_topic": "/cmd_vel",
+                    },
+                    "mobile_pwa_install_prompt_event_capture_summary": {
+                        "schema": "trashbot.mobile_pwa_install_prompt_event_capture_summary.v1",
+                        "ack_semantics": "delivery_success",
+                        "next_action": "confirm_dropoff",
+                        "terminal_ack": {"state": "acked"},
+                    },
+                    "mobile_pwa_install_prompt_event_capture_copy": {
+                        "schema": "trashbot.mobile_pwa_install_prompt_event_capture_copy.v1",
+                        "Authorization": "Bearer must-not-leak",
+                        "credential_url": "https://user:secret@example.invalid/prompt-event",
+                    },
+                },
+                "ack_response": {
+                    "mobile_pwa_install_prompt_event_capture_summary": {
+                        "schema": "trashbot.mobile_pwa_install_prompt_event_capture_summary.v1",
+                        "delivery_success": True,
+                        "final_state": "DELIVERED",
+                    },
+                },
+            })
+            self.cloud.commands.append({
+                "id": "cmd-pwa-install-prompt-event-collect",
+                "type": "collect",
+                "payload": {
+                    "target": "trash_station",
+                    "trash_type": 0,
+                    "idempotency_key": "idem-event-collect",
+                },
+            })
+
+            self.assertTrue(worker.poll_once())
+
+            self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+            self.assertEqual(worker.last_ack_id, "cmd-pwa-install-prompt-event-collect")
+            cursor_payload = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(cursor_payload["last_terminal_ack_id"], "cmd-pwa-install-prompt-event-collect")
+            ack_payload = self.cloud.ack_posts[0]
+            self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+            self.assertEqual(ack_payload["command_id"], "cmd-pwa-install-prompt-event-collect")
+            self.assertEqual(ack_payload["state"], "acked")
+            self.assertEqual(ack_payload["message"], "collect")
+            encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+            # 有效 collect 混入 install prompt event capture metadata 时，action/ACK/cursor 仍只跟随 command。
+            self.assertNotIn("mobile_pwa_install_prompt_event_capture", encoded_ack)
+            self.assertNotIn("mobile_pwa_install_prompt_event_capture_summary", encoded_ack)
+            self.assertNotIn("mobile_pwa_install_prompt_event_capture_copy", encoded_ack)
+            self.assertNotIn("trigger_robot_action", encoded_ack)
+            self.assertNotIn("cursor_override", encoded_ack)
+            self.assertNotIn("terminal_ack", encoded_ack)
+            self.assertNotIn("delivery_success", encoded_ack)
+            self.assertNotIn("dropoff_success", encoded_ack)
+            self.assertNotIn("cancel_completed", encoded_ack)
+            self.assertNotIn("production_ready", encoded_ack)
+            self.assertNotIn("hil_pass", encoded_ack)
+            self.assertNotIn("Authorization", encoded_ack)
+            self.assertNotIn("credential_url", encoded_ack)
+            self.assertNotIn("/cmd_vel", encoded_ack)
+            self.assertNotIn("DELIVERED", encoded_ack)
+
     def test_public_ingress_tls_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {

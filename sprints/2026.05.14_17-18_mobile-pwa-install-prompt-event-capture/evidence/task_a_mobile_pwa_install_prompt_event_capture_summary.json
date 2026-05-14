@@ -1,0 +1,37 @@
+{
+  "task": "Tech Plan Task A",
+  "schema": "trashbot.mobile_pwa_install_prompt_event_capture.v1",
+  "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_event_capture_gate",
+  "status": "validated",
+  "implemented_fields": [
+    "mobile_pwa_install_prompt_event_capture",
+    "mobile_pwa_install_prompt_event_capture_summary",
+    "mobile_pwa_install_prompt_event_capture_copy"
+  ],
+  "browser_events": [
+    "beforeinstallprompt",
+    "beforeinstallprompt.userChoice",
+    "appinstalled"
+  ],
+  "copy_policy": "whitelist-only phone-safe event metadata; no raw event, raw Promise, complete UA, credentials, robot/internal fields, ROS topics, serial/UART, WAVE ROVER parameters, local paths, artifacts, checksums, tracebacks, or raw robot responses",
+  "control_boundary": {
+    "safe_to_control": false,
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "primary_actions_enabled": false,
+    "start_confirm_cancel_semantics_changed": false
+  },
+  "not_proven": [
+    "real phone acceptance",
+    "production app readiness",
+    "O5 external proof",
+    "HIL",
+    "delivery success"
+  ],
+  "validation": [
+    "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest mobile.test_mobile_web_entrypoint",
+    "PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile mobile/test_mobile_web_entrypoint.py",
+    "node --check mobile/web/app.js",
+    "rg required event-capture and safety terms",
+    "git diff --check scoped to Task A files"
+  ]
+}

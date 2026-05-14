@@ -20,6 +20,7 @@ const MOBILE_DEVICE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_device_evi
 const MOBILE_DEVICE_HANDOFF_SESSION_BOUNDARY = "software_proof_docker_mobile_device_handoff_session_gate";
 const MOBILE_BROWSER_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_browser_acceptance_bundle_gate";
 const MOBILE_PWA_INSTALL_PROMPT_BOUNDARY = "software_proof_docker_mobile_pwa_install_prompt_evidence_gate";
+const MOBILE_PWA_INSTALL_PROMPT_EVENT_CAPTURE_BOUNDARY = "software_proof_docker_mobile_pwa_install_prompt_event_capture_gate";
 const MOBILE_REAL_DEVICE_EVIDENCE_INTAKE_BOUNDARY = "software_proof_docker_mobile_real_device_evidence_intake_gate";
 const MOBILE_REAL_DEVICE_ACCEPTANCE_DECISION_BOUNDARY = "software_proof_docker_mobile_real_device_acceptance_decision_gate";
 const MOBILE_REAL_DEVICE_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_mobile_real_device_review_handoff_gate";
@@ -45,6 +46,9 @@ const ACCEPTANCE_BUNDLE_SCHEMA = "trashbot.mobile_browser_acceptance_bundle.v1";
 const PWA_INSTALL_PROMPT_SCHEMA = "trashbot.mobile_pwa_install_prompt_evidence.v1";
 const PWA_INSTALL_PROMPT_SUMMARY_SCHEMA = "trashbot.mobile_pwa_install_prompt_evidence_summary.v1";
 const PWA_INSTALL_PROMPT_PACKAGE_SCHEMA = "trashbot.mobile_pwa_install_prompt_evidence_package.v1";
+const PWA_INSTALL_PROMPT_EVENT_CAPTURE_SCHEMA = "trashbot.mobile_pwa_install_prompt_event_capture.v1";
+const PWA_INSTALL_PROMPT_EVENT_CAPTURE_SUMMARY_SCHEMA = "trashbot.mobile_pwa_install_prompt_event_capture_summary.v1";
+const PWA_INSTALL_PROMPT_EVENT_CAPTURE_COPY_SCHEMA = "trashbot.mobile_pwa_install_prompt_event_capture_copy.v1";
 const REAL_DEVICE_EVIDENCE_INTAKE_SCHEMA = "trashbot.mobile_real_device_evidence_intake.v1";
 const REAL_DEVICE_EVIDENCE_INTAKE_SUMMARY_SCHEMA = "trashbot.mobile_real_device_evidence_intake_summary.v1";
 const REAL_DEVICE_EVIDENCE_PACKAGE_SCHEMA = "trashbot.mobile_real_device_evidence_package.v1";
@@ -82,7 +86,7 @@ const REAL_DEVICE_FIELD_TRIAL_RETEST_EXECUTION_COPY_SCHEMA = "trashbot.mobile_re
 const REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_SESSION_SCHEMA = "trashbot.mobile_real_device_field_trial_acceptance_session.v1";
 const REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_SESSION_SUMMARY_SCHEMA = "trashbot.mobile_real_device_field_trial_acceptance_session_summary.v1";
 const REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_SESSION_COPY_SCHEMA = "trashbot.mobile_real_device_field_trial_acceptance_session_copy.v1";
-const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|artifact)/i;
+const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|complete artifact|artifact|raw browser event|raw event|raw promise|complete ua|full ua|完整 ua|raw robot response|raw intake json|robot\/internal|internal technical)/i;
 const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
@@ -94,6 +98,9 @@ let latestAcceptanceBundle = null;
 let latestDeviceEvidencePackage = null;
 let latestDeviceHandoffSession = null;
 let latestPwaInstallPromptPackage = null;
+let latestPwaInstallPromptEventCapturePackage = null;
+let deferredPwaInstallPromptEvent = null;
+let pwaInstallPromptEventState = null;
 let latestRealDeviceEvidencePackage = null;
 let latestRealDeviceAcceptanceDecisionPackage = null;
 let latestRealDeviceReviewHandoffPackage = null;
@@ -387,6 +394,28 @@ function mobilePwaInstallPromptEvidenceCandidate(status, readiness, diagnostics)
     diagnosticsReadiness.mobile_pwa_install_prompt_evidence,
     diagnosticsReadiness.mobile_pwa_install_prompt_evidence_summary,
     diagnosticsReadiness.mobile_pwa_install_prompt_evidence_package,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function mobilePwaInstallPromptEventCaptureCandidate(status, readiness, diagnostics) {
+  // event capture 是浏览器事件观测包；兼容 status、phone_readiness 与 diagnostics 三个来源。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const candidates = [
+    status?.mobile_pwa_install_prompt_event_capture,
+    status?.mobile_pwa_install_prompt_event_capture_summary,
+    status?.mobile_pwa_install_prompt_event_capture_copy,
+    readiness?.mobile_pwa_install_prompt_event_capture,
+    readiness?.mobile_pwa_install_prompt_event_capture_summary,
+    readiness?.mobile_pwa_install_prompt_event_capture_copy,
+    diagnostics?.mobile_pwa_install_prompt_event_capture,
+    diagnostics?.mobile_pwa_install_prompt_event_capture_summary,
+    diagnostics?.mobile_pwa_install_prompt_event_capture_copy,
+    diagnosticsReadiness.mobile_pwa_install_prompt_event_capture,
+    diagnosticsReadiness.mobile_pwa_install_prompt_event_capture_summary,
+    diagnosticsReadiness.mobile_pwa_install_prompt_event_capture_copy,
   ];
   return candidates.find((value) => value && typeof value === "object") || null;
 }
@@ -688,6 +717,37 @@ function currentDisplayMode() {
   return modes.find((mode) => window.matchMedia && window.matchMedia(`(display-mode: ${mode})`).matches) || "browser";
 }
 
+function safeBrowserFamilySummary() {
+  // 只输出浏览器族摘要，避免完整 UA、版本长串或能力对象进入复制包。
+  const brands = navigator.userAgentData?.brands || [];
+  const brandText = brands.map((brand) => brand.brand).join(" ").toLowerCase();
+  const ua = (navigator.userAgent || "").toLowerCase();
+  const source = `${brandText} ${ua}`;
+  if (source.includes("edg")) {
+    return "edge_family";
+  }
+  if (source.includes("firefox")) {
+    return "firefox_family";
+  }
+  if (source.includes("crios") || source.includes("chrome") || source.includes("chromium")) {
+    return "chromium_family";
+  }
+  if (source.includes("safari")) {
+    return "safari_family";
+  }
+  return "unknown_browser_family";
+}
+
+function pwaEventRuntimeMetadata() {
+  // 运行时元数据只保留平台/浏览器概要和 display-mode，不保存 raw event 或完整 UA。
+  return {
+    client_timestamp: new Date().toISOString(),
+    display_mode: currentDisplayMode(),
+    platform_summary: safeBundleText(navigator.userAgentData?.platform || navigator.platform, "unknown_platform"),
+    browser_summary: safeBrowserFamilySummary(),
+  };
+}
+
 function safeEntryUrlSummary() {
   // 入口摘要只保留 origin/path，去掉 query/hash 和 file 路径，避免 token 或本机路径进入交接包。
   if (!window.location) {
@@ -940,12 +1000,94 @@ function normalizePwaInstallPromptEvidence(value, localEvidence, handoffSession,
   };
 }
 
+function defaultPwaInstallPromptEventState() {
+  // 缺少事件时必须生成 blocked-by-design 包，不能把浏览器未触发误写成安装准备完成。
+  const metadata = pwaEventRuntimeMetadata();
+  return {
+    source: "mobile_web_runtime",
+    beforeinstallprompt_status: "missing",
+    beforeinstallprompt_client_timestamp: metadata.client_timestamp,
+    display_mode: metadata.display_mode,
+    platform_summary: metadata.platform_summary,
+    browser_summary: metadata.browser_summary,
+    prompt_availability: "blocked_or_missing_browser_event",
+    user_choice_outcome: "not_proven",
+    user_choice_client_timestamp: "not_proven",
+    appinstalled_observed: false,
+    appinstalled_client_timestamp: "not_proven",
+    safe_phone_copy: "PWA 安装提示事件捕获 blocked-by-design：当前浏览器没有触发 beforeinstallprompt、userChoice 或 appinstalled 事件。",
+    recovery_hint: "请在真实浏览器环境继续观察事件；缺事件时 Start、Confirm、Cancel 继续 fail closed。",
+  };
+}
+
+function normalizePwaInstallPromptEventCapture(value) {
+  // event capture copy 是 whitelist-only：不复制 deferred prompt、raw Promise、raw event、完整 UA 或内部技术字段。
+  const runtime = pwaInstallPromptEventState || defaultPwaInstallPromptEventState();
+  const source = value && Object.keys(value).length > 0 ? value : runtime;
+  const beforeStatus = safeBundleText(
+    source.beforeinstallprompt_status || source.install_prompt_event_status || source.capture_status,
+    runtime.beforeinstallprompt_status || "missing",
+  );
+  const userOutcome = safeBundleText(
+    source.user_choice_outcome || source.install_prompt_user_outcome || source.prompt_outcome,
+    runtime.user_choice_outcome || "not_proven",
+  );
+  const appinstalledObserved = source.appinstalled_observed === true || runtime.appinstalled_observed === true;
+  return {
+    schema: PWA_INSTALL_PROMPT_EVENT_CAPTURE_SCHEMA,
+    schema_version: 1,
+    summary_schema: PWA_INSTALL_PROMPT_EVENT_CAPTURE_SUMMARY_SCHEMA,
+    copy_schema: PWA_INSTALL_PROMPT_EVENT_CAPTURE_COPY_SCHEMA,
+    source: safeBundleText(source.source, "mobile_web_runtime"),
+    overall_status: beforeStatus === "observed" || appinstalledObserved ? "observed_not_proven" : "blocked",
+    beforeinstallprompt_status: beforeStatus,
+    beforeinstallprompt_client_timestamp: safeBundleText(
+      source.beforeinstallprompt_client_timestamp || source.client_timestamp,
+      runtime.beforeinstallprompt_client_timestamp,
+    ),
+    display_mode: safeBundleText(source.display_mode, runtime.display_mode || "browser"),
+    platform_summary: safeBundleText(source.platform_summary, runtime.platform_summary || "unknown_platform"),
+    browser_summary: safeBundleText(source.browser_summary, runtime.browser_summary || "unknown_browser_family"),
+    prompt_availability: safeBundleText(source.prompt_availability, runtime.prompt_availability),
+    user_choice_outcome: ["accepted", "dismissed", "unknown", "not_proven"].includes(userOutcome)
+      ? userOutcome
+      : "unknown",
+    user_choice_client_timestamp: safeBundleText(
+      source.user_choice_client_timestamp || source.choice_client_timestamp,
+      runtime.user_choice_client_timestamp || "not_proven",
+    ),
+    appinstalled_observed: appinstalledObserved,
+    appinstalled_client_timestamp: safeBundleText(
+      source.appinstalled_client_timestamp || source.installed_client_timestamp,
+      runtime.appinstalled_client_timestamp || "not_proven",
+    ),
+    production_app_ready: false,
+    safe_to_control: false,
+    safe_phone_copy: safeBundleText(
+      source.safe_phone_copy || source.safe_summary,
+      "PWA install prompt event capture 只记录浏览器事件观察结果；not_proven 时不是安装成功或 production app readiness。",
+    ),
+    recovery_hint: safeBundleText(
+      source.recovery_hint || source.retry_hint,
+      "缺真实手机/browser 事件材料时继续按 blocked-by-design 处理，主操作保持关闭。",
+    ),
+    ack_semantics: ACK_PROCESSING_ENUM,
+    evidence_boundary: MOBILE_PWA_INSTALL_PROMPT_EVENT_CAPTURE_BOUNDARY,
+    not_proven: notProvenList(source.not_proven),
+  };
+}
+
 function mobilePwaInstallPromptEvidenceFromStatus(status, readiness, diagnostics) {
   const localEvidence = mobileDeviceEvidencePackageFromStatus(status, readiness, diagnostics);
   const handoffSession = mobileDeviceHandoffSessionFromStatus(status, readiness, diagnostics);
   const browserBundle = mobileBrowserAcceptanceBundleFromStatus(status, readiness, diagnostics);
   const provided = mobilePwaInstallPromptEvidenceCandidate(status, readiness, diagnostics) || {};
   return normalizePwaInstallPromptEvidence(provided, localEvidence, handoffSession, browserBundle);
+}
+
+function mobilePwaInstallPromptEventCaptureFromStatus(status, readiness, diagnostics) {
+  const provided = mobilePwaInstallPromptEventCaptureCandidate(status, readiness, diagnostics) || {};
+  return normalizePwaInstallPromptEventCapture(provided);
 }
 
 function normalizeRealDeviceEvidenceIntake(value, localEvidence, pwaEvidence) {
@@ -3762,6 +3904,35 @@ function pwaInstallPromptPackageCopyPayload(packagePayload) {
   };
 }
 
+function pwaInstallPromptEventCaptureCopyPayload(packagePayload) {
+  // event capture 复制包只保留 schema、状态、时间、平台/浏览器概要和安全边界。
+  return {
+    schema: PWA_INSTALL_PROMPT_EVENT_CAPTURE_COPY_SCHEMA,
+    schema_version: packagePayload.schema_version,
+    event_capture_schema: packagePayload.schema,
+    summary_schema: packagePayload.summary_schema,
+    source: packagePayload.source,
+    overall_status: packagePayload.overall_status,
+    beforeinstallprompt_status: packagePayload.beforeinstallprompt_status,
+    beforeinstallprompt_client_timestamp: packagePayload.beforeinstallprompt_client_timestamp,
+    display_mode: packagePayload.display_mode,
+    platform_summary: packagePayload.platform_summary,
+    browser_summary: packagePayload.browser_summary,
+    prompt_availability: packagePayload.prompt_availability,
+    user_choice_outcome: packagePayload.user_choice_outcome,
+    user_choice_client_timestamp: packagePayload.user_choice_client_timestamp,
+    appinstalled_observed: packagePayload.appinstalled_observed,
+    appinstalled_client_timestamp: packagePayload.appinstalled_client_timestamp,
+    production_app_ready: packagePayload.production_app_ready,
+    safe_to_control: packagePayload.safe_to_control,
+    safe_phone_copy: packagePayload.safe_phone_copy,
+    recovery_hint: packagePayload.recovery_hint,
+    ack_semantics: packagePayload.ack_semantics,
+    evidence_boundary: packagePayload.evidence_boundary,
+    not_proven: packagePayload.not_proven,
+  };
+}
+
 function realDeviceEvidencePackageCopyPayload(packagePayload) {
   // 真实设备材料复制包是最终 redacted contract，不能包含用户粘贴原文或控制放行字段。
   return {
@@ -4129,29 +4300,31 @@ function renderMobileDeviceEvidence(status) {
 function renderMobilePwaInstallPromptEvidence(status) {
   const readiness = readinessFromStatus(status);
   const packagePayload = mobilePwaInstallPromptEvidenceFromStatus(status, readiness, latestDiagnostics);
+  const eventCapturePayload = mobilePwaInstallPromptEventCaptureFromStatus(status, readiness, latestDiagnostics);
   const badge = $("mobilePwaInstallPromptBadge");
   latestPwaInstallPromptPackage = packagePayload;
+  latestPwaInstallPromptEventCapturePackage = eventCapturePayload;
 
   badge.className = "gate-badge gate-blocked";
-  badge.textContent = packagePayload.install_prompt_capture_status === "captured" &&
-    packagePayload.install_prompt_user_outcome !== "not_proven"
-    ? "仍需实机复核"
+  badge.textContent = eventCapturePayload.beforeinstallprompt_status === "observed" ||
+    eventCapturePayload.appinstalled_observed === true
+    ? "事件已观察但未放行"
     : "install prompt 未证明";
-  $("mobilePwaInstallPromptCopy").textContent = packagePayload.safe_phone_copy;
-  $("mobilePwaInstallPromptCapture").textContent = packagePayload.install_prompt_capture_status;
-  $("mobilePwaInstallPromptOutcome").textContent = packagePayload.install_prompt_user_outcome;
+  $("mobilePwaInstallPromptCopy").textContent = eventCapturePayload.safe_phone_copy;
+  $("mobilePwaInstallPromptCapture").textContent = eventCapturePayload.beforeinstallprompt_status;
+  $("mobilePwaInstallPromptOutcome").textContent = eventCapturePayload.user_choice_outcome;
   $("mobilePwaInstallPromptDisplay").textContent =
-    `display=${packagePayload.display_mode} / installability=${packagePayload.installability_status} / offline=${packagePayload.offline_shell_status}`;
+    `display=${eventCapturePayload.display_mode} / prompt_availability=${eventCapturePayload.prompt_availability}`;
   $("mobilePwaInstallPromptShell").textContent =
-    `manifest=${packagePayload.manifest_present} / sw=${packagePayload.service_worker_status}`;
+    `platform=${eventCapturePayload.platform_summary} / browser=${eventCapturePayload.browser_summary}`;
   $("mobilePwaInstallPromptControl").textContent =
-    `production_app_ready=${packagePayload.production_app_ready} / safe_to_control=${packagePayload.safe_to_control}`;
-  $("mobilePwaInstallPromptAck").textContent = packagePayload.ack_semantics;
-  $("mobilePwaInstallPromptBoundary").textContent = packagePayload.evidence_boundary;
-  $("mobilePwaInstallPromptNotProven").textContent = packagePayload.not_proven.join("、");
-  $("mobilePwaInstallPromptRecoveryHint").textContent = packagePayload.recovery_hint;
+    `production_app_ready=${eventCapturePayload.production_app_ready} / safe_to_control=${eventCapturePayload.safe_to_control}`;
+  $("mobilePwaInstallPromptAck").textContent = eventCapturePayload.ack_semantics;
+  $("mobilePwaInstallPromptBoundary").textContent = eventCapturePayload.evidence_boundary;
+  $("mobilePwaInstallPromptNotProven").textContent = eventCapturePayload.not_proven.join("、");
+  $("mobilePwaInstallPromptRecoveryHint").textContent = eventCapturePayload.recovery_hint;
   $("mobilePwaInstallPromptSafeCopy").textContent =
-    JSON.stringify(pwaInstallPromptPackageCopyPayload(packagePayload), null, 2);
+    JSON.stringify(pwaInstallPromptEventCaptureCopyPayload(eventCapturePayload), null, 2);
 }
 
 function renderMobileRealDeviceEvidenceIntake(status) {
@@ -4183,6 +4356,74 @@ function renderMobileRealDeviceEvidenceIntake(status) {
   $("mobileRealDeviceEvidenceRecoveryHint").textContent = packagePayload.recovery_hint;
   $("mobileRealDeviceEvidenceSafeCopy").textContent =
     JSON.stringify(realDeviceEvidencePackageCopyPayload(packagePayload), null, 2);
+}
+
+function rerenderPwaInstallPromptEventCapture() {
+  // 事件监听发生在页面生命周期任意时刻；只刷新证据 panel，不触碰控制按钮授权。
+  if ($("mobilePwaInstallPromptTitle")) {
+    renderMobilePwaInstallPromptEvidence(latestStatus || {});
+  }
+}
+
+function updatePwaInstallPromptEventState(patch) {
+  // runtime state 只保存白名单字段；deferred prompt 单独存在内存变量，不进入 copy package。
+  pwaInstallPromptEventState = {
+    ...defaultPwaInstallPromptEventState(),
+    ...(pwaInstallPromptEventState || {}),
+    ...patch,
+  };
+  rerenderPwaInstallPromptEventCapture();
+}
+
+function initializePwaInstallPromptEventCapture() {
+  // beforeinstallprompt、userChoice、appinstalled 都是浏览器事件证据，不是控制 grant。
+  pwaInstallPromptEventState = defaultPwaInstallPromptEventState();
+  window.addEventListener("beforeinstallprompt", (event) => {
+    const metadata = pwaEventRuntimeMetadata();
+    if (typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
+    deferredPwaInstallPromptEvent = event;
+    updatePwaInstallPromptEventState({
+      beforeinstallprompt_status: "observed",
+      beforeinstallprompt_client_timestamp: metadata.client_timestamp,
+      display_mode: metadata.display_mode,
+      platform_summary: metadata.platform_summary,
+      browser_summary: metadata.browser_summary,
+      prompt_availability: "runtime_deferred_prompt_available",
+      safe_phone_copy: "已观察到 beforeinstallprompt 事件；deferred prompt 仅保存在 runtime，不进入复制包，也不放行控制动作。",
+      recovery_hint: "如需 userChoice，请由人工在真实浏览器环境触发安装提示；结果仍需实机复核。",
+    });
+    if (event.userChoice && typeof event.userChoice.then === "function") {
+      event.userChoice.then((choice) => {
+        const outcome = choice && ["accepted", "dismissed"].includes(choice.outcome)
+          ? choice.outcome
+          : "unknown";
+        updatePwaInstallPromptEventState({
+          user_choice_outcome: outcome,
+          user_choice_client_timestamp: new Date().toISOString(),
+          safe_phone_copy: `已记录 userChoice=${outcome}；该结果仍不是 production app readiness、真实送达或控制授权。`,
+        });
+      }).catch(() => {
+        updatePwaInstallPromptEventState({
+          user_choice_outcome: "unknown",
+          user_choice_client_timestamp: new Date().toISOString(),
+          safe_phone_copy: "userChoice promise 未返回可证明结果；按 unknown/not_proven 处理。",
+        });
+      });
+    }
+  });
+  window.addEventListener("appinstalled", () => {
+    const metadata = pwaEventRuntimeMetadata();
+    updatePwaInstallPromptEventState({
+      appinstalled_observed: true,
+      appinstalled_client_timestamp: metadata.client_timestamp,
+      display_mode: metadata.display_mode,
+      platform_summary: metadata.platform_summary,
+      browser_summary: metadata.browser_summary,
+      safe_phone_copy: "已观察到 appinstalled 事件；这只证明浏览器事件捕获能力，不证明 production app 或 delivery success。",
+    });
+  });
 }
 
 function renderMobileRealDeviceAcceptanceDecision(status) {
@@ -5149,7 +5390,11 @@ function wireEvents() {
     }
   });
   $("copyPwaInstallPromptPackageButton").addEventListener("click", async () => {
-    const payload = JSON.stringify(pwaInstallPromptPackageCopyPayload(latestPwaInstallPromptPackage || {}), null, 2);
+    const payload = JSON.stringify(
+      pwaInstallPromptEventCaptureCopyPayload(latestPwaInstallPromptEventCapturePackage || {}),
+      null,
+      2,
+    );
     $("mobilePwaInstallPromptSafeCopy").textContent = payload;
     // install prompt evidence 只服务验收复现；剪贴板失败时仍保留手动复制路径。
     try {
@@ -5509,5 +5754,6 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./service-worker.js", { scope: "./" }).catch(() => {});
 }
 
+initializePwaInstallPromptEventCapture();
 wireEvents();
 refreshStatus();

@@ -276,28 +276,28 @@
 
       <section class="pwa-install-panel" aria-labelledby="mobilePwaInstallPromptTitle">
         <div class="section-heading">
-          <h2 id="mobilePwaInstallPromptTitle">PWA 安装提示证据</h2>
-          <span id="mobilePwaInstallPromptBadge" class="gate-badge gate-blocked">install prompt 未证明</span>
+          <h2 id="mobilePwaInstallPromptTitle">PWA 安装提示事件捕获</h2>
+          <span id="mobilePwaInstallPromptBadge" class="gate-badge gate-blocked">beforeinstallprompt not_proven</span>
         </div>
         <p id="mobilePwaInstallPromptCopy" class="message">
-          等待 phone-safe install prompt evidence；缺真实手机/browser、production app 和真实 PWA install prompt 时不放行主操作。
+          等待 beforeinstallprompt、userChoice 和 appinstalled 的 phone-safe event capture；缺事件时按 blocked-by-design 展示。
         </p>
         <dl class="pwa-install-grid">
           <div>
-            <dt>Install Prompt Capture</dt>
+            <dt>beforeinstallprompt</dt>
             <dd id="mobilePwaInstallPromptCapture">not_proven</dd>
           </div>
           <div>
-            <dt>User Outcome</dt>
+            <dt>userChoice</dt>
             <dd id="mobilePwaInstallPromptOutcome">not_proven</dd>
           </div>
           <div>
-            <dt>Display / Installability / Offline</dt>
-            <dd id="mobilePwaInstallPromptDisplay">display=browser / installability=not_proven / offline=static_shell_only</dd>
+            <dt>Display / Prompt</dt>
+            <dd id="mobilePwaInstallPromptDisplay">display=browser / prompt_availability=blocked_or_missing_browser_event</dd>
           </div>
           <div>
-            <dt>Manifest / Service Worker</dt>
-            <dd id="mobilePwaInstallPromptShell">manifest=true / sw=registered_or_pending</dd>
+            <dt>Platform / Browser</dt>
+            <dd id="mobilePwaInstallPromptShell">platform=unknown / browser=unknown_browser_family</dd>
           </div>
           <div>
             <dt>Production App / Safe Control</dt>
@@ -309,19 +309,20 @@
           </div>
           <div>
             <dt>Evidence Boundary</dt>
-            <dd id="mobilePwaInstallPromptBoundary">software_proof_docker_mobile_pwa_install_prompt_evidence_gate</dd>
+            <dd id="mobilePwaInstallPromptBoundary">software_proof_docker_mobile_pwa_install_prompt_event_capture_gate</dd>
           </div>
           <div>
             <dt>not_proven</dt>
-            <dd id="mobilePwaInstallPromptNotProven">真实手机设备/browser、production app、真实 PWA install prompt 未证明。</dd>
+            <dd id="mobilePwaInstallPromptNotProven">真实手机设备/browser、production app、真实 PWA install prompt、delivery success 未证明。</dd>
           </div>
         </dl>
-        <p id="mobilePwaInstallPromptRecoveryHint" class="hint">安装提示证据只用于验收复现，不是 Start、Confirm 或 Cancel 放行条件。</p>
+        <p id="mobilePwaInstallPromptRecoveryHint" class="hint">安装提示事件捕获只用于验收复现，不是 Start、Confirm 或 Cancel 放行条件；schema=trashbot.mobile_pwa_install_prompt_event_capture.v1。</p>
         <div class="bundle-copy-row">
-          <button id="copyPwaInstallPromptPackageButton" type="button">复制安装提示证据包</button>
-          <span id="mobilePwaInstallPromptCopyStatus" class="hint">复制内容只包含脱敏 phone-safe 字段。</span>
+          <button id="copyPwaInstallPromptPackageButton" type="button">复制事件捕获包</button>
+          <span id="mobilePwaInstallPromptCopyStatus" class="hint">复制内容只包含 whitelist-only phone-safe 字段。</span>
         </div>
-        <pre id="mobilePwaInstallPromptSafeCopy" class="safe-copy" aria-label="脱敏 PWA 安装提示证据包">暂无 PWA 安装提示证据包。</pre>
+        <pre id="mobilePwaInstallPromptSafeCopy" class="safe-copy" aria-label="脱敏 PWA 安装提示事件捕获包">暂无 PWA 安装提示事件捕获包。</pre>
+        <p class="boundary">software_proof_docker_mobile_pwa_install_prompt_event_capture_gate</p>
       </section>
 
       <section class="real-device-evidence-panel" aria-labelledby="mobileRealDeviceEvidenceTitle">

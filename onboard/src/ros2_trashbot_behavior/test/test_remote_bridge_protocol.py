@@ -232,6 +232,68 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("Authorization", encoded_command)
         self.assertNotIn("credential_url", encoded_command)
 
+    def test_validate_command_ignores_mobile_pwa_install_prompt_event_capture_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-pwa-install-prompt-event-capture",
+            "type": "collect",
+            "payload": {
+                "target": "trash_station",
+                "trash_type": 0,
+                "idempotency_key": "idem-prompt-event",
+            },
+            "mobile_pwa_install_prompt_event_capture": {
+                "schema": "trashbot.mobile_pwa_install_prompt_event_capture.v1",
+                "evidence_boundary": "software_proof_docker_mobile_pwa_install_prompt_event_capture_gate",
+                "event_type": "beforeinstallprompt",
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "terminal_ack": {"state": "acked"},
+                "delivery_success": True,
+                "dropoff_success": True,
+                "cancel_completed": True,
+                "production_ready": True,
+                "hil_pass": True,
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "mobile_pwa_install_prompt_event_capture_summary": {
+                "schema": "trashbot.mobile_pwa_install_prompt_event_capture_summary.v1",
+                "ack_semantics": "delivery_success",
+                "next_action": "confirm_dropoff",
+                "safe_to_control": True,
+            },
+            "mobile_pwa_install_prompt_event_capture_copy": {
+                "schema": "trashbot.mobile_pwa_install_prompt_event_capture_copy.v1",
+                "safe_phone_copy": "ACK POST、terminal ACK 和 delivery success 都不是机器人完成证据。",
+                "Authorization": "Bearer must-not-leak",
+                "credential_url": "https://user:secret@example.invalid/prompt-event",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-pwa-install-prompt-event-capture")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {
+            "target": "trash_station",
+            "trash_type": 0,
+            "idempotency_key": "idem-prompt-event",
+        })
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # Install prompt event capture 是 PWA 事件取证元数据，normalization 只能保留 command envelope。
+        self.assertNotIn("mobile_pwa_install_prompt_event_capture", encoded_command)
+        self.assertNotIn("mobile_pwa_install_prompt_event_capture_summary", encoded_command)
+        self.assertNotIn("mobile_pwa_install_prompt_event_capture_copy", encoded_command)
+        self.assertNotIn("software_proof_docker_mobile_pwa_install_prompt_event_capture_gate", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("terminal_ack", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("dropoff_success", encoded_command)
+        self.assertNotIn("cancel_completed", encoded_command)
+        self.assertNotIn("production_ready", encoded_command)
+        self.assertNotIn("hil_pass", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("credential_url", encoded_command)
+
     def test_validate_command_ignores_mobile_device_acceptance_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-mobile-device-acceptance-metadata",
