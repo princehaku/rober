@@ -1028,6 +1028,61 @@
         <pre id="mobileRealDeviceFieldTrialEvidenceRecordSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_evidence_record_copy">暂无 mobile_real_device_field_trial_evidence_record_copy。</pre>
       </section>
 
+      <section class="real-device-field-trial-evidence-verdict-panel" aria-labelledby="mobileRealDeviceFieldTrialEvidenceVerdictTitle">
+        <div class="section-heading">
+          <h2 id="mobileRealDeviceFieldTrialEvidenceVerdictTitle">现场证据 verdict</h2>
+          <span id="mobileRealDeviceFieldTrialEvidenceVerdictBadge" class="gate-badge gate-blocked">blocked_missing_field_trial_evidence</span>
+        </div>
+        <p id="mobileRealDeviceFieldTrialEvidenceVerdictCopy" class="message">
+          从 mobile_real_device_field_trial_evidence_record 或本地 archive 派生 verdict；它只输出字段缺口、retest/material request 和 phone-safe copy，不是真实手机验收或 delivery success。
+        </p>
+        <dl class="real-device-field-trial-evidence-verdict-grid">
+          <div>
+            <dt>Verdict</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceVerdictState">blocked_missing_field_trial_evidence</dd>
+          </div>
+          <div>
+            <dt>Missing Evidence</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceVerdictMissingEvidence">real_device=not_proven / production_app=not_proven / pwa_prompt=not_proven</dd>
+          </div>
+          <div>
+            <dt>Retest Request</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceVerdictRetest">按 missing_evidence 补齐后重新执行真实手机 field trial。</dd>
+          </div>
+          <div>
+            <dt>Material Request</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceVerdictMaterialRequest">提交脱敏 real device、production app、PWA prompt/user choice、offline、touch、visual 和 redaction 摘要。</dd>
+          </div>
+          <div>
+            <dt>Safe Control</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceVerdictSafeControl">safe_to_control=false</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceVerdictAck">accepted_processing_only_not_delivery_success</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceVerdictBoundary">software_proof_docker_mobile_real_device_field_trial_evidence_verdict_gate</dd>
+          </div>
+          <div>
+            <dt>Source Boundary</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceVerdictSourceBoundary">software_proof_docker_mobile_real_device_field_trial_evidence_record_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileRealDeviceFieldTrialEvidenceVerdictNotProven">真实 iPhone/Android、production app、PWA install prompt/user choice、O5、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="mobileRealDeviceFieldTrialEvidenceVerdictRecoveryHint" class="hint">verdict 只安排 retest/material request；Start Delivery、Confirm Dropoff、Cancel 继续 fail closed。</p>
+        <div class="bundle-copy-row">
+          <button id="generateRealDeviceFieldTrialEvidenceVerdictButton" type="button">生成 verdict summary</button>
+          <button id="copyRealDeviceFieldTrialEvidenceVerdictButton" type="button">复制 verdict package</button>
+          <span id="mobileRealDeviceFieldTrialEvidenceVerdictCopyStatus" class="hint">复制只包含 whitelist-only phone-safe verdict 字段。</span>
+        </div>
+        <pre id="mobileRealDeviceFieldTrialEvidenceVerdictSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_evidence_verdict_copy">暂无 mobile_real_device_field_trial_evidence_verdict_copy。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>
