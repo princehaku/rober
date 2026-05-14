@@ -49,9 +49,11 @@ python3 pc-tools/evidence/evidence_crosscheck.py \
   --rehearsal-artifact /tmp/route_task_rehearsal_artifact.json
 ```
 
-artifact 使用 `schema=trashbot.route_task_rehearsal_artifact`、`schema_version=1`，证据边界固定为 `evidence_boundary=software_proof_docker_route_task_rehearsal_artifact_gate`。内容包括 `evidence_ref`、route status summary、task record summary、crosscheck status、HIL alignment status 和 `not_proven`。当 fixed-route status、software proof replay 与 task record 对账通过时，`crosscheck_status.status=pass` 只表示本地/Docker 软件排练一致，不表示真实 Nav2/fixed-route 实跑、WAVE ROVER 运动、真实串口反馈、真实 HIL 或 delivery success。
+artifact 使用 `schema=trashbot.route_task_rehearsal_artifact`、`schema_version=1`，证据边界固定为 `evidence_boundary=software_proof_docker_route_task_rehearsal_artifact_gate`。内容包括 `evidence_ref`、route status summary、task record summary、crosscheck status、HIL alignment status、`diagnostics_summary` 和 `not_proven`。当 fixed-route status、software proof replay 与 task record 对账通过时，`crosscheck_status.status=pass` 只表示本地/Docker 软件排练一致，不表示真实 Nav2/fixed-route 实跑、WAVE ROVER 运动、真实串口反馈、真实 HIL 或 delivery success。
 
 可选 `--hil-gate-output` 只用于记录 HIL gate 对齐状态。未提供、文件缺失、`status=software_proof` 或 `status=blocked` 时 artifact 仍会保存，但 `hil_alignment_status.alignment_status=not_proven`，`not_proven` 继续包含 `real_hil_pass`。summary/artifact 输出会过滤 bearer token、Authorization header、OSS secret、AK/SK、root password、DB URL、queue URL、串口设备、波特率和 raw traceback。
+
+`diagnostics_summary` 是给 `/api/diagnostics` 或支持面消费的 phone-safe 摘要，schema 为 `trashbot.route_task_rehearsal_diagnostics_summary`，证据边界固定为 `software_proof_docker_route_task_rehearsal_diagnostics_gate`。该 summary 只暴露脱敏后的 `status`、`evidence_boundary`、`evidence_ref`、`crosscheck_status`、`hil_alignment_status`、`not_proven` 和 `next_step`；diagnostics 可以把它作为 `route_task_rehearsal` 展示，但不能据此放行控制动作、声明真实 fixed-route/Nav2、HIL、delivery success 或云/4G/OSS/CDN/DB/queue proof。
 
 ## Agent 工作纪律
 

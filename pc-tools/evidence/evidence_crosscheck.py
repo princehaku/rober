@@ -23,6 +23,8 @@ from typing import Any
 REHEARSAL_ARTIFACT_SCHEMA = "trashbot.route_task_rehearsal_artifact"
 REHEARSAL_ARTIFACT_VERSION = 1
 REHEARSAL_EVIDENCE_BOUNDARY = "software_proof_docker_route_task_rehearsal_artifact_gate"
+REHEARSAL_DIAGNOSTICS_SCHEMA = "trashbot.route_task_rehearsal_diagnostics_summary"
+REHEARSAL_DIAGNOSTICS_BOUNDARY = "software_proof_docker_route_task_rehearsal_diagnostics_gate"
 
 FIELD_SET = (
     "checkpoint",
@@ -410,6 +412,35 @@ def _route_status_summary(
     }
 
 
+def _diagnostics_next_step(software_pass: bool, hil_not_proven: bool) -> str:
+    # diagnostics 面向支持/手机读者，下一步要写成可执行动作而不是内部异常堆栈。
+    if not software_pass:
+        return "fix status/replay/task_record mismatches before diagnostics consumption"
+    if hil_not_proven:
+        return "collect real Nav2/fixed-route and HIL evidence with the same evidence_ref before claiming route or delivery success"
+    return "review same-evidence_ref real-run material before using this as support evidence; artifact boundary remains software proof"
+
+
+def _build_diagnostics_summary(
+    evidence_ref: str,
+    software_pass: bool,
+    hil_not_proven: bool,
+    not_proven: list[str],
+    hil_summary: dict[str, Any],
+) -> dict[str, Any]:
+    # 诊断消费只需要脱敏摘要；不暴露本地路径、串口或上游 raw payload。
+    return {
+        "schema": REHEARSAL_DIAGNOSTICS_SCHEMA,
+        "status": "available_software_proof" if software_pass else "blocked_crosscheck_mismatch",
+        "evidence_boundary": REHEARSAL_DIAGNOSTICS_BOUNDARY,
+        "evidence_ref": _safe_text(evidence_ref),
+        "crosscheck_status": "pass" if software_pass else "fail",
+        "hil_alignment_status": _safe_text(hil_summary.get("alignment_status", "not_proven")),
+        "not_proven": list(not_proven),
+        "next_step": _diagnostics_next_step(software_pass, hil_not_proven),
+    }
+
+
 def _write_rehearsal_artifact(
     artifact_path: str,
     evidence_ref: str,
@@ -445,6 +476,13 @@ def _write_rehearsal_artifact(
             "mismatches": [_safe_text(item) for item in hil_mismatches],
             "not_real_hil_when_status_is_missing_blocked_or_software_proof": hil_not_proven,
         },
+        "diagnostics_summary": _build_diagnostics_summary(
+            evidence_ref,
+            software_pass,
+            hil_not_proven,
+            not_proven,
+            hil_summary,
+        ),
         "not_proven": not_proven,
     }
     p.write_text(json.dumps(artifact, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")

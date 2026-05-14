@@ -108,6 +108,18 @@ current mode, such as `dry_run` or software fixed-route status rehearsal. It is
 not delivery success, not real Nav2/fixed-route execution, not WAVE ROVER
 motion, and not HIL evidence.
 
+Operator diagnostics may additionally expose `route_task_rehearsal` from a
+configured route/task rehearsal artifact. The diagnostics summary uses
+`evidence_boundary=software_proof_docker_route_task_rehearsal_diagnostics_gate`
+and is read-only support metadata. It may include sanitized `evidence_ref`,
+source schema/boundary, crosscheck pass/fail status, HIL alignment status, and
+`not_proven`, but it must not expose local paths, credentials, serial details,
+raw traceback, DB/queue URLs, or complete artifacts. A `crosscheck_status=pass`
+in this summary is not delivery success, not a ROS action/topic/service, not
+ACK/cursor/terminal ACK, not real Nav2/fixed-route execution, and not HIL; when
+HIL is missing, blocked, or software-only, `hil_alignment_status` remains
+`not_proven`.
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

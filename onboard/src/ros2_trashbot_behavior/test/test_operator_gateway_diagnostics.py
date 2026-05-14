@@ -16,6 +16,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     extract_elevator_assist,
     normalize_log_refs,
     summarize_hardware_proof,
+    summarize_route_task_rehearsal_artifact,
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import (
@@ -747,6 +748,126 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
 
         self.assertEqual(payload["hardware_proof"]["status"], "software_proof")
         self.assertEqual(payload["hardware_proof"]["artifact_ref"], str(proof_path))
+
+    def test_diagnostics_payload_includes_phone_safe_route_task_rehearsal_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_path = Path(td) / "route_task_rehearsal_artifact.json"
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_rehearsal_artifact",
+                        "schema_version": 1,
+                        "evidence_boundary": "software_proof_docker_route_task_rehearsal_artifact_gate",
+                        "evidence_ref": str(Path(td) / "route_replay_evidence.json"),
+                        "crosscheck_status": {
+                            "status": "pass",
+                            "scope": "status/replay/task_record software alignment only",
+                            "software_mismatches": [],
+                        },
+                        "hil_alignment_status": {
+                            "status": "software_proof",
+                            "alignment_status": "not_proven",
+                            "evidence_ref_match": False,
+                            "detail": (
+                                "not real HIL; Authorization: Bearer secret-token "
+                                "postgres://robot:secret@db.local/queue /dev/ttyUSB0 baudrate=115200"
+                            ),
+                            "mismatches": [],
+                            "not_real_hil_when_status_is_missing_blocked_or_software_proof": True,
+                        },
+                        "not_proven": ["real_hil_pass", "delivery_success"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_rehearsal_artifact_ref=str(artifact_path),
+            )
+            summary = payload["route_task_rehearsal"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary["state"], "crosscheck_pass")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_rehearsal_diagnostics_gate",
+        )
+        self.assertEqual(
+            summary["source_evidence_boundary"],
+            "software_proof_docker_route_task_rehearsal_artifact_gate",
+        )
+        self.assertEqual(summary["crosscheck_status"]["status"], "pass")
+        self.assertEqual(summary["hil_alignment_status"]["alignment_status"], "not_proven")
+        self.assertIn("local_path_redacted:route_replay_evidence.json", summary["evidence_ref"])
+        self.assertIn("not delivery success", summary["safe_phone_copy"])
+        self.assertIn("real_hil_pass", summary["not_proven"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        for forbidden in (
+            str(artifact_path),
+            str(Path(td)),
+            "secret-token",
+            "Authorization:",
+            "postgres://",
+            "/dev/ttyUSB0",
+            "baudrate=115200",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_route_task_rehearsal_missing_and_sensitive_path_stays_conservative(self):
+        with tempfile.TemporaryDirectory() as td:
+            missing_path = Path(td) / "Bearer-secret-token" / "missing.json"
+            summary = summarize_route_task_rehearsal_artifact(str(missing_path))
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary["state"], "missing")
+        self.assertFalse(summary["exists"])
+        self.assertIn("software_proof_docker_route_task_rehearsal_diagnostics_gate", encoded)
+        self.assertIn("not delivery success", summary["safe_phone_copy"])
+        self.assertIn("not_proven", summary)
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_route_task_rehearsal_crosscheck_fail_stays_blocked(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_path = Path(td) / "route_task_rehearsal_fail.json"
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_rehearsal_artifact",
+                        "schema_version": 1,
+                        "evidence_boundary": "software_proof_docker_route_task_rehearsal_artifact_gate",
+                        "evidence_ref": "evidence://route-task-1",
+                        "crosscheck_status": {
+                            "status": "fail",
+                            "software_mismatches": ["task_record evidence_ref mismatch at /tmp/raw.json"],
+                        },
+                        "hil_alignment_status": {"alignment_status": "not_proven"},
+                        "not_proven": ["delivery_success"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            summary = summarize_route_task_rehearsal_artifact(str(artifact_path))
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary["state"], "crosscheck_fail")
+        self.assertEqual(summary["crosscheck_status"]["software_mismatch_count"], 1)
+        self.assertIn("not_proven", summary["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertNotIn("/tmp/raw.json", encoded)
 
     def test_diagnostics_payload_includes_phone_safe_oss_cdn_manifest_summary(self):
         with tempfile.TemporaryDirectory() as td:

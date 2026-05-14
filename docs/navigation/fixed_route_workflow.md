@@ -381,9 +381,12 @@ artifact 字段要求：
 - `task_record_summary`
 - `crosscheck_status`
 - `hil_alignment_status`
+- `diagnostics_summary`
 - `not_proven`
 
 `crosscheck_status.status=pass` 只表示 status/replay/task_record 软件对账通过。HIL gate 未提供、缺失、`software_proof` 或 `blocked` 时 artifact 仍可保存，但 `hil_alignment_status.alignment_status=not_proven`，且 `not_proven` 继续列出真实 Nav2/fixed-route、WAVE ROVER 运动、真实串口、真实 HIL 和 delivery success。该证据边界是 `software_proof_docker_route_task_rehearsal_artifact_gate`，不能用于声明真实路线实跑或上车交付闭环。
+
+`diagnostics_summary` 是 diagnostics consumption 的只读摘要，schema 为 `trashbot.route_task_rehearsal_diagnostics_summary`，`evidence_boundary=software_proof_docker_route_task_rehearsal_diagnostics_gate`。它只给诊断面提供脱敏后的 `status`、`evidence_ref`、`crosscheck_status`、`hil_alignment_status`、`not_proven` 和 `next_step`，可映射到 diagnostics payload 的 `route_task_rehearsal` 字段。该字段不改变 Start/Confirm/Cancel、ACK、cursor、Nav2、WAVE ROVER 或 HIL 语义；缺 HIL 或 HIL 未对齐时仍必须显示 `not_proven`，不能写成真实 fixed-route、真实 HIL、真实 delivery success 或 Objective 5 外部云证明。
 
 ## 6. Debug Web
 

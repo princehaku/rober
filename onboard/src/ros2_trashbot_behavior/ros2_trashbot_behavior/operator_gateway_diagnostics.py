@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 from ros2_trashbot_behavior.operator_gateway_http import normalize_elevator_assist, status_payload
 from ros2_trashbot_behavior.remote_cloud_relay import (
@@ -59,6 +60,231 @@ ELEVATOR_ASSIST_HELP_REASONS = {
     "unsafe_to_exit",
     "manual_takeover_required",
 }
+ROUTE_TASK_REHEARSAL_SCHEMA = "trashbot.route_task_rehearsal_artifact"
+ROUTE_TASK_REHEARSAL_DIAGNOSTICS_SCHEMA = "trashbot.route_task_rehearsal_diagnostics_summary.v1"
+ROUTE_TASK_REHEARSAL_ARTIFACT_GATE = "software_proof_docker_route_task_rehearsal_artifact_gate"
+ROUTE_TASK_REHEARSAL_DIAGNOSTICS_GATE = "software_proof_docker_route_task_rehearsal_diagnostics_gate"
+ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
+    "real_nav2_fixed_route_run",
+    "wave_rover_motion",
+    "real_serial_or_uart_feedback",
+    "real_hil_pass",
+    "delivery_success",
+)
+ROUTE_TASK_REHEARSAL_TEXT_REDACTIONS = (
+    (re.compile(r"(?i)\bAuthorization\s*:\s*(?:Bearer\s+)?[^,\s]+"), "[REDACTED_AUTH_HEADER]"),
+    (re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+"), "Bearer [REDACTED]"),
+    (re.compile(r"(?i)\b(oss[_-]?secret|access[_-]?key[_-]?secret|ak|sk|root[_-]?password)\b\s*[:=]\s*[^,\s]+"), r"\1=[REDACTED]"),
+    (re.compile(r"(?i)\b(db|database|queue)[_-]?url\b\s*[:=]\s*[^,\s]+"), r"\1_url=[REDACTED]"),
+    (re.compile(r"(?i)\b(postgres|postgresql|mysql|redis|amqp|mongodb)://[^,\s]+"), "[REDACTED_URL]"),
+    (re.compile(r"/dev/(ttyUSB|ttyACM|cu\.|tty\.)[A-Za-z0-9._-]*"), "/dev/[REDACTED_SERIAL]"),
+    (re.compile(r"(?i)\b(baud|baudrate|baud_rate)\b\s*[:=]\s*\d+"), r"\1=[REDACTED_BAUD]"),
+    (re.compile(r"(?i)Traceback \(most recent call last\):.*", re.DOTALL), "[REDACTED_TRACEBACK]"),
+    (re.compile(r"(?<![\w:])(?:~|/Users|/tmp|/var|/private|/ws|/home|/root)/[^\s,;}\\\"]+"), "[REDACTED_LOCAL_PATH]"),
+)
+
+
+def _redact_route_task_rehearsal_text(value):
+    text = str(value or "")
+    for pattern, replacement in ROUTE_TASK_REHEARSAL_TEXT_REDACTIONS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
+def _safe_route_task_rehearsal_ref(value):
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    redacted = _redact_route_task_rehearsal_text(text)
+    if "[REDACTED_LOCAL_PATH]" in redacted:
+        basename = os.path.basename(os.path.expanduser(text).rstrip(os.sep)) or "artifact"
+        return f"local_path_redacted:{basename}"
+    return redacted
+
+
+def _safe_route_task_rehearsal_list(value, limit=8):
+    if not isinstance(value, list):
+        return []
+    items = []
+    for item in value:
+        items.append(_redact_route_task_rehearsal_text(item))
+        if len(items) >= limit:
+            break
+    return items
+
+
+def _route_task_rehearsal_not_proven(artifact=None):
+    artifact = artifact if isinstance(artifact, dict) else {}
+    values = []
+    source_values = artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else []
+    for item in list(source_values) + list(ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _default_route_task_rehearsal_summary(path, state="not_configured", read_error=""):
+    # diagnostics 只读消费 artifact；默认状态必须保守，不能把缺文件解释成路线或任务通过。
+    return {
+        "schema": ROUTE_TASK_REHEARSAL_DIAGNOSTICS_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_REHEARSAL_DIAGNOSTICS_GATE,
+        "state": state,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "artifact_ref": _safe_route_task_rehearsal_ref(path),
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "evidence_ref": "",
+        "crosscheck_status": {
+            "status": "",
+            "scope": "status/replay/task_record software alignment only",
+            "software_mismatch_count": 0,
+            "software_mismatches": [],
+        },
+        "hil_alignment_status": {
+            "status": "",
+            "alignment_status": "not_proven",
+            "evidence_ref_match": False,
+            "not_real_hil_when_status_is_missing_blocked_or_software_proof": True,
+            "detail": "not real HIL; route/task rehearsal diagnostics were not configured",
+            "mismatch_count": 0,
+        },
+        "not_proven": _route_task_rehearsal_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_phone_copy": "Route/task rehearsal diagnostics are not configured; this is not delivery success.",
+        "next_step": "Attach a route/task rehearsal artifact from evidence_crosscheck before using diagnostics for route/task replay support.",
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+
+
+def summarize_route_task_rehearsal_artifact(path):
+    """构建只读、phone-safe 的 route/task rehearsal diagnostics summary。"""
+    artifact_path = os.path.expanduser(str(path or ""))
+    summary = _default_route_task_rehearsal_summary(
+        artifact_path,
+        read_error="route/task rehearsal artifact is not configured",
+    )
+    if not artifact_path:
+        return summary
+    if not os.path.exists(artifact_path):
+        summary.update(
+            {
+                "state": "missing",
+                "read_error": "route/task rehearsal artifact not found",
+                "safe_phone_copy": "Route/task rehearsal artifact is missing; this is not delivery success.",
+                "next_step": "Regenerate the route/task rehearsal artifact, then reopen diagnostics.",
+            }
+        )
+        return summary
+
+    summary["exists"] = True
+    try:
+        with open(artifact_path, "r", encoding="utf-8") as f:
+            artifact = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        summary.update(
+            {
+                "state": "read_error",
+                "read_error": _redact_route_task_rehearsal_text(f"failed reading route/task rehearsal artifact: {exc}"),
+                "safe_phone_copy": "Route/task rehearsal artifact could not be read; keep treating route/task proof as not_proven.",
+                "next_step": "Fix the artifact JSON and rerun the diagnostics summary.",
+            }
+        )
+        return summary
+
+    if not isinstance(artifact, dict):
+        summary.update(
+            {
+                "state": "read_error",
+                "read_error": "route/task rehearsal artifact JSON must be an object",
+                "safe_phone_copy": "Route/task rehearsal artifact shape is invalid; route/task proof remains not_proven.",
+                "next_step": "Regenerate a JSON object artifact from evidence_crosscheck.",
+            }
+        )
+        return summary
+
+    source_schema = str(artifact.get("schema") or "")
+    source_boundary = str(artifact.get("evidence_boundary") or "")
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": artifact.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "evidence_ref": _safe_route_task_rehearsal_ref(artifact.get("evidence_ref", "")),
+            "not_proven": _route_task_rehearsal_not_proven(artifact),
+            "read_error": "",
+        }
+    )
+    if source_schema != ROUTE_TASK_REHEARSAL_SCHEMA or source_boundary != ROUTE_TASK_REHEARSAL_ARTIFACT_GATE:
+        summary.update(
+            {
+                "state": "unsupported_schema",
+                "read_error": "route/task rehearsal artifact schema or evidence boundary is unsupported",
+                "safe_phone_copy": "Route/task rehearsal artifact is not a supported diagnostics source; no delivery result is proven.",
+                "next_step": "Regenerate the artifact with the supported route/task rehearsal schema and boundary.",
+            }
+        )
+        return summary
+
+    crosscheck = artifact.get("crosscheck_status") if isinstance(artifact.get("crosscheck_status"), dict) else {}
+    hil_alignment = artifact.get("hil_alignment_status") if isinstance(artifact.get("hil_alignment_status"), dict) else {}
+    crosscheck_status = str(crosscheck.get("status") or "").strip().lower()
+    software_mismatches = crosscheck.get("software_mismatches")
+    hil_mismatches = hil_alignment.get("mismatches")
+    summary["crosscheck_status"] = {
+        "status": _redact_route_task_rehearsal_text(crosscheck_status),
+        "scope": _redact_route_task_rehearsal_text(
+            crosscheck.get("scope") or "status/replay/task_record software alignment only"
+        ),
+        "software_mismatch_count": len(software_mismatches) if isinstance(software_mismatches, list) else 0,
+        "software_mismatches": _safe_route_task_rehearsal_list(software_mismatches),
+    }
+    alignment_status = str(hil_alignment.get("alignment_status") or "not_proven").strip()
+    summary["hil_alignment_status"] = {
+        "status": _redact_route_task_rehearsal_text(hil_alignment.get("status", "")),
+        "alignment_status": _redact_route_task_rehearsal_text(alignment_status or "not_proven"),
+        "evidence_ref_match": bool(hil_alignment.get("evidence_ref_match", False)),
+        "not_real_hil_when_status_is_missing_blocked_or_software_proof": bool(
+            hil_alignment.get("not_real_hil_when_status_is_missing_blocked_or_software_proof", True)
+        ),
+        "detail": _redact_route_task_rehearsal_text(
+            hil_alignment.get("detail") or "not real HIL; route/task rehearsal remains software proof"
+        ),
+        "mismatch_count": len(hil_mismatches) if isinstance(hil_mismatches, list) else 0,
+    }
+
+    if crosscheck_status == "pass":
+        summary.update(
+            {
+                "state": "crosscheck_pass",
+                "safe_phone_copy": "Route/task rehearsal crosscheck passed as Docker/local software proof only; it is not delivery success.",
+                "next_step": "Use the shared evidence_ref for support/replay, then collect real Nav2/fixed-route and HIL evidence before claiming delivery.",
+            }
+        )
+        return summary
+    if crosscheck_status == "fail":
+        summary.update(
+            {
+                "state": "crosscheck_fail",
+                "safe_phone_copy": "Route/task rehearsal crosscheck failed; keep route/task proof blocked and not_proven.",
+                "next_step": "Inspect the sanitized software mismatches, fix the source artifact, and rerun evidence_crosscheck.",
+            }
+        )
+        return summary
+
+    summary.update(
+        {
+            "state": "unsupported_status",
+            "read_error": "route/task rehearsal artifact crosscheck status is missing or unsupported",
+            "safe_phone_copy": "Route/task rehearsal artifact has no supported crosscheck result; no route or delivery pass is proven.",
+            "next_step": "Regenerate the artifact with crosscheck_status.status pass or fail.",
+        }
+    )
+    return summary
 
 
 def _default_hardware_proof_summary(path, status="read_error", read_error=""):
@@ -983,6 +1209,7 @@ def build_diagnostics_payload(
     queue_ordering_drill_artifact_ref="",
     transaction_isolation_artifact_ref="",
     production_recovery_artifact_ref="",
+    route_task_rehearsal_artifact_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -1065,6 +1292,10 @@ def build_diagnostics_payload(
         ),
         route_proof_summary=route_proof_summary,
         route_proof_status=route_proof_status,
+        route_task_rehearsal=summarize_route_task_rehearsal_artifact(
+            route_task_rehearsal_artifact_ref
+            or os.environ.get("TRASHBOT_ROUTE_TASK_REHEARSAL_ARTIFACT", "")
+        ),
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),
