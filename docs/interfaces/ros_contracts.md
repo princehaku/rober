@@ -120,6 +120,20 @@ ACK/cursor/terminal ACK, not real Nav2/fixed-route execution, and not HIL; when
 HIL is missing, blocked, or software-only, `hil_alignment_status` remains
 `not_proven`.
 
+Operator diagnostics may also expose `route_task_rehearsal_execution_bundle`
+from an explicit bundle ref or `TRASHBOT_ROUTE_TASK_REHEARSAL_BUNDLE`. The
+manifest must use `schema=trashbot.route_task_rehearsal_execution_bundle` and
+`evidence_boundary=software_proof_docker_route_task_rehearsal_execution_bundle_gate`.
+This field is metadata-only support material for the Docker/local execution
+bundle: it may include sanitized `evidence_ref`, artifact ref, crosscheck
+status, HIL alignment status, `not_proven`, safe phone copy, and next step. It
+must keep `primary_actions_enabled=false`, must not POST ACKs, must not advance
+cursor state, and must not enable Start Delivery, Confirm Dropoff, or Cancel.
+Missing, unreadable, unsupported, or crosscheck-fail manifests remain blocked
+or read_error summaries. A bundle pass is not delivery success, not a ROS
+action/topic/service, not real Nav2/fixed-route execution, not dropoff/cancel
+completion, not WAVE ROVER motion, and not HIL.
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

@@ -62,8 +62,15 @@ ELEVATOR_ASSIST_HELP_REASONS = {
 }
 ROUTE_TASK_REHEARSAL_SCHEMA = "trashbot.route_task_rehearsal_artifact"
 ROUTE_TASK_REHEARSAL_DIAGNOSTICS_SCHEMA = "trashbot.route_task_rehearsal_diagnostics_summary.v1"
+ROUTE_TASK_REHEARSAL_EXECUTION_BUNDLE_SCHEMA = "trashbot.route_task_rehearsal_execution_bundle"
+ROUTE_TASK_REHEARSAL_EXECUTION_BUNDLE_SUMMARY_SCHEMA = (
+    "trashbot.route_task_rehearsal_execution_bundle_summary.v1"
+)
 ROUTE_TASK_REHEARSAL_ARTIFACT_GATE = "software_proof_docker_route_task_rehearsal_artifact_gate"
 ROUTE_TASK_REHEARSAL_DIAGNOSTICS_GATE = "software_proof_docker_route_task_rehearsal_diagnostics_gate"
+ROUTE_TASK_REHEARSAL_EXECUTION_BUNDLE_GATE = (
+    "software_proof_docker_route_task_rehearsal_execution_bundle_gate"
+)
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -124,6 +131,14 @@ def _route_task_rehearsal_not_proven(artifact=None):
     return values
 
 
+def _first_route_task_rehearsal_value(*values):
+    for value in values:
+        text = str(value or "").strip()
+        if text:
+            return text
+    return ""
+
+
 def _default_route_task_rehearsal_summary(path, state="not_configured", read_error=""):
     # diagnostics 只读消费 artifact；默认状态必须保守，不能把缺文件解释成路线或任务通过。
     return {
@@ -158,6 +173,47 @@ def _default_route_task_rehearsal_summary(path, state="not_configured", read_err
         "next_step": "Attach a route/task rehearsal artifact from evidence_crosscheck before using diagnostics for route/task replay support.",
         "delivery_success": False,
         "primary_actions_enabled": False,
+    }
+
+
+def _default_route_task_rehearsal_execution_bundle_summary(path, state="not_configured", read_error=""):
+    # bundle 是比旧 artifact 更上层的只读 manifest；默认必须 fail-closed，避免 diagnostics 被误当成控制入口。
+    return {
+        "schema": ROUTE_TASK_REHEARSAL_EXECUTION_BUNDLE_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_REHEARSAL_EXECUTION_BUNDLE_GATE,
+        "state": state,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "bundle_ref": _safe_route_task_rehearsal_ref(path),
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "evidence_ref": "",
+        "artifact_ref": "",
+        "artifact_state": "",
+        "crosscheck_status": {
+            "status": "",
+            "scope": "status/replay/task_record software alignment only",
+            "software_mismatch_count": 0,
+            "software_mismatches": [],
+        },
+        "hil_alignment_status": {
+            "status": "",
+            "alignment_status": "not_proven",
+            "evidence_ref_match": False,
+            "not_real_hil_when_status_is_missing_blocked_or_software_proof": True,
+            "detail": "not real HIL; route/task rehearsal execution bundle was not configured",
+            "mismatch_count": 0,
+        },
+        "not_proven": _route_task_rehearsal_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_phone_copy": "Route/task rehearsal execution bundle is not configured; this is not delivery success.",
+        "next_step": "Attach a route/task rehearsal execution bundle manifest before using diagnostics for execution rehearsal support.",
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
     }
 
 
@@ -282,6 +338,191 @@ def summarize_route_task_rehearsal_artifact(path):
             "read_error": "route/task rehearsal artifact crosscheck status is missing or unsupported",
             "safe_phone_copy": "Route/task rehearsal artifact has no supported crosscheck result; no route or delivery pass is proven.",
             "next_step": "Regenerate the artifact with crosscheck_status.status pass or fail.",
+        }
+    )
+    return summary
+
+
+def summarize_route_task_rehearsal_execution_bundle(path):
+    """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
+    bundle_path = os.path.expanduser(str(path or ""))
+    summary = _default_route_task_rehearsal_execution_bundle_summary(
+        bundle_path,
+        read_error="route/task rehearsal execution bundle is not configured",
+    )
+    if not bundle_path:
+        return summary
+    if not os.path.exists(bundle_path):
+        summary.update(
+            {
+                "state": "missing",
+                "read_error": "route/task rehearsal execution bundle not found",
+                "safe_phone_copy": "Route/task rehearsal execution bundle is missing; this is not delivery success.",
+                "next_step": "Regenerate the execution bundle manifest, then reopen diagnostics.",
+            }
+        )
+        return summary
+
+    summary["exists"] = True
+    try:
+        with open(bundle_path, "r", encoding="utf-8") as f:
+            bundle = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        summary.update(
+            {
+                "state": "read_error",
+                "read_error": _redact_route_task_rehearsal_text(
+                    f"failed reading route/task rehearsal execution bundle: {exc}"
+                ),
+                "safe_phone_copy": "Route/task rehearsal execution bundle could not be read; keep proof not_proven.",
+                "next_step": "Fix the manifest JSON and rerun the bundle generator.",
+            }
+        )
+        return summary
+
+    if not isinstance(bundle, dict):
+        summary.update(
+            {
+                "state": "read_error",
+                "read_error": "route/task rehearsal execution bundle JSON must be an object",
+                "safe_phone_copy": "Route/task rehearsal execution bundle shape is invalid; proof remains not_proven.",
+                "next_step": "Regenerate a JSON object manifest from route_task_rehearsal_bundle.",
+            }
+        )
+        return summary
+
+    source_schema = str(bundle.get("schema") or "")
+    source_boundary = str(bundle.get("evidence_boundary") or "")
+    diagnostics_summary = bundle.get("diagnostics_summary") if isinstance(bundle.get("diagnostics_summary"), dict) else {}
+    artifact_summary = bundle.get("artifact_summary") if isinstance(bundle.get("artifact_summary"), dict) else {}
+    artifacts = bundle.get("artifacts") if isinstance(bundle.get("artifacts"), dict) else {}
+    not_proven_source = bundle.get("not_proven")
+    if not isinstance(not_proven_source, list):
+        not_proven_source = diagnostics_summary.get("not_proven")
+    if not isinstance(not_proven_source, list):
+        not_proven_source = artifact_summary.get("not_proven")
+    if not isinstance(not_proven_source, list):
+        not_proven_source = []
+    artifact_ref = _first_route_task_rehearsal_value(
+        bundle.get("route_task_rehearsal_artifact_ref"),
+        bundle.get("rehearsal_artifact_ref"),
+        bundle.get("artifact_ref"),
+        bundle.get("artifact_path"),
+        artifacts.get("route_task_rehearsal_artifact"),
+        artifacts.get("rehearsal_artifact"),
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": bundle.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "evidence_ref": _safe_route_task_rehearsal_ref(
+                _first_route_task_rehearsal_value(
+                    bundle.get("evidence_ref"),
+                    diagnostics_summary.get("evidence_ref"),
+                    artifact_summary.get("evidence_ref"),
+                )
+            ),
+            "artifact_ref": _safe_route_task_rehearsal_ref(artifact_ref),
+            "artifact_state": _redact_route_task_rehearsal_text(
+                _first_route_task_rehearsal_value(
+                    diagnostics_summary.get("state"),
+                    artifact_summary.get("state"),
+                    bundle.get("artifact_state"),
+                )
+            ),
+            "not_proven": _route_task_rehearsal_not_proven({"not_proven": not_proven_source}),
+            "read_error": "",
+        }
+    )
+    if source_schema != ROUTE_TASK_REHEARSAL_EXECUTION_BUNDLE_SCHEMA or source_boundary != ROUTE_TASK_REHEARSAL_EXECUTION_BUNDLE_GATE:
+        summary.update(
+            {
+                "state": "unsupported_schema",
+                "read_error": "route/task rehearsal execution bundle schema or evidence boundary is unsupported",
+                "safe_phone_copy": "Route/task rehearsal execution bundle is not a supported diagnostics source; no delivery result is proven.",
+                "next_step": "Regenerate the manifest with the supported execution bundle schema and boundary.",
+            }
+        )
+        return summary
+
+    # 新旧生成器可能把 crosscheck/HIL 摘要放在 manifest 顶层、diagnostics_summary 或 artifact_summary；只读合并即可。
+    crosscheck = bundle.get("crosscheck_status") if isinstance(bundle.get("crosscheck_status"), dict) else {}
+    if not crosscheck:
+        crosscheck = (
+            diagnostics_summary.get("crosscheck_status")
+            if isinstance(diagnostics_summary.get("crosscheck_status"), dict)
+            else {}
+        )
+    if not crosscheck:
+        crosscheck = (
+            artifact_summary.get("crosscheck_status")
+            if isinstance(artifact_summary.get("crosscheck_status"), dict)
+            else {}
+        )
+    hil_alignment = bundle.get("hil_alignment_status") if isinstance(bundle.get("hil_alignment_status"), dict) else {}
+    if not hil_alignment:
+        hil_alignment = (
+            diagnostics_summary.get("hil_alignment_status")
+            if isinstance(diagnostics_summary.get("hil_alignment_status"), dict)
+            else {}
+        )
+    if not hil_alignment:
+        hil_alignment = (
+            artifact_summary.get("hil_alignment_status")
+            if isinstance(artifact_summary.get("hil_alignment_status"), dict)
+            else {}
+        )
+    crosscheck_status = str(crosscheck.get("status") or "").strip().lower()
+    software_mismatches = crosscheck.get("software_mismatches")
+    hil_mismatches = hil_alignment.get("mismatches")
+    summary["crosscheck_status"] = {
+        "status": _redact_route_task_rehearsal_text(crosscheck_status),
+        "scope": _redact_route_task_rehearsal_text(
+            crosscheck.get("scope") or "status/replay/task_record software alignment only"
+        ),
+        "software_mismatch_count": len(software_mismatches) if isinstance(software_mismatches, list) else 0,
+        "software_mismatches": _safe_route_task_rehearsal_list(software_mismatches),
+    }
+    alignment_status = str(hil_alignment.get("alignment_status") or "not_proven").strip()
+    summary["hil_alignment_status"] = {
+        "status": _redact_route_task_rehearsal_text(hil_alignment.get("status", "")),
+        "alignment_status": _redact_route_task_rehearsal_text(alignment_status or "not_proven"),
+        "evidence_ref_match": bool(hil_alignment.get("evidence_ref_match", False)),
+        "not_real_hil_when_status_is_missing_blocked_or_software_proof": bool(
+            hil_alignment.get("not_real_hil_when_status_is_missing_blocked_or_software_proof", True)
+        ),
+        "detail": _redact_route_task_rehearsal_text(
+            hil_alignment.get("detail") or "not real HIL; execution bundle remains software proof"
+        ),
+        "mismatch_count": len(hil_mismatches) if isinstance(hil_mismatches, list) else 0,
+    }
+
+    if crosscheck_status == "pass":
+        summary.update(
+            {
+                "state": "crosscheck_pass",
+                "safe_phone_copy": "Route/task rehearsal execution bundle crosscheck passed as Docker/local software proof only; it is not delivery success.",
+                "next_step": "Use the bundle for support/replay handoff, then collect real Nav2/fixed-route and HIL evidence before claiming delivery.",
+            }
+        )
+        return summary
+    if crosscheck_status == "fail":
+        summary.update(
+            {
+                "state": "crosscheck_fail",
+                "safe_phone_copy": "Route/task rehearsal execution bundle crosscheck failed; keep route/task proof blocked and not_proven.",
+                "next_step": "Inspect sanitized software mismatches, fix source inputs, and regenerate the execution bundle.",
+            }
+        )
+        return summary
+
+    summary.update(
+        {
+            "state": "unsupported_status",
+            "read_error": "route/task rehearsal execution bundle crosscheck status is missing or unsupported",
+            "safe_phone_copy": "Route/task rehearsal execution bundle has no supported crosscheck result; no route or delivery pass is proven.",
+            "next_step": "Regenerate the manifest with crosscheck_status.status pass or fail.",
         }
     )
     return summary
@@ -1210,6 +1451,7 @@ def build_diagnostics_payload(
     transaction_isolation_artifact_ref="",
     production_recovery_artifact_ref="",
     route_task_rehearsal_artifact_ref="",
+    route_task_rehearsal_bundle_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -1295,6 +1537,10 @@ def build_diagnostics_payload(
         route_task_rehearsal=summarize_route_task_rehearsal_artifact(
             route_task_rehearsal_artifact_ref
             or os.environ.get("TRASHBOT_ROUTE_TASK_REHEARSAL_ARTIFACT", "")
+        ),
+        route_task_rehearsal_execution_bundle=summarize_route_task_rehearsal_execution_bundle(
+            route_task_rehearsal_bundle_ref
+            or os.environ.get("TRASHBOT_ROUTE_TASK_REHEARSAL_BUNDLE", "")
         ),
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,

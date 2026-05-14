@@ -55,6 +55,21 @@ artifact 使用 `schema=trashbot.route_task_rehearsal_artifact`、`schema_versio
 
 `diagnostics_summary` 是给 `/api/diagnostics` 或支持面消费的 phone-safe 摘要，schema 为 `trashbot.route_task_rehearsal_diagnostics_summary`，证据边界固定为 `software_proof_docker_route_task_rehearsal_diagnostics_gate`。该 summary 只暴露脱敏后的 `status`、`evidence_boundary`、`evidence_ref`、`crosscheck_status`、`hil_alignment_status`、`not_proven` 和 `next_step`；diagnostics 可以把它作为 `route_task_rehearsal` 展示，但不能据此放行控制动作、声明真实 fixed-route/Nav2、HIL、delivery success 或云/4G/OSS/CDN/DB/queue proof。
 
+## route/task rehearsal execution bundle
+
+`pc-tools/evidence/route_task_rehearsal_bundle.py` 在 `evidence_crosscheck.py` 之上生成可传递 execution bundle manifest：
+
+```bash
+python3 pc-tools/evidence/route_task_rehearsal_bundle.py \
+  /tmp/trashbot_fixed_route_status.json \
+  --task-record /tmp/task_record.json \
+  --output-dir /tmp/route_task_rehearsal_bundle
+```
+
+该命令会先写出 `route_task_rehearsal_artifact.json`，再写出 `route_task_rehearsal_execution_bundle.json`。manifest 使用 `schema=trashbot.route_task_rehearsal_execution_bundle`、`schema_version=1`，证据边界固定为 `software_proof_docker_route_task_rehearsal_execution_bundle_gate`。manifest 顶层直接提供 diagnostics 只读消费字段：`route_task_rehearsal_artifact_ref`、`crosscheck_status`、`hil_alignment_status` 和 `diagnostics_summary`；同时保留脱敏后的 route status、task record、task record dir、HIL gate output 和 artifact 路径引用，以及 `not_proven` 和 `next_step`。
+
+`status=available_software_proof` 和顶层 `crosscheck_status.status=pass` 只代表 status/replay/task_record 软件对账通过，适合交给 diagnostics 或 sprint closeout 做同一 `evidence_ref` 的材料传递。顶层 `hil_alignment_status.alignment_status=not_proven` 时必须继续显示缺真实 HIL。该 manifest 不证明真实 Nav2/fixed-route 实跑、真实路线采集、WAVE ROVER 运动、真实串口/UART feedback、真实 HIL、dropoff/cancel completion 或 delivery success。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

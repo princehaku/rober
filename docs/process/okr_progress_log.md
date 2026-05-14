@@ -8,7 +8,15 @@
 
 ## 2026-05-14 系列
 
-更新时间：2026-05-14 20:12 Asia/Shanghai。
+更新时间：2026-05-14 21:17 Asia/Shanghai。
+
+### 2026-05-14 21-22｜route-task-rehearsal-execution-bundle｜O2/O3 route task rehearsal execution bundle software proof，任务闭环与固定路线均由约 79% 上调到约 80%
+
+`sprints/2026.05.14_21-22_route-task-rehearsal-execution-bundle` 完成 `software_proof_docker_route_task_rehearsal_execution_bundle_gate`：Task A `autonomy-engineer` 新增 `pc-tools/evidence/route_task_rehearsal_bundle.py`，复用 `evidence_crosscheck.run_crosscheck()` 生成底层 artifact，再输出 schema 为 `trashbot.route_task_rehearsal_execution_bundle` 的 manifest。首轮集成核对发现 generator 与 diagnostics consumer 的 manifest shape 不一致，crosscheck/HIL 摘要只在 `artifact_status` 内；修复后 manifest 顶层直接包含 `route_task_rehearsal_artifact_ref`、`crosscheck_status`、`hil_alignment_status`、`diagnostics_summary`，并保留 `artifact_status` 兼容。Task A 验证输出 `py_compile` pass、CLI `--help` pass、临时 `/tmp` drill `CHECK summary: mismatches=0`，确认 `top_level_artifact_ref_present: True`、`top_level_crosscheck_status: pass`、`top_level_hil_alignment_status: not_proven`、`top_level_diagnostics_summary_present: True`、required `rg` pass、scoped `git diff --check` pass。
+
+Task B `robot-software-engineer` 新增 diagnostics summary `route_task_rehearsal_execution_bundle`，支持 explicit `route_task_rehearsal_bundle_ref` 和环境变量 `TRASHBOT_ROUTE_TASK_REHEARSAL_BUNDLE`，保留旧 artifact summary 兼容。missing、read_error、unsupported schema、crosscheck fail 均保守降级，`primary_actions_enabled=false`，不触发 ACK POST、cursor、Start/Confirm/Cancel enablement、HIL 或 delivery success claim。Task B 验证输出 diagnostics py_compile pass、`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_operator_gateway_diagnostics` `Ran 48 tests ... OK`、required `rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 2 和 Objective 3 各从约 79% 保守上调到约 80%，理由是 Docker/local route/task rehearsal 已从 diagnostics 可消费 artifact 推进到可复跑 execution bundle + diagnostics 可消费 manifest，支持人员能看到 artifact ref、crosscheck status、HIL alignment status、diagnostics summary、`not_proven` 和 next_step。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1 保持约 75%，Objective 4 保持约 95%。本轮 `software_proof_docker_route_task_rehearsal_execution_bundle_gate` 只证明 status/replay/task_record/crosscheck 软件对账、execution bundle manifest 和 diagnostics summary 可安全消费，不是真实 Nav2/fixed-route 实跑、真实路线采集、关键帧实景证据、WAVE ROVER、真实串口、HIL、同一 `evidence_ref` 的上车复账、dropoff/cancel completion、delivery success、O5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic 或 production DB/queue。
 
 ### 2026-05-14 20-21｜route-task-rehearsal-diagnostics｜O2/O3 route task rehearsal diagnostics software proof，任务闭环与固定路线均由约 78% 上调到约 79%
 

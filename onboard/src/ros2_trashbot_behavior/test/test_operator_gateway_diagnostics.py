@@ -1,5 +1,6 @@
 import unittest
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -17,6 +18,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     normalize_log_refs,
     summarize_hardware_proof,
     summarize_route_task_rehearsal_artifact,
+    summarize_route_task_rehearsal_execution_bundle,
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import (
@@ -868,6 +870,144 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("not_proven", summary["safe_phone_copy"])
         self.assertIn("delivery_success", summary["not_proven"])
         self.assertNotIn("/tmp/raw.json", encoded)
+
+    def test_diagnostics_payload_includes_route_task_rehearsal_execution_bundle_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            bundle_path = Path(td) / "route_task_rehearsal_execution_bundle.json"
+            bundle_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_rehearsal_execution_bundle",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_rehearsal_execution_bundle_gate"
+                        ),
+                        "evidence_ref": str(Path(td) / "route_task_execution.ref.json"),
+                        "artifact_ref": str(Path(td) / "route_task_rehearsal_artifact.json"),
+                        "crosscheck_status": {
+                            "status": "pass",
+                            "scope": "status/replay/task_record software alignment only",
+                            "software_mismatches": [],
+                        },
+                        "hil_alignment_status": {
+                            "status": "software_proof",
+                            "alignment_status": "not_proven",
+                            "detail": "not real HIL; Bearer secret-token /dev/ttyUSB0 baudrate=115200",
+                            "mismatches": [],
+                        },
+                        "not_proven": ["delivery_success", "real_hil_pass"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_rehearsal_bundle_ref=str(bundle_path),
+            )
+            summary = payload["route_task_rehearsal_execution_bundle"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary["state"], "crosscheck_pass")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_rehearsal_execution_bundle_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_rehearsal_execution_bundle")
+        self.assertEqual(summary["crosscheck_status"]["status"], "pass")
+        self.assertEqual(summary["hil_alignment_status"]["alignment_status"], "not_proven")
+        self.assertIn("local_path_redacted:route_task_execution.ref.json", summary["evidence_ref"])
+        self.assertIn("local_path_redacted:route_task_rehearsal_artifact.json", summary["artifact_ref"])
+        self.assertIn("not delivery success", summary["safe_phone_copy"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        for forbidden in (
+            str(bundle_path),
+            str(Path(td)),
+            "secret-token",
+            "/dev/ttyUSB0",
+            "baudrate=115200",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_route_task_rehearsal_execution_bundle_env_and_fail_stay_blocked(self):
+        with tempfile.TemporaryDirectory() as td:
+            bundle_path = Path(td) / "route_task_rehearsal_execution_bundle_fail.json"
+            bundle_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_rehearsal_execution_bundle",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_rehearsal_execution_bundle_gate"
+                        ),
+                        "evidence_ref": "evidence://route-task-execution-1",
+                        "diagnostics_summary": {
+                            "crosscheck_status": {
+                                "status": "fail",
+                                "software_mismatches": ["task_record mismatch at /tmp/raw.json"],
+                            },
+                            "hil_alignment_status": {"alignment_status": "not_proven"},
+                        },
+                        "not_proven": ["delivery_success"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous = os.environ.get("TRASHBOT_ROUTE_TASK_REHEARSAL_BUNDLE")
+            os.environ["TRASHBOT_ROUTE_TASK_REHEARSAL_BUNDLE"] = str(bundle_path)
+            try:
+                payload = self._base_build_payload({"state": "waiting_for_trash"})
+            finally:
+                if previous is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_REHEARSAL_BUNDLE", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_REHEARSAL_BUNDLE"] = previous
+            summary = payload["route_task_rehearsal_execution_bundle"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary["state"], "crosscheck_fail")
+        self.assertEqual(summary["crosscheck_status"]["software_mismatch_count"], 1)
+        self.assertIn("not_proven", summary["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertNotIn("/tmp/raw.json", encoded)
+
+    def test_route_task_rehearsal_execution_bundle_missing_or_invalid_is_conservative(self):
+        with tempfile.TemporaryDirectory() as td:
+            missing_path = Path(td) / "Bearer-secret-token" / "missing.json"
+            missing_summary = summarize_route_task_rehearsal_execution_bundle(str(missing_path))
+            invalid_path = Path(td) / "invalid_bundle.json"
+            invalid_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_rehearsal_artifact",
+                        "evidence_boundary": "software_proof_docker_route_task_rehearsal_artifact_gate",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            invalid_summary = summarize_route_task_rehearsal_execution_bundle(str(invalid_path))
+            encoded = json.dumps([missing_summary, invalid_summary], ensure_ascii=False)
+
+        self.assertEqual(missing_summary["state"], "missing")
+        self.assertEqual(invalid_summary["state"], "unsupported_schema")
+        self.assertIn("software_proof_docker_route_task_rehearsal_execution_bundle_gate", encoded)
+        self.assertIn("not delivery success", missing_summary["safe_phone_copy"])
+        self.assertFalse(missing_summary["primary_actions_enabled"])
+        self.assertFalse(invalid_summary["delivery_success"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
 
     def test_diagnostics_payload_includes_phone_safe_oss_cdn_manifest_summary(self):
         with tempfile.TemporaryDirectory() as td:

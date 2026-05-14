@@ -388,6 +388,24 @@ artifact 字段要求：
 
 `diagnostics_summary` 是 diagnostics consumption 的只读摘要，schema 为 `trashbot.route_task_rehearsal_diagnostics_summary`，`evidence_boundary=software_proof_docker_route_task_rehearsal_diagnostics_gate`。它只给诊断面提供脱敏后的 `status`、`evidence_ref`、`crosscheck_status`、`hil_alignment_status`、`not_proven` 和 `next_step`，可映射到 diagnostics payload 的 `route_task_rehearsal` 字段。该字段不改变 Start/Confirm/Cancel、ACK、cursor、Nav2、WAVE ROVER 或 HIL 语义；缺 HIL 或 HIL 未对齐时仍必须显示 `not_proven`，不能写成真实 fixed-route、真实 HIL、真实 delivery success 或 Objective 5 外部云证明。
 
+### 5.5 route/task rehearsal execution bundle
+
+当需要把 route status、software replay、task record 和 crosscheck artifact 作为一份可传递材料交给 diagnostics 或 sprint closeout 时，使用 execution bundle 生成器：
+
+```bash
+python3 pc-tools/evidence/route_task_rehearsal_bundle.py \
+  /tmp/trashbot_fixed_route_status.json \
+  --task-record /tmp/task_record.json \
+  --output-dir /tmp/route_task_rehearsal_bundle
+```
+
+输出目录包含：
+
+- `route_task_rehearsal_artifact.json`：由 `evidence_crosscheck.py` 生成的底层 artifact。
+- `route_task_rehearsal_execution_bundle.json`：交接用 manifest，`schema=trashbot.route_task_rehearsal_execution_bundle`，`evidence_boundary=software_proof_docker_route_task_rehearsal_execution_bundle_gate`。
+
+execution bundle manifest 顶层直接记录 diagnostics 只读消费字段：`route_task_rehearsal_artifact_ref`、`crosscheck_status`、`hil_alignment_status` 和 `diagnostics_summary`；同时保留脱敏路径引用、`evidence_ref`、`not_proven` 和 `next_step`。`status=available_software_proof` 与 `crosscheck_status.status=pass` 只表示 Docker/local route status、software replay 和 task record 软件对账通过；`hil_alignment_status.alignment_status=not_proven` 时仍缺真实 HIL。该 manifest 不是真实 Nav2/fixed-route、真实路线采集、WAVE ROVER 运动、真实串口/UART feedback、真实 HIL、dropoff/cancel completion 或 delivery success。
+
 ## 6. Debug Web
 
 Start the debug page:
