@@ -239,6 +239,32 @@ Failure code update (O3):
 
 `waiting_visual_gate` 属于 keyframe 或视觉门控未完成状态；`failure_code` 可能为空。
 
+## 4.5 Field-Run Intake Review Console
+
+真实路线-任务 field run 前后的 PC/support 复核分两层处理：
+
+1. `pc-tools/evidence/route_task_field_run_intake.py` 接收 route status、task record、runtime log、robot-side task evidence 和 support-safe mobile summary，用同一 `evidence_ref` 做 software crosscheck。
+2. `pc-tools/evidence/route_task_field_run_review.py` 只读 intake/crosscheck JSON，输出 operator/support 可读的 review report。
+
+review console 示例：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_review.py \
+  --intake-json /tmp/route_task_field_run_intake.json \
+  --once-json
+```
+
+review report 使用 `schema=trashbot.route_task_field_run_review_console.v1`，证据边界固定为 `software_proof_docker_route_task_field_run_review_console_gate`。核心字段包括：
+
+- `review_decision`: 把 missing、mismatch、unsafe summary 或 unsupported schema 转成下一步操作分支。
+- `operator_next_steps`: 给现场人员的补采、统一 `evidence_ref`、重跑 intake/review 或进入人工复核步骤。
+- `commands_to_rerun`: review 层整理后的重跑顺序，不是原样复制 intake 字段。
+- `phone_safe_summary`: support/mobile 可展示的白名单摘要。
+- `not_proven`: 继续列出真实 Nav2/fixed-route、真实路线采集、真实硬件反馈、HIL、dropoff/cancel completion、delivery_success 和 O5 external proof 未证明。
+- `primary_actions_enabled=false` 与 `delivery_success=false`: review 不能放行控制动作，也不能声明送达成功。
+
+`ready_for_operator_review` 只表示 Docker/local software proof 的 intake 材料足够进入人工复核；它不是实机 fixed-route/Nav2、真实路线采集、WAVE ROVER/HIL、真实投放、真实取消完成或 delivery success。任何缺 intake、坏 JSON、unsupported schema、unsafe support copy、缺材料或同一 `evidence_ref` 不一致，都必须保持 blocked review report，再按 `operator_next_steps` 补采和重跑。
+
 ## 5. 关键缺失与超时复现脚本（离线）
 
 ### 5.1 固定路线关键点缺失

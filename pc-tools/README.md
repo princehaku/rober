@@ -144,6 +144,28 @@ python3 pc-tools/evidence/route_task_field_run_intake.py \
 
 缺文件、坏 JSON、非 JSON object、unsupported schema、任一材料缺 `evidence_ref`、同 run 不一致或 support-safe mobile summary 含敏感材料时，CLI 会保守输出 blocked 状态，不抛未处理异常。`phone_safe_summary` 只包含 status、safe evidence ref、材料 present/missing/mismatch、`commands_to_rerun`、`not_proven` 和 accepted/processing support metadata only 语义；不得包含 raw artifact、完整本机路径、ROS 控制 topic、serial/UART、baudrate、WAVE ROVER 参数、token、Authorization、OSS AK/SK、DB/queue URL、traceback、checksum、complete artifact 或 raw robot response。
 
+## route/task field-run review console
+
+`pc-tools/evidence/route_task_field_run_review.py` 只读上一节生成的 intake/crosscheck JSON，把机器字段整理成 operator/support 可读的 review report：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_review.py \
+  --intake-json /tmp/route_task_field_run_intake.json \
+  --output /tmp/route_task_field_run_review.json
+```
+
+需要直接给 diagnostics、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_review.py \
+  --intake-json /tmp/route_task_field_run_intake.json \
+  --once-json
+```
+
+输出 `schema=trashbot.route_task_field_run_review_console.v1`、`schema_version=1`、`evidence_boundary=software_proof_docker_route_task_field_run_review_console_gate`、`review_decision`、`operator_next_steps`、整理后的 `commands_to_rerun`、`phone_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。review console 的新增价值是把 intake 的 missing/mismatch/unsafe/unsupported 状态转成现场下一步：补采缺失材料、统一 `evidence_ref` 后重跑、修复 support-safe 摘要，或进入人工复核但继续禁止 delivery claim。
+
+该 report 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、硬件、外部云、OSS/CDN、DB/queue 或 4G；`ready_for_operator_review` 只表示 intake 材料足够进入 operator/support 复核，不表示真实 Nav2/fixed-route、真实路线采集、HIL、dropoff/cancel completion、delivery success 或 O5 external proof。缺 intake、坏 JSON、unsupported schema、unsafe phone/support copy、missing materials 或 mismatch 时，CLI 会输出 blocked review report，而不是抛未处理异常或猜测现场成功。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

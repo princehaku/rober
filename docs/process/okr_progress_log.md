@@ -8,7 +8,17 @@
 
 ## 2026-05-15 系列
 
-更新时间：2026-05-15 01:18 Asia/Shanghai。
+更新时间：2026-05-15 02:14 Asia/Shanghai。
+
+### 2026-05-15 02-03｜route-task-field-run-review-console｜O2/O3 field-run review console software proof，任务闭环与固定路线均由约 84% 上调到约 85%
+
+`sprints/2026.05.15_02-03_route-task-field-run-review-console` 完成 `software_proof_docker_route_task_field_run_review_console_gate`：Task A `autonomy-engineer` 新增 `pc-tools/evidence/route_task_field_run_review.py` 和 `pc-tools/evidence/test_route_task_field_run_review.py`，更新 `pc-tools/README.md`、`docs/navigation/fixed_route_workflow.md`。review console artifact 输出 `schema=trashbot.route_task_field_run_review_console.v1`、`review_decision`、`operator_next_steps`、`missing_materials`、`mismatch_reasons`、`commands_to_rerun`、`phone_safe_summary`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。Task A 验证输出 py_compile pass、`test_route_task_field_run_review.py` `Ran 6 tests OK`、CLI `--help` pass、required `rg` pass、scoped diff check pass；首轮 mismatch decision reason 未明确包含 same `evidence_ref`，已修复并复验。
+
+Task B `robot-software-engineer` 更新 `operator_gateway_diagnostics.py`、`test_operator_gateway_diagnostics.py` 与 `docs/interfaces/ros_contracts.md`，新增 diagnostics metadata-only `route_task_field_run_review` / `route_task_field_run_review_summary` consumption。支持 explicit ref、`TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW_CONSOLE` 和 `TRASHBOT_ROUTE_TASK_FIELD_RUN_REVIEW`；不触发 collect/dropoff/cancel、ACK POST、cursor advance/persistence、terminal ACK、Nav2、HIL、dropoff/cancel completion 或 delivery success。Task B 验证输出 py_compile pass、diagnostics unittest `Ran 59 tests OK`、required `rg` pass、scoped diff check pass。
+
+Task C `full-stack-software-engineer` 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增只读 route task field-run review panel。该 panel 消费 `route_task_field_run_review_summary.v1` 并保留 source artifact `route_task_field_run_review_console.v1`，展示复核状态、safe `evidence_ref`、missing/mismatch、commands、operator next steps、`not_proven` 和 boundary，不改变 Start/Confirm/Cancel gating。Task C 验证输出 mobile unittest `Ran 10 tests OK`、py_compile pass、`node --check` pass、required `rg` pass、scoped diff check pass；集成返工将 mobile schema drift 从 `trashbot.route_task_field_run_review.v1` 对齐到 Robot diagnostics summary schema `trashbot.route_task_field_run_review_summary.v1` 后复验通过。
+
+该证据只支持 Objective 2 和 Objective 3 各从约 84% 保守上调到约 85%。Objective 2 的理由是 field-run intake/crosscheck 已推进为 operator/support 可读的 review decision、重跑命令、下一步和手机只读复核入口，能把下一次真实 route/task field run 材料按同一 `evidence_ref` 转成任务复盘动作。Objective 3 的理由是 route/task 材料不只停留在 intake/crosscheck，而是形成可读 review console、diagnostics summary 和 mobile read-only panel，支持固定路线现场复核人员判断缺材料、不一致和重跑路径。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1 保持约 75%，Objective 4 保持约 95%。本轮 `software_proof_docker_route_task_field_run_review_console_gate` 只证明 Docker/local review console、diagnostics summary、mobile read-only review 和只读控制边界，不是真实 Nav2/fixed-route、真实路线采集、WAVE ROVER、真实串口/UART、HIL、同一 `evidence_ref` 上车复账、dropoff/cancel completion、delivery success、Objective 5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue 或 worker/migration。
 
 ### 2026-05-15 01-02｜route-task-field-run-intake-crosscheck｜O2/O3 field-run intake/crosscheck software proof，任务闭环与固定路线均由约 83% 上调到约 84%
 
