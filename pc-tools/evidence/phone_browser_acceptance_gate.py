@@ -29,8 +29,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MOBILE_WEB_ROOT = REPO_ROOT / "mobile" / "web"
 MOBILE_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
-EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate"
-COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"
+EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_field_trial_browser_proof_gate"
+COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate"
+REFRESH_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"
 LEGACY_ARTIFACT_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"
 VIEWPORTS = ((390, 844), (768, 900))
 PRIMARY_BUTTON_IDS = ("startButton", "confirmButton", "cancelButton")
@@ -80,6 +81,52 @@ KEY_ELEMENT_IDS = (
     "mobileRealDeviceRetestRequestChecklist",
     "mobileRealDeviceRetestRequestSafeCopy",
     "copyRealDeviceRetestRequestButton",
+    "mobileRealDeviceFieldTrialTitle",
+    "mobileRealDeviceFieldTrialSummary",
+    "mobileRealDeviceFieldTrialSafeControl",
+    "mobileRealDeviceFieldTrialAck",
+    "mobileRealDeviceFieldTrialBoundary",
+    "mobileRealDeviceFieldTrialNotProven",
+    "mobileRealDeviceFieldTrialSafeCopy",
+    "copyRealDeviceFieldTrialPackageButton",
+    "mobileRealDeviceFieldTrialReviewTitle",
+    "mobileRealDeviceFieldTrialReviewSafeControl",
+    "mobileRealDeviceFieldTrialReviewAck",
+    "mobileRealDeviceFieldTrialReviewBoundary",
+    "mobileRealDeviceFieldTrialReviewNotProven",
+    "mobileRealDeviceFieldTrialReviewSafeCopy",
+    "copyRealDeviceFieldTrialReviewButton",
+    "mobileRealDeviceFieldTrialRunbookExecutionTitle",
+    "mobileRealDeviceFieldTrialRunbookExecutionSafeControl",
+    "mobileRealDeviceFieldTrialRunbookExecutionAck",
+    "mobileRealDeviceFieldTrialRunbookExecutionBoundary",
+    "mobileRealDeviceFieldTrialRunbookExecutionNotProven",
+    "mobileRealDeviceFieldTrialRunbookExecutionSafeCopy",
+    "copyRealDeviceFieldTrialRunbookExecutionButton",
+    "mobileRealDeviceFieldTrialEvidenceRecordTitle",
+    "mobileRealDeviceFieldTrialEvidenceRecordSafeControl",
+    "mobileRealDeviceFieldTrialEvidenceRecordAck",
+    "mobileRealDeviceFieldTrialEvidenceRecordBoundary",
+    "mobileRealDeviceFieldTrialEvidenceRecordArchive",
+    "mobileRealDeviceFieldTrialEvidenceRecordNotProven",
+    "mobileRealDeviceFieldTrialEvidenceRecordSafeCopy",
+    "copyRealDeviceFieldTrialEvidenceRecordButton",
+    "mobileRealDeviceFieldTrialEvidenceVerdictTitle",
+    "mobileRealDeviceFieldTrialEvidenceVerdictSafeControl",
+    "mobileRealDeviceFieldTrialEvidenceVerdictAck",
+    "mobileRealDeviceFieldTrialEvidenceVerdictBoundary",
+    "mobileRealDeviceFieldTrialEvidenceVerdictSourceBoundary",
+    "mobileRealDeviceFieldTrialEvidenceVerdictNotProven",
+    "mobileRealDeviceFieldTrialEvidenceVerdictSafeCopy",
+    "copyRealDeviceFieldTrialEvidenceVerdictButton",
+    "mobileRealDeviceFieldTrialRetestExecutionTitle",
+    "mobileRealDeviceFieldTrialRetestExecutionSafeControl",
+    "mobileRealDeviceFieldTrialRetestExecutionAck",
+    "mobileRealDeviceFieldTrialRetestExecutionBoundary",
+    "mobileRealDeviceFieldTrialRetestExecutionSourceBoundary",
+    "mobileRealDeviceFieldTrialRetestExecutionNotProven",
+    "mobileRealDeviceFieldTrialRetestExecutionSafeCopy",
+    "copyRealDeviceFieldTrialRetestExecutionButton",
     "mobileBrowserAcceptanceTitle",
     "mobileBrowserAcceptanceCopy",
     "mobileBrowserAck",
@@ -109,6 +156,12 @@ CURRENT_PANEL_EXPECTATIONS = {
     "mobileDeviceHandoffTitle": "真实手机验收交接会话",
     "mobilePwaInstallPromptTitle": "PWA 安装提示证据",
     "mobileRealDeviceRetestRequestTitle": "真实设备复测请求",
+    "mobileRealDeviceFieldTrialTitle": "真实设备现场试跑包",
+    "mobileRealDeviceFieldTrialReviewTitle": "现场试跑证据复核",
+    "mobileRealDeviceFieldTrialRunbookExecutionTitle": "现场试跑执行清单",
+    "mobileRealDeviceFieldTrialEvidenceRecordTitle": "现场证据记录",
+    "mobileRealDeviceFieldTrialEvidenceVerdictTitle": "现场证据 verdict",
+    "mobileRealDeviceFieldTrialRetestExecutionTitle": "现场复测执行",
     "mobileBrowserAcceptanceTitle": "浏览器验收包",
 }
 CURRENT_BOUNDARY_EXPECTATIONS = {
@@ -120,6 +173,14 @@ CURRENT_BOUNDARY_EXPECTATIONS = {
     "mobilePwaInstallPromptBoundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_gate",
     "mobileRealDeviceRetestRequestBoundary": "software_proof_docker_mobile_real_device_retest_request_gate",
     "mobileRealDeviceRetestRequestSourceBoundary": "software_proof_docker_mobile_real_device_review_execution_gate",
+    "mobileRealDeviceFieldTrialBoundary": "software_proof_docker_mobile_real_device_field_trial_package_gate",
+    "mobileRealDeviceFieldTrialReviewBoundary": "software_proof_docker_mobile_real_device_field_trial_review_gate",
+    "mobileRealDeviceFieldTrialRunbookExecutionBoundary": "software_proof_docker_mobile_real_device_field_trial_runbook_execution_gate",
+    "mobileRealDeviceFieldTrialEvidenceRecordBoundary": "software_proof_docker_mobile_real_device_field_trial_evidence_record_gate",
+    "mobileRealDeviceFieldTrialEvidenceVerdictBoundary": "software_proof_docker_mobile_real_device_field_trial_evidence_verdict_gate",
+    "mobileRealDeviceFieldTrialEvidenceVerdictSourceBoundary": "software_proof_docker_mobile_real_device_field_trial_evidence_record_gate",
+    "mobileRealDeviceFieldTrialRetestExecutionBoundary": "software_proof_docker_mobile_real_device_field_trial_retest_execution_gate",
+    "mobileRealDeviceFieldTrialRetestExecutionSourceBoundary": "software_proof_docker_mobile_real_device_field_trial_evidence_verdict_gate",
     "mobileBrowserBoundary": "software_proof_docker_mobile_browser_acceptance_bundle_gate",
 }
 PHONE_SAFE_FORBIDDEN_VISIBLE = (
@@ -200,6 +261,7 @@ class MobileWebHandler(BaseHTTPRequestHandler):
             "mobile_browser_acceptance_bundle": fixture.get("mobile_browser_acceptance_bundle", {}),
             "evidence_boundary": EVIDENCE_BOUNDARY,
             "compatible_evidence_boundary": COMPATIBLE_EVIDENCE_BOUNDARY,
+            "refresh_evidence_boundary": REFRESH_EVIDENCE_BOUNDARY,
             "legacy_artifact_evidence_boundary": LEGACY_ARTIFACT_EVIDENCE_BOUNDARY,
             "not_proven": list(NOT_PROVEN),
         }
@@ -477,6 +539,12 @@ def viewport_script():
     const handoff = document.getElementById('mobileDeviceHandoffSafeCopy');
     const device = document.getElementById('mobileDeviceEvidenceSafeCopy');
     const retest = document.getElementById('mobileRealDeviceRetestRequestSafeCopy');
+    const fieldTrial = document.getElementById('mobileRealDeviceFieldTrialSafeCopy');
+    const fieldTrialReview = document.getElementById('mobileRealDeviceFieldTrialReviewSafeCopy');
+    const fieldTrialRunbook = document.getElementById('mobileRealDeviceFieldTrialRunbookExecutionSafeCopy');
+    const fieldTrialRecord = document.getElementById('mobileRealDeviceFieldTrialEvidenceRecordSafeCopy');
+    const fieldTrialVerdict = document.getElementById('mobileRealDeviceFieldTrialEvidenceVerdictSafeCopy');
+    const fieldTrialRetest = document.getElementById('mobileRealDeviceFieldTrialRetestExecutionSafeCopy');
     const diag = document.getElementById('diagnosticsButton');
     const ack = document.getElementById('ackCopy');
     if (bundleBoundary && bundleBoundary.innerText.includes('software_proof_docker_mobile_browser_acceptance_bundle_gate') &&
@@ -484,6 +552,12 @@ def viewport_script():
         handoff && handoff.innerText.includes('trashbot.mobile_device_handoff_package.v1') &&
         device && device.innerText.includes('trashbot.mobile_device_evidence_package.v1') &&
         retest && retest.innerText.includes('trashbot.mobile_real_device_retest_request_package.v1') &&
+        fieldTrial && fieldTrial.innerText.includes('trashbot.mobile_real_device_field_trial_package_copy.v1') &&
+        fieldTrialReview && fieldTrialReview.innerText.includes('trashbot.mobile_real_device_field_trial_review_copy.v1') &&
+        fieldTrialRunbook && fieldTrialRunbook.innerText.includes('trashbot.mobile_real_device_field_trial_runbook_execution_copy.v1') &&
+        fieldTrialRecord && fieldTrialRecord.innerText.includes('trashbot.mobile_real_device_field_trial_evidence_record_copy.v1') &&
+        fieldTrialVerdict && fieldTrialVerdict.innerText.includes('trashbot.mobile_real_device_field_trial_evidence_verdict_copy.v1') &&
+        fieldTrialRetest && fieldTrialRetest.innerText.includes('trashbot.mobile_real_device_field_trial_retest_execution_copy.v1') &&
         diag && !diag.disabled && ack && ack.innerText.includes('不代表送达成功')) break;
     await sleep(100);
   }}
@@ -500,11 +574,23 @@ def viewport_script():
     diagnosticsPanel.hidden = false;
   }}
   document.getElementById('copyRealDeviceRetestRequestButton').click();
+  document.getElementById('copyRealDeviceFieldTrialPackageButton').click();
+  document.getElementById('copyRealDeviceFieldTrialReviewButton').click();
+  document.getElementById('copyRealDeviceFieldTrialRunbookExecutionButton').click();
+  document.getElementById('copyRealDeviceFieldTrialEvidenceRecordButton').click();
+  document.getElementById('copyRealDeviceFieldTrialEvidenceVerdictButton').click();
+  document.getElementById('copyRealDeviceFieldTrialRetestExecutionButton').click();
   document.getElementById('copyAcceptanceBundleButton').click();
   for (let i = 0; i < 50; i += 1) {{
     if (!document.getElementById('diagnosticsPanel').hidden &&
         !document.getElementById('terminalActionPanel').hidden &&
         document.getElementById('mobileRealDeviceRetestRequestSafeCopy').innerText.includes('trashbot.mobile_real_device_retest_request_package.v1') &&
+        document.getElementById('mobileRealDeviceFieldTrialSafeCopy').innerText.includes('trashbot.mobile_real_device_field_trial_package_copy.v1') &&
+        document.getElementById('mobileRealDeviceFieldTrialReviewSafeCopy').innerText.includes('trashbot.mobile_real_device_field_trial_review_copy.v1') &&
+        document.getElementById('mobileRealDeviceFieldTrialRunbookExecutionSafeCopy').innerText.includes('trashbot.mobile_real_device_field_trial_runbook_execution_copy.v1') &&
+        document.getElementById('mobileRealDeviceFieldTrialEvidenceRecordSafeCopy').innerText.includes('trashbot.mobile_real_device_field_trial_evidence_record_copy.v1') &&
+        document.getElementById('mobileRealDeviceFieldTrialEvidenceVerdictSafeCopy').innerText.includes('trashbot.mobile_real_device_field_trial_evidence_verdict_copy.v1') &&
+        document.getElementById('mobileRealDeviceFieldTrialRetestExecutionSafeCopy').innerText.includes('trashbot.mobile_real_device_field_trial_retest_execution_copy.v1') &&
         document.getElementById('mobileBrowserBoundary').innerText.includes('software_proof_docker_mobile_browser_acceptance_bundle_gate')) break;
     await sleep(100);
   }}
@@ -581,6 +667,18 @@ def viewport_script():
     pwaInstallPromptVisible: document.getElementById('mobilePwaInstallPromptSafeCopy').innerText.includes('trashbot.mobile_pwa_install_prompt_evidence_package.v1'),
     retestRequestVisible: document.getElementById('mobileRealDeviceRetestRequestSafeCopy').innerText.includes('trashbot.mobile_real_device_retest_request_package.v1'),
     retestRequestCopyable: !document.getElementById('copyRealDeviceRetestRequestButton').disabled,
+    fieldTrialPackageVisible: document.getElementById('mobileRealDeviceFieldTrialSafeCopy').innerText.includes('trashbot.mobile_real_device_field_trial_package_copy.v1'),
+    fieldTrialPackageCopyable: !document.getElementById('copyRealDeviceFieldTrialPackageButton').disabled,
+    fieldTrialReviewVisible: document.getElementById('mobileRealDeviceFieldTrialReviewSafeCopy').innerText.includes('trashbot.mobile_real_device_field_trial_review_copy.v1'),
+    fieldTrialReviewCopyable: !document.getElementById('copyRealDeviceFieldTrialReviewButton').disabled,
+    fieldTrialRunbookExecutionVisible: document.getElementById('mobileRealDeviceFieldTrialRunbookExecutionSafeCopy').innerText.includes('trashbot.mobile_real_device_field_trial_runbook_execution_copy.v1'),
+    fieldTrialRunbookExecutionCopyable: !document.getElementById('copyRealDeviceFieldTrialRunbookExecutionButton').disabled,
+    fieldTrialEvidenceRecordVisible: document.getElementById('mobileRealDeviceFieldTrialEvidenceRecordSafeCopy').innerText.includes('trashbot.mobile_real_device_field_trial_evidence_record_copy.v1'),
+    fieldTrialEvidenceRecordCopyable: !document.getElementById('copyRealDeviceFieldTrialEvidenceRecordButton').disabled,
+    fieldTrialEvidenceVerdictVisible: document.getElementById('mobileRealDeviceFieldTrialEvidenceVerdictSafeCopy').innerText.includes('trashbot.mobile_real_device_field_trial_evidence_verdict_copy.v1'),
+    fieldTrialEvidenceVerdictCopyable: !document.getElementById('copyRealDeviceFieldTrialEvidenceVerdictButton').disabled,
+    fieldTrialRetestExecutionVisible: document.getElementById('mobileRealDeviceFieldTrialRetestExecutionSafeCopy').innerText.includes('trashbot.mobile_real_device_field_trial_retest_execution_copy.v1'),
+    fieldTrialRetestExecutionCopyable: !document.getElementById('copyRealDeviceFieldTrialRetestExecutionButton').disabled,
     bundleVisible: document.getElementById('mobileBrowserSafeCopy').innerText.includes('trashbot.mobile_browser_acceptance_bundle.v1') ||
       document.getElementById('mobileBrowserBoundary').innerText.includes('software_proof_docker_mobile_browser_acceptance_bundle_gate'),
     bundleCopyButtonEnabled: !document.getElementById('copyAcceptanceBundleButton').disabled,
@@ -672,6 +770,18 @@ def judge_viewport(result):
         "pwa_install_prompt_evidence_visible": bool(result.get("pwaInstallPromptVisible")),
         "real_device_retest_request_visible": bool(result.get("retestRequestVisible")),
         "real_device_retest_request_copyable": bool(result.get("retestRequestCopyable")),
+        "field_trial_package_visible": bool(result.get("fieldTrialPackageVisible")),
+        "field_trial_package_copyable": bool(result.get("fieldTrialPackageCopyable")),
+        "field_trial_review_visible": bool(result.get("fieldTrialReviewVisible")),
+        "field_trial_review_copyable": bool(result.get("fieldTrialReviewCopyable")),
+        "field_trial_runbook_execution_visible": bool(result.get("fieldTrialRunbookExecutionVisible")),
+        "field_trial_runbook_execution_copyable": bool(result.get("fieldTrialRunbookExecutionCopyable")),
+        "field_trial_evidence_record_visible": bool(result.get("fieldTrialEvidenceRecordVisible")),
+        "field_trial_evidence_record_copyable": bool(result.get("fieldTrialEvidenceRecordCopyable")),
+        "field_trial_evidence_verdict_visible": bool(result.get("fieldTrialEvidenceVerdictVisible")),
+        "field_trial_evidence_verdict_copyable": bool(result.get("fieldTrialEvidenceVerdictCopyable")),
+        "field_trial_retest_execution_visible": bool(result.get("fieldTrialRetestExecutionVisible")),
+        "field_trial_retest_execution_copyable": bool(result.get("fieldTrialRetestExecutionCopyable")),
         "browser_acceptance_bundle_visible": bool(result.get("bundleVisible")),
         "browser_acceptance_bundle_copyable": bool(result.get("bundleCopyButtonEnabled")),
         "current_panels_status": "passed" if not current_panel_failures else "failed",
@@ -701,7 +811,7 @@ def run_viewport(cdp, url, width, height, output_dir):
     result = cdp.evaluate(viewport_script(), timeout=30.0)
     judgment = judge_viewport(result)
     screenshot = cdp.call("Page.captureScreenshot", {"format": "png", "fromSurface": True}, timeout=8.0)
-    screenshot_path = output_dir / f"mobile_web_browser_{width}x{height}.png"
+    screenshot_path = output_dir / f"mobile_current_pwa_field_trial_browser_{width}x{height}.png"
     screenshot_path.write_bytes(base64.b64decode(screenshot["data"]))
     evidence = {
         "viewport": f"{width}x{height}",
@@ -717,10 +827,11 @@ def run_viewport(cdp, url, width, height, output_dir):
         "screenshot": str(screenshot_path),
         "evidence_boundary": EVIDENCE_BOUNDARY,
         "compatible_evidence_boundary": COMPATIBLE_EVIDENCE_BOUNDARY,
+        "refresh_evidence_boundary": REFRESH_EVIDENCE_BOUNDARY,
         "legacy_artifact_evidence_boundary": LEGACY_ARTIFACT_EVIDENCE_BOUNDARY,
         "not_proven": list(NOT_PROVEN),
     }
-    evidence_path = output_dir / f"mobile_web_browser_{width}x{height}.json"
+    evidence_path = output_dir / f"mobile_current_pwa_field_trial_browser_{width}x{height}.json"
     evidence_path.write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return evidence_path, screenshot_path, judgment
 
@@ -761,6 +872,18 @@ def main():
                     and judgment["pwa_install_prompt_evidence_visible"]
                     and judgment["real_device_retest_request_visible"]
                     and judgment["real_device_retest_request_copyable"]
+                    and judgment["field_trial_package_visible"]
+                    and judgment["field_trial_package_copyable"]
+                    and judgment["field_trial_review_visible"]
+                    and judgment["field_trial_review_copyable"]
+                    and judgment["field_trial_runbook_execution_visible"]
+                    and judgment["field_trial_runbook_execution_copyable"]
+                    and judgment["field_trial_evidence_record_visible"]
+                    and judgment["field_trial_evidence_record_copyable"]
+                    and judgment["field_trial_evidence_verdict_visible"]
+                    and judgment["field_trial_evidence_verdict_copyable"]
+                    and judgment["field_trial_retest_execution_visible"]
+                    and judgment["field_trial_retest_execution_copyable"]
                     and judgment["browser_acceptance_bundle_visible"]
                     and judgment["browser_acceptance_bundle_copyable"]
                     and judgment["current_panels_status"] == "passed"
@@ -792,6 +915,18 @@ def main():
                     f"pwa_install_prompt_evidence_visible={str(judgment['pwa_install_prompt_evidence_visible']).lower()} "
                     f"real_device_retest_request_visible={str(judgment['real_device_retest_request_visible']).lower()} "
                     f"real_device_retest_request_copyable={str(judgment['real_device_retest_request_copyable']).lower()} "
+                    f"field_trial_package_visible={str(judgment['field_trial_package_visible']).lower()} "
+                    f"field_trial_package_copyable={str(judgment['field_trial_package_copyable']).lower()} "
+                    f"field_trial_review_visible={str(judgment['field_trial_review_visible']).lower()} "
+                    f"field_trial_review_copyable={str(judgment['field_trial_review_copyable']).lower()} "
+                    f"field_trial_runbook_execution_visible={str(judgment['field_trial_runbook_execution_visible']).lower()} "
+                    f"field_trial_runbook_execution_copyable={str(judgment['field_trial_runbook_execution_copyable']).lower()} "
+                    f"field_trial_evidence_record_visible={str(judgment['field_trial_evidence_record_visible']).lower()} "
+                    f"field_trial_evidence_record_copyable={str(judgment['field_trial_evidence_record_copyable']).lower()} "
+                    f"field_trial_evidence_verdict_visible={str(judgment['field_trial_evidence_verdict_visible']).lower()} "
+                    f"field_trial_evidence_verdict_copyable={str(judgment['field_trial_evidence_verdict_copyable']).lower()} "
+                    f"field_trial_retest_execution_visible={str(judgment['field_trial_retest_execution_visible']).lower()} "
+                    f"field_trial_retest_execution_copyable={str(judgment['field_trial_retest_execution_copyable']).lower()} "
                     f"bundle_visible={str(judgment['browser_acceptance_bundle_visible']).lower()} "
                     f"bundle_copyable={str(judgment['browser_acceptance_bundle_copyable']).lower()} "
                     f"current_panels_status={judgment['current_panels_status']} "
@@ -804,10 +939,10 @@ def main():
                 )
                 if not passed:
                     print(f"failure_detail={json.dumps(judgment, ensure_ascii=False, sort_keys=True)}")
-    summary_path = output_dir / "mobile_web_browser_acceptance_summary.json"
+    summary_path = output_dir / "mobile_current_pwa_field_trial_browser_acceptance_summary.json"
     artifact_hashes = {
         path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in sorted(output_dir.glob("mobile_web_browser_*.*"))
+        for path in sorted(output_dir.glob("mobile_current_pwa_field_trial_browser_*.*"))
         if path.is_file()
     }
     summary = {
@@ -819,12 +954,13 @@ def main():
         "checks": per_viewport,
         "evidence_boundary": EVIDENCE_BOUNDARY,
         "compatible_evidence_boundary": COMPATIBLE_EVIDENCE_BOUNDARY,
+        "refresh_evidence_boundary": REFRESH_EVIDENCE_BOUNDARY,
         "legacy_artifact_evidence_boundary": LEGACY_ARTIFACT_EVIDENCE_BOUNDARY,
         "boundary_compatibility": (
-            "This retest browser proof supersedes the current PWA browser proof refresh boundary, "
-            "while remaining compatible with legacy artifacts named mobile_web_browser_*."
+            "This field-trial browser proof supersedes the retest and refresh browser proof boundaries, "
+            "while preserving explicit compatibility fields for older summaries."
         ),
-        "proof_type": "real local Chromium-family browser proof for current dependency-free mobile/web PWA with retest request panel",
+        "proof_type": "real local Chromium-family browser proof for current dependency-free mobile/web PWA with complete field-trial first-screen chain",
         "ack_semantics": "ACK is accepted/processing evidence only, not delivery success.",
         "not_proven": list(NOT_PROVEN),
         "artifact_sha256": artifact_hashes,

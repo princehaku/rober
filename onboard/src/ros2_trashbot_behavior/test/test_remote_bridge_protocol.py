@@ -2289,6 +2289,127 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         # protocol client 不能从现场复测执行 metadata-only 回包合成 command id、ACK 或 terminal ACK。
         self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
 
+    def test_validate_command_ignores_mobile_current_pwa_field_trial_browser_proof_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-mobile-current-pwa-field-trial-browser-proof",
+            "type": "collect",
+            "idempotency_key": "idem-current-pwa-field-trial-browser-proof",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "mobile_current_pwa_field_trial_browser_proof": {
+                "schema": "trashbot.mobile_current_pwa_field_trial_browser_proof.v1",
+                "evidence_boundary": "software_proof_docker_mobile_current_pwa_field_trial_browser_proof_gate",
+                "viewport_results": {"390x844": "passed", "768x900": "passed"},
+                "safe_to_control": False,
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "ack_semantics": "delivery_success",
+                "terminal_ack": "delivered",
+                "delivery_success": True,
+                "dropoff_success": True,
+                "cancel_completed": True,
+                "production_ready": True,
+                "hil_pass": True,
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "mobile_current_pwa_field_trial_browser_proof_summary": {
+                "schema": "trashbot.mobile_current_pwa_field_trial_browser_proof_summary.v1",
+                "safe_phone_copy": "当前 PWA field-trial browser proof 只供本地 Chromium 证据复核。",
+                "next_action": "confirm_dropoff",
+                "terminal_ack": "delivered",
+                "production_app_ready": True,
+                "field_trial_browser_proof_ready": True,
+            },
+            "mobile_current_pwa_field_trial_browser_proof_copy": {
+                "schema": "trashbot.mobile_current_pwa_field_trial_browser_proof_copy.v1",
+                "support_refs": [{"kind": "field_trial_browser", "url": "https://user:secret@example.invalid/browser"}],
+                "Authorization": "Bearer must-not-leak",
+                "serial_device": "/dev/ttyUSB0",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-mobile-current-pwa-field-trial-browser-proof")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # field-trial browser proof 是 metadata-only，normalization 只能保留 trashbot.remote.v1 command envelope。
+        # 这里显式混入 idempotency_key 和三类 metadata，证明 parser 不让 sidecar 字段改变 action/target。
+        self.assertNotIn("mobile_current_pwa_field_trial_browser_proof", encoded_command)
+        self.assertNotIn("mobile_current_pwa_field_trial_browser_proof_summary", encoded_command)
+        self.assertNotIn("mobile_current_pwa_field_trial_browser_proof_copy", encoded_command)
+        self.assertNotIn("software_proof_docker_mobile_current_pwa_field_trial_browser_proof_gate", encoded_command)
+        # 控制意图、cursor、terminal ACK、success/readiness/HIL 都必须被剥离，避免 UI proof 变成机器人事实。
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("terminal_ack", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("dropoff_success", encoded_command)
+        self.assertNotIn("cancel_completed", encoded_command)
+        self.assertNotIn("production_ready", encoded_command)
+        self.assertNotIn("production_app_ready", encoded_command)
+        self.assertNotIn("hil_pass", encoded_command)
+        self.assertNotIn("field_trial_browser_proof_ready", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+        self.assertNotIn("/dev/ttyUSB0", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("secret", encoded_command)
+
+    def test_mobile_current_pwa_field_trial_browser_proof_response_metadata_does_not_create_command_or_ack(self):
+        self.cloud.response_extras.update({
+            "command_response": {
+                "mobile_current_pwa_field_trial_browser_proof": {
+                    "schema": "trashbot.mobile_current_pwa_field_trial_browser_proof.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_current_pwa_field_trial_browser_proof_gate",
+                    "trigger_robot_action": "collect",
+                    "cursor_override": "cmd-field-trial-browser-proof",
+                    "terminal_ack": "delivered",
+                    "delivery_success": True,
+                    "dropoff_success": True,
+                    "cancel_completed": True,
+                    "production_ready": True,
+                    "hil_pass": True,
+                },
+                "mobile_current_pwa_field_trial_browser_proof_summary": {
+                    "schema": "trashbot.mobile_current_pwa_field_trial_browser_proof_summary.v1",
+                    "ack_semantics": "delivery_success",
+                    "next_action": "confirm_dropoff",
+                    "production_app_ready": True,
+                },
+                "mobile_current_pwa_field_trial_browser_proof_copy": {
+                    "schema": "trashbot.mobile_current_pwa_field_trial_browser_proof_copy.v1",
+                    "safe_to_control": True,
+                    "field_trial_browser_proof_ready": True,
+                },
+            },
+            "status_response": {
+                "mobile_current_pwa_field_trial_browser_proof_summary": {"delivery_success": True},
+            },
+            "ack_response": {
+                "mobile_current_pwa_field_trial_browser_proof_copy": {
+                    "ack_semantics": "delivery_success",
+                    "delivery_success": True,
+                },
+            },
+        })
+        client = RemoteCloudClient(self.base_url, "robot-1", timeout_sec=2)
+
+        # post_status 与 get_next_command 连续执行，覆盖 status response 和 command response 两个入口。
+        status_response = client.post_status(make_status("robot-1", "waiting_for_trash", "ready"))
+        command = client.get_next_command()
+
+        self.assertIsNone(command)
+        # 没有 command envelope 时不能产生 ACK POST，即使 response metadata 伪装了 terminal ACK。
+        self.assertEqual(self.cloud.acks, [])
+        self.assertTrue(status_response["ok"])
+        encoded_status = json.dumps(self.cloud.statuses[0], ensure_ascii=False)
+        # client 只能发送 make_status 生成的状态；云端 sidecar metadata 不允许反向污染 status POST。
+        self.assertNotIn("mobile_current_pwa_field_trial_browser_proof", encoded_status)
+        self.assertNotIn("mobile_current_pwa_field_trial_browser_proof_summary", encoded_status)
+        self.assertNotIn("mobile_current_pwa_field_trial_browser_proof_copy", encoded_status)
+        self.assertNotIn("software_proof_docker_mobile_current_pwa_field_trial_browser_proof_gate", encoded_status)
+        self.assertNotIn("delivery_success", encoded_status)
+        # protocol client 不能从 field-trial browser proof metadata-only 回包合成 command id、ACK 或 terminal ACK。
+        self.assertNotIn("command_id", json.dumps(command, ensure_ascii=False))
+
     def test_validate_command_ignores_mobile_real_device_field_trial_evidence_record_metadata_outside_envelope(self):
         command = validate_command({
             "id": "cmd-mobile-real-device-field-trial-evidence-record",

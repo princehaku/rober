@@ -23,11 +23,15 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn('MOBILE_WEB_ROOT = REPO_ROOT / "mobile" / "web"', script)
         self.assertIn('MOBILE_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"', script)
         self.assertIn(
-            'EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate"',
+            'EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_field_trial_browser_proof_gate"',
             script,
         )
         self.assertIn(
-            'COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"',
+            'COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate"',
+            script,
+        )
+        self.assertIn(
+            'REFRESH_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"',
             script,
         )
         self.assertIn(
@@ -48,6 +52,18 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn('"mobileRealDeviceRetestRequestTitle"', script)
         self.assertIn('"mobileRealDeviceRetestRequestSafeCopy"', script)
         self.assertIn('"copyRealDeviceRetestRequestButton"', script)
+        self.assertIn('"mobileRealDeviceFieldTrialTitle"', script)
+        self.assertIn('"mobileRealDeviceFieldTrialReviewTitle"', script)
+        self.assertIn('"mobileRealDeviceFieldTrialRunbookExecutionTitle"', script)
+        self.assertIn('"mobileRealDeviceFieldTrialEvidenceRecordTitle"', script)
+        self.assertIn('"mobileRealDeviceFieldTrialEvidenceVerdictTitle"', script)
+        self.assertIn('"mobileRealDeviceFieldTrialRetestExecutionTitle"', script)
+        self.assertIn('"copyRealDeviceFieldTrialPackageButton"', script)
+        self.assertIn('"copyRealDeviceFieldTrialReviewButton"', script)
+        self.assertIn('"copyRealDeviceFieldTrialRunbookExecutionButton"', script)
+        self.assertIn('"copyRealDeviceFieldTrialEvidenceRecordButton"', script)
+        self.assertIn('"copyRealDeviceFieldTrialEvidenceVerdictButton"', script)
+        self.assertIn('"copyRealDeviceFieldTrialRetestExecutionButton"', script)
         self.assertIn('"mobileBrowserSafeCopy"', script)
         self.assertIn('"copyAcceptanceBundleButton"', script)
         self.assertIn('"copyDeviceEvidencePackageButton"', script)
@@ -61,6 +77,12 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("device_evidence_capture_visible", script)
         self.assertIn("real_device_retest_request_visible", script)
         self.assertIn("real_device_retest_request_copyable", script)
+        self.assertIn("field_trial_package_visible", script)
+        self.assertIn("field_trial_review_visible", script)
+        self.assertIn("field_trial_runbook_execution_visible", script)
+        self.assertIn("field_trial_evidence_record_visible", script)
+        self.assertIn("field_trial_evidence_verdict_visible", script)
+        self.assertIn("field_trial_retest_execution_visible", script)
         self.assertIn("current_panels_status", script)
         self.assertIn("current_boundaries_status", script)
         self.assertIn("PHONE_BROWSER_CHROME", script)
@@ -69,16 +91,18 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertNotIn("operator_gateway_http", script)
         self.assertNotIn("collectButton", script)
 
-    def test_current_browser_gate_refresh_boundary_keeps_old_artifact_compatibility(self):
+    def test_current_browser_gate_field_trial_boundary_keeps_compatibility(self):
         script = BROWSER_GATE.read_text(encoding="utf-8")
 
-        # refresh gate 继续写入旧 mobile_web_browser_* 文件名，便于 Product/Robot 复用既有证据读取路径。
-        self.assertIn("mobile_web_browser_{width}x{height}.png", script)
-        self.assertIn("mobile_web_browser_{width}x{height}.json", script)
-        self.assertIn("mobile_web_browser_acceptance_summary.json", script)
+        # field-trial browser proof 使用本 sprint artifact 名，同时保留旧边界字段方便 closeout 核对。
+        self.assertIn("mobile_current_pwa_field_trial_browser_{width}x{height}.png", script)
+        self.assertIn("mobile_current_pwa_field_trial_browser_{width}x{height}.json", script)
+        self.assertIn("mobile_current_pwa_field_trial_browser_acceptance_summary.json", script)
         self.assertIn("compatible_evidence_boundary", script)
+        self.assertIn("refresh_evidence_boundary", script)
         self.assertIn("legacy_artifact_evidence_boundary", script)
         self.assertIn("boundary_compatibility", script)
+        self.assertIn("software_proof_docker_mobile_current_pwa_field_trial_browser_proof_gate", script)
         self.assertIn("software_proof_docker_mobile_current_pwa_retest_browser_proof_gate", script)
         self.assertIn("software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate", script)
         self.assertIn("software_proof_docker_mobile_web_browser_proof_gate", script)

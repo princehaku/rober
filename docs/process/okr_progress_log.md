@@ -8,6 +8,16 @@
 
 ## 2026-05-14 系列
 
+更新时间：2026-05-14 15:16 Asia/Shanghai。
+
+### 2026-05-14 15-16｜mobile-current-pwa-field-trial-browser-proof｜O4 current PWA field-trial browser proof，手机体验由约 91% 上调到约 92%
+
+`sprints/2026.05.14_15-16_mobile-current-pwa-field-trial-browser-proof` 完成 `software_proof_docker_mobile_current_pwa_field_trial_browser_proof_gate`：Task A Full-stack 更新 current PWA browser proof gate，生成 `mobile_current_pwa_field_trial_browser_390x844.json/png`、`mobile_current_pwa_field_trial_browser_768x900.json/png` 和 `mobile_current_pwa_field_trial_browser_acceptance_summary.json`。Browser gate 在 390x844 与 768x900 均 `passed=true`，summary 显示 `current_panels_status=passed`、`current_boundaries_status=passed`、`field_trial_*_visible=true`、`primary_actions_disabled=true`、`phone_safe_status=passed`；本轮证据保持 `safe_to_control=false`、`accepted_processing_only_not_delivery_success`、完整 `not_proven`、whitelist-only copy 和 Start/Confirm/Cancel fail closed。Task A 验证输出 `mobile.test_mobile_web_entrypoint` `Ran 34 tests OK`、`py_compile` pass、required `rg` pass、scoped diff check pass。
+
+Task B Robot 新增 `mobile_current_pwa_field_trial_browser_proof*` metadata-only tests/docs，覆盖 `mobile_current_pwa_field_trial_browser_proof`、`mobile_current_pwa_field_trial_browser_proof_summary`、`mobile_current_pwa_field_trial_browser_proof_copy`。Robot fence 证明无 command envelope 时 browser proof metadata 不触发 collect/dropoff/cancel、ACK POST、cursor advance/persistence、terminal ACK、production readiness、HIL、dropoff/cancel completion 或 delivery success；mixed valid-command 只执行合法 `trashbot.remote.v1` collect envelope，不把 browser proof metadata 编入 normalized command、ACK、status、cursor 或 terminal result，不改变 action、target、idempotency、ACK 或 cursor。Task B 验证输出 remote bridge/protocol targeted unittest `Ran 180 tests in 93.287s OK`、`py_compile` pass、required `rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 4 从约 91% 保守上调到约 92%，理由是 Docker/local `mobile/web` 已把 09-10 到 14-15 连续新增的 field-trial package、review、runbook execution、evidence record、evidence verdict、retest execution 首屏组合重新落到当前 PWA 的 local Chromium-family browser proof，并由 `safe_to_control=false`、ACK 非 delivery success、`not_proven`、phone-safe copy、fail-closed 主操作和 Robot metadata-only fence 限定边界。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1/2/3 不提升。本轮 `software_proof_docker_mobile_current_pwa_field_trial_browser_proof_gate` 不是真实 iPhone/Android、production app、真实 PWA install prompt/user choice、O5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL、dropoff/cancel completion 或 delivery success。
+
 更新时间：2026-05-14 14:15 Asia/Shanghai。
 
 ### 2026-05-14 14-15｜mobile-field-trial-retest-execution-gate｜O4 field-trial retest execution software proof，手机体验由约 90% 上调到约 91%
