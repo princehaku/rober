@@ -768,6 +768,78 @@
         <pre id="mobileRealDeviceFieldTrialSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_package_copy">暂无 mobile_real_device_field_trial_package_copy。</pre>
       </section>
 
+      <section class="real-device-field-trial-review-panel" aria-labelledby="mobileRealDeviceFieldTrialReviewTitle">
+        <div class="section-heading">
+          <h2 id="mobileRealDeviceFieldTrialReviewTitle">现场试跑证据复核</h2>
+          <span id="mobileRealDeviceFieldTrialReviewBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="mobileRealDeviceFieldTrialReviewCopy" class="message">
+          复核 mobile_real_device_field_trial_package 的材料完整性和脱敏状态；不是真实验收通过、控制放行或 delivery success。
+        </p>
+        <dl class="real-device-field-trial-review-grid">
+          <div>
+            <dt>Real Device</dt>
+            <dd id="mobileRealDeviceFieldTrialReviewRealDevice">not_proven</dd>
+          </div>
+          <div>
+            <dt>Production App</dt>
+            <dd id="mobileRealDeviceFieldTrialReviewProductionApp">not_proven</dd>
+          </div>
+          <div>
+            <dt>PWA Install Prompt</dt>
+            <dd id="mobileRealDeviceFieldTrialReviewPrompt">not_proven</dd>
+          </div>
+          <div>
+            <dt>User Choice</dt>
+            <dd id="mobileRealDeviceFieldTrialReviewUserChoice">not_proven</dd>
+          </div>
+          <div>
+            <dt>Offline</dt>
+            <dd id="mobileRealDeviceFieldTrialReviewOffline">not_proven</dd>
+          </div>
+          <div>
+            <dt>Touch</dt>
+            <dd id="mobileRealDeviceFieldTrialReviewTouch">not_proven</dd>
+          </div>
+          <div>
+            <dt>Visual</dt>
+            <dd id="mobileRealDeviceFieldTrialReviewVisual">not_proven</dd>
+          </div>
+          <div>
+            <dt>Material Redaction</dt>
+            <dd id="mobileRealDeviceFieldTrialReviewRedaction">pending_review</dd>
+          </div>
+          <div>
+            <dt>Safe Control</dt>
+            <dd id="mobileRealDeviceFieldTrialReviewSafeControl">safe_to_control=false</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileRealDeviceFieldTrialReviewAck">accepted_processing_only_not_delivery_success</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileRealDeviceFieldTrialReviewBoundary">software_proof_docker_mobile_real_device_field_trial_review_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileRealDeviceFieldTrialReviewNotProven">真实 iPhone/Android、production app、PWA install prompt/user choice、O5、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <ol id="mobileRealDeviceFieldTrialReviewChecklist" class="handoff-checklist">
+          <li>
+            <strong>review checklist：not_proven</strong>
+            <em>复核必须覆盖 real device、production app、PWA install prompt、user choice、offline、touch、visual 和 material redaction。</em>
+          </li>
+        </ol>
+        <p id="mobileRealDeviceFieldTrialReviewRecoveryHint" class="hint">复核包只用于 Product/Support 核对材料缺口；Start Delivery、Confirm Dropoff、Cancel 继续 fail closed。</p>
+        <div class="bundle-copy-row">
+          <button id="copyRealDeviceFieldTrialReviewButton" type="button">复制 evidence review package</button>
+          <span id="mobileRealDeviceFieldTrialReviewCopyStatus" class="hint">复制内容只包含 whitelist-only phone-safe review 字段。</span>
+        </div>
+        <pre id="mobileRealDeviceFieldTrialReviewSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_review_copy">暂无 mobile_real_device_field_trial_review_copy。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>

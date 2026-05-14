@@ -26,6 +26,7 @@ const MOBILE_REAL_DEVICE_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_mobile
 const MOBILE_REAL_DEVICE_REVIEW_EXECUTION_BOUNDARY = "software_proof_docker_mobile_real_device_review_execution_gate";
 const MOBILE_REAL_DEVICE_RETEST_REQUEST_BOUNDARY = "software_proof_docker_mobile_real_device_retest_request_gate";
 const MOBILE_REAL_DEVICE_FIELD_TRIAL_BOUNDARY = "software_proof_docker_mobile_real_device_field_trial_package_gate";
+const MOBILE_REAL_DEVICE_FIELD_TRIAL_REVIEW_BOUNDARY = "software_proof_docker_mobile_real_device_field_trial_review_gate";
 const PRIMARY_JOURNEY_BOUNDARY = "software_proof_docker_mobile_primary_journey_gate";
 const RECOVERY_DECISION_BOUNDARY = "software_proof_docker_mobile_recovery_decision_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
@@ -57,10 +58,13 @@ const REAL_DEVICE_RETEST_REQUEST_PACKAGE_SCHEMA = "trashbot.mobile_real_device_r
 const REAL_DEVICE_FIELD_TRIAL_SCHEMA = "trashbot.mobile_real_device_field_trial_package.v1";
 const REAL_DEVICE_FIELD_TRIAL_SUMMARY_SCHEMA = "trashbot.mobile_real_device_field_trial_package_summary.v1";
 const REAL_DEVICE_FIELD_TRIAL_COPY_SCHEMA = "trashbot.mobile_real_device_field_trial_package_copy.v1";
+const REAL_DEVICE_FIELD_TRIAL_REVIEW_SCHEMA = "trashbot.mobile_real_device_field_trial_review.v1";
+const REAL_DEVICE_FIELD_TRIAL_REVIEW_SUMMARY_SCHEMA = "trashbot.mobile_real_device_field_trial_review_summary.v1";
+const REAL_DEVICE_FIELD_TRIAL_REVIEW_COPY_SCHEMA = "trashbot.mobile_real_device_field_trial_review_copy.v1";
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|artifact)/i;
 const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
-const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/ws\/|\/var\/|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
+const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 
 let latestStatus = null;
 let latestDiagnostics = null;
@@ -75,6 +79,7 @@ let latestRealDeviceReviewHandoffPackage = null;
 let latestRealDeviceReviewExecutionPackage = null;
 let latestRealDeviceRetestRequestPackage = null;
 let latestRealDeviceFieldTrialPackage = null;
+let latestRealDeviceFieldTrialReviewPackage = null;
 let importedRealDeviceEvidence = null;
 let pendingTerminalAction = null;
 let stableHandoffClientReference = `mobile_web_handoff_${Date.now()}`;
@@ -484,6 +489,28 @@ function mobileRealDeviceFieldTrialCandidate(status, readiness, diagnostics) {
     diagnosticsReadiness.mobile_real_device_field_trial_package,
     diagnosticsReadiness.mobile_real_device_field_trial_package_summary,
     diagnosticsReadiness.mobile_real_device_field_trial_package_copy,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function mobileRealDeviceFieldTrialReviewCandidate(status, readiness, diagnostics) {
+  // review package 是现场材料复核支持 metadata；只消费 phone-safe 字段，不触发控制或 ACK。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const candidates = [
+    status?.mobile_real_device_field_trial_review,
+    status?.mobile_real_device_field_trial_review_summary,
+    status?.mobile_real_device_field_trial_review_copy,
+    readiness?.mobile_real_device_field_trial_review,
+    readiness?.mobile_real_device_field_trial_review_summary,
+    readiness?.mobile_real_device_field_trial_review_copy,
+    diagnostics?.mobile_real_device_field_trial_review,
+    diagnostics?.mobile_real_device_field_trial_review_summary,
+    diagnostics?.mobile_real_device_field_trial_review_copy,
+    diagnosticsReadiness.mobile_real_device_field_trial_review,
+    diagnosticsReadiness.mobile_real_device_field_trial_review_summary,
+    diagnosticsReadiness.mobile_real_device_field_trial_review_copy,
   ];
   return candidates.find((value) => value && typeof value === "object") || null;
 }
@@ -1545,6 +1572,178 @@ function mobileRealDeviceFieldTrialPackageFromStatus(status, readiness, diagnost
   return normalizeRealDeviceFieldTrialPackage(provided, localEvidence, retestRequest);
 }
 
+function fieldTrialReviewStatusFromPackage(value, packagePayload) {
+  // 复核状态覆盖每个现场验收维度；缺字段时保守继承 field trial observation 的 not_proven。
+  const provided = value?.review_status && typeof value.review_status === "object" ? value.review_status : {};
+  const observation = packagePayload?.observation_fields || {};
+  const runtime = packagePayload?.runtime_metadata || {};
+  return {
+    real_device: safeRealDeviceEvidenceText(provided.real_device, observation.device_type || "not_proven"),
+    production_app: safeRealDeviceEvidenceText(
+      provided.production_app,
+      observation.production_app_observed || "not_proven",
+    ),
+    pwa_install_prompt: safeRealDeviceEvidenceText(
+      provided.pwa_install_prompt,
+      observation.pwa_install_prompt_observed || "not_proven",
+    ),
+    user_choice: safeRealDeviceEvidenceText(provided.user_choice, observation.user_choice || "not_proven"),
+    offline: safeRealDeviceEvidenceText(
+      provided.offline,
+      observation.offline_reload_observed || runtime.offline_shell_hint || "not_proven",
+    ),
+    touch: safeRealDeviceEvidenceText(provided.touch, observation.touch_target_issue || "not_proven"),
+    visual: safeRealDeviceEvidenceText(provided.visual, observation.visual_issue || "not_proven"),
+    material_redaction: safeRealDeviceEvidenceText(
+      provided.material_redaction || value?.material_redaction_status || value?.redaction_status,
+      "phone_safe_review_only",
+    ),
+  };
+}
+
+function fieldTrialReviewBlockers(reviewStatus, packagePayload) {
+  // blocker list 面向 Product/Support 复核，逐项说明缺口而不是给出验收结论。
+  const blockers = [];
+  if (/not_proven|unknown|not_provided/i.test(reviewStatus.real_device)) {
+    blockers.push("real device evidence not_proven。");
+  }
+  if (/not_proven|not_observed|not_provided/i.test(reviewStatus.production_app)) {
+    blockers.push("production app material not_proven。");
+  }
+  if (/not_proven|not_observed|not_provided/i.test(reviewStatus.pwa_install_prompt)) {
+    blockers.push("PWA install prompt material not_proven。");
+  }
+  if (/not_proven|not_observed|not_provided/i.test(reviewStatus.user_choice)) {
+    blockers.push("PWA user choice material not_proven。");
+  }
+  if (/not_proven|not_observed|not_provided/i.test(reviewStatus.offline)) {
+    blockers.push("offline behavior material not_proven。");
+  }
+  if (/issue_observed|not_proven|not_provided/i.test(reviewStatus.touch)) {
+    blockers.push("touch material needs review。");
+  }
+  if (/issue_observed|not_proven|not_provided/i.test(reviewStatus.visual)) {
+    blockers.push("visual material needs review。");
+  }
+  if (!/phone_safe|passed|redacted/i.test(reviewStatus.material_redaction)) {
+    blockers.push("material redaction not confirmed phone-safe。");
+  }
+  if (packagePayload?.safe_to_control !== false) {
+    blockers.push("source package safe_to_control must remain false。");
+  }
+  return blockers.slice(0, 10);
+}
+
+function fieldTrialReviewChecklist(value, reviewStatus) {
+  // checklist 固定覆盖八个 review status，避免 UI 只复核截图而遗漏离线、触控或脱敏。
+  const provided = Array.isArray(value?.review_checklist) ? value.review_checklist : [];
+  const base = provided.length ? provided : [
+    ["real device", reviewStatus.real_device, "核对是否有真实 iPhone/Android device behavior 摘要。"],
+    ["production app", reviewStatus.production_app, "核对是否有 production app 入口和 release summary。"],
+    ["PWA install prompt", reviewStatus.pwa_install_prompt, "核对是否有真实 install prompt capture status。"],
+    ["user choice", reviewStatus.user_choice, "核对是否记录真实 install prompt user choice。"],
+    ["offline", reviewStatus.offline, "核对弱网或离线 reload 只说明静态壳行为。"],
+    ["touch", reviewStatus.touch, "核对主要触控目标是否有 phone-safe 观察摘要。"],
+    ["visual", reviewStatus.visual, "核对首屏视觉问题是否有 phone-safe 观察摘要。"],
+    ["material redaction", reviewStatus.material_redaction, "核对复制包只包含复核白名单和 phone-safe 摘要。"],
+  ].map(([item, status, safe_phone_copy]) => ({ item, status, safe_phone_copy }));
+  return base.slice(0, 8).map((step) => ({
+    item: safeRealDeviceEvidenceText(step?.item || step?.id || step?.label, "review checklist"),
+    status: safeRealDeviceEvidenceText(step?.status || step?.state, "not_proven"),
+    safe_phone_copy: safeRealDeviceEvidenceText(
+      step?.safe_phone_copy || step?.copy || step?.summary,
+      "等待 Product/Support 复核 phone-safe 现场材料。",
+    ),
+  }));
+}
+
+function fieldTrialReviewNotProven(value, packagePayload) {
+  // review gate 必须完整继承现场试跑缺口，并补充复核本身不证明的材料状态。
+  const required = [
+    "真实 iPhone/Android device behavior",
+    "production app",
+    "真实 PWA install prompt/user choice",
+    "offline real-device behavior",
+    "touch and visual acceptance",
+    "Objective 5 外部 proof",
+    "HIL",
+    "delivery success",
+  ];
+  return Array.from(new Set([
+    ...notProvenList(value?.not_proven || packagePayload?.not_proven),
+    ...required,
+  ])).slice(0, 12);
+}
+
+function normalizeRealDeviceFieldTrialReview(value, packagePayload) {
+  // review、summary、copy 都只从白名单字段生成；safe_to_control 固定 false，避免复核包变控制授权。
+  const reviewStatus = fieldTrialReviewStatusFromPackage(value || {}, packagePayload || {});
+  const blockers = Array.isArray(value?.blocker_list)
+    ? value.blocker_list.map((item) => safeRealDeviceEvidenceText(item, "blocked_missing_evidence"))
+    : fieldTrialReviewBlockers(reviewStatus, packagePayload || {});
+  const overallStatus = safeRealDeviceEvidenceText(
+    value?.overall_status || value?.status,
+    blockers.length ? "blocked_review_not_proven" : "ready_for_product_review_not_control",
+  );
+  const notProven = fieldTrialReviewNotProven(value || {}, packagePayload || {});
+  const summary = {
+    schema: REAL_DEVICE_FIELD_TRIAL_REVIEW_SUMMARY_SCHEMA,
+    schema_version: 1,
+    review_schema: REAL_DEVICE_FIELD_TRIAL_REVIEW_SCHEMA,
+    overall_status: overallStatus,
+    safe_to_control: false,
+    review_status: reviewStatus,
+    blocker_count: blockers.length,
+    ack_semantics: ACK_PROCESSING_ENUM,
+    evidence_boundary: MOBILE_REAL_DEVICE_FIELD_TRIAL_REVIEW_BOUNDARY,
+    not_proven: notProven,
+  };
+  return {
+    schema: REAL_DEVICE_FIELD_TRIAL_REVIEW_SCHEMA,
+    schema_version: 1,
+    summary_schema: REAL_DEVICE_FIELD_TRIAL_REVIEW_SUMMARY_SCHEMA,
+    copy_schema: REAL_DEVICE_FIELD_TRIAL_REVIEW_COPY_SCHEMA,
+    review_id: safeRealDeviceEvidenceText(value?.review_id || value?.field_trial_review_id, `field_trial_review_${Date.now()}`),
+    source: safeRealDeviceEvidenceText(value?.source, value ? "status_or_diagnostics" : "derived_from_mobile_real_device_field_trial_package"),
+    overall_status: overallStatus,
+    safe_to_control: false,
+    review_status: reviewStatus,
+    blocker_list: blockers,
+    review_checklist: fieldTrialReviewChecklist(value || {}, reviewStatus),
+    material_redaction_status: reviewStatus.material_redaction,
+    mobile_real_device_field_trial_review_summary: summary,
+    linked_field_trial_package: {
+      schema: REAL_DEVICE_FIELD_TRIAL_SCHEMA,
+      summary_schema: REAL_DEVICE_FIELD_TRIAL_SUMMARY_SCHEMA,
+      field_trial_id: safeRealDeviceEvidenceText(packagePayload?.field_trial_id, stableFieldTrialReference),
+      overall_status: safeRealDeviceEvidenceText(packagePayload?.overall_status, "blocked_software_proof_only"),
+      evidence_boundary: safeRealDeviceEvidenceText(packagePayload?.evidence_boundary, MOBILE_REAL_DEVICE_FIELD_TRIAL_BOUNDARY),
+      safe_to_control: false,
+    },
+    safe_phone_copy: safeRealDeviceEvidenceText(
+      value?.safe_phone_copy || value?.safe_summary,
+      "现场试跑证据复核只核对材料 shape、缺失项和脱敏状态；不是 delivery success、真实验收通过或控制放行。",
+    ),
+    recovery_hint: safeRealDeviceEvidenceText(
+      value?.recovery_hint || value?.retry_hint,
+      "按 blocker list 补齐 real device、production app、PWA prompt/user choice、offline、touch、visual 和 redaction 摘要。",
+    ),
+    ack_semantics: ACK_PROCESSING_ENUM,
+    evidence_boundary: safeRealDeviceEvidenceText(value?.evidence_boundary, MOBILE_REAL_DEVICE_FIELD_TRIAL_REVIEW_BOUNDARY),
+    source_evidence_boundary: safeRealDeviceEvidenceText(
+      value?.source_evidence_boundary || packagePayload?.evidence_boundary,
+      MOBILE_REAL_DEVICE_FIELD_TRIAL_BOUNDARY,
+    ),
+    not_proven: notProven,
+  };
+}
+
+function mobileRealDeviceFieldTrialReviewFromStatus(status, readiness, diagnostics) {
+  const fieldTrialPackage = mobileRealDeviceFieldTrialPackageFromStatus(status, readiness, diagnostics);
+  const provided = mobileRealDeviceFieldTrialReviewCandidate(status, readiness, diagnostics);
+  return normalizeRealDeviceFieldTrialReview(provided, fieldTrialPackage);
+}
+
 function bundleFieldSummary(value, fallback = "not_proven") {
   // 字段可能是安全字符串，也可能是状态对象；只抽取摘要键，不展示原始对象。
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
@@ -2494,6 +2693,7 @@ function deriveOperationLogEntries(status, readiness) {
   pushDerivedEvent(entries, "真实设备评审执行", mobileRealDeviceReviewExecutionFromStatus(status, readiness, latestDiagnostics));
   pushDerivedEvent(entries, "真实设备复测请求", mobileRealDeviceRetestRequestFromStatus(status, readiness, latestDiagnostics));
   pushDerivedEvent(entries, "真实设备现场试跑包", mobileRealDeviceFieldTrialPackageFromStatus(status, readiness, latestDiagnostics));
+  pushDerivedEvent(entries, "现场试跑证据复核", mobileRealDeviceFieldTrialReviewFromStatus(status, readiness, latestDiagnostics));
   return entries.slice(0, 8);
 }
 
@@ -2815,6 +3015,33 @@ function realDeviceFieldTrialPackageCopyPayload(packagePayload) {
   };
 }
 
+function realDeviceFieldTrialReviewCopyPayload(packagePayload) {
+  // review copy 只保留复核白名单，不复制凭证、入口参数、机器内部字段或 field trial 原始输入。
+  return {
+    schema: REAL_DEVICE_FIELD_TRIAL_REVIEW_SCHEMA,
+    schema_version: packagePayload.schema_version,
+    copy_schema: REAL_DEVICE_FIELD_TRIAL_REVIEW_COPY_SCHEMA,
+    summary_schema: packagePayload.summary_schema,
+    review_id: packagePayload.review_id,
+    source: packagePayload.source,
+    overall_status: packagePayload.overall_status,
+    safe_to_control: false,
+    review_status: packagePayload.review_status,
+    blocker_list: packagePayload.blocker_list,
+    review_checklist: packagePayload.review_checklist,
+    material_redaction_status: packagePayload.material_redaction_status,
+    mobile_real_device_field_trial_review_summary:
+      packagePayload.mobile_real_device_field_trial_review_summary,
+    linked_field_trial_package: packagePayload.linked_field_trial_package,
+    safe_phone_copy: packagePayload.safe_phone_copy,
+    recovery_hint: packagePayload.recovery_hint,
+    ack_semantics: ACK_PROCESSING_ENUM,
+    evidence_boundary: packagePayload.evidence_boundary,
+    source_evidence_boundary: packagePayload.source_evidence_boundary,
+    not_proven: packagePayload.not_proven,
+  };
+}
+
 function renderMobileDeviceEvidence(status) {
   const readiness = readinessFromStatus(status);
   const packagePayload = mobileDeviceEvidencePackageFromStatus(status, readiness, latestDiagnostics);
@@ -3079,6 +3306,45 @@ function renderMobileRealDeviceFieldTrialPackage(status) {
     JSON.stringify(realDeviceFieldTrialPackageCopyPayload(packagePayload), null, 2);
 }
 
+function renderMobileRealDeviceFieldTrialReview(status) {
+  const readiness = readinessFromStatus(status);
+  const packagePayload = mobileRealDeviceFieldTrialReviewFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("mobileRealDeviceFieldTrialReviewBadge");
+  latestRealDeviceFieldTrialReviewPackage = packagePayload;
+
+  badge.className = "gate-badge";
+  badge.classList.add(packagePayload.blocker_list.length ? "gate-blocked" : "gate-waiting");
+  badge.textContent = packagePayload.overall_status;
+  $("mobileRealDeviceFieldTrialReviewCopy").textContent = packagePayload.safe_phone_copy;
+  $("mobileRealDeviceFieldTrialReviewRealDevice").textContent = packagePayload.review_status.real_device;
+  $("mobileRealDeviceFieldTrialReviewProductionApp").textContent = packagePayload.review_status.production_app;
+  $("mobileRealDeviceFieldTrialReviewPrompt").textContent = packagePayload.review_status.pwa_install_prompt;
+  $("mobileRealDeviceFieldTrialReviewUserChoice").textContent = packagePayload.review_status.user_choice;
+  $("mobileRealDeviceFieldTrialReviewOffline").textContent = packagePayload.review_status.offline;
+  $("mobileRealDeviceFieldTrialReviewTouch").textContent = packagePayload.review_status.touch;
+  $("mobileRealDeviceFieldTrialReviewVisual").textContent = packagePayload.review_status.visual;
+  $("mobileRealDeviceFieldTrialReviewRedaction").textContent = packagePayload.material_redaction_status;
+  $("mobileRealDeviceFieldTrialReviewSafeControl").textContent = "safe_to_control=false";
+  $("mobileRealDeviceFieldTrialReviewAck").textContent = packagePayload.ack_semantics;
+  $("mobileRealDeviceFieldTrialReviewBoundary").textContent = packagePayload.evidence_boundary;
+  $("mobileRealDeviceFieldTrialReviewNotProven").textContent = packagePayload.not_proven.join("、");
+  $("mobileRealDeviceFieldTrialReviewRecoveryHint").textContent = packagePayload.recovery_hint;
+
+  const list = $("mobileRealDeviceFieldTrialReviewChecklist");
+  list.textContent = "";
+  packagePayload.review_checklist.forEach((step) => {
+    const item = document.createElement("li");
+    const title = document.createElement("strong");
+    const copy = document.createElement("em");
+    title.textContent = `${step.item}：${step.status}`;
+    copy.textContent = step.safe_phone_copy;
+    item.append(title, copy);
+    list.appendChild(item);
+  });
+  $("mobileRealDeviceFieldTrialReviewSafeCopy").textContent =
+    JSON.stringify(realDeviceFieldTrialReviewCopyPayload(packagePayload), null, 2);
+}
+
 function renderMobileDeviceHandoffSession(status) {
   const readiness = readinessFromStatus(status);
   const session = mobileDeviceHandoffSessionFromStatus(status, readiness, latestDiagnostics);
@@ -3316,6 +3582,7 @@ function renderOfflineFailure() {
   renderMobileRealDeviceReviewExecution({});
   renderMobileRealDeviceRetestRequest({});
   renderMobileRealDeviceFieldTrialPackage({});
+  renderMobileRealDeviceFieldTrialReview({});
   renderMobileBrowserAcceptanceBundle({});
   renderRecoveryDecision({ connection_state: "offline" });
   latestActionFeedback = normalizeActionFeedback({
@@ -3355,6 +3622,7 @@ function renderStatus(status) {
   renderMobileRealDeviceReviewExecution(status);
   renderMobileRealDeviceRetestRequest(status);
   renderMobileRealDeviceFieldTrialPackage(status);
+  renderMobileRealDeviceFieldTrialReview(status);
   renderMobileBrowserAcceptanceBundle(status);
   renderTaskFlow(status);
   renderStartConfirmation(status);
@@ -3551,6 +3819,7 @@ async function openDiagnostics() {
     renderMobileRealDeviceReviewExecution(latestStatus || {});
     renderMobileRealDeviceRetestRequest(latestStatus || {});
     renderMobileRealDeviceFieldTrialPackage(latestStatus || {});
+    renderMobileRealDeviceFieldTrialReview(latestStatus || {});
     renderMobileBrowserAcceptanceBundle(latestStatus || {});
     renderCommandSafety(latestStatus || {});
     renderDiagnosticsSummary(latestDiagnostics);
@@ -3666,6 +3935,7 @@ function wireEvents() {
     renderMobileRealDeviceReviewExecution(latestStatus || {});
     renderMobileRealDeviceRetestRequest(latestStatus || {});
     renderMobileRealDeviceFieldTrialPackage(latestStatus || {});
+    renderMobileRealDeviceFieldTrialReview(latestStatus || {});
     renderCommandSafety(latestStatus || {});
   });
   $("generateRealDeviceEvidenceButton").addEventListener("click", () => {
@@ -3678,6 +3948,7 @@ function wireEvents() {
     renderMobileRealDeviceReviewExecution(latestStatus || {});
     renderMobileRealDeviceRetestRequest(latestStatus || {});
     renderMobileRealDeviceFieldTrialPackage(latestStatus || {});
+    renderMobileRealDeviceFieldTrialReview(latestStatus || {});
   });
   $("copyRealDeviceEvidencePackageButton").addEventListener("click", async () => {
     const payload = JSON.stringify(realDeviceEvidencePackageCopyPayload(latestRealDeviceEvidencePackage || {}), null, 2);
@@ -3754,6 +4025,7 @@ function wireEvents() {
     // 现场试跑包每次生成都重新读取本地 runtime metadata 和人工 observation，但不创建控制授权。
     stableFieldTrialReference = `field_trial_${Date.now()}`;
     renderMobileRealDeviceFieldTrialPackage(latestStatus || {});
+    renderMobileRealDeviceFieldTrialReview(latestStatus || {});
     $("mobileRealDeviceFieldTrialCopyStatus").textContent = "已生成 mobile_real_device_field_trial_package_summary。";
   });
   $("copyRealDeviceFieldTrialPackageButton").addEventListener("click", async () => {
@@ -3769,6 +4041,21 @@ function wireEvents() {
       $("mobileRealDeviceFieldTrialCopyStatus").textContent = "已复制 mobile_real_device_field_trial_package_copy。";
     } catch (_error) {
       $("mobileRealDeviceFieldTrialCopyStatus").textContent = "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("copyRealDeviceFieldTrialReviewButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(
+      realDeviceFieldTrialReviewCopyPayload(latestRealDeviceFieldTrialReviewPackage || {}),
+      null,
+      2,
+    );
+    $("mobileRealDeviceFieldTrialReviewSafeCopy").textContent = payload;
+    // review copy 只给 Product/Support 复核材料缺口；剪贴板失败时仍保留手动复制文本。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("mobileRealDeviceFieldTrialReviewCopyStatus").textContent = "已复制 mobile_real_device_field_trial_review_copy。";
+    } catch (_error) {
+      $("mobileRealDeviceFieldTrialReviewCopyStatus").textContent = "浏览器未授权剪贴板；请从下方文本框手动复制。";
     }
   });
   $("supportButton").addEventListener("click", () => {
@@ -3802,6 +4089,7 @@ function wireEvents() {
       renderMobileRealDeviceReviewExecution(latestStatus);
       renderMobileRealDeviceRetestRequest(latestStatus);
       renderMobileRealDeviceFieldTrialPackage(latestStatus);
+      renderMobileRealDeviceFieldTrialReview(latestStatus);
       renderCommandSafety(latestStatus);
     }
   });

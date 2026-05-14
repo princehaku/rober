@@ -139,6 +139,7 @@ h2 {
 .real-device-review-panel,
 .real-device-retest-panel,
 .real-device-field-trial-panel,
+.real-device-field-trial-review-panel,
 .acceptance-bundle-panel,
 .terminal-action-panel,
 .action-feedback-panel,
@@ -239,6 +240,7 @@ h2 {
 .real-device-review-grid,
 .real-device-retest-grid,
 .real-device-field-trial-grid,
+.real-device-field-trial-review-grid,
 .acceptance-bundle-grid,
 .feedback-grid,
 .terminal-action-grid,
@@ -261,6 +263,7 @@ h2 {
 .real-device-review-grid div,
 .real-device-retest-grid div,
 .real-device-field-trial-grid div,
+.real-device-field-trial-review-grid div,
 .acceptance-bundle-grid div,
 .feedback-grid div,
 .terminal-action-grid div,
@@ -335,6 +338,10 @@ dd {
 }
 
 .real-device-field-trial-grid {
+  grid-template-columns: 1fr;
+}
+
+.real-device-field-trial-review-grid {
   grid-template-columns: 1fr;
 }
 
@@ -588,6 +595,10 @@ dd {
   }
 
   .real-device-review-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .real-device-field-trial-review-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
