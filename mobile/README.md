@@ -43,6 +43,8 @@
 > 当前增量：sprint `2026.05.14_07-08_mobile-real-device-retest-request-gate` 在首屏新增“真实设备复测请求”panel。证据边界是 `software_proof_docker_mobile_real_device_retest_request_gate`，只证明 Docker/local static fixture 与 targeted unittest 能从 `mobile_real_device_review_execution*` 派生或消费 `mobile_real_device_retest_request*`，展示 retest checklist、missing evidence list、每项材料 readiness/status、owner/next action、blocked reason、rejection reason、redaction status、source boundary、ACK-not-delivery 和 `not_proven`，并复制 phone-safe retest request package；不等于真实设备验收通过、production app、真实 PWA install prompt/user choice、O5 外部 proof、HIL 或真实 delivery。
 >
 > 当前增量：sprint `2026.05.14_08-09_mobile-current-pwa-retest-browser-proof` 将“真实设备复测请求”首屏 panel 纳入当前 `mobile/web/` 本地 Chromium-family browser proof。证据边界是 `software_proof_docker_mobile_current_pwa_retest_browser_proof_gate`，只证明本机 Chromium-family 浏览器可渲染当前 PWA、看到 retest request package、保持主操作 fail closed、Diagnostics/Support Handoff 可用、ACK 仍是 accepted/processing；不等于真实 iPhone/Android、production app、真实 PWA install prompt/user choice、O5 外部材料、HIL 或真实 delivery。
+>
+> 当前增量：sprint `2026.05.14_09-10_mobile-real-device-field-trial-package` 在首屏新增“真实设备现场试跑包”panel。证据边界是 `software_proof_docker_mobile_real_device_field_trial_package_gate`，只证明 Docker/local `mobile/web` 能生成 `mobile_real_device_field_trial_package`、`mobile_real_device_field_trial_package_summary` 和 whitelist-only `mobile_real_device_field_trial_package_copy`，包含 phone-safe runtime metadata 与人工 observation fields；不等于真实 iPhone/Android、production app、真实 PWA install prompt/user choice、Objective 5 外部 proof、HIL 或 delivery success。
 
 ## 用途（What lives here）
 
@@ -124,6 +126,7 @@ cloud-relay hosted PWA installability/browser gate：
 - 可选：`mobile_real_device_review_handoff`、`mobile_real_device_review_handoff_summary`、`mobile_real_device_review_handoff_package` 或 `/api/status.phone_readiness.mobile_real_device_review_handoff*` 作为真实设备人工评审交接；它可从 acceptance decision 派生 reviewer checklist、review owner/status、evidence blocker 和 next required evidence，但不能写成真实设备验收通过、O5 外部 proof 或控制放行来源
 - 可选：`mobile_real_device_review_execution`、`mobile_real_device_review_execution_summary`、`mobile_real_device_review_execution_package` 或 `/api/status.phone_readiness.mobile_real_device_review_execution*` 作为真实设备人工评审执行记录；它可从 review handoff 派生 review execution checklist、review result/status、evidence items readiness、operator/reviewer notes、blocked reason 和 next evidence request，但不能写成真实设备验收通过、O5 外部 proof 或控制放行来源
 - 可选：`mobile_real_device_retest_request`、`mobile_real_device_retest_request_summary`、`mobile_real_device_retest_request_package` 或 `/api/status.phone_readiness.mobile_real_device_retest_request*` 作为下一轮真实设备 retest request；它可从 review execution 派生 retest checklist、missing evidence list、material readiness/status、owner/next action、blocked/rejection reason、redaction/source boundary、ACK semantics 和 `not_proven`，但不能写成真实设备验收通过、O5 外部 proof 或控制放行来源
+- 可选：`mobile_real_device_field_trial_package`、`mobile_real_device_field_trial_package_summary`、`mobile_real_device_field_trial_package_copy` 或 `/api/status.phone_readiness.mobile_real_device_field_trial_package*` 作为真实设备现场试跑包；它只整理 viewport、DPR、orientation、touch capability、display-mode、manifest/service worker/offline shell、client timestamp、entry URL 摘要和人工 observation fields，`safe_to_control=false`、`ack_semantics=accepted_processing_only_not_delivery_success`、`not_proven` 必须保留
 - 可选：`mobile_browser_acceptance_bundle`、`phone_browser_acceptance_bundle`、`mobile_acceptance_evidence_bundle` 或 `/api/status.phone_readiness.*_acceptance_bundle`
 - 可选：`mobile_primary_journey_gate`、`mobile_primary_journey_summary` 作为 phone-safe 支持摘要；Start 是否允许仍由既有 destination、manual load confirmation、`command_safety`、cloud/device/browser readiness、operation log 和 action feedback 共同决定
 - 可选：`mobile_recovery_decision_gate`、`mobile_recovery_decision_summary` 作为 phone-safe 恢复决策摘要；缺失时只能从既有 offline、command safety、operation log、action feedback、support handoff 和 primary journey 字段派生 blocked-by-design 摘要
@@ -267,6 +270,16 @@ PWA 安装提示证据规则：
 - 复制包必须过滤 token、Authorization、OSS AK/SK、root password、DB/queue URL、raw ROS topic、`/cmd_vel`、serial、baudrate、WAVE ROVER、本地路径、traceback、checksum、complete artifact、raw robot response、raw intake JSON 或 robot/internal technical fields；命中敏感输入时只能显示 blocked/rejected 摘要。
 - retest request package 只表示下一轮真实设备复测材料请求，不是真实设备验收通过、真实 PWA install prompt、HIL、Objective 5 外部 proof 或 delivery success。缺真实设备材料、production app、真实 PWA install prompt/user choice 或 Objective 5 外部材料时，Start、Confirm、Cancel 必须继续 fail closed。
 
+真实设备现场试跑包规则：
+
+- 首屏“真实设备现场试跑包”panel 消费或派生 `mobile_real_device_field_trial_package`、`mobile_real_device_field_trial_package_summary`、`mobile_real_device_field_trial_package_copy`；缺少后端字段时从当前浏览器 runtime metadata 和人工 observation fields 生成 blocked software-proof package。
+- schema 为 `trashbot.mobile_real_device_field_trial_package.v1`，summary schema 为 `trashbot.mobile_real_device_field_trial_package_summary.v1`，copy schema 为 `trashbot.mobile_real_device_field_trial_package_copy.v1`，本地证据边界为 `software_proof_docker_mobile_real_device_field_trial_package_gate`。
+- 自动采集白名单 runtime metadata：viewport CSS width/height、device pixel ratio、orientation、touch capability、max touch points、coarse pointer、display-mode、manifest link presence、service worker support/registration hint、offline shell hint、client timestamp 和去 query/hash 的 entry URL summary。
+- 人工 observation fields 只允许记录 device type、OS/browser、production app observed、PWA install prompt observed、user choice、offline reload observed、touch target issue、visual issue、operator note、support note；输入必须经过 phone-safe 过滤。
+- copy package 必须固定 `safe_to_control=false`、`ack_semantics=accepted_processing_only_not_delivery_success`，并保留 `not_proven`：真实 iPhone/Android device behavior、production app、真实 PWA install prompt/user choice、Objective 5 外部 proof、HIL 和 delivery success。
+- copy package 不得包含 token、Authorization、OSS AK/SK、root password、DB/queue URL、raw ROS topic、`/cmd_vel`、serial、baudrate、WAVE ROVER、本地路径、traceback、checksum、complete artifacts、raw robot responses、raw intake JSON 或 robot/internal technical fields。
+- 本 gate 不新增控制放行条件；Start Delivery、Confirm Dropoff、Cancel 继续由既有 command_safety、cloud/device/browser readiness、handoff session、operation log、action feedback、review handoff、review execution 和 retest request gates 控制。
+
 operation log 规则：
 
 - 优先展示后端或 fixture 提供的 `operation_log` / `phone_operation_log`。
@@ -350,5 +363,6 @@ PYTHONDONTWRITEBYTECODE=1 python3 pc-tools/evidence/phone_browser_acceptance_gat
 | 当前 mobile-real-device-evidence-intake gate | 首屏真实设备验收材料导入、redacted phone-safe package 复制、not_proven/redaction 边界和非控制放行 |
 | 当前 mobile-real-device-retest-request gate | 首屏真实设备复测请求、phone-safe retest request package 复制、missing evidence/owner/next action 边界和非控制放行 |
 | 当前 mobile-current-pwa-retest-browser-proof gate | 当前 PWA + 真实设备复测请求 panel 的本机 Chromium-family browser proof；保留 current refresh 和旧 browser artifact 兼容说明 |
+| 当前 mobile-real-device-field-trial-package gate | 首屏真实设备现场试跑包、phone-safe runtime metadata、人工 observation fields、whitelist-only copy package 和非控制放行边界 |
 | 下一个 sprint | 真实手机设备验收、production app、真实 PWA install prompt 和弱网体验 |
 | 后续 | 远程控制安全边界（紧急停止、围栏、地理围栏）、native 壳打包 |

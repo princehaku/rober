@@ -138,6 +138,7 @@ h2 {
 .real-device-decision-panel,
 .real-device-review-panel,
 .real-device-retest-panel,
+.real-device-field-trial-panel,
 .acceptance-bundle-panel,
 .terminal-action-panel,
 .action-feedback-panel,
@@ -237,6 +238,7 @@ h2 {
 .real-device-decision-grid,
 .real-device-review-grid,
 .real-device-retest-grid,
+.real-device-field-trial-grid,
 .acceptance-bundle-grid,
 .feedback-grid,
 .terminal-action-grid,
@@ -258,6 +260,7 @@ h2 {
 .real-device-decision-grid div,
 .real-device-review-grid div,
 .real-device-retest-grid div,
+.real-device-field-trial-grid div,
 .acceptance-bundle-grid div,
 .feedback-grid div,
 .terminal-action-grid div,
@@ -331,6 +334,10 @@ dd {
   grid-template-columns: 1fr;
 }
 
+.real-device-field-trial-grid {
+  grid-template-columns: 1fr;
+}
+
 .real-device-review-grid {
   grid-template-columns: 1fr;
 }
@@ -394,6 +401,49 @@ dd {
   color: var(--ink);
   background: #fbfefd;
   font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.field-trial-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.field-trial-form legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.field-trial-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.field-trial-form input,
+.field-trial-form select,
+.field-trial-form textarea {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: var(--ink);
+  background: #fbfefd;
+  font: inherit;
+}
+
+.field-trial-form textarea {
+  resize: vertical;
+  line-height: 1.45;
 }
 
 .load-confirmation {
@@ -511,6 +561,14 @@ dd {
 
   .terminal-action-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .field-trial-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .field-trial-form .wide-field {
+    grid-column: 1 / -1;
   }
 
   .terminal-action-controls {

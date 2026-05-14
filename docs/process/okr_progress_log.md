@@ -8,6 +8,16 @@
 
 ## 2026-05-14 系列
 
+更新时间：2026-05-14 09:17 Asia/Shanghai。
+
+### 2026-05-14 09-10｜mobile-real-device-field-trial-package｜O4 real-device field trial package software proof，手机体验由约 85% 上调到约 86%
+
+`sprints/2026.05.14_09-10_mobile-real-device-field-trial-package` 完成 `software_proof_docker_mobile_real_device_field_trial_package_gate`：Task A Full-stack 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/test_mobile_web_entrypoint.py`、`mobile/README.md`、`docs/product/mobile_user_flow.md`，新增“真实设备现场试跑包”panel，采集 phone-safe runtime metadata 和人工 observation fields，生成/复制 `mobile_real_device_field_trial_package*`。package 固定 `safe_to_control=false`、`ack_semantics=accepted_processing_only_not_delivery_success`、`not_proven`，并保持 Docker/local mobile software proof 边界。Task A 验证输出 `mobile.test_mobile_web_entrypoint` `Ran 29 tests ... OK`、`py_compile` pass、`node --check mobile/web/app.js` pass、boundary/schema/copy/ACK/not_proven/中文标题 `rg` pass、scoped diff check pass。
+
+Task B Robot 更新 `onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge_protocol.py`、`docs/interfaces/ros_contracts.md`，新增 `mobile_real_device_field_trial_package`、`mobile_real_device_field_trial_package_summary`、`mobile_real_device_field_trial_package_copy` 的 protocol normalization fences、worker metadata-only fences 和 mixed valid-command coverage。Robot fence 证明无 command envelope 时 field trial package metadata 不触发 backend action、ACK POST、cursor advance/persistence、terminal ACK、production readiness、HIL、dropoff/cancel completion 或 delivery success；mixed valid-command 只执行 `trashbot.remote.v1` envelope，不把 field trial package metadata 编入 normalized command、ACK、status、cursor 或 terminal result。Task B 验证输出 remote bridge/protocol targeted unittest `Ran 157 tests in 80.820s OK`、`py_compile` pass、`rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 4 从约 85% 保守上调到约 86%，理由是 Docker/local `mobile/web` 已把真实设备验收材料链推进到可复制、可脱敏、phone-safe 的现场试跑包，并由 runtime metadata、人工 observation fields、`safe_to_control=false`、ACK 非 delivery success、`not_proven` 和 Robot metadata-only fence 限定边界。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1/2/3 不提升。本轮 `software_proof_docker_mobile_real_device_field_trial_package_gate` 只证明 Docker/local mobile software proof 和 robot metadata-only fence；真实设备现场试跑包、browser proof、ACK、HTTP accepted、receipt、intake package、acceptance decision package、review handoff package、review execution package、retest request package、handoff session 和 install prompt evidence 仍只是 accepted/processing/support metadata，不是 delivery success。
+
 更新时间：2026-05-14 08:14 Asia/Shanghai。
 
 ### 2026-05-14 08-09｜mobile-current-pwa-retest-browser-proof｜O4 current PWA retest browser proof，手机体验由约 84% 上调到约 85%

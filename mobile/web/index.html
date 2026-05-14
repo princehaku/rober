@@ -653,6 +653,121 @@
         <pre id="mobileRealDeviceRetestRequestSafeCopy" class="safe-copy" aria-label="真实设备 retest request package">暂无真实设备复测请求包。</pre>
       </section>
 
+      <section class="real-device-field-trial-panel" aria-labelledby="mobileRealDeviceFieldTrialTitle">
+        <div class="section-heading">
+          <h2 id="mobileRealDeviceFieldTrialTitle">真实设备现场试跑包</h2>
+          <span id="mobileRealDeviceFieldTrialBadge" class="gate-badge gate-blocked">software proof only</span>
+        </div>
+        <p id="mobileRealDeviceFieldTrialCopy" class="message">
+          生成 phone-safe field trial package；本轮只证明 Docker/local mobile software proof，不是真实 iPhone/Android、production app、PWA install prompt 或 delivery success。
+        </p>
+        <fieldset class="field-trial-form">
+          <legend>人工 observation fields</legend>
+          <label>
+            <span>Device type</span>
+            <input id="fieldTrialDeviceType" type="text" placeholder="iPhone / Android / tablet / unknown">
+          </label>
+          <label>
+            <span>OS / Browser</span>
+            <input id="fieldTrialOsBrowser" type="text" placeholder="iOS Safari / Android Chrome / unknown">
+          </label>
+          <label>
+            <span>Production app observed</span>
+            <select id="fieldTrialProductionAppObserved">
+              <option value="not_proven">not_proven</option>
+              <option value="not_observed">not_observed</option>
+              <option value="observed_summary_only">observed_summary_only</option>
+            </select>
+          </label>
+          <label>
+            <span>PWA install prompt observed</span>
+            <select id="fieldTrialPwaPromptObserved">
+              <option value="not_proven">not_proven</option>
+              <option value="not_observed">not_observed</option>
+              <option value="observed_summary_only">observed_summary_only</option>
+            </select>
+          </label>
+          <label>
+            <span>User choice</span>
+            <select id="fieldTrialUserChoice">
+              <option value="not_proven">not_proven</option>
+              <option value="not_observed">not_observed</option>
+              <option value="accepted_summary_only">accepted_summary_only</option>
+              <option value="dismissed_summary_only">dismissed_summary_only</option>
+            </select>
+          </label>
+          <label>
+            <span>Offline reload observed</span>
+            <select id="fieldTrialOfflineReloadObserved">
+              <option value="not_proven">not_proven</option>
+              <option value="not_observed">not_observed</option>
+              <option value="static_shell_loaded_summary_only">static_shell_loaded_summary_only</option>
+            </select>
+          </label>
+          <label>
+            <span>Touch target issue</span>
+            <select id="fieldTrialTouchTargetIssue">
+              <option value="not_proven">not_proven</option>
+              <option value="none_observed_summary_only">none_observed_summary_only</option>
+              <option value="issue_observed_summary_only">issue_observed_summary_only</option>
+            </select>
+          </label>
+          <label>
+            <span>Visual issue</span>
+            <select id="fieldTrialVisualIssue">
+              <option value="not_proven">not_proven</option>
+              <option value="none_observed_summary_only">none_observed_summary_only</option>
+              <option value="issue_observed_summary_only">issue_observed_summary_only</option>
+            </select>
+          </label>
+          <label class="wide-field">
+            <span>Operator note</span>
+            <textarea id="fieldTrialOperatorNote" rows="3" placeholder="只写 phone-safe 观察摘要，不粘贴 token、URL 参数、日志或机器人原始响应。"></textarea>
+          </label>
+          <label class="wide-field">
+            <span>Support note</span>
+            <textarea id="fieldTrialSupportNote" rows="3" placeholder="只写给支持人员的安全复现说明。"></textarea>
+          </label>
+        </fieldset>
+        <dl class="real-device-field-trial-grid">
+          <div>
+            <dt>Runtime Metadata</dt>
+            <dd id="mobileRealDeviceFieldTrialRuntime">等待生成。</dd>
+          </div>
+          <div>
+            <dt>Observation Summary</dt>
+            <dd id="mobileRealDeviceFieldTrialObservations">device=not_proven / app=not_proven / prompt=not_proven</dd>
+          </div>
+          <div>
+            <dt>Summary</dt>
+            <dd id="mobileRealDeviceFieldTrialSummary">mobile_real_device_field_trial_package_summary 等待生成。</dd>
+          </div>
+          <div>
+            <dt>Safe Control</dt>
+            <dd id="mobileRealDeviceFieldTrialSafeControl">safe_to_control=false</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="mobileRealDeviceFieldTrialAck">accepted_processing_only_not_delivery_success</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileRealDeviceFieldTrialBoundary">software_proof_docker_mobile_real_device_field_trial_package_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileRealDeviceFieldTrialNotProven">真实 iPhone/Android、production app、PWA install prompt/user choice、O5、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="mobileRealDeviceFieldTrialRecoveryHint" class="hint">现场试跑包只用于支持复现和 Product closeout；Start Delivery、Confirm Dropoff、Cancel 继续由既有 gates 控制。</p>
+        <div class="bundle-copy-row">
+          <button id="generateRealDeviceFieldTrialButton" type="button">生成现场试跑包</button>
+          <button id="copyRealDeviceFieldTrialPackageButton" type="button">复制 field trial package</button>
+          <span id="mobileRealDeviceFieldTrialCopyStatus" class="hint">复制内容只包含 whitelist-only phone-safe 字段。</span>
+        </div>
+        <pre id="mobileRealDeviceFieldTrialSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_package_copy">暂无 mobile_real_device_field_trial_package_copy。</pre>
+      </section>
+
       <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>
