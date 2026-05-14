@@ -37,6 +37,7 @@ const MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_SESSION_BOUNDARY = "software_pro
 const PRIMARY_JOURNEY_BOUNDARY = "software_proof_docker_mobile_primary_journey_gate";
 const RECOVERY_DECISION_BOUNDARY = "software_proof_docker_mobile_recovery_decision_gate";
 const ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_BOUNDARY = "software_proof_docker_route_task_rehearsal_operator_review_gate";
+const PC_ROUTE_DEBUG_CONSOLE_BOUNDARY = "software_proof_docker_pc_route_debug_console_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -94,6 +95,7 @@ const REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_SESSION_COPY_SCHEMA = "trashbot.mobile_
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|complete artifact|artifact|raw browser event|raw event|raw promise|complete ua|full ua|完整 ua|raw robot response|raw intake json|robot\/internal|internal technical)/i;
 const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_OPERATOR_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|raw ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|raw robot response|robot\/internal|internal technical|password)/i;
+const UNSAFE_PC_ROUTE_DEBUG_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|raw ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 
@@ -175,6 +177,15 @@ function safeOperatorReviewText(value, fallback = "not_proven") {
   // 排练复盘来自诊断/状态摘要，必须过滤路径、raw artifact、完整 bundle 和凭证。
   const text = safeText(value, fallback);
   if (UNSAFE_OPERATOR_REVIEW_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safePcRouteDebugText(value, fallback = "not_proven") {
+  // PC console 摘要只给支持人员判断材料是否存在，任何内部路径/成功语义都降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_PC_ROUTE_DEBUG_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -3281,6 +3292,77 @@ function routeTaskReviewFromStatus(status, readiness, diagnostics) {
   };
 }
 
+function pcRouteDebugConsoleCandidate(status, readiness, diagnostics) {
+  // 只消费后端/diagnostics 汇总字段，手机端不主动读取 PC console 或本地文件。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const candidates = [
+    status?.pc_route_debug_console,
+    status?.pc_route_debug_console_summary,
+    status?.route_debug_console_summary,
+    readiness?.pc_route_debug_console,
+    readiness?.pc_route_debug_console_summary,
+    readiness?.route_debug_console_summary,
+    diagnostics?.pc_route_debug_console,
+    diagnostics?.pc_route_debug_console_summary,
+    diagnostics?.route_debug_console_summary,
+    diagnosticsReadiness.pc_route_debug_console,
+    diagnosticsReadiness.pc_route_debug_console_summary,
+    diagnosticsReadiness.route_debug_console_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function pcRouteDebugNotProvenList(value) {
+  // availability 不能被误解成 route success，固定补齐真实路线和 HIL 缺口。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实路线运行",
+    "真实 Nav2/fixed-route",
+    "HIL",
+    "真实 dropoff completion",
+    "真实 cancel completion",
+    "delivery success",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 12);
+}
+
+function pcRouteDebugConsoleFromStatus(status, readiness, diagnostics) {
+  const provided = pcRouteDebugConsoleCandidate(status, readiness, diagnostics) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.pc_route_debug_console.v1",
+    schema_version: 1,
+    availability: safePcRouteDebugText(
+      provided.availability || provided.availability_status || provided.overall_status || provided.status,
+      "not_proven",
+    ),
+    route_debug_status: safePcRouteDebugText(
+      provided.route_debug_status || provided.route_progress_status || provided.console_status,
+      "not_proven",
+    ),
+    recent_task_summary: safePcRouteDebugText(
+      provided.recent_task_summary || provided.task_summary || provided.latest_task_summary,
+      "not_proven",
+    ),
+    control_boundary: safePcRouteDebugText(
+      provided.control_boundary || provided.control_semantics,
+      "read_only_no_mobile_control_grant",
+    ),
+    safe_phone_copy: safePcRouteDebugText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "PC route debug console 摘要缺失；手机端只显示 not_proven，不读取 PC 工具或 raw artifact。",
+    ),
+    recovery_hint: safePcRouteDebugText(
+      provided.recovery_hint || provided.retry_hint,
+      "需要 route/task debug 材料时，请在 PC console 生成摘要后由 diagnostics 提供 phone-safe 字段。",
+    ),
+    evidence_boundary: safePcRouteDebugText(provided.evidence_boundary, PC_ROUTE_DEBUG_CONSOLE_BOUNDARY),
+    not_proven: pcRouteDebugNotProvenList(provided),
+  };
+}
+
 function derivedMobileBrowserAcceptanceBundle(status, readiness, diagnostics) {
   // 缺显式 bundle 时，从既有 phone-safe gate 派生 blocked 摘要，不能自行证明真机或生产入口。
   const device = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, diagnostics);
@@ -3875,6 +3957,23 @@ function renderRouteTaskReview(status) {
     $("routeTaskReviewCopyStatus").textContent = "blocked copy unavailable";
     copyButton.disabled = true;
   }
+}
+
+function renderPcRouteDebugConsole(status) {
+  const readiness = readinessFromStatus(status);
+  const summary = pcRouteDebugConsoleFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("pcRouteDebugConsoleBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 PC 摘要" : "read-only not_proven";
+  $("pcRouteDebugConsoleCopy").textContent = summary.safe_phone_copy;
+  $("pcRouteDebugConsoleAvailability").textContent = summary.availability;
+  $("pcRouteDebugConsoleRouteDebug").textContent = summary.route_debug_status;
+  $("pcRouteDebugConsoleRecentTask").textContent = summary.recent_task_summary;
+  $("pcRouteDebugConsoleControlBoundary").textContent = summary.control_boundary;
+  $("pcRouteDebugConsoleBoundary").textContent = summary.evidence_boundary;
+  $("pcRouteDebugConsoleNotProven").textContent = summary.not_proven.join("、");
+  $("pcRouteDebugConsoleHint").textContent = summary.recovery_hint;
 }
 
 function setBadge(state, copy) {
@@ -5391,6 +5490,7 @@ function renderDiagnosticsSummary(payload) {
   const grid = $("diagnosticsSummary");
   grid.textContent = "";
   const routeReview = routeTaskReviewFromStatus(latestStatus || {}, readinessFromStatus(latestStatus || {}), payload || {});
+  const pcRouteDebug = pcRouteDebugConsoleFromStatus(latestStatus || {}, readinessFromStatus(latestStatus || {}), payload || {});
   const rows = [
     ["软件版本", payload?.software_version],
     ["地图版本", payload?.map_version],
@@ -5399,6 +5499,7 @@ function renderDiagnosticsSummary(payload) {
     ["失败原因", payload?.failure?.message || payload?.failure_code],
     ["支持级别", payload?.phone_support_bundle?.support_level],
     ["路线/任务排练复盘", routeReview.overall_status],
+    ["PC 路线调试 Console", pcRouteDebug.availability],
   ];
   rows.forEach(([label, value]) => {
     const box = document.createElement("div");
@@ -5448,6 +5549,7 @@ function renderOfflineFailure() {
   renderMobileBrowserAcceptanceBundle({});
   renderRecoveryDecision({ connection_state: "offline" });
   renderRouteTaskReview({});
+  renderPcRouteDebugConsole({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -5475,6 +5577,7 @@ function renderStatus(status) {
   renderPrimaryJourney(status);
   renderRecoveryDecision(status);
   renderRouteTaskReview(status);
+  renderPcRouteDebugConsole(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);

@@ -78,6 +78,9 @@ ROUTE_TASK_REHEARSAL_EXECUTION_BUNDLE_GATE = (
 ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_GATE = (
     "software_proof_docker_route_task_rehearsal_operator_review_gate"
 )
+PC_ROUTE_DEBUG_CONSOLE_SCHEMA = "trashbot.pc_route_debug_console.v1"
+PC_ROUTE_DEBUG_CONSOLE_SUMMARY_SCHEMA = "trashbot.pc_route_debug_console_summary.v1"
+PC_ROUTE_DEBUG_CONSOLE_GATE = "software_proof_docker_pc_route_debug_console_gate"
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -138,6 +141,27 @@ def _route_task_rehearsal_not_proven(artifact=None):
     return values
 
 
+def _pc_route_debug_not_proven(console=None):
+    # PC 调试台只能提供软件侧可读性材料，真实路线、硬件和交付结论必须显式保持未证明。
+    console = console if isinstance(console, dict) else {}
+    values = []
+    source_values = console.get("not_proven") if isinstance(console.get("not_proven"), list) else []
+    required = (
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "dropoff_or_cancel_completion",
+        "delivery_success",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
 def _first_route_task_rehearsal_value(*values):
     for value in values:
         text = str(value or "").strip()
@@ -181,6 +205,113 @@ def _default_route_task_rehearsal_summary(path, state="not_configured", read_err
         "delivery_success": False,
         "primary_actions_enabled": False,
     }
+
+
+def _default_pc_route_debug_console_summary(path, state="not_configured", read_error=""):
+    # diagnostics 默认 fail-closed：没配置 PC console artifact 时不能推断路线可用或控制可执行。
+    return {
+        "schema": PC_ROUTE_DEBUG_CONSOLE_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": PC_ROUTE_DEBUG_CONSOLE_GATE,
+        "overall_status": "blocked",
+        "state": state,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "console_ref": _safe_route_task_rehearsal_ref(path),
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "availability": {
+            "status": "blocked",
+            "reason": "pc route debug console summary is not configured",
+        },
+        "route_debug_status": {
+            "status": "not_proven",
+            "current_checkpoint": "",
+            "target": "",
+            "matching_status": "",
+            "failure_reason": "",
+        },
+        "route_progress": {},
+        "keyframe_preflight": {},
+        "recent_task_summary": {},
+        "not_proven": _pc_route_debug_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": "PC route debug console is not configured; this is not delivery success.",
+        "safe_phone_copy": "PC route debug console is not configured; this is not delivery success.",
+        "primary_actions_enabled": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+        "delivery_success": False,
+    }
+
+
+def _safe_pc_route_debug_value(value, depth=0):
+    # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
+    if depth > 3:
+        return "[REDACTED_NESTED_VALUE]"
+    if isinstance(value, dict):
+        safe = {}
+        for key, item in list(value.items())[:20]:
+            safe_key = _redact_route_task_rehearsal_text(key)
+            safe[safe_key] = _safe_pc_route_debug_value(item, depth=depth + 1)
+        return safe
+    if isinstance(value, list):
+        return [_safe_pc_route_debug_value(item, depth=depth + 1) for item in value[:8]]
+    if isinstance(value, (int, float, bool)) or value is None:
+        return value
+    return _redact_route_task_rehearsal_text(value)
+
+
+def _safe_pc_route_debug_dict(value):
+    return _safe_pc_route_debug_value(value if isinstance(value, dict) else {})
+
+
+def _pc_route_debug_safe_copy_is_unsafe(value):
+    # 支持 copy 允许解释“未证明”，但不能暗示 Start/ACK/HIL/交付已经成立。
+    text = _redact_route_task_rehearsal_text(value).strip().lower()
+    if not text:
+        return True
+    guarded_phrases = (
+        "not delivery success",
+        "not a delivery success",
+        "no delivery success",
+        "never delivery success",
+        "not real hil",
+        "not hil",
+        "not a hil",
+        "not start",
+        "not confirm",
+        "not cancel",
+        "must not",
+        "metadata-only",
+    )
+    unsafe_phrases = (
+        "delivery success",
+        "hil pass",
+        "real hil",
+        "start delivery enabled",
+        "confirm dropoff enabled",
+        "cancel enabled",
+        "ack posted",
+        "cursor advanced",
+        "nav2 started",
+        "dropoff complete",
+        "cancel complete",
+    )
+    guarded_text = text
+    for guard in guarded_phrases:
+        guarded_text = guarded_text.replace(guard, "")
+    for phrase in unsafe_phrases:
+        if phrase in guarded_text:
+            return True
+    return False
 
 
 def _default_route_task_rehearsal_execution_bundle_summary(path, state="not_configured", read_error=""):
@@ -620,6 +751,143 @@ def summarize_route_task_rehearsal_operator_review(path):
             "safe_copy": "Route/task rehearsal operator review has no supported crosscheck result; proof remains blocked.",
             "safe_phone_copy": "Route/task rehearsal operator review has no supported crosscheck result; proof remains blocked.",
             "next_rehearsal_decision": "regenerate_review_with_crosscheck_pass_or_fail",
+        }
+    )
+    return summary
+
+
+def summarize_pc_route_debug_console(path):
+    """构建 PC route debug console 的 metadata-only diagnostics 摘要。"""
+    console_path = os.path.expanduser(str(path or ""))
+    summary = _default_pc_route_debug_console_summary(
+        console_path,
+        read_error="pc route debug console summary is not configured",
+    )
+    if not console_path:
+        return summary
+    if not os.path.exists(console_path):
+        summary.update(
+            {
+                "state": "missing",
+                "read_error": "pc route debug console summary not found",
+                "safe_copy": "PC route debug console summary is missing; this is not delivery success.",
+                "safe_phone_copy": "PC route debug console summary is missing; this is not delivery success.",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "summary file missing",
+                },
+            }
+        )
+        return summary
+
+    summary["exists"] = True
+    try:
+        with open(console_path, "r", encoding="utf-8") as f:
+            console = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        summary.update(
+            {
+                "state": "read_error",
+                "read_error": _redact_route_task_rehearsal_text(
+                    f"failed reading pc route debug console summary: {exc}"
+                ),
+                "safe_copy": "PC route debug console summary could not be read; keep proof blocked.",
+                "safe_phone_copy": "PC route debug console summary could not be read; keep proof blocked.",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "summary JSON read error",
+                },
+            }
+        )
+        return summary
+
+    if not isinstance(console, dict):
+        summary.update(
+            {
+                "state": "read_error",
+                "read_error": "pc route debug console JSON must be an object",
+                "safe_copy": "PC route debug console summary shape is invalid; proof remains blocked.",
+                "safe_phone_copy": "PC route debug console summary shape is invalid; proof remains blocked.",
+            }
+        )
+        return summary
+
+    source_schema = str(console.get("schema") or "")
+    source_boundary = str(console.get("evidence_boundary") or "")
+    safe_copy = _redact_route_task_rehearsal_text(
+        console.get("safe_copy") or console.get("safe_phone_copy") or ""
+    )
+    availability = console.get("availability") if isinstance(console.get("availability"), dict) else {}
+    route_debug_status = (
+        console.get("route_debug_status")
+        if isinstance(console.get("route_debug_status"), dict)
+        else {}
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": console.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "availability": _safe_pc_route_debug_dict(availability),
+            "route_debug_status": _safe_pc_route_debug_dict(route_debug_status),
+            "route_progress": _safe_pc_route_debug_dict(console.get("route_progress")),
+            "keyframe_preflight": _safe_pc_route_debug_dict(console.get("keyframe_preflight")),
+            "recent_task_summary": _safe_pc_route_debug_dict(
+                console.get("recent_task_summary") or console.get("recent_task")
+            ),
+            "not_proven": _pc_route_debug_not_proven(console),
+            "read_error": "",
+        }
+    )
+    if source_schema != PC_ROUTE_DEBUG_CONSOLE_SCHEMA or source_boundary != PC_ROUTE_DEBUG_CONSOLE_GATE:
+        summary.update(
+            {
+                "overall_status": "blocked",
+                "state": "unsupported_schema",
+                "read_error": "pc route debug console schema or evidence boundary is unsupported",
+                "safe_copy": "PC route debug console summary is not a supported diagnostics source; no delivery result is proven.",
+                "safe_phone_copy": "PC route debug console summary is not a supported diagnostics source; no delivery result is proven.",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+            }
+        )
+        return summary
+
+    if _pc_route_debug_safe_copy_is_unsafe(safe_copy):
+        summary.update(
+            {
+                "overall_status": "blocked",
+                "state": "unsafe_copy",
+                "read_error": "pc route debug console safe_copy is missing or unsafe",
+                "safe_copy": "PC route debug console copy was blocked because it could imply control or delivery success.",
+                "safe_phone_copy": "PC route debug console copy was blocked because it could imply control or delivery success.",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "unsafe support copy",
+                },
+            }
+        )
+        return summary
+
+    availability_status = str(availability.get("status") or console.get("status") or "").strip().lower()
+    blocked_statuses = {"", "blocked", "missing", "read_error", "unsupported_schema", "unsafe_copy"}
+    summary["safe_copy"] = safe_copy
+    summary["safe_phone_copy"] = safe_copy
+    if availability_status in blocked_statuses:
+        summary.update(
+            {
+                "overall_status": "blocked",
+                "state": availability_status or "blocked",
+            }
+        )
+        return summary
+
+    summary.update(
+        {
+            "overall_status": "degraded",
+            "state": "available",
         }
     )
     return summary
@@ -1735,6 +2003,7 @@ def build_diagnostics_payload(
     route_task_rehearsal_artifact_ref="",
     route_task_rehearsal_bundle_ref="",
     route_task_rehearsal_operator_review_ref="",
+    pc_route_debug_console_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -1828,6 +2097,10 @@ def build_diagnostics_payload(
         route_task_rehearsal_operator_review=summarize_route_task_rehearsal_operator_review(
             route_task_rehearsal_operator_review_ref
             or os.environ.get("TRASHBOT_ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW", "")
+        ),
+        pc_route_debug_console=summarize_pc_route_debug_console(
+            pc_route_debug_console_ref
+            or os.environ.get("TRASHBOT_PC_ROUTE_DEBUG_CONSOLE", "")
         ),
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,

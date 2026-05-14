@@ -154,6 +154,43 @@
         <pre id="routeTaskReviewSafeCopy" class="safe-copy" aria-label="route_task_rehearsal_operator_review safe_copy">blocked copy unavailable</pre>
       </section>
 
+      <section class="pc-route-debug-panel" aria-labelledby="pcRouteDebugConsoleTitle">
+        <div class="section-heading">
+          <h2 id="pcRouteDebugConsoleTitle">PC 路线调试 Console</h2>
+          <span id="pcRouteDebugConsoleBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="pcRouteDebugConsoleCopy" class="message">
+          等待后端提供 pc_route_debug_console 的 phone-safe 可用性摘要。
+        </p>
+        <dl class="pc-route-debug-grid">
+          <div>
+            <dt>Availability</dt>
+            <dd id="pcRouteDebugConsoleAvailability">not_proven</dd>
+          </div>
+          <div>
+            <dt>Route Debug</dt>
+            <dd id="pcRouteDebugConsoleRouteDebug">not_proven</dd>
+          </div>
+          <div>
+            <dt>Recent Task</dt>
+            <dd id="pcRouteDebugConsoleRecentTask">not_proven</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="pcRouteDebugConsoleControlBoundary">read_only_no_mobile_control_grant</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="pcRouteDebugConsoleBoundary">software_proof_docker_pc_route_debug_console_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="pcRouteDebugConsoleNotProven">真实路线运行、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="pcRouteDebugConsoleHint" class="hint">PC console availability 只读展示；不触发 Start、Confirm 或 Cancel。</p>
+      </section>
+
       <section class="cloud-panel" aria-labelledby="cloudReadinessTitle">
         <div class="section-heading">
           <h2 id="cloudReadinessTitle">云中转状态</h2>

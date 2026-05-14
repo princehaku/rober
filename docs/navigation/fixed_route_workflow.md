@@ -422,7 +422,9 @@ review 顶层包含 `crosscheck_status`、`hil_alignment_status`、`mismatch_sum
 
 ## 6. Debug Web
 
-Start the debug page:
+### 6.1 Onboard ROS debug page
+
+Start the onboard debug page:
 
 ```bash
 TRASHBOT_STATUS_FILE=/tmp/trashbot_fixed_route_status.json \
@@ -444,6 +446,45 @@ Open:
 ```text
 http://<host-ip>:8765
 ```
+
+### 6.2 PC route debug console
+
+PC 工作站复盘时可以使用独立 `pc-tools/route/route_debug_web.py`，它不依赖 ROS2，不 import `ros2_trashbot_*`，不读取硬件、serial/UART、Nav2 runtime、ROS graph 或网络外部服务。它只读消费 `fixed_route_autonomy` 写出的 debug status JSON，以及可选 task/task_record JSON 或 task_record dir：
+
+```bash
+python3 pc-tools/route/route_debug_web.py \
+  --status-json /tmp/trashbot_fixed_route_status.json \
+  --task-record /tmp/task_record.json \
+  --once-json
+```
+
+本地只读 HTML/API：
+
+```bash
+python3 pc-tools/route/route_debug_web.py \
+  --status-json /tmp/trashbot_fixed_route_status.json \
+  --task-record-dir ~/.ros/trashbot_tasks \
+  --host 127.0.0.1 \
+  --port 8766
+```
+
+输出 summary 使用 `schema=trashbot.pc_route_debug_console.v1`，证据边界固定为 `evidence_boundary=software_proof_docker_pc_route_debug_console_gate`。JSON API `/api/status` 和 `/api/summary` 至少包含：
+
+- `route_progress`
+- `keyframe_preflight`
+- `current_position`
+- `current_checkpoint`
+- `target`
+- `match_status`
+- `failure`
+- `recent_task`
+- `not_proven`
+- `primary_actions_enabled=false`
+- `delivery_success=false`
+
+`--task-record-dir` 会按 `route_progress.evidence_ref` 或顶层 `evidence_ref` 查找同 run task record；找不到时输出 blocked/not_proven 摘要，不猜测任务完成。HTML/API 会隐藏本机完整路径、凭证、serial/UART、baudrate、WAVE ROVER 字样、ROS 控制 topic、traceback 和 checksum 类内容。
+
+该 `pc_route_debug_console` gate 只证明 PC/local/Docker 环境能把 fixed-route status 与 task record 材料归一成可读 HTML/API。它不证明真实 Nav2/fixed-route 实跑、真实路线采集、关键帧实景验证、WAVE ROVER 运动、真实 serial/UART feedback、真实 HIL、dropoff/cancel completion 或 delivery success。
 
 ## 7. Autonomous Run
 

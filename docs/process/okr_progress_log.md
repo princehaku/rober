@@ -8,7 +8,17 @@
 
 ## 2026-05-14 系列
 
-更新时间：2026-05-14 22:22 Asia/Shanghai。
+更新时间：2026-05-14 23:16 Asia/Shanghai。
+
+### 2026-05-14 23-24｜pc-route-debug-console｜O2/O3 PC route debug console software proof，任务闭环与固定路线均由约 81% 上调到约 82%
+
+`sprints/2026.05.14_23-24_pc-route-debug-console` 完成 `software_proof_docker_pc_route_debug_console_gate`：Task A `autonomy-engineer` 新增 `pc-tools/route/route_debug_web.py`、`pc-tools/route/test_route_debug_web.py`、`pc-tools/route/README.md`，并更新 `pc-tools/README.md` 与 `docs/navigation/fixed_route_workflow.md`。PC console 输出 `schema=trashbot.pc_route_debug_console.v1`、`evidence_boundary=software_proof_docker_pc_route_debug_console_gate`、`route_progress`、`keyframe_preflight`、`current_position`、`current_checkpoint`、`target`、`match_status`、`failure`、`recent_task`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`console_controls=read_only`。Task A 验证输出 py_compile pass、`test_route_debug_web.py` `Ran 5 tests OK`、CLI `--help` pass、临时 `--once-json` drill pass、required `rg` pass、scoped diff check pass。
+
+Task B `robot-software-engineer` 更新 `operator_gateway_diagnostics.py`、`test_operator_gateway_diagnostics.py` 与 `docs/interfaces/ros_contracts.md`，支持 `pc_route_debug_console_ref` 与环境变量 `TRASHBOT_PC_ROUTE_DEBUG_CONSOLE`。valid source 必须同时满足 `schema=trashbot.pc_route_debug_console.v1` 与 `evidence_boundary=software_proof_docker_pc_route_debug_console_gate`；missing、read_error、unsupported、blocked、unsafe copy 均保守降级，并保持控制边界 false。Task B 验证输出 py_compile pass、diagnostics unittest `Ran 53 tests OK`、required `rg` pass、scoped diff check pass。
+
+Task C `full-stack-software-engineer` 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`onboard/src/ros2_trashbot_behavior/test/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增只读 PC route debug availability 面板；手机端不读取 PC 文件或 raw artifact，不改变 Start/Confirm/Cancel gating。Task C 验证输出 mobile unittest `Ran 4 tests OK`、py_compile pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 2 和 Objective 3 各从约 81% 保守上调到约 82%。Objective 3 的理由是 PC 关键帧调试页面/API 已覆盖当前位置、当前 checkpoint、目标点、匹配状态、失败原因、关键帧预检和最近任务状态；Objective 2 的理由是 recent task、失败原因、`not_proven` 与 `delivery_success=false` 可被 PC console、diagnostics 和 mobile 只读摘要按同一口径复盘。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1 保持约 75%，Objective 4 保持约 95%。本轮 `software_proof_docker_pc_route_debug_console_gate` 只证明本机 Docker/local PC console、diagnostics summary、mobile availability 和只读控制边界，不是真实 Nav2/fixed-route 实跑、真实路线采集、关键帧实景证据、WAVE ROVER、真实串口、HIL、同一 `evidence_ref` 上车复账、dropoff/cancel completion、delivery success、O5 external proof、真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic 或 production DB/queue。
 
 ### 2026-05-14 22-03｜route-task-rehearsal-operator-review｜O2/O3 route task rehearsal operator review software proof，任务闭环与固定路线均由约 80% 上调到约 81%
 

@@ -74,6 +74,40 @@ class MobileWebRouteTaskReviewTest(unittest.TestCase):
         self.assertIn("not delivery success", doc)
         self.assertIn("blocked copy unavailable", doc)
 
+    def test_pc_route_debug_console_summary_is_read_only_and_not_proven(self):
+        index = self.read_web("index.html")
+        app = self.read_web("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        doc = DOC.read_text(encoding="utf-8")
+        summary = fixture["pc_route_debug_console"]
+
+        # PC console availability 只是支持/诊断摘要，不能进入手机主控制授权链路。
+        self.assertIn("pcRouteDebugConsoleTitle", index)
+        self.assertIn("PC 路线调试 Console", index)
+        self.assertIn("pcRouteDebugConsoleAvailability", index)
+        self.assertIn("pcRouteDebugConsoleRouteDebug", index)
+        self.assertIn("pcRouteDebugConsoleRecentTask", index)
+        self.assertIn("pcRouteDebugConsoleControlBoundary", index)
+        self.assertIn("pcRouteDebugConsoleNotProven", index)
+        self.assertIn("software_proof_docker_pc_route_debug_console_gate", index)
+        self.assertIn("pcRouteDebugConsoleFromStatus", app)
+        self.assertIn("pc_route_debug_console", app)
+        self.assertIn("pc_route_debug_console_summary", app)
+        self.assertIn("read_only_no_mobile_control_grant", app)
+        self.assertNotRegex(app, r"renderPcRouteDebugConsole[\s\S]*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertIn("Start Delivery", index)
+        self.assertIn("Confirm Dropoff", index)
+        self.assertIn("Cancel", index)
+        self.assertIn("actionGate.enabled === true && permitted === true", app)
+
+        self.assertEqual(summary["evidence_boundary"], "software_proof_docker_pc_route_debug_console_gate")
+        self.assertEqual(summary["control_boundary"], "read_only_no_mobile_control_grant")
+        self.assertIn("not_proven", summary)
+        self.assertIn("delivery success", json.dumps(summary, ensure_ascii=False))
+        self.assertIn("pc_route_debug_console", doc)
+        self.assertIn("software_proof_docker_pc_route_debug_console_gate", doc)
+        self.assertIn("not delivery success", doc)
+
 
 if __name__ == "__main__":
     unittest.main()

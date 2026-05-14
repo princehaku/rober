@@ -13,7 +13,7 @@
 
 | 目录 | 用途 | 主要文件（P4 完成后） |
 | --- | --- | --- |
-| `pc-tools/route/` | 路径学习 + debug Web | `route_debug_web.py`（FastAPI/HTML 路径回放）、`route_csv_to_yaml.py`（CSV → YAML 转换） |
+| `pc-tools/route/` | 路径学习 + debug Web | `route_debug_web.py`（标准库 HTML/JSON API 路径复盘）、`route_csv_to_yaml.py`（CSV → YAML 转换，仍在 onboard） |
 | `pc-tools/labeling/` | 视觉样本标注 / 复核 GUI 占位 | 见 `CONTRACT.md`；本 sprint 不实现真实 GUI，留给 autonomy 后续 sprint |
 | `pc-tools/evidence/` | 证据交叉检查、phone browser gate | `evidence_crosscheck.py`、`phone_browser_acceptance_gate.py` |
 | `pc-tools/training/` | YOLO / RT-DETR 训练入口、数据集组织规范 | 占位，留给 autonomy 后续 sprint |
@@ -34,8 +34,32 @@
 ## 当前状态（本轮）
 
 - `pc-tools/evidence/evidence_crosscheck.py`、`pc-tools/evidence/phone_browser_acceptance_gate.py` 已从仓库根 `scripts/` 迁入。
-- `route_debug_web.py`、`route_csv_to_yaml.py` 仍位于 `onboard/src/ros2_trashbot_nav/`（可选后续再抽到 `pc-tools/route/` 以降低与 colcon 的耦合）。
+- `pc-tools/route/route_debug_web.py` 已落地为 PC 工作站独立工具：只读消费 fixed-route status JSON 与可选 task/task_record JSON 或 task_record dir，输出 `schema=trashbot.pc_route_debug_console.v1`、`evidence_boundary=software_proof_docker_pc_route_debug_console_gate`、`route_progress`、`keyframe_preflight`、recent task summary、`not_proven` 和 `delivery_success=false`。
+- `route_csv_to_yaml.py` 仍位于 `onboard/src/ros2_trashbot_nav/`（可选后续再抽到 `pc-tools/route/` 以降低与 colcon 的耦合）。
 - `labeling/`、`training/` 仍为占位与契约说明。
+
+## PC route debug console
+
+`pc-tools/route/route_debug_web.py` 是本地 PC console，不依赖 ROS2，不 import `ros2_trashbot_*`，不访问硬件、serial/UART、Nav2 runtime、ROS graph 或网络外部服务：
+
+```bash
+python3 pc-tools/route/route_debug_web.py \
+  --status-json /tmp/trashbot_fixed_route_status.json \
+  --task-record /tmp/task_record.json \
+  --once-json
+```
+
+启动 HTML/API：
+
+```bash
+python3 pc-tools/route/route_debug_web.py \
+  --status-json /tmp/trashbot_fixed_route_status.json \
+  --task-record-dir ~/.ros/trashbot_tasks \
+  --host 127.0.0.1 \
+  --port 8766
+```
+
+API `/api/status` 与 `/api/summary` 返回同一份只读 summary：`pc_route_debug_console`、`software_proof_docker_pc_route_debug_console_gate`、`route_progress`、`keyframe_preflight`、当前位置/当前 checkpoint、目标点、匹配状态、失败原因、recent task/task_record summary、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。该结果只证明 PC/local/Docker 软件复盘材料可读，不是真实 fixed-route/Nav2 实跑、HIL、dropoff/cancel completion 或 delivery success。
 
 ## route/task rehearsal artifact
 

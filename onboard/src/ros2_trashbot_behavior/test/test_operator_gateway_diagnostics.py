@@ -16,6 +16,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     classify_elevator_assist,
     extract_elevator_assist,
     normalize_log_refs,
+    summarize_pc_route_debug_console,
     summarize_hardware_proof,
     summarize_route_task_rehearsal_artifact,
     summarize_route_task_rehearsal_execution_bundle,
@@ -1185,6 +1186,183 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertFalse(missing_summary["delivery_success"])
         self.assertFalse(invalid_summary["primary_actions_enabled"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_pc_route_debug_console_metadata_only_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            console_path = Path(td) / "pc_route_debug_console.json"
+            console_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.pc_route_debug_console.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_pc_route_debug_console_gate"
+                        ),
+                        "availability": {
+                            "status": "available",
+                            "reason": "route debug console rendered from local JSON only",
+                        },
+                        "route_debug_status": {
+                            "status": "available",
+                            "current_checkpoint": "cp-02",
+                            "target": "trash_station",
+                            "matching_status": "matched",
+                            "failure_reason": "",
+                        },
+                        "route_progress": {
+                            "checkpoint": "cp-02",
+                            "current_index": 2,
+                            "target": {"name": "trash_station"},
+                            "raw_path": str(Path(td) / "raw_status.json"),
+                        },
+                        "keyframe_preflight": {
+                            "status": "passed",
+                            "detail": "Bearer secret-token /dev/ttyUSB0 baudrate=115200",
+                        },
+                        "recent_task_summary": {
+                            "task_id": "task-1",
+                            "final_status": "software_rehearsal_only",
+                        },
+                        "not_proven": ["delivery_success", "real_hil_pass"],
+                        "safe_copy": "PC route debug console is metadata-only software proof; not delivery success.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                pc_route_debug_console_ref=str(console_path),
+            )
+            summary = payload["pc_route_debug_console"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary["overall_status"], "degraded")
+        self.assertEqual(summary["state"], "available")
+        self.assertEqual(summary["schema"], "trashbot.pc_route_debug_console_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_pc_route_debug_console_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.pc_route_debug_console.v1")
+        self.assertEqual(summary["availability"]["status"], "available")
+        self.assertEqual(summary["route_debug_status"]["current_checkpoint"], "cp-02")
+        self.assertEqual(summary["route_progress"]["target"]["name"], "trash_station")
+        self.assertEqual(summary["keyframe_preflight"]["status"], "passed")
+        self.assertIn("not delivery success", summary["safe_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["persistence_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["dropoff_completion"])
+        self.assertFalse(summary["cancel_completion"])
+        self.assertFalse(summary["delivery_success"])
+        for forbidden in (
+            str(console_path),
+            str(Path(td)),
+            "secret-token",
+            "/dev/ttyUSB0",
+            "baudrate=115200",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_pc_route_debug_console_env_missing_unsupported_and_unsafe_stay_blocked(self):
+        with tempfile.TemporaryDirectory() as td:
+            blocked_path = Path(td) / "pc_route_debug_console_blocked.json"
+            blocked_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.pc_route_debug_console.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_pc_route_debug_console_gate"
+                        ),
+                        "availability": {
+                            "status": "blocked",
+                            "reason": "missing fixed_route status JSON",
+                        },
+                        "route_debug_status": {
+                            "status": "not_proven",
+                            "failure_reason": "input missing",
+                        },
+                        "not_proven": ["delivery_success"],
+                        "safe_copy": "PC route debug console is metadata-only; not delivery success.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous = os.environ.get("TRASHBOT_PC_ROUTE_DEBUG_CONSOLE")
+            os.environ["TRASHBOT_PC_ROUTE_DEBUG_CONSOLE"] = str(blocked_path)
+            try:
+                payload = self._base_build_payload({"state": "waiting_for_trash"})
+            finally:
+                if previous is None:
+                    os.environ.pop("TRASHBOT_PC_ROUTE_DEBUG_CONSOLE", None)
+                else:
+                    os.environ["TRASHBOT_PC_ROUTE_DEBUG_CONSOLE"] = previous
+            blocked_summary = payload["pc_route_debug_console"]
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_console.json"
+            missing_summary = summarize_pc_route_debug_console(str(missing_path))
+            unsupported_path = Path(td) / "unsupported_console.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_rehearsal_operator_review.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_rehearsal_operator_review_gate"
+                        ),
+                        "safe_copy": "Unsupported summary is not delivery success.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsupported_summary = summarize_pc_route_debug_console(str(unsupported_path))
+            unsafe_path = Path(td) / "unsafe_console.json"
+            unsafe_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.pc_route_debug_console.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_pc_route_debug_console_gate"
+                        ),
+                        "availability": {"status": "available"},
+                        "safe_copy": "PC console confirms delivery success and ACK posted.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_summary = summarize_pc_route_debug_console(str(unsafe_path))
+            encoded = json.dumps(
+                [blocked_summary, missing_summary, unsupported_summary, unsafe_summary],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(blocked_summary["overall_status"], "blocked")
+        self.assertEqual(blocked_summary["state"], "blocked")
+        self.assertEqual(missing_summary["state"], "missing")
+        self.assertEqual(unsupported_summary["state"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["state"], "unsafe_copy")
+        self.assertIn("software_proof_docker_pc_route_debug_console_gate", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertFalse(blocked_summary["primary_actions_enabled"])
+        self.assertFalse(missing_summary["delivery_success"])
+        self.assertFalse(unsupported_summary["ack_post_allowed"])
+        self.assertFalse(unsafe_summary["cursor_updates_allowed"])
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
         self.assertNotIn("secret-token", encoded)

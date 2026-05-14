@@ -150,6 +150,19 @@ cursor/persistence updates, HIL pass, dropoff/cancel completion, or delivery
 success. It does not change the command/status/ACK envelope or the
 collect/dropoff/cancel behavior.
 
+Operator diagnostics may also expose `pc_route_debug_console` from an explicit
+`pc_route_debug_console_ref` or `TRASHBOT_PC_ROUTE_DEBUG_CONSOLE`. The source
+JSON must use `schema=trashbot.pc_route_debug_console.v1` and
+`evidence_boundary=software_proof_docker_pc_route_debug_console_gate`. This
+summary is metadata-only support material for the PC route debug console: it may
+include sanitized availability, route debug status, route progress,
+keyframe_preflight, recent task summary, `not_proven`, and safe support copy.
+Missing, unreadable, unsupported-schema, blocked, or unsafe-copy sources remain
+blocked/not_proven. This field is not a command/status/ACK envelope field, not a
+ROS action/topic/service, not Nav2 execution, not Start/Confirm/Cancel
+enablement, not ACK POST, not cursor/persistence or terminal ACK, not real
+fixed-route evidence, not HIL, and not delivery success.
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |
