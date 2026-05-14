@@ -88,6 +88,26 @@ The ESP32 feedback frame used by this contract is vendor `T=1001` with at least 
 | `dropoff_timeout_sec` | float seconds | Manual dropoff confirmation window. |
 | `return_target` | waypoint name or empty | Optional return waypoint. Empty means no return navigation. |
 
+### Task Record Evidence Boundary
+
+`task_record.json` is a software evidence record for the behavior state machine.
+For fixed-route rehearsal, `task_record.evidence_ref`,
+`task_record.route_progress.evidence_ref`, and
+`task_record.nav_results[-1].evidence.route_progress.evidence_ref` must resolve
+to the same run-level anchor when that anchor exists. If older fixed-route
+status payloads expose progress fields at the evidence top level, behavior
+normalizes those fields into `route_progress` without changing the ROS2
+action/topic/service contract.
+
+The route/task rehearsal artifact gate
+`software_proof_docker_route_task_rehearsal_artifact_gate` may consume
+`route_progress`, `nav_results[-1].evidence.route_progress`, and
+`evidence_ref` for local/Docker cross-checks. A `final_status=success` task
+record only means the configured behavior state machine finished under its
+current mode, such as `dry_run` or software fixed-route status rehearsal. It is
+not delivery success, not real Nav2/fixed-route execution, not WAVE ROVER
+motion, and not HIL evidence.
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

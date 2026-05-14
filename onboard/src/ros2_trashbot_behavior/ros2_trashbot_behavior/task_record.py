@@ -41,12 +41,11 @@ def _route_progress_from_nav_results(nav_results):
         if not isinstance(evidence, dict):
             continue
         route_progress = evidence.get("route_progress")
-        if isinstance(route_progress, dict):
+        if isinstance(route_progress, dict) and route_progress:
             return dict(route_progress)
 
-        # Fixed-route status evidence has historically exposed these fields at
-        # the top level. Persist a normalized route_progress object so replay
-        # tools can compare task records without knowing every legacy shape.
+        # fixed-route status 历史上可能把进度字段放在 evidence 顶层。
+        # 写入 task_record 时统一成 route_progress，避免 Task A 工具猜测旧形态。
         progress = {
             field: evidence[field]
             for field in ROUTE_PROGRESS_FIELDS
@@ -55,6 +54,13 @@ def _route_progress_from_nav_results(nav_results):
         if progress:
             return progress
     return {}
+
+
+def _route_progress_evidence_ref(route_progress):
+    if not isinstance(route_progress, dict):
+        return ""
+    value = route_progress.get("evidence_ref")
+    return str(value).strip() if value is not None else ""
 
 
 def write_task_record(
@@ -99,9 +105,15 @@ def write_task_record(
     nav_results = nav_results or []
     normalized_route_progress = (
         dict(route_progress)
-        if isinstance(route_progress, dict)
+        if isinstance(route_progress, dict) and route_progress
         else _route_progress_from_nav_results(nav_results)
     )
+    route_progress_ref = _route_progress_evidence_ref(normalized_route_progress)
+    payload_evidence_ref = str(evidence_ref or route_progress_ref or result_path).strip()
+    if normalized_route_progress and "evidence_ref" not in normalized_route_progress and payload_evidence_ref:
+        # task_record.route_progress 与顶层 evidence_ref 必须能指向同一轮软件证据。
+        # 这里只补追踪字段，不改变 ROS action/topic/service 的运行时契约。
+        normalized_route_progress["evidence_ref"] = payload_evidence_ref
     payload = {
         "task_id": task_id,
         "started_at": started_at,
@@ -136,9 +148,9 @@ def write_task_record(
         "final_state": final_state if final_state is not None else machine.state.value,
         "source": _normalize_task_record_source(source),
         "result_path": str(result_path),
-        # evidence_ref is the durable anchor consumed by diagnostics/operator contracts.
-        # Keep it explicit even when it equals result_path to avoid implicit inference.
-        "evidence_ref": str(evidence_ref or result_path).strip(),
+        # evidence_ref 是 Task A artifact 与 replay 工具消费的稳定锚点。
+        # route_progress 内已有锚点时优先保留，避免被 status 文件路径误当成实跑证据。
+        "evidence_ref": payload_evidence_ref,
         "failure_code": failure_code,
         "human_intervention_required": bool(human_intervention_required),
         "route_progress": normalized_route_progress,

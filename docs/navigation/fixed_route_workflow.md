@@ -341,7 +341,7 @@ jq '.state,.checkpoint,.current_index,.failure_code,.evidence_ref,.route_progres
 新增只读复账脚本（不改动 payload）：
 
 ```bash
-python3 scripts/evidence_crosscheck.py \
+python3 pc-tools/evidence/evidence_crosscheck.py \
   /tmp/trashbot_fixed_route_status.json \
   --evidence-ref /tmp/route_replay_evidence.json \
   --task-record-dir ~/.ros/trashbot_tasks
@@ -359,6 +359,31 @@ python3 scripts/evidence_crosscheck.py \
 - `--evidence-ref` 为可选；不传时默认用 `status.evidence_ref`。
 - `--task-record-dir` 在 `task_record` 为空时可用于按 `evidence_ref` 自动检索同 run 文件。
 - 脚本始终是 read-only，无副作用。
+
+需要把 fixed-route status、software proof replay、task record 和可选 HIL gate 状态保存成可复核材料时，增加 route/task rehearsal artifact 输出：
+
+```bash
+python3 pc-tools/evidence/evidence_crosscheck.py \
+  /tmp/trashbot_fixed_route_status.json \
+  --evidence-ref /tmp/route_replay_evidence.json \
+  --task-record-dir ~/.ros/trashbot_tasks \
+  --hil-gate-output /tmp/hil_gate_output.json \
+  --rehearsal-artifact /tmp/route_task_rehearsal_artifact.json
+```
+
+artifact 字段要求：
+
+- `schema=trashbot.route_task_rehearsal_artifact`
+- `schema_version=1`
+- `evidence_boundary=software_proof_docker_route_task_rehearsal_artifact_gate`
+- `evidence_ref`
+- `route_status_summary`
+- `task_record_summary`
+- `crosscheck_status`
+- `hil_alignment_status`
+- `not_proven`
+
+`crosscheck_status.status=pass` 只表示 status/replay/task_record 软件对账通过。HIL gate 未提供、缺失、`software_proof` 或 `blocked` 时 artifact 仍可保存，但 `hil_alignment_status.alignment_status=not_proven`，且 `not_proven` 继续列出真实 Nav2/fixed-route、WAVE ROVER 运动、真实串口、真实 HIL 和 delivery success。该证据边界是 `software_proof_docker_route_task_rehearsal_artifact_gate`，不能用于声明真实路线实跑或上车交付闭环。
 
 ## 6. Debug Web
 

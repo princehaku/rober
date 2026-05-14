@@ -213,6 +213,93 @@ class TaskRecordTest(unittest.TestCase):
         self.assertIn("task_record:", result.stdout)
         self.assertIn("CHECK summary: mismatches=0", result.stdout)
 
+    def test_evidence_crosscheck_writes_rehearsal_artifact_with_blocked_hil_not_proven(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            evidence_ref = "run-rehearsal-artifact"
+            replay_path = root / "route_replay.jsonl"
+            status_path = root / "status.json"
+            task_record_path = root / "task.json"
+            hil_gate_path = root / "hil_gate.json"
+            artifact_path = root / "rehearsal_artifact.json"
+            route_progress = {
+                "checkpoint": "cp-7",
+                "current_index": 7,
+                "target": {"name": "trash_station"},
+                "failure_code": "",
+                "evidence_ref": evidence_ref,
+            }
+            replay_path.write_text(json.dumps(route_progress) + "\n", encoding="utf-8")
+            status_path.write_text(
+                json.dumps(
+                    {
+                        "status": "completed",
+                        "route_progress": route_progress,
+                        "evidence_ref": evidence_ref,
+                        "software_proof": {"artifact_path": str(replay_path), "evidence_ref": evidence_ref},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            task_record_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "task-rehearsal-artifact",
+                        "evidence_ref": evidence_ref,
+                        "final_status": "success",
+                        "route_progress": route_progress,
+                        "nav_results": [{"evidence": {"route_progress": route_progress}}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            hil_gate_path.write_text(
+                json.dumps(
+                    {
+                        "status": "blocked",
+                        "evidence_ref": evidence_ref,
+                        "blocked_reason": "missing /dev/ttyUSB0 baud_rate=115200",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(REPO_ROOT / "pc-tools" / "evidence" / "evidence_crosscheck.py"),
+                    str(status_path),
+                    "--task-record",
+                    str(task_record_path),
+                    "--evidence-ref",
+                    evidence_ref,
+                    "--hil-gate-output",
+                    str(hil_gate_path),
+                    "--rehearsal-artifact",
+                    str(artifact_path),
+                ],
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            artifact_text = json.dumps(artifact, ensure_ascii=False)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(artifact["schema"], "trashbot.route_task_rehearsal_artifact")
+        self.assertEqual(
+            artifact["evidence_boundary"],
+            "software_proof_docker_route_task_rehearsal_artifact_gate",
+        )
+        self.assertEqual(artifact["evidence_ref"], evidence_ref)
+        self.assertEqual(artifact["crosscheck_status"]["status"], "pass")
+        self.assertEqual(artifact["hil_alignment_status"]["alignment_status"], "not_proven")
+        self.assertIn("real_hil_pass", artifact["not_proven"])
+        self.assertIn("route/task rehearsal artifact:", result.stdout)
+        self.assertNotIn("/dev/ttyUSB0", result.stdout + artifact_text)
+        self.assertNotIn("115200", result.stdout + artifact_text)
+
     def test_evidence_crosscheck_task_record_dir_matches_nav_route_progress_ref(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

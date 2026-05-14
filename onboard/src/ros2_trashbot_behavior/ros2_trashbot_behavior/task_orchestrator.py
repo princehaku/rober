@@ -721,16 +721,21 @@ class TaskOrchestrator(Node):
             evidence = item.evidence if isinstance(item, NavigationResult) else item.get("evidence", {})
             if not isinstance(evidence, dict):
                 continue
-            for key in ("evidence_ref", "fixed_route_status_file", "route_file"):
-                candidate = evidence.get(key)
-                if isinstance(candidate, str) and candidate.strip():
-                    return candidate.strip()
+            candidate = evidence.get("evidence_ref")
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate.strip()
             route_progress = evidence.get("route_progress")
             if isinstance(route_progress, dict):
                 for key in ("evidence_ref", "route_file"):
                     candidate = route_progress.get(key)
                     if isinstance(candidate, str) and candidate.strip():
                         return candidate.strip()
+            # status/replay 证据缺少 evidence_ref 时才退回文件路径。
+            # 这样可以防止 fixed_route_status_file 抢占 route_progress 的 run 级锚点。
+            for key in ("fixed_route_status_file", "route_file"):
+                candidate = evidence.get(key)
+                if isinstance(candidate, str) and candidate.strip():
+                    return candidate.strip()
         return ""
 
     def _derive_failure_code(self, machine):
@@ -873,11 +878,14 @@ class TaskOrchestrator(Node):
             if key in payload:
                 evidence[key] = payload[key]
         route_progress = payload.get("route_progress")
-        if isinstance(route_progress, dict):
+        if isinstance(route_progress, dict) and route_progress:
             evidence["route_progress"] = dict(route_progress)
             for key in FIXED_ROUTE_PROGRESS_FIELDS:
                 value = route_progress.get(key)
-                if key not in evidence and value is not None:
+                existing = evidence.get(key)
+                if (key not in evidence or existing is None or existing == "") and value is not None:
+                    # 空字符串不能遮蔽 route_progress 里的有效字段。
+                    # 这只补齐软件证据追踪，不把 fixed-route 状态升级为 HIL 或真实送达。
                     evidence[key] = value
         else:
             progress = {

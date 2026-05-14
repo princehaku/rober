@@ -146,6 +146,34 @@ class TaskOrchestratorFixedRouteStatusTest(unittest.TestCase):
             },
         )
 
+    def test_fixed_route_status_promotes_non_empty_route_progress_fields(self):
+        with tempfile.TemporaryDirectory() as td:
+            status_file = Path(td) / "status.json"
+            status_file.write_text(
+                json.dumps(
+                    {
+                        "state": "completed",
+                        "evidence_ref": "",
+                        "route_progress": {
+                            "checkpoint": "cp-5",
+                            "current_index": 5,
+                            "target": {"name": "trash_station"},
+                            "failure_code": "",
+                            "evidence_ref": "run-456",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            node = self.make_orchestrator(status_file)
+
+            result = node._navigate_fixed_route_status("trash_station", GoalHandle())
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.evidence["evidence_ref"], "run-456")
+        self.assertEqual(result.evidence["route_progress"]["evidence_ref"], "run-456")
+        self.assertEqual(result.evidence["failure_code"], "")
+
     def test_fixed_route_error_status_returns_failure_reason(self):
         with tempfile.TemporaryDirectory() as td:
             status_file = Path(td) / "status.json"

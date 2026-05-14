@@ -14,9 +14,15 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
+
+# artifact 只表达本地/Docker 软件排练，边界常量集中放置，避免后续输出误写成真实 HIL。
+REHEARSAL_ARTIFACT_SCHEMA = "trashbot.route_task_rehearsal_artifact"
+REHEARSAL_ARTIFACT_VERSION = 1
+REHEARSAL_EVIDENCE_BOUNDARY = "software_proof_docker_route_task_rehearsal_artifact_gate"
 
 FIELD_SET = (
     "checkpoint",
@@ -24,6 +30,26 @@ FIELD_SET = (
     "target",
     "failure_code",
     "evidence_ref",
+)
+
+NOT_PROVEN = (
+    "real_nav2_fixed_route_run",
+    "wave_rover_motion",
+    "real_serial_or_uart_feedback",
+    "real_hil_pass",
+    "delivery_success",
+)
+
+# summary 会进入 sprint/OKR 证据材料，先做保守脱敏，避免把密钥或硬件细节扩散到 artifact。
+SENSITIVE_PATTERNS = (
+    (re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+"), "Bearer [REDACTED]"),
+    (re.compile(r"(?i)\bAuthorization\s*:\s*[^,\s]+"), "Authorization: [REDACTED]"),
+    (re.compile(r"(?i)\b(oss[_-]?secret|access[_-]?key[_-]?secret|ak|sk|root[_-]?password)\b\s*[:=]\s*[^,\s]+"), r"\1=[REDACTED]"),
+    (re.compile(r"(?i)\b(db|database|queue)[_-]?url\b\s*[:=]\s*[^,\s]+"), r"\1_url=[REDACTED]"),
+    (re.compile(r"(?i)\b(postgres|postgresql|mysql|redis|amqp|mongodb)://[^,\s]+"), "[REDACTED_URL]"),
+    (re.compile(r"/dev/(ttyUSB|ttyACM|cu\.|tty\.)[A-Za-z0-9._-]*"), "/dev/[REDACTED_SERIAL]"),
+    (re.compile(r"(?i)\b(baud|baudrate|baud_rate)\b\s*[:=]\s*\d+"), r"\1=[REDACTED_BAUD]"),
+    (re.compile(r"(?i)Traceback \(most recent call last\):.*", re.DOTALL), "[REDACTED_TRACEBACK]"),
 )
 
 
@@ -124,7 +150,31 @@ def _select_hil_gate_payload(path: str) -> tuple[dict[str, Any], str]:
 
 
 def _print_kv(label: str, value: Any):
-    print(f"{label}: {value}")
+    print(f"{label}: {_safe_value(value)}")
+
+
+def _safe_text(value: Any) -> str:
+    # 所有对外可见 summary 字段先经过统一过滤，保持 artifact 可分享。
+    text = str(value)
+    for pattern, replacement in SENSITIVE_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
+def _safe_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(_safe_text(k)): _safe_value(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_safe_value(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_safe_value(item) for item in value)
+    if isinstance(value, str):
+        return _safe_text(value)
+    return value
+
+
+def _safe_repr(value: Any) -> str:
+    return repr(_safe_value(value))
 
 
 def _dict_get(mapping: dict[str, Any], key: str, fallback: Any = ""):
@@ -136,10 +186,10 @@ def _dict_get(mapping: dict[str, Any], key: str, fallback: Any = ""):
 
 def _compare(name: str, left: Any, right: Any, mismatches: list[str]) -> bool:
     if left == right:
-        print(f"PASS {name}: {left!r}")
+        print(f"PASS {name}: {_safe_repr(left)}")
         return True
-    mismatches.append(f"{name}: {left!r} != {right!r}")
-    print(f"FAIL {name}: left={left!r} right={right!r}")
+    mismatches.append(f"{name}: {_safe_repr(left)} != {_safe_repr(right)}")
+    print(f"FAIL {name}: left={_safe_repr(left)} right={_safe_repr(right)}")
     return False
 
 
@@ -229,58 +279,176 @@ def _compare_task_record(
         print("FAIL task_record.nav_results[-1].evidence.route_progress: missing")
 
 
+def _task_record_summary(task_record: dict[str, Any], resolved_task_record: str, lookup_mismatch: str) -> dict[str, Any]:
+    nav_results = task_record.get("nav_results") if isinstance(task_record.get("nav_results"), list) else []
+    evidence_from_nav: dict[str, Any] = {}
+    if nav_results and isinstance(nav_results[-1], dict):
+        maybe_evidence = nav_results[-1].get("evidence")
+        evidence_from_nav = maybe_evidence if isinstance(maybe_evidence, dict) else {}
+    return {
+        "provided": bool(task_record),
+        "resolved_task_record": _safe_text(resolved_task_record) if resolved_task_record else "",
+        "lookup_status": "missing" if lookup_mismatch else ("found" if resolved_task_record else "not_provided"),
+        "lookup_detail": _safe_text(lookup_mismatch) if lookup_mismatch else "",
+        "task_id": _safe_text(task_record.get("task_id", "")) if isinstance(task_record, dict) else "",
+        "evidence_ref": _safe_text(task_record.get("evidence_ref", "")) if isinstance(task_record, dict) else "",
+        "final_status": _safe_text(task_record.get("final_status", "")) if isinstance(task_record, dict) else "",
+        "failure_code": _safe_text(task_record.get("failure_code", "")) if isinstance(task_record, dict) else "",
+        "has_route_progress": isinstance(task_record.get("route_progress"), dict) and bool(task_record.get("route_progress")),
+        "has_nav_route_progress": isinstance(evidence_from_nav.get("route_progress"), dict)
+        and bool(evidence_from_nav.get("route_progress")),
+    }
+
+
 def _compare_hil_gate_output(
     hil_gate_output: dict[str, Any],
     gate_load_mismatch: str,
     gate_path: str,
     evidence_ref: str,
     mismatches: list[str],
-):
+) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "provided": bool(gate_path),
+        "status": "not_provided",
+        "alignment_status": "not_proven",
+        "evidence_ref": "",
+        "evidence_ref_match": False,
+        "detail": "not real HIL; HIL gate output not provided",
+    }
     print("\nHIL gate -> run alignment")
     if not gate_path:
         print("INFO hil_gate_output not provided: route/task alignment remains software proof only")
-        return
+        return summary
 
-    print(f"hil_gate_output: {gate_path}")
+    print(f"hil_gate_output: {_safe_text(gate_path)}")
     if gate_load_mismatch:
-        mismatches.append(gate_load_mismatch)
-        print(f"FAIL {gate_load_mismatch}")
-        return
+        summary["status"] = "load_failed"
+        summary["detail"] = _safe_text(f"not real HIL; {gate_load_mismatch}")
+        mismatches.append(_safe_text(gate_load_mismatch))
+        print(f"FAIL {_safe_text(gate_load_mismatch)}")
+        return summary
 
     status = str(hil_gate_output.get("status", "")).strip()
     gate_evidence_ref = str(hil_gate_output.get("evidence_ref") or "").strip()
     blocked_reason = str(hil_gate_output.get("blocked_reason") or "").strip()
     failures = hil_gate_output.get("failures")
     failure_detail = failures if isinstance(failures, list) else []
+    summary["status"] = _safe_text(status or "missing")
+    summary["evidence_ref"] = _safe_text(gate_evidence_ref)
 
     if not status:
         mismatches.append("hil_gate_output.status: missing")
         print("FAIL hil_gate_output.status: missing")
     elif status == "hil_pass":
+        summary["alignment_status"] = "hil_pass_pending_ref_check"
+        summary["detail"] = "HIL gate reports hil_pass; evidence_ref still must match"
         print("PASS hil_gate_output.status: 'hil_pass'")
     elif status == "blocked":
         detail = blocked_reason or ", ".join(str(item) for item in failure_detail) or "blocked"
-        mismatches.append(f"hil_gate_output.status: blocked ({detail})")
-        print(f"FAIL hil_gate_output.status: blocked ({detail})")
+        summary["detail"] = _safe_text(f"not real HIL; blocked ({detail})")
+        mismatches.append(_safe_text(f"hil_gate_output.status: blocked ({detail})"))
+        print(f"FAIL hil_gate_output.status: blocked ({_safe_text(detail)})")
     elif status == "software_proof":
         detail = blocked_reason or "software proof only; not real HIL"
-        mismatches.append(f"hil_gate_output.status: software proof only ({detail})")
-        print(f"FAIL hil_gate_output.status: software proof only ({detail})")
+        summary["detail"] = _safe_text(f"not real HIL; software proof only ({detail})")
+        mismatches.append(_safe_text(f"hil_gate_output.status: software proof only ({detail})"))
+        print(f"FAIL hil_gate_output.status: software proof only ({_safe_text(detail)})")
     else:
-        mismatches.append(f"hil_gate_output.status: unsupported {status!r}")
-        print(f"FAIL hil_gate_output.status: unsupported {status!r}")
+        summary["detail"] = _safe_text(f"not real HIL; unsupported HIL gate status {status!r}")
+        mismatches.append(f"hil_gate_output.status: unsupported {_safe_repr(status)}")
+        print(f"FAIL hil_gate_output.status: unsupported {_safe_repr(status)}")
 
     if not gate_evidence_ref:
         mismatches.append("hil_gate_output.evidence_ref: missing")
         print("FAIL hil_gate_output.evidence_ref: missing")
-        return
+        return summary
 
-    _compare(
+    ref_match = _compare(
         "hil_gate_output.evidence_ref == run evidence_ref",
         gate_evidence_ref,
         evidence_ref,
         mismatches,
     )
+    summary["evidence_ref_match"] = ref_match
+    if status == "hil_pass" and ref_match:
+        summary["alignment_status"] = "hil_pass_aligned"
+        summary["detail"] = "hil_pass gate is evidence_ref aligned; route/task artifact boundary remains software proof"
+    elif status == "hil_pass":
+        summary["alignment_status"] = "not_proven"
+        summary["detail"] = "not real aligned HIL; hil_pass evidence_ref did not match run evidence_ref"
+    return summary
+
+
+def _route_status_summary(
+    status_payload: dict[str, Any],
+    route_status_file: str,
+    replay_path: str,
+    replay_rows: list[dict[str, Any]],
+    status_fields: dict[str, Any],
+    route_progress_fields: dict[str, Any],
+) -> dict[str, Any]:
+    software_proof = status_payload.get("software_proof") if isinstance(status_payload.get("software_proof"), dict) else {}
+    return {
+        "route_status_file": _safe_text(route_status_file),
+        "state": _safe_text(status_payload.get("state", "")),
+        "status": _safe_text(status_payload.get("status", "")),
+        "mode": _safe_text(status_payload.get("mode", "")),
+        "route_contract_version": _safe_text(status_payload.get("route_contract_version", "")),
+        "route_id": _safe_text(status_payload.get("route_id", "")),
+        "checkpoint": _safe_value(status_fields.get("checkpoint")),
+        "current_index": _safe_value(status_fields.get("current_index")),
+        "target": _safe_value(status_fields.get("target")),
+        "failure_code": _safe_value(status_fields.get("failure_code")),
+        "route_progress": _safe_value(route_progress_fields),
+        "software_proof": {
+            "type": _safe_text(software_proof.get("type", "")),
+            "artifact_format": _safe_text(software_proof.get("artifact_format", "")),
+            "artifact_path": _safe_text(replay_path),
+            "evidence_ref": _safe_text(software_proof.get("evidence_ref", "")),
+            "replay_lines": len(replay_rows),
+        },
+    }
+
+
+def _write_rehearsal_artifact(
+    artifact_path: str,
+    evidence_ref: str,
+    route_summary: dict[str, Any],
+    task_summary: dict[str, Any],
+    software_mismatches: list[str],
+    hil_mismatches: list[str],
+    hil_summary: dict[str, Any],
+) -> None:
+    p = Path(artifact_path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    # pass 只看 status/replay/task_record 软件对账，HIL 另列，防止 blocked HIL 拉低本地复账产物。
+    software_pass = not software_mismatches
+    hil_not_proven = hil_summary.get("alignment_status") != "hil_pass_aligned"
+    not_proven = list(NOT_PROVEN)
+    if not hil_not_proven:
+        not_proven = [item for item in not_proven if item != "real_hil_pass"]
+    artifact = {
+        "schema": REHEARSAL_ARTIFACT_SCHEMA,
+        "schema_version": REHEARSAL_ARTIFACT_VERSION,
+        "evidence_boundary": REHEARSAL_EVIDENCE_BOUNDARY,
+        "evidence_ref": _safe_text(evidence_ref),
+        "route_status_summary": route_summary,
+        "task_record_summary": task_summary,
+        "crosscheck_status": {
+            "status": "pass" if software_pass else "fail",
+            "scope": "status/replay/task_record software alignment only",
+            "software_mismatches": [_safe_text(item) for item in software_mismatches],
+            "artifact_pass_does_not_prove": list(NOT_PROVEN),
+        },
+        "hil_alignment_status": {
+            **_safe_value(hil_summary),
+            "mismatches": [_safe_text(item) for item in hil_mismatches],
+            "not_real_hil_when_status_is_missing_blocked_or_software_proof": hil_not_proven,
+        },
+        "not_proven": not_proven,
+    }
+    p.write_text(json.dumps(artifact, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"route/task rehearsal artifact: {_safe_text(str(p))}")
 
 
 def _derive_replay_path(status_payload: dict[str, Any]) -> str:
@@ -302,8 +470,10 @@ def run_crosscheck(
     task_record_dir: str,
     expected_evidence_ref: str,
     hil_gate_output: str,
+    rehearsal_artifact: str,
 ) -> int:
-    mismatches: list[str] = []
+    software_mismatches: list[str] = []
+    hil_mismatches: list[str] = []
     status_payload = _load_json(route_status_file, "route_status")
     if not isinstance(status_payload, dict):
         raise ValueError("route_status payload is not a JSON object")
@@ -314,7 +484,7 @@ def run_crosscheck(
     ).strip()
 
     evidence_ref = expected_evidence_ref.strip() or status_evidence_ref or str(route_status_file)
-    print(f"evidence_ref: {evidence_ref}")
+    print(f"evidence_ref: {_safe_text(evidence_ref)}")
 
     replay_path = _derive_replay_path(status_payload)
     replay_rows = _load_json_lines(replay_path, f"route_replay:{replay_path}")
@@ -322,7 +492,7 @@ def run_crosscheck(
         print(f"route_replay_lines: {len(replay_rows)}")
         latest_replay = replay_rows[-1]
     else:
-        print(f"WARN route_replay file missing or empty: {replay_path}")
+        print(f"WARN route_replay file missing or empty: {_safe_text(replay_path)}")
         latest_replay = {}
 
     status_fields, route_progress_fields, replay_fields = _get_status_and_route_fields(
@@ -336,7 +506,7 @@ def run_crosscheck(
             f"status vs route_progress:{field}",
             status_fields.get(field),
             route_progress_fields.get(field),
-            mismatches,
+            software_mismatches,
         )
 
     print("\nReplay -> status progress alignment")
@@ -345,7 +515,7 @@ def run_crosscheck(
             f"status:{field} vs replay:{field}",
             status_fields.get(field),
             replay_fields.get(field),
-            mismatches,
+            software_mismatches,
         )
 
     if expected_evidence_ref:
@@ -353,7 +523,7 @@ def run_crosscheck(
             "provided evidence_ref equals status.evidence_ref",
             expected_evidence_ref,
             status_evidence_ref,
-            mismatches,
+            software_mismatches,
         )
 
     task_payload, resolved_task_record, task_record_lookup_mismatch = _select_task_record_payload(
@@ -361,26 +531,57 @@ def run_crosscheck(
         task_record_dir,
         evidence_ref,
     )
-    print(f"\ntask_record: {resolved_task_record or 'not provided'}")
+    print(f"\ntask_record: {_safe_text(resolved_task_record) if resolved_task_record else 'not provided'}")
     if task_record_lookup_mismatch:
-        mismatches.append(task_record_lookup_mismatch)
-        print(f"FAIL {task_record_lookup_mismatch}")
-    _compare_task_record(task_payload, status_payload, status_fields, mismatches)
+        software_mismatches.append(_safe_text(task_record_lookup_mismatch))
+        print(f"FAIL {_safe_text(task_record_lookup_mismatch)}")
+    _compare_task_record(task_payload, status_payload, status_fields, software_mismatches)
 
     gate_payload, gate_load_mismatch = _select_hil_gate_payload(hil_gate_output)
-    _compare_hil_gate_output(
+    hil_summary = _compare_hil_gate_output(
         gate_payload,
         gate_load_mismatch,
         hil_gate_output,
         evidence_ref,
-        mismatches,
+        hil_mismatches,
     )
 
-    print(f"\nCHECK summary: mismatches={len(mismatches)}")
+    if rehearsal_artifact:
+        route_summary = _route_status_summary(
+            status_payload,
+            route_status_file,
+            replay_path,
+            replay_rows,
+            status_fields,
+            route_progress_fields,
+        )
+        task_summary = _task_record_summary(
+            task_payload,
+            resolved_task_record,
+            task_record_lookup_mismatch,
+        )
+        _write_rehearsal_artifact(
+            rehearsal_artifact,
+            evidence_ref,
+            route_summary,
+            task_summary,
+            software_mismatches,
+            hil_mismatches,
+            hil_summary,
+        )
+
+    mismatches = software_mismatches + hil_mismatches
+    print(
+        f"\nCHECK summary: mismatches={len(mismatches)} "
+        f"software_mismatches={len(software_mismatches)} hil_mismatches={len(hil_mismatches)}"
+    )
     if mismatches:
         print("\nMismatch detail:")
         for item in mismatches:
-            print(f"- {item}")
+            print(f"- {_safe_text(item)}")
+        if rehearsal_artifact and not software_mismatches:
+            print("INFO artifact pass remains software proof only; HIL alignment is not_proven")
+            return 0
         return 1
 
     return 0
@@ -401,6 +602,11 @@ def main() -> int:
         default="",
         help="hil_evidence_packet_gate.py JSON output file for real-run HIL alignment",
     )
+    parser.add_argument(
+        "--rehearsal-artifact",
+        default="",
+        help="write a route/task rehearsal artifact JSON with software-proof evidence boundary",
+    )
     args = parser.parse_args()
 
     task_record_path = args.task_record
@@ -414,6 +620,7 @@ def main() -> int:
         task_record_dir,
         args.evidence_ref,
         str(Path(args.hil_gate_output).expanduser()) if args.hil_gate_output else "",
+        str(Path(args.rehearsal_artifact).expanduser()) if args.rehearsal_artifact else "",
     )
 
 

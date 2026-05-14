@@ -447,6 +447,46 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(nav_evidence["target"], {"name": "trash_station"})
         self.assertEqual(nav_evidence["failure_code"], "")
 
+    def test_execute_collection_fixed_route_prefers_route_progress_ref_over_empty_status_ref(self):
+        with tempfile.TemporaryDirectory() as td:
+            status_file = Path(td) / "status.json"
+            evidence_file = Path(td) / "route-progress-ref.jsonl"
+            route_progress = {
+                "checkpoint": "cp-5",
+                "current_index": 5,
+                "target": {"name": "trash_station"},
+                "failure_code": "",
+                "evidence_ref": str(evidence_file),
+            }
+            status_file.write_text(
+                json.dumps(
+                    {
+                        "state": "completed",
+                        "evidence_ref": "",
+                        "route_file": "/tmp/routes/trash_station.json",
+                        "route_progress": route_progress,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            node = self.make_orchestrator(Path(td), status_file)
+            node.delivery_mode = "fixed_route"
+            node.navigation_timeout_sec = 0.1
+            goal = FakeGoalHandle()
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        self.assertTrue(result.success)
+        self.assertEqual(payload["evidence_ref"], str(evidence_file))
+        self.assertEqual(payload["result_path"], str(evidence_file))
+        self.assertEqual(payload["route_progress"]["evidence_ref"], str(evidence_file))
+        self.assertEqual(
+            payload["nav_results"][-1]["evidence"]["route_progress"]["evidence_ref"],
+            str(evidence_file),
+        )
+        self.assertEqual(payload["nav_results"][-1]["evidence"]["evidence_ref"], str(evidence_file))
+
     def test_execute_collection_manual_dropoff_timeout_aborts_with_timeout_record(self):
         with tempfile.TemporaryDirectory() as td:
             node = self.make_orchestrator(Path(td))

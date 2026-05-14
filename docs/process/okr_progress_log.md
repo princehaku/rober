@@ -8,6 +8,16 @@
 
 ## 2026-05-14 系列
 
+更新时间：2026-05-14 19:20 Asia/Shanghai。
+
+### 2026-05-14 19-20｜route-task-rehearsal-artifact｜O2/O3 route task rehearsal artifact software proof，任务闭环与固定路线均由约 77% 上调到约 78%
+
+`sprints/2026.05.14_19-20_route-task-rehearsal-artifact` 完成 `software_proof_docker_route_task_rehearsal_artifact_gate`：Task A `autonomy-engineer` 更新 `pc-tools/evidence/evidence_crosscheck.py`、`onboard/src/ros2_trashbot_behavior/test/test_task_record.py`、`pc-tools/README.md`、`docs/navigation/fixed_route_workflow.md`，新增 `--rehearsal-artifact`，写出 schema/version、`evidence_boundary=software_proof_docker_route_task_rehearsal_artifact_gate`、`evidence_ref`、route/task summary、crosscheck status、HIL alignment status 和 `not_proven`。blocked HIL 或缺 HIL gate 时 artifact 仍可保存，但只表示 status/replay/task_record 软件对账；新增 fenced test 验证 blocked HIL 可保存 artifact，并验证串口、波特率等材料被脱敏。Task A 验证输出 `python3 -m py_compile pc-tools/evidence/evidence_crosscheck.py` pass、`python3 onboard/src/ros2_trashbot_behavior/test/test_task_record.py` `Ran 8 tests OK`、required `rg` pass、scoped `git diff --check` pass。
+
+Task B `robot-software-engineer` 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/task_record.py`、`onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/task_orchestrator.py`、`onboard/src/ros2_trashbot_behavior/test/test_task_orchestrator_collection_execution.py`、`onboard/src/ros2_trashbot_behavior/test/test_task_orchestrator_fixed_route_status.py`、`docs/interfaces/ros_contracts.md`。`task_record.py` 忽略空 `route_progress`，必要时把 `route_progress.evidence_ref` 提升到 top-level `evidence_ref`，显式保留 evidence anchor；`task_orchestrator.py` 优先使用 fixed-route evidence 或 nested `route_progress` 的真实 `evidence_ref`，再回退到 status/route file。Task B 验证输出 behavior py_compile pass、`test_task_record.py` `Ran 8 tests OK`、`test_task_orchestrator_collection_execution.py` `Ran 10 tests OK`、`test_task_orchestrator_fixed_route_status.py` `Ran 6 tests OK`、required `rg` pass、scoped `git diff --check` pass。
+
+该证据只支持 Objective 2 和 Objective 3 各从约 77% 保守上调到约 78%，理由是 Docker/local 环境已经把 fixed-route status、software proof replay、task record 和 evidence crosscheck 对账结果收束为同一 `evidence_ref` 下可保存、可脱敏、可复核的软件排练 artifact，并且 task record / behavior 的 evidence anchor 更稳定。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1 保持约 75%，Objective 4 保持约 95%。本轮 `software_proof_docker_route_task_rehearsal_artifact_gate` 只证明 status/replay/task_record 软件对账、route/task summary、crosscheck status、HIL alignment status 和 evidence anchor 可保存复核，不是真实 Nav2/fixed-route 实跑、真实路线采集、关键帧实景证据、WAVE ROVER、真实串口、HIL、同一 `evidence_ref` 的上车复账、dropoff/cancel completion 或 delivery success。
+
 更新时间：2026-05-14 18:18 Asia/Shanghai。
 
 ### 2026-05-14 18-19｜mobile-pwa-install-prompt-evidence-export｜O4 PWA install prompt evidence export software proof，手机体验由约 94% 上调到约 95%
