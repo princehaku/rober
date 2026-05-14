@@ -271,6 +271,31 @@ python3 pc-tools/evidence/route_task_field_run_console.py \
 
 该 field-run console 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；`field_run_materials_prepared_not_proven` 只表示本地材料可读、schema/boundary 支持、same `evidence_ref` 对齐且摘要安全。它不是真实 Nav2/fixed-route、真实路线采集、真实 dropoff/cancel completion、HIL、delivery success、真实手机设备或 Objective 5 external proof。缺 execution pack、route status、task record 或 completion signal、坏 JSON、unsupported schema/boundary、`evidence_ref` mismatch、unsafe summary、`primary_actions_enabled=true` 或输入含 `delivery_success=true` 时，CLI 会 fail closed，保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
 
+## route/task field-run evidence kit
+
+`pc-tools/evidence/route_task_field_run_evidence_kit.py` 只读上一轮 `route_task_field_run_console` artifact，并可选检查 PC 侧材料目录，把现场执行说明、回填模板和只读摘要整理成可交给现场同学的 evidence kit：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_evidence_kit.py \
+  --console-json /tmp/route_task_field_run_console.json \
+  --material-dir /tmp/route_task_field_run_materials \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_run_evidence_kit.json
+```
+
+需要直接给 diagnostics、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_evidence_kit.py \
+  --console-json /tmp/route_task_field_run_console.json \
+  --material-dir /tmp/route_task_field_run_materials \
+  --once-json
+```
+
+输出 `schema=trashbot.route_task_field_run_evidence_kit.v1`、`schema_version=1`、`evidence_boundary=software_proof_docker_route_task_field_run_evidence_kit_gate`、`same_evidence_ref_required=true`、`evidence_kit_verdict`、`material_directory_manifest`、`capture_templates`、`commands_to_run`、`commands_to_rerun`、`missing_materials`、`operator_handoff`、`robot_diagnostics_summary`、`mobile_readonly_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。`material_directory_manifest` 只检查/描述 PC 目录里是否有 `route_task_field_run_console.json`、`route_status.json`、`task_record.json`、`completion_signal.json`、`operator_notes.md`、`robot_diagnostics_summary.json` 和 `mobile_readonly_summary.json`；这些文件即使齐全，也只是现场执行和回填材料，不是 delivery success。
+
+该 evidence kit 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；`field_run_evidence_kit_ready_not_proven` 只表示上一轮 console 与材料目录可形成现场 handoff。缺 console、坏 JSON、unsupported schema/boundary、`evidence_ref` mismatch、缺材料目录文件、unsafe summary、`primary_actions_enabled=true` 或输入含 `delivery_success=true` 时，CLI 会 fail closed，保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

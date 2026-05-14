@@ -612,6 +612,30 @@ python3 pc-tools/evidence/route_task_field_run_console.py \
 
 该 CLI 不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G。缺 execution pack、route status、task record 或 completion signal、坏 JSON、unsupported schema/boundary、`evidence_ref` mismatch、unsafe summary、`primary_actions_enabled=true` 或输入含 `delivery_success=true` 时，console 必须 fail closed，并保留 `not_proven`、`primary_actions_enabled=false`、`delivery_success=false` 和修复用的 `operator_next_steps`。
 
+### 5.12 route/task field-run evidence kit
+
+console 生成后，现场同学还需要一份可以按目录执行和回填的证据包。`pc-tools/evidence/route_task_field_run_evidence_kit.py` 只读上一轮 console JSON，并可选检查 PC 侧材料目录：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_evidence_kit.py \
+  --console-json /tmp/route_task_field_run_console.json \
+  --material-dir /tmp/route_task_field_run_materials \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+evidence kit artifact 使用 `schema=trashbot.route_task_field_run_evidence_kit.v1`，证据边界固定为 `software_proof_docker_route_task_field_run_evidence_kit_gate`。核心字段包括：
+
+- `material_directory_manifest`: 现场材料目录 manifest，检查 `route_task_field_run_console.json`、`route_status.json`、`task_record.json`、`completion_signal.json`、`operator_notes.md`、`robot_diagnostics_summary.json` 和 `mobile_readonly_summary.json` 是否齐全。
+- `capture_templates`: route status、task record、completion signal 和 operator notes 的回填模板；所有模板都要求 `same_evidence_ref_required=true`。
+- `commands_to_run` / `commands_to_rerun`: 给 PC/operator 的生成、补采和重跑命令清单，不触发 ROS graph、Nav2、硬件或手机控制动作。
+- `evidence_kit_verdict`: `field_run_evidence_kit_ready_not_proven` 或 blocked 分支，覆盖缺 console、坏 JSON、unsupported schema、`evidence_ref` mismatch、缺材料、unsafe summary、越界 action/success 声明。
+- `operator_handoff`: 给现场同学的只读交接步骤。
+- `robot_diagnostics_summary` 与 `mobile_readonly_summary`: 只读摘要，固定 `primary_actions_enabled=false` 与 `delivery_success=false`。
+- `not_proven`: 继续列出真实 Nav2/fixed-route、真实路线采集、WAVE ROVER 运动、真实 serial/UART feedback、HIL、真实 dropoff/cancel completion、真实手机设备和 Objective 5 external proof 未证明。
+
+`field_run_evidence_kit_ready_not_proven` 只表示 Docker/local evidence kit 已把上一轮 console 和材料目录整理成现场执行/回填包。它不是实机 field run、不是 HIL、不是真实 dropoff/cancel completion，也不是 delivery success。任何缺材料或安全/同 ref 约束失败都必须先修复并重跑 evidence kit，不得把 evidence kit 当作完成信号。
+
 ## 6. Debug Web
 
 ### 6.1 Onboard ROS debug page

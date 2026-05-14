@@ -8,7 +8,17 @@
 
 ## 2026-05-15 系列
 
-更新时间：2026-05-15 05:20 Asia/Shanghai。
+更新时间：2026-05-15 06:12 Asia/Shanghai。
+
+### 2026-05-15 07-08｜route-task-field-run-evidence-kit｜O2/O3 evidence kit software proof，任务闭环与固定路线均由约 66% 上调到约 67%
+
+`sprints/2026.05.15_07-08_route-task-field-run-evidence-kit` 完成 `software_proof_docker_route_task_field_run_evidence_kit_gate`：Task A `autonomy-engineer` 新增 `pc-tools/evidence/route_task_field_run_evidence_kit.py` 和 `pc-tools/evidence/test_route_task_field_run_evidence_kit.py`，更新 `pc-tools/README.md`、`docs/navigation/fixed_route_workflow.md`。evidence kit artifact 输出 `schema=trashbot.route_task_field_run_evidence_kit.v1`、`schema_version=1`、`evidence_boundary=software_proof_docker_route_task_field_run_evidence_kit_gate`、material directory manifest、capture templates、commands to run/rerun、same `evidence_ref` verdict、missing materials、operator handoff、`robot_diagnostics_summary`、`mobile_readonly_summary`、`not_proven`、`primary_actions_enabled=false`、`delivery_success=false`。Task A 验证输出 py_compile pass、`test_route_task_field_run_evidence_kit.py` `Ran 6 tests ... OK`、CLI `--help` pass、required `rg` pass、scoped diff check pass。
+
+Task B `robot-software-engineer` 更新 `operator_gateway_diagnostics.py`、`test_operator_gateway_diagnostics.py` 与 `docs/interfaces/ros_contracts.md`，新增 diagnostics metadata-only `route_task_field_run_evidence_kit` / `route_task_field_run_evidence_kit_summary` consumption。支持 explicit ref 和 `TRASHBOT_ROUTE_TASK_FIELD_RUN_EVIDENCE_KIT` / `_SUMMARY` 环境变量来源；严格检查 schema、boundary 和 unsafe fields，固定 `delivery_success=false`、`primary_actions_enabled=false`，不触发 collect/dropoff/cancel、ACK、Nav2、HIL、dropoff/cancel completion 或 delivery success。Task B 验证输出 py_compile pass、diagnostics unittest `Ran 69 tests in 0.051s OK`、required `rg` pass、scoped diff check pass。
+
+Task C `full-stack-software-engineer` 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增只读“路线现场证据包”panel。该 panel 展示 kit verdict、safe `evidence_ref`、material manifest、capture templates、commands、missing materials、operator handoff、`delivery_success=false`、`primary_actions_enabled=false`、`not_proven` 和 boundary；不读取 raw artifact、本机路径、token、serial/UART、`/cmd_vel`、checksum 或 traceback，不改变 Start/Confirm/Cancel gating。Task C 验证输出 mobile unittest `38 tests OK`、py_compile pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 2 和 Objective 3 各从约 66% 保守上调到约 67%。Objective 2 的理由是 field-run console 已推进为 evidence kit，能把任务状态、dropoff/cancel 材料、失败/恢复原因、operator next steps 和 completion 缺口组织成下一次真实 route/task field run 可执行证据包。Objective 3 的理由是 route status/replay、execution pack、task record、completion signal、console summary 和未来现场回填材料已统一到 same `evidence_ref` 的 material manifest、capture templates、run/rerun commands、Robot diagnostics summary 和 mobile read-only panel。Objective 5 保持约 66%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1 和 Objective 4 保持约 73%。本轮 `software_proof_docker_route_task_field_run_evidence_kit_gate` 只证明 Docker/local evidence kit artifact、diagnostics summary、mobile read-only panel 和只读控制边界，不是真实 Nav2/fixed-route、真实路线采集、WAVE ROVER、真实串口/UART、HIL、同一 `evidence_ref` 上车实机复账、dropoff/cancel completion、delivery success、Objective 5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue 或 worker/migration；not real delivery evidence。
 
 ### 2026-05-15 06-07｜route-task-field-run-console｜O2/O3 field-run console software proof，任务闭环与固定路线均由约 65% 上调到约 66%
 

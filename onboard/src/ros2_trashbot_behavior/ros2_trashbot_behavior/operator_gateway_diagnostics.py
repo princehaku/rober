@@ -130,6 +130,13 @@ ROUTE_TASK_FIELD_RUN_CONSOLE_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RUN_CONSOLE_GATE = (
     "software_proof_docker_route_task_field_run_console_gate"
 )
+ROUTE_TASK_FIELD_RUN_EVIDENCE_KIT_SCHEMA = "trashbot.route_task_field_run_evidence_kit.v1"
+ROUTE_TASK_FIELD_RUN_EVIDENCE_KIT_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_run_evidence_kit_summary.v1"
+)
+ROUTE_TASK_FIELD_RUN_EVIDENCE_KIT_GATE = (
+    "software_proof_docker_route_task_field_run_evidence_kit_gate"
+)
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -398,6 +405,40 @@ def _route_task_field_run_console_not_proven(console=None, mobile_summary=None):
         source_values.extend(console.get("not_proven"))
     if isinstance(mobile_summary.get("not_proven"), list):
         source_values.extend(mobile_summary.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "real_route_collection",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "production_readiness",
+        "real_dropoff_completion",
+        "real_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_run_evidence_kit_not_proven(kit=None, summary_fragment=None):
+    # evidence kit 只把现场运行证据包材料投到 diagnostics；真实控制、ACK、Nav2/HIL 和交付结论必须外部证明。
+    kit = kit if isinstance(kit, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(kit.get("not_proven"), list):
+        source_values.extend(kit.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
     required = (
         "collect_dropoff_cancel_control",
         "remote_ack",
@@ -797,6 +838,62 @@ def _default_route_task_field_run_console_summary(path, status="not_configured",
     }
 
 
+def _default_route_task_field_run_evidence_kit_summary(path, status="not_configured", read_error=""):
+    # evidence kit 默认不配置时也必须 fail-closed；diagnostics 不因为缺材料打开任何机器人动作。
+    return {
+        "schema": ROUTE_TASK_FIELD_RUN_EVIDENCE_KIT_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RUN_EVIDENCE_KIT_GATE,
+        "source_schema": "",
+        "source_evidence_boundary": "",
+        "kit_verdict": {
+            "status": status,
+            "verdict": "not_proven",
+            "reason": read_error or "route-task field-run evidence kit is not configured",
+        },
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "materials_status": {
+            "status": "blocked",
+            "reason": "route-task field-run evidence kit is not configured",
+        },
+        "field_run_plan": {
+            "status": "blocked",
+            "steps": [],
+        },
+        "capture_checklist": {
+            "status": "blocked",
+            "items": [],
+        },
+        "completion_signal_summary": {},
+        "reconciliation_summary": {},
+        "operator_next_steps": [],
+        "robot_diagnostics_summary": {
+            "status": "blocked",
+            "reason": "route-task field-run evidence kit is not configured",
+        },
+        "mobile_readonly_summary": {
+            "safe_copy": "Route-task field-run evidence kit is metadata-only; delivery_success=false.",
+            "safe_phone_copy": "Route-task field-run evidence kit is metadata-only; delivery_success=false.",
+        },
+        "not_proven": _route_task_field_run_evidence_kit_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -1057,6 +1154,16 @@ def _route_task_field_run_console_has_unsafe_fields(value):
             ))
         )
     return False
+
+
+def _route_task_field_run_evidence_kit_source_contract(value):
+    # 支持直接消费 evidence kit，也支持消费 diagnostics/mobile 传来的 summary wrapper，但 wrapper 仍必须指向 kit schema。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == ROUTE_TASK_FIELD_RUN_EVIDENCE_KIT_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or "")
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
 
 
 def _pc_route_debug_safe_copy_is_unsafe(value):
@@ -3118,6 +3225,251 @@ def summarize_route_task_field_run_console(path):
     return summary
 
 
+def summarize_route_task_field_run_evidence_kit(path):
+    """构建 route-task field-run evidence kit 的 metadata-only diagnostics 摘要。"""
+    kit_path = os.path.expanduser(str(path or ""))
+    summary = _default_route_task_field_run_evidence_kit_summary(
+        kit_path,
+        read_error="route-task field-run evidence kit is not configured",
+    )
+    if not kit_path:
+        return summary
+    if not os.path.exists(kit_path):
+        summary.update(
+            {
+                "kit_verdict": {
+                    "status": "missing",
+                    "verdict": "not_proven",
+                    "reason": "route-task field-run evidence kit missing",
+                },
+                "materials_status": {"status": "blocked", "reason": "evidence kit artifact missing"},
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "route-task field-run evidence kit artifact missing",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Route-task field-run evidence kit is missing; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field-run evidence kit is missing; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    try:
+        with open(kit_path, "r", encoding="utf-8") as f:
+            kit = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        safe_error = _redact_route_task_rehearsal_text(
+            f"failed reading route-task field-run evidence kit: {exc}"
+        )
+        summary.update(
+            {
+                "kit_verdict": {"status": "read_error", "verdict": "not_proven", "reason": safe_error},
+                "materials_status": {"status": "blocked", "reason": "evidence kit JSON read error"},
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "evidence kit JSON read error",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Route-task field-run evidence kit could not be read; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field-run evidence kit could not be read; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    if not isinstance(kit, dict):
+        summary.update(
+            {
+                "kit_verdict": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "route-task field-run evidence kit JSON must be an object",
+                },
+                "materials_status": {"status": "blocked", "reason": "evidence kit JSON shape is invalid"},
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "evidence kit JSON shape is invalid",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Route-task field-run evidence kit shape is invalid; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field-run evidence kit shape is invalid; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    # summary 来源可能已经是白名单摘要；仍只读取安全字段，并固定控制面关闭。
+    mobile_summary = {}
+    for candidate in (
+        kit.get("mobile_readonly_summary"),
+        kit.get("mobile_safe_summary"),
+        kit.get("phone_safe_summary"),
+        kit.get("route_task_field_run_evidence_kit_summary"),
+    ):
+        if isinstance(candidate, dict):
+            mobile_summary = candidate
+            break
+    robot_summary = (
+        kit.get("robot_diagnostics_summary")
+        if isinstance(kit.get("robot_diagnostics_summary"), dict)
+        else kit.get("diagnostics_summary") if isinstance(kit.get("diagnostics_summary"), dict) else {}
+    )
+    source_schema, source_boundary = _route_task_field_run_evidence_kit_source_contract(kit)
+    source_verdict = kit.get("kit_verdict")
+    if not isinstance(source_verdict, dict):
+        source_verdict = kit.get("evidence_kit_verdict")
+    if isinstance(source_verdict, dict):
+        verdict_status = _redact_route_task_rehearsal_text(
+            source_verdict.get("status")
+            or source_verdict.get("verdict")
+            or source_verdict.get("decision")
+            or kit.get("status")
+            or "blocked"
+        )
+        verdict_value = _redact_route_task_rehearsal_text(
+            source_verdict.get("verdict")
+            or source_verdict.get("decision")
+            or verdict_status
+            or "not_proven"
+        )
+        verdict_reason = _redact_route_task_rehearsal_text(
+            source_verdict.get("reason") or source_verdict.get("summary") or ""
+        )
+    else:
+        verdict_status = _redact_route_task_rehearsal_text(
+            kit.get("status") or robot_summary.get("status") or "blocked"
+        )
+        verdict_value = _redact_route_task_rehearsal_text(
+            kit.get("verdict") or robot_summary.get("verdict") or verdict_status or "not_proven"
+        )
+        verdict_reason = _redact_route_task_rehearsal_text(
+            kit.get("reason") or robot_summary.get("reason") or ""
+        )
+    materials_status = (
+        kit.get("materials_status")
+        if isinstance(kit.get("materials_status"), dict)
+        else robot_summary.get("materials_status") if isinstance(robot_summary.get("materials_status"), dict) else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        mobile_summary.get("safe_copy")
+        or mobile_summary.get("safe_phone_copy")
+        or kit.get("safe_copy")
+        or kit.get("safe_phone_copy")
+        or "Route-task field-run evidence kit is metadata-only; delivery_success=false."
+    )
+    safe_mobile_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(mobile_summary.get(key) or "").strip():
+            safe_mobile_summary[key] = _redact_route_task_rehearsal_text(mobile_summary.get(key))
+    safe_mobile_summary["safe_copy"] = safe_copy
+    safe_mobile_summary["safe_phone_copy"] = safe_copy
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "kit_verdict": {
+                "status": verdict_status or "blocked",
+                "verdict": verdict_value or "not_proven",
+                "reason": verdict_reason or "route-task field-run evidence kit consumed without explicit reason",
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                mobile_summary.get("safe_evidence_ref")
+                or mobile_summary.get("evidence_ref")
+                or kit.get("safe_evidence_ref")
+                or kit.get("evidence_ref", "")
+            ),
+            "same_evidence_ref_required": bool(
+                mobile_summary.get(
+                    "same_evidence_ref_required",
+                    kit.get("same_evidence_ref_required", True),
+                )
+            ),
+            "materials_status": _safe_pc_route_debug_dict(materials_status)
+            or {"status": verdict_status or "blocked", "reason": "evidence kit consumed without explicit materials status"},
+            "field_run_plan": _safe_pc_route_debug_dict(kit.get("field_run_plan"))
+            or {"status": "blocked", "steps": []},
+            "capture_checklist": _safe_pc_route_debug_dict(kit.get("capture_checklist"))
+            or {"status": "blocked", "items": []},
+            "completion_signal_summary": _safe_pc_route_debug_dict(kit.get("completion_signal_summary")),
+            "reconciliation_summary": _safe_pc_route_debug_dict(kit.get("reconciliation_summary")),
+            "operator_next_steps": _safe_route_task_rehearsal_list(
+                mobile_summary.get("operator_next_steps")
+                if isinstance(mobile_summary.get("operator_next_steps"), list)
+                else kit.get("operator_next_steps")
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": verdict_status or "blocked",
+                "reason": "evidence kit consumed without explicit robot diagnostics summary",
+            },
+            "mobile_readonly_summary": safe_mobile_summary,
+            "not_proven": _route_task_field_run_evidence_kit_not_proven(kit, mobile_summary),
+            "read_error": "",
+            "metadata_only": True,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    if source_schema != ROUTE_TASK_FIELD_RUN_EVIDENCE_KIT_SCHEMA or source_boundary != ROUTE_TASK_FIELD_RUN_EVIDENCE_KIT_GATE:
+        summary.update(
+            {
+                "kit_verdict": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "route-task field-run evidence kit schema or evidence boundary is unsupported",
+                },
+                "materials_status": {"status": "blocked", "reason": "unsupported schema or evidence boundary"},
+                "field_run_plan": {"status": "blocked", "steps": []},
+                "capture_checklist": {"status": "blocked", "items": []},
+                "completion_signal_summary": {},
+                "reconciliation_summary": {},
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Route-task field-run evidence kit is not a supported diagnostics source; no delivery result is proven.",
+                    "safe_phone_copy": "Route-task field-run evidence kit is not a supported diagnostics source; no delivery result is proven.",
+                },
+            }
+        )
+        return summary
+
+    if (
+        not summary["same_evidence_ref_required"]
+        or _route_task_field_run_console_has_unsafe_fields(kit)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "kit_verdict": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": "route-task field-run evidence kit contains unsafe fields or weakens same evidence_ref constraints",
+                },
+                "materials_status": {"status": "blocked", "reason": "unsafe evidence kit summary fields"},
+                "field_run_plan": {"status": "blocked", "steps": []},
+                "capture_checklist": {"status": "blocked", "items": []},
+                "completion_signal_summary": {},
+                "reconciliation_summary": {},
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe evidence kit summary fields",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Route-task field-run evidence kit was blocked because fields could expose control data, weaken evidence_ref constraints, or imply delivery success.",
+                    "safe_phone_copy": "Route-task field-run evidence kit was blocked because fields could expose control data, weaken evidence_ref constraints, or imply delivery success.",
+                },
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -4236,6 +4588,7 @@ def build_diagnostics_payload(
     route_task_field_run_reconciliation_ref="",
     route_task_completion_signal_ref="",
     route_task_field_run_console_ref="",
+    route_task_field_run_evidence_kit_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -4322,6 +4675,11 @@ def build_diagnostics_payload(
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_CONSOLE", "")
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_CONSOLE_SUMMARY", "")
     )
+    route_task_field_run_evidence_kit_summary = summarize_route_task_field_run_evidence_kit(
+        route_task_field_run_evidence_kit_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_EVIDENCE_KIT", "")
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_EVIDENCE_KIT_SUMMARY", "")
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -4378,6 +4736,8 @@ def build_diagnostics_payload(
         route_task_completion_signal_summary=route_task_completion_signal_summary,
         route_task_field_run_console=route_task_field_run_console_summary,
         route_task_field_run_console_summary=route_task_field_run_console_summary,
+        route_task_field_run_evidence_kit=route_task_field_run_evidence_kit_summary,
+        route_task_field_run_evidence_kit_summary=route_task_field_run_evidence_kit_summary,
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),

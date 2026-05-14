@@ -457,6 +457,59 @@
         <p id="routeTaskFieldRunReconciliationHint" class="hint">Field-run reconciliation 只读展示；不触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
       </section>
 
+      <section class="route-field-run-evidence-kit-panel" aria-labelledby="routeTaskFieldRunEvidenceKitTitle">
+        <div class="section-heading">
+          <h2 id="routeTaskFieldRunEvidenceKitTitle">路线现场证据包</h2>
+          <span id="routeTaskFieldRunEvidenceKitBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="routeTaskFieldRunEvidenceKitCopy" class="message">
+          等待后端提供 route_task_field_run_evidence_kit 的 phone-safe evidence kit 摘要。
+        </p>
+        <dl class="route-field-run-evidence-kit-grid">
+          <div>
+            <dt>Kit Verdict</dt>
+            <dd id="routeTaskFieldRunEvidenceKitVerdict">blocked/not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="routeTaskFieldRunEvidenceKitEvidenceRef">not_provided</dd>
+          </div>
+          <div>
+            <dt>Material Directory Manifest</dt>
+            <dd id="routeTaskFieldRunEvidenceKitManifest">等待 material directory manifest 摘要。</dd>
+          </div>
+          <div>
+            <dt>Capture Templates</dt>
+            <dd id="routeTaskFieldRunEvidenceKitTemplates">等待 capture templates 摘要。</dd>
+          </div>
+          <div>
+            <dt>Commands To Run / Rerun</dt>
+            <dd id="routeTaskFieldRunEvidenceKitCommands">等待 commands to run/rerun 摘要。</dd>
+          </div>
+          <div>
+            <dt>Missing Materials</dt>
+            <dd id="routeTaskFieldRunEvidenceKitMissing">missing_materials=not_proven</dd>
+          </div>
+          <div>
+            <dt>Operator Handoff</dt>
+            <dd id="routeTaskFieldRunEvidenceKitHandoff">等待 operator handoff 摘要。</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="routeTaskFieldRunEvidenceKitControls">delivery_success=false / primary_actions_enabled=false</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="routeTaskFieldRunEvidenceKitBoundary">software_proof_docker_route_task_field_run_evidence_kit_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="routeTaskFieldRunEvidenceKitNotProven">真实路线、HIL、dropoff/cancel completion 和 delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="routeTaskFieldRunEvidenceKitHint" class="hint">Evidence kit 只读展示；不读取敏感原始材料或机器人控制细节，也不触发 Start、Confirm 或 Cancel。</p>
+      </section>
+
       <section class="route-task-completion-panel" aria-labelledby="routeTaskCompletionSignalTitle">
         <div class="section-heading">
           <h2 id="routeTaskCompletionSignalTitle">路线任务完成信号</h2>
