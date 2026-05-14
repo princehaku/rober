@@ -213,6 +213,35 @@ python3 pc-tools/evidence/route_task_field_run_reconciliation.py \
 
 该 reconciliation gate 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；`ready_for_route_task_field_run_reconciliation` 只表示 execution pack 与 intake/review 材料可读、schema/boundary 支持、同一 safe `evidence_ref` 对齐且 phone-safe 摘要可展示。它不是真实 fixed-route/Nav2、真实路线采集、HIL、dropoff/cancel completion、delivery success 或 O5 external proof。缺 execution pack、缺 intake/review、坏 JSON、unsupported schema、unsupported boundary、缺 `evidence_ref`、`evidence_ref` mismatch、unsafe summary 或 missing materials 时，CLI 会输出 blocked reconciliation artifact，并继续保留 `not_proven` 与 `delivery_success=false`。
 
+## route/task completion signal
+
+`pc-tools/evidence/route_task_completion_signal.py` 只读 fixed-route status/replay、task record、上一轮 reconciliation/review/intake summary，以及可选 dropoff/cancel completion material，生成给 diagnostics/mobile 只读消费的 completion signal：
+
+```bash
+python3 pc-tools/evidence/route_task_completion_signal.py \
+  --route-status-json /tmp/route_status.json \
+  --task-record-json /tmp/task_record.json \
+  --completion-summary-json /tmp/route_task_field_run_reconciliation.json \
+  --dropoff-completion-json /tmp/dropoff_completion.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_completion_signal.json
+```
+
+需要直接给 diagnostics、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/route_task_completion_signal.py \
+  --route-status-json /tmp/route_status.json \
+  --task-record-json /tmp/task_record.json \
+  --completion-summary-json /tmp/route_task_field_run_review.json \
+  --cancel-completion-json /tmp/cancel_completion.json \
+  --once-json
+```
+
+输出 `schema=trashbot.route_task_completion_signal.v1`、`schema_version=1`、`evidence_boundary=software_proof_docker_route_task_completion_signal_gate`、`same_evidence_ref_required=true`、`completion_verdict`、`fixed_route_summary`、`task_record_summary`、`state_transition_summary`、`dropoff_completion`、`cancel_completion`、`failure_reason`、`recovery_reason`、`materials_status`、`operator_next_steps`、`phone_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。`completed_not_proven` 只表示 Docker/local completion signal 材料形状足够进入人工复核，不表示真实送达成功。
+
+该 completion signal gate 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；它不是真实 delivery、真实 dropoff/cancel completion、真实 fixed-route/Nav2、真实路线采集、HIL、真实手机设备或 O5 external proof。缺 route/task/summary 必需材料、坏 JSON、unsupported schema、`evidence_ref` mismatch、unsafe phone summary、输入含 `delivery_success=true`，或状态机进入 dropoff/cancel 但缺对应 completion material 时，CLI 会 fail closed，保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

@@ -565,6 +565,33 @@ python3 pc-tools/evidence/route_task_field_run_reconciliation.py \
 
 该 gate 仍是 software proof。它用于把 execution pack、intake/review 和 phone-safe summary 串成可观测复账入口，不触发 Nav2、不访问硬件、不放行手机主操作，也不能写成真实 fixed-route、真实 HIL、投放完成、取消完成或送达成功。
 
+### 5.10 route/task completion signal
+
+reconciliation 之后，completion signal 把 route status/replay、task record 状态机、上一轮 reconciliation/review/intake summary，以及可选 dropoff/cancel completion material 汇总成 diagnostics/mobile 可读的只读完成信号：
+
+```bash
+python3 pc-tools/evidence/route_task_completion_signal.py \
+  --route-status-json /tmp/route_status.json \
+  --task-record-json /tmp/task_record.json \
+  --completion-summary-json /tmp/route_task_field_run_reconciliation.json \
+  --dropoff-completion-json /tmp/dropoff_completion.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+取消/失败分支可把 `--dropoff-completion-json` 换成 `--cancel-completion-json`。输出 summary 使用 `schema=trashbot.route_task_completion_signal.v1`，证据边界固定为 `software_proof_docker_route_task_completion_signal_gate`。顶层固定包含 `same_evidence_ref_required=true`、`completion_verdict`、`fixed_route_summary`、`task_record_summary`、`state_transition_summary`、`dropoff_completion`、`cancel_completion`、`failure_reason`、`recovery_reason`、`materials_status`、`operator_next_steps`、`phone_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+保守阻断规则：
+
+- route status/replay、task record 或 completion summary 缺失、JSON 不可读或不是 JSON object：输出 blocked，不把异常当完成信号。
+- 任一输入 schema 不支持：输出 `blocked_unsupported_schema`。
+- 任一已加载材料缺 `evidence_ref` 或与 `--evidence-ref` 不一致：输出 `blocked_mismatch_evidence_ref` 或缺材料 blocked。
+- phone-safe summary 命中凭证、raw ROS topic、serial/UART、baudrate、WAVE ROVER、traceback、checksum、complete artifact 或 raw robot response：输出 `blocked_unsafe_phone_summary`。
+- 任一输入含 `delivery_success=true`：输出 `blocked_delivery_success_claim`，继续强制 `delivery_success=false`。
+- task record 状态机进入 dropoff/cancel 分支但缺对应 `dropoff_completion` / `cancel_completion` material：输出 `blocked_missing_completion_materials`。
+
+该 gate 仍是 software proof。`completed_not_proven` 只表示 Docker/local 材料形状足够进入人工复核，不触发 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；它不是真实 delivery、真实 dropoff/cancel completion、真实 fixed-route/Nav2、真实路线采集、HIL、真实手机设备或 Objective 5 external proof。
+
 ## 6. Debug Web
 
 ### 6.1 Onboard ROS debug page

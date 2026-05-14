@@ -184,6 +184,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("mobile_real_device_field_trial_acceptance_session_copy", app)
         self.assertIn("mobile_current_pwa_field_trial_browser_proof", app)
         self.assertIn("mobileRealDeviceFieldTrialAcceptanceSessionTitle", index)
+        self.assertIn("route_task_completion_signal", app)
+        self.assertIn("route_task_completion_signal_summary", app)
+        self.assertIn("routeTaskCompletionSignalTitle", index)
         self.assertIn("mobile_browser_acceptance_bundle", app)
         self.assertIn("phone_browser_acceptance_bundle", app)
         self.assertIn("mobile_acceptance_evidence_bundle", app)
@@ -322,6 +325,40 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertNotIn("送达已成功", self.read("index.html"))
         self.assertNotIn("投放已完成", self.read("index.html"))
         self.assertNotIn("取消已完成", self.read("index.html"))
+
+    def test_route_task_completion_signal_panel_is_read_only_and_phone_safe(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+
+        # completion signal 只能消费 phone-safe summary，不能把完成信号升级成真实交付成功。
+        self.assertIn("routeTaskCompletionSignalTitle", index)
+        self.assertIn("路线任务完成信号", index)
+        self.assertIn("routeTaskCompletionSignalVerdict", index)
+        self.assertIn("routeTaskCompletionSignalEvidenceRef", index)
+        self.assertIn("routeTaskCompletionSignalDropoff", index)
+        self.assertIn("routeTaskCompletionSignalCancel", index)
+        self.assertIn("routeTaskCompletionSignalFailureRecovery", index)
+        self.assertIn("routeTaskCompletionSignalNextSteps", index)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", index)
+        self.assertIn("software_proof_docker_route_task_completion_signal_gate", index)
+        self.assertIn("routeTaskCompletionSignalCandidate", app)
+        self.assertIn("routeTaskCompletionSignalFromStatus", app)
+        self.assertIn("route_task_completion_signal", app)
+        self.assertIn("route_task_completion_signal_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_completion_signal", app)
+        self.assertIn("nestedDiagnosticsSummary.route_task_completion_signal", app)
+        self.assertIn("dropoff_completion", app)
+        self.assertIn("cancel_completion", app)
+        self.assertIn("failure_reason", app)
+        self.assertIn("recovery_reason", app)
+        self.assertIn("completion_verdict", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_COMPLETION_TEXT", app)
+        self.assertIn("complete bundle", app)
+        self.assertIn("Objective 5 external proof", app)
+        self.assertNotRegex(app, r"routeTaskCompletion.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"routeTaskCompletion.*fetchJson\(ENDPOINTS\.diagnostics")
 
     def test_operation_log_panel_is_visible_and_read_only(self):
         app = self.read("app.js")
@@ -1609,9 +1646,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "queue url",
             "/cmd_vel",
             "baudrate",
-            "wave rover",
             "checksum",
-            "artifact",
+            "raw artifact",
+            "complete artifact",
             "serial device",
             "local path",
         ):

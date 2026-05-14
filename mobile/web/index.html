@@ -408,6 +408,55 @@
         <p id="routeTaskFieldRunReconciliationHint" class="hint">Field-run reconciliation 只读展示；不触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
       </section>
 
+      <section class="route-task-completion-panel" aria-labelledby="routeTaskCompletionSignalTitle">
+        <div class="section-heading">
+          <h2 id="routeTaskCompletionSignalTitle">路线任务完成信号</h2>
+          <span id="routeTaskCompletionSignalBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="routeTaskCompletionSignalCopy" class="message">
+          等待后端提供 route_task_completion_signal 的 phone-safe 完成信号摘要。
+        </p>
+        <dl class="route-task-completion-grid">
+          <div>
+            <dt>Completion Verdict</dt>
+            <dd id="routeTaskCompletionSignalVerdict">blocked/not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="routeTaskCompletionSignalEvidenceRef">not_provided</dd>
+          </div>
+          <div>
+            <dt>Dropoff Completion</dt>
+            <dd id="routeTaskCompletionSignalDropoff">dropoff_completion=not_proven</dd>
+          </div>
+          <div>
+            <dt>Cancel Completion</dt>
+            <dd id="routeTaskCompletionSignalCancel">cancel_completion=not_proven</dd>
+          </div>
+          <div>
+            <dt>Failure / Recovery</dt>
+            <dd id="routeTaskCompletionSignalFailureRecovery">failure_reason=not_proven / recovery_reason=not_proven</dd>
+          </div>
+          <div>
+            <dt>Operator Next Steps</dt>
+            <dd id="routeTaskCompletionSignalNextSteps">等待 operator next steps 摘要。</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="routeTaskCompletionSignalControls">delivery_success=false / primary_actions_enabled=false</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="routeTaskCompletionSignalBoundary">software_proof_docker_route_task_completion_signal_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="routeTaskCompletionSignalNotProven">真实路线、HIL、dropoff/cancel completion 和 delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="routeTaskCompletionSignalHint" class="hint">Completion signal 只读展示；不触发 Start Delivery、Confirm Dropoff、Cancel、ACK 或 cursor route。</p>
+      </section>
+
       <section class="cloud-panel" aria-labelledby="cloudReadinessTitle">
         <div class="section-heading">
           <h2 id="cloudReadinessTitle">云中转状态</h2>

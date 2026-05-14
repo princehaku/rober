@@ -8,7 +8,17 @@
 
 ## 2026-05-15 系列
 
-更新时间：2026-05-15 03:19 Asia/Shanghai。
+更新时间：2026-05-15 04:19 Asia/Shanghai。
+
+### 2026-05-15 05-06｜route-task-completion-signal｜O2/O3 completion signal software proof，任务闭环与固定路线均由约 64% 上调到约 65%
+
+`sprints/2026.05.15_05-06_route-task-completion-signal` 完成 `software_proof_docker_route_task_completion_signal_gate`：Task A `autonomy-engineer` 新增 `pc-tools/evidence/route_task_completion_signal.py` 和 `pc-tools/evidence/test_route_task_completion_signal.py`，更新 `pc-tools/README.md`、`docs/navigation/fixed_route_workflow.md`。completion artifact 输出 `schema=trashbot.route_task_completion_signal.v1`、`evidence_boundary=software_proof_docker_route_task_completion_signal_gate`、`same_evidence_ref_required=true`、`completion_verdict`、`dropoff_completion`、`cancel_completion`、failure/recovery reason、`operator_next_steps`、`phone_safe_summary`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。Task A 验证输出 py_compile pass、`test_route_task_completion_signal.py` `Ran 8 tests in 0.016s OK`、CLI `--help` pass、required `rg` pass、scoped diff check pass；覆盖 missing materials、bad JSON、unsupported schema/boundary、same `evidence_ref` mismatch、unsafe summary 和 unsafe completion claim。
+
+Task B `robot-software-engineer` 更新 `operator_gateway_diagnostics.py`、`test_operator_gateway_diagnostics.py` 与 `docs/interfaces/ros_contracts.md`，新增 diagnostics metadata-only `route_task_completion_signal` / `route_task_completion_signal_summary` consumption。支持 explicit ref 和环境变量来源；不触发 collect/dropoff/cancel、remote ACK、cursor advance/persistence、terminal ACK、Nav2、HIL、production readiness、dropoff/cancel completion 或 delivery success。Task B 验证输出 py_compile pass、diagnostics unittest `Ran 65 tests OK`、required `rg` pass、scoped diff check pass。
+
+Task C `full-stack-software-engineer` 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增只读“路线任务完成信号”panel。该 panel 展示 completion verdict、safe `evidence_ref`、dropoff/cancel completion status、failure/recovery reason、operator next steps、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false` 和 boundary；缺 summary fail closed，不读取 raw artifact 或本机路径，不改变 Start/Confirm/Cancel gating。Task C 验证输出 mobile unittest `Ran 36 tests OK`、py_compile pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。Browser 补验因 `iab unavailable` 未运行，因此不计真实手机/browser、production app 或 PWA prompt/user choice 证明。
+
+该证据只支持 Objective 2 和 Objective 3 各从约 64% 保守上调到约 65%。Objective 2 的理由是 task record state transitions、dropoff/cancel completion status、failure/recovery reason 和 operator next steps 已从 reconciliation verdict 推进到同一 `evidence_ref` 下的 completion signal，能给下一次真实 route/task field run 明确补证和复核入口。Objective 3 的理由是 fixed-route/task record/reconciliation materials 已进入 PC artifact、Robot diagnostics 和 mobile read-only panel 一致消费的完成信号口径，固定路线现场材料链从复账推进到 completion verdict。Objective 5 保持约 66%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1 和 Objective 4 保持约 73%。本轮 `software_proof_docker_route_task_completion_signal_gate` 只证明 Docker/local completion signal artifact、diagnostics summary、mobile read-only panel 和只读控制边界，不是真实 Nav2/fixed-route、真实路线采集、WAVE ROVER、真实串口/UART、HIL、同一 `evidence_ref` 上车实机复账、dropoff/cancel completion、delivery success、Objective 5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue 或 worker/migration。
 
 ### 2026-05-15 04-05｜route-task-field-run-reconciliation｜O2/O3 field-run reconciliation software proof，任务闭环与固定路线均由约 63% 上调到约 64%
 

@@ -275,6 +275,31 @@ command/status/ACK robot contract fields and do not prove real fixed-route
 execution, real HIL, production readiness, dropoff/cancel completion, or
 delivery success.
 
+Operator diagnostics may also expose `route_task_completion_signal` and the
+alias `route_task_completion_signal_summary` from an explicit
+`route_task_completion_signal_ref` or
+`TRASHBOT_ROUTE_TASK_COMPLETION_SIGNAL`. The source JSON must use
+`schema=trashbot.route_task_completion_signal.v1` and
+`evidence_boundary=software_proof_docker_route_task_completion_signal_gate`.
+This summary is metadata-only support material for route/task completion review:
+it may expose only the summary schema/evidence boundary, source schema/evidence
+boundary, completion verdict, safe evidence ref, `same_evidence_ref_required`,
+fixed-route summary, task-record summary, state-transition summary,
+dropoff/cancel completion metadata, failure/recovery reason, materials status,
+operator next steps, phone-safe summary, `not_proven`,
+`delivery_success=false`, and `primary_actions_enabled=false`. Raw route logs,
+task records, mobile summary payloads, credentials, local paths, UART/serial
+details, raw ACK payloads, raw command envelopes, production-readiness claims,
+and traceback content must not enter the diagnostics summary. Missing,
+unreadable, unsupported-schema, boundary-mismatch, unsafe-summary,
+`delivery_success=true`, or `primary_actions_enabled=true` sources remain
+blocked/not_proven. The fields do not trigger `/api/collect`, dropoff, cancel,
+remote ACK, cursor advance/persistence, terminal ACK, Nav2, WAVE ROVER, HIL,
+production readiness, real dropoff/cancel completion, or delivery success. They
+are not command/status/ACK robot contract fields and do not prove real
+fixed-route execution, real HIL, production readiness, dropoff completion,
+cancel completion, or delivery success.
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

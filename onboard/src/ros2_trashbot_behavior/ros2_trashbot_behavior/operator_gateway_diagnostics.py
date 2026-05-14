@@ -116,6 +116,13 @@ ROUTE_TASK_FIELD_RUN_RECONCILIATION_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RUN_RECONCILIATION_GATE = (
     "software_proof_docker_route_task_field_run_reconciliation_gate"
 )
+ROUTE_TASK_COMPLETION_SIGNAL_SCHEMA = "trashbot.route_task_completion_signal.v1"
+ROUTE_TASK_COMPLETION_SIGNAL_SUMMARY_SCHEMA = (
+    "trashbot.route_task_completion_signal_summary.v1"
+)
+ROUTE_TASK_COMPLETION_SIGNAL_GATE = (
+    "software_proof_docker_route_task_completion_signal_gate"
+)
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -330,6 +337,40 @@ def _route_task_field_run_reconciliation_not_proven(reconciliation=None, phone_s
         "real_hil_pass",
         "production_readiness",
         "dropoff_or_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_completion_signal_not_proven(signal=None, phone_summary=None):
+    # completion signal 只描述材料是否足够进入人工复核；真实完成、ACK、Nav2/HIL 和投放结果仍必须外部证明。
+    signal = signal if isinstance(signal, dict) else {}
+    phone_summary = phone_summary if isinstance(phone_summary, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(signal.get("not_proven"), list):
+        source_values.extend(signal.get("not_proven"))
+    if isinstance(phone_summary.get("not_proven"), list):
+        source_values.extend(phone_summary.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "real_route_collection",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "production_readiness",
+        "real_dropoff_completion",
+        "real_cancel_completion",
         "delivery_success",
         "objective_5_external_proof",
     )
@@ -625,6 +666,44 @@ def _default_route_task_field_run_reconciliation_summary(path, status="not_confi
     }
 
 
+def _default_route_task_completion_signal_summary(path, status="not_configured", read_error=""):
+    # completion signal 是 Task A 的只读完成材料摘要；默认 blocked，避免缺配置时被误读成送达完成。
+    return {
+        "schema": ROUTE_TASK_COMPLETION_SIGNAL_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_COMPLETION_SIGNAL_GATE,
+        "source_schema": "",
+        "source_evidence_boundary": "",
+        "completion_verdict": {
+            "status": status,
+            "verdict": "not_proven",
+            "reason": read_error or "route-task completion signal artifact is not configured",
+        },
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "fixed_route_summary": {},
+        "task_record_summary": {},
+        "state_transition_summary": {},
+        "dropoff_completion": {"status": "not_proven"},
+        "cancel_completion": {"status": "not_proven"},
+        "failure_reason": "",
+        "recovery_reason": "",
+        "materials_status": {
+            "status": "blocked",
+            "reason": "route-task completion signal artifact is not configured",
+        },
+        "operator_next_steps": [],
+        "phone_safe_summary": {
+            "safe_copy": "Route-task completion signal is metadata-only; delivery_success=false.",
+            "safe_phone_copy": "Route-task completion signal is metadata-only; delivery_success=false.",
+        },
+        "not_proven": _route_task_completion_signal_not_proven(),
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -779,6 +858,38 @@ def _route_task_field_run_intake_has_unsafe_control_claims(value):
         return False
     if isinstance(value, list):
         return any(_route_task_field_run_intake_has_unsafe_control_claims(item) for item in value)
+    return False
+
+
+def _route_task_completion_signal_has_unsafe_control_claims(value):
+    # completion signal 允许暴露 dropoff/cancel 的只读状态摘要，但不能把布尔成功或控制动作带进 diagnostics。
+    unsafe_true_keys = {
+        "delivery_success",
+        "primary_actions_enabled",
+        "ack_post_allowed",
+        "cursor_updates_allowed",
+        "persistence_updates_allowed",
+        "terminal_ack_allowed",
+        "nav2_triggered",
+        "hil_pass",
+        "production_ready",
+        "collect_triggered",
+        "dropoff_triggered",
+        "cancel_triggered",
+    }
+    completion_metadata_keys = {"dropoff_completion", "cancel_completion"}
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text in unsafe_true_keys and bool(item):
+                return True
+            if key_text in completion_metadata_keys and item is True:
+                return True
+            if _route_task_completion_signal_has_unsafe_control_claims(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_route_task_completion_signal_has_unsafe_control_claims(item) for item in value)
     return False
 
 
@@ -2347,6 +2458,248 @@ def summarize_route_task_field_run_reconciliation(path):
     return summary
 
 
+def summarize_route_task_completion_signal(path):
+    """构建 route-task completion signal 的 metadata-only diagnostics 摘要。"""
+    signal_path = os.path.expanduser(str(path or ""))
+    summary = _default_route_task_completion_signal_summary(
+        signal_path,
+        read_error="route-task completion signal artifact is not configured",
+    )
+    if not signal_path:
+        return summary
+    if not os.path.exists(signal_path):
+        summary.update(
+            {
+                "completion_verdict": {
+                    "status": "missing",
+                    "verdict": "not_proven",
+                    "reason": "route-task completion signal artifact missing",
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "completion signal artifact missing",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Route-task completion signal is missing; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task completion signal is missing; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    try:
+        with open(signal_path, "r", encoding="utf-8") as f:
+            signal = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        safe_error = _redact_route_task_rehearsal_text(
+            f"failed reading route-task completion signal artifact: {exc}"
+        )
+        summary.update(
+            {
+                "completion_verdict": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": safe_error,
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "completion signal JSON read error",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Route-task completion signal could not be read; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task completion signal could not be read; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    if not isinstance(signal, dict):
+        summary.update(
+            {
+                "completion_verdict": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "route-task completion signal JSON must be an object",
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "completion signal JSON shape is invalid",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Route-task completion signal shape is invalid; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task completion signal shape is invalid; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    # Task A/Autonomy 可能把手机安全摘要放在多个兼容字段；Robot diagnostics 只读取白名单字段。
+    phone_summary = {}
+    for candidate in (
+        signal.get("phone_safe_summary"),
+        signal.get("phone_support_safe_summary"),
+        signal.get("route_task_completion_signal_summary"),
+        signal.get("route_task_completion_signal"),
+    ):
+        if isinstance(candidate, dict):
+            phone_summary = candidate
+            break
+    source_schema = str(signal.get("schema") or "")
+    source_boundary = str(signal.get("evidence_boundary") or "")
+    source_verdict = phone_summary.get("completion_verdict")
+    if not isinstance(source_verdict, dict):
+        source_verdict = signal.get("completion_verdict")
+    if isinstance(source_verdict, dict):
+        verdict_status = _redact_route_task_rehearsal_text(
+            source_verdict.get("status")
+            or source_verdict.get("verdict")
+            or source_verdict.get("decision")
+            or signal.get("status")
+            or "blocked"
+        )
+        verdict_value = _redact_route_task_rehearsal_text(
+            source_verdict.get("verdict")
+            or source_verdict.get("decision")
+            or verdict_status
+            or "not_proven"
+        )
+        verdict_reason = _redact_route_task_rehearsal_text(
+            source_verdict.get("reason") or source_verdict.get("summary") or ""
+        )
+    else:
+        verdict_status = _redact_route_task_rehearsal_text(
+            phone_summary.get("status")
+            or phone_summary.get("overall_status")
+            or signal.get("status")
+            or "blocked"
+        )
+        verdict_value = _redact_route_task_rehearsal_text(
+            phone_summary.get("verdict")
+            or signal.get("verdict")
+            or verdict_status
+            or "not_proven"
+        )
+        verdict_reason = _redact_route_task_rehearsal_text(
+            phone_summary.get("reason") or signal.get("reason") or ""
+        )
+    materials_status = (
+        phone_summary.get("materials_status")
+        if isinstance(phone_summary.get("materials_status"), dict)
+        else signal.get("materials_status") if isinstance(signal.get("materials_status"), dict) else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        phone_summary.get("safe_copy")
+        or phone_summary.get("safe_phone_copy")
+        or signal.get("safe_copy")
+        or signal.get("safe_phone_copy")
+        or "Route-task completion signal is metadata-only; delivery_success=false."
+    )
+    # completion signal 的字段可能接近“完成”语义；只保留脱敏摘要，真实执行成功一律不从这里推断。
+    safe_phone_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(phone_summary.get(key) or "").strip():
+            safe_phone_summary[key] = _redact_route_task_rehearsal_text(phone_summary.get(key))
+    safe_phone_summary["safe_copy"] = safe_copy
+    safe_phone_summary["safe_phone_copy"] = safe_copy
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": signal.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "completion_verdict": {
+                "status": verdict_status or "blocked",
+                "verdict": verdict_value or "not_proven",
+                "reason": verdict_reason or "route-task completion signal consumed without explicit reason",
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                phone_summary.get("safe_evidence_ref")
+                or phone_summary.get("evidence_ref")
+                or signal.get("safe_evidence_ref")
+                or signal.get("evidence_ref", "")
+            ),
+            "same_evidence_ref_required": bool(
+                phone_summary.get(
+                    "same_evidence_ref_required",
+                    signal.get("same_evidence_ref_required", True),
+                )
+            ),
+            "fixed_route_summary": _safe_pc_route_debug_dict(signal.get("fixed_route_summary")),
+            "task_record_summary": _safe_pc_route_debug_dict(signal.get("task_record_summary")),
+            "state_transition_summary": _safe_pc_route_debug_dict(
+                signal.get("state_transition_summary")
+            ),
+            "dropoff_completion": _safe_pc_route_debug_value(
+                signal.get("dropoff_completion") or {"status": "not_proven"}
+            ),
+            "cancel_completion": _safe_pc_route_debug_value(
+                signal.get("cancel_completion") or {"status": "not_proven"}
+            ),
+            "failure_reason": _redact_route_task_rehearsal_text(signal.get("failure_reason")),
+            "recovery_reason": _redact_route_task_rehearsal_text(signal.get("recovery_reason")),
+            "materials_status": _safe_pc_route_debug_dict(materials_status)
+            or {
+                "status": verdict_status or "blocked",
+                "reason": "completion signal consumed without explicit materials status",
+            },
+            "operator_next_steps": _safe_route_task_rehearsal_list(
+                phone_summary.get("operator_next_steps")
+                if isinstance(phone_summary.get("operator_next_steps"), list)
+                else signal.get("operator_next_steps")
+            ),
+            "phone_safe_summary": safe_phone_summary,
+            "not_proven": _route_task_completion_signal_not_proven(signal, phone_summary),
+            "metadata_only": True,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    if source_schema != ROUTE_TASK_COMPLETION_SIGNAL_SCHEMA or source_boundary != ROUTE_TASK_COMPLETION_SIGNAL_GATE:
+        summary.update(
+            {
+                "completion_verdict": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "route-task completion signal schema or evidence boundary is unsupported",
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Route-task completion signal is not a supported diagnostics source; no delivery result is proven.",
+                    "safe_phone_copy": "Route-task completion signal is not a supported diagnostics source; no delivery result is proven.",
+                },
+            }
+        )
+        return summary
+
+    if (
+        _route_task_field_run_readiness_has_unsafe_fields(phone_summary)
+        or _route_task_completion_signal_has_unsafe_control_claims(signal)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "completion_verdict": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": "route-task completion signal contains unsafe summary fields or control claims",
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "unsafe completion signal summary fields",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Route-task completion signal was blocked because summary fields could expose control data or imply delivery success.",
+                    "safe_phone_copy": "Route-task completion signal was blocked because summary fields could expose control data or imply delivery success.",
+                },
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -3463,6 +3816,7 @@ def build_diagnostics_payload(
     route_task_field_run_review_ref="",
     route_task_field_run_execution_pack_ref="",
     route_task_field_run_reconciliation_ref="",
+    route_task_completion_signal_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -3540,6 +3894,10 @@ def build_diagnostics_payload(
         route_task_field_run_reconciliation_ref
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_RECONCILIATION", "")
     )
+    route_task_completion_signal_summary = summarize_route_task_completion_signal(
+        route_task_completion_signal_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_COMPLETION_SIGNAL", "")
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -3592,6 +3950,8 @@ def build_diagnostics_payload(
         route_task_field_run_execution_pack_summary=route_task_field_run_execution_pack_summary,
         route_task_field_run_reconciliation=route_task_field_run_reconciliation_summary,
         route_task_field_run_reconciliation_summary=route_task_field_run_reconciliation_summary,
+        route_task_completion_signal=route_task_completion_signal_summary,
+        route_task_completion_signal_summary=route_task_completion_signal_summary,
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),
