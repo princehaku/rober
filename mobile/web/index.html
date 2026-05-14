@@ -191,6 +191,47 @@
         <p id="pcRouteDebugConsoleHint" class="hint">PC console availability 只读展示；不触发 Start、Confirm 或 Cancel。</p>
       </section>
 
+      <section class="route-field-run-panel" aria-labelledby="routeTaskFieldRunReadinessTitle">
+        <div class="section-heading">
+          <h2 id="routeTaskFieldRunReadinessTitle">路线任务现场联跑准备</h2>
+          <span id="routeTaskFieldRunReadinessBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="routeTaskFieldRunReadinessCopy" class="message">
+          等待后端提供 route_task_field_run_readiness 的 phone-safe 摘要。
+        </p>
+        <dl class="route-field-run-grid">
+          <div>
+            <dt>Availability / Overall</dt>
+            <dd id="routeTaskFieldRunReadinessAvailability">blocked/not_proven</dd>
+          </div>
+          <div>
+            <dt>Evidence Ref</dt>
+            <dd id="routeTaskFieldRunReadinessEvidenceRef">not_provided</dd>
+          </div>
+          <div>
+            <dt>Same Evidence Ref</dt>
+            <dd id="routeTaskFieldRunReadinessSameRef">same evidence ref required=false/not_proven</dd>
+          </div>
+          <div>
+            <dt>Next Evidence / Missing Material</dt>
+            <dd id="routeTaskFieldRunReadinessNextEvidence">缺少下一次 field run 材料摘要。</dd>
+          </div>
+          <div>
+            <dt>Commands Summary</dt>
+            <dd id="routeTaskFieldRunReadinessCommands">等待 phone-safe commands summary。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="routeTaskFieldRunReadinessBoundary">software_proof_docker_route_task_field_run_readiness_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="routeTaskFieldRunReadinessNotProven">真实路线、HIL、delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="routeTaskFieldRunReadinessHint" class="hint">Field-run readiness 只读展示；不触发 Start、Confirm 或 Cancel。</p>
+      </section>
+
       <section class="cloud-panel" aria-labelledby="cloudReadinessTitle">
         <div class="section-heading">
           <h2 id="cloudReadinessTitle">云中转状态</h2>

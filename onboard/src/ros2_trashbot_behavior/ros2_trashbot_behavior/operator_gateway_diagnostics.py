@@ -81,6 +81,13 @@ ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_GATE = (
 PC_ROUTE_DEBUG_CONSOLE_SCHEMA = "trashbot.pc_route_debug_console.v1"
 PC_ROUTE_DEBUG_CONSOLE_SUMMARY_SCHEMA = "trashbot.pc_route_debug_console_summary.v1"
 PC_ROUTE_DEBUG_CONSOLE_GATE = "software_proof_docker_pc_route_debug_console_gate"
+ROUTE_TASK_FIELD_RUN_READINESS_SCHEMA = "trashbot.route_task_field_run_readiness.v1"
+ROUTE_TASK_FIELD_RUN_READINESS_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_run_readiness_summary.v1"
+)
+ROUTE_TASK_FIELD_RUN_READINESS_GATE = (
+    "software_proof_docker_route_task_field_run_readiness_gate"
+)
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -154,6 +161,28 @@ def _pc_route_debug_not_proven(console=None):
         "real_hil_pass",
         "dropoff_or_cancel_completion",
         "delivery_success",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_run_readiness_not_proven(readiness=None):
+    # field-run readiness 只做下一次上车前材料交接，真实路线、HIL 和交付结论必须始终保留未证明项。
+    readiness = readiness if isinstance(readiness, dict) else {}
+    values = []
+    source_values = readiness.get("not_proven") if isinstance(readiness.get("not_proven"), list) else []
+    required = (
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "dropoff_or_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
     )
     for item in list(source_values) + list(required):
         text = str(item or "").strip()
@@ -252,6 +281,50 @@ def _default_pc_route_debug_console_summary(path, state="not_configured", read_e
     }
 
 
+def _default_route_task_field_run_readiness_summary(path, state="not_configured", read_error=""):
+    # readiness artifact 不是控制面状态；默认 blocked 防止缺配置时被手机端误读为可执行路线任务。
+    return {
+        "schema": ROUTE_TASK_FIELD_RUN_READINESS_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RUN_READINESS_GATE,
+        "overall_status": "blocked",
+        "availability": {
+            "status": "blocked",
+            "reason": "route-task field-run readiness artifact is not configured",
+        },
+        "state": state,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "readiness_ref": _safe_route_task_rehearsal_ref(path),
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "next_evidence": {
+            "summary": "Attach the route-task field-run readiness handoff before planning a real run.",
+            "missing_materials": [],
+            "required_field_run_materials": [],
+        },
+        "commands_summary": [],
+        "not_proven": _route_task_field_run_readiness_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": "Route-task field-run readiness is not configured; this is metadata-only and not delivery success.",
+        "safe_phone_copy": "Route-task field-run readiness is not configured; this is metadata-only and not delivery success.",
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -271,6 +344,107 @@ def _safe_pc_route_debug_value(value, depth=0):
 
 def _safe_pc_route_debug_dict(value):
     return _safe_pc_route_debug_value(value if isinstance(value, dict) else {})
+
+
+def _route_task_field_run_readiness_has_unsafe_fields(value, key_path=""):
+    # source artifact 可能来自人工拷贝；一旦出现控制/凭证/硬件 raw 字段或成功布尔值，整份 summary 降级。
+    unsafe_key_fragments = (
+        "authorization",
+        "token",
+        "secret",
+        "access_key",
+        "password",
+        "checksum",
+        "traceback",
+        "raw_payload",
+        "raw_response",
+        "raw_robot",
+        "serial",
+        "uart",
+        "baud",
+        "cmd_vel",
+        "wave_rover",
+        "ack_payload",
+        "command_envelope",
+        "status_envelope",
+    )
+    unsafe_true_keys = {
+        "delivery_success",
+        "primary_actions_enabled",
+        "ack_post_allowed",
+        "cursor_updates_allowed",
+        "persistence_updates_allowed",
+        "terminal_ack_allowed",
+        "nav2_triggered",
+        "hil_pass",
+        "dropoff_completion",
+        "cancel_completion",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            nested_path = f"{key_path}.{key_text}" if key_path else key_text
+            if key_text in unsafe_true_keys and bool(item):
+                return True
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if _route_task_field_run_readiness_has_unsafe_fields(item, nested_path):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_route_task_field_run_readiness_has_unsafe_fields(item, key_path) for item in value)
+    if isinstance(value, str):
+        redacted = _redact_route_task_rehearsal_text(value)
+        return any(marker in redacted for marker in (
+            "[REDACTED_AUTH_HEADER]",
+            "Bearer [REDACTED]",
+            "[REDACTED_URL]",
+            "/dev/[REDACTED_SERIAL]",
+            "[REDACTED_BAUD]",
+            "[REDACTED_TRACEBACK]",
+            "[REDACTED_LOCAL_PATH]",
+        ))
+    return False
+
+
+def _route_task_field_run_readiness_copy_is_unsafe(value):
+    # 支持 copy 可以说 blocked/not_proven，但不能暗示控制动作、HIL 或交付成功已经发生。
+    text = _redact_route_task_rehearsal_text(value).strip().lower()
+    if not text:
+        return True
+    guarded_phrases = (
+        "not delivery success",
+        "not a delivery success",
+        "no delivery success",
+        "never delivery success",
+        "not real hil",
+        "not hil",
+        "not a hil",
+        "not proven",
+        "not_proven",
+        "metadata-only",
+        "must not",
+    )
+    unsafe_phrases = (
+        "delivery success",
+        "hil pass",
+        "real hil",
+        "start delivery enabled",
+        "confirm dropoff enabled",
+        "cancel enabled",
+        "ack posted",
+        "cursor advanced",
+        "nav2 started",
+        "dropoff complete",
+        "cancel complete",
+    )
+    guarded_text = text
+    for guard in guarded_phrases:
+        guarded_text = guarded_text.replace(guard, "")
+    for phrase in unsafe_phrases:
+        if phrase in guarded_text:
+            return True
+    return False
 
 
 def _pc_route_debug_safe_copy_is_unsafe(value):
@@ -890,6 +1064,168 @@ def summarize_pc_route_debug_console(path):
             "state": "available",
         }
     )
+    return summary
+
+
+def summarize_route_task_field_run_readiness(path):
+    """构建 route-task field-run readiness 的 phone/support-safe 摘要。"""
+    readiness_path = os.path.expanduser(str(path or ""))
+    summary = _default_route_task_field_run_readiness_summary(
+        readiness_path,
+        read_error="route-task field-run readiness artifact is not configured",
+    )
+    if not readiness_path:
+        return summary
+    if not os.path.exists(readiness_path):
+        summary.update(
+            {
+                "state": "missing",
+                "read_error": "route-task field-run readiness artifact not found",
+                "safe_copy": "Route-task field-run readiness artifact is missing; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field-run readiness artifact is missing; metadata remains blocked/not_proven.",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "readiness artifact missing",
+                },
+            }
+        )
+        return summary
+
+    summary["exists"] = True
+    try:
+        with open(readiness_path, "r", encoding="utf-8") as f:
+            readiness = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        summary.update(
+            {
+                "state": "read_error",
+                "read_error": _redact_route_task_rehearsal_text(
+                    f"failed reading route-task field-run readiness artifact: {exc}"
+                ),
+                "safe_copy": "Route-task field-run readiness artifact could not be read; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field-run readiness artifact could not be read; metadata remains blocked/not_proven.",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "readiness JSON read error",
+                },
+            }
+        )
+        return summary
+
+    if not isinstance(readiness, dict):
+        summary.update(
+            {
+                "state": "read_error",
+                "read_error": "route-task field-run readiness JSON must be an object",
+                "safe_copy": "Route-task field-run readiness shape is invalid; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field-run readiness shape is invalid; metadata remains blocked/not_proven.",
+            }
+        )
+        return summary
+
+    source_schema = str(readiness.get("schema") or "")
+    source_boundary = str(readiness.get("evidence_boundary") or "")
+    phone_summary = (
+        readiness.get("phone_support_safe_summary")
+        if isinstance(readiness.get("phone_support_safe_summary"), dict)
+        else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        phone_summary.get("safe_copy")
+        or phone_summary.get("safe_phone_copy")
+        or readiness.get("safe_copy")
+        or readiness.get("safe_phone_copy")
+        or "Route-task field-run readiness is metadata-only; not delivery success."
+    )
+    availability = (
+        phone_summary.get("availability")
+        if isinstance(phone_summary.get("availability"), dict)
+        else readiness.get("availability") if isinstance(readiness.get("availability"), dict) else {}
+    )
+    missing_materials = _safe_route_task_rehearsal_list(
+        phone_summary.get("missing_materials")
+        if isinstance(phone_summary.get("missing_materials"), list)
+        else readiness.get("missing_materials")
+    )
+    required_materials = _safe_route_task_rehearsal_list(
+        phone_summary.get("required_field_run_materials")
+        if isinstance(phone_summary.get("required_field_run_materials"), list)
+        else readiness.get("required_field_run_materials")
+    )
+    commands_summary = _safe_route_task_rehearsal_list(
+        phone_summary.get("commands_summary")
+        if isinstance(phone_summary.get("commands_summary"), list)
+        else readiness.get("commands_to_run")
+    )
+    next_evidence_summary = _redact_route_task_rehearsal_text(
+        phone_summary.get("next_evidence_summary")
+        or readiness.get("next_evidence_summary")
+        or readiness.get("next_step")
+        or "Collect the listed field-run materials with the same evidence_ref before claiming route/task execution."
+    )
+    overall_status = _redact_route_task_rehearsal_text(
+        phone_summary.get("overall_status") or readiness.get("overall_status") or "blocked"
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": readiness.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "overall_status": overall_status or "blocked",
+            "availability": _safe_pc_route_debug_dict(availability)
+            or {
+                "status": overall_status or "blocked",
+                "reason": "readiness summary consumed without explicit availability",
+            },
+            "evidence_ref": _safe_route_task_rehearsal_ref(readiness.get("evidence_ref", "")),
+            "same_evidence_ref_required": bool(readiness.get("same_evidence_ref_required", True)),
+            "next_evidence": {
+                "summary": next_evidence_summary,
+                "missing_materials": missing_materials,
+                "required_field_run_materials": required_materials,
+            },
+            "commands_summary": commands_summary,
+            "not_proven": _route_task_field_run_readiness_not_proven(readiness),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "read_error": "",
+        }
+    )
+    if source_schema != ROUTE_TASK_FIELD_RUN_READINESS_SCHEMA or source_boundary != ROUTE_TASK_FIELD_RUN_READINESS_GATE:
+        summary.update(
+            {
+                "overall_status": "blocked",
+                "state": "unsupported_schema",
+                "read_error": "route-task field-run readiness schema or evidence boundary is unsupported",
+                "safe_copy": "Route-task field-run readiness is not a supported diagnostics source; no delivery result is proven.",
+                "safe_phone_copy": "Route-task field-run readiness is not a supported diagnostics source; no delivery result is proven.",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+            }
+        )
+        return summary
+
+    if _route_task_field_run_readiness_has_unsafe_fields(readiness) or _route_task_field_run_readiness_copy_is_unsafe(safe_copy):
+        summary.update(
+            {
+                "overall_status": "blocked",
+                "state": "unsafe_fields",
+                "read_error": "route-task field-run readiness contains unsafe fields or copy",
+                "safe_copy": "Route-task field-run readiness was blocked because it could expose raw/control data or imply delivery success.",
+                "safe_phone_copy": "Route-task field-run readiness was blocked because it could expose raw/control data or imply delivery success.",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "unsafe readiness fields",
+                },
+            }
+        )
+        return summary
+
+    blocked_statuses = {"", "blocked", "blocked_missing_material", "blocked_unsupported_schema", "missing", "read_error"}
+    status_text = str(overall_status or "").strip().lower()
+    summary["state"] = "blocked" if status_text in blocked_statuses else "available"
     return summary
 
 
@@ -2004,6 +2340,7 @@ def build_diagnostics_payload(
     route_task_rehearsal_bundle_ref="",
     route_task_rehearsal_operator_review_ref="",
     pc_route_debug_console_ref="",
+    route_task_field_run_readiness_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -2060,6 +2397,10 @@ def build_diagnostics_payload(
         "route_progress": route_progress,
     }
     review_decision_log, decision_index = load_review_decision_log(review_decision_log_ref)
+    route_task_field_run_readiness_summary = summarize_route_task_field_run_readiness(
+        route_task_field_run_readiness_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_READINESS", "")
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -2102,6 +2443,8 @@ def build_diagnostics_payload(
             pc_route_debug_console_ref
             or os.environ.get("TRASHBOT_PC_ROUTE_DEBUG_CONSOLE", "")
         ),
+        route_task_field_run_readiness=route_task_field_run_readiness_summary,
+        route_task_field_run_readiness_summary=route_task_field_run_readiness_summary,
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),

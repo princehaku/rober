@@ -163,6 +163,24 @@ ROS action/topic/service, not Nav2 execution, not Start/Confirm/Cancel
 enablement, not ACK POST, not cursor/persistence or terminal ACK, not real
 fixed-route evidence, not HIL, and not delivery success.
 
+Operator diagnostics may also expose `route_task_field_run_readiness` and the
+alias `route_task_field_run_readiness_summary` from an explicit
+`route_task_field_run_readiness_ref` or
+`TRASHBOT_ROUTE_TASK_FIELD_RUN_READINESS`. The source JSON must use
+`schema=trashbot.route_task_field_run_readiness.v1` and
+`evidence_boundary=software_proof_docker_route_task_field_run_readiness_gate`.
+This summary is metadata-only support material for the next route-task field
+run handoff: it may include sanitized availability / overall status,
+`evidence_ref`, `same_evidence_ref_required`, missing or required next evidence
+materials, commands summary, `not_proven`, and safe support copy. Missing,
+unreadable, unsupported-schema, boundary-mismatch, or unsafe-field sources
+remain blocked/not_proven. The fields must keep `delivery_success=false` and
+`primary_actions_enabled=false`; they do not trigger `/api/collect`, dropoff,
+cancel, ACK POST, cursor/persistence, terminal ACK, Nav2, WAVE ROVER, HIL, or
+delivery success. They are not command/status/ACK robot contract fields and do
+not prove real fixed-route execution, real HIL, delivery success, or Objective 5
+external proof.
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

@@ -420,6 +420,25 @@ python3 pc-tools/evidence/route_task_rehearsal_operator_review.py \
 
 review 顶层包含 `crosscheck_status`、`hil_alignment_status`、`mismatch_summary`、`next_rehearsal_decision`、`not_proven`、`safe_copy`、`primary_actions_enabled=false` 和 `delivery_success=false`。`next_rehearsal_decision` 的分支规则固定为：crosscheck pass 且 HIL not_proven 时准备真实路线/任务材料或真实 HIL 上车复账；crosscheck fail 时先修 route status/task record mismatch 后重跑；missing/read_error/unsupported schema 时重建 execution bundle；safe copy whitelist 失败时先修摘要白名单。`safe_copy` 只允许固定摘要，不包含 artifact/raw path、本机绝对路径、凭证、ROS topic、serial/UART、baudrate、WAVE ROVER、traceback、checksum 或 complete artifact。该 package 仍不能声明真实 fixed-route、真实 HIL、dropoff/cancel completion 或 delivery success。
 
+### 5.7 route/task field-run readiness handoff
+
+下一次真实路线-任务联跑前，需要把 PC route debug console summary、operator review 和 execution bundle 合成同一 `evidence_ref` 的 readiness handoff：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_readiness.py \
+  --pc-route-debug /tmp/pc_route_debug_console.json \
+  --operator-review /tmp/route_task_rehearsal_operator_review.json \
+  --execution-bundle /tmp/route_task_rehearsal_execution_bundle.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+输出 summary 使用 `schema=trashbot.route_task_field_run_readiness.v1`，证据边界固定为 `software_proof_docker_route_task_field_run_readiness_gate`。顶层固定包含 `same_evidence_ref_required=true`、`source_materials`、`required_field_run_materials`、`missing_materials`、`commands_to_run`、`phone_support_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+同一 `evidence_ref` field-run material chain 必须至少包含：route status JSON、task record JSON、PC route debug summary、route_task operator review、execution bundle、Nav2/fixed-route runtime log、robot-side task evidence 和 support-safe mobile summary。`overall_status=ready_for_field_run_materials` 只表示 Docker/local handoff 材料可读、schema 可支持、同 `evidence_ref` 可对齐且 safe summary 可分享；它不表示真实 Nav2/fixed-route 实跑、真实路线采集、WAVE ROVER 运动、真实 serial/UART feedback、真实 HIL、dropoff/cancel completion、delivery success 或 Objective 5 外部云/4G/OSS/CDN/DB/queue proof。
+
+缺任何输入文件、JSON 不可读、unsupported schema、source materials 不同 `evidence_ref` 或 phone/support-safe copy 命中敏感词时，readiness gate 必须输出 blocked/not_proven。该 CLI 不读取 ROS graph、不调用 Nav2、不访问 serial/UART、不暴露 `/cmd_vel`、baudrate、WAVE ROVER 参数、本机完整路径、traceback、checksum、complete artifact 或 raw robot response。
+
 ## 6. Debug Web
 
 ### 6.1 Onboard ROS debug page

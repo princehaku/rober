@@ -108,6 +108,23 @@ python3 pc-tools/evidence/route_task_rehearsal_operator_review.py \
 
 `next_rehearsal_decision` 是给操作员看的下一步分支：crosscheck pass 但 HIL not_proven 时，准备真实路线/任务材料或同 `evidence_ref` 的真实 HIL 复账；crosscheck fail 时，先修 route status/task record mismatch 后重跑 execution bundle；missing/read_error/unsupported schema 时，重建 execution bundle；safe copy whitelist 失败时，先修 whitelist-only 摘要。`safe_copy` 只包含固定白名单摘要，不复制 artifact/raw path、本机绝对路径、凭证、ROS topic、serial/UART、baudrate、WAVE ROVER、traceback、checksum 或 complete artifact。`primary_actions_enabled=false`、`delivery_success=false` 是固定防误读字段，review 不能放行控制动作或声明 delivery success。
 
+## route/task field-run readiness handoff
+
+`pc-tools/evidence/route_task_field_run_readiness.py` 把 PC route debug console summary、route_task operator review 和 execution bundle 聚合为下一次真实路线-任务联跑前的 handoff：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_readiness.py \
+  --pc-route-debug /tmp/pc_route_debug_console.json \
+  --operator-review /tmp/route_task_rehearsal_operator_review.json \
+  --execution-bundle /tmp/route_task_rehearsal_execution_bundle.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+输出 `schema=trashbot.route_task_field_run_readiness.v1`、`schema_version=1`、`evidence_boundary=software_proof_docker_route_task_field_run_readiness_gate`、`same_evidence_ref_required=true`、`required_field_run_materials`、`missing_materials`、`commands_to_run`、`phone_support_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。`overall_status=ready_for_field_run_materials` 只表示三份 Docker/local 软件 handoff 材料可读、schema 可支持、同一 `evidence_ref` 可对齐且摘要可安全分享；它不是 HIL、真实 fixed-route/Nav2 实跑、真实路线采集、dropoff/cancel completion、delivery success 或 Objective 5 外部 proof。
+
+`required_field_run_materials` 会列出下一次现场联跑必须收集的同一 `evidence_ref` 材料：route status、task record、PC route debug summary、operator review、execution bundle、Nav2/fixed-route runtime log、robot-side task evidence 和 support-safe mobile summary。CLI 不读取 serial/UART、ROS graph、WAVE ROVER、DB/queue、OSS/CDN 或 raw robot response；缺文件、unsupported schema、不同 `evidence_ref` 或 unsafe copy 时会保守输出 blocked/not_proven。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

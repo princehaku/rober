@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-05-15 系列
+
+更新时间：2026-05-15 00:58 Asia/Shanghai。
+
+### 2026-05-15 00-01｜route-task-field-run-readiness｜O2/O3 field-run readiness software proof，任务闭环与固定路线均由约 82% 上调到约 83%
+
+`sprints/2026.05.15_00-01_route-task-field-run-readiness` 完成 `software_proof_docker_route_task_field_run_readiness_gate`：Task A `autonomy-engineer` 新增 `pc-tools/evidence/route_task_field_run_readiness.py` 和 `pc-tools/evidence/test_route_task_field_run_readiness.py`，更新 `pc-tools/README.md`、`docs/navigation/fixed_route_workflow.md`。readiness artifact 输出 `schema=trashbot.route_task_field_run_readiness.v1`、`evidence_boundary=software_proof_docker_route_task_field_run_readiness_gate`、`overall_status=ready_for_field_run_materials`、`same_evidence_ref_required=true`、`required_field_run_materials`、`commands_to_run`、phone/support-safe summary、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。Task A 验证输出 py_compile pass、`test_route_task_field_run_readiness.py` `Ran 5 tests OK`、CLI `--help` pass、临时 JSON `--once-json` pass，输出 `overall_status=ready_for_field_run_materials`、`evidence_ref=file:run-001.json`、`delivery_success=false`、required `rg` pass、scoped diff check pass、untracked 新文件 `git diff --check --no-index` pass。
+
+Task B `robot-software-engineer` 更新 `operator_gateway_diagnostics.py`、`test_operator_gateway_diagnostics.py` 与 `docs/interfaces/ros_contracts.md`，新增 diagnostics metadata-only readiness consumption。valid source 必须满足 `schema=trashbot.route_task_field_run_readiness.v1` 与 `evidence_boundary=software_proof_docker_route_task_field_run_readiness_gate`；missing、read error、unsupported schema、boundary mismatch 或 unsafe fields 均保守降级为 blocked / `not_proven`。该 summary 不触发 collect/dropoff/cancel、ACK POST、cursor/persistence、terminal ACK、Nav2、WAVE ROVER、HIL、dropoff/cancel completion 或 delivery success。Task B 验证输出 py_compile pass、diagnostics unittest `Ran 55 tests OK`、required `rg` pass、scoped diff check pass。
+
+Task C `full-stack-software-engineer` 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`onboard/src/ros2_trashbot_behavior/test/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增只读“路线任务现场联跑准备” availability / next evidence 面板。手机端优先消费 `route_task_field_run_readiness`，兼容 `route_task_field_run_readiness_summary` 与嵌套在 `phone_readiness` 或 diagnostics 的 phone-safe summary；不读取 raw artifact、本机路径、complete execution bundle、checksum、traceback、raw robot responses、ROS topic、`/cmd_vel`、serial/UART、baudrate、WAVE ROVER 参数、凭证、DB/queue URL 或 OSS AK/SK，不改变 Start/Confirm/Cancel gating。Task C 验证输出 mobile unittest `Ran 6 tests OK`、py_compile pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 2 和 Objective 3 各从约 82% 保守上调到约 83%。Objective 2 的理由是 field-run readiness artifact、diagnostics metadata-only summary 和 mobile read-only panel 已把下一次真实路线-任务联跑所需材料、同一 `evidence_ref` handoff、缺失材料和 phone-safe 复盘口径打通为软件证据。Objective 3 的理由是固定路线/任务软件链路已从 PC route debug console 推进到可执行 field-run readiness handoff，能指导下一次真实 Nav2/fixed-route 或 fixed-route 现场材料采集。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1 保持约 75%，Objective 4 保持约 95%。本轮 `software_proof_docker_route_task_field_run_readiness_gate` 只证明 Docker/local readiness artifact、diagnostics summary、phone-safe mobile availability 和只读控制边界，不是真实 Nav2/fixed-route、真实路线采集、WAVE ROVER、真实串口/UART、HIL、同一 `evidence_ref` 上车复账、dropoff/cancel completion、delivery success、Objective 5 external proof、真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic 或 production DB/queue。
+
 ## 2026-05-14 系列
 
 更新时间：2026-05-14 23:16 Asia/Shanghai。
