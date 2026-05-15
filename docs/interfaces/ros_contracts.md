@@ -595,10 +595,17 @@ whitelisted `source_summaries`, `field_session_manifest`,
 control authorization and must not enable Start Delivery, Confirm Dropoff,
 Cancel, ACK POST, cursor/persistence updates, terminal ACK, Nav2, route
 execution, dropoff/cancel completion, HIL, WAVE ROVER motion, or delivery
-success. Raw route logs, task records, mobile raw payloads, credentials, local
-paths, checksum material, UART/serial details, raw ACK payloads, raw command
-envelopes, production-readiness claims, success copy, and traceback content
-must not enter the diagnostics summary. Missing, unreadable,
+success. Diagnostics consumers must treat the summary as fence-only metadata:
+`metadata_only=true`, `collect_triggered=false`, `dropoff_triggered=false`,
+`cancel_triggered=false`, `ack_post_allowed=false`, `remote_ack_allowed=false`,
+`cursor_updates_allowed=false`, `persistence_updates_allowed=false`,
+`terminal_ack_allowed=false`, `nav2_triggered=false`, `hil_pass=false`,
+`production_ready=false`, `dropoff_completion=false`, and
+`cancel_completion=false` remain required even when the handoff verdict is
+ready-for-field-session. Raw route logs, task records, mobile raw payloads,
+credentials, local paths, checksum material, UART/serial details, raw ACK
+payloads, raw command envelopes, production-readiness claims, success copy, and
+traceback content must not enter the diagnostics summary. Missing, unreadable,
 unsupported-schema, boundary-mismatch, unsafe fields,
 `same_evidence_ref_required=false`, non-boolean `same_evidence_ref_required`,
 `delivery_success=true`, `primary_actions_enabled=true`, or success wording

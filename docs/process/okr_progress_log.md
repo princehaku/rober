@@ -8,7 +8,15 @@
 
 ## 2026-05-16 系列
 
-更新时间：2026-05-16 04:20 Asia/Shanghai。
+更新时间：2026-05-16 05:13 Asia/Shanghai。
+
+### 2026-05-16 05-06｜mobile-route-elevator-handoff-browser-proof｜O4 local Chromium-family browser proof，手机体验由约 75% 上调到约 76%
+
+`sprints/2026.05.16_05-06_mobile-route-elevator-handoff-browser-proof/` 完成 `mobile_route_elevator_handoff_browser` 覆盖。Task A `full-stack-software-engineer` 更新 `pc-tools/evidence/phone_browser_acceptance_gate.py`、`mobile/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，把只读“路线电梯现场交接” panel 纳入 current PWA browser proof gate：关键 DOM 覆盖 `routeElevatorFieldSessionHandoffTitle`、`routeElevatorFieldSessionHandoffBoundary`、fail-closed control copy 和 `not_proven`，summary 新增 `route_elevator_handoff_browser_proof=mobile_route_elevator_handoff_browser`。本轮 evidence 对 `390x844` 与 `768x900` 均 passed；acceptance summary 明确 `route_elevator_field_session_handoff_visible=true`、`route_elevator_field_session_handoff_fail_closed=true`、`primary_actions_disabled=true`、`phone_safe_status=passed`，并保留 `not_proven`：真实 iPhone/Android device、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、production DB/queue、Nav2/fixed-route、WAVE ROVER、HIL、真实送达。
+
+Task B `robot-software-engineer` 更新 `docs/interfaces/ros_contracts.md` 与 `onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py`，只补 `route_elevator_field_session_handoff` diagnostics metadata-only contract fence：`metadata_only=true`、`collect_triggered=false`、`dropoff_triggered=false`、`cancel_triggered=false`、`ack_post_allowed=false`、`remote_ack_allowed=false`、`cursor_updates_allowed=false`、`persistence_updates_allowed=false`、`terminal_ack_allowed=false`、`nav2_triggered=false`、`hil_pass=false`、`production_ready=false`、`dropoff_completion=false`、`cancel_completion=false` 必须保持；不触发控制、ACK、Nav2、HIL、dropoff/cancel completion 或 delivery success。Task B diagnostics unittest 输出 `Ran 83 tests ... OK`。
+
+该证据只支持 Objective 4 从约 75% 保守上调到约 76%。理由是当前 `mobile/web` PWA 的最新 route/elevator handoff panel 已有本地 Chromium-family browser proof，证明手机尺寸和宽屏尺寸下可见、phone-safe、主操作禁用、控制边界 fail-closed。Objective 1 保持约 73%，因为本轮未改真实 WAVE ROVER、UART、Orange Pi、`T=1001` feedback、真实串口或 HIL；Objective 2 和 Objective 3 保持约 76%，因为本轮只给既有 route/elevator handoff 增加 browser proof 支撑，不重复上调任务闭环或固定路线；Objective 5 保持约 66%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料。本轮是 local Chromium-family software proof for current `mobile/web` PWA；not real Objective 5 external proof；不证明真实手机、真实 iPhone/Android、production app、真实 PWA prompt/user choice、真实 route/elevator field pass、真实 Nav2/fixed-route、dropoff/cancel completion、delivery_success=false 之外的 delivery success、WAVE ROVER、真实串口/UART 或 HIL。
 
 ### 2026-05-16 04-05｜route-elevator-field-session-handoff｜O2/O3 route/elevator field-session handoff software proof，任务闭环与固定路线均由约 75% 上调到约 76%
 

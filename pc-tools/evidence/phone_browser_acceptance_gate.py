@@ -33,6 +33,7 @@ EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_field_trial_browse
 COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate"
 REFRESH_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"
 LEGACY_ARTIFACT_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"
+ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF = "mobile_route_elevator_handoff_browser"
 VIEWPORTS = ((390, 844), (768, 900))
 PRIMARY_BUTTON_IDS = ("startButton", "confirmButton", "cancelButton")
 SUPPORT_BUTTON_IDS = (
@@ -54,6 +55,18 @@ KEY_ELEMENT_IDS = (
     "recoveryDecisionNextAction",
     "recoveryDecisionAck",
     "recoveryDecisionBoundary",
+    "routeElevatorFieldSessionHandoffTitle",
+    "routeElevatorFieldSessionHandoffCopy",
+    "routeElevatorFieldSessionHandoffVerdict",
+    "routeElevatorFieldSessionHandoffEvidenceRef",
+    "routeElevatorFieldSessionHandoffSameRef",
+    "routeElevatorFieldSessionHandoffSameRefStatus",
+    "routeElevatorFieldSessionHandoffMaterials",
+    "routeElevatorFieldSessionHandoffNextSteps",
+    "routeElevatorFieldSessionHandoffControls",
+    "routeElevatorFieldSessionHandoffBoundary",
+    "routeElevatorFieldSessionHandoffNotProven",
+    "routeElevatorFieldSessionHandoffHint",
     "mobileDeviceEvidenceTitle",
     "mobileDeviceEvidenceSafeCopy",
     "mobileDeviceEvidenceBoundary",
@@ -151,10 +164,11 @@ KEY_ELEMENT_IDS = (
 CURRENT_PANEL_EXPECTATIONS = {
     "primaryJourneyTitle": "三步主路径",
     "recoveryDecisionTitle": "恢复决策",
+    "routeElevatorFieldSessionHandoffTitle": "路线电梯现场交接",
     "terminalActionTitle": "终端动作二次确认",
     "mobileDeviceEvidenceTitle": "手机设备证据采集",
     "mobileDeviceHandoffTitle": "真实手机验收交接会话",
-    "mobilePwaInstallPromptTitle": "PWA 安装提示证据",
+    "mobilePwaInstallPromptTitle": "PWA 安装提示导出",
     "mobileRealDeviceRetestRequestTitle": "真实设备复测请求",
     "mobileRealDeviceFieldTrialTitle": "真实设备现场试跑包",
     "mobileRealDeviceFieldTrialReviewTitle": "现场试跑证据复核",
@@ -167,10 +181,11 @@ CURRENT_PANEL_EXPECTATIONS = {
 CURRENT_BOUNDARY_EXPECTATIONS = {
     "primaryJourneyBoundary": "software_proof_docker_mobile_primary_journey_gate",
     "recoveryDecisionBoundary": "software_proof_docker_mobile_recovery_decision_gate",
+    "routeElevatorFieldSessionHandoffBoundary": "software_proof_docker_route_elevator_field_session_handoff_gate",
     "terminalActionBoundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
     "mobileDeviceEvidenceBoundary": "software_proof_docker_mobile_device_evidence_capture_gate",
     "mobileDeviceHandoffBoundary": "software_proof_docker_mobile_device_handoff_session_gate",
-    "mobilePwaInstallPromptBoundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_gate",
+    "mobilePwaInstallPromptBoundary": "software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate",
     "mobileRealDeviceRetestRequestBoundary": "software_proof_docker_mobile_real_device_retest_request_gate",
     "mobileRealDeviceRetestRequestSourceBoundary": "software_proof_docker_mobile_real_device_review_execution_gate",
     "mobileRealDeviceFieldTrialBoundary": "software_proof_docker_mobile_real_device_field_trial_package_gate",
@@ -545,9 +560,11 @@ def viewport_script():
     const fieldTrialRecord = document.getElementById('mobileRealDeviceFieldTrialEvidenceRecordSafeCopy');
     const fieldTrialVerdict = document.getElementById('mobileRealDeviceFieldTrialEvidenceVerdictSafeCopy');
     const fieldTrialRetest = document.getElementById('mobileRealDeviceFieldTrialRetestExecutionSafeCopy');
+    const routeElevatorHandoff = document.getElementById('routeElevatorFieldSessionHandoffBoundary');
     const diag = document.getElementById('diagnosticsButton');
     const ack = document.getElementById('ackCopy');
     if (bundleBoundary && bundleBoundary.innerText.includes('software_proof_docker_mobile_browser_acceptance_bundle_gate') &&
+        routeElevatorHandoff && routeElevatorHandoff.innerText.includes('software_proof_docker_route_elevator_field_session_handoff_gate') &&
         pwa && pwa.innerText.includes('trashbot.mobile_pwa_install_prompt_evidence_package.v1') &&
         handoff && handoff.innerText.includes('trashbot.mobile_device_handoff_package.v1') &&
         device && device.innerText.includes('trashbot.mobile_device_evidence_package.v1') &&
@@ -664,7 +681,17 @@ def viewport_script():
     supportCopyVisible: document.getElementById('supportSafeCopy').innerText.trim().length > 0,
     deviceEvidenceVisible: document.getElementById('mobileDeviceEvidenceSafeCopy').innerText.includes('trashbot.mobile_device_evidence_package.v1'),
     deviceHandoffVisible: document.getElementById('mobileDeviceHandoffSafeCopy').innerText.includes('trashbot.mobile_device_handoff_package.v1'),
-    pwaInstallPromptVisible: document.getElementById('mobilePwaInstallPromptSafeCopy').innerText.includes('trashbot.mobile_pwa_install_prompt_evidence_package.v1'),
+    routeElevatorFieldSessionHandoffVisible:
+      document.getElementById('routeElevatorFieldSessionHandoffTitle').innerText.includes('路线电梯现场交接') &&
+      document.getElementById('routeElevatorFieldSessionHandoffBoundary').innerText.includes('software_proof_docker_route_elevator_field_session_handoff_gate'),
+    routeElevatorFieldSessionHandoffFailClosed:
+      document.getElementById('routeElevatorFieldSessionHandoffCopy').innerText.includes('blocked/not_proven') &&
+      document.getElementById('routeElevatorFieldSessionHandoffControls').innerText.includes('delivery_success=false') &&
+      document.getElementById('routeElevatorFieldSessionHandoffControls').innerText.includes('primary_actions_enabled=false') &&
+      document.getElementById('routeElevatorFieldSessionHandoffNotProven').innerText.includes('HIL'),
+    pwaInstallPromptVisible:
+      document.getElementById('mobilePwaInstallPromptSafeCopy').innerText.includes('trashbot.mobile_pwa_install_prompt_evidence_package.v1') ||
+      document.getElementById('mobilePwaInstallPromptSafeCopy').innerText.includes('trashbot.mobile_pwa_install_prompt_evidence_export_copy.v1'),
     retestRequestVisible: document.getElementById('mobileRealDeviceRetestRequestSafeCopy').innerText.includes('trashbot.mobile_real_device_retest_request_package.v1'),
     retestRequestCopyable: !document.getElementById('copyRealDeviceRetestRequestButton').disabled,
     fieldTrialPackageVisible: document.getElementById('mobileRealDeviceFieldTrialSafeCopy').innerText.includes('trashbot.mobile_real_device_field_trial_package_copy.v1'),
@@ -767,6 +794,10 @@ def judge_viewport(result):
         "support_handoff_available": bool(result.get("supportCopyVisible")),
         "device_evidence_capture_visible": bool(result.get("deviceEvidenceVisible")),
         "device_handoff_session_visible": bool(result.get("deviceHandoffVisible")),
+        "route_elevator_field_session_handoff_visible": bool(result.get("routeElevatorFieldSessionHandoffVisible")),
+        "route_elevator_field_session_handoff_fail_closed": bool(
+            result.get("routeElevatorFieldSessionHandoffFailClosed")
+        ),
         "pwa_install_prompt_evidence_visible": bool(result.get("pwaInstallPromptVisible")),
         "real_device_retest_request_visible": bool(result.get("retestRequestVisible")),
         "real_device_retest_request_copyable": bool(result.get("retestRequestCopyable")),
@@ -869,6 +900,8 @@ def main():
                     and judgment["support_handoff_available"]
                     and judgment["device_evidence_capture_visible"]
                     and judgment["device_handoff_session_visible"]
+                    and judgment["route_elevator_field_session_handoff_visible"]
+                    and judgment["route_elevator_field_session_handoff_fail_closed"]
                     and judgment["pwa_install_prompt_evidence_visible"]
                     and judgment["real_device_retest_request_visible"]
                     and judgment["real_device_retest_request_copyable"]
@@ -912,6 +945,11 @@ def main():
                     f"support_handoff_available={str(judgment['support_handoff_available']).lower()} "
                     f"device_evidence_capture_visible={str(judgment['device_evidence_capture_visible']).lower()} "
                     f"device_handoff_session_visible={str(judgment['device_handoff_session_visible']).lower()} "
+                    f"route_elevator_field_session_handoff_visible="
+                    f"{str(judgment['route_elevator_field_session_handoff_visible']).lower()} "
+                    f"route_elevator_field_session_handoff_fail_closed="
+                    f"{str(judgment['route_elevator_field_session_handoff_fail_closed']).lower()} "
+                    f"route_elevator_handoff_browser_proof={ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF} "
                     f"pwa_install_prompt_evidence_visible={str(judgment['pwa_install_prompt_evidence_visible']).lower()} "
                     f"real_device_retest_request_visible={str(judgment['real_device_retest_request_visible']).lower()} "
                     f"real_device_retest_request_copyable={str(judgment['real_device_retest_request_copyable']).lower()} "
@@ -961,6 +999,7 @@ def main():
             "while preserving explicit compatibility fields for older summaries."
         ),
         "proof_type": "real local Chromium-family browser proof for current dependency-free mobile/web PWA with complete field-trial first-screen chain",
+        "route_elevator_handoff_browser_proof": ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF,
         "ack_semantics": "ACK is accepted/processing evidence only, not delivery success.",
         "not_proven": list(NOT_PROVEN),
         "artifact_sha256": artifact_hashes,
