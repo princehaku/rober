@@ -348,6 +348,30 @@ python3 pc-tools/evidence/route_task_field_run_material_validation.py \
 
 该 material validation 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、硬件、外部云、OSS/CDN、DB/queue 或 4G；`field_run_material_validation_ready_not_proven` 只表示材料目录的文件形状、same `evidence_ref` 和 safe summary 条件可进入下一步 intake/review。它不是真实 Nav2/fixed-route、真实路线采集、HIL、真实 dropoff/cancel completion、delivery success、真实手机设备或 Objective 5 external proof。缺 material bundle、坏 JSON、unsupported schema/boundary、缺材料、模板未替换、`evidence_ref` mismatch、unsafe summary、`primary_actions_enabled=true` 或输入含 `delivery_success=true` 时，CLI 会 fail closed，保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
 
+## elevator assisted delivery field-run material validation
+
+`pc-tools/evidence/elevator_field_run_material_validation.py` 是电梯 assisted delivery 的现场材料校验 gate。它只读 `--material-dir`，检查同一 `evidence_ref` 下的门状态、目标楼层确认、人工协助/operator note、Nav2/fixed-route runtime log、task record、completion signal、diagnostics/mobile safe summary 七类材料：
+
+```bash
+python3 pc-tools/evidence/elevator_field_run_material_validation.py \
+  --material-dir /tmp/elevator_field_run_materials \
+  --evidence-ref elevator-run-001 \
+  --output /tmp/elevator_field_run_material_validation.json
+```
+
+需要直接给 Robot diagnostics、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/elevator_field_run_material_validation.py \
+  --material-dir /tmp/elevator_field_run_materials \
+  --evidence-ref elevator-run-001 \
+  --once-json
+```
+
+输出 `schema=trashbot.elevator_field_run_material_validation.v1`、`schema_version=1`、`evidence_boundary=software_proof_docker_elevator_field_material_validation_gate`、`same_evidence_ref_required=true`、`material_validation_verdict`、`material_directory_status`、`material_validation_summary`、`operator_next_steps`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。summary 使用 `schema=trashbot.elevator_field_run_material_validation_summary.v1`，只供 Robot diagnostics 和 mobile 只读展示。
+
+该 elevator material validation 仍只是 Docker/local software proof。`elevator_field_material_validation_ready_not_proven` 只表示七类材料的文件形状、same `evidence_ref` 和 phone-safe 摘要条件可进入人工复核；它不是真实电梯门状态、真实目标楼层确认、真实人工协助现场记录、真实 Nav2/fixed-route 实跑、WAVE ROVER/UART/HIL、dropoff/cancel completion、delivery success、真实手机设备或 Objective 5 external proof。缺目录、缺文件、模板未替换、坏 JSON、`evidence_ref` mismatch、unsafe copy、`primary_actions_enabled=true` 或 `delivery_success=true` 都会 fail closed，并保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

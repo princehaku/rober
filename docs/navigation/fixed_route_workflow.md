@@ -682,6 +682,21 @@ validation artifact 使用 `schema=trashbot.route_task_field_run_material_valida
 
 `field_run_material_validation_ready_not_proven` 只表示 Docker/local material validation 通过，可以进入后续 intake/review 或现场复账。它不是真实 fixed-route/Nav2、真实路线采集、真实投放、真实取消完成、HIL、真实手机/browser 或 delivery success。缺 material bundle、坏 JSON、unsupported schema/boundary、缺材料、模板未替换、`evidence_ref` mismatch、unsafe summary、`primary_actions_enabled=true` 或输入含 `delivery_success=true` 时，都必须保持 blocked validation，并按 `operator_next_steps` 补材料或重建同一 `evidence_ref` 的 bundle。
 
+### 5.15 elevator assisted delivery field material validation
+
+电梯 assisted delivery 的现场复账在 route/task 材料之外还需要门状态、目标楼层确认和人工协助记录。`pc-tools/evidence/elevator_field_run_material_validation.py` 只读 PC 侧材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G：
+
+```bash
+python3 pc-tools/evidence/elevator_field_run_material_validation.py \
+  --material-dir /tmp/elevator_field_run_materials \
+  --evidence-ref elevator-run-001 \
+  --once-json
+```
+
+validation artifact 使用 `schema=trashbot.elevator_field_run_material_validation.v1`，证据边界固定为 `software_proof_docker_elevator_field_material_validation_gate`。目录内至少需要 `door_state.json`、`target_floor_confirmation.json`、`human_assistance_operator_note.md`、`nav2_fixed_route_runtime_log.json`、`task_record.json`、`completion_signal.json` 和 `diagnostics_mobile_safe_summary.json`。
+
+`elevator_field_material_validation_ready_not_proven` 只表示七类现场材料的文件形状、同一 `evidence_ref` 和安全摘要可进入人工复核。它不是真实电梯门状态、真实目标楼层确认、真实 Nav2/fixed-route 实跑、WAVE ROVER/UART/HIL、真实投放、真实取消完成或 delivery success。缺失、模板、坏 JSON、`evidence_ref` mismatch、unsafe copy、`primary_actions_enabled=true` 或 `delivery_success=true` 都必须保持 blocked validation，并继续输出 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## 6. Debug Web
 
 ### 6.1 Onboard ROS debug page

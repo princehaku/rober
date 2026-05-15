@@ -199,6 +199,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("route_task_field_run_material_validation", app)
         self.assertIn("route_task_field_run_material_validation_summary", app)
         self.assertIn("routeTaskFieldRunMaterialValidationTitle", index)
+        self.assertIn("elevator_field_run_material_validation", app)
+        self.assertIn("elevator_field_run_material_validation_summary", app)
+        self.assertIn("elevatorFieldRunMaterialValidationTitle", app)
         self.assertIn("elevator_assist", app)
         self.assertIn("elevator_assist_summary", app)
         self.assertIn("phone_elevator_assist", app)
@@ -569,6 +572,81 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "wave rover",
             "authorization",
             "token",
+            "delivery_success\": true",
+        ):
+            self.assertNotIn(forbidden, elevator_fixture_text)
+
+    def test_elevator_field_run_material_validation_panel_is_read_only_and_phone_safe(self):
+        app = self.read("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # 电梯材料校验只消费 Robot diagnostics/status 摘要，不新增任何控制动作路径。
+        self.assertIn("ELEVATOR_FIELD_RUN_MATERIAL_VALIDATION_BOUNDARY", app)
+        self.assertIn("UNSAFE_ELEVATOR_FIELD_MATERIAL_VALIDATION_TEXT", app)
+        self.assertIn("safeElevatorFieldMaterialValidationText", app)
+        self.assertIn("elevatorFieldRunMaterialValidationCandidate", app)
+        self.assertIn("elevatorFieldRunMaterialValidationFromStatus", app)
+        self.assertIn("ensureElevatorFieldRunMaterialValidationPanel", app)
+        self.assertIn("renderElevatorFieldRunMaterialValidation", app)
+        self.assertIn("电梯现场材料校验", app)
+        self.assertIn("elevator_field_run_material_validation", app)
+        self.assertIn("elevator_field_run_material_validation_summary", app)
+        self.assertIn("diagnosticsSummary.elevator_field_run_material_validation", app)
+        self.assertIn("nestedDiagnosticsSummary.elevator_field_run_material_validation", app)
+        self.assertIn("statusDiagnosticsSummary.elevator_field_run_material_validation_summary", app)
+        self.assertIn("validation_status", app)
+        self.assertIn("safe_evidence_ref", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("template_materials", app)
+        self.assertIn("mismatch_materials", app)
+        self.assertIn("operator_next_steps", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", app)
+        self.assertIn("software_proof_docker_elevator_field_material_validation_gate", app)
+        self.assertIn("真实电梯门状态", app)
+        self.assertIn("真实目标楼层确认", app)
+        self.assertIn("Objective 5 external proof", app)
+        self.assertNotRegex(app, r"elevatorFieldRunMaterialValidation.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"elevatorFieldRunMaterialValidation.*fetchJson\(ENDPOINTS\.diagnostics")
+
+        self.assertIn("trashbot.elevator_field_run_material_validation.v1", fixture_text)
+        self.assertIn("trashbot.elevator_field_run_material_validation_summary.v1", fixture_text)
+        self.assertIn("elevator_field_run_material_validation_fixture_20260515_0001", fixture_text)
+        self.assertIn("phone_readiness_elevator_validation_fixture_20260515_0001", fixture_text)
+        self.assertIn("status_diagnostics_elevator_validation_fixture_20260515_0001", fixture_text)
+        self.assertEqual(
+            fixture["elevator_field_run_material_validation"]["evidence_boundary"],
+            "software_proof_docker_elevator_field_material_validation_gate",
+        )
+        self.assertEqual(
+            fixture["phone_readiness"]["elevator_field_run_material_validation_summary"]["primary_actions_enabled"],
+            False,
+        )
+        self.assertEqual(
+            fixture["diagnostics"]["summary"]["elevator_field_run_material_validation_summary"]["delivery_success"],
+            False,
+        )
+        elevator_fixture_text = json.dumps(
+            {
+                "top_level": fixture["elevator_field_run_material_validation"],
+                "readiness": fixture["phone_readiness"]["elevator_field_run_material_validation_summary"],
+                "diagnostics": fixture["diagnostics"]["summary"]["elevator_field_run_material_validation_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover",
+            "authorization",
+            "token",
+            "raw artifact",
             "delivery_success\": true",
         ):
             self.assertNotIn(forbidden, elevator_fixture_text)

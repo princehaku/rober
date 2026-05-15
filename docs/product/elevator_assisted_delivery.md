@@ -137,6 +137,22 @@ P1 识别要求：
    - 至少完成 3 次连续受控流程：等待开门、进入、语音求助、到目标楼层、开门驶出、继续到垃圾站。
    - 每次任务留下状态转移、失败原因、语音触发和关键快照引用。
 
+## 现场材料校验 Gate
+
+`pc-tools/evidence/elevator_field_run_material_validation.py` 是受控实景验收前的 Docker/local software proof gate。它读取同一 `evidence_ref` 的材料目录，要求存在：
+
+- `door_state.json`
+- `target_floor_confirmation.json`
+- `human_assistance_operator_note.md`
+- `nav2_fixed_route_runtime_log.json`
+- `task_record.json`
+- `completion_signal.json`
+- `diagnostics_mobile_safe_summary.json`
+
+validation artifact 使用 `schema=trashbot.elevator_field_run_material_validation.v1`，summary 使用 `schema=trashbot.elevator_field_run_material_validation_summary.v1`，证据边界固定为 `software_proof_docker_elevator_field_material_validation_gate`。输出必须包含 `not_proven`、`operator_next_steps`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+该 gate 只证明现场材料目录的文件形状、同一 `evidence_ref` 和 phone-safe 摘要边界可校验；`elevator_field_material_validation_ready_not_proven` 不证明真实电梯、真实门状态、真实目标楼层、真实人工协助、真实 Nav2/fixed-route、WAVE ROVER/UART/HIL、真实投放、真实取消完成或 delivery success。缺失、模板、坏 JSON、`evidence_ref` mismatch、unsafe copy、`primary_actions_enabled=true` 或 `delivery_success=true` 都必须 fail closed。
+
 ## 不做什么
 
 - 不把电梯能力写成当前 MVP 已完成。
