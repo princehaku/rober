@@ -697,6 +697,28 @@ validation artifact 使用 `schema=trashbot.elevator_field_run_material_validati
 
 `elevator_field_material_validation_ready_not_proven` 只表示七类现场材料的文件形状、同一 `evidence_ref` 和安全摘要可进入人工复核。它不是真实电梯门状态、真实目标楼层确认、真实 Nav2/fixed-route 实跑、WAVE ROVER/UART/HIL、真实投放、真实取消完成或 delivery success。缺失、模板、坏 JSON、`evidence_ref` mismatch、unsafe copy、`primary_actions_enabled=true` 或 `delivery_success=true` 都必须保持 blocked validation，并继续输出 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
 
+### 5.16 elevator assisted delivery field review decision
+
+validation artifact 通过或 blocked 后，还需要一层 operator review decision，把材料状态转成复跑命令和采集清单。`pc-tools/evidence/elevator_field_run_review.py` 只读上一轮 validation artifact/summary，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G：
+
+```bash
+python3 pc-tools/evidence/elevator_field_run_review.py \
+  --validation-json /tmp/elevator_field_run_material_validation.json \
+  --once-json
+```
+
+review artifact 使用 `schema=trashbot.elevator_field_run_review.v1`，summary 使用 `schema=trashbot.elevator_field_run_review_summary.v1`，证据边界固定为 `software_proof_docker_elevator_field_review_decision_gate`。核心字段包括：
+
+- `review_decision`: `ready_for_controlled_elevator_field_rehearsal_not_proven`、`blocked_missing_materials`、`blocked_template_materials`、`blocked_evidence_ref_mismatch`、`blocked_unsafe_copy`、`blocked_success_claim` 或 `blocked_invalid_validation`。
+- `blocked_categories`: 给 diagnostics/mobile 展示的紧凑原因。
+- `operator_next_steps`: 给现场人员的补采、统一 `evidence_ref`、修复安全摘要或移除越界成功声明步骤。
+- `commands_to_rerun`: 重跑 validation/review 的命令顺序。
+- `capture_checklist`: 七类电梯现场材料的状态与补采动作。
+- `not_proven`: 继续列出真实电梯、真实 Nav2/fixed-route、真实硬件反馈、HIL、投放/取消完成、delivery_success 和 O5 external proof 未证明。
+- `primary_actions_enabled=false` 与 `delivery_success=false`: review decision 不能放行控制动作，也不能声明送达成功。
+
+`ready_for_controlled_elevator_field_rehearsal_not_proven` 只表示 Docker/local validation 材料可进入人工复核和受控演练准备。它不是真实电梯门状态、真实目标楼层确认、真实 Nav2/fixed-route 实跑、真实路线采集、HIL、真实投放、真实取消完成或 delivery success。缺 validation、坏 JSON、unsupported schema/boundary、缺材料、模板未替换、同一 `evidence_ref` 不一致、unsafe copy、`primary_actions_enabled=true` 或 `delivery_success=true` 时，都必须保持 blocked review，并继续输出 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## 6. Debug Web
 
 ### 6.1 Onboard ROS debug page

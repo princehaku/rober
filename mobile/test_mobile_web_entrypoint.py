@@ -202,6 +202,9 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("elevator_field_run_material_validation", app)
         self.assertIn("elevator_field_run_material_validation_summary", app)
         self.assertIn("elevatorFieldRunMaterialValidationTitle", app)
+        self.assertIn("elevator_field_run_review", app)
+        self.assertIn("elevator_field_run_review_summary", app)
+        self.assertIn("elevatorFieldRunReviewTitle", app)
         self.assertIn("elevator_assist", app)
         self.assertIn("elevator_assist_summary", app)
         self.assertIn("phone_elevator_assist", app)
@@ -650,6 +653,80 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "delivery_success\": true",
         ):
             self.assertNotIn(forbidden, elevator_fixture_text)
+
+    def test_elevator_field_run_review_panel_is_read_only_and_phone_safe(self):
+        app = self.read("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # 电梯现场复核决策只展示 phone-safe 摘要，不读取 raw review，也不改变控制按钮 gating。
+        self.assertIn("ELEVATOR_FIELD_RUN_REVIEW_BOUNDARY", app)
+        self.assertIn("UNSAFE_ELEVATOR_FIELD_REVIEW_TEXT", app)
+        self.assertIn("safeElevatorFieldReviewText", app)
+        self.assertIn("elevatorFieldRunReviewCandidate", app)
+        self.assertIn("elevatorFieldRunReviewFromStatus", app)
+        self.assertIn("ensureElevatorFieldRunReviewPanel", app)
+        self.assertIn("renderElevatorFieldRunReview", app)
+        self.assertIn("电梯现场复核决策", app)
+        self.assertIn("elevator_field_run_review", app)
+        self.assertIn("elevator_field_run_review_summary", app)
+        self.assertIn("diagnosticsSummary.elevator_field_run_review", app)
+        self.assertIn("nestedDiagnosticsSummary.elevator_field_run_review", app)
+        self.assertIn("statusDiagnosticsSummary.elevator_field_run_review_summary", app)
+        self.assertIn("review_decision", app)
+        self.assertIn("safe_evidence_ref", app)
+        self.assertIn("blocked_categories", app)
+        self.assertIn("operator_next_steps", app)
+        self.assertIn("commands_to_rerun", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", app)
+        self.assertIn("software_proof_docker_elevator_field_review_decision_gate", app)
+        self.assertIn("真实电梯门状态", app)
+        self.assertIn("Objective 5 external proof", app)
+        self.assertNotRegex(app, r"elevatorFieldRunReview.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"elevatorFieldRunReview.*fetchJson\(ENDPOINTS\.diagnostics")
+
+        self.assertIn("trashbot.elevator_field_run_review.v1", fixture_text)
+        self.assertIn("trashbot.elevator_field_run_review_summary.v1", fixture_text)
+        self.assertIn("elevator_field_run_review_fixture_20260515_0001", fixture_text)
+        self.assertIn("phone_readiness_elevator_review_fixture_20260515_0001", fixture_text)
+        self.assertIn("status_diagnostics_elevator_review_fixture_20260515_0001", fixture_text)
+        self.assertEqual(
+            fixture["elevator_field_run_review"]["evidence_boundary"],
+            "software_proof_docker_elevator_field_review_decision_gate",
+        )
+        self.assertEqual(
+            fixture["phone_readiness"]["elevator_field_run_review_summary"]["primary_actions_enabled"],
+            False,
+        )
+        self.assertEqual(
+            fixture["diagnostics"]["summary"]["elevator_field_run_review_summary"]["delivery_success"],
+            False,
+        )
+        elevator_review_fixture_text = json.dumps(
+            {
+                "top_level": fixture["elevator_field_run_review"],
+                "readiness": fixture["phone_readiness"]["elevator_field_run_review_summary"],
+                "diagnostics": fixture["diagnostics"]["summary"]["elevator_field_run_review_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover",
+            "authorization",
+            "token",
+            "raw artifact",
+            "raw review",
+            "delivery_success\": true",
+        ):
+            self.assertNotIn(forbidden, elevator_review_fixture_text)
 
     def test_operation_log_panel_is_visible_and_read_only(self):
         app = self.read("app.js")

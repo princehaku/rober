@@ -32,6 +32,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_run_material_bundle,
     summarize_route_task_field_run_material_validation,
     summarize_elevator_field_run_material_validation,
+    summarize_elevator_field_run_review,
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import (
@@ -3555,6 +3556,202 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["delivery_success"])
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_elevator_field_material_validation_gate", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_elevator_field_run_review_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            review_path = Path(td) / "elevator_field_run_review.json"
+            review_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_field_run_review.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_review_decision_gate"
+                        ),
+                        "evidence_ref": "evidence://elevator-field-run-review-1",
+                        "same_evidence_ref_required": True,
+                        "review_decision": {
+                            "status": "ready",
+                            "decision": "ready_for_controlled_elevator_field_rehearsal_not_proven",
+                            "reason": "review decision is ready for a controlled rehearsal checklist",
+                        },
+                        "blocked_categories": ["blocked_missing_materials"],
+                        "operator_next_steps": ["Re-capture door state notes before the next rehearsal."],
+                        "commands_to_rerun": ["python3 pc-tools/evidence/elevator_field_run_review.py --validation-json validation.json"],
+                        "capture_checklist": ["door state note", "target floor confirmation"],
+                        "review_summary": {
+                            "status": "ready",
+                            "summary": "metadata-only elevator review decision is ready",
+                        },
+                        "robot_diagnostics_summary": {
+                            "status": "ready",
+                            "reason": "metadata-only elevator review available",
+                        },
+                        "phone_safe_summary": {
+                            "safe_copy": (
+                                "Elevator field-run review is metadata-only; "
+                                "delivery_success=false and not delivery success."
+                            ),
+                        },
+                        "not_proven": ["delivery_success", "real_elevator_operation"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                elevator_field_run_review_ref=str(review_path),
+            )
+            summary = payload["elevator_field_run_review"]
+            summary_alias = payload["elevator_field_run_review_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["schema"], "trashbot.elevator_field_run_review_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_elevator_field_review_decision_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.elevator_field_run_review.v1")
+        self.assertEqual(summary["review_decision"]["status"], "ready")
+        self.assertEqual(
+            summary["review_decision"]["decision"],
+            "ready_for_controlled_elevator_field_rehearsal_not_proven",
+        )
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://elevator-field-run-review-1")
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertIn("blocked_missing_materials", summary["blocked_categories"])
+        self.assertIn("door state notes", summary["operator_next_steps"][0])
+        self.assertIn("elevator_field_run_review.py", summary["commands_to_rerun"][0])
+        self.assertIn("target floor confirmation", summary["capture_checklist"])
+        self.assertEqual(summary["review_summary"]["status"], "ready")
+        self.assertIn("delivery_success=false", summary["phone_safe_summary"]["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("real_elevator_operation", summary["not_proven"])
+        self.assertIn("terminal_ack", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(review_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_elevator_field_run_review_env_summary_missing_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "elevator_field_run_review_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_field_run_review_summary.v1",
+                        "source_schema": "trashbot.elevator_field_run_review.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_review_decision_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_elevator_field_review_decision_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://elevator-field-run-review-2",
+                        "same_evidence_ref_required": True,
+                        "review_decision": {
+                            "status": "blocked_missing_materials",
+                            "decision": "blocked_missing_materials",
+                        },
+                        "blocked_categories": ["blocked_missing_materials"],
+                        "phone_safe_summary": {
+                            "safe_copy": "Elevator field-run review is metadata-only; delivery_success=false.",
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_review = os.environ.get("TRASHBOT_ELEVATOR_FIELD_RUN_REVIEW")
+            previous_summary = os.environ.get("TRASHBOT_ELEVATOR_FIELD_RUN_REVIEW_SUMMARY")
+            os.environ.pop("TRASHBOT_ELEVATOR_FIELD_RUN_REVIEW", None)
+            os.environ["TRASHBOT_ELEVATOR_FIELD_RUN_REVIEW_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "elevator_field_run_review"
+                ]
+            finally:
+                if previous_review is None:
+                    os.environ.pop("TRASHBOT_ELEVATOR_FIELD_RUN_REVIEW", None)
+                else:
+                    os.environ["TRASHBOT_ELEVATOR_FIELD_RUN_REVIEW"] = previous_review
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_ELEVATOR_FIELD_RUN_REVIEW_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_ELEVATOR_FIELD_RUN_REVIEW_SUMMARY"] = previous_summary
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_elevator_review.json"
+            missing_summary = summarize_elevator_field_run_review(str(missing_path))
+
+            unsupported_path = Path(td) / "unsupported_elevator_review.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_field_run_material_validation.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_material_validation_gate"
+                        ),
+                        "safe_copy": "Unsupported elevator review is metadata-only; delivery_success=false.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsupported_summary = summarize_elevator_field_run_review(str(unsupported_path))
+
+            unsafe_path = Path(td) / "unsafe_elevator_review.json"
+            unsafe_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_field_run_review.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_review_decision_gate"
+                        ),
+                        "same_evidence_ref_required": False,
+                        "delivery_success": True,
+                        "phone_safe_summary": {
+                            "safe_copy": "Elevator review confirms delivery success and ACK posted.",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_summary = summarize_elevator_field_run_review(str(unsafe_path))
+            encoded = json.dumps(
+                [env_summary, missing_summary, unsupported_summary, unsafe_summary],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["review_decision"]["status"], "blocked_missing_materials")
+        self.assertIn("blocked_missing_materials", env_summary["blocked_categories"])
+        self.assertEqual(missing_summary["review_decision"]["status"], "missing")
+        self.assertEqual(unsupported_summary["review_decision"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["review_decision"]["status"], "unsafe_fields")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_elevator_field_review_decision_gate", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)

@@ -372,6 +372,28 @@ python3 pc-tools/evidence/elevator_field_run_material_validation.py \
 
 该 elevator material validation 仍只是 Docker/local software proof。`elevator_field_material_validation_ready_not_proven` 只表示七类材料的文件形状、same `evidence_ref` 和 phone-safe 摘要条件可进入人工复核；它不是真实电梯门状态、真实目标楼层确认、真实人工协助现场记录、真实 Nav2/fixed-route 实跑、WAVE ROVER/UART/HIL、dropoff/cancel completion、delivery success、真实手机设备或 Objective 5 external proof。缺目录、缺文件、模板未替换、坏 JSON、`evidence_ref` mismatch、unsafe copy、`primary_actions_enabled=true` 或 `delivery_success=true` 都会 fail closed，并保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
 
+## elevator assisted delivery field-run review decision
+
+`pc-tools/evidence/elevator_field_run_review.py` 只读上一轮 `elevator_field_run_material_validation` artifact 或 summary，把 missing/template/mismatch/unsafe/success-claim 状态整理成 operator 可执行的复核决策、复跑命令和采集清单：
+
+```bash
+python3 pc-tools/evidence/elevator_field_run_review.py \
+  --validation-json /tmp/elevator_field_run_material_validation.json \
+  --output /tmp/elevator_field_run_review.json
+```
+
+需要直接给 Robot diagnostics、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/elevator_field_run_review.py \
+  --validation-json /tmp/elevator_field_run_material_validation.json \
+  --once-json
+```
+
+输出 `schema=trashbot.elevator_field_run_review.v1`、summary `schema=trashbot.elevator_field_run_review_summary.v1`、`evidence_boundary=software_proof_docker_elevator_field_review_decision_gate`、`review_decision`、`blocked_categories`、`operator_next_steps`、`commands_to_rerun`、`capture_checklist`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+review decision 的枚举固定为 `ready_for_controlled_elevator_field_rehearsal_not_proven`、`blocked_missing_materials`、`blocked_template_materials`、`blocked_evidence_ref_mismatch`、`blocked_unsafe_copy`、`blocked_success_claim` 和 `blocked_invalid_validation`。该 review gate 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G；`ready_for_controlled_elevator_field_rehearsal_not_proven` 只表示七类 validation 材料可进入人工复核/受控演练准备，不证明真实电梯、真实门状态、真实目标楼层、真实 Nav2/fixed-route、HIL、真实投放、真实取消完成、真实手机设备或 delivery success。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

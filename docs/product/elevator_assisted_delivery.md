@@ -153,6 +153,14 @@ validation artifact 使用 `schema=trashbot.elevator_field_run_material_validati
 
 该 gate 只证明现场材料目录的文件形状、同一 `evidence_ref` 和 phone-safe 摘要边界可校验；`elevator_field_material_validation_ready_not_proven` 不证明真实电梯、真实门状态、真实目标楼层、真实人工协助、真实 Nav2/fixed-route、WAVE ROVER/UART/HIL、真实投放、真实取消完成或 delivery success。缺失、模板、坏 JSON、`evidence_ref` mismatch、unsafe copy、`primary_actions_enabled=true` 或 `delivery_success=true` 都必须 fail closed。
 
+## 现场复核决策 Gate
+
+`pc-tools/evidence/elevator_field_run_review.py` 是 material validation 之后的 Docker/local software proof gate。它只读上一轮 `trashbot.elevator_field_run_material_validation.v1` artifact 或 `trashbot.elevator_field_run_material_validation_summary.v1` summary，不读取 raw 现场文件，也不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G。
+
+review artifact 使用 `schema=trashbot.elevator_field_run_review.v1`，summary 使用 `schema=trashbot.elevator_field_run_review_summary.v1`，证据边界固定为 `software_proof_docker_elevator_field_review_decision_gate`。输出必须包含 `review_decision`、`blocked_categories`、`operator_next_steps`、`commands_to_rerun`、`capture_checklist`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+`review_decision` 把 validation 状态转成现场动作：缺材料为 `blocked_missing_materials`，模板未替换为 `blocked_template_materials`，同一 `evidence_ref` 不一致为 `blocked_evidence_ref_mismatch`，摘要不安全为 `blocked_unsafe_copy`，越界成功/控制声明为 `blocked_success_claim`，输入缺失、坏 JSON 或 schema/boundary 不支持为 `blocked_invalid_validation`。`ready_for_controlled_elevator_field_rehearsal_not_proven` 只表示材料可进入人工复核和受控演练准备，不证明真实电梯门状态、真实目标楼层确认、真实 Nav2/fixed-route、HIL、真实投放、真实取消完成或 delivery success。
+
 ## 不做什么
 
 - 不把电梯能力写成当前 MVP 已完成。

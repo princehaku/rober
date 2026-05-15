@@ -1876,6 +1876,67 @@
       "delivery success"
     ]
   },
+  "elevator_field_run_review": {
+    "schema": "trashbot.elevator_field_run_review.v1",
+    "summary_schema": "trashbot.elevator_field_run_review_summary.v1",
+    "schema_version": 1,
+    "review_decision": "blocked_template_materials",
+    "safe_evidence_ref": "elevator_field_run_review_fixture_20260515_0001",
+    "blocked_categories": [
+      "missing_door_state_material",
+      "template_target_floor_confirmation",
+      "evidence_ref_mismatch"
+    ],
+    "operator_next_steps": [
+      "按同一 evidence_ref 补齐门状态、目标楼层确认、人工协助记录和路线运行摘要",
+      "重跑 elevator field review decision gate 后再进入受控现场复核"
+    ],
+    "commands_to_rerun": [
+      "python3 pc-tools/evidence/elevator_field_run_review.py --validation-json safe-validation-summary --output safe-review-summary"
+    ],
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_phone_copy": "电梯现场复核决策只展示 safe evidence_ref、blocked categories、operator next steps 和复跑命令摘要；这是 Docker/local software proof。",
+    "recovery_hint": "先按复核决策补齐同一 evidence_ref 的现场材料，再重跑 review decision gate；手机端只读展示，不放行 Start、Confirm 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_elevator_field_review_decision_gate",
+    "not_proven": [
+      "真实电梯门状态",
+      "真实目标楼层确认",
+      "真实人工协助记录",
+      "真实 Nav2/fixed-route",
+      "真实底盘/HIL",
+      "真实 dropoff/cancel completion",
+      "delivery success",
+      "Objective 5 external proof"
+    ]
+  },
+  "elevator_field_run_review_summary": {
+    "schema": "trashbot.elevator_field_run_review_summary.v1",
+    "source_schema": "trashbot.elevator_field_run_review.v1",
+    "schema_version": 1,
+    "review_decision": "blocked_nested_diagnostics_elevator_review",
+    "safe_evidence_ref": "elevator_field_run_review_fixture_20260515_0001",
+    "blocked_categories": [
+      "nested diagnostics elevator review blocked categories"
+    ],
+    "operator_next_steps": [
+      "nested diagnostics rerun elevator review after replacing templates"
+    ],
+    "commands_to_rerun": [
+      "nested diagnostics safe rerun review command summary"
+    ],
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_phone_copy": "elevator_field_run_review_summary 只用于手机只读电梯现场复核决策展示，不放行 Start、Confirm 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_elevator_field_review_decision_gate",
+    "not_proven": [
+      "真实电梯门状态",
+      "真实目标楼层确认",
+      "HIL",
+      "dropoff/cancel completion",
+      "delivery success"
+    ]
+  },
   "diagnostics": {
     "summary": {
       "elevator_field_run_material_validation_summary": {
@@ -1899,6 +1960,31 @@
         "primary_actions_enabled": false,
         "safe_phone_copy": "status diagnostics summary 中的电梯现场材料校验只读展示，不放行控制动作。",
         "evidence_boundary": "software_proof_docker_elevator_field_material_validation_gate",
+        "not_proven": [
+          "真实电梯门状态",
+          "HIL",
+          "delivery success"
+        ]
+      },
+      "elevator_field_run_review_summary": {
+        "schema": "trashbot.elevator_field_run_review_summary.v1",
+        "source_schema": "trashbot.elevator_field_run_review.v1",
+        "schema_version": 1,
+        "review_decision": "status_diagnostics_summary_blocked_elevator_review",
+        "safe_evidence_ref": "status_diagnostics_elevator_review_fixture_20260515_0001",
+        "blocked_categories": [
+          "status diagnostics summary elevator review blocked category"
+        ],
+        "operator_next_steps": [
+          "status diagnostics summary rerun elevator review"
+        ],
+        "commands_to_rerun": [
+          "status diagnostics summary safe rerun command"
+        ],
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "safe_phone_copy": "status diagnostics summary 中的电梯现场复核决策只读展示，不放行控制动作。",
+        "evidence_boundary": "software_proof_docker_elevator_field_review_decision_gate",
         "not_proven": [
           "真实电梯门状态",
           "HIL",
@@ -2152,6 +2238,32 @@
       "primary_actions_enabled": false,
       "safe_phone_copy": "phone_readiness 内的 elevator field material validation 只读摘要不放行 Start、Confirm 或 Cancel。",
       "evidence_boundary": "software_proof_docker_elevator_field_material_validation_gate",
+      "not_proven": [
+        "真实电梯门状态",
+        "真实目标楼层确认",
+        "HIL",
+        "delivery success"
+      ]
+    },
+    "elevator_field_run_review_summary": {
+      "schema": "trashbot.elevator_field_run_review_summary.v1",
+      "source_schema": "trashbot.elevator_field_run_review.v1",
+      "schema_version": 1,
+      "review_decision": "phone_readiness_blocked_elevator_review",
+      "safe_evidence_ref": "phone_readiness_elevator_review_fixture_20260515_0001",
+      "blocked_categories": [
+        "phone_readiness 电梯现场复核仍有 blocked categories"
+      ],
+      "operator_next_steps": [
+        "phone_readiness 按复核决策重跑 elevator review gate"
+      ],
+      "commands_to_rerun": [
+        "phone_readiness safe rerun elevator review command summary"
+      ],
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "safe_phone_copy": "phone_readiness 内的 elevator field review 只读摘要不放行 Start、Confirm 或 Cancel。",
+      "evidence_boundary": "software_proof_docker_elevator_field_review_decision_gate",
       "not_proven": [
         "真实电梯门状态",
         "真实目标楼层确认",

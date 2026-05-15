@@ -162,6 +162,9 @@ ELEVATOR_FIELD_RUN_MATERIAL_VALIDATION_SUMMARY_SCHEMA = (
 ELEVATOR_FIELD_RUN_MATERIAL_VALIDATION_GATE = (
     "software_proof_docker_elevator_field_material_validation_gate"
 )
+ELEVATOR_FIELD_RUN_REVIEW_SCHEMA = "trashbot.elevator_field_run_review.v1"
+ELEVATOR_FIELD_RUN_REVIEW_SUMMARY_SCHEMA = "trashbot.elevator_field_run_review_summary.v1"
+ELEVATOR_FIELD_RUN_REVIEW_GATE = "software_proof_docker_elevator_field_review_decision_gate"
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -564,6 +567,40 @@ def _elevator_field_run_material_validation_not_proven(validation=None, summary_
     source_values = []
     if isinstance(validation.get("not_proven"), list):
         source_values.extend(validation.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_elevator_operation",
+        "real_elevator_door_state",
+        "real_floor_confirmation",
+        "real_nav2_fixed_route_run",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "real_dropoff_completion",
+        "real_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _elevator_field_run_review_not_proven(review=None, summary_fragment=None):
+    # 电梯复核决策只是人工复盘元数据；真实电梯、控制动作和送达结果必须继续外部证明。
+    review = review if isinstance(review, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(review.get("not_proven"), list):
+        source_values.extend(review.get("not_proven"))
     if isinstance(summary_fragment.get("not_proven"), list):
         source_values.extend(summary_fragment.get("not_proven"))
     required = (
@@ -1177,6 +1214,55 @@ def _default_elevator_field_run_material_validation_summary(path, status="not_co
     }
 
 
+def _default_elevator_field_run_review_summary(path, status="not_configured", read_error=""):
+    # 复核决策默认 blocked；没有 artifact 时也不能让手机或机器人控制面推断可以开跑。
+    return {
+        "schema": ELEVATOR_FIELD_RUN_REVIEW_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ELEVATOR_FIELD_RUN_REVIEW_GATE,
+        "source_schema": "",
+        "source_evidence_boundary": "",
+        "review_decision": {
+            "status": status,
+            "decision": "not_proven",
+            "reason": read_error or "elevator field-run review decision is not configured",
+        },
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "blocked_categories": [],
+        "operator_next_steps": [],
+        "commands_to_rerun": [],
+        "capture_checklist": [],
+        "review_summary": {
+            "status": "blocked",
+            "reason": "elevator field-run review decision is not configured",
+        },
+        "robot_diagnostics_summary": {
+            "status": "blocked",
+            "reason": "elevator field-run review decision is not configured",
+        },
+        "phone_safe_summary": {
+            "safe_copy": "Elevator field-run review is metadata-only; delivery_success=false.",
+            "safe_phone_copy": "Elevator field-run review is metadata-only; delivery_success=false.",
+        },
+        "not_proven": _elevator_field_run_review_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -1474,6 +1560,16 @@ def _elevator_field_run_material_validation_source_contract(value):
     source_schema = str(value.get("schema") or "")
     source_boundary = str(value.get("evidence_boundary") or "")
     if source_schema == ELEVATOR_FIELD_RUN_MATERIAL_VALIDATION_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or "")
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _elevator_field_run_review_source_contract(value):
+    # review gate 允许直接读取决策 artifact 或 summary wrapper；wrapper 仍必须指向原始 review schema。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == ELEVATOR_FIELD_RUN_REVIEW_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or "")
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
@@ -4535,6 +4631,254 @@ def summarize_elevator_field_run_material_validation(path):
     return summary
 
 
+def summarize_elevator_field_run_review(path):
+    """构建 elevator field-run review decision 的 metadata-only diagnostics 摘要。"""
+    review_path = os.path.expanduser(str(path or ""))
+    summary = _default_elevator_field_run_review_summary(
+        review_path,
+        read_error="elevator field-run review decision is not configured",
+    )
+    if not review_path:
+        return summary
+    if not os.path.exists(review_path):
+        summary.update(
+            {
+                "review_decision": {
+                    "status": "missing",
+                    "decision": "not_proven",
+                    "reason": "elevator field-run review decision missing",
+                },
+                "review_summary": {"status": "blocked", "reason": "review decision artifact missing"},
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "elevator field-run review decision artifact missing",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Elevator field-run review decision is missing; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Elevator field-run review decision is missing; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    try:
+        with open(review_path, "r", encoding="utf-8") as f:
+            review = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        safe_error = _redact_route_task_rehearsal_text(
+            f"failed reading elevator field-run review decision: {exc}"
+        )
+        summary.update(
+            {
+                "review_decision": {"status": "read_error", "decision": "not_proven", "reason": safe_error},
+                "review_summary": {"status": "blocked", "reason": "review decision JSON read error"},
+                "robot_diagnostics_summary": {"status": "blocked", "reason": "review decision JSON read error"},
+                "phone_safe_summary": {
+                    "safe_copy": "Elevator field-run review decision could not be read; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Elevator field-run review decision could not be read; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    if not isinstance(review, dict):
+        summary.update(
+            {
+                "review_decision": {
+                    "status": "read_error",
+                    "decision": "not_proven",
+                    "reason": "elevator field-run review decision JSON must be an object",
+                },
+                "review_summary": {"status": "blocked", "reason": "review decision JSON shape is invalid"},
+                "robot_diagnostics_summary": {"status": "blocked", "reason": "review decision JSON shape is invalid"},
+                "phone_safe_summary": {
+                    "safe_copy": "Elevator field-run review decision shape is invalid; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Elevator field-run review decision shape is invalid; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    # Autonomy 可能输出完整 review artifact 或 summary wrapper；diagnostics 只消费支持人员需要的白名单字段。
+    phone_summary = {}
+    for candidate in (
+        review.get("phone_safe_summary"),
+        review.get("mobile_readonly_summary"),
+        review.get("mobile_safe_summary"),
+        review.get("elevator_field_run_review_summary"),
+    ):
+        if isinstance(candidate, dict):
+            phone_summary = candidate
+            break
+    robot_summary = (
+        review.get("robot_diagnostics_summary")
+        if isinstance(review.get("robot_diagnostics_summary"), dict)
+        else review.get("diagnostics_summary")
+        if isinstance(review.get("diagnostics_summary"), dict)
+        else {}
+    )
+    source_schema, source_boundary = _elevator_field_run_review_source_contract(review)
+    source_decision = review.get("review_decision")
+    if isinstance(source_decision, dict):
+        decision_status = _redact_route_task_rehearsal_text(
+            source_decision.get("status")
+            or source_decision.get("decision")
+            or source_decision.get("verdict")
+            or review.get("status")
+            or "blocked"
+        )
+        decision_value = _redact_route_task_rehearsal_text(
+            source_decision.get("decision")
+            or source_decision.get("verdict")
+            or decision_status
+            or "not_proven"
+        )
+        decision_reason = _redact_route_task_rehearsal_text(
+            source_decision.get("reason") or source_decision.get("summary") or ""
+        )
+    else:
+        decision_value = _redact_route_task_rehearsal_text(
+            source_decision
+            or review.get("decision")
+            or phone_summary.get("review_decision")
+            or phone_summary.get("decision")
+            or "not_proven"
+        )
+        decision_status = _redact_route_task_rehearsal_text(review.get("status") or decision_value or "blocked")
+        decision_reason = _redact_route_task_rehearsal_text(review.get("reason") or robot_summary.get("reason") or "")
+    review_fragment = (
+        review.get("review_summary")
+        if isinstance(review.get("review_summary"), dict)
+        else review.get("summary") if isinstance(review.get("summary"), dict) else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        phone_summary.get("safe_copy")
+        or phone_summary.get("safe_phone_copy")
+        or review.get("safe_copy")
+        or review.get("safe_phone_copy")
+        or "Elevator field-run review is metadata-only; delivery_success=false."
+    )
+    safe_phone_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(phone_summary.get(key) or "").strip():
+            safe_phone_summary[key] = _redact_route_task_rehearsal_text(phone_summary.get(key))
+    safe_phone_summary["safe_copy"] = safe_copy
+    safe_phone_summary["safe_phone_copy"] = safe_copy
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "review_decision": {
+                "status": decision_status or "blocked",
+                "decision": decision_value or "not_proven",
+                "reason": decision_reason or "elevator field-run review consumed without explicit reason",
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                phone_summary.get("safe_evidence_ref")
+                or phone_summary.get("evidence_ref")
+                or review.get("safe_evidence_ref")
+                or review.get("evidence_ref", "")
+            ),
+            "same_evidence_ref_required": bool(
+                phone_summary.get(
+                    "same_evidence_ref_required",
+                    review.get("same_evidence_ref_required", True),
+                )
+            ),
+            "blocked_categories": _safe_route_task_rehearsal_list(
+                phone_summary.get("blocked_categories")
+                if isinstance(phone_summary.get("blocked_categories"), list)
+                else review.get("blocked_categories")
+            ),
+            "operator_next_steps": _safe_route_task_rehearsal_list(
+                phone_summary.get("operator_next_steps")
+                if isinstance(phone_summary.get("operator_next_steps"), list)
+                else review.get("operator_next_steps")
+            ),
+            "commands_to_rerun": _safe_route_task_rehearsal_list(
+                phone_summary.get("commands_to_rerun")
+                if isinstance(phone_summary.get("commands_to_rerun"), list)
+                else review.get("commands_to_rerun")
+            ),
+            "capture_checklist": _safe_pc_route_debug_value(
+                phone_summary.get("capture_checklist")
+                if isinstance(phone_summary.get("capture_checklist"), list)
+                else review.get("capture_checklist")
+                if isinstance(review.get("capture_checklist"), list)
+                else []
+            ),
+            "review_summary": _safe_pc_route_debug_dict(review_fragment)
+            or {"status": decision_status or "blocked", "reason": "review decision consumed without explicit summary"},
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": decision_status or "blocked",
+                "reason": "review decision consumed without explicit robot diagnostics summary",
+            },
+            "phone_safe_summary": safe_phone_summary,
+            "not_proven": _elevator_field_run_review_not_proven(review, phone_summary),
+            "read_error": "",
+            "metadata_only": True,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    if source_schema != ELEVATOR_FIELD_RUN_REVIEW_SCHEMA or source_boundary != ELEVATOR_FIELD_RUN_REVIEW_GATE:
+        summary.update(
+            {
+                "review_decision": {
+                    "status": "unsupported_schema",
+                    "decision": "not_proven",
+                    "reason": "elevator field-run review schema or evidence boundary is unsupported",
+                },
+                "blocked_categories": ["unsupported_schema_or_boundary"],
+                "operator_next_steps": [],
+                "commands_to_rerun": [],
+                "capture_checklist": [],
+                "review_summary": {"status": "blocked", "reason": "unsupported schema or evidence boundary"},
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Elevator field-run review is not a supported diagnostics source; no delivery result is proven.",
+                    "safe_phone_copy": "Elevator field-run review is not a supported diagnostics source; no delivery result is proven.",
+                },
+            }
+        )
+        return summary
+
+    if (
+        not summary["same_evidence_ref_required"]
+        or _route_task_field_run_console_has_unsafe_fields(review)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "review_decision": {
+                    "status": "unsafe_fields",
+                    "decision": "not_proven",
+                    "reason": "elevator field-run review contains unsafe fields or weakens same evidence_ref constraints",
+                },
+                "blocked_categories": ["unsafe_fields"],
+                "operator_next_steps": [],
+                "commands_to_rerun": [],
+                "capture_checklist": [],
+                "review_summary": {"status": "blocked", "reason": "unsafe review decision summary fields"},
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe review decision summary fields",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Elevator field-run review was blocked because fields could expose control data, weaken evidence_ref constraints, or imply delivery success.",
+                    "safe_phone_copy": "Elevator field-run review was blocked because fields could expose control data, weaken evidence_ref constraints, or imply delivery success.",
+                },
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -5657,6 +6001,7 @@ def build_diagnostics_payload(
     route_task_field_run_material_bundle_ref="",
     route_task_field_run_material_validation_ref="",
     elevator_field_run_material_validation_ref="",
+    elevator_field_run_review_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -5763,6 +6108,11 @@ def build_diagnostics_payload(
         or os.environ.get("TRASHBOT_ELEVATOR_FIELD_RUN_MATERIAL_VALIDATION", "")
         or os.environ.get("TRASHBOT_ELEVATOR_FIELD_RUN_MATERIAL_VALIDATION_SUMMARY", "")
     )
+    elevator_field_run_review_summary = summarize_elevator_field_run_review(
+        elevator_field_run_review_ref
+        or os.environ.get("TRASHBOT_ELEVATOR_FIELD_RUN_REVIEW", "")
+        or os.environ.get("TRASHBOT_ELEVATOR_FIELD_RUN_REVIEW_SUMMARY", "")
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -5827,6 +6177,8 @@ def build_diagnostics_payload(
         route_task_field_run_material_validation_summary=route_task_field_run_material_validation_summary,
         elevator_field_run_material_validation=elevator_field_run_material_validation_summary,
         elevator_field_run_material_validation_summary=elevator_field_run_material_validation_summary,
+        elevator_field_run_review=elevator_field_run_review_summary,
+        elevator_field_run_review_summary=elevator_field_run_review_summary,
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),

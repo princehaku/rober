@@ -8,7 +8,17 @@
 
 ## 2026-05-15 系列
 
-更新时间：2026-05-15 10:14 Asia/Shanghai。
+更新时间：2026-05-15 11:20 Asia/Shanghai。
+
+### 2026-05-15 12-13｜elevator-field-run-review-decision｜O2/O3 电梯现场复核决策 software proof，任务闭环由约 71% 上调到约 72%，固定路线由约 70% 上调到约 71%
+
+`sprints/2026.05.15_12-13_elevator-field-run-review-decision/` 完成 `software_proof_docker_elevator_field_review_decision_gate`：Task A `autonomy-engineer` 新增 `pc-tools/evidence/elevator_field_run_review.py` 和 `pc-tools/evidence/test_elevator_field_run_review.py`，更新 `pc-tools/README.md`、`docs/navigation/fixed_route_workflow.md`、`docs/product/elevator_assisted_delivery.md`。review artifact 输出 `schema=trashbot.elevator_field_run_review.v1`、`summary_schema=trashbot.elevator_field_run_review_summary.v1`、`review_decision`、`blocked_categories`、`operator_next_steps`、`commands_to_rerun`、`capture_checklist`、`not_proven`、`primary_actions_enabled=false`、`delivery_success=false`，把上一轮 validation 的 missing/template/mismatch/unsafe/success-claim 状态转成现场复核决策和复跑动作。Task A 验证输出 py_compile pass、`test_elevator_field_run_review.py` `Ran 5 tests ... OK`、CLI `--help` pass、required `rg` pass、scoped diff check pass。
+
+Task B `robot-software-engineer` 更新 `operator_gateway_diagnostics.py`、`test_operator_gateway_diagnostics.py` 与 `docs/interfaces/ros_contracts.md`，新增 diagnostics metadata-only `elevator_field_run_review` / `elevator_field_run_review_summary` consumption。支持 explicit ref 和 `TRASHBOT_ELEVATOR_FIELD_RUN_REVIEW` / `_SUMMARY` 环境变量来源；严格检查 schema、boundary 和 redaction，固定 `delivery_success=false`、`primary_actions_enabled=false`，不触发 collect/dropoff/cancel、ACK、Nav2、HIL、dropoff/cancel completion 或 delivery success。Task B 验证输出 py_compile pass、diagnostics unittest `Ran 77 tests ... OK`、required `rg` pass、scoped diff check pass。
+
+Task C `full-stack-software-engineer` 更新 `mobile/web/app.js`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增只读“电梯现场复核决策” panel。该 panel 兼容 top-level、`phone_readiness`、diagnostics summary 和 nested diagnostics summary，展示 review decision、safe `evidence_ref`、blocked categories、operator next steps、commands to rerun、`delivery_success=false`、`primary_actions_enabled=false`、`not_proven` 和 boundary；不改变 Start/Confirm/Cancel gating。Task C 验证输出 mobile unittest `Ran 43 tests ... OK`、py_compile pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 2 从约 71% 保守上调到约 72%，Objective 3 从约 70% 保守上调到约 71%。Objective 2 的理由是电梯现场材料校验已推进为人工复核决策和复跑清单，能把缺材料、模板未替换、同一 `evidence_ref` 不一致、unsafe copy 与越界成功声明转成下一次受控楼宇演练的具体动作。Objective 3 的理由是 Nav2/fixed-route runtime log 继续作为同一 `evidence_ref` 的复核材料，并被 Robot diagnostics 与 mobile read-only panel 保持一致的 blocked/not_proven 边界。Objective 5 保持约 66%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；not real O5 external proof。本轮 `software_proof_docker_elevator_field_review_decision_gate` 只证明 Docker/local review decision artifact、diagnostics summary、mobile read-only panel 和只读控制边界，不证明真实电梯、真实楼层确认、真实人协助、真实 Nav2/fixed-route、真实路线采集、WAVE ROVER、真实串口/UART、HIL、同一 `evidence_ref` 上车实机复账、真实 dropoff/cancel completion、delivery success、真实手机/browser、Objective 5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue 或 worker/migration。
 
 ### 2026-05-15 11-12｜elevator-field-material-validation｜O2/O3 电梯现场材料校验 software proof，任务闭环由约 70% 上调到约 71%，固定路线由约 69% 上调到约 70%
 
