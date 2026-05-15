@@ -226,6 +226,11 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("route_elevator_field_session_handoff_summary", app)
         self.assertIn("routeElevatorFieldSessionHandoffTitle", app)
         self.assertIn("software_proof_docker_route_elevator_field_session_handoff_gate", app)
+        self.assertIn("mobile_route_elevator_field_device_precheck", app)
+        self.assertIn("mobileRouteElevatorFieldDevicePrecheckTitle", index)
+        self.assertIn("copyMobileRouteElevatorFieldDevicePrecheckButton", index)
+        self.assertIn("downloadMobileRouteElevatorFieldDevicePrecheckButton", index)
+        self.assertIn("software_proof_docker_mobile_route_elevator_field_device_precheck_gate", app)
         self.assertIn("mobile_browser_acceptance_bundle", app)
         self.assertIn("phone_browser_acceptance_bundle", app)
         self.assertIn("mobile_acceptance_evidence_bundle", app)
@@ -830,6 +835,74 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "primary_actions_enabled\": true",
         ):
             self.assertNotIn(forbidden, handoff_fixture_text)
+
+    def test_mobile_route_elevator_field_device_precheck_is_read_only_and_exportable(self):
+        index = self.read("index.html")
+        app = self.read("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # 预检 panel 是 first-screen 现场材料入口，只复制白名单 metadata，不改变控制 gate。
+        self.assertIn("mobileRouteElevatorFieldDevicePrecheckTitle", index)
+        self.assertIn("真实设备观察", index)
+        self.assertIn("route/elevator handoff reference", index)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", index)
+        self.assertIn("copyMobileRouteElevatorFieldDevicePrecheckButton", index)
+        self.assertIn("downloadMobileRouteElevatorFieldDevicePrecheckButton", index)
+        self.assertIn("MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_BOUNDARY", app)
+        self.assertIn("UNSAFE_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_TEXT", app)
+        self.assertIn("safeMobileRouteElevatorFieldDevicePrecheckText", app)
+        self.assertIn("mobileRouteElevatorFieldDevicePrecheckCandidate", app)
+        self.assertIn("mobileRouteElevatorFieldDevicePrecheckFromStatus", app)
+        self.assertIn("renderMobileRouteElevatorFieldDevicePrecheck", app)
+        self.assertIn("mobileRouteElevatorFieldDevicePrecheckCopyPayload", app)
+        self.assertIn("mobile_route_elevator_field_device_precheck", app)
+        self.assertIn("mobile_route_elevator_field_device_precheck_summary", app)
+        self.assertIn("real_device_observed=false", index)
+        self.assertIn("pwa_install_prompt_observed=false", index)
+        self.assertIn("route_elevator_field_pass=false", index)
+        self.assertIn("dropoff_completion=false", index)
+        self.assertIn("cancel_completion=false", index)
+        self.assertIn("software_proof_docker_mobile_route_elevator_field_device_precheck_gate", app)
+        self.assertNotRegex(app, r"mobileRouteElevatorFieldDevicePrecheck.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"mobileRouteElevatorFieldDevicePrecheck.*fetchJson\(ENDPOINTS\.diagnostics")
+
+        precheck = fixture["mobile_route_elevator_field_device_precheck"]
+        self.assertEqual(
+            precheck["evidence_boundary"],
+            "software_proof_docker_mobile_route_elevator_field_device_precheck_gate",
+        )
+        self.assertEqual(precheck["real_device_observed"], False)
+        self.assertEqual(precheck["pwa_install_prompt_observed"], False)
+        self.assertEqual(precheck["route_elevator_field_pass"], False)
+        self.assertEqual(precheck["dropoff_completion"], False)
+        self.assertEqual(precheck["cancel_completion"], False)
+        self.assertEqual(precheck["delivery_success"], False)
+        self.assertEqual(precheck["primary_actions_enabled"], False)
+        self.assertIn("mobile_route_elevator_field_device_precheck_summary", fixture_text)
+        self.assertIn("真实设备 / PWA observation checklist", fixture_text)
+        self.assertIn("不证明真实设备", fixture_text)
+
+        precheck_fixture_text = json.dumps(precheck, ensure_ascii=False).lower()
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "baudrate",
+            "authorization",
+            "token",
+            "raw artifact",
+            "checksum",
+            "traceback",
+            "database url",
+            "queue url",
+            "oss ak",
+            "oss sk",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, precheck_fixture_text)
 
     def test_elevator_field_run_material_validation_panel_is_read_only_and_phone_safe(self):
         app = self.read("app.js")

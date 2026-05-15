@@ -1476,6 +1476,80 @@
       "delivery success"
     ]
   },
+  "mobile_route_elevator_field_device_precheck": {
+    "schema": "trashbot.mobile_route_elevator_field_device_precheck.v1",
+    "summary_schema": "trashbot.mobile_route_elevator_field_device_precheck_summary.v1",
+    "schema_version": 1,
+    "precheck_status": "ready_for_real_device_field_precheck_not_proven",
+    "route_elevator_handoff_reference": "route/elevator handoff reference: route_elevator_field_handoff_fixture_20260516_0001",
+    "real_device_observed": false,
+    "pwa_install_prompt_observed": false,
+    "route_elevator_field_pass": false,
+    "dropoff_completion": false,
+    "cancel_completion": false,
+    "observation_checklist": [
+      "真实设备打开当前 mobile/web PWA 并记录 viewport 与 display-mode。",
+      "真实 PWA prompt/user choice 现场观察仍为 not_proven。",
+      "Start / Confirm Dropoff / Cancel 继续 fail-closed。"
+    ],
+    "field_material_checklist": [
+      "route/elevator handoff reference",
+      "真实设备 screenshot / browser summary",
+      "PWA install prompt observation note",
+      "route/elevator field pass note",
+      "dropoff_or_cancel_completion.json",
+      "delivery_result.json",
+      "diagnostics_mobile_safe_summary.json"
+    ],
+    "safe_phone_copy": "mobile_route_elevator_field_device_precheck 只导出 phone-safe 预检 metadata；不证明真实设备、真实 PWA prompt、route/elevator field pass、dropoff/cancel completion 或 delivery success。",
+    "recovery_hint": "下一步需要真实 iPhone/Android 设备、真实 PWA prompt/user choice 和现场 route/elevator 材料回填；本地 PWA 仍保持 primary_actions_enabled=false。",
+    "evidence_boundary": "software_proof_docker_mobile_route_elevator_field_device_precheck_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实手机",
+      "真实 iPhone/Android device behavior",
+      "production app",
+      "真实 PWA prompt/user choice",
+      "真实 route/elevator field pass",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success",
+      "HIL",
+      "Objective 5 external proof"
+    ]
+  },
+  "mobile_route_elevator_field_device_precheck_summary": {
+    "schema": "trashbot.mobile_route_elevator_field_device_precheck_summary.v1",
+    "source_schema": "trashbot.mobile_route_elevator_field_device_precheck.v1",
+    "schema_version": 1,
+    "precheck_status": "ready_for_real_device_field_precheck_not_proven",
+    "route_elevator_handoff_reference": "route/elevator handoff reference: route_elevator_field_handoff_fixture_20260516_0001",
+    "real_device_observed": false,
+    "pwa_install_prompt_observed": false,
+    "route_elevator_field_pass": false,
+    "dropoff_completion": false,
+    "cancel_completion": false,
+    "field_material_checklist": [
+      "真实设备 / PWA observation checklist",
+      "现场 route/elevator 材料清单",
+      "dropoff/cancel completion 现场材料",
+      "delivery_result 现场材料"
+    ],
+    "safe_phone_copy": "summary 只说明真实设备与现场 route/elevator 预检清单可导出；不证明真实现场通过。",
+    "recovery_hint": "等待真实设备/PWA prompt/user choice、现场 route/elevator pass、dropoff/cancel completion 和 delivery result 材料。",
+    "evidence_boundary": "software_proof_docker_mobile_route_elevator_field_device_precheck_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实手机",
+      "真实 PWA prompt/user choice",
+      "真实 route/elevator field pass",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success"
+    ]
+  },
   "route_task_field_run_readiness": {
     "schema": "trashbot.route_task_field_run_readiness.v1",
     "schema_version": 1,

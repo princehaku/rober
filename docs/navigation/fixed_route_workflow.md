@@ -661,6 +661,40 @@ python3 pc-tools/evidence/elevator_route_evidence_reconciliation.py \
 
 该 gate 仍是 software proof。`reconciled_not_proven` 只表示 Docker/local 电梯 rehearsal evidence 与 route completion signal 的材料形状、同一 `evidence_ref` 和安全摘要可进入人工复核；它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、硬件、外部云、OSS/CDN、DB/queue 或 4G，也不证明真实 fixed-route/Nav2、真实路线采集、HIL、dropoff/cancel completion、手机设备现场验收或 delivery success。
 
+### 5.10.2 mobile route/elevator field-device precheck
+
+真实设备和 route/elevator 现场开始前，使用 PC helper 把上一轮 route/elevator field-session handoff 转成 phone-safe precheck summary：
+
+```bash
+python3 pc-tools/evidence/mobile_route_elevator_field_device_precheck.py \
+  --route-elevator-handoff-json /tmp/route_elevator_field_session_handoff.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+需要复核 mobile/web 或 diagnostics 已消费的 summary 时，可改用：
+
+```bash
+python3 pc-tools/evidence/mobile_route_elevator_field_device_precheck.py \
+  --precheck-json /tmp/mobile_route_elevator_field_device_precheck_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+输出 artifact 使用 `schema=trashbot.mobile_route_elevator_field_device_precheck.v1`，summary 使用 `schema=trashbot.mobile_route_elevator_field_device_precheck_summary.v1`，copy/export 白名单使用 `schema=trashbot.mobile_route_elevator_field_device_precheck_copy.v1`；证据边界固定为 `software_proof_docker_mobile_route_elevator_field_device_precheck_gate`。顶层固定包含 `source=software_proof`、`same_evidence_ref_required=true`、`route_elevator_handoff_summary`、`required_route_elevator_field_materials`、`device_pwa_observation_checklist`、`mobile_copy_summary`、`not_proven`、`real_device_observed=false`、`pwa_install_prompt_observed=false`、`route_elevator_field_pass=false`、`dropoff_completion=false`、`cancel_completion=false`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+`required_route_elevator_field_materials` 是现场前检查清单，不是材料已通过证明；它要求同一 `evidence_ref` 后续回填 Nav2/fixed-route runtime log、route status、route completion signal、task record、电梯门状态、目标楼层确认、人工协助记录、dropoff/cancel completion、delivery result 和 diagnostics mobile-safe summary。`device_pwa_observation_checklist` 要求真实设备现场记录浏览器加载、viewport/touch target、PWA install prompt/user choice、route/elevator precheck panel 可见、copy/export 白名单和主操作 disabled 状态。
+
+保守阻断规则：
+
+- route/elevator handoff 缺失、JSON 不可读或不是 JSON object：输出 blocked，不把异常当 precheck 通过。
+- handoff schema、evidence boundary 或 `source=software_proof` 边界不支持：输出 blocked。
+- handoff `evidence_ref` 与 `--evidence-ref` 不一致：输出 `blocked_evidence_ref_mismatch`，要求重新统一 same-evidence-ref。
+- phone-safe copy 命中凭证、raw ROS topic、serial/UART、baudrate、WAVE ROVER、traceback、checksum、complete artifact 或 raw robot response：输出 blocked。
+- 任一输入或被校验 summary 含 `real_device_observed=true`、`pwa_install_prompt_observed=true`、`route_elevator_field_pass=true`、`dropoff_completion=true`、`cancel_completion=true`、`delivery_success=true`、`primary_actions_enabled=true`、`hil_pass=true` 或完成/成功文案：输出 blocked，并继续强制 `delivery_success=false` 与 `primary_actions_enabled=false`。
+
+该 gate 仍是 software proof。`ready_for_field_device_precheck_not_proven` 或 `validated_field_device_precheck_not_proven` 只表示 Docker/local handoff 能生成真实设备/route/elevator 现场前检查 summary；它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、真实手机、外部云、OSS/CDN、DB/queue 或 4G，也不证明真实设备行为、真实 PWA prompt/user choice、真实 route/elevator field pass、真实 dropoff/cancel completion、真实 delivery success、HIL 或 Objective 5 external proof。
+
 ### 5.11 route/task field-run console
 
 completion signal 之后，PC/operator 还需要一份可直接查看的现场运行准备 console。`pc-tools/evidence/route_task_field_run_console.py` 只读 execution pack、route status/replay、task record 和 completion signal，生成现场准备计划、采集清单、same `evidence_ref` verdict、robot diagnostics 只读摘要和 mobile readonly 摘要：

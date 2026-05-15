@@ -8,7 +8,17 @@
 
 ## 2026-05-16 系列
 
-更新时间：2026-05-16 05:13 Asia/Shanghai。
+更新时间：2026-05-16 06:18 Asia/Shanghai。
+
+### 2026-05-16 06-07｜mobile-route-elevator-field-device-precheck｜O4 真实设备/路线电梯现场 precheck 入口，手机体验由约 76% 上调到约 77%
+
+`sprints/2026.05.16_06-07_mobile-route-elevator-field-device-precheck/` 完成 `software_proof_docker_mobile_route_elevator_field_device_precheck_gate`：Task A `full-stack-software-engineer` 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，在 first-screen 新增 `mobile_route_elevator_field_device_precheck` panel，支持 whitelist copy/export，展示 route/elevator handoff reference、真实设备/PWA observation checklist、现场材料清单、`delivery_success=false`、`primary_actions_enabled=false`、`not_proven`，且未改变 Start / Confirm Dropoff / Cancel gating。Task A 验证输出 `mobile/test_mobile_web_entrypoint.py` `Ran 48 tests ... OK`、`py_compile` pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped `git diff --check` pass；首轮 misplaced assertion 已修复并复验。
+
+Task B `robot-software-engineer` 更新 `docs/interfaces/ros_contracts.md`、`onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py` 与 `onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py`，新增 `mobile_route_elevator_field_device_precheck` / `_summary` diagnostics metadata-only gate。该 gate 固定 `software_proof_docker_mobile_route_elevator_field_device_precheck_gate` 边界，fail-closed 检查 unsafe source，并从 `latest_status` 剥离 precheck metadata，避免 sanitizer bypass；不改变 collect、dropoff、cancel、ACK、Nav2、HIL、dropoff/cancel completion 或 delivery success。Task B 验证输出 diagnostics unittest `Ran 85 tests in 0.088s OK`、required `rg` pass、scoped `git diff --check` pass。
+
+Task C `autonomy-engineer` 新增 `pc-tools/evidence/mobile_route_elevator_field_device_precheck.py` 与 `pc-tools/evidence/test_mobile_route_elevator_field_device_precheck.py`，更新 `pc-tools/README.md` 与 `docs/navigation/fixed_route_workflow.md`。helper/gate 输出 `trashbot.mobile_route_elevator_field_device_precheck.v1`、summary/copy schemas、fixed boundary、same-evidence-ref、required route/elevator materials、device/PWA checklist、`delivery_success=false` 和 `not_proven`；缺失/坏 JSON/schema/boundary/evidence mismatch/unsafe/success claims 均 fail closed。Task C 验证输出 py_compile pass、helper tests `Ran 6 tests ... OK`、CLI `--help` pass、required `rg` pass、scoped `git diff --check` pass。
+
+该证据只支持 Objective 4 从约 76% 保守上调到约 77%。理由是 current `mobile/web` PWA 已把真实设备/PWA observation checklist、route/elevator handoff reference、现场材料清单和 copy/export 收敛到首屏统一入口，并由 Robot diagnostics 与 pc-tools 同步 fail-closed 围栏，能把上一轮 local browser proof 转成真实设备/现场前的执行入口。Objective 2 和 Objective 3 保持约 76%，因为本轮只增强 route/elevator field materials 的 precheck/intake 和 same-evidence-ref 准备，没有新增真实电梯、真实 Nav2/fixed-route runtime log、dropoff/cancel completion 或 delivery success。Objective 5 保持约 66%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；not real Objective 5 external proof。Objective 1 保持约 73%，因为本轮未改 WAVE ROVER、UART、Orange Pi、真实串口、`T=1001` feedback 或 HIL。本轮不证明真实手机、真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、delivery success、WAVE ROVER、真实串口/UART 或 HIL。
 
 ### 2026-05-16 05-06｜mobile-route-elevator-handoff-browser-proof｜O4 local Chromium-family browser proof，手机体验由约 75% 上调到约 76%
 

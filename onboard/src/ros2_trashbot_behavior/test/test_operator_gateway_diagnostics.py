@@ -35,6 +35,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_elevator_field_run_review,
     summarize_elevator_field_run_execution_pack,
     summarize_elevator_route_evidence_reconciliation,
+    summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
     summarize_vision_manifest,
 )
@@ -4525,6 +4526,226 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_route_elevator_field_session_handoff_gate", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_mobile_route_elevator_field_device_precheck_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            precheck_path = Path(td) / "mobile_route_elevator_field_device_precheck.json"
+            precheck_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.mobile_route_elevator_field_device_precheck.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_mobile_route_elevator_field_device_precheck_gate"
+                        ),
+                        "evidence_ref": "evidence://mobile-route-elevator-precheck-1",
+                        "precheck_status": {
+                            "status": "blocked_not_proven",
+                            "verdict": "not_proven",
+                            "reason": "waiting for real phone, route, elevator, and HIL evidence",
+                        },
+                        "device_precheck_summary": {"phone_surface": "metadata_only"},
+                        "route_elevator_precheck_summary": {"route_elevator_status": "not_proven"},
+                        "operator_next_steps": ["Collect real-device field evidence before enabling control."],
+                        "mobile_readonly_summary": {
+                            "safe_copy": (
+                                "Mobile route/elevator field device precheck is metadata-only; "
+                                "delivery_success=false and not delivery success."
+                            ),
+                        },
+                        "not_proven": ["delivery_success", "real_device_observed"],
+                        "real_device_observed": False,
+                        "pwa_install_prompt_observed": False,
+                        "route_elevator_field_pass": False,
+                        "dropoff_completion": False,
+                        "cancel_completion": False,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "mobile_route_elevator_field_device_precheck": {
+                        "delivery_success": True,
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                mobile_route_elevator_field_device_precheck_ref=str(precheck_path),
+            )
+            summary = payload["mobile_route_elevator_field_device_precheck"]
+            summary_alias = payload["mobile_route_elevator_field_device_precheck_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertNotIn("mobile_route_elevator_field_device_precheck", payload["latest_status"])
+        self.assertEqual(summary["schema"], "trashbot.mobile_route_elevator_field_device_precheck_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_mobile_route_elevator_field_device_precheck_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.mobile_route_elevator_field_device_precheck.v1")
+        self.assertEqual(summary["source_schema_version"], 1)
+        self.assertEqual(summary["precheck_status"]["status"], "blocked_not_proven")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://mobile-route-elevator-precheck-1")
+        self.assertEqual(summary["device_precheck_summary"]["phone_surface"], "metadata_only")
+        self.assertEqual(
+            summary["route_elevator_precheck_summary"]["route_elevator_status"],
+            "not_proven",
+        )
+        self.assertIn("real-device field evidence", summary["operator_next_steps"][0])
+        self.assertIn("delivery_success=false", summary["mobile_readonly_summary"]["safe_phone_copy"])
+        self.assertIn("real_device_observed", summary["not_proven"])
+        self.assertIn("pwa_install_prompt_observed", summary["not_proven"])
+        self.assertIn("route_elevator_field_pass", summary["not_proven"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["real_device_observed"])
+        self.assertFalse(summary["pwa_install_prompt_observed"])
+        self.assertFalse(summary["route_elevator_field_pass"])
+        self.assertFalse(summary["dropoff_completion"])
+        self.assertFalse(summary["cancel_completion"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        # 预检 metadata 只能进 diagnostics，不能触发 command、ACK、cursor、Nav2、HIL 或完成态。
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["persistence_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["production_ready"])
+        self.assertNotIn(str(precheck_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_mobile_route_elevator_field_device_precheck_env_missing_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "mobile_route_elevator_field_device_precheck_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.mobile_route_elevator_field_device_precheck_summary.v1",
+                        "source_schema": "trashbot.mobile_route_elevator_field_device_precheck.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_mobile_route_elevator_field_device_precheck_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_mobile_route_elevator_field_device_precheck_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://mobile-route-elevator-precheck-2",
+                        "precheck_status": {
+                            "status": "not_proven",
+                            "verdict": "not_proven",
+                            "reason": "real device field materials are missing",
+                        },
+                        "operator_next_steps": ["Run real-device route/elevator precheck later."],
+                        "mobile_readonly_summary": {
+                            "safe_copy": "Mobile route/elevator field device precheck is metadata-only; delivery_success=false.",
+                        },
+                        "real_device_observed": False,
+                        "pwa_install_prompt_observed": False,
+                        "route_elevator_field_pass": False,
+                        "dropoff_completion": False,
+                        "cancel_completion": False,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_artifact = os.environ.get("TRASHBOT_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK")
+            previous_summary = os.environ.get("TRASHBOT_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_SUMMARY")
+            os.environ.pop("TRASHBOT_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK", None)
+            os.environ["TRASHBOT_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "mobile_route_elevator_field_device_precheck"
+                ]
+            finally:
+                if previous_artifact is None:
+                    os.environ.pop("TRASHBOT_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK", None)
+                else:
+                    os.environ["TRASHBOT_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK"] = previous_artifact
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_SUMMARY"] = previous_summary
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_precheck.json"
+            missing_summary = summarize_mobile_route_elevator_field_device_precheck(str(missing_path))
+
+            unsupported_path = Path(td) / "unsupported_precheck.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_elevator_field_session_handoff.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_elevator_field_session_handoff_gate"
+                        ),
+                        "safe_copy": "Unsupported precheck is metadata-only; delivery_success=false.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsupported_summary = summarize_mobile_route_elevator_field_device_precheck(str(unsupported_path))
+
+            unsafe_path = Path(td) / "unsafe_precheck.json"
+            unsafe_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.mobile_route_elevator_field_device_precheck.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_mobile_route_elevator_field_device_precheck_gate"
+                        ),
+                        "real_device_observed": True,
+                        "pwa_install_prompt_observed": True,
+                        "route_elevator_field_pass": True,
+                        "dropoff_completion": True,
+                        "cancel_completion": True,
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                        "mobile_readonly_summary": {
+                            "safe_copy": "Mobile precheck confirms delivery success and ACK posted.",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_summary = summarize_mobile_route_elevator_field_device_precheck(str(unsafe_path))
+            encoded = json.dumps(
+                [env_summary, missing_summary, unsupported_summary, unsafe_summary],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["precheck_status"]["status"], "not_proven")
+        self.assertEqual(missing_summary["precheck_status"]["status"], "missing")
+        self.assertEqual(unsupported_summary["precheck_status"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["precheck_status"]["status"], "unsafe_fields")
+        self.assertFalse(env_summary["real_device_observed"])
+        self.assertFalse(env_summary["pwa_install_prompt_observed"])
+        self.assertFalse(env_summary["route_elevator_field_pass"])
+        self.assertFalse(env_summary["dropoff_completion"])
+        self.assertFalse(env_summary["cancel_completion"])
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_mobile_route_elevator_field_device_precheck_gate", encoded)
+        self.assertIn("not_proven", encoded)
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
         self.assertNotIn("secret-token", encoded)

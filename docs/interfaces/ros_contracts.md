@@ -615,6 +615,52 @@ does not prove real field-session pass, real elevator, real floor
 confirmation, real Nav2/fixed-route, real HIL, dropoff completion, cancel
 completion, Objective 5 external proof, or delivery success.
 
+Operator diagnostics may also expose
+`mobile_route_elevator_field_device_precheck` and the alias
+`mobile_route_elevator_field_device_precheck_summary` from an explicit
+`mobile_route_elevator_field_device_precheck_ref`,
+`TRASHBOT_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK`, or
+`TRASHBOT_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_SUMMARY`. The source JSON
+must use `schema=trashbot.mobile_route_elevator_field_device_precheck.v1` or
+`schema=trashbot.mobile_route_elevator_field_device_precheck_summary.v1` with
+`evidence_boundary=software_proof_docker_mobile_route_elevator_field_device_precheck_gate`.
+If the source is already a summary wrapper, it must still point to the same
+source schema/evidence boundary. This field is metadata-only Robot diagnostics
+support for mobile route/elevator field-device precheck review. It may expose
+only the summary schema/evidence boundary, source schema/evidence boundary,
+`precheck_status`, safe evidence ref, `device_precheck_summary`,
+`route_elevator_precheck_summary`, `operator_next_steps`,
+`mobile_readonly_summary`, `not_proven`, and the conservative false fields
+`real_device_observed=false`, `pwa_install_prompt_observed=false`,
+`route_elevator_field_pass=false`, `dropoff_completion=false`,
+`cancel_completion=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+It is not a `trashbot.remote.v1` command/status/ACK envelope, not an ACK POST,
+not remote control authorization, not a cursor or persistence instruction, not
+a terminal ACK, not a Nav2 trigger, not HIL, not a dropoff/cancel completion
+signal, and not delivery success. Diagnostics consumers must treat it as
+fence-only metadata: `metadata_only=true`, `collect_triggered=false`,
+`dropoff_triggered=false`, `cancel_triggered=false`,
+`ack_post_allowed=false`, `remote_ack_allowed=false`,
+`cursor_updates_allowed=false`, `persistence_updates_allowed=false`,
+`terminal_ack_allowed=false`, `nav2_triggered=false`, `hil_pass=false`, and
+`production_ready=false` remain required even when a precheck source is
+present. Raw route logs, task records, mobile raw payloads, credentials, local
+paths, checksum material, UART/serial details, raw ACK payloads, raw command
+envelopes, production-readiness claims, success copy, and traceback content
+must not enter the diagnostics summary. Missing, unreadable,
+unsupported-schema, boundary-mismatch, unsafe fields,
+`real_device_observed=true`, `pwa_install_prompt_observed=true`,
+`route_elevator_field_pass=true`, `dropoff_completion=true`,
+`cancel_completion=true`, `delivery_success=true`,
+`primary_actions_enabled=true`, or success wording sources remain
+blocked/not_proven. The field does not change `/api/collect`,
+`POST /api/dropoff/confirm`, `POST /api/cancel`, command, ACK, remote control,
+cursor updates, persistence updates, terminal ACK, Nav2 trigger, HIL,
+dropoff/cancel completion, or delivery-success behavior, and it 不证明真实手机、
+真实 PWA install prompt、真实 route/elevator、真实 HIL、Objective 5 external
+proof 或 delivery success。
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

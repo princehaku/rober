@@ -128,6 +128,7 @@ h2 {
 
 .hero-panel,
 .primary-journey-panel,
+.mobile-route-elevator-field-device-precheck-panel,
 .recovery-decision-panel,
 .route-review-panel,
 .pc-route-debug-panel,
@@ -247,6 +248,7 @@ h2 {
 
 .status-grid,
 .cloud-grid,
+.mobile-route-elevator-field-device-precheck-grid,
 .recovery-decision-grid,
 .route-review-grid,
 .pc-route-debug-grid,
@@ -674,6 +676,10 @@ dd {
   }
 
   .route-review-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mobile-route-elevator-field-device-precheck-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

@@ -74,6 +74,63 @@
         <p id="primaryJourneyBoundary" class="boundary">software_proof_docker_mobile_primary_journey_gate</p>
       </section>
 
+      <section class="mobile-route-elevator-field-device-precheck-panel" aria-labelledby="mobileRouteElevatorFieldDevicePrecheckTitle">
+        <div class="section-heading">
+          <h2 id="mobileRouteElevatorFieldDevicePrecheckTitle">路线电梯现场设备预检</h2>
+          <span id="mobileRouteElevatorFieldDevicePrecheckBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="mobileRouteElevatorFieldDevicePrecheckCopy" class="message">
+          等待后端提供 mobile_route_elevator_field_device_precheck 的 phone-safe 摘要。
+        </p>
+        <dl class="mobile-route-elevator-field-device-precheck-grid">
+          <div>
+            <dt>route/elevator handoff reference</dt>
+            <dd id="mobileRouteElevatorFieldDevicePrecheckHandoffRef">route/elevator handoff reference=not_proven</dd>
+          </div>
+          <div>
+            <dt>真实设备观察</dt>
+            <dd id="mobileRouteElevatorFieldDevicePrecheckRealDevice">real_device_observed=false</dd>
+          </div>
+          <div>
+            <dt>PWA Prompt 观察</dt>
+            <dd id="mobileRouteElevatorFieldDevicePrecheckPwaPrompt">pwa_install_prompt_observed=false</dd>
+          </div>
+          <div>
+            <dt>Route / Elevator Field Pass</dt>
+            <dd id="mobileRouteElevatorFieldDevicePrecheckFieldPass">route_elevator_field_pass=false</dd>
+          </div>
+          <div>
+            <dt>Dropoff / Cancel Completion</dt>
+            <dd id="mobileRouteElevatorFieldDevicePrecheckTerminal">dropoff_completion=false / cancel_completion=false</dd>
+          </div>
+          <div>
+            <dt>现场材料清单</dt>
+            <dd id="mobileRouteElevatorFieldDevicePrecheckMaterials">等待现场材料清单摘要。</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="mobileRouteElevatorFieldDevicePrecheckControls">delivery_success=false / primary_actions_enabled=false</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileRouteElevatorFieldDevicePrecheckBoundary">software_proof_docker_mobile_route_elevator_field_device_precheck_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileRouteElevatorFieldDevicePrecheckNotProven">真实手机、真实 PWA prompt/user choice、真实 route/elevator field pass、dropoff/cancel completion 和 delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <div class="bundle-copy-row">
+          <button id="copyMobileRouteElevatorFieldDevicePrecheckButton" type="button">复制预检 safe_copy</button>
+          <button id="downloadMobileRouteElevatorFieldDevicePrecheckButton" type="button">导出预检 JSON</button>
+          <span id="mobileRouteElevatorFieldDevicePrecheckCopyStatus" class="hint">whitelist-only phone-safe metadata</span>
+        </div>
+        <pre id="mobileRouteElevatorFieldDevicePrecheckSafeCopy" class="safe-copy" aria-label="mobile_route_elevator_field_device_precheck safe_copy">whitelist-only phone-safe metadata</pre>
+        <p id="mobileRouteElevatorFieldDevicePrecheckHint" class="hint">
+          预检 panel 只读展示，不证明真实设备或现场通过，也不改变 Start、Confirm Dropoff 或 Cancel gating。
+        </p>
+      </section>
+
       <section class="recovery-decision-panel" aria-labelledby="recoveryDecisionTitle">
         <div class="section-heading">
           <h2 id="recoveryDecisionTitle">恢复决策</h2>
