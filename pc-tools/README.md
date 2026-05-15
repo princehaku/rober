@@ -34,7 +34,7 @@
 ## 当前状态（本轮）
 
 - `pc-tools/evidence/evidence_crosscheck.py`、`pc-tools/evidence/phone_browser_acceptance_gate.py` 已从仓库根 `scripts/` 迁入。
-- `pc-tools/route/route_debug_web.py` 已落地为 PC 工作站独立工具：只读消费 fixed-route status JSON 与可选 task/task_record JSON 或 task_record dir，输出 `schema=trashbot.pc_route_debug_console.v1`、`evidence_boundary=software_proof_docker_pc_route_debug_console_gate`、`route_progress`、`keyframe_preflight`、recent task summary、`not_proven` 和 `delivery_success=false`。
+- `pc-tools/route/route_debug_web.py` 已落地为 PC 工作站独立工具：只读消费 fixed-route status JSON、可选 task/task_record JSON 或 task_record dir，以及可选 elevator-route reconciliation artifact/summary，输出 `schema=trashbot.pc_route_debug_console.v1`、父级 `evidence_boundary=software_proof_docker_pc_route_debug_console_gate`、`route_progress`、`keyframe_preflight`、recent task summary、嵌套 `route_elevator_reconciliation.evidence_boundary=software_proof_docker_pc_route_elevator_console_integration_gate`、`not_proven` 和 `delivery_success=false`。
 - `route_csv_to_yaml.py` 仍位于 `onboard/src/ros2_trashbot_nav/`（可选后续再抽到 `pc-tools/route/` 以降低与 colcon 的耦合）。
 - `labeling/`、`training/` 仍为占位与契约说明。
 
@@ -46,6 +46,7 @@
 python3 pc-tools/route/route_debug_web.py \
   --status-json /tmp/trashbot_fixed_route_status.json \
   --task-record /tmp/task_record.json \
+  --elevator-route-reconciliation /tmp/elevator_route_evidence_reconciliation.json \
   --once-json
 ```
 
@@ -55,11 +56,14 @@ python3 pc-tools/route/route_debug_web.py \
 python3 pc-tools/route/route_debug_web.py \
   --status-json /tmp/trashbot_fixed_route_status.json \
   --task-record-dir ~/.ros/trashbot_tasks \
+  --elevator-route-reconciliation /tmp/elevator_route_evidence_reconciliation_summary.json \
   --host 127.0.0.1 \
   --port 8766
 ```
 
-API `/api/status` 与 `/api/summary` 返回同一份只读 summary：`pc_route_debug_console`、`software_proof_docker_pc_route_debug_console_gate`、`route_progress`、`keyframe_preflight`、当前位置/当前 checkpoint、目标点、匹配状态、失败原因、recent task/task_record summary、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。该结果只证明 PC/local/Docker 软件复盘材料可读，不是真实 fixed-route/Nav2 实跑、HIL、dropoff/cancel completion 或 delivery success。
+API `/api/status` 与 `/api/summary` 返回同一份只读 summary：`pc_route_debug_console`、父级 `software_proof_docker_pc_route_debug_console_gate`、`route_progress`、`keyframe_preflight`、当前位置/当前 checkpoint、目标点、匹配状态、失败原因、recent task/task_record summary、嵌套 `route_elevator_reconciliation`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。该结果只证明 PC/local/Docker 软件复盘材料可读，不是真实 fixed-route/Nav2 实跑、真实电梯、HIL、dropoff/cancel completion 或 delivery success。
+
+`route_elevator_reconciliation` 只接受 `trashbot.elevator_route_evidence_reconciliation.v1` 或 `trashbot.elevator_route_evidence_reconciliation_summary.v1`，输入边界必须是 `software_proof_docker_elevator_route_evidence_reconciliation_gate`。HTML/API 中该嵌套字段的 `evidence_boundary` 是 `software_proof_docker_pc_route_elevator_console_integration_gate`，并用 `source_evidence_boundary` 保留输入复账边界；只展示 safe evidence ref、status/verdict、same-evidence-ref 状态、source states、missing/mismatch 摘要、operator next steps、boundary、`not_proven` 和 `safe_copy`；缺失、坏 JSON、unsupported schema/boundary、unsafe copy、success claim 或 control claim 都会 blocked/not_proven。
 
 ## route/task rehearsal artifact
 

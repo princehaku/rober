@@ -54,6 +54,7 @@ const ROUTE_TASK_COMPLETION_SIGNAL_BOUNDARY = "software_proof_docker_route_task_
 const ELEVATOR_ASSIST_BOUNDARY = "software_proof_docker_elevator_assist_default_mainline_gate";
 const ELEVATOR_ASSIST_REHEARSAL_EVIDENCE_BOUNDARY = "software_proof_docker_elevator_evidence_driven_mainline_gate";
 const ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_BOUNDARY = "software_proof_docker_elevator_route_evidence_reconciliation_gate";
+const PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_BOUNDARY = "software_proof_docker_pc_route_elevator_console_integration_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -3496,6 +3497,9 @@ function pcRouteDebugNotProvenList(value) {
 
 function pcRouteDebugConsoleFromStatus(status, readiness, diagnostics) {
   const provided = pcRouteDebugConsoleCandidate(status, readiness, diagnostics) || {};
+  const routeElevatorReconciliation = pcRouteDebugConsoleElevatorReconciliationFromConsole(
+    provided.route_elevator_reconciliation,
+  );
   return {
     missing: !Object.keys(provided).length,
     schema: "trashbot.pc_route_debug_console.v1",
@@ -3525,7 +3529,47 @@ function pcRouteDebugConsoleFromStatus(status, readiness, diagnostics) {
       "需要 route/task debug 材料时，请在 PC console 生成摘要后由 diagnostics 提供 phone-safe 字段。",
     ),
     evidence_boundary: safePcRouteDebugText(provided.evidence_boundary, PC_ROUTE_DEBUG_CONSOLE_BOUNDARY),
+    route_elevator_reconciliation: routeElevatorReconciliation,
     not_proven: pcRouteDebugNotProvenList(provided),
+  };
+}
+
+function pcRouteDebugConsoleElevatorReconciliationFromConsole(value) {
+  // Task C 只能读取 PC console 嵌套 safe summary；缺失时不回退到 raw artifact 或全局复账字段。
+  const provided = value && typeof value === "object" ? value : {};
+  const missing = provided.missing_materials || provided.missing || provided.missing_reasons ||
+    provided.missing_categories;
+  const mismatch = provided.mismatch_materials || provided.mismatch || provided.mismatch_reasons ||
+    provided.mismatch_categories;
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.elevator_route_evidence_reconciliation_summary.v1",
+    source_schema: "trashbot.elevator_route_evidence_reconciliation.v1",
+    schema_version: 1,
+    reconciliation_verdict: safeElevatorRouteReconciliationText(
+      provided.reconciliation_verdict || provided.verdict || provided.overall_status || provided.status,
+      "blocked_missing_pc_console_route_elevator_reconciliation",
+    ),
+    evidence_ref: safeElevatorRouteReconciliationText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "not_provided",
+    ),
+    missing_summary: elevatorRouteEvidenceReconciliationSummaryText(
+      missing,
+      "missing=not_proven",
+    ),
+    mismatch_summary: elevatorRouteEvidenceReconciliationSummaryText(
+      mismatch,
+      "mismatch=not_proven",
+    ),
+    source_boundary: safeElevatorRouteReconciliationText(
+      provided.evidence_boundary,
+      ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_BOUNDARY,
+    ),
+    integration_boundary: PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_BOUNDARY,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: elevatorRouteEvidenceReconciliationNotProvenList(provided),
   };
 }
 
@@ -6070,6 +6114,8 @@ function renderRouteTaskReview(status) {
 function renderPcRouteDebugConsole(status) {
   const readiness = readinessFromStatus(status);
   const summary = pcRouteDebugConsoleFromStatus(status, readiness, latestDiagnostics);
+  const routeElevator = summary.route_elevator_reconciliation;
+  ensurePcRouteDebugConsoleElevatorRows();
   const badge = $("pcRouteDebugConsoleBadge");
   badge.className = "gate-badge";
   badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
@@ -6082,6 +6128,53 @@ function renderPcRouteDebugConsole(status) {
   $("pcRouteDebugConsoleBoundary").textContent = summary.evidence_boundary;
   $("pcRouteDebugConsoleNotProven").textContent = summary.not_proven.join("、");
   $("pcRouteDebugConsoleHint").textContent = summary.recovery_hint;
+  $("pcRouteDebugConsoleElevatorVerdict").textContent = routeElevator.reconciliation_verdict;
+  $("pcRouteDebugConsoleElevatorEvidenceRef").textContent = routeElevator.evidence_ref;
+  $("pcRouteDebugConsoleElevatorMissing").textContent = routeElevator.missing_summary;
+  $("pcRouteDebugConsoleElevatorMismatch").textContent = routeElevator.mismatch_summary;
+  $("pcRouteDebugConsoleElevatorControls").textContent =
+    `delivery_success=${routeElevator.delivery_success} / primary_actions_enabled=${routeElevator.primary_actions_enabled}`;
+  $("pcRouteDebugConsoleElevatorBoundary").textContent =
+    `${routeElevator.integration_boundary} / source=${routeElevator.source_boundary}`;
+  $("pcRouteDebugConsoleElevatorNotProven").textContent = routeElevator.not_proven.join("、");
+  $("pcRouteDebugConsoleElevatorHint").textContent = routeElevator.missing
+    ? "PC console route_elevator_reconciliation 摘要缺失；手机端保持 blocked/not_proven，不读取 raw artifact。"
+    : "PC console route_elevator_reconciliation 只读展示；不改变 Start、Confirm Dropoff 或 Cancel gating。";
+}
+
+function ensurePcRouteDebugConsoleElevatorRows() {
+  // index.html 不在本任务文件范围内，嵌套复账字段通过 JS 注入到现有 PC console 面板。
+  if ($("pcRouteDebugConsoleElevatorVerdict")) {
+    return;
+  }
+  const grid = $("pcRouteDebugConsoleNotProven")?.closest("dl");
+  if (!grid) {
+    return;
+  }
+  const rows = [
+    ["Route Elevator Reconciliation", "pcRouteDebugConsoleElevatorVerdict", "blocked/not_proven"],
+    ["Route Elevator Safe Evidence Ref", "pcRouteDebugConsoleElevatorEvidenceRef", "not_provided"],
+    ["Route Elevator Missing", "pcRouteDebugConsoleElevatorMissing", "missing=not_proven"],
+    ["Route Elevator Mismatch", "pcRouteDebugConsoleElevatorMismatch", "mismatch=not_proven"],
+    ["Route Elevator Control Boundary", "pcRouteDebugConsoleElevatorControls", "delivery_success=false / primary_actions_enabled=false"],
+    ["Route Elevator Boundary", "pcRouteDebugConsoleElevatorBoundary", `${PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_BOUNDARY} / source=${ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_BOUNDARY}`],
+    ["Route Elevator not_proven", "pcRouteDebugConsoleElevatorNotProven", "真实电梯、真实路线、HIL、delivery success 未证明。"],
+  ];
+  rows.forEach(([label, id, fallback]) => {
+    const row = document.createElement("div");
+    const dt = document.createElement("dt");
+    const dd = document.createElement("dd");
+    dt.textContent = label;
+    dd.id = id;
+    dd.textContent = fallback;
+    row.append(dt, dd);
+    grid.appendChild(row);
+  });
+  const hint = document.createElement("p");
+  hint.id = "pcRouteDebugConsoleElevatorHint";
+  hint.className = "hint";
+  hint.textContent = "PC console route_elevator_reconciliation 只读展示；不读取 raw artifact，也不触发 Start、Confirm 或 Cancel。";
+  grid.insertAdjacentElement("afterend", hint);
 }
 
 function renderRouteTaskFieldRunReadiness(status) {

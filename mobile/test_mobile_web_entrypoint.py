@@ -698,6 +698,60 @@ class MobileWebEntrypointTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, elevator_route_fixture_text)
 
+    def test_pc_route_debug_console_embeds_route_elevator_reconciliation(self):
+        app = self.read("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # PC console 只展示 nested route_elevator_reconciliation safe summary，不读取 raw artifact。
+        self.assertIn("PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_BOUNDARY", app)
+        self.assertIn("pcRouteDebugConsoleElevatorReconciliationFromConsole", app)
+        self.assertIn("ensurePcRouteDebugConsoleElevatorRows", app)
+        self.assertIn("provided.route_elevator_reconciliation", app)
+        self.assertIn("pcRouteDebugConsoleElevatorVerdict", app)
+        self.assertIn("pcRouteDebugConsoleElevatorEvidenceRef", app)
+        self.assertIn("pcRouteDebugConsoleElevatorMissing", app)
+        self.assertIn("pcRouteDebugConsoleElevatorMismatch", app)
+        self.assertIn("pcRouteDebugConsoleElevatorBoundary", app)
+        self.assertIn("pcRouteDebugConsoleElevatorNotProven", app)
+        self.assertIn("blocked_missing_pc_console_route_elevator_reconciliation", app)
+        self.assertIn("software_proof_docker_pc_route_elevator_console_integration_gate", app)
+        self.assertIn("software_proof_docker_elevator_route_evidence_reconciliation_gate", app)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", app)
+        self.assertIn("不改变 Start、Confirm Dropoff 或 Cancel gating", app)
+        self.assertNotRegex(app, r"pcRouteDebugConsole.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        nested = fixture["pc_route_debug_console"]["route_elevator_reconciliation"]
+        self.assertEqual(
+            nested["integration_boundary"],
+            "software_proof_docker_pc_route_elevator_console_integration_gate",
+        )
+        self.assertEqual(
+            nested["evidence_boundary"],
+            "software_proof_docker_elevator_route_evidence_reconciliation_gate",
+        )
+        self.assertEqual(nested["delivery_success"], False)
+        self.assertEqual(nested["primary_actions_enabled"], False)
+        self.assertIn("route_elevator_reconciliation", fixture_text)
+        self.assertIn("pc_route_elevator_reconciliation_fixture_20260516_0001", fixture_text)
+
+        nested_fixture_text = json.dumps(nested, ensure_ascii=False).lower()
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover",
+            "authorization",
+            "token",
+            "raw artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, nested_fixture_text)
+
     def test_elevator_field_run_material_validation_panel_is_read_only_and_phone_safe(self):
         app = self.read("app.js")
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))

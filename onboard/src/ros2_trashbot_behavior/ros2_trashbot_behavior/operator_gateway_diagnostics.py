@@ -81,6 +81,12 @@ ROUTE_TASK_REHEARSAL_OPERATOR_REVIEW_GATE = (
 PC_ROUTE_DEBUG_CONSOLE_SCHEMA = "trashbot.pc_route_debug_console.v1"
 PC_ROUTE_DEBUG_CONSOLE_SUMMARY_SCHEMA = "trashbot.pc_route_debug_console_summary.v1"
 PC_ROUTE_DEBUG_CONSOLE_GATE = "software_proof_docker_pc_route_debug_console_gate"
+PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_SUMMARY_SCHEMA = (
+    "trashbot.pc_route_elevator_console_integration_summary.v1"
+)
+PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_GATE = (
+    "software_proof_docker_pc_route_elevator_console_integration_gate"
+)
 ROUTE_TASK_FIELD_RUN_READINESS_SCHEMA = "trashbot.route_task_field_run_readiness.v1"
 ROUTE_TASK_FIELD_RUN_READINESS_SUMMARY_SCHEMA = (
     "trashbot.route_task_field_run_readiness_summary.v1"
@@ -249,6 +255,34 @@ def _pc_route_debug_not_proven(console=None):
     required = (
         "real_nav2_fixed_route_run",
         "real_fixed_route_collection",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "dropoff_or_cancel_completion",
+        "delivery_success",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _pc_route_elevator_reconciliation_not_proven(reconciliation=None):
+    # PC console 的电梯/路线对账只保留软件侧嵌套摘要；动作面和真实交付证据必须继续外部采集。
+    reconciliation = reconciliation if isinstance(reconciliation, dict) else {}
+    values = []
+    source_values = (
+        reconciliation.get("not_proven") if isinstance(reconciliation.get("not_proven"), list) else []
+    )
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "terminal_ack",
+        "cursor_advance_or_persistence",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "real_elevator_operation",
         "wave_rover_motion",
         "real_serial_or_uart_feedback",
         "real_hil_pass",
@@ -791,12 +825,51 @@ def _default_pc_route_debug_console_summary(path, state="not_configured", read_e
         "route_progress": {},
         "keyframe_preflight": {},
         "recent_task_summary": {},
+        "route_elevator_reconciliation": _default_pc_route_elevator_reconciliation_summary(),
         "not_proven": _pc_route_debug_not_proven(),
         "read_error": _redact_route_task_rehearsal_text(read_error),
         "safe_copy": "PC route debug console is not configured; this is not delivery success.",
         "safe_phone_copy": "PC route debug console is not configured; this is not delivery success.",
         "primary_actions_enabled": False,
         "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+        "delivery_success": False,
+    }
+
+
+def _default_pc_route_elevator_reconciliation_summary(state="not_configured", read_error=""):
+    # 嵌套 summary 有自己的软件证明边界，但不能提升父级 PC console 的控制能力。
+    return {
+        "schema": PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_GATE,
+        "overall_status": "blocked",
+        "state": state,
+        "source_evidence_boundary": "",
+        "availability": {
+            "status": "blocked",
+            "reason": "route elevator reconciliation summary is not configured",
+        },
+        "reconciliation_status": {
+            "status": "not_proven",
+            "reason": read_error or "route elevator reconciliation summary is not configured",
+        },
+        "elevator_assist_status": {},
+        "route_completion_status": {},
+        "operator_next_steps": [],
+        "not_proven": _pc_route_elevator_reconciliation_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": "Route elevator reconciliation is not configured; this is not delivery success.",
+        "safe_phone_copy": "Route elevator reconciliation is not configured; this is not delivery success.",
+        "primary_actions_enabled": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
         "cursor_updates_allowed": False,
         "persistence_updates_allowed": False,
         "terminal_ack_allowed": False,
@@ -1869,6 +1942,136 @@ def _pc_route_debug_safe_copy_is_unsafe(value):
     return False
 
 
+def _pc_route_elevator_reconciliation_has_unsafe_control_claims(value):
+    # 嵌套对账摘要来自 PC console artifact，任何成功/控制布尔为真都必须让嵌套摘要 fail-closed。
+    unsafe_true_keys = {
+        "delivery_success",
+        "primary_actions_enabled",
+        "ack_post_allowed",
+        "remote_ack_allowed",
+        "cursor_updates_allowed",
+        "persistence_updates_allowed",
+        "terminal_ack_allowed",
+        "nav2_triggered",
+        "hil_pass",
+        "collect_triggered",
+        "dropoff_triggered",
+        "cancel_triggered",
+        "dropoff_completion",
+        "cancel_completion",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text in unsafe_true_keys and bool(item):
+                return True
+            if _pc_route_elevator_reconciliation_has_unsafe_control_claims(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_pc_route_elevator_reconciliation_has_unsafe_control_claims(item) for item in value)
+    return False
+
+
+def _pc_route_elevator_reconciliation_safe_copy_is_unsafe(value):
+    # 与父级 PC console copy 一致：允许说明 metadata-only，不允许暗示 ACK、Nav2、HIL 或交付成功。
+    return _pc_route_debug_safe_copy_is_unsafe(value)
+
+
+def _summarize_pc_route_elevator_reconciliation(value, source_boundary):
+    """把 PC console 内嵌 route/elevator 对账片段收敛成只读、fail-closed summary。"""
+    summary = _default_pc_route_elevator_reconciliation_summary(
+        read_error="route elevator reconciliation summary is not configured",
+    )
+    if not isinstance(value, dict):
+        return summary
+
+    safe_copy = _redact_route_task_rehearsal_text(
+        value.get("safe_copy")
+        or value.get("safe_phone_copy")
+        or "Route elevator reconciliation is metadata-only; not delivery success."
+    )
+    nested_boundary = str(value.get("evidence_boundary") or PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_GATE)
+    availability = value.get("availability") if isinstance(value.get("availability"), dict) else {}
+    reconciliation_status = (
+        value.get("reconciliation_status")
+        if isinstance(value.get("reconciliation_status"), dict)
+        else {}
+    )
+    status_text = str(
+        reconciliation_status.get("status")
+        or availability.get("status")
+        or value.get("status")
+        or ""
+    ).strip().lower()
+    summary.update(
+        {
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "availability": _safe_pc_route_debug_dict(availability),
+            "reconciliation_status": _safe_pc_route_debug_dict(reconciliation_status),
+            "elevator_assist_status": _safe_pc_route_debug_dict(value.get("elevator_assist_status")),
+            "route_completion_status": _safe_pc_route_debug_dict(value.get("route_completion_status")),
+            "operator_next_steps": _safe_route_task_rehearsal_list(value.get("operator_next_steps")),
+            "not_proven": _pc_route_elevator_reconciliation_not_proven(value),
+            "read_error": "",
+        }
+    )
+    if nested_boundary != PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_GATE:
+        summary.update(
+            {
+                "overall_status": "blocked",
+                "state": "unsupported_boundary",
+                "read_error": "route elevator reconciliation evidence boundary is unsupported",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "unsupported route elevator reconciliation boundary",
+                },
+                "safe_copy": "Route elevator reconciliation source boundary is unsupported; no delivery result is proven.",
+                "safe_phone_copy": "Route elevator reconciliation source boundary is unsupported; no delivery result is proven.",
+            }
+        )
+        return summary
+
+    if (
+        _pc_route_elevator_reconciliation_has_unsafe_control_claims(value)
+        or _pc_route_elevator_reconciliation_safe_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "overall_status": "blocked",
+                "state": "unsafe_fields",
+                "read_error": "route elevator reconciliation contains unsafe control or success claims",
+                "availability": {
+                    "status": "blocked",
+                    "reason": "unsafe route elevator reconciliation fields",
+                },
+                "safe_copy": "Route elevator reconciliation was blocked because it could imply control or delivery success.",
+                "safe_phone_copy": "Route elevator reconciliation was blocked because it could imply control or delivery success.",
+            }
+        )
+        return summary
+
+    summary["safe_copy"] = safe_copy
+    summary["safe_phone_copy"] = safe_copy
+    blocked_statuses = {"", "blocked", "missing", "read_error", "unsupported_schema", "unsafe_copy", "unsafe_fields"}
+    if status_text in blocked_statuses:
+        summary.update(
+            {
+                "overall_status": "blocked",
+                "state": status_text or "blocked",
+            }
+        )
+        return summary
+
+    summary.update(
+        {
+            "overall_status": "degraded",
+            "state": "available",
+        }
+    )
+    return summary
+
+
 def _default_route_task_rehearsal_execution_bundle_summary(path, state="not_configured", read_error=""):
     # bundle 是比旧 artifact 更上层的只读 manifest；默认必须 fail-closed，避免 diagnostics 被误当成控制入口。
     return {
@@ -2378,6 +2581,10 @@ def summarize_pc_route_debug_console(path):
         if isinstance(console.get("route_debug_status"), dict)
         else {}
     )
+    route_elevator_reconciliation = _summarize_pc_route_elevator_reconciliation(
+        console.get("route_elevator_reconciliation"),
+        source_boundary,
+    )
     summary.update(
         {
             "source_schema": _redact_route_task_rehearsal_text(source_schema),
@@ -2390,6 +2597,7 @@ def summarize_pc_route_debug_console(path):
             "recent_task_summary": _safe_pc_route_debug_dict(
                 console.get("recent_task_summary") or console.get("recent_task")
             ),
+            "route_elevator_reconciliation": route_elevator_reconciliation,
             "not_proven": _pc_route_debug_not_proven(console),
             "read_error": "",
         }

@@ -59,6 +59,56 @@ class PcRouteDebugWebTest(unittest.TestCase):
             "last_nav_result": "not_started",
         }
 
+    def sample_elevator_route_reconciliation(self, evidence_ref: str) -> dict:
+        # 样例模拟上一轮 gate 输出，覆盖 artifact 与 phone_safe_summary 双入口。
+        return {
+            "schema": "trashbot.elevator_route_evidence_reconciliation.v1",
+            "schema_version": 1,
+            "source": "software_proof",
+            "evidence_boundary": "software_proof_docker_elevator_route_evidence_reconciliation_gate",
+            "same_evidence_ref_required": True,
+            "same_evidence_ref_status": "matched_same_evidence_ref",
+            "evidence_ref": evidence_ref,
+            "reconciliation_verdict": "reconciled_not_proven",
+            "source_states": {
+                "elevator_rehearsal": {"status": "ready_for_operator_review_not_proven"},
+                "route_completion": {"status": "completed_not_proven"},
+            },
+            "materials_status": {
+                "missing_materials": [],
+                "mismatch_reasons": [],
+                "unsafe_copy_detected": False,
+                "success_claimed_by_input": False,
+                "control_claimed_by_input": False,
+            },
+            "operator_next_steps": ["Compare this reconciliation with Robot diagnostics and mobile read-only summary."],
+            "phone_safe_summary": {
+                "schema": "trashbot.elevator_route_evidence_reconciliation_summary.v1",
+                "schema_version": 1,
+                "source": "software_proof",
+                "evidence_boundary": "software_proof_docker_elevator_route_evidence_reconciliation_gate",
+                "status": "reconciled_not_proven",
+                "reconciliation_verdict": "reconciled_not_proven",
+                "same_evidence_ref_required": True,
+                "same_evidence_ref_status": "matched_same_evidence_ref",
+                "evidence_ref": evidence_ref,
+                "source_states": {
+                    "elevator_status": "ready_for_operator_review_not_proven",
+                    "route_completion_verdict": "completed_not_proven",
+                },
+                "missing_materials_count": 0,
+                "mismatch_reasons_count": 0,
+                "operator_next_steps": ["Keep this as software proof only."],
+                "not_proven": ["real_elevator_door_state", "real_nav2_fixed_route_run", "delivery_success"],
+                "safe_copy": "Elevator-route reconciliation metadata only; delivery_success=false.",
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            },
+            "not_proven": ["real_elevator_door_state", "real_nav2_fixed_route_run", "delivery_success"],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+
     def test_build_console_summary_exposes_required_boundary_fields(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -82,12 +132,91 @@ class PcRouteDebugWebTest(unittest.TestCase):
             summary = route_debug_web.build_console_summary(str(status_path), str(task_path))
 
         self.assertEqual(summary["schema"], "trashbot.pc_route_debug_console.v1")
-        self.assertEqual(summary["evidence_boundary"], "software_proof_docker_pc_route_debug_console_gate")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_pc_route_debug_console_gate",
+        )
         self.assertEqual(summary["route_progress"]["checkpoint_id"], "fixed_route:001")
         self.assertEqual(summary["keyframe_preflight"]["visual_gate_status"], "keyframe_preflight_failed")
         self.assertEqual(summary["recent_task"]["task_id"], "task-1")
+        self.assertEqual(summary["route_elevator_reconciliation"]["lookup_status"], "not_provided")
         self.assertFalse(summary["delivery_success"])
         self.assertIn("delivery_success", summary["not_proven"])
+
+    def test_elevator_route_reconciliation_artifact_is_exposed_as_safe_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            evidence_ref = str(root / "same-evidence.json")
+            status_path = root / "fixed_route_status.json"
+            reconciliation_path = root / "elevator_route_evidence_reconciliation.json"
+            status_path.write_text(json.dumps(self.sample_status(evidence_ref)), encoding="utf-8")
+            reconciliation_path.write_text(
+                json.dumps(self.sample_elevator_route_reconciliation(evidence_ref)),
+                encoding="utf-8",
+            )
+
+            summary = route_debug_web.build_console_summary(
+                str(status_path),
+                elevator_route_reconciliation=str(reconciliation_path),
+            )
+            page = route_debug_web.render_html(summary)
+
+        reconciliation = summary["route_elevator_reconciliation"]
+        self.assertEqual(reconciliation["lookup_status"], "found")
+        self.assertEqual(reconciliation["source_schema"], "trashbot.elevator_route_evidence_reconciliation_summary.v1")
+        self.assertEqual(reconciliation["reconciliation_verdict"], "reconciled_not_proven")
+        self.assertEqual(
+            reconciliation["evidence_boundary"],
+            "software_proof_docker_pc_route_elevator_console_integration_gate",
+        )
+        self.assertEqual(
+            reconciliation["source_evidence_boundary"],
+            "software_proof_docker_elevator_route_evidence_reconciliation_gate",
+        )
+        self.assertEqual(reconciliation["same_evidence_ref_status"], "matched_same_evidence_ref")
+        self.assertEqual(reconciliation["evidence_ref"], "file:same-evidence.json")
+        self.assertIn("real_elevator_door_state", reconciliation["not_proven"])
+        self.assertFalse(reconciliation["delivery_success"])
+        self.assertFalse(reconciliation["primary_actions_enabled"])
+        self.assertIn("Elevator Route Reconciliation", page)
+        self.assertNotIn(str(root), json.dumps(summary, ensure_ascii=False) + page)
+
+    def test_elevator_route_reconciliation_blocks_unsupported_unsafe_and_success_claims(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            status_path = root / "fixed_route_status.json"
+            status_path.write_text(json.dumps(self.sample_status("run-unsafe")), encoding="utf-8")
+            unsupported_path = root / "unsupported.json"
+            unsupported_path.write_text(json.dumps({"schema": "trashbot.wrong.v1"}), encoding="utf-8")
+            unsafe_path = root / "unsafe.json"
+            unsafe_payload = self.sample_elevator_route_reconciliation("run-unsafe")
+            unsafe_payload["operator_next_steps"] = ["Read /dev/ttyUSB0 then publish /cmd_vel"]
+            unsafe_path.write_text(json.dumps(unsafe_payload), encoding="utf-8")
+            success_path = root / "success.json"
+            success_payload = self.sample_elevator_route_reconciliation("run-success")
+            success_payload["phone_safe_summary"]["safe_copy"] = "delivery success completed"
+            success_path.write_text(json.dumps(success_payload), encoding="utf-8")
+
+            unsupported = route_debug_web.build_console_summary(
+                str(status_path),
+                elevator_route_reconciliation=str(unsupported_path),
+            )
+            unsafe = route_debug_web.build_console_summary(
+                str(status_path),
+                elevator_route_reconciliation=str(unsafe_path),
+            )
+            success = route_debug_web.build_console_summary(
+                str(status_path),
+                elevator_route_reconciliation=str(success_path),
+            )
+
+        self.assertEqual(unsupported["route_elevator_reconciliation"]["lookup_status"], "unsupported_schema")
+        self.assertEqual(unsafe["route_elevator_reconciliation"]["lookup_status"], "unsafe_copy")
+        self.assertEqual(success["route_elevator_reconciliation"]["lookup_status"], "success_claim")
+        encoded = json.dumps(unsafe, ensure_ascii=False) + json.dumps(success, ensure_ascii=False)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertIn("delivery_success", success["route_elevator_reconciliation"]["not_proven"])
 
     def test_task_record_dir_selects_matching_evidence_ref(self):
         with tempfile.TemporaryDirectory() as td:
@@ -140,7 +269,18 @@ class PcRouteDebugWebTest(unittest.TestCase):
             root = Path(td)
             status_path = root / "status.json"
             status_path.write_text(json.dumps(self.sample_status(str(root / "evidence.json"))), encoding="utf-8")
-            server = HTTPServer(("127.0.0.1", 0), route_debug_web.make_handler(str(status_path)))
+            reconciliation_path = root / "elevator_route_evidence_reconciliation.json"
+            reconciliation_path.write_text(
+                json.dumps(self.sample_elevator_route_reconciliation(str(root / "evidence.json"))),
+                encoding="utf-8",
+            )
+            server = HTTPServer(
+                ("127.0.0.1", 0),
+                route_debug_web.make_handler(
+                    str(status_path),
+                    elevator_route_reconciliation=str(reconciliation_path),
+                ),
+            )
             thread = threading.Thread(target=server.serve_forever)
             thread.start()
             try:
@@ -158,6 +298,7 @@ class PcRouteDebugWebTest(unittest.TestCase):
         payload = json.loads(body)
         self.assertEqual(payload["schema"], "trashbot.pc_route_debug_console.v1")
         self.assertEqual(payload["console_controls"], "read_only")
+        self.assertEqual(payload["route_elevator_reconciliation"]["lookup_status"], "found")
 
 
 if __name__ == "__main__":

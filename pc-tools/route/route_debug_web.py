@@ -22,6 +22,13 @@ from urllib.parse import urlparse
 CONSOLE_SCHEMA = "trashbot.pc_route_debug_console.v1"
 CONSOLE_SCHEMA_VERSION = 1
 CONSOLE_BOUNDARY = "software_proof_docker_pc_route_debug_console_gate"
+ROUTE_ELEVATOR_CONSOLE_INTEGRATION_BOUNDARY = "software_proof_docker_pc_route_elevator_console_integration_gate"
+ELEVATOR_ROUTE_RECONCILIATION_SCHEMAS = {
+    "trashbot.elevator_route_evidence_reconciliation.v1",
+    "trashbot.elevator_route_evidence_reconciliation_summary.v1",
+}
+ELEVATOR_ROUTE_RECONCILIATION_BOUNDARY = "software_proof_docker_elevator_route_evidence_reconciliation_gate"
+ELEVATOR_ROUTE_RECONCILIATION_SOURCE = "software_proof"
 
 # not_proven 必须显式包含真实运行、HIL 和 delivery success，防止软件 pass 被误读。
 NOT_PROVEN = (
@@ -34,6 +41,47 @@ NOT_PROVEN = (
     "dropoff_completion",
     "cancel_completion",
     "delivery_success",
+    "real_elevator_door_state",
+    "real_target_floor_confirmation",
+    "real_human_assistance_field_record",
+    "real_phone_device_or_browser",
+)
+
+# 输入复账材料只允许进入 metadata-only 摘要；命中这些词说明材料不适合展示。
+FORBIDDEN_COPY = (
+    "Authorization",
+    "OSS_ACCESS_KEY",
+    "OSS_SECRET",
+    "access_key",
+    "secret",
+    "token",
+    "password",
+    "postgres://",
+    "postgresql://",
+    "mysql://",
+    "redis://",
+    "amqp://",
+    "mongodb://",
+    "/cmd_vel",
+    "/dev/ttyUSB",
+    "/dev/ttyACM",
+    "serial",
+    "UART",
+    "baudrate",
+    "baud_rate",
+    "WAVE ROVER",
+    "Traceback",
+    "checksum",
+    "complete artifact",
+    "raw robot response",
+)
+
+# delivery_success=false 是允许字段；自由文本里的完成/成功声明必须被拦截。
+SUCCESS_CLAIM_PATTERNS = (
+    re.compile(r"(?i)\bdelivery\s+(success|succeeded|completed|complete)\b"),
+    re.compile(r"(?i)\bdropoff\s+(success|succeeded|completed|complete)\b"),
+    re.compile(r"(?i)\bcancel\s+(completed|complete|success|succeeded)\b"),
+    re.compile(r"(?i)\bhil_pass\s*[:=]\s*true\b"),
 )
 
 # 输出面不需要凭证、硬件串口、ROS topic 或完整本机路径；统一先脱敏再展示。
@@ -135,6 +183,10 @@ HTML_TEMPLATE = """<!doctype html>
       {recent_task}
     </section>
     <section>
+      <h2>Elevator Route Reconciliation</h2>
+      {route_elevator_reconciliation}
+    </section>
+    <section>
       <h2>Not Proven</h2>
       {not_proven}
     </section>
@@ -181,6 +233,35 @@ def _safe_value(value: Any) -> Any:
     if isinstance(value, str):
         return _safe_text(value)
     return value
+
+
+def _encoded(value: Any) -> str:
+    # 安全检查覆盖键和值；不可编码对象降级成脱敏文本。
+    try:
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    except (TypeError, ValueError):
+        return _safe_text(value)
+
+
+def _has_forbidden_copy(value: Any) -> bool:
+    # raw artifact 如果夹带控制、凭证或硬件细节，本 console 直接 blocked。
+    encoded = _encoded(value)
+    return any(token in encoded for token in FORBIDDEN_COPY)
+
+
+def _has_success_claim(value: Any) -> bool:
+    # `delivery_success=false` 不应触发；这里只拦截自然语言完成声明和 hil_pass=true。
+    encoded = _encoded(value)
+    return any(pattern.search(encoded) for pattern in SUCCESS_CLAIM_PATTERNS)
+
+
+def _safe_list(value: Any, limit: int = 12) -> list[Any]:
+    # 复账列表只作为 operator 摘要展示，限长避免把完整 artifact 复制进 console。
+    if isinstance(value, list):
+        return [_safe_value(item) for item in value[:limit]]
+    if value in (None, ""):
+        return []
+    return [_safe_value(value)]
 
 
 def _load_json(path: str, label: str) -> tuple[dict[str, Any], str]:
@@ -314,7 +395,129 @@ def _task_summary(task_record: dict[str, Any], resolved_ref: str, issue: str) ->
     }
 
 
-def build_console_summary(status_json: str, task_record: str = "", task_record_dir: str = "") -> dict[str, Any]:
+def _reconciliation_materials_status(payload: dict[str, Any]) -> dict[str, Any]:
+    # artifact 和 phone_safe_summary 字段形态不同；统一压成可展示的计数/列表摘要。
+    materials = payload.get("materials_status") if isinstance(payload.get("materials_status"), dict) else {}
+    return {
+        "missing_materials": _safe_list(materials.get("missing_materials", payload.get("missing_materials", []))),
+        "mismatch_reasons": _safe_list(materials.get("mismatch_reasons", payload.get("mismatch_reasons", []))),
+        "missing_materials_count": materials.get("missing_materials_count", payload.get("missing_materials_count", 0)),
+        "mismatch_reasons_count": materials.get("mismatch_reasons_count", payload.get("mismatch_reasons_count", 0)),
+        "unsafe_copy_detected": bool(materials.get("unsafe_copy_detected", False)),
+        "success_claimed_by_input": bool(materials.get("success_claimed_by_input", False)),
+        "control_claimed_by_input": bool(materials.get("control_claimed_by_input", False)),
+    }
+
+
+def _blocked_reconciliation_summary(path: str, issue: str, source_schema: str = "") -> dict[str, Any]:
+    # 缺失或不支持时仍返回固定结构，让 HTML/API 不需要猜字段存在性。
+    return {
+        "provided": False,
+        "lookup_status": issue,
+        "source_ref": _safe_ref(path),
+        "source_schema": source_schema,
+        "status": issue,
+        "reconciliation_verdict": issue,
+        "source": "",
+        "evidence_boundary": ROUTE_ELEVATOR_CONSOLE_INTEGRATION_BOUNDARY,
+        "source_evidence_boundary": ELEVATOR_ROUTE_RECONCILIATION_BOUNDARY,
+        "same_evidence_ref_required": True,
+        "same_evidence_ref_status": "not_checked",
+        "evidence_ref": "",
+        "source_states": {},
+        "materials_status": {
+            "missing_materials": ["elevator_route_reconciliation_json"],
+            "mismatch_reasons": [],
+            "missing_materials_count": 1,
+            "mismatch_reasons_count": 0,
+            "unsafe_copy_detected": issue == "unsafe_copy",
+            "success_claimed_by_input": issue == "success_claim",
+            "control_claimed_by_input": issue == "control_claim",
+        },
+        "operator_next_steps": [
+            "Provide elevator-route-reconciliation software-proof JSON from the same evidence_ref before field-run review.",
+            "Do not claim real elevator, Nav2/fixed-route, HIL, dropoff/cancel completion, or delivery success from this console.",
+        ],
+        "safe_copy": "Elevator route reconciliation is missing or blocked; delivery_success=false.",
+        "not_proven": list(NOT_PROVEN),
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+
+
+def _elevator_route_reconciliation_summary(path: str) -> dict[str, Any]:
+    # 该输入来自上一轮复账 gate；本 console 只做白名单读取和二次围栏。
+    payload, issue = _load_json(path, "elevator_route_reconciliation")
+    if issue:
+        return _blocked_reconciliation_summary(path, issue)
+
+    source_payload = payload.get("phone_safe_summary") if isinstance(payload.get("phone_safe_summary"), dict) else payload
+    source_payload = source_payload if isinstance(source_payload, dict) else {}
+    schema = _first_text(source_payload.get("schema"), payload.get("schema"), default="")
+    boundary = _first_text(source_payload.get("evidence_boundary"), payload.get("evidence_boundary"), default="")
+    source = _first_text(source_payload.get("source"), payload.get("source"), default="")
+
+    if schema not in ELEVATOR_ROUTE_RECONCILIATION_SCHEMAS:
+        return _blocked_reconciliation_summary(path, "unsupported_schema", schema)
+    if boundary != ELEVATOR_ROUTE_RECONCILIATION_BOUNDARY:
+        return _blocked_reconciliation_summary(path, "unsupported_boundary", schema)
+    if source and source != ELEVATOR_ROUTE_RECONCILIATION_SOURCE:
+        return _blocked_reconciliation_summary(path, "unsupported_source", schema)
+    if payload.get("delivery_success") is True or source_payload.get("delivery_success") is True:
+        return _blocked_reconciliation_summary(path, "success_claim", schema)
+    if payload.get("primary_actions_enabled") is True or source_payload.get("primary_actions_enabled") is True:
+        return _blocked_reconciliation_summary(path, "control_claim", schema)
+    if _has_forbidden_copy(payload):
+        return _blocked_reconciliation_summary(path, "unsafe_copy", schema)
+    if _has_success_claim(payload):
+        return _blocked_reconciliation_summary(path, "success_claim", schema)
+
+    verdict = _first_text(
+        source_payload.get("reconciliation_verdict"),
+        source_payload.get("status"),
+        payload.get("reconciliation_verdict"),
+        default="blocked_not_checked",
+    )
+    summary = {
+        "provided": True,
+        "lookup_status": "found",
+        "source_ref": _safe_ref(path),
+        "source_schema": schema,
+        "status": _first_text(source_payload.get("status"), payload.get("reconciliation_verdict"), default=verdict),
+        "reconciliation_verdict": verdict,
+        "source": source or ELEVATOR_ROUTE_RECONCILIATION_SOURCE,
+        "evidence_boundary": ROUTE_ELEVATOR_CONSOLE_INTEGRATION_BOUNDARY,
+        "source_evidence_boundary": boundary,
+        "same_evidence_ref_required": bool(source_payload.get("same_evidence_ref_required", payload.get("same_evidence_ref_required", True))),
+        "same_evidence_ref_status": _first_text(
+            source_payload.get("same_evidence_ref_status"),
+            payload.get("same_evidence_ref_status"),
+            default="not_checked",
+        ),
+        "evidence_ref": _safe_ref(source_payload.get("evidence_ref", payload.get("evidence_ref", ""))),
+        "source_states": _safe_value(source_payload.get("source_states", payload.get("source_states", {}))),
+        "materials_status": _reconciliation_materials_status(source_payload if source_payload is not payload else payload),
+        "operator_next_steps": _safe_list(
+            source_payload.get("operator_next_steps", payload.get("operator_next_steps", [])),
+            limit=5,
+        ),
+        "safe_copy": _first_text(
+            source_payload.get("safe_copy"),
+            default="Elevator-route reconciliation metadata only; delivery_success=false.",
+        ),
+        "not_proven": _safe_list(source_payload.get("not_proven", payload.get("not_proven", NOT_PROVEN)), limit=24),
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+    return _safe_value(summary)
+
+
+def build_console_summary(
+    status_json: str,
+    task_record: str = "",
+    task_record_dir: str = "",
+    elevator_route_reconciliation: str = "",
+) -> dict[str, Any]:
     """读取 fixed-route status 与可选 task_record，生成 PC console 只读摘要。"""
 
     status, status_issue = _load_json(status_json, "status_json")
@@ -357,6 +560,9 @@ def build_console_summary(status_json: str, task_record: str = "", task_record_d
             "last_nav_result": _first_text(status.get("last_nav_result") if status else "", default=""),
         },
         "recent_task": _task_summary(task_payload, task_ref, task_issue),
+        "route_elevator_reconciliation": _elevator_route_reconciliation_summary(elevator_route_reconciliation)
+        if elevator_route_reconciliation
+        else _blocked_reconciliation_summary("", "not_provided"),
         "not_proven": list(NOT_PROVEN),
         "delivery_success": False,
         "primary_actions_enabled": False,
@@ -389,12 +595,13 @@ def render_html(summary: dict[str, Any]) -> str:
         keyframe_preflight=_html_table(summary.get("keyframe_preflight", {})),
         failure=_html_table(summary.get("failure", {})),
         recent_task=_html_table(summary.get("recent_task", {})),
+        route_elevator_reconciliation=_html_table(summary.get("route_elevator_reconciliation", {})),
         not_proven="<ul>" + "".join(f"<li>{html.escape(item)}</li>" for item in summary.get("not_proven", [])) + "</ul>",
         raw_json=html.escape(raw_json),
     )
 
 
-def make_handler(status_json: str, task_record: str = "", task_record_dir: str = ""):
+def make_handler(status_json: str, task_record: str = "", task_record_dir: str = "", elevator_route_reconciliation: str = ""):
     class Handler(BaseHTTPRequestHandler):
         # server 只暴露本地只读页面和 JSON，不支持任何 POST/控制入口。
         def _send(self, content_type: str, body: bytes) -> None:
@@ -406,7 +613,7 @@ def make_handler(status_json: str, task_record: str = "", task_record_dir: str =
 
         def do_GET(self) -> None:  # noqa: N802 - http.server 使用固定方法名。
             path = urlparse(self.path).path
-            summary = build_console_summary(status_json, task_record, task_record_dir)
+            summary = build_console_summary(status_json, task_record, task_record_dir, elevator_route_reconciliation)
             if path in ("/", "/index.html"):
                 self._send("text/html; charset=utf-8", render_html(summary).encode("utf-8"))
                 return
@@ -434,19 +641,32 @@ def main() -> int:
     parser.add_argument("--status-json", required=True, help="fixed_route debug status JSON file")
     parser.add_argument("--task-record", default="", help="optional task/task_record JSON file")
     parser.add_argument("--task-record-dir", default="", help="optional directory to locate task_record by evidence_ref")
+    parser.add_argument(
+        "--elevator-route-reconciliation",
+        default="",
+        help="optional elevator-route-reconciliation artifact or summary JSON file",
+    )
     parser.add_argument("--output", default="", help="optional path to write the console summary JSON")
     parser.add_argument("--host", default="127.0.0.1", help="bind host for the local read-only console")
     parser.add_argument("--port", type=int, default=8766, help="bind port for the local read-only console")
     parser.add_argument("--once-json", action="store_true", help="print one JSON summary and exit")
     args = parser.parse_args()
 
-    summary = build_console_summary(args.status_json, args.task_record, args.task_record_dir)
+    summary = build_console_summary(
+        args.status_json,
+        args.task_record,
+        args.task_record_dir,
+        args.elevator_route_reconciliation,
+    )
     _write_output(args.output, summary)
     if args.once_json:
         print(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
 
-    server = HTTPServer((args.host, args.port), make_handler(args.status_json, args.task_record, args.task_record_dir))
+    server = HTTPServer(
+        (args.host, args.port),
+        make_handler(args.status_json, args.task_record, args.task_record_dir, args.elevator_route_reconciliation),
+    )
     print(f"PC route debug console: http://{args.host}:{args.port} boundary={CONSOLE_BOUNDARY}")
     server.serve_forever()
     return 0

@@ -1240,6 +1240,37 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                             "task_id": "task-1",
                             "final_status": "software_rehearsal_only",
                         },
+                        "route_elevator_reconciliation": {
+                            "evidence_boundary": (
+                                "software_proof_docker_pc_route_elevator_console_integration_gate"
+                            ),
+                            "availability": {
+                                "status": "available",
+                                "reason": "same evidence_ref route and elevator summaries visible",
+                            },
+                            "reconciliation_status": {
+                                "status": "available",
+                                "verdict": "metadata_only_reconciled_not_proven",
+                            },
+                            "elevator_assist_status": {
+                                "state": "needs_human_help",
+                                "phase": "waiting_target_floor",
+                            },
+                            "route_completion_status": {
+                                "state": "metadata_only",
+                                "dropoff_completion": False,
+                            },
+                            "operator_next_steps": [
+                                "Review same evidence_ref before field-run claims.",
+                            ],
+                            "not_proven": ["delivery_success", "real_elevator_operation"],
+                            "safe_copy": (
+                                "Route elevator reconciliation is metadata-only; "
+                                "not delivery success."
+                            ),
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        },
                         "not_proven": ["delivery_success", "real_hil_pass"],
                         "safe_copy": "PC route debug console is metadata-only software proof; not delivery success.",
                     }
@@ -1273,6 +1304,34 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(summary["route_debug_status"]["current_checkpoint"], "cp-02")
         self.assertEqual(summary["route_progress"]["target"]["name"], "trash_station")
         self.assertEqual(summary["keyframe_preflight"]["status"], "passed")
+        nested = summary["route_elevator_reconciliation"]
+        self.assertEqual(nested["overall_status"], "degraded")
+        self.assertEqual(nested["state"], "available")
+        self.assertEqual(
+            nested["evidence_boundary"],
+            "software_proof_docker_pc_route_elevator_console_integration_gate",
+        )
+        self.assertEqual(
+            nested["source_evidence_boundary"],
+            "software_proof_docker_pc_route_debug_console_gate",
+        )
+        self.assertEqual(nested["reconciliation_status"]["status"], "available")
+        self.assertEqual(nested["elevator_assist_status"]["phase"], "waiting_target_floor")
+        self.assertIn("same evidence_ref", nested["operator_next_steps"][0])
+        self.assertIn("delivery_success", nested["not_proven"])
+        self.assertIn("remote_ack", nested["not_proven"])
+        self.assertIn("terminal_ack", nested["not_proven"])
+        self.assertFalse(nested["primary_actions_enabled"])
+        self.assertFalse(nested["ack_post_allowed"])
+        self.assertFalse(nested["remote_ack_allowed"])
+        self.assertFalse(nested["cursor_updates_allowed"])
+        self.assertFalse(nested["persistence_updates_allowed"])
+        self.assertFalse(nested["terminal_ack_allowed"])
+        self.assertFalse(nested["nav2_triggered"])
+        self.assertFalse(nested["hil_pass"])
+        self.assertFalse(nested["dropoff_completion"])
+        self.assertFalse(nested["cancel_completion"])
+        self.assertFalse(nested["delivery_success"])
         self.assertIn("not delivery success", summary["safe_copy"])
         self.assertIn("delivery_success", summary["not_proven"])
         self.assertFalse(summary["primary_actions_enabled"])
@@ -1361,8 +1420,45 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                 encoding="utf-8",
             )
             unsafe_summary = summarize_pc_route_debug_console(str(unsafe_path))
+            unsafe_nested_path = Path(td) / "unsafe_nested_console.json"
+            unsafe_nested_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.pc_route_debug_console.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_pc_route_debug_console_gate"
+                        ),
+                        "availability": {"status": "available"},
+                        "route_elevator_reconciliation": {
+                            "evidence_boundary": (
+                                "software_proof_docker_pc_route_elevator_console_integration_gate"
+                            ),
+                            "availability": {"status": "available"},
+                            "reconciliation_status": {"status": "available"},
+                            "safe_copy": (
+                                "Route elevator reconciliation confirms delivery success "
+                                "and ACK posted."
+                            ),
+                            "delivery_success": True,
+                            "primary_actions_enabled": True,
+                            "ack_post_allowed": True,
+                            "nav2_triggered": True,
+                            "hil_pass": True,
+                        },
+                        "safe_copy": "PC route debug console is metadata-only; not delivery success.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_nested_summary = summarize_pc_route_debug_console(str(unsafe_nested_path))
             encoded = json.dumps(
-                [blocked_summary, missing_summary, unsupported_summary, unsafe_summary],
+                [
+                    blocked_summary,
+                    missing_summary,
+                    unsupported_summary,
+                    unsafe_summary,
+                    unsafe_nested_summary,
+                ],
                 ensure_ascii=False,
             )
 
@@ -1371,12 +1467,30 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(missing_summary["state"], "missing")
         self.assertEqual(unsupported_summary["state"], "unsupported_schema")
         self.assertEqual(unsafe_summary["state"], "unsafe_copy")
+        self.assertEqual(
+            blocked_summary["route_elevator_reconciliation"]["state"],
+            "not_configured",
+        )
+        self.assertEqual(
+            unsafe_nested_summary["route_elevator_reconciliation"]["state"],
+            "unsafe_fields",
+        )
         self.assertIn("software_proof_docker_pc_route_debug_console_gate", encoded)
+        self.assertIn("software_proof_docker_pc_route_elevator_console_integration_gate", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertIn(
+            "delivery_success",
+            unsafe_nested_summary["route_elevator_reconciliation"]["not_proven"],
+        )
         self.assertFalse(blocked_summary["primary_actions_enabled"])
         self.assertFalse(missing_summary["delivery_success"])
         self.assertFalse(unsupported_summary["ack_post_allowed"])
         self.assertFalse(unsafe_summary["cursor_updates_allowed"])
+        self.assertFalse(unsafe_nested_summary["primary_actions_enabled"])
+        self.assertFalse(unsafe_nested_summary["route_elevator_reconciliation"]["delivery_success"])
+        self.assertFalse(unsafe_nested_summary["route_elevator_reconciliation"]["ack_post_allowed"])
+        self.assertFalse(unsafe_nested_summary["route_elevator_reconciliation"]["nav2_triggered"])
+        self.assertFalse(unsafe_nested_summary["route_elevator_reconciliation"]["hil_pass"])
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
         self.assertNotIn("secret-token", encoded)

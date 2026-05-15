@@ -1344,6 +1344,37 @@
     "availability": "available_with_software_proof_summary",
     "route_debug_status": "route_progress_summary_present / keyframe_preflight=pass",
     "recent_task_summary": "recent task debug summary present; raw task_record omitted",
+    "route_elevator_reconciliation": {
+      "schema": "trashbot.elevator_route_evidence_reconciliation_summary.v1",
+      "source_schema": "trashbot.elevator_route_evidence_reconciliation.v1",
+      "schema_version": 1,
+      "reconciliation_verdict": "blocked_pc_console_missing_same_evidence_ref_materials",
+      "safe_evidence_ref": "pc_route_elevator_reconciliation_fixture_20260516_0001",
+      "same_evidence_ref_required": true,
+      "same_evidence_ref_status": "mismatch_blocked",
+      "missing_materials": [
+        "pc console route completion signal same_ref summary",
+        "pc console dropoff/cancel completion material"
+      ],
+      "mismatch_reasons": [
+        "pc console route completion signal evidence_ref differs from elevator phase evidence"
+      ],
+      "safe_phone_copy": "PC route debug console 关联的 route_elevator_reconciliation 只读展示 safe evidence_ref、missing/mismatch 和 not_proven；这是 Docker/local software proof。",
+      "recovery_hint": "在 PC console 用同一 safe evidence_ref 重新生成路线完成信号与电梯复账摘要后，再由 diagnostics 提供 phone-safe summary。",
+      "evidence_boundary": "software_proof_docker_elevator_route_evidence_reconciliation_gate",
+      "integration_boundary": "software_proof_docker_pc_route_elevator_console_integration_gate",
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "not_proven": [
+        "真实电梯门状态",
+        "真实 Nav2/fixed-route",
+        "同一 evidence_ref 上车实机复账",
+        "HIL",
+        "dropoff/cancel completion",
+        "delivery success",
+        "Objective 5 external proof"
+      ]
+    },
     "control_boundary": "read_only_no_mobile_control_grant",
     "safe_phone_copy": "PC route debug console 可用性只说明 route/task debug 摘要材料存在；这是 software proof，不是 HIL、真实路线运行或 delivery success。",
     "recovery_hint": "需要细看 route_progress、keyframe_preflight 或 task_record 时请回到 PC console；手机端不替代 PC 调试页面，Start、Confirm、Cancel 继续由既有 gates 控制。",

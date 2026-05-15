@@ -188,6 +188,16 @@ JSON must use `schema=trashbot.pc_route_debug_console.v1` and
 summary is metadata-only support material for the PC route debug console: it may
 include sanitized availability, route debug status, route progress,
 keyframe_preflight, recent task summary, `not_proven`, and safe support copy.
+It may also retain a sanitized nested `route_elevator_reconciliation` summary
+for the PC console route/elevator view. That nested summary has its own
+`evidence_boundary=software_proof_docker_pc_route_elevator_console_integration_gate`,
+but the parent `pc_route_debug_console.evidence_boundary` remains
+`software_proof_docker_pc_route_debug_console_gate`. The nested summary may
+only expose availability, reconciliation status, elevator assist status, route
+completion status, operator next steps, `not_proven`, safe copy, and explicit
+fail-closed flags: `delivery_success=false`, `primary_actions_enabled=false`,
+remote/terminal ACK disabled, cursor/persistence disabled, `nav2_triggered=false`,
+`hil_pass=false`, and dropoff/cancel completion false.
 Missing, unreadable, unsupported-schema, blocked, or unsafe-copy sources remain
 blocked/not_proven. This field is not a command/status/ACK envelope field, not a
 ROS action/topic/service, not Nav2 execution, not Start/Confirm/Cancel

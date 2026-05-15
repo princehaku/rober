@@ -312,6 +312,24 @@ reconciliation artifact 使用 `schema=trashbot.route_task_field_run_reconciliat
 
 `ready_for_route_task_field_run_reconciliation` 只表示 Docker/local software proof 的 execution pack 与 intake/review 材料可读、schema/boundary 支持、同一 `evidence_ref` 对齐且 phone-safe 摘要可展示。它不是真实 fixed-route/Nav2、真实路线采集、WAVE ROVER/HIL、真实投放、真实取消完成或 delivery success。该 CLI 不访问 ROS graph、Nav2 runtime、serial/UART、硬件、外部云、OSS/CDN、DB/queue 或 4G。
 
+## 4.8 PC Route Elevator Console Integration
+
+PC route debug console 可以在原 fixed-route status 与 recent task 摘要之外，可选读取上一轮电梯路线复账 artifact/summary：
+
+```bash
+python3 pc-tools/route/route_debug_web.py \
+  --status-json /tmp/trashbot_fixed_route_status.json \
+  --task-record-dir ~/.ros/trashbot_tasks \
+  --elevator-route-reconciliation /tmp/elevator_route_evidence_reconciliation.json \
+  --once-json
+```
+
+`/api/status`、`/api/summary` 与 HTML 页面使用同一份 `trashbot.pc_route_debug_console.v1` summary，父级证据边界保持 `software_proof_docker_pc_route_debug_console_gate`，以兼容 Robot diagnostics 的既有 PC console 消费契约。新增字段 `route_elevator_reconciliation` 只接受 `trashbot.elevator_route_evidence_reconciliation.v1` 或 `trashbot.elevator_route_evidence_reconciliation_summary.v1`，并要求输入 `source=software_proof`、`evidence_boundary=software_proof_docker_elevator_route_evidence_reconciliation_gate`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+该 section 只展示 safe `evidence_ref`、reconciliation status/verdict、same-evidence-ref 状态、source states、missing/mismatch 摘要、operator next steps、boundary、`not_proven` 和 `safe_copy`。嵌套 `route_elevator_reconciliation.evidence_boundary=software_proof_docker_pc_route_elevator_console_integration_gate`，并用 `source_evidence_boundary` 保留输入复账边界。缺文件、坏 JSON、unsupported schema/boundary、unsafe copy、success claim 或 control claim 都保持 blocked/not_proven；页面不读取 raw artifact、不暴露本机路径、token、serial/UART、WAVE ROVER、`/cmd_vel`、checksum 或 traceback。
+
+该 gate 是 Docker/local software proof only。它不证明真实 Nav2/fixed-route、真实路线采集、真实电梯、HIL、dropoff/cancel completion、delivery success、真实手机设备/browser 或 Objective 5 external proof。
+
 ## 5. 关键缺失与超时复现脚本（离线）
 
 ### 5.1 固定路线关键点缺失
