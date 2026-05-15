@@ -440,6 +440,31 @@ python3 pc-tools/evidence/elevator_assist_rehearsal_evidence.py \
 
 `--failure-phase` 会把 artifact verdict 置为 `blocked_rehearsal_failure_injected_not_proven`，用于 Robot dry-run 验证失败分支和人工接管原因；未传 failure 时，verdict 为 `ready_for_robot_dry_run_readonly_rehearsal_evidence_not_proven`。该 gate 仍只是 Docker/local software proof：它只证明本机可以生成同一 `evidence_ref` 的电梯主链路 rehearsal evidence，供 Robot 只读复现状态转移。它不是真实电梯门状态、真实目标楼层确认、真实人工协助、真实 Nav2/fixed-route、HIL、真实投放、真实取消完成、真实手机设备或 delivery success。非法 `evidence_ref`、非法 `target_floor`、unsafe copy、成功文案或控制放行声明都必须 fail closed，并继续保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
 
+## elevator route evidence reconciliation
+
+`pc-tools/evidence/elevator_route_evidence_reconciliation.py` 把 elevator rehearsal evidence 与 route/task completion signal 按同一 `evidence_ref` 复账，给 Robot diagnostics 与 mobile/web 后续只读消费提供安全 summary。它只读取本机 JSON artifact 或 phone-safe summary，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G：
+
+```bash
+python3 pc-tools/evidence/elevator_route_evidence_reconciliation.py \
+  --elevator-json /tmp/elevator_assist_rehearsal_evidence.json \
+  --route-completion-json /tmp/route_task_completion_signal.json \
+  --evidence-ref elevator-rehearsal-001 \
+  --output /tmp/elevator_route_evidence_reconciliation.json
+```
+
+需要直接给 sprint 验收、diagnostics fixture 或 mobile fixture 读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/elevator_route_evidence_reconciliation.py \
+  --elevator-json /tmp/elevator_assist_rehearsal_evidence.json \
+  --route-completion-json /tmp/route_task_completion_signal.json \
+  --once-json
+```
+
+输出 `schema=trashbot.elevator_route_evidence_reconciliation.v1`、summary `schema=trashbot.elevator_route_evidence_reconciliation_summary.v1`、`source=software_proof`、`evidence_boundary=software_proof_docker_elevator_route_evidence_reconciliation_gate`、`same_evidence_ref_required=true`、`same_evidence_ref_status`、`reconciliation_verdict`、`source_states`、`elevator_rehearsal_summary`、`route_completion_summary`、`materials_status`、`operator_next_steps`、`phone_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+该 reconciliation gate 仍只是 Docker/local software proof。`reconciled_not_proven` 只表示电梯 rehearsal evidence 与 route completion signal 都可读、schema/boundary/source 支持、同一 safe `evidence_ref` 对齐且摘要可安全展示；它不是真实电梯门状态、真实目标楼层确认、真实人工协助、真实 Nav2/fixed-route、WAVE ROVER/UART/HIL、真实投放、真实取消完成、真实手机设备、Objective 5 external proof 或 delivery success。缺任一 JSON、坏 JSON、unsupported schema/boundary、`source!=software_proof`、缺 `evidence_ref`、`evidence_ref` mismatch、unsafe copy、`primary_actions_enabled=true`、`delivery_success=true` 或成功文案都会 fail closed，并继续保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

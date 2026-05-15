@@ -592,6 +592,30 @@ python3 pc-tools/evidence/route_task_completion_signal.py \
 
 该 gate 仍是 software proof。`completed_not_proven` 只表示 Docker/local 材料形状足够进入人工复核，不触发 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；它不是真实 delivery、真实 dropoff/cancel completion、真实 fixed-route/Nav2、真实路线采集、HIL、真实手机设备或 Objective 5 external proof。
 
+### 5.10.1 elevator route evidence reconciliation
+
+电梯 rehearsal evidence 进入 Robot dry-run 主链路后，route/task completion signal 还需要与它按同一 `evidence_ref` 复账，避免电梯阶段材料和路线完成信号来自不同 run：
+
+```bash
+python3 pc-tools/evidence/elevator_route_evidence_reconciliation.py \
+  --elevator-json /tmp/elevator_assist_rehearsal_evidence.json \
+  --route-completion-json /tmp/route_task_completion_signal.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+输出 artifact 使用 `schema=trashbot.elevator_route_evidence_reconciliation.v1`，summary 使用 `schema=trashbot.elevator_route_evidence_reconciliation_summary.v1`，证据边界固定为 `software_proof_docker_elevator_route_evidence_reconciliation_gate`。顶层固定包含 `source=software_proof`、`same_evidence_ref_required=true`、`same_evidence_ref_status`、`reconciliation_verdict`、`source_states`、`elevator_rehearsal_summary`、`route_completion_summary`、`materials_status`、`operator_next_steps`、`phone_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+保守阻断规则：
+
+- elevator rehearsal evidence 或 route completion signal 缺失、JSON 不可读或不是 JSON object：输出 blocked，不把异常当复账通过。
+- 任一输入 schema、evidence boundary 或 `source=software_proof` 边界不支持：输出 blocked。
+- 任一输入缺 `evidence_ref` 或与 `--evidence-ref` 不一致：输出 `blocked_missing_evidence_ref` 或 `blocked_evidence_ref_mismatch`。
+- phone-safe summary 命中凭证、raw ROS topic、serial/UART、baudrate、WAVE ROVER、traceback、checksum、complete artifact 或 raw robot response：输出 `blocked_unsafe_copy`。
+- 任一输入含 `delivery_success=true`、`primary_actions_enabled=true`、`hil_pass=true` 或完成/成功文案：输出 blocked，并继续强制 `delivery_success=false` 与 `primary_actions_enabled=false`。
+
+该 gate 仍是 software proof。`reconciled_not_proven` 只表示 Docker/local 电梯 rehearsal evidence 与 route completion signal 的材料形状、同一 `evidence_ref` 和安全摘要可进入人工复核；它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、硬件、外部云、OSS/CDN、DB/queue 或 4G，也不证明真实 fixed-route/Nav2、真实路线采集、HIL、dropoff/cancel completion、手机设备现场验收或 delivery success。
+
 ### 5.11 route/task field-run console
 
 completion signal 之后，PC/operator 还需要一份可直接查看的现场运行准备 console。`pc-tools/evidence/route_task_field_run_console.py` 只读 execution pack、route status/replay、task record 和 completion signal，生成现场准备计划、采集清单、same `evidence_ref` verdict、robot diagnostics 只读摘要和 mobile readonly 摘要：

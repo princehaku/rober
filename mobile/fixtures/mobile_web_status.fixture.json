@@ -75,6 +75,47 @@
       "delivery success"
     ]
   },
+  "elevator_route_evidence_reconciliation": {
+    "schema": "trashbot.elevator_route_evidence_reconciliation.v1",
+    "summary_schema": "trashbot.elevator_route_evidence_reconciliation_summary.v1",
+    "schema_version": 1,
+    "reconciliation_verdict": "blocked_missing_same_evidence_ref_materials",
+    "safe_evidence_ref": "elevator_route_evidence_reconciliation_fixture_20260516_0001",
+    "same_evidence_ref_required": true,
+    "same_evidence_ref_status": "mismatch_blocked",
+    "source_states": {
+      "elevator_assist_rehearsal_evidence": "available_same_ref_pending_field_material",
+      "route_task_completion_signal": "missing_completion_signal_same_ref"
+    },
+    "missing_materials": [
+      "route_task_completion_signal_summary",
+      "real field-run task record",
+      "dropoff/cancel completion material"
+    ],
+    "mismatch_reasons": [
+      "route completion signal not available for this safe evidence_ref"
+    ],
+    "operator_next_steps": [
+      "按同一 evidence_ref 补齐 route_task_completion_signal_summary。",
+      "复核电梯阶段证据、路线运行记录和终端动作材料是否同源。"
+    ],
+    "safe_phone_copy": "电梯路线证据复账只读展示 safe evidence_ref、source states、missing/mismatch 和 operator next steps；这是 Docker/local software proof。",
+    "recovery_hint": "补齐同一 evidence_ref 的路线完成信号后重新复账；手机端不放行 Start、Confirm 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_elevator_route_evidence_reconciliation_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实电梯门状态",
+      "真实目标楼层确认",
+      "真实人工协助记录",
+      "真实 Nav2/fixed-route",
+      "同一 evidence_ref 上车实机复账",
+      "HIL",
+      "dropoff/cancel completion",
+      "delivery success",
+      "Objective 5 external proof"
+    ]
+  },
   "mobile_action_confirmation": {
     "schema": "trashbot.mobile_action_confirmation.v1",
     "schema_version": 1,
@@ -2164,6 +2205,39 @@
           "HIL",
           "delivery success"
         ]
+      },
+      "elevator_route_evidence_reconciliation_summary": {
+        "schema": "trashbot.elevator_route_evidence_reconciliation_summary.v1",
+        "source_schema": "trashbot.elevator_route_evidence_reconciliation.v1",
+        "schema_version": 1,
+        "reconciliation_verdict": "status_diagnostics_summary_blocked_elevator_route_reconciliation",
+        "safe_evidence_ref": "status_diagnostics_elevator_route_reconciliation_fixture_20260516_0001",
+        "same_evidence_ref_required": true,
+        "same_evidence_ref_status": "same_ref_mismatch_blocked",
+        "source_states": {
+          "elevator_assist_rehearsal_evidence": "available",
+          "route_task_completion_signal": "mismatch"
+        },
+        "missing_materials": [
+          "status diagnostics same evidence_ref route completion signal"
+        ],
+        "mismatch_reasons": [
+          "status diagnostics completion signal evidence_ref mismatch"
+        ],
+        "operator_next_steps": [
+          "status diagnostics rerun elevator route evidence reconciliation with one safe evidence_ref"
+        ],
+        "safe_phone_copy": "status diagnostics summary 中的电梯路线证据复账只读展示，不放行控制动作。",
+        "recovery_hint": "按同一 evidence_ref 补齐电梯阶段、路线 completion signal、task record 和终端动作材料。",
+        "evidence_boundary": "software_proof_docker_elevator_route_evidence_reconciliation_gate",
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "not_proven": [
+          "真实电梯门状态",
+          "真实 Nav2/fixed-route",
+          "HIL",
+          "delivery success"
+        ]
       }
     }
   },
@@ -2243,6 +2317,42 @@
         "真实电梯门状态",
         "真实目标楼层确认",
         "HIL",
+        "delivery success"
+      ]
+    },
+    "elevator_route_evidence_reconciliation_summary": {
+      "schema": "trashbot.elevator_route_evidence_reconciliation_summary.v1",
+      "source_schema": "trashbot.elevator_route_evidence_reconciliation.v1",
+      "schema_version": 1,
+      "reconciliation_verdict": "phone_readiness_blocked_elevator_route_reconciliation",
+      "safe_evidence_ref": "phone_readiness_elevator_route_reconciliation_fixture_20260516_0001",
+      "same_evidence_ref_required": true,
+      "same_evidence_ref_status": "same_ref_required_missing_completion_signal",
+      "source_states": {
+        "elevator_assist_rehearsal_evidence": "available",
+        "route_task_completion_signal": "missing"
+      },
+      "missing_materials": [
+        "route_task_completion_signal_summary",
+        "same evidence_ref field-run record"
+      ],
+      "mismatch_reasons": [
+        "completion signal not linked to the elevator evidence_ref"
+      ],
+      "operator_next_steps": [
+        "phone_readiness 要求同一 evidence_ref 补齐 route completion signal。",
+        "保持 delivery_success=false 和 primary_actions_enabled=false。"
+      ],
+      "safe_phone_copy": "phone_readiness 中的 elevator_route_evidence_reconciliation_summary 只读展示，不证明真实路线或真实电梯。",
+      "recovery_hint": "等待 Robot diagnostics 用同一 evidence_ref 补齐 completion signal 后再复账。",
+      "evidence_boundary": "software_proof_docker_elevator_route_evidence_reconciliation_gate",
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "not_proven": [
+        "真实电梯门状态",
+        "真实 Nav2/fixed-route",
+        "HIL",
+        "dropoff/cancel completion",
         "delivery success"
       ]
     },

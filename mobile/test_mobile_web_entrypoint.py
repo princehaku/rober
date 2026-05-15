@@ -620,6 +620,84 @@ class MobileWebEntrypointTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, elevator_fixture_text)
 
+    def test_elevator_route_evidence_reconciliation_panel_is_read_only_and_phone_safe(self):
+        app = self.read("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # 电梯路线复账只消费 phone-safe summary，不读取 raw artifact，也不改变动作 gating。
+        self.assertIn("ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_BOUNDARY", app)
+        self.assertIn("UNSAFE_ELEVATOR_ROUTE_RECONCILIATION_TEXT", app)
+        self.assertIn("safeElevatorRouteReconciliationText", app)
+        self.assertIn("elevatorRouteEvidenceReconciliationCandidate", app)
+        self.assertIn("elevatorRouteEvidenceReconciliationFromStatus", app)
+        self.assertIn("ensureElevatorRouteEvidenceReconciliationPanel", app)
+        self.assertIn("renderElevatorRouteEvidenceReconciliation", app)
+        self.assertIn("电梯路线证据复账", app)
+        self.assertIn("elevator_route_evidence_reconciliation", app)
+        self.assertIn("elevator_route_evidence_reconciliation_summary", app)
+        self.assertIn("diagnosticsSummary.elevator_route_evidence_reconciliation", app)
+        self.assertIn("statusDiagnosticsSummary.elevator_route_evidence_reconciliation_summary", app)
+        self.assertIn("reconciliation_verdict", app)
+        self.assertIn("same_evidence_ref_status", app)
+        self.assertIn("source_states", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("mismatch_reasons", app)
+        self.assertIn("operator_next_steps", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", app)
+        self.assertIn("software_proof_docker_elevator_route_evidence_reconciliation_gate", app)
+        self.assertIn("同一 evidence_ref 上车实机复账", app)
+        self.assertIn("Objective 5 external proof", app)
+        self.assertNotRegex(app, r"elevatorRouteEvidenceReconciliation.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"elevatorRouteEvidenceReconciliation.*fetchJson\(ENDPOINTS\.diagnostics")
+
+        self.assertIn("trashbot.elevator_route_evidence_reconciliation.v1", fixture_text)
+        self.assertIn("trashbot.elevator_route_evidence_reconciliation_summary.v1", fixture_text)
+        self.assertIn("elevator_route_evidence_reconciliation_fixture_20260516_0001", fixture_text)
+        self.assertIn("phone_readiness_elevator_route_reconciliation_fixture_20260516_0001", fixture_text)
+        self.assertIn("status_diagnostics_elevator_route_reconciliation_fixture_20260516_0001", fixture_text)
+        self.assertEqual(
+            fixture["elevator_route_evidence_reconciliation"]["evidence_boundary"],
+            "software_proof_docker_elevator_route_evidence_reconciliation_gate",
+        )
+        self.assertEqual(
+            fixture["elevator_route_evidence_reconciliation"]["same_evidence_ref_required"],
+            True,
+        )
+        self.assertEqual(
+            fixture["phone_readiness"]["elevator_route_evidence_reconciliation_summary"]["primary_actions_enabled"],
+            False,
+        )
+        self.assertEqual(
+            fixture["diagnostics"]["summary"]["elevator_route_evidence_reconciliation_summary"]["delivery_success"],
+            False,
+        )
+        elevator_route_fixture_text = json.dumps(
+            {
+                "top_level": fixture["elevator_route_evidence_reconciliation"],
+                "readiness": fixture["phone_readiness"]["elevator_route_evidence_reconciliation_summary"],
+                "diagnostics": fixture["diagnostics"]["summary"]["elevator_route_evidence_reconciliation_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover",
+            "authorization",
+            "token",
+            "raw artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, elevator_route_fixture_text)
+
     def test_elevator_field_run_material_validation_panel_is_read_only_and_phone_safe(self):
         app = self.read("app.js")
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))

@@ -177,6 +177,14 @@ artifact 使用 `evidence_boundary=software_proof_docker_elevator_evidence_drive
 
 可选 `--failure-phase` 生成 `failure.phase`、`failure.reason` 和 `failure.manual_takeover_reason`，用于验证 Robot fail-closed 和人工接管记录。该 gate 只证明 Docker/local rehearsal evidence artifact 可被主链路消费，不证明真实电梯门状态、真实目标楼层确认、真实人工协助、真实 Nav2/fixed-route、HIL、真实投放、真实取消完成或 delivery success。非法 `evidence_ref`、非法 `target_floor`、unsafe copy、成功文案、`primary_actions_enabled=true` 或 `delivery_success=true` 都必须保持 blocked。
 
+## Elevator Route Evidence Reconciliation Gate
+
+`pc-tools/evidence/elevator_route_evidence_reconciliation.py` 用于把上一节 `elevator_assist_rehearsal_evidence` 与 `route_task_completion_signal` 复账到同一 `evidence_ref`。该 gate 只读取 Docker/local JSON artifact 或 phone-safe summary，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G。
+
+输出 artifact 使用 `schema=trashbot.elevator_route_evidence_reconciliation.v1`，summary 使用 `schema=trashbot.elevator_route_evidence_reconciliation_summary.v1`，证据边界固定为 `software_proof_docker_elevator_route_evidence_reconciliation_gate`。输出必须包含 `source=software_proof`、`same_evidence_ref_required=true`、`same_evidence_ref_status`、`reconciliation_verdict`、source states、missing/mismatch、operator next steps、phone-safe summary、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+`reconciled_not_proven` 只表示电梯 rehearsal evidence 与路线 completion signal 的 schema/boundary/source、同一 `evidence_ref` 和 phone-safe 摘要通过本机复账。它不证明真实电梯门状态、真实目标楼层确认、真实人工协助、真实 Nav2/fixed-route、真实路线采集、WAVE ROVER/UART/HIL、真实投放、真实取消完成、真实手机设备、Objective 5 external proof 或 delivery success。缺文件、坏 JSON、unsupported schema/boundary/source、`evidence_ref` mismatch、unsafe copy、`primary_actions_enabled=true`、`delivery_success=true` 或成功文案都必须 fail closed。
+
 ## 不做什么
 
 - 不把电梯能力写成当前 MVP 已完成。

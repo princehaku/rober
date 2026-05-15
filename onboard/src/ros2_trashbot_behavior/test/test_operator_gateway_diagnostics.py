@@ -34,6 +34,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_elevator_field_run_material_validation,
     summarize_elevator_field_run_review,
     summarize_elevator_field_run_execution_pack,
+    summarize_elevator_route_evidence_reconciliation,
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import (
@@ -3981,6 +3982,219 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["delivery_success"])
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_elevator_field_rehearsal_execution_pack_gate", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_elevator_route_evidence_reconciliation_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            reconciliation_path = Path(td) / "elevator_route_evidence_reconciliation.json"
+            reconciliation_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_route_evidence_reconciliation.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_route_evidence_reconciliation_gate"
+                        ),
+                        "evidence_ref": "evidence://elevator-route-reconcile-1",
+                        "same_evidence_ref_required": True,
+                        "reconciliation_verdict": {
+                            "status": "ready_for_operator_review_not_proven",
+                            "verdict": "same_evidence_ref_reconciled",
+                            "reason": "elevator evidence and route completion share one evidence_ref",
+                        },
+                        "source_states": {
+                            "elevator_rehearsal": "available",
+                            "route_completion_signal": "available",
+                        },
+                        "materials_status": {"status": "available"},
+                        "missing_materials": [],
+                        "mismatch_reasons": [],
+                        "operator_next_steps": [
+                            "Review same evidence_ref before any field-run claim."
+                        ],
+                        "robot_diagnostics_summary": {
+                            "status": "metadata_only",
+                            "reason": "safe robot diagnostics summary only",
+                        },
+                        "phone_safe_summary": {
+                            "safe_copy": (
+                                "Elevator route evidence reconciliation is metadata-only; "
+                                "delivery_success=false and not delivery success."
+                            ),
+                        },
+                        "not_proven": ["delivery_success", "real_elevator_operation"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                elevator_route_evidence_reconciliation_ref=str(reconciliation_path),
+            )
+            summary = payload["elevator_route_evidence_reconciliation"]
+            summary_alias = payload["elevator_route_evidence_reconciliation_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["schema"], "trashbot.elevator_route_evidence_reconciliation_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_elevator_route_evidence_reconciliation_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.elevator_route_evidence_reconciliation.v1")
+        self.assertEqual(summary["source_schema_version"], 1)
+        self.assertEqual(summary["reconciliation_verdict"]["status"], "ready_for_operator_review_not_proven")
+        self.assertEqual(summary["reconciliation_verdict"]["verdict"], "same_evidence_ref_reconciled")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://elevator-route-reconcile-1")
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertEqual(summary["source_states"]["elevator_rehearsal"], "available")
+        self.assertEqual(summary["source_states"]["route_completion_signal"], "available")
+        self.assertEqual(summary["materials_status"]["status"], "available")
+        self.assertIn("same evidence_ref", summary["operator_next_steps"][0])
+        self.assertIn("delivery_success=false", summary["phone_safe_summary"]["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("remote_ack", summary["not_proven"])
+        self.assertIn("terminal_ack", summary["not_proven"])
+        self.assertIn("real_elevator_operation", summary["not_proven"])
+        self.assertIn("real_nav2_fixed_route_run", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["dropoff_completion"])
+        self.assertFalse(summary["cancel_completion"])
+        self.assertNotIn(str(reconciliation_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_elevator_route_evidence_reconciliation_env_summary_missing_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "elevator_route_evidence_reconciliation_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_route_evidence_reconciliation_summary.v1",
+                        "source_schema": "trashbot.elevator_route_evidence_reconciliation.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_route_evidence_reconciliation_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_elevator_route_evidence_reconciliation_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://elevator-route-reconcile-2",
+                        "same_evidence_ref_required": True,
+                        "reconciliation_verdict": {
+                            "status": "blocked_mismatch",
+                            "verdict": "not_proven",
+                            "reason": "route completion evidence_ref mismatch",
+                        },
+                        "source_states": {
+                            "elevator_rehearsal": "available",
+                            "route_completion_signal": "mismatch",
+                        },
+                        "materials_status": {
+                            "status": "blocked",
+                            "missing_materials": ["same evidence_ref route completion signal"],
+                        },
+                        "mismatch_reasons": ["route completion evidence_ref mismatch"],
+                        "phone_safe_summary": {
+                            "safe_copy": "Elevator route reconciliation is metadata-only; delivery_success=false.",
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_artifact = os.environ.get("TRASHBOT_ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION")
+            previous_summary = os.environ.get("TRASHBOT_ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_SUMMARY")
+            os.environ.pop("TRASHBOT_ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION", None)
+            os.environ["TRASHBOT_ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "elevator_route_evidence_reconciliation"
+                ]
+            finally:
+                if previous_artifact is None:
+                    os.environ.pop("TRASHBOT_ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION", None)
+                else:
+                    os.environ["TRASHBOT_ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION"] = previous_artifact
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_SUMMARY"] = previous_summary
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_elevator_route_reconciliation.json"
+            missing_summary = summarize_elevator_route_evidence_reconciliation(str(missing_path))
+
+            unsupported_path = Path(td) / "unsupported_elevator_route_reconciliation.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_field_run_execution_pack.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_rehearsal_execution_pack_gate"
+                        ),
+                        "safe_copy": "Unsupported elevator route reconciliation is metadata-only; delivery_success=false.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsupported_summary = summarize_elevator_route_evidence_reconciliation(str(unsupported_path))
+
+            unsafe_path = Path(td) / "unsafe_elevator_route_reconciliation.json"
+            unsafe_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_route_evidence_reconciliation.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_route_evidence_reconciliation_gate"
+                        ),
+                        "same_evidence_ref_required": "false",
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                        "phone_safe_summary": {
+                            "safe_copy": "Elevator route reconciliation confirms delivery success and ACK posted.",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_summary = summarize_elevator_route_evidence_reconciliation(str(unsafe_path))
+            encoded = json.dumps(
+                [env_summary, missing_summary, unsupported_summary, unsafe_summary],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["reconciliation_verdict"]["status"], "blocked_mismatch")
+        self.assertEqual(env_summary["materials_status"]["status"], "blocked")
+        self.assertIn("route completion evidence_ref mismatch", env_summary["mismatch_reasons"])
+        self.assertEqual(missing_summary["reconciliation_verdict"]["status"], "missing")
+        self.assertEqual(unsupported_summary["reconciliation_verdict"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["reconciliation_verdict"]["status"], "unsafe_fields")
+        self.assertFalse(unsafe_summary["same_evidence_ref_required"])
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_elevator_route_evidence_reconciliation_gate", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
