@@ -150,7 +150,7 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         node.dropoff_mode = "dry_run"
         node.dropoff_timeout_sec = 0.0
         node.fixed_route_status_file = str(fixed_route_status_file)
-        node.elevator_assist_enabled = False
+        node.elevator_assist_enabled = True
         node.elevator_assist_mode = "dry_run"
         node.elevator_assist_target_floor = "1"
         node.elevator_assist_dry_run_failure = ""
@@ -159,7 +159,7 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         node._clear_collection_active = lambda: None
         return node
 
-    def test_execute_collection_dry_run_success_sets_result_and_record(self):
+    def test_execute_collection_default_elevator_assist_dry_run_success_sets_result_and_record(self):
         with tempfile.TemporaryDirectory() as td:
             node = self.make_orchestrator(Path(td))
             goal = FakeGoalHandle()
@@ -179,12 +179,48 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["final_state"], "idle")
         self.assertEqual(payload["delivery_mode"], "dry_run")
         self.assertEqual(payload["dropoff_result"]["result_code"], "dry_run")
-        self.assertEqual(payload["elevator_assist"]["enabled"], False)
-        self.assertEqual(payload["elevator_assist"]["phase"], "disabled")
+        self.assertEqual(payload["elevator_assist"]["enabled"], True)
+        self.assertEqual(payload["elevator_assist"]["mode"], "dry_run")
+        self.assertEqual(payload["elevator_assist"]["phase"], "resume_delivery")
+        self.assertEqual(
+            payload["elevator_assist"]["proof_gate"],
+            "software_proof_docker_elevator_assist_default_mainline_gate",
+        )
+        self.assertIn("not real elevator", payload["elevator_assist"]["boundary"])
+        self.assertIn("不证明真实电梯", payload["elevator_assist"]["safe_phone_copy"])
+        self.assertEqual(payload["elevator_assist"]["delivery_success"], False)
+        self.assertEqual(payload["elevator_assist"]["primary_actions_enabled"], False)
+        self.assertEqual(payload["elevator_assist"]["failure_reason"], "")
+        self.assertEqual(payload["elevator_assist"]["manual_takeover_reason"], "")
         self.assertEqual(payload["source"], "software_proof")
         self.assertEqual(payload["evidence_ref"], "")
         self.assertEqual(payload["failure_code"], "")
         self.assertEqual(payload["human_intervention_required"], False)
+
+    def test_execute_collection_elevator_assist_explicitly_disabled_records_warning_boundary(self):
+        with tempfile.TemporaryDirectory() as td:
+            node = self.make_orchestrator(Path(td))
+            node.elevator_assist_enabled = False
+            goal = FakeGoalHandle()
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        self.assertTrue(result.success)
+        self.assertTrue(goal.succeeded)
+        self.assertEqual(payload["elevator_assist"]["enabled"], False)
+        self.assertEqual(payload["elevator_assist"]["phase"], "disabled")
+        self.assertEqual(payload["elevator_assist"]["reason"], "disabled_by_operator")
+        self.assertIn("explicitly disabled", payload["elevator_assist"]["warning"])
+        self.assertEqual(
+            payload["elevator_assist"]["proof_gate"],
+            "software_proof_docker_elevator_assist_default_mainline_gate",
+        )
+        self.assertIn("not real elevator", payload["elevator_assist"]["boundary"])
+        self.assertIn("不证明真实电梯", payload["elevator_assist"]["safe_phone_copy"])
+        self.assertEqual(payload["elevator_assist"]["delivery_success"], False)
+        self.assertEqual(payload["elevator_assist"]["primary_actions_enabled"], False)
+        self.assertIn("elevator_assist_enabled=true", payload["elevator_assist"]["rerun_guidance"])
 
     def test_execute_collection_elevator_assist_dry_run_records_happy_path(self):
         with tempfile.TemporaryDirectory() as td:
@@ -219,6 +255,13 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["elevator_assist"]["phase"], "resume_delivery")
         self.assertEqual(payload["elevator_assist"]["target_floor"], "1")
         self.assertEqual(
+            payload["elevator_assist"]["proof_gate"],
+            "software_proof_docker_elevator_assist_default_mainline_gate",
+        )
+        self.assertEqual(payload["elevator_assist"]["delivery_success"], False)
+        self.assertEqual(payload["elevator_assist"]["primary_actions_enabled"], False)
+        self.assertIn("real_nav2_or_fixed_route", payload["elevator_assist"]["not_proven"])
+        self.assertEqual(
             payload["elevator_assist"]["speaker_prompt"],
             self.module.ELEVATOR_ASSIST_PROMPT,
         )
@@ -245,6 +288,15 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["elevator_assist"]["state"], "failed")
         self.assertEqual(payload["elevator_assist"]["phase"], "waiting_target_floor")
         self.assertEqual(payload["elevator_assist"]["evidence"]["failure"], "target_floor_unconfirmed")
+        self.assertEqual(
+            payload["elevator_assist"]["proof_gate"],
+            "software_proof_docker_elevator_assist_default_mainline_gate",
+        )
+        self.assertEqual(payload["elevator_assist"]["failure_reason"], "target floor was not confirmed by dry-run evidence")
+        self.assertEqual(payload["elevator_assist"]["manual_takeover_reason"], "target_floor_unconfirmed")
+        self.assertIn("不证明真实电梯", payload["elevator_assist"]["safe_phone_copy"])
+        self.assertEqual(payload["elevator_assist"]["delivery_success"], False)
+        self.assertEqual(payload["elevator_assist"]["primary_actions_enabled"], False)
         self.assertEqual(payload["result_path"], "")
         self.assertEqual(payload["evidence_ref"], "")
         self.assertIn("target floor", payload["error_message"])

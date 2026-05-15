@@ -8,7 +8,21 @@
 
 ## 2026-05-15 系列
 
-更新时间：2026-05-15 08:14 Asia/Shanghai。
+更新时间：2026-05-15 09:17 Asia/Shanghai。
+
+### 2026-05-15 10-11｜elevator assist default mainline｜O2 电梯 assisted delivery 默认 dry-run 主链路
+
+本轮 `sprints/2026.05.15_10-11_elevator-assist-default-mainline/` 收口 Objective 2 KR7：`task_orchestrator.py` 与 `autonomous.launch.py` 将 `elevator_assist_enabled` 默认启用，`elevator_assist_mode=dry_run` 保持安全默认；task record / diagnostics 增加 `software_proof_docker_elevator_assist_default_mainline_gate`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、safe phone copy、rerun guidance、失败原因和人工接管原因；显式关闭记录 `reason=disabled_by_operator` 与 warning，不阻断非跨楼层 dry-run。`mobile/web` 新增只读“电梯辅助状态” panel，消费 `elevator_assist` / `elevator_assist_summary` / compatible phone_readiness/diagnostics，展示 dry_run、phase、target floor、phase chain、human-help request、failure/takeover reason、boundary 和 not_proven，且不改变 Start/Confirm/Cancel gating。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 约 73% | 本轮未改硬件、WAVE ROVER、UART、Orange Pi 或真实串口；`software_proof_docker_elevator_assist_default_mainline_gate` 明确不证明 HIL。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 约 70% | 默认电梯 assisted delivery dry-run 主链路、task record/diagnostics metadata、disabled warning、手机只读解释和 boundary 围栏已在本机软件验证中通过，因此从约 69% 保守上调到约 70%。仍缺真实电梯、真实喇叭/TTS、真实 Nav2/fixed-route、真实 WAVE ROVER/UART/HIL、同一 `evidence_ref` 上车实机复账、真实 dropoff/cancel completion 和 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 约 69% | 本轮未新增真实路线采集、Nav2 waypoint/fixed-route runtime log 或关键帧实景证据；不因 elevator dry-run 默认主链路上调。 |
+| Objective 4：手机用户体验与低成本量产边界 | 约 73% | 手机端新增 O2 电梯 dry-run 只读解释 panel，但没有新增真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 或量产实物验收；不单独上调。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 约 66% | 本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或外部 probe 材料；不因本地 elevator-assist software proof 上调。 |
+
+本轮验证：Robot py_compile pass；`test_task_orchestrator_collection_execution.py` `Ran 11 tests in 0.013s OK`；`mobile/test_mobile_web_entrypoint.py` `Ran 41 tests in 0.095s OK`；mobile py_compile pass；`node --check mobile/web/app.js` pass；required `rg` pass；scoped `git diff --check` pass。
 
 ### 2026-05-15 09-10｜route-task-field-run-material-validation｜O2/O3 material validation software proof，任务闭环与固定路线均由约 68% 上调到约 69%
 

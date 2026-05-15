@@ -7,6 +7,38 @@
   "can_collect": true,
   "can_confirm_dropoff": false,
   "can_cancel": false,
+  "elevator_assist": {
+    "schema": "trashbot.elevator_assist_summary.v1",
+    "schema_version": 1,
+    "overall_status": "default_dry_run_enabled",
+    "mode": "dry_run",
+    "phase": "requesting_floor_help",
+    "target_floor": "1F",
+    "phase_plan": [
+      {"phase": "waiting_elevator_open", "safe_phone_copy": "等待电梯开门。"},
+      {"phase": "entering_elevator", "safe_phone_copy": "门开后进入电梯。"},
+      {"phase": "requesting_floor_help", "safe_phone_copy": "请求旁人帮忙按目标楼层。"},
+      {"phase": "waiting_target_floor", "safe_phone_copy": "等待目标楼层到达。"},
+      {"phase": "exiting_elevator", "safe_phone_copy": "目标楼层开门后驶出。"},
+      {"phase": "resume_delivery", "safe_phone_copy": "驶出后继续送达流程。"}
+    ],
+    "speaker_prompt": "请帮我按一下目标楼层。",
+    "human_help_request": "需要人工按目标楼层；未确认目标楼层时保持接管提示。",
+    "takeover_reason": "disabled warning fixture：未确认目标楼层或电梯未开门时需要人工接管。",
+    "safe_phone_copy": "电梯 assisted delivery 已进入默认 dry-run 解释面板；这是 software proof only，不证明真实电梯或真实送达。",
+    "recovery_hint": "如果未开门、未确认目标楼层或超时，请人工接管电梯段任务。",
+    "evidence_boundary": "software_proof_docker_elevator_assist_default_mainline_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实电梯",
+      "真实喇叭/TTS",
+      "真实 Nav2/fixed-route",
+      "HIL",
+      "真实送达",
+      "delivery success"
+    ]
+  },
   "mobile_action_confirmation": {
     "schema": "trashbot.mobile_action_confirmation.v1",
     "schema_version": 1,
@@ -1806,6 +1838,27 @@
     "safe_phone_copy": "手机入口可继续；这是静态 fixture smoke，不是真实机器人状态。",
     "recovery_hint": "真实运行时请读取后端 /api/status。",
     "support_level": "local_fallback",
+    "elevator_assist_summary": {
+      "schema": "trashbot.elevator_assist_summary.v1",
+      "schema_version": 1,
+      "overall_status": "default_dry_run_enabled",
+      "mode": "dry_run",
+      "phase": "waiting_target_floor",
+      "target_floor": "1F",
+      "safe_phone_copy": "phone_readiness 中的电梯辅助摘要只解释默认 dry-run；不证明真实电梯、真实喇叭、真实 Nav2 或 HIL。",
+      "human_help_request": "请人工确认目标楼层并在异常时接管。",
+      "takeover_reason": "未开门、未确认目标楼层或超时。",
+      "evidence_boundary": "software_proof_docker_elevator_assist_default_mainline_gate",
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "not_proven": [
+        "真实电梯",
+        "真实喇叭/TTS",
+        "真实 Nav2/fixed-route",
+        "HIL",
+        "真实送达"
+      ]
+    },
     "action_permissions": {
       "can_collect": true,
       "can_confirm_dropoff": false,

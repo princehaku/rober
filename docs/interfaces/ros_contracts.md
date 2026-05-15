@@ -87,6 +87,10 @@ The ESP32 feedback frame used by this contract is vendor `T=1001` with at least 
 | `dropoff_mode` | `dry_run`, `manual_confirm` | `dry_run` confirms immediately. `manual_confirm` waits through `dropoff_timeout_sec` unless canceled. |
 | `dropoff_timeout_sec` | float seconds | Manual dropoff confirmation window. |
 | `return_target` | waypoint name or empty | Optional return waypoint. Empty means no return navigation. |
+| `elevator_assist_enabled` | boolean, default `true` | Enables the elevator assisted delivery dry-run subflow by default as `software_proof_docker_elevator_assist_default_mainline_gate`. Setting it to `false` must produce `reason=disabled_by_operator`, recovery guidance, `delivery_success=false`, and `primary_actions_enabled=false`; it does not block a non-cross-floor dry-run task. |
+| `elevator_assist_mode` | `dry_run` | Default and only software-only elevator assisted delivery mode. It records waiting for elevator open, entering, requesting floor help, waiting target floor, exiting, and resume-delivery phases without claiming a real elevator, real speaker/TTS, real Nav2/fixed-route, or HIL. |
+| `elevator_assist_target_floor` | string | Target floor copied into elevator assisted delivery task records and prompt context. |
+| `elevator_assist_dry_run_failure` | empty, `door_timeout`, `target_floor_unconfirmed`, `unsafe_to_exit` | Optional software proof failure injection. Failure records must include phase, failure reason, manual takeover reason, and not-proven boundary metadata. |
 
 ### Task Record Evidence Boundary
 
@@ -107,6 +111,19 @@ record only means the configured behavior state machine finished under its
 current mode, such as `dry_run` or software fixed-route status rehearsal. It is
 not delivery success, not real Nav2/fixed-route execution, not WAVE ROVER
 motion, and not HIL evidence.
+
+Elevator assisted delivery is now part of the default behavior dry-run mainline:
+`elevator_assist_enabled=true` with `elevator_assist_mode=dry_run`. The
+`task_record.elevator_assist` payload is metadata only and must include
+`proof_gate=software_proof_docker_elevator_assist_default_mainline_gate`,
+`not_proven`, `delivery_success=false`, `primary_actions_enabled=false`,
+`safe_phone_copy`, and rerun guidance. A successful elevator dry-run only means
+the state chain was recorded in local/Docker software proof; it is not real
+elevator operation, not real speaker/TTS playback, not real Nav2/fixed-route
+execution, not HIL, and 不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功.
+If disabled by operator config, the payload must report
+`reason=disabled_by_operator` and keep the same boundary fields while allowing a
+non-cross-floor dry-run task to continue.
 
 Operator diagnostics may additionally expose `route_task_rehearsal` from a
 configured route/task rehearsal artifact. The diagnostics summary uses

@@ -167,8 +167,10 @@ def generate_launch_description():
         description='Optional waypoint name to return to after dropoff')
 
     elevator_assist_enabled_arg = DeclareLaunchArgument(
-        'elevator_assist_enabled', default_value='false',
-        description='Enable elevator assisted delivery dry-run subflow')
+        'elevator_assist_enabled', default_value='true',
+        description=(
+            'Enable elevator assisted delivery dry-run as the default software proof mainline; '
+            'not real elevator, not real TTS/speaker, not real Nav2/fixed-route, not HIL'))
 
     elevator_assist_mode_arg = DeclareLaunchArgument(
         'elevator_assist_mode', default_value='dry_run',

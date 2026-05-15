@@ -62,6 +62,22 @@ FIXED_ROUTE_PROGRESS_FIELDS = (
 
 
 ELEVATOR_ASSIST_PROMPT = "你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,"
+ELEVATOR_ASSIST_PROOF_GATE = "software_proof_docker_elevator_assist_default_mainline_gate"
+ELEVATOR_ASSIST_BOUNDARY = (
+    "software proof dry-run only; not real elevator, not real speaker/TTS, "
+    "not real Nav2/fixed-route, not HIL; 不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功"
+)
+ELEVATOR_ASSIST_NOT_PROVEN = (
+    "real_elevator",
+    "real_speaker_tts",
+    "real_nav2_or_fixed_route",
+    "hil",
+    "delivery_success",
+)
+ELEVATOR_ASSIST_RERUN_GUIDANCE = (
+    "Keep elevator_assist_enabled=true with elevator_assist_mode=dry_run for the "
+    "default software proof gate; only disable it with an operator-visible reason."
+)
 ELEVATOR_ASSIST_DRY_RUN_PHASES = (
     "approaching_elevator",
     "waiting_elevator_open",
@@ -122,7 +138,7 @@ class TaskOrchestrator(Node):
         self.declare_parameter("dropoff_mode", "dry_run")
         self.declare_parameter("dropoff_timeout_sec", 30.0)
         self.declare_parameter("fixed_route_status_file", "~/.ros/trashbot_fixed_route/status.json")
-        self.declare_parameter("elevator_assist_enabled", False)
+        self.declare_parameter("elevator_assist_enabled", True)
         self.declare_parameter("elevator_assist_mode", "dry_run")
         self.declare_parameter("elevator_assist_target_floor", "1")
         self.declare_parameter("elevator_assist_dry_run_failure", "")
@@ -925,37 +941,64 @@ class TaskOrchestrator(Node):
             self.dropoff_gate.clear()
 
     def _elevator_assist_disabled_status(self):
-        return {
+        status = {
             "enabled": False,
             "mode": getattr(self, "elevator_assist_mode", ""),
             "state": "disabled",
             "phase": "disabled",
             "requires_human_help": False,
-            "reason": "elevator assist disabled",
+            "reason": "disabled_by_operator",
+            "warning": "elevator assist default mainline was explicitly disabled by operator config",
             "target_floor": "",
             "speaker_prompt": "",
             "evidence": {},
             "events": [],
             "success": True,
         }
+        # 显式关闭仍允许非跨楼层 dry-run 继续，但必须把恢复建议和证据边界写进记录。
+        return self._with_elevator_assist_boundary(
+            status,
+            phone_copy=(
+                "电梯辅助流程已被操作员关闭；本次记录只证明软件 dry-run 可继续，"
+                "不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。"
+            ),
+        )
+
+    def _with_elevator_assist_boundary(self, payload, *, phone_copy):
+        payload.update(
+            {
+                "proof_gate": ELEVATOR_ASSIST_PROOF_GATE,
+                "evidence_boundary": ELEVATOR_ASSIST_PROOF_GATE,
+                "boundary": ELEVATOR_ASSIST_BOUNDARY,
+                "not_proven": list(ELEVATOR_ASSIST_NOT_PROVEN),
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "safe_phone_copy": phone_copy,
+                "rerun_guidance": ELEVATOR_ASSIST_RERUN_GUIDANCE,
+            }
+        )
+        # 这些字段面向 mobile/diagnostics 消费方，防止把 software proof 误渲染成真实送达。
+        return payload
 
     def _perform_elevator_assist(self, machine):
         if not self.elevator_assist_enabled:
             return self._elevator_assist_disabled_status()
         if self.elevator_assist_mode != "dry_run":
-            return {
+            return self._with_elevator_assist_boundary({
                 "enabled": True,
                 "mode": self.elevator_assist_mode,
                 "state": "failed",
                 "phase": "unsupported_mode",
                 "requires_human_help": True,
                 "reason": f"Unsupported elevator_assist_mode: {self.elevator_assist_mode}",
+                "failure_reason": f"Unsupported elevator_assist_mode: {self.elevator_assist_mode}",
+                "manual_takeover_reason": "unsupported_elevator_assist_mode",
                 "target_floor": self.elevator_assist_target_floor,
                 "speaker_prompt": ELEVATOR_ASSIST_PROMPT,
                 "evidence": {},
                 "events": [],
                 "success": False,
-            }
+            }, phone_copy="电梯辅助模式不是 dry_run，已保持失败关闭；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
 
         events = []
         evidence = {}
@@ -978,34 +1021,38 @@ class TaskOrchestrator(Node):
             evidence[phase] = evidence_key
             machine.elevator_phase(phase, json.dumps(event, ensure_ascii=False, sort_keys=True))
             if failure and failure["phase"] == phase:
-                return {
+                return self._with_elevator_assist_boundary({
                     "enabled": True,
                     "mode": "dry_run",
                     "state": "failed",
                     "phase": phase,
                     "requires_human_help": True,
                     "reason": failure["reason"],
+                    "failure_reason": failure["reason"],
+                    "manual_takeover_reason": failure["evidence"],
                     "target_floor": self.elevator_assist_target_floor,
                     "speaker_prompt": ELEVATOR_ASSIST_PROMPT,
                     "evidence": {**evidence, "failure": failure["evidence"]},
                     "events": events,
                     "success": False,
-                }
+                }, phone_copy="电梯辅助 dry-run 需要人工接管；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
 
         machine.elevator_completed("elevator assist dry-run complete; resume delivery")
-        return {
+        return self._with_elevator_assist_boundary({
             "enabled": True,
             "mode": "dry_run",
             "state": "resume_delivery",
             "phase": "resume_delivery",
             "requires_human_help": False,
             "reason": "elevator assist dry-run complete",
+            "failure_reason": "",
+            "manual_takeover_reason": "",
             "target_floor": self.elevator_assist_target_floor,
             "speaker_prompt": ELEVATOR_ASSIST_PROMPT,
             "evidence": evidence,
             "events": events,
             "success": True,
-        }
+        }, phone_copy="电梯辅助 dry-run 已走完默认软件主链路；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
 
     def _confirm_dropoff_callback(self, request, response):
         accepted, message = self.dropoff_gate.confirm(

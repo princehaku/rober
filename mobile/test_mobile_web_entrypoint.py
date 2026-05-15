@@ -199,6 +199,10 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("route_task_field_run_material_validation", app)
         self.assertIn("route_task_field_run_material_validation_summary", app)
         self.assertIn("routeTaskFieldRunMaterialValidationTitle", index)
+        self.assertIn("elevator_assist", app)
+        self.assertIn("elevator_assist_summary", app)
+        self.assertIn("phone_elevator_assist", app)
+        self.assertIn("software_proof_docker_elevator_assist_default_mainline_gate", app)
         self.assertIn("mobile_browser_acceptance_bundle", app)
         self.assertIn("phone_browser_acceptance_bundle", app)
         self.assertIn("mobile_acceptance_evidence_bundle", app)
@@ -509,6 +513,65 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("phone_readiness_material_validation_fixture_20260515_0001", fixture_text)
         self.assertNotRegex(app, r"routeTaskFieldRunMaterialValidation.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
         self.assertNotRegex(app, r"routeTaskFieldRunMaterialValidation.*fetchJson\(ENDPOINTS\.diagnostics")
+
+    def test_elevator_assist_panel_is_read_only_dry_run_and_phone_safe(self):
+        app = self.read("app.js")
+        fixture_text = json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8")), ensure_ascii=False)
+
+        # 电梯辅助只解释后端摘要，不改 index 静态结构，不改变 Start/Confirm/Cancel gating。
+        self.assertIn("ELEVATOR_ASSIST_BOUNDARY", app)
+        self.assertIn("UNSAFE_ELEVATOR_ASSIST_TEXT", app)
+        self.assertIn("safeElevatorAssistText", app)
+        self.assertIn("elevatorAssistCandidate", app)
+        self.assertIn("elevatorAssistFromStatus", app)
+        self.assertIn("ensureElevatorAssistPanel", app)
+        self.assertIn("renderElevatorAssist", app)
+        self.assertIn("elevator_assist", app)
+        self.assertIn("elevator_assist_summary", app)
+        self.assertIn("phone_elevator_assist", app)
+        self.assertIn("diagnosticsSummary.elevator_assist", app)
+        self.assertIn("statusDiagnosticsSummary.elevator_assist_summary", app)
+        self.assertIn("电梯辅助状态", app)
+        self.assertIn("等待开门、进入电梯、请求人工按目标楼层、等待目标楼层、开门后驶出、继续送达", app)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", app)
+        self.assertIn("software_proof_docker_elevator_assist_default_mainline_gate", app)
+        self.assertIn("真实电梯", app)
+        self.assertIn("真实喇叭/TTS", app)
+        self.assertIn("真实 Nav2/fixed-route", app)
+        self.assertIn("HIL", app)
+        self.assertIn("not_proven", app)
+        self.assertNotRegex(app, r"elevatorAssist.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"elevatorAssist.*fetchJson\(ENDPOINTS\.diagnostics")
+
+        self.assertIn("trashbot.elevator_assist_summary.v1", fixture_text)
+        self.assertIn("default_dry_run_enabled", fixture_text)
+        self.assertIn("requesting_floor_help", fixture_text)
+        self.assertIn("waiting_target_floor", fixture_text)
+        self.assertIn("disabled warning fixture", fixture_text)
+        self.assertIn("未确认目标楼层或电梯未开门时需要人工接管", fixture_text)
+        self.assertIn("software_proof_docker_elevator_assist_default_mainline_gate", fixture_text)
+        self.assertIn("不证明真实电梯", fixture_text)
+        self.assertIn("真实 Nav2/fixed-route", fixture_text)
+        elevator_fixture_text = json.dumps(
+            {
+                "top_level": json.loads(FIXTURE.read_text(encoding="utf-8"))["elevator_assist"],
+                "readiness": json.loads(FIXTURE.read_text(encoding="utf-8"))["phone_readiness"]["elevator_assist_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover",
+            "authorization",
+            "token",
+            "delivery_success\": true",
+        ):
+            self.assertNotIn(forbidden, elevator_fixture_text)
 
     def test_operation_log_panel_is_visible_and_read_only(self):
         app = self.read("app.js")
@@ -1332,6 +1395,18 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertTrue(payload["fixture"])
         self.assertIn("not live robot state", payload["fixture_note"])
         self.assertEqual(payload["phone_readiness"]["schema"], "trashbot.phone_readiness.v1")
+        self.assertEqual(payload["elevator_assist"]["schema"], "trashbot.elevator_assist_summary.v1")
+        self.assertEqual(payload["elevator_assist"]["mode"], "dry_run")
+        self.assertEqual(payload["elevator_assist"]["delivery_success"], False)
+        self.assertEqual(payload["elevator_assist"]["primary_actions_enabled"], False)
+        self.assertEqual(
+            payload["elevator_assist"]["evidence_boundary"],
+            "software_proof_docker_elevator_assist_default_mainline_gate",
+        )
+        self.assertEqual(
+            payload["phone_readiness"]["elevator_assist_summary"]["evidence_boundary"],
+            "software_proof_docker_elevator_assist_default_mainline_gate",
+        )
         self.assertEqual(payload["operation_log"]["schema"], "trashbot.phone_operation_log.v1")
         self.assertEqual(
             payload["operation_log"]["evidence_boundary"],
