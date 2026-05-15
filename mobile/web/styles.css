@@ -139,6 +139,7 @@ h2 {
 .route-field-run-reconciliation-panel,
 .route-field-run-evidence-kit-panel,
 .route-field-run-material-bundle-panel,
+.route-field-run-material-validation-panel,
 .route-task-completion-panel,
 .cloud-panel,
 .mobile-device-panel,
@@ -257,6 +258,7 @@ h2 {
 .route-field-run-reconciliation-grid,
 .route-field-run-evidence-kit-grid,
 .route-field-run-material-bundle-grid,
+.route-field-run-material-validation-grid,
 .route-task-completion-grid,
 .mobile-device-grid,
 .device-evidence-grid,
@@ -296,6 +298,7 @@ h2 {
 .route-field-run-reconciliation-grid div,
 .route-field-run-evidence-kit-grid div,
 .route-field-run-material-bundle-grid div,
+.route-field-run-material-validation-grid div,
 .route-task-completion-grid div,
 .mobile-device-grid div,
 .device-evidence-grid div,
@@ -691,6 +694,10 @@ dd {
   }
 
   .route-field-run-evidence-kit-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .route-field-run-material-validation-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

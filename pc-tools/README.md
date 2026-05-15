@@ -323,6 +323,31 @@ python3 pc-tools/evidence/route_task_field_run_material_bundle.py \
 
 该 material bundle 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、硬件、外部云、OSS/CDN、DB/queue 或 4G；`field_run_material_bundle_ready_not_proven` 只表示 PC 侧可以从 evidence kit 生成现场材料包和模板。它不是真实 Nav2/fixed-route、真实路线采集、HIL、真实 dropoff/cancel completion、delivery success、真实手机设备或 Objective 5 external proof。缺 evidence kit、坏 JSON、unsupported schema/boundary、`evidence_ref` mismatch、unsafe summary、`primary_actions_enabled=true`、输入含 `delivery_success=true` 或目录不可写时，CLI 会 fail closed，保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
 
+## route/task field-run material validation
+
+`pc-tools/evidence/route_task_field_run_material_validation.py` 只读上一轮 `route_task_field_run_material_bundle` artifact 和 `--material-dir`，把现场材料目录从“已生成模板”推进到“可校验状态”。它会检查 route、task、completion、operator notes、diagnostics、mobile summary 六类材料是否存在、是否仍是模板、是否坏 JSON、是否同一 `evidence_ref`、是否含 unsafe copy，以及是否越界声明 `primary_actions_enabled=true` 或 `delivery_success=true`：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_material_validation.py \
+  --material-bundle-json /tmp/route_task_field_run_material_bundle.json \
+  --material-dir /tmp/route_task_field_run_material_bundle \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_run_material_validation.json
+```
+
+需要直接给 diagnostics、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_material_validation.py \
+  --material-bundle-json /tmp/route_task_field_run_material_bundle.json \
+  --material-dir /tmp/route_task_field_run_material_bundle \
+  --once-json
+```
+
+输出 `schema=trashbot.route_task_field_run_material_validation.v1`、`schema_version=1`、`evidence_boundary=software_proof_docker_route_task_field_run_material_validation_gate`、`same_evidence_ref_required=true`、`material_validation_verdict`、`source_material_bundle`、`material_directory_status`、`material_validation_summary`、`operator_next_steps`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。`material_validation_summary` 使用 `schema=trashbot.route_task_field_run_material_validation_summary.v1`，供 Robot diagnostics 和 mobile 只读展示。
+
+该 material validation 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、硬件、外部云、OSS/CDN、DB/queue 或 4G；`field_run_material_validation_ready_not_proven` 只表示材料目录的文件形状、same `evidence_ref` 和 safe summary 条件可进入下一步 intake/review。它不是真实 Nav2/fixed-route、真实路线采集、HIL、真实 dropoff/cancel completion、delivery success、真实手机设备或 Objective 5 external proof。缺 material bundle、坏 JSON、unsupported schema/boundary、缺材料、模板未替换、`evidence_ref` mismatch、unsafe summary、`primary_actions_enabled=true` 或输入含 `delivery_success=true` 时，CLI 会 fail closed，保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

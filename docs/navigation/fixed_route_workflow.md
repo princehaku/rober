@@ -659,6 +659,29 @@ material bundle 使用 `evidence_boundary=software_proof_docker_route_task_field
 
 `field_run_material_bundle_ready_not_proven` 只表示 Docker/local software proof 的材料包生成能力已经可用。它不访问 ROS graph、Nav2 runtime、serial/UART、硬件、外部云、OSS/CDN、DB/queue 或 4G；它不是真实 fixed-route/Nav2、真实路线采集、真实投放、真实取消完成、HIL 或 delivery success。缺 evidence kit、坏 JSON、unsupported schema/boundary、`evidence_ref` mismatch、unsafe summary、`primary_actions_enabled=true`、输入含 `delivery_success=true` 或目录不可写时，都必须保持 blocked material bundle，再重建同一 `evidence_ref` 的 evidence kit 或换可写材料目录。
 
+### 5.14 route/task field-run material validation
+
+material bundle 生成目录后，真实现场材料回填前还需要一个 PC 侧 validation gate，把“模板已生成”变成“材料状态可检查”。`pc-tools/evidence/route_task_field_run_material_validation.py` 只读 `trashbot.route_task_field_run_material_bundle.v1` 和 `--material-dir`，不会访问 ROS graph、Nav2 runtime、serial/UART、硬件、外部云、OSS/CDN、DB/queue 或 4G：
+
+```bash
+python3 pc-tools/evidence/route_task_field_run_material_validation.py \
+  --material-bundle-json /tmp/route_task_field_run_material_bundle.json \
+  --material-dir /tmp/route_task_field_run_material_bundle \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+validation artifact 使用 `schema=trashbot.route_task_field_run_material_validation.v1`，证据边界固定为 `software_proof_docker_route_task_field_run_material_validation_gate`。核心字段包括：
+
+- `source_material_bundle`: 只暴露上一轮 bundle schema、boundary、verdict 和 safe `evidence_ref`，不复制完整 raw artifact。
+- `material_directory_status`: 检查 `route_status_template.json`、`task_record_template.json`、`completion_material_template.json`、`operator_notes.md`、`robot_diagnostics_summary_template.json` 和 `mobile_readonly_summary_template.json` 是否存在、可读、非占位模板、同 `evidence_ref` 且不含 unsafe copy。
+- `material_validation_summary`: `schema=trashbot.route_task_field_run_material_validation_summary.v1` 的只读消费摘要，给 Robot diagnostics 和 mobile/web 展示。
+- `missing_materials` / `placeholder_materials` / `mismatch_reasons`: 指向现场应补采、替换模板或统一 `evidence_ref` 的具体文件。
+- `not_proven`: 继续列出真实 Nav2/fixed-route、真实路线采集、真实硬件反馈、HIL、dropoff/cancel completion、delivery_success 和 O5 external proof 未证明。
+- `primary_actions_enabled=false` 与 `delivery_success=false`: validation 只说明材料状态，不放行控制动作，也不声明送达成功。
+
+`field_run_material_validation_ready_not_proven` 只表示 Docker/local material validation 通过，可以进入后续 intake/review 或现场复账。它不是真实 fixed-route/Nav2、真实路线采集、真实投放、真实取消完成、HIL、真实手机/browser 或 delivery success。缺 material bundle、坏 JSON、unsupported schema/boundary、缺材料、模板未替换、`evidence_ref` mismatch、unsafe summary、`primary_actions_enabled=true` 或输入含 `delivery_success=true` 时，都必须保持 blocked validation，并按 `operator_next_steps` 补材料或重建同一 `evidence_ref` 的 bundle。
+
 ## 6. Debug Web
 
 ### 6.1 Onboard ROS debug page

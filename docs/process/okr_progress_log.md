@@ -8,7 +8,17 @@
 
 ## 2026-05-15 系列
 
-更新时间：2026-05-15 07:13 Asia/Shanghai。
+更新时间：2026-05-15 08:14 Asia/Shanghai。
+
+### 2026-05-15 09-10｜route-task-field-run-material-validation｜O2/O3 material validation software proof，任务闭环与固定路线均由约 68% 上调到约 69%
+
+`sprints/2026.05.15_09-10_route-task-field-run-material-validation` 完成 `software_proof_docker_route_task_field_run_material_validation_gate`：Task A `autonomy-engineer` 新增 `pc-tools/evidence/route_task_field_run_material_validation.py` 和 `pc-tools/evidence/test_route_task_field_run_material_validation.py`，更新 `pc-tools/README.md`、`docs/navigation/fixed_route_workflow.md`。material validation artifact 读取 `trashbot.route_task_field_run_material_bundle.v1` 与 `--material-dir`，输出 `schema=trashbot.route_task_field_run_material_validation.v1`、`trashbot.route_task_field_run_material_validation_summary.v1`、`evidence_boundary=software_proof_docker_route_task_field_run_material_validation_gate`、same `evidence_ref`、missing/placeholder/mismatch materials、operator next steps、`not_proven`、`primary_actions_enabled=false`、`delivery_success=false`。Task A 验证输出 py_compile pass、`test_route_task_field_run_material_validation.py` `Ran 7 tests in 0.035s OK`、CLI `--help` pass、required `rg` pass、scoped diff check pass。
+
+Task B `robot-software-engineer` 更新 `operator_gateway_diagnostics.py`、`test_operator_gateway_diagnostics.py` 与 `docs/interfaces/ros_contracts.md`，新增 diagnostics metadata-only `route_task_field_run_material_validation` / `route_task_field_run_material_validation_summary` consumption。支持 explicit ref 和 `TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_VALIDATION` / `_SUMMARY` 环境变量来源；严格检查 schema、boundary 和 unsafe fields，固定 `delivery_success=false`、`primary_actions_enabled=false`，不触发 collect/dropoff/cancel、ACK、Nav2、HIL、dropoff/cancel completion 或 delivery success。Task B 验证输出 py_compile pass、diagnostics unittest `Ran 73 tests ... OK`、required `rg` pass、scoped diff check pass。
+
+Task C `full-stack-software-engineer` 更新 `mobile/web`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增只读“路线材料校验”panel。该 panel 展示 validation status、safe `evidence_ref`、missing/placeholder/mismatch materials、operator next steps、`delivery_success=false`、`primary_actions_enabled=false`、`not_proven` 和 boundary；不读取 raw artifact、本机路径、token、serial/UART、`/cmd_vel`、checksum 或 traceback，不改变 Start/Confirm/Cancel gating。Task C 验证输出 mobile unittest `Ran 40 tests ... OK`、py_compile pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 2 和 Objective 3 各从约 68% 保守上调到约 69%。Objective 2 的理由是 material bundle 已推进为 material validation，能把任务状态、dropoff/cancel 材料、operator notes、diagnostics、mobile summary 的缺失/占位/错配状态转成下一次真实 route/task field run 前的明确补证动作。Objective 3 的理由是 route status/replay、Nav2/fixed-route runtime log、execution pack、task record、completion signal、material bundle 和未来现场回填材料已统一到 same `evidence_ref` 的 validation artifact、Robot diagnostics summary 和 mobile read-only panel。Objective 5 保持约 66%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；Objective 1 和 Objective 4 保持约 73%。本轮 `software_proof_docker_route_task_field_run_material_validation_gate` 只证明 Docker/local material validation artifact、diagnostics summary、mobile read-only panel 和只读控制边界，不是真实 Nav2/fixed-route、真实路线采集、WAVE ROVER、真实串口/UART、HIL、同一 `evidence_ref` 上车实机复账、dropoff/cancel completion、delivery success、Objective 5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue 或 worker/migration；not real delivery evidence。
 
 ### 2026-05-15 08-09｜route-task-field-run-material-bundle｜O2/O3 material bundle software proof，任务闭环与固定路线均由约 67% 上调到约 68%
 

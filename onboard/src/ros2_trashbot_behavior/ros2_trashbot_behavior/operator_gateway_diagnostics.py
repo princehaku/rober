@@ -144,6 +144,15 @@ ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE_GATE = (
     "software_proof_docker_route_task_field_run_material_bundle_gate"
 )
+ROUTE_TASK_FIELD_RUN_MATERIAL_VALIDATION_SCHEMA = (
+    "trashbot.route_task_field_run_material_validation.v1"
+)
+ROUTE_TASK_FIELD_RUN_MATERIAL_VALIDATION_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_run_material_validation_summary.v1"
+)
+ROUTE_TASK_FIELD_RUN_MATERIAL_VALIDATION_GATE = (
+    "software_proof_docker_route_task_field_run_material_validation_gate"
+)
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -478,6 +487,40 @@ def _route_task_field_run_material_bundle_not_proven(bundle=None, summary_fragme
     source_values = []
     if isinstance(bundle.get("not_proven"), list):
         source_values.extend(bundle.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "real_route_collection",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "production_readiness",
+        "real_dropoff_completion",
+        "real_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_run_material_validation_not_proven(validation=None, summary_fragment=None):
+    # material validation 只确认材料包是否可交给现场复核；真实控制、ACK、Nav2/HIL 和交付结论必须外部证明。
+    validation = validation if isinstance(validation, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(validation.get("not_proven"), list):
+        source_values.extend(validation.get("not_proven"))
     if isinstance(summary_fragment.get("not_proven"), list):
         source_values.extend(summary_fragment.get("not_proven"))
     required = (
@@ -989,6 +1032,57 @@ def _default_route_task_field_run_material_bundle_summary(path, status="not_conf
     }
 
 
+def _default_route_task_field_run_material_validation_summary(path, status="not_configured", read_error=""):
+    # validation 默认 fail-closed；它只服务 diagnostics 展示，不能变成现场动作或验收通过信号。
+    return {
+        "schema": ROUTE_TASK_FIELD_RUN_MATERIAL_VALIDATION_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RUN_MATERIAL_VALIDATION_GATE,
+        "source_schema": "",
+        "source_evidence_boundary": "",
+        "validation_verdict": {
+            "status": status,
+            "verdict": "not_proven",
+            "reason": read_error or "route-task field-run material validation is not configured",
+        },
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "materials_status": {
+            "status": "blocked",
+            "reason": "route-task field-run material validation is not configured",
+        },
+        "validation_summary": {
+            "status": "blocked",
+            "reason": "route-task field-run material validation is not configured",
+        },
+        "material_validation_checks": [],
+        "operator_next_steps": [],
+        "robot_diagnostics_summary": {
+            "status": "blocked",
+            "reason": "route-task field-run material validation is not configured",
+        },
+        "mobile_readonly_summary": {
+            "safe_copy": "Route-task field-run material validation is metadata-only; delivery_success=false.",
+            "safe_phone_copy": "Route-task field-run material validation is metadata-only; delivery_success=false.",
+        },
+        "not_proven": _route_task_field_run_material_validation_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -1266,6 +1360,16 @@ def _route_task_field_run_material_bundle_source_contract(value):
     source_schema = str(value.get("schema") or "")
     source_boundary = str(value.get("evidence_boundary") or "")
     if source_schema == ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or "")
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _route_task_field_run_material_validation_source_contract(value):
+    # 支持直接消费 validation artifact 或 summary wrapper；wrapper 必须保留原始 schema/boundary 以免跨门槛误读。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == ROUTE_TASK_FIELD_RUN_MATERIAL_VALIDATION_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or "")
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
@@ -3827,6 +3931,259 @@ def summarize_route_task_field_run_material_bundle(path):
     return summary
 
 
+def summarize_route_task_field_run_material_validation(path):
+    """构建 route-task field-run material validation 的 metadata-only diagnostics 摘要。"""
+    validation_path = os.path.expanduser(str(path or ""))
+    summary = _default_route_task_field_run_material_validation_summary(
+        validation_path,
+        read_error="route-task field-run material validation is not configured",
+    )
+    if not validation_path:
+        return summary
+    if not os.path.exists(validation_path):
+        summary.update(
+            {
+                "validation_verdict": {
+                    "status": "missing",
+                    "verdict": "not_proven",
+                    "reason": "route-task field-run material validation missing",
+                },
+                "materials_status": {"status": "blocked", "reason": "material validation artifact missing"},
+                "validation_summary": {"status": "blocked", "reason": "material validation artifact missing"},
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "route-task field-run material validation artifact missing",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Route-task field-run material validation is missing; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field-run material validation is missing; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    try:
+        with open(validation_path, "r", encoding="utf-8") as f:
+            validation = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        safe_error = _redact_route_task_rehearsal_text(
+            f"failed reading route-task field-run material validation: {exc}"
+        )
+        summary.update(
+            {
+                "validation_verdict": {"status": "read_error", "verdict": "not_proven", "reason": safe_error},
+                "materials_status": {"status": "blocked", "reason": "material validation JSON read error"},
+                "validation_summary": {"status": "blocked", "reason": "material validation JSON read error"},
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "material validation JSON read error",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Route-task field-run material validation could not be read; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field-run material validation could not be read; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    if not isinstance(validation, dict):
+        summary.update(
+            {
+                "validation_verdict": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "route-task field-run material validation JSON must be an object",
+                },
+                "materials_status": {"status": "blocked", "reason": "material validation JSON shape is invalid"},
+                "validation_summary": {"status": "blocked", "reason": "material validation JSON shape is invalid"},
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "material validation JSON shape is invalid",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Route-task field-run material validation shape is invalid; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field-run material validation shape is invalid; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    # Autonomy 可能交付 artifact 或 summary wrapper；diagnostics 只白名单消费摘要字段并固定控制面关闭。
+    mobile_summary = {}
+    for candidate in (
+        validation.get("mobile_readonly_summary"),
+        validation.get("mobile_safe_summary"),
+        validation.get("phone_safe_summary"),
+        validation.get("route_task_field_run_material_validation_summary"),
+    ):
+        if isinstance(candidate, dict):
+            mobile_summary = candidate
+            break
+    robot_summary = (
+        validation.get("robot_diagnostics_summary")
+        if isinstance(validation.get("robot_diagnostics_summary"), dict)
+        else validation.get("diagnostics_summary")
+        if isinstance(validation.get("diagnostics_summary"), dict)
+        else {}
+    )
+    source_schema, source_boundary = _route_task_field_run_material_validation_source_contract(validation)
+    source_verdict = validation.get("validation_verdict")
+    if not isinstance(source_verdict, dict):
+        source_verdict = validation.get("material_validation_verdict")
+    if isinstance(source_verdict, dict):
+        verdict_status = _redact_route_task_rehearsal_text(
+            source_verdict.get("status")
+            or source_verdict.get("verdict")
+            or source_verdict.get("decision")
+            or validation.get("status")
+            or "blocked"
+        )
+        verdict_value = _redact_route_task_rehearsal_text(
+            source_verdict.get("verdict")
+            or source_verdict.get("decision")
+            or verdict_status
+            or "not_proven"
+        )
+        verdict_reason = _redact_route_task_rehearsal_text(
+            source_verdict.get("reason") or source_verdict.get("summary") or ""
+        )
+    else:
+        verdict_status = _redact_route_task_rehearsal_text(
+            validation.get("status") or robot_summary.get("status") or "blocked"
+        )
+        verdict_value = _redact_route_task_rehearsal_text(
+            validation.get("verdict") or robot_summary.get("verdict") or verdict_status or "not_proven"
+        )
+        verdict_reason = _redact_route_task_rehearsal_text(
+            validation.get("reason") or robot_summary.get("reason") or ""
+        )
+    materials_status = (
+        validation.get("materials_status")
+        if isinstance(validation.get("materials_status"), dict)
+        else robot_summary.get("materials_status") if isinstance(robot_summary.get("materials_status"), dict) else {}
+    )
+    validation_fragment = (
+        validation.get("validation_summary")
+        if isinstance(validation.get("validation_summary"), dict)
+        else validation.get("summary") if isinstance(validation.get("summary"), dict) else {}
+    )
+    checks = (
+        validation.get("material_validation_checks")
+        if isinstance(validation.get("material_validation_checks"), list)
+        else validation.get("validation_checks")
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        mobile_summary.get("safe_copy")
+        or mobile_summary.get("safe_phone_copy")
+        or validation.get("safe_copy")
+        or validation.get("safe_phone_copy")
+        or "Route-task field-run material validation is metadata-only; delivery_success=false."
+    )
+    safe_mobile_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(mobile_summary.get(key) or "").strip():
+            safe_mobile_summary[key] = _redact_route_task_rehearsal_text(mobile_summary.get(key))
+    safe_mobile_summary["safe_copy"] = safe_copy
+    safe_mobile_summary["safe_phone_copy"] = safe_copy
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "validation_verdict": {
+                "status": verdict_status or "blocked",
+                "verdict": verdict_value or "not_proven",
+                "reason": verdict_reason or "route-task field-run material validation consumed without explicit reason",
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                mobile_summary.get("safe_evidence_ref")
+                or mobile_summary.get("evidence_ref")
+                or validation.get("safe_evidence_ref")
+                or validation.get("evidence_ref", "")
+            ),
+            "same_evidence_ref_required": bool(
+                mobile_summary.get(
+                    "same_evidence_ref_required",
+                    validation.get("same_evidence_ref_required", True),
+                )
+            ),
+            "materials_status": _safe_pc_route_debug_dict(materials_status)
+            or {"status": verdict_status or "blocked", "reason": "material validation consumed without explicit materials status"},
+            "validation_summary": _safe_pc_route_debug_dict(validation_fragment)
+            or {"status": verdict_status or "blocked", "reason": "material validation consumed without explicit summary"},
+            "material_validation_checks": _safe_pc_route_debug_value(checks if isinstance(checks, list) else []),
+            "operator_next_steps": _safe_route_task_rehearsal_list(
+                mobile_summary.get("operator_next_steps")
+                if isinstance(mobile_summary.get("operator_next_steps"), list)
+                else validation.get("operator_next_steps")
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": verdict_status or "blocked",
+                "reason": "material validation consumed without explicit robot diagnostics summary",
+            },
+            "mobile_readonly_summary": safe_mobile_summary,
+            "not_proven": _route_task_field_run_material_validation_not_proven(validation, mobile_summary),
+            "read_error": "",
+            "metadata_only": True,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    if source_schema != ROUTE_TASK_FIELD_RUN_MATERIAL_VALIDATION_SCHEMA or source_boundary != ROUTE_TASK_FIELD_RUN_MATERIAL_VALIDATION_GATE:
+        summary.update(
+            {
+                "validation_verdict": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "route-task field-run material validation schema or evidence boundary is unsupported",
+                },
+                "materials_status": {"status": "blocked", "reason": "unsupported schema or evidence boundary"},
+                "validation_summary": {"status": "blocked", "reason": "unsupported schema or evidence boundary"},
+                "material_validation_checks": [],
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Route-task field-run material validation is not a supported diagnostics source; no delivery result is proven.",
+                    "safe_phone_copy": "Route-task field-run material validation is not a supported diagnostics source; no delivery result is proven.",
+                },
+            }
+        )
+        return summary
+
+    if (
+        not summary["same_evidence_ref_required"]
+        or _route_task_field_run_console_has_unsafe_fields(validation)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "validation_verdict": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": "route-task field-run material validation contains unsafe fields or weakens same evidence_ref constraints",
+                },
+                "materials_status": {"status": "blocked", "reason": "unsafe material validation summary fields"},
+                "validation_summary": {"status": "blocked", "reason": "unsafe material validation summary fields"},
+                "material_validation_checks": [],
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe material validation summary fields",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Route-task field-run material validation was blocked because fields could expose control data, weaken evidence_ref constraints, or imply delivery success.",
+                    "safe_phone_copy": "Route-task field-run material validation was blocked because fields could expose control data, weaken evidence_ref constraints, or imply delivery success.",
+                },
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -4947,6 +5304,7 @@ def build_diagnostics_payload(
     route_task_field_run_console_ref="",
     route_task_field_run_evidence_kit_ref="",
     route_task_field_run_material_bundle_ref="",
+    route_task_field_run_material_validation_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -5043,6 +5401,11 @@ def build_diagnostics_payload(
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE", "")
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_BUNDLE_SUMMARY", "")
     )
+    route_task_field_run_material_validation_summary = summarize_route_task_field_run_material_validation(
+        route_task_field_run_material_validation_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_VALIDATION", "")
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_MATERIAL_VALIDATION_SUMMARY", "")
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -5103,6 +5466,8 @@ def build_diagnostics_payload(
         route_task_field_run_evidence_kit_summary=route_task_field_run_evidence_kit_summary,
         route_task_field_run_material_bundle=route_task_field_run_material_bundle_summary,
         route_task_field_run_material_bundle_summary=route_task_field_run_material_bundle_summary,
+        route_task_field_run_material_validation=route_task_field_run_material_validation_summary,
+        route_task_field_run_material_validation_summary=route_task_field_run_material_validation_summary,
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),

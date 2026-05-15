@@ -555,6 +555,55 @@
         <p id="routeTaskFieldRunMaterialBundleHint" class="hint">现场材料包只读展示；不读取 raw artifact、本机路径、token、serial/UART、/cmd_vel、checksum 或 traceback，也不触发 Start、Confirm 或 Cancel。</p>
       </section>
 
+      <section class="route-field-run-material-validation-panel" aria-labelledby="routeTaskFieldRunMaterialValidationTitle">
+        <div class="section-heading">
+          <h2 id="routeTaskFieldRunMaterialValidationTitle">路线材料校验</h2>
+          <span id="routeTaskFieldRunMaterialValidationBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="routeTaskFieldRunMaterialValidationCopy" class="message">
+          等待后端提供 route_task_field_run_material_validation 的 phone-safe 校验摘要。
+        </p>
+        <dl class="route-field-run-material-validation-grid">
+          <div>
+            <dt>Validation Status</dt>
+            <dd id="routeTaskFieldRunMaterialValidationStatus">blocked/not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="routeTaskFieldRunMaterialValidationEvidenceRef">not_provided</dd>
+          </div>
+          <div>
+            <dt>Missing Materials</dt>
+            <dd id="routeTaskFieldRunMaterialValidationMissing">missing_materials=not_proven</dd>
+          </div>
+          <div>
+            <dt>Placeholder Materials</dt>
+            <dd id="routeTaskFieldRunMaterialValidationPlaceholders">placeholder_materials=not_proven</dd>
+          </div>
+          <div>
+            <dt>Mismatch Materials</dt>
+            <dd id="routeTaskFieldRunMaterialValidationMismatch">mismatch_materials=not_proven</dd>
+          </div>
+          <div>
+            <dt>Operator Next Steps</dt>
+            <dd id="routeTaskFieldRunMaterialValidationNextSteps">等待 operator next steps 摘要。</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="routeTaskFieldRunMaterialValidationControls">delivery_success=false / primary_actions_enabled=false</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="routeTaskFieldRunMaterialValidationBoundary">software_proof_docker_route_task_field_run_material_validation_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="routeTaskFieldRunMaterialValidationNotProven">真实路线、HIL、dropoff/cancel completion 和 delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <p id="routeTaskFieldRunMaterialValidationHint" class="hint">路线材料校验只读展示；不读取 raw validation artifact、本机路径、token、serial/UART、/cmd_vel、checksum 或 traceback，也不触发 Start、Confirm 或 Cancel。</p>
+      </section>
+
       <section class="route-task-completion-panel" aria-labelledby="routeTaskCompletionSignalTitle">
         <div class="section-heading">
           <h2 id="routeTaskCompletionSignalTitle">路线任务完成信号</h2>

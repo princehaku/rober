@@ -1715,6 +1715,69 @@
       "delivery success"
     ]
   },
+  "route_task_field_run_material_validation": {
+    "schema": "trashbot.route_task_field_run_material_validation.v1",
+    "schema_version": 1,
+    "validation_status": "blocked_missing_field_run_materials",
+    "safe_evidence_ref": "route_task_field_run_material_validation_fixture_20260515_0001",
+    "missing_materials": [
+      "real Nav2/fixed-route run evidence",
+      "same evidence_ref onboard reconciliation"
+    ],
+    "placeholder_materials": [
+      "operator_notes_template still has placeholder text",
+      "mobile_summary_template still has placeholder text"
+    ],
+    "mismatch_materials": [
+      "runtime evidence_ref mismatch not proven resolved"
+    ],
+    "operator_next_steps": [
+      "replace placeholder materials before field run review",
+      "keep delivery_success=false and primary_actions_enabled=false"
+    ],
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_phone_copy": "路线材料校验只展示 phone-safe evidence_ref、缺失材料、占位符和 mismatch 摘要；这是 Docker/local software proof，不是真实路线、HIL 或 delivery success。",
+    "recovery_hint": "补齐同一 evidence_ref 的真实现场材料并重跑 validation gate；手机端只读展示，不放行 Start、Confirm 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_route_task_field_run_material_validation_gate",
+    "not_proven": [
+      "真实 Nav2/fixed-route",
+      "真实路线采集",
+      "同一 evidence_ref 上车实机复账",
+      "HIL",
+      "dropoff/cancel completion",
+      "delivery success",
+      "Objective 5 external proof"
+    ]
+  },
+  "route_task_field_run_material_validation_summary": {
+    "schema": "trashbot.route_task_field_run_material_validation_summary.v1",
+    "schema_version": 1,
+    "validation_status": "blocked_nested_diagnostics_material_validation",
+    "safe_evidence_ref": "route_task_field_run_material_validation_fixture_20260515_0001",
+    "missing_materials": [
+      "nested diagnostics same evidence_ref validation materials"
+    ],
+    "placeholder_materials": [
+      "nested diagnostics placeholder material summary"
+    ],
+    "mismatch_materials": [
+      "nested diagnostics mismatch material summary"
+    ],
+    "operator_next_steps": [
+      "nested diagnostics rerun validation after replacing placeholders"
+    ],
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_phone_copy": "route_task_field_run_material_validation_summary 只用于手机只读路线材料校验展示，不放行 Start、Confirm 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_route_task_field_run_material_validation_gate",
+    "not_proven": [
+      "真实 Nav2/fixed-route",
+      "HIL",
+      "dropoff/cancel completion",
+      "delivery success"
+    ]
+  },
   "operation_log": {
     "schema": "trashbot.phone_operation_log.v1",
     "evidence_boundary": "software_proof_docker_mobile_operation_log_gate",
@@ -1885,6 +1948,33 @@
       "primary_actions_enabled": false,
       "safe_phone_copy": "phone_readiness 内的 material bundle 只读摘要不放行 Start、Confirm 或 Cancel。",
       "evidence_boundary": "software_proof_docker_route_task_field_run_material_bundle_gate",
+      "not_proven": [
+        "真实 Nav2/fixed-route",
+        "HIL",
+        "delivery success"
+      ]
+    },
+    "route_task_field_run_material_validation_summary": {
+      "schema": "trashbot.route_task_field_run_material_validation_summary.v1",
+      "schema_version": 1,
+      "validation_status": "phone_readiness_blocked_material_validation",
+      "safe_evidence_ref": "phone_readiness_material_validation_fixture_20260515_0001",
+      "missing_materials": [
+        "phone_readiness 同一 evidence_ref 现场校验材料待补齐"
+      ],
+      "placeholder_materials": [
+        "phone_readiness 模板占位符待替换"
+      ],
+      "mismatch_materials": [
+        "phone_readiness mismatch 摘要待现场复核"
+      ],
+      "operator_next_steps": [
+        "phone_readiness 重跑 validation gate 后再进入现场复盘"
+      ],
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "safe_phone_copy": "phone_readiness 内的 material validation 只读摘要不放行 Start、Confirm 或 Cancel。",
+      "evidence_boundary": "software_proof_docker_route_task_field_run_material_validation_gate",
       "not_proven": [
         "真实 Nav2/fixed-route",
         "HIL",
