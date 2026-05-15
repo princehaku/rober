@@ -719,6 +719,29 @@ review artifact 使用 `schema=trashbot.elevator_field_run_review.v1`，summary 
 
 `ready_for_controlled_elevator_field_rehearsal_not_proven` 只表示 Docker/local validation 材料可进入人工复核和受控演练准备。它不是真实电梯门状态、真实目标楼层确认、真实 Nav2/fixed-route 实跑、真实路线采集、HIL、真实投放、真实取消完成或 delivery success。缺 validation、坏 JSON、unsupported schema/boundary、缺材料、模板未替换、同一 `evidence_ref` 不一致、unsafe copy、`primary_actions_enabled=true` 或 `delivery_success=true` 时，都必须保持 blocked review，并继续输出 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
 
+### 5.17 elevator assisted delivery rehearsal execution pack
+
+review decision 通过或 blocked 后，还需要一份面向现场人员的 execution pack，把复核结果转成材料模板、first-run/rerun 命令和 operator handoff。`pc-tools/evidence/elevator_field_run_execution_pack.py` 只读上一轮 review artifact/summary，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G：
+
+```bash
+python3 pc-tools/evidence/elevator_field_run_execution_pack.py \
+  --review-json /tmp/elevator_field_run_review.json \
+  --once-json
+```
+
+execution pack 使用 `schema=trashbot.elevator_field_run_execution_pack.v1`，summary 使用 `schema=trashbot.elevator_field_run_execution_pack_summary.v1`，证据边界固定为 `software_proof_docker_elevator_field_rehearsal_execution_pack_gate`。核心字段包括：
+
+- `execution_pack_verdict`: ready 或 blocked 分支，覆盖缺 review、坏 JSON、unsupported schema、unsafe copy、review blocked、成功/控制放行声明。
+- `controlled_rehearsal_manifest`: 标明 source review、同一 `evidence_ref`、human observer、stop path 和七类材料名称。
+- `required_material_templates`: 门状态、目标楼层确认、人工协助记录、Nav2/fixed-route runtime log、task record、completion signal 和 diagnostics/mobile safe summary 的字段模板。
+- `first_run_commands`: 第一次受控电梯演练的材料采集和 validation/review/execution-pack 生成顺序。
+- `rerun_commands`: review 修复、材料重采或同一 `evidence_ref` 修复后的重跑顺序。
+- `operator_handoff`: 给现场人员和支持面的下一步、blocked categories 和 checklist。
+- `not_proven`: 继续列出真实电梯、真实 Nav2/fixed-route、真实硬件反馈、HIL、投放/取消完成、delivery_success 和 O5 external proof 未证明。
+- `primary_actions_enabled=false` 与 `delivery_success=false`: execution pack 不能放行控制动作，也不能声明送达成功。
+
+`ready_for_controlled_elevator_field_rehearsal_execution_pack_not_proven` 只表示 Docker/local review 材料可生成受控演练执行清单。它不是真实电梯门状态、真实目标楼层确认、真实 Nav2/fixed-route 实跑、真实路线采集、HIL、真实投放、真实取消完成或 delivery success。任何缺 review、坏 JSON、unsupported schema/boundary、unsafe copy、review blocked、`primary_actions_enabled=true` 或 `delivery_success=true` 都必须保持 blocked execution pack，并继续输出 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## 6. Debug Web
 
 ### 6.1 Onboard ROS debug page

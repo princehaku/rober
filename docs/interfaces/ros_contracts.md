@@ -488,6 +488,38 @@ do not prove real elevator, real floor confirmation, real Nav2, real HIL,
 production readiness, dropoff completion, cancel completion, or delivery
 success.
 
+Operator diagnostics may also expose `elevator_field_run_execution_pack` and
+the alias `elevator_field_run_execution_pack_summary` from an explicit
+`elevator_field_run_execution_pack_ref`,
+`TRASHBOT_ELEVATOR_FIELD_RUN_EXECUTION_PACK`, or
+`TRASHBOT_ELEVATOR_FIELD_RUN_EXECUTION_PACK_SUMMARY`. The source JSON must use
+`schema=trashbot.elevator_field_run_execution_pack.v1` and
+`evidence_boundary=software_proof_docker_elevator_field_rehearsal_execution_pack_gate`.
+If the source is already a summary wrapper, it must still point to
+`source_schema=trashbot.elevator_field_run_execution_pack.v1` and the same
+evidence boundary. This summary is metadata-only support material for turning
+an elevator review decision into a controlled field-rehearsal execution pack:
+it may expose only the summary schema/evidence boundary, source schema/evidence
+boundary, `execution_pack_verdict`, safe evidence ref,
+`same_evidence_ref_required=true`, `controlled_rehearsal_manifest`,
+`required_material_templates`, `first_run_commands`, `rerun_commands`,
+`operator_handoff`, `robot_diagnostics_summary`, `phone_safe_summary`,
+`not_proven`, `delivery_success=false`, and `primary_actions_enabled=false`.
+Raw route logs, task records, mobile summary payloads, credentials, local
+paths, UART/serial details, raw artifacts, raw ACK payloads, raw command
+envelopes, production-readiness claims, and traceback content must not enter
+the diagnostics summary. Missing, unreadable, unsupported-schema,
+boundary-mismatch, unsafe fields, `same_evidence_ref_required=false`,
+non-boolean `same_evidence_ref_required`, `delivery_success=true`, or
+`primary_actions_enabled=true` sources remain
+blocked/not_proven. The fields do not trigger `/api/collect`, dropoff, cancel,
+remote ACK, cursor advance/persistence, terminal ACK, Nav2, WAVE ROVER, HIL,
+production readiness, real elevator operation, real dropoff/cancel completion,
+or delivery success. They are not command/status/ACK robot contract fields and
+do not prove real elevator, real floor confirmation, real Nav2, real HIL,
+production readiness, dropoff completion, cancel completion, or delivery
+success.
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

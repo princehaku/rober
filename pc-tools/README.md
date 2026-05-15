@@ -394,6 +394,28 @@ python3 pc-tools/evidence/elevator_field_run_review.py \
 
 review decision 的枚举固定为 `ready_for_controlled_elevator_field_rehearsal_not_proven`、`blocked_missing_materials`、`blocked_template_materials`、`blocked_evidence_ref_mismatch`、`blocked_unsafe_copy`、`blocked_success_claim` 和 `blocked_invalid_validation`。该 review gate 仍只是 Docker/local software proof：它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G；`ready_for_controlled_elevator_field_rehearsal_not_proven` 只表示七类 validation 材料可进入人工复核/受控演练准备，不证明真实电梯、真实门状态、真实目标楼层、真实 Nav2/fixed-route、HIL、真实投放、真实取消完成、真实手机设备或 delivery success。
 
+## elevator assisted delivery field-run execution pack
+
+`pc-tools/evidence/elevator_field_run_execution_pack.py` 只读上一轮 `elevator_field_run_review` artifact 或 summary，把复核决策整理成受控电梯现场演练 execution pack：
+
+```bash
+python3 pc-tools/evidence/elevator_field_run_execution_pack.py \
+  --review-json /tmp/elevator_field_run_review.json \
+  --output /tmp/elevator_field_run_execution_pack.json
+```
+
+需要直接给 Robot diagnostics、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/elevator_field_run_execution_pack.py \
+  --review-json /tmp/elevator_field_run_review.json \
+  --once-json
+```
+
+输出 `schema=trashbot.elevator_field_run_execution_pack.v1`、summary `schema=trashbot.elevator_field_run_execution_pack_summary.v1`、`evidence_boundary=software_proof_docker_elevator_field_rehearsal_execution_pack_gate`、`execution_pack_verdict`、`controlled_rehearsal_manifest`、`required_material_templates`、`first_run_commands`、`rerun_commands`、`operator_handoff`、`same_evidence_ref_required=true`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+`controlled_rehearsal_manifest` 固定要求 human observer、stop path 和同一 `evidence_ref`；`required_material_templates` 覆盖 `door_state.json`、`target_floor_confirmation.json`、`human_assistance_operator_note.md`、`nav2_fixed_route_runtime_log.json`、`task_record.json`、`completion_signal.json` 和 `diagnostics_mobile_safe_summary.json`。该 execution pack 不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G；`ready_for_controlled_elevator_field_rehearsal_execution_pack_not_proven` 只表示 review 材料足以生成受控演练材料清单，不表示真实电梯门状态、真实目标楼层确认、真实 Nav2/fixed-route、HIL、真实投放、真实取消完成、真实手机设备或 delivery success。缺 review、坏 JSON、unsupported schema/boundary、unsafe copy、review blocked、`primary_actions_enabled=true` 或 `delivery_success=true` 时，CLI 会 fail closed，并继续保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

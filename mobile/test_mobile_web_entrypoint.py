@@ -728,6 +728,87 @@ class MobileWebEntrypointTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, elevator_review_fixture_text)
 
+    def test_elevator_field_run_execution_pack_panel_is_read_only_and_phone_safe(self):
+        app = self.read("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # 电梯演练执行包只展示 phone-safe 执行准备元数据，不新增任何 Start/Confirm/Cancel 路径。
+        self.assertIn("ELEVATOR_FIELD_RUN_EXECUTION_PACK_BOUNDARY", app)
+        self.assertIn("UNSAFE_ELEVATOR_FIELD_EXECUTION_PACK_TEXT", app)
+        self.assertIn("safeElevatorFieldExecutionPackText", app)
+        self.assertIn("elevatorFieldRunExecutionPackCandidate", app)
+        self.assertIn("elevatorFieldRunExecutionPackFromStatus", app)
+        self.assertIn("ensureElevatorFieldRunExecutionPackPanel", app)
+        self.assertIn("renderElevatorFieldRunExecutionPack", app)
+        self.assertIn("电梯演练执行包", app)
+        self.assertIn("elevator_field_run_execution_pack", app)
+        self.assertIn("elevator_field_run_execution_pack_summary", app)
+        self.assertIn("diagnosticsSummary.elevator_field_run_execution_pack", app)
+        self.assertIn("nestedDiagnosticsSummary.elevator_field_run_execution_pack", app)
+        self.assertIn("statusDiagnosticsSummary.elevator_field_run_execution_pack_summary", app)
+        self.assertIn("execution_pack_verdict", app)
+        self.assertIn("safe_evidence_ref", app)
+        self.assertIn("controlled_rehearsal_manifest", app)
+        self.assertIn("required_material_templates", app)
+        self.assertIn("first_run_commands", app)
+        self.assertIn("rerun_commands", app)
+        self.assertIn("operator_handoff", app)
+        self.assertIn("safe_to_control: false", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("safe_to_control=false / delivery_success=false / primary_actions_enabled=false", app)
+        self.assertIn("software_proof_docker_elevator_field_rehearsal_execution_pack_gate", app)
+        self.assertIn("真实电梯门状态", app)
+        self.assertIn("Objective 5 external proof", app)
+        self.assertNotRegex(app, r"elevatorFieldRunExecutionPack.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"elevatorFieldRunExecutionPack.*fetchJson\(ENDPOINTS\.diagnostics")
+
+        self.assertIn("trashbot.elevator_field_run_execution_pack.v1", fixture_text)
+        self.assertIn("trashbot.elevator_field_run_execution_pack_summary.v1", fixture_text)
+        self.assertIn("elevator_field_run_execution_pack_fixture_20260515_0001", fixture_text)
+        self.assertIn("phone_readiness_elevator_execution_pack_fixture_20260515_0001", fixture_text)
+        self.assertIn("status_diagnostics_elevator_execution_pack_fixture_20260515_0001", fixture_text)
+        self.assertEqual(
+            fixture["elevator_field_run_execution_pack"]["evidence_boundary"],
+            "software_proof_docker_elevator_field_rehearsal_execution_pack_gate",
+        )
+        self.assertEqual(
+            fixture["phone_readiness"]["elevator_field_run_execution_pack_summary"]["primary_actions_enabled"],
+            False,
+        )
+        self.assertEqual(
+            fixture["diagnostics"]["summary"]["elevator_field_run_execution_pack_summary"]["delivery_success"],
+            False,
+        )
+        self.assertEqual(
+            fixture["elevator_field_run_execution_pack"]["safe_to_control"],
+            False,
+        )
+        elevator_execution_pack_fixture_text = json.dumps(
+            {
+                "top_level": fixture["elevator_field_run_execution_pack"],
+                "readiness": fixture["phone_readiness"]["elevator_field_run_execution_pack_summary"],
+                "diagnostics": fixture["diagnostics"]["summary"]["elevator_field_run_execution_pack_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover",
+            "authorization",
+            "token",
+            "raw artifact",
+            "raw execution pack",
+            "delivery_success\": true",
+        ):
+            self.assertNotIn(forbidden, elevator_execution_pack_fixture_text)
+
     def test_operation_log_panel_is_visible_and_read_only(self):
         app = self.read("app.js")
         index = self.read("index.html")

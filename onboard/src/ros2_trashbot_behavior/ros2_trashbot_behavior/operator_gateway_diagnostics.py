@@ -165,6 +165,13 @@ ELEVATOR_FIELD_RUN_MATERIAL_VALIDATION_GATE = (
 ELEVATOR_FIELD_RUN_REVIEW_SCHEMA = "trashbot.elevator_field_run_review.v1"
 ELEVATOR_FIELD_RUN_REVIEW_SUMMARY_SCHEMA = "trashbot.elevator_field_run_review_summary.v1"
 ELEVATOR_FIELD_RUN_REVIEW_GATE = "software_proof_docker_elevator_field_review_decision_gate"
+ELEVATOR_FIELD_RUN_EXECUTION_PACK_SCHEMA = "trashbot.elevator_field_run_execution_pack.v1"
+ELEVATOR_FIELD_RUN_EXECUTION_PACK_SUMMARY_SCHEMA = (
+    "trashbot.elevator_field_run_execution_pack_summary.v1"
+)
+ELEVATOR_FIELD_RUN_EXECUTION_PACK_GATE = (
+    "software_proof_docker_elevator_field_rehearsal_execution_pack_gate"
+)
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -617,6 +624,43 @@ def _elevator_field_run_review_not_proven(review=None, summary_fragment=None):
         "real_hil_pass",
         "real_dropoff_completion",
         "real_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _elevator_field_run_execution_pack_not_proven(pack=None, summary_fragment=None):
+    # 电梯执行包只读承接 Autonomy artifact；真实电梯、控制链、ACK、Nav2、HIL 和交付结论必须继续未证明。
+    pack = pack if isinstance(pack, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(pack.get("not_proven"), list):
+        source_values.extend(pack.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_elevator_operation",
+        "real_elevator_door_state",
+        "real_floor_confirmation",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "production_readiness",
+        "real_dropoff_completion",
+        "real_cancel_completion",
+        "dropoff_or_cancel_completion",
         "delivery_success",
         "objective_5_external_proof",
     )
@@ -1263,6 +1307,54 @@ def _default_elevator_field_run_review_summary(path, status="not_configured", re
     }
 
 
+def _default_elevator_field_run_execution_pack_summary(path, status="not_configured", read_error=""):
+    # 执行包默认就是只读 blocked；即使 artifact 缺失也要显式保留动作链禁用状态。
+    return {
+        "schema": ELEVATOR_FIELD_RUN_EXECUTION_PACK_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ELEVATOR_FIELD_RUN_EXECUTION_PACK_GATE,
+        "source_schema": "",
+        "source_evidence_boundary": "",
+        "execution_pack_verdict": {
+            "status": status,
+            "verdict": "not_proven",
+            "reason": read_error or "elevator field-run execution pack is not configured",
+        },
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "controlled_rehearsal_manifest": {},
+        "required_material_templates": [],
+        "first_run_commands": [],
+        "rerun_commands": [],
+        "operator_handoff": {},
+        "robot_diagnostics_summary": {
+            "status": "blocked",
+            "reason": "elevator field-run execution pack is not configured",
+        },
+        "phone_safe_summary": {
+            "safe_copy": "Elevator field-run execution pack is metadata-only; delivery_success=false.",
+            "safe_phone_copy": "Elevator field-run execution pack is metadata-only; delivery_success=false.",
+        },
+        "not_proven": _elevator_field_run_execution_pack_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -1292,8 +1384,10 @@ def _route_task_field_run_readiness_has_unsafe_fields(value, key_path=""):
         "secret",
         "access_key",
         "password",
+        "credential",
         "checksum",
         "traceback",
+        "raw_artifact",
         "raw_payload",
         "raw_response",
         "raw_robot",
@@ -1512,6 +1606,11 @@ def _route_task_field_run_console_has_unsafe_fields(value):
             "/api/collect" in lowered
             or "ack posted" in lowered
             or "cursor advanced" in lowered
+            or "raw artifact" in lowered
+            or "credential" in lowered
+            or "serial" in lowered
+            or "uart" in lowered
+            or "wave rover" in lowered
             or any(marker in redacted for marker in (
                 "[REDACTED_AUTH_HEADER]",
                 "Bearer [REDACTED]",
@@ -1573,6 +1672,28 @@ def _elevator_field_run_review_source_contract(value):
         source_schema = str(value.get("source_schema") or "")
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
+
+
+def _elevator_field_run_execution_pack_source_contract(value):
+    # execution pack 可直接来自 Autonomy artifact，也可来自 summary env；summary 必须保留原始 source/boundary。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == ELEVATOR_FIELD_RUN_EXECUTION_PACK_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or "")
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _elevator_execution_pack_requires_same_evidence_ref(summary_fragment, pack):
+    # 这里故意只接受 JSON boolean true；字符串 "false" 在 Python 中是真值，不能被误当成同证据链约束成立。
+    value = (
+        summary_fragment.get("same_evidence_ref_required")
+        if isinstance(summary_fragment, dict) and "same_evidence_ref_required" in summary_fragment
+        else pack.get("same_evidence_ref_required", True)
+        if isinstance(pack, dict)
+        else True
+    )
+    return value is True
 
 
 def _pc_route_debug_safe_copy_is_unsafe(value):
@@ -4879,6 +5000,256 @@ def summarize_elevator_field_run_review(path):
     return summary
 
 
+def summarize_elevator_field_run_execution_pack(path):
+    """构建 elevator field-run execution pack 的 metadata-only diagnostics 摘要。"""
+    pack_path = os.path.expanduser(str(path or ""))
+    summary = _default_elevator_field_run_execution_pack_summary(
+        pack_path,
+        read_error="elevator field-run execution pack is not configured",
+    )
+    if not pack_path:
+        return summary
+    if not os.path.exists(pack_path):
+        summary.update(
+            {
+                "execution_pack_verdict": {
+                    "status": "missing",
+                    "verdict": "not_proven",
+                    "reason": "elevator field-run execution pack missing",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "elevator field-run execution pack missing",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Elevator field-run execution pack is missing; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Elevator field-run execution pack is missing; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    try:
+        with open(pack_path, "r", encoding="utf-8") as f:
+            pack = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        safe_error = _redact_route_task_rehearsal_text(
+            f"failed reading elevator field-run execution pack: {exc}"
+        )
+        summary.update(
+            {
+                "execution_pack_verdict": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": safe_error,
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "execution pack JSON read error",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Elevator field-run execution pack could not be read; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Elevator field-run execution pack could not be read; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    if not isinstance(pack, dict):
+        summary.update(
+            {
+                "execution_pack_verdict": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "elevator field-run execution pack JSON must be an object",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "execution pack JSON shape is invalid",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Elevator field-run execution pack shape is invalid; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Elevator field-run execution pack shape is invalid; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    # 这里只读取可展示给 diagnostics/mobile 的白名单字段，避免把执行包误接到动作面。
+    summary_fragment = {}
+    for candidate in (
+        pack.get("phone_safe_summary"),
+        pack.get("mobile_readonly_summary"),
+        pack.get("mobile_safe_summary"),
+        pack.get("elevator_field_run_execution_pack_summary"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+    robot_summary = (
+        pack.get("robot_diagnostics_summary")
+        if isinstance(pack.get("robot_diagnostics_summary"), dict)
+        else pack.get("diagnostics_summary")
+        if isinstance(pack.get("diagnostics_summary"), dict)
+        else {}
+    )
+    source_schema, source_boundary = _elevator_field_run_execution_pack_source_contract(pack)
+    source_verdict = pack.get("execution_pack_verdict")
+    if isinstance(source_verdict, dict):
+        verdict_status = _redact_route_task_rehearsal_text(
+            source_verdict.get("status")
+            or source_verdict.get("verdict")
+            or pack.get("status")
+            or "blocked"
+        )
+        verdict_value = _redact_route_task_rehearsal_text(
+            source_verdict.get("verdict") or source_verdict.get("decision") or verdict_status or "not_proven"
+        )
+        verdict_reason = _redact_route_task_rehearsal_text(
+            source_verdict.get("reason") or source_verdict.get("summary") or ""
+        )
+    else:
+        verdict_value = _redact_route_task_rehearsal_text(
+            source_verdict
+            or pack.get("verdict")
+            or summary_fragment.get("execution_pack_verdict")
+            or "not_proven"
+        )
+        verdict_status = _redact_route_task_rehearsal_text(pack.get("status") or verdict_value or "blocked")
+        verdict_reason = _redact_route_task_rehearsal_text(pack.get("reason") or robot_summary.get("reason") or "")
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or pack.get("safe_copy")
+        or pack.get("safe_phone_copy")
+        or "Elevator field-run execution pack is metadata-only; delivery_success=false."
+    )
+    safe_phone_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(summary_fragment.get(key) or "").strip():
+            safe_phone_summary[key] = _redact_route_task_rehearsal_text(summary_fragment.get(key))
+    safe_phone_summary["safe_copy"] = safe_copy
+    safe_phone_summary["safe_phone_copy"] = safe_copy
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "execution_pack_verdict": {
+                "status": verdict_status or "blocked",
+                "verdict": verdict_value or "not_proven",
+                "reason": verdict_reason or "elevator field-run execution pack consumed without explicit reason",
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("safe_evidence_ref")
+                or summary_fragment.get("evidence_ref")
+                or pack.get("safe_evidence_ref")
+                or pack.get("evidence_ref", "")
+            ),
+            "same_evidence_ref_required": _elevator_execution_pack_requires_same_evidence_ref(
+                summary_fragment,
+                pack,
+            ),
+            "controlled_rehearsal_manifest": _safe_pc_route_debug_dict(
+                summary_fragment.get("controlled_rehearsal_manifest")
+                if isinstance(summary_fragment.get("controlled_rehearsal_manifest"), dict)
+                else pack.get("controlled_rehearsal_manifest")
+                if isinstance(pack.get("controlled_rehearsal_manifest"), dict)
+                else {}
+            ),
+            "required_material_templates": _safe_pc_route_debug_value(
+                summary_fragment.get("required_material_templates")
+                if isinstance(summary_fragment.get("required_material_templates"), list)
+                else pack.get("required_material_templates")
+                if isinstance(pack.get("required_material_templates"), list)
+                else []
+            ),
+            "first_run_commands": _safe_route_task_rehearsal_list(
+                summary_fragment.get("first_run_commands")
+                if isinstance(summary_fragment.get("first_run_commands"), list)
+                else pack.get("first_run_commands")
+            ),
+            "rerun_commands": _safe_route_task_rehearsal_list(
+                summary_fragment.get("rerun_commands")
+                if isinstance(summary_fragment.get("rerun_commands"), list)
+                else pack.get("rerun_commands")
+            ),
+            "operator_handoff": _safe_pc_route_debug_dict(
+                summary_fragment.get("operator_handoff")
+                if isinstance(summary_fragment.get("operator_handoff"), dict)
+                else pack.get("operator_handoff")
+                if isinstance(pack.get("operator_handoff"), dict)
+                else {}
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": verdict_status or "blocked",
+                "reason": "execution pack consumed without explicit robot diagnostics summary",
+            },
+            "phone_safe_summary": safe_phone_summary,
+            "not_proven": _elevator_field_run_execution_pack_not_proven(pack, summary_fragment),
+            "read_error": "",
+            "metadata_only": True,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    if source_schema != ELEVATOR_FIELD_RUN_EXECUTION_PACK_SCHEMA or source_boundary != ELEVATOR_FIELD_RUN_EXECUTION_PACK_GATE:
+        summary.update(
+            {
+                "execution_pack_verdict": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "elevator field-run execution pack schema or evidence boundary is unsupported",
+                },
+                "controlled_rehearsal_manifest": {},
+                "required_material_templates": [],
+                "first_run_commands": [],
+                "rerun_commands": [],
+                "operator_handoff": {},
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Elevator field-run execution pack is not a supported diagnostics source; no delivery result is proven.",
+                    "safe_phone_copy": "Elevator field-run execution pack is not a supported diagnostics source; no delivery result is proven.",
+                },
+            }
+        )
+        return summary
+
+    if (
+        not summary["same_evidence_ref_required"]
+        or _route_task_field_run_console_has_unsafe_fields(pack)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "execution_pack_verdict": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": "elevator field-run execution pack contains unsafe fields or control claims",
+                },
+                "controlled_rehearsal_manifest": {},
+                "required_material_templates": [],
+                "first_run_commands": [],
+                "rerun_commands": [],
+                "operator_handoff": {},
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe execution pack summary fields",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Elevator field-run execution pack was blocked because fields could expose control data or imply delivery success.",
+                    "safe_phone_copy": "Elevator field-run execution pack was blocked because fields could expose control data or imply delivery success.",
+                },
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -6002,6 +6373,7 @@ def build_diagnostics_payload(
     route_task_field_run_material_validation_ref="",
     elevator_field_run_material_validation_ref="",
     elevator_field_run_review_ref="",
+    elevator_field_run_execution_pack_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -6113,6 +6485,11 @@ def build_diagnostics_payload(
         or os.environ.get("TRASHBOT_ELEVATOR_FIELD_RUN_REVIEW", "")
         or os.environ.get("TRASHBOT_ELEVATOR_FIELD_RUN_REVIEW_SUMMARY", "")
     )
+    elevator_field_run_execution_pack_summary = summarize_elevator_field_run_execution_pack(
+        elevator_field_run_execution_pack_ref
+        or os.environ.get("TRASHBOT_ELEVATOR_FIELD_RUN_EXECUTION_PACK", "")
+        or os.environ.get("TRASHBOT_ELEVATOR_FIELD_RUN_EXECUTION_PACK_SUMMARY", "")
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -6179,6 +6556,8 @@ def build_diagnostics_payload(
         elevator_field_run_material_validation_summary=elevator_field_run_material_validation_summary,
         elevator_field_run_review=elevator_field_run_review_summary,
         elevator_field_run_review_summary=elevator_field_run_review_summary,
+        elevator_field_run_execution_pack=elevator_field_run_execution_pack_summary,
+        elevator_field_run_execution_pack_summary=elevator_field_run_execution_pack_summary,
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),

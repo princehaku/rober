@@ -161,6 +161,14 @@ review artifact 使用 `schema=trashbot.elevator_field_run_review.v1`，summary 
 
 `review_decision` 把 validation 状态转成现场动作：缺材料为 `blocked_missing_materials`，模板未替换为 `blocked_template_materials`，同一 `evidence_ref` 不一致为 `blocked_evidence_ref_mismatch`，摘要不安全为 `blocked_unsafe_copy`，越界成功/控制声明为 `blocked_success_claim`，输入缺失、坏 JSON 或 schema/boundary 不支持为 `blocked_invalid_validation`。`ready_for_controlled_elevator_field_rehearsal_not_proven` 只表示材料可进入人工复核和受控演练准备，不证明真实电梯门状态、真实目标楼层确认、真实 Nav2/fixed-route、HIL、真实投放、真实取消完成或 delivery success。
 
+## 现场演练执行包 Gate
+
+`pc-tools/evidence/elevator_field_run_execution_pack.py` 是 review decision 之后的 Docker/local software proof gate。它只读上一轮 `trashbot.elevator_field_run_review.v1` artifact 或 `trashbot.elevator_field_run_review_summary.v1` summary，不读取 raw 现场文件，也不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G。
+
+execution pack 使用 `schema=trashbot.elevator_field_run_execution_pack.v1`，summary 使用 `schema=trashbot.elevator_field_run_execution_pack_summary.v1`，证据边界固定为 `software_proof_docker_elevator_field_rehearsal_execution_pack_gate`。输出必须包含 `execution_pack_verdict`、`controlled_rehearsal_manifest`、`required_material_templates`、`first_run_commands`、`rerun_commands`、`operator_handoff`、`same_evidence_ref_required=true`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+`controlled_rehearsal_manifest` 明确 human observer、stop path 和同一 `evidence_ref` 是受控演练前提；`required_material_templates` 继续要求门状态、目标楼层确认、人工协助记录、Nav2/fixed-route runtime log、task record、completion signal 和 diagnostics/mobile safe summary 七类材料。`ready_for_controlled_elevator_field_rehearsal_execution_pack_not_proven` 只表示 review 材料足以生成受控演练执行清单，不证明真实电梯门状态、真实目标楼层确认、真实人工协助、真实 Nav2/fixed-route、WAVE ROVER/UART/HIL、真实投放、真实取消完成或 delivery success。缺 review、坏 JSON、unsupported schema/boundary、unsafe copy、review blocked、`primary_actions_enabled=true` 或 `delivery_success=true` 都必须 fail closed。
+
 ## 不做什么
 
 - 不把电梯能力写成当前 MVP 已完成。

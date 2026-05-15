@@ -33,6 +33,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_run_material_validation,
     summarize_elevator_field_run_material_validation,
     summarize_elevator_field_run_review,
+    summarize_elevator_field_run_execution_pack,
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import (
@@ -3752,6 +3753,234 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["delivery_success"])
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_elevator_field_review_decision_gate", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_elevator_field_run_execution_pack_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            pack_path = Path(td) / "elevator_field_run_execution_pack.json"
+            pack_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_field_run_execution_pack.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_rehearsal_execution_pack_gate"
+                        ),
+                        "evidence_ref": "evidence://elevator-field-run-execution-pack-1",
+                        "same_evidence_ref_required": True,
+                        "execution_pack_verdict": {
+                            "status": "ready_for_controlled_rehearsal_not_proven",
+                            "verdict": "ready_for_controlled_rehearsal_not_proven",
+                            "reason": "operator can rehearse with metadata-only checklist",
+                        },
+                        "controlled_rehearsal_manifest": {
+                            "status": "ready",
+                            "boundary": "software_proof_docker_elevator_field_rehearsal_execution_pack_gate",
+                        },
+                        "required_material_templates": ["door state note", "target floor confirmation"],
+                        "first_run_commands": ["python3 pc-tools/evidence/elevator_field_run_execution_pack.py --once-json"],
+                        "rerun_commands": ["python3 pc-tools/evidence/elevator_field_run_review.py --once-json"],
+                        "operator_handoff": {
+                            "next_step": "Run controlled rehearsal and capture same evidence_ref.",
+                        },
+                        "robot_diagnostics_summary": {
+                            "status": "ready",
+                            "reason": "metadata-only elevator execution pack available",
+                        },
+                        "phone_safe_summary": {
+                            "safe_copy": (
+                                "Elevator execution pack is metadata-only; "
+                                "delivery_success=false and not delivery success."
+                            ),
+                        },
+                        "not_proven": ["delivery_success", "real_elevator_operation"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                elevator_field_run_execution_pack_ref=str(pack_path),
+            )
+            summary = payload["elevator_field_run_execution_pack"]
+            summary_alias = payload["elevator_field_run_execution_pack_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["schema"], "trashbot.elevator_field_run_execution_pack_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_elevator_field_rehearsal_execution_pack_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.elevator_field_run_execution_pack.v1")
+        self.assertEqual(
+            summary["execution_pack_verdict"]["status"],
+            "ready_for_controlled_rehearsal_not_proven",
+        )
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://elevator-field-run-execution-pack-1")
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertEqual(summary["controlled_rehearsal_manifest"]["status"], "ready")
+        self.assertIn("door state note", summary["required_material_templates"])
+        self.assertIn("elevator_field_run_execution_pack.py", summary["first_run_commands"][0])
+        self.assertIn("elevator_field_run_review.py", summary["rerun_commands"][0])
+        self.assertIn("same evidence_ref", summary["operator_handoff"]["next_step"])
+        self.assertIn("delivery_success=false", summary["phone_safe_summary"]["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("real_elevator_operation", summary["not_proven"])
+        self.assertIn("terminal_ack", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["dropoff_completion"])
+        self.assertFalse(summary["cancel_completion"])
+        self.assertNotIn(str(pack_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_elevator_field_run_execution_pack_env_summary_missing_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "elevator_field_run_execution_pack_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_field_run_execution_pack_summary.v1",
+                        "source_schema": "trashbot.elevator_field_run_execution_pack.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_rehearsal_execution_pack_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_elevator_field_rehearsal_execution_pack_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://elevator-field-run-execution-pack-2",
+                        "same_evidence_ref_required": True,
+                        "execution_pack_verdict": "blocked_missing_materials",
+                        "controlled_rehearsal_manifest": {"status": "blocked"},
+                        "required_material_templates": ["door state note"],
+                        "first_run_commands": ["python3 pc-tools/evidence/elevator_field_run_execution_pack.py --once-json"],
+                        "rerun_commands": ["python3 pc-tools/evidence/elevator_field_run_review.py --once-json"],
+                        "operator_handoff": {"next_step": "Recapture missing materials."},
+                        "phone_safe_summary": {
+                            "safe_copy": "Elevator execution pack is metadata-only; delivery_success=false.",
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_pack = os.environ.get("TRASHBOT_ELEVATOR_FIELD_RUN_EXECUTION_PACK")
+            previous_summary = os.environ.get("TRASHBOT_ELEVATOR_FIELD_RUN_EXECUTION_PACK_SUMMARY")
+            os.environ.pop("TRASHBOT_ELEVATOR_FIELD_RUN_EXECUTION_PACK", None)
+            os.environ["TRASHBOT_ELEVATOR_FIELD_RUN_EXECUTION_PACK_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "elevator_field_run_execution_pack"
+                ]
+            finally:
+                if previous_pack is None:
+                    os.environ.pop("TRASHBOT_ELEVATOR_FIELD_RUN_EXECUTION_PACK", None)
+                else:
+                    os.environ["TRASHBOT_ELEVATOR_FIELD_RUN_EXECUTION_PACK"] = previous_pack
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_ELEVATOR_FIELD_RUN_EXECUTION_PACK_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_ELEVATOR_FIELD_RUN_EXECUTION_PACK_SUMMARY"] = previous_summary
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_elevator_execution_pack.json"
+            missing_summary = summarize_elevator_field_run_execution_pack(str(missing_path))
+
+            unsupported_path = Path(td) / "unsupported_elevator_execution_pack.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_field_run_review.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_review_decision_gate"
+                        ),
+                        "safe_copy": "Unsupported elevator execution pack is metadata-only; delivery_success=false.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsupported_summary = summarize_elevator_field_run_execution_pack(str(unsupported_path))
+
+            unsafe_path = Path(td) / "unsafe_elevator_execution_pack.json"
+            unsafe_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_field_run_execution_pack.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_rehearsal_execution_pack_gate"
+                        ),
+                        "same_evidence_ref_required": False,
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                        "phone_safe_summary": {
+                            "safe_copy": "Elevator execution pack confirms delivery success and ACK posted.",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_summary = summarize_elevator_field_run_execution_pack(str(unsafe_path))
+            weak_same_ref_path = Path(td) / "weak_same_ref_elevator_execution_pack.json"
+            weak_same_ref_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_field_run_execution_pack.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_rehearsal_execution_pack_gate"
+                        ),
+                        "same_evidence_ref_required": "false",
+                        "phone_safe_summary": {
+                            "safe_copy": "Elevator execution pack is metadata-only; delivery_success=false.",
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            weak_same_ref_summary = summarize_elevator_field_run_execution_pack(str(weak_same_ref_path))
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    missing_summary,
+                    unsupported_summary,
+                    unsafe_summary,
+                    weak_same_ref_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["execution_pack_verdict"]["status"], "blocked_missing_materials")
+        self.assertEqual(env_summary["controlled_rehearsal_manifest"]["status"], "blocked")
+        self.assertEqual(missing_summary["execution_pack_verdict"]["status"], "missing")
+        self.assertEqual(unsupported_summary["execution_pack_verdict"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["execution_pack_verdict"]["status"], "unsafe_fields")
+        self.assertEqual(weak_same_ref_summary["execution_pack_verdict"]["status"], "unsafe_fields")
+        self.assertFalse(weak_same_ref_summary["same_evidence_ref_required"])
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_elevator_field_rehearsal_execution_pack_gate", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
