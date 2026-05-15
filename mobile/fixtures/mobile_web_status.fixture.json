@@ -1400,6 +1400,82 @@
       "delivery success"
     ]
   },
+  "route_elevator_field_session_handoff": {
+    "schema": "trashbot.route_elevator_field_session_handoff.v1",
+    "summary_schema": "trashbot.route_elevator_field_session_handoff_summary.v1",
+    "schema_version": 1,
+    "handoff_verdict": "ready_for_field_session_handoff_not_proven",
+    "safe_evidence_ref": "route_elevator_field_handoff_fixture_20260516_0001",
+    "same_evidence_ref_required": true,
+    "same_evidence_ref_status": "same_ref_required_waiting_field_materials",
+    "required_materials_summary": [
+      "nav2_fixed_route_runtime_log.json",
+      "route_completion_signal.json",
+      "task_record.json",
+      "door_state.json",
+      "target_floor_confirmation.json",
+      "human_assistance_operator_note.md",
+      "dropoff_or_cancel_completion.json",
+      "delivery_result.json",
+      "diagnostics_mobile_safe_summary.json"
+    ],
+    "operator_next_steps": [
+      "用同一 safe evidence_ref 采集下一次路线电梯现场材料。",
+      "现场材料补齐前保持 delivery_success=false、primary_actions_enabled=false 和 not_proven。"
+    ],
+    "safe_phone_copy": "路线电梯现场交接只读展示 handoff verdict、safe evidence_ref、required materials 和下一步；这是 Docker/local software proof。",
+    "recovery_hint": "下一次现场 session 需要用同一 evidence_ref 回填路线运行、电梯门状态、目标楼层、人工协助、终端动作和诊断安全摘要。",
+    "evidence_boundary": "software_proof_docker_route_elevator_field_session_handoff_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实电梯门状态",
+      "真实目标楼层确认",
+      "真实人工协助记录",
+      "真实 Nav2/fixed-route",
+      "同一 evidence_ref 上车实机材料",
+      "真实 dropoff/cancel completion",
+      "delivery success",
+      "真实底盘执行",
+      "HIL",
+      "Objective 5 external proof"
+    ]
+  },
+  "route_elevator_field_session_handoff_summary": {
+    "schema": "trashbot.route_elevator_field_session_handoff_summary.v1",
+    "source_schema": "trashbot.route_elevator_field_session_handoff.v1",
+    "schema_version": 1,
+    "handoff_verdict": "ready_for_field_session_handoff_not_proven",
+    "safe_evidence_ref": "route_elevator_field_handoff_fixture_20260516_0001",
+    "same_evidence_ref_required": true,
+    "same_evidence_ref_status": "same_ref_required_waiting_field_materials",
+    "required_materials_summary": [
+      "nav2_fixed_route_runtime_log.json",
+      "route_completion_signal.json",
+      "task_record.json",
+      "door_state.json",
+      "target_floor_confirmation.json",
+      "human_assistance_operator_note.md",
+      "dropoff_or_cancel_completion.json",
+      "delivery_result.json",
+      "diagnostics_mobile_safe_summary.json"
+    ],
+    "operator_next_steps": [
+      "用同一 safe evidence_ref 执行下一次现场交接。",
+      "缺真实现场材料时保持 not_proven。"
+    ],
+    "safe_phone_copy": "summary 只说明现场交接清单可读；不证明真实路线、电梯或交付。",
+    "recovery_hint": "等待 Robot/Autonomy 回填同一 evidence_ref 的现场材料。",
+    "evidence_boundary": "software_proof_docker_route_elevator_field_session_handoff_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实电梯门状态",
+      "真实 Nav2/fixed-route",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "route_task_field_run_readiness": {
     "schema": "trashbot.route_task_field_run_readiness.v1",
     "schema_version": 1,
@@ -2269,6 +2345,37 @@
           "HIL",
           "delivery success"
         ]
+      },
+      "route_elevator_field_session_handoff_summary": {
+        "schema": "trashbot.route_elevator_field_session_handoff_summary.v1",
+        "source_schema": "trashbot.route_elevator_field_session_handoff.v1",
+        "schema_version": 1,
+        "handoff_verdict": "status_diagnostics_summary_ready_for_field_session_handoff_not_proven",
+        "safe_evidence_ref": "status_diagnostics_route_elevator_field_handoff_fixture_20260516_0001",
+        "same_evidence_ref_required": true,
+        "same_evidence_ref_status": "status_diagnostics_same_ref_required_waiting_materials",
+        "required_materials_summary": [
+          "status diagnostics nav2 runtime log summary",
+          "status diagnostics route completion signal summary",
+          "status diagnostics door state summary",
+          "status diagnostics target floor summary",
+          "status diagnostics mobile safe summary"
+        ],
+        "operator_next_steps": [
+          "status diagnostics 要求下一次现场 session 继续使用同一 safe evidence_ref",
+          "真实现场材料缺失前保持 primary actions disabled"
+        ],
+        "safe_phone_copy": "status diagnostics summary 中的路线电梯现场交接只读展示，不放行控制动作。",
+        "recovery_hint": "按同一 evidence_ref 补齐路线、电梯、人工协助、终端动作和诊断安全摘要。",
+        "evidence_boundary": "software_proof_docker_route_elevator_field_session_handoff_gate",
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "not_proven": [
+          "真实电梯门状态",
+          "真实 Nav2/fixed-route",
+          "HIL",
+          "delivery success"
+        ]
       }
     }
   },
@@ -2384,6 +2491,37 @@
         "真实 Nav2/fixed-route",
         "HIL",
         "dropoff/cancel completion",
+        "delivery success"
+      ]
+    },
+    "route_elevator_field_session_handoff_summary": {
+      "schema": "trashbot.route_elevator_field_session_handoff_summary.v1",
+      "source_schema": "trashbot.route_elevator_field_session_handoff.v1",
+      "schema_version": 1,
+      "handoff_verdict": "phone_readiness_ready_for_field_session_handoff_not_proven",
+      "safe_evidence_ref": "phone_readiness_route_elevator_field_handoff_fixture_20260516_0001",
+      "same_evidence_ref_required": true,
+      "same_evidence_ref_status": "same_ref_required_waiting_field_materials",
+      "required_materials_summary": [
+        "phone readiness nav2 runtime log summary",
+        "phone readiness route completion signal summary",
+        "phone readiness door state summary",
+        "phone readiness target floor summary",
+        "phone readiness mobile safe summary"
+      ],
+      "operator_next_steps": [
+        "下一次现场交接继续使用同一 safe evidence_ref。",
+        "现场材料未回填前保持 not_proven。"
+      ],
+      "safe_phone_copy": "phone_readiness 中的路线电梯现场交接只读展示，不证明真实路线、电梯或送达。",
+      "recovery_hint": "等待现场 session 用同一 evidence_ref 补齐真实材料。",
+      "evidence_boundary": "software_proof_docker_route_elevator_field_session_handoff_gate",
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "not_proven": [
+        "真实电梯门状态",
+        "真实 Nav2/fixed-route",
+        "HIL",
         "delivery success"
       ]
     },

@@ -575,6 +575,39 @@ not prove real elevator, real floor confirmation, real Nav2/fixed-route, real
 HIL, production readiness, dropoff completion, cancel completion, or delivery
 success.
 
+Operator diagnostics may also expose `route_elevator_field_session_handoff`
+and the alias `route_elevator_field_session_handoff_summary` from an explicit
+`route_elevator_field_session_handoff_ref`,
+`TRASHBOT_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF`, or
+`TRASHBOT_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_SUMMARY`. The source JSON must
+use `schema=trashbot.route_elevator_field_session_handoff.v1` or
+`schema=trashbot.route_elevator_field_session_handoff_summary.v1` with
+`evidence_boundary=software_proof_docker_route_elevator_field_session_handoff_gate`.
+If the source is already a summary wrapper, it must still point to the same
+source schema/evidence boundary. This summary is metadata-only support material
+for explaining the next route/elevator field-session handoff: it may expose
+only the summary schema/evidence boundary, source schema/evidence boundary,
+`handoff_verdict`, safe evidence ref, `same_evidence_ref_required=true`,
+whitelisted `source_summaries`, `field_session_manifest`,
+`required_materials_summary`, `operator_next_steps`,
+`robot_diagnostics_summary`, `mobile_readonly_summary`, `not_proven`,
+`delivery_success=false`, and `primary_actions_enabled=false`. It is not
+control authorization and must not enable Start Delivery, Confirm Dropoff,
+Cancel, ACK POST, cursor/persistence updates, terminal ACK, Nav2, route
+execution, dropoff/cancel completion, HIL, WAVE ROVER motion, or delivery
+success. Raw route logs, task records, mobile raw payloads, credentials, local
+paths, checksum material, UART/serial details, raw ACK payloads, raw command
+envelopes, production-readiness claims, success copy, and traceback content
+must not enter the diagnostics summary. Missing, unreadable,
+unsupported-schema, boundary-mismatch, unsafe fields,
+`same_evidence_ref_required=false`, non-boolean `same_evidence_ref_required`,
+`delivery_success=true`, `primary_actions_enabled=true`, or success wording
+sources remain blocked/not_proven. The field does not change `/api/collect`,
+ACK, cursor, Nav2, dropoff/cancel, route execution, or HIL behavior, and it
+does not prove real field-session pass, real elevator, real floor
+confirmation, real Nav2/fixed-route, real HIL, dropoff completion, cancel
+completion, Objective 5 external proof, or delivery success.
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

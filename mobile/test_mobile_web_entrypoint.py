@@ -209,6 +209,10 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("elevator_assist_summary", app)
         self.assertIn("phone_elevator_assist", app)
         self.assertIn("software_proof_docker_elevator_assist_default_mainline_gate", app)
+        self.assertIn("route_elevator_field_session_handoff", app)
+        self.assertIn("route_elevator_field_session_handoff_summary", app)
+        self.assertIn("routeElevatorFieldSessionHandoffTitle", app)
+        self.assertIn("software_proof_docker_route_elevator_field_session_handoff_gate", app)
         self.assertIn("mobile_browser_acceptance_bundle", app)
         self.assertIn("phone_browser_acceptance_bundle", app)
         self.assertIn("mobile_acceptance_evidence_bundle", app)
@@ -751,6 +755,68 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "primary_actions_enabled\": true",
         ):
             self.assertNotIn(forbidden, nested_fixture_text)
+
+    def test_route_elevator_field_session_handoff_panel_is_read_only_and_phone_safe(self):
+        app = self.read("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # 现场交接面板只读消费 status/phone_readiness/diagnostics 摘要，不读取原始材料或放行动作。
+        self.assertIn("ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_TEXT", app)
+        self.assertIn("safeRouteElevatorFieldSessionHandoffText", app)
+        self.assertIn("routeElevatorFieldSessionHandoffCandidate", app)
+        self.assertIn("routeElevatorFieldSessionHandoffFromStatus", app)
+        self.assertIn("ensureRouteElevatorFieldSessionHandoffPanel", app)
+        self.assertIn("renderRouteElevatorFieldSessionHandoff", app)
+        self.assertIn("路线电梯现场交接", app)
+        self.assertIn("route_elevator_field_session_handoff", app)
+        self.assertIn("route_elevator_field_session_handoff_summary", app)
+        self.assertIn("diagnosticsSummary.route_elevator_field_session_handoff", app)
+        self.assertIn("nestedDiagnosticsSummary.route_elevator_field_session_handoff", app)
+        self.assertIn("blocked_missing_route_elevator_field_session_handoff_summary", app)
+        self.assertIn("routeElevatorFieldSessionHandoffVerdict", app)
+        self.assertIn("routeElevatorFieldSessionHandoffEvidenceRef", app)
+        self.assertIn("routeElevatorFieldSessionHandoffSameRefStatus", app)
+        self.assertIn("routeElevatorFieldSessionHandoffMaterials", app)
+        self.assertIn("routeElevatorFieldSessionHandoffNextSteps", app)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", app)
+        self.assertIn("software_proof_docker_route_elevator_field_session_handoff_gate", app)
+        self.assertNotRegex(app, r"routeElevatorFieldSessionHandoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"routeElevatorFieldSessionHandoff.*fetchJson\(ENDPOINTS\.diagnostics")
+
+        handoff = fixture["route_elevator_field_session_handoff"]
+        self.assertEqual(
+            handoff["evidence_boundary"],
+            "software_proof_docker_route_elevator_field_session_handoff_gate",
+        )
+        self.assertEqual(handoff["delivery_success"], False)
+        self.assertEqual(handoff["primary_actions_enabled"], False)
+        self.assertIn("route_elevator_field_session_handoff_summary", fixture_text)
+        self.assertIn("route_elevator_field_handoff_fixture_20260516_0001", fixture_text)
+        self.assertIn("nav2_fixed_route_runtime_log.json", fixture_text)
+        self.assertIn("diagnostics_mobile_safe_summary.json", fixture_text)
+
+        handoff_fixture_text = json.dumps(handoff, ensure_ascii=False).lower()
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "baudrate",
+            "authorization",
+            "token",
+            "raw artifact",
+            "checksum",
+            "traceback",
+            "database url",
+            "queue url",
+            "oss ak",
+            "oss sk",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, handoff_fixture_text)
 
     def test_elevator_field_run_material_validation_panel_is_read_only_and_phone_safe(self):
         app = self.read("app.js")

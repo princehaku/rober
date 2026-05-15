@@ -35,6 +35,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_elevator_field_run_review,
     summarize_elevator_field_run_execution_pack,
     summarize_elevator_route_evidence_reconciliation,
+    summarize_route_elevator_field_session_handoff,
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import (
@@ -4309,6 +4310,216 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["delivery_success"])
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_elevator_route_evidence_reconciliation_gate", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_elevator_field_session_handoff_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            handoff_path = Path(td) / "route_elevator_field_session_handoff.json"
+            handoff_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_elevator_field_session_handoff.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_elevator_field_session_handoff_gate"
+                        ),
+                        "evidence_ref": "evidence://route-elevator-handoff-1",
+                        "same_evidence_ref_required": True,
+                        "handoff_verdict": {
+                            "status": "ready_for_field_session_handoff_not_proven",
+                            "verdict": "ready_for_field_session_handoff_not_proven",
+                            "reason": "all local summaries are bundled for field session collection",
+                        },
+                        "source_summaries": {
+                            "pc_route_debug_console": {"status": "available"},
+                            "route_completion_signal": {"status": "available"},
+                            "elevator_route_reconciliation": {"status": "available"},
+                        },
+                        "field_session_manifest": {
+                            "session_id": "field-session-1",
+                            "materials_count": 9,
+                        },
+                        "required_materials_summary": [
+                            "nav2_fixed_route_runtime_log.json",
+                            "door_state.json",
+                            "delivery_result.json",
+                        ],
+                        "operator_next_steps": [
+                            "Collect field materials under the same safe evidence_ref."
+                        ],
+                        "robot_diagnostics_summary": {
+                            "status": "metadata_only",
+                            "reason": "safe robot diagnostics summary only",
+                        },
+                        "mobile_readonly_summary": {
+                            "safe_copy": (
+                                "Route/elevator field session handoff is metadata-only; "
+                                "delivery_success=false and not delivery success."
+                            ),
+                        },
+                        "not_proven": ["delivery_success", "real_elevator_operation"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_elevator_field_session_handoff_ref=str(handoff_path),
+            )
+            summary = payload["route_elevator_field_session_handoff"]
+            summary_alias = payload["route_elevator_field_session_handoff_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["schema"], "trashbot.route_elevator_field_session_handoff_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_elevator_field_session_handoff_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_elevator_field_session_handoff.v1")
+        self.assertEqual(summary["source_schema_version"], 1)
+        self.assertEqual(summary["handoff_verdict"]["status"], "ready_for_field_session_handoff_not_proven")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://route-elevator-handoff-1")
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertEqual(summary["source_summaries"]["pc_route_debug_console"]["status"], "available")
+        self.assertEqual(summary["field_session_manifest"]["session_id"], "field-session-1")
+        self.assertIn("door_state.json", summary["required_materials_summary"])
+        self.assertIn("same safe evidence_ref", summary["operator_next_steps"][0])
+        self.assertIn("delivery_success=false", summary["mobile_readonly_summary"]["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("collect_dropoff_cancel_control", summary["not_proven"])
+        self.assertIn("real_nav2_fixed_route_run", summary["not_proven"])
+        self.assertIn("real_hil_pass", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["dropoff_completion"])
+        self.assertFalse(summary["cancel_completion"])
+        self.assertNotIn(str(handoff_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_elevator_field_session_handoff_env_summary_missing_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "route_elevator_field_session_handoff_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_elevator_field_session_handoff_summary.v1",
+                        "source_schema": "trashbot.route_elevator_field_session_handoff.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_elevator_field_session_handoff_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_elevator_field_session_handoff_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://route-elevator-handoff-2",
+                        "same_evidence_ref_required": True,
+                        "handoff_verdict": {
+                            "status": "blocked_missing_inputs",
+                            "verdict": "not_proven",
+                            "reason": "route completion signal is missing",
+                        },
+                        "required_materials_summary": ["route_completion_signal.json"],
+                        "operator_next_steps": ["Regenerate the route completion signal."],
+                        "mobile_readonly_summary": {
+                            "safe_copy": "Route/elevator field session handoff is metadata-only; delivery_success=false.",
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_artifact = os.environ.get("TRASHBOT_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF")
+            previous_summary = os.environ.get("TRASHBOT_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_SUMMARY")
+            os.environ.pop("TRASHBOT_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF", None)
+            os.environ["TRASHBOT_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_elevator_field_session_handoff"
+                ]
+            finally:
+                if previous_artifact is None:
+                    os.environ.pop("TRASHBOT_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF"] = previous_artifact
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_SUMMARY"] = previous_summary
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_route_elevator_handoff.json"
+            missing_summary = summarize_route_elevator_field_session_handoff(str(missing_path))
+
+            unsupported_path = Path(td) / "unsupported_route_elevator_handoff.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_route_evidence_reconciliation.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_route_evidence_reconciliation_gate"
+                        ),
+                        "safe_copy": "Unsupported handoff is metadata-only; delivery_success=false.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsupported_summary = summarize_route_elevator_field_session_handoff(str(unsupported_path))
+
+            unsafe_path = Path(td) / "unsafe_route_elevator_handoff.json"
+            unsafe_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_elevator_field_session_handoff.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_elevator_field_session_handoff_gate"
+                        ),
+                        "same_evidence_ref_required": "false",
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                        "mobile_readonly_summary": {
+                            "safe_copy": "Route/elevator handoff confirms delivery success and ACK posted.",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_summary = summarize_route_elevator_field_session_handoff(str(unsafe_path))
+            encoded = json.dumps(
+                [env_summary, missing_summary, unsupported_summary, unsafe_summary],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["handoff_verdict"]["status"], "blocked_missing_inputs")
+        self.assertIn("route_completion_signal.json", env_summary["required_materials_summary"])
+        self.assertEqual(missing_summary["handoff_verdict"]["status"], "missing")
+        self.assertEqual(unsupported_summary["handoff_verdict"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["handoff_verdict"]["status"], "unsafe_fields")
+        self.assertFalse(unsafe_summary["same_evidence_ref_required"])
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_route_elevator_field_session_handoff_gate", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)

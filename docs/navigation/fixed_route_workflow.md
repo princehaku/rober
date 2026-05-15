@@ -330,6 +330,33 @@ python3 pc-tools/route/route_debug_web.py \
 
 该 gate 是 Docker/local software proof only。它不证明真实 Nav2/fixed-route、真实路线采集、真实电梯、HIL、dropoff/cancel completion、delivery success、真实手机设备/browser 或 Objective 5 external proof。
 
+## 4.9 Route Elevator Field Session Handoff
+
+PC route debug console、route completion signal 和 elevator-route reconciliation 都对齐后，可以生成下一次现场 session 的 handoff artifact，方便把真实现场材料按同一 `evidence_ref` 回填：
+
+```bash
+python3 pc-tools/evidence/route_elevator_field_session_handoff.py \
+  --pc-route-debug-json /tmp/pc_route_debug_console.json \
+  --route-completion-json /tmp/route_task_completion_signal.json \
+  --elevator-route-reconciliation-json /tmp/elevator_route_evidence_reconciliation.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_elevator_field_session_handoff.json \
+  --summary-output /tmp/route_elevator_field_session_handoff_summary.json
+```
+
+artifact 使用 `schema=trashbot.route_elevator_field_session_handoff.v1`，summary 使用 `schema=trashbot.route_elevator_field_session_handoff_summary.v1`，证据边界固定为 `software_proof_docker_route_elevator_field_session_handoff_gate`。顶层固定包含 `same_evidence_ref_required=true`、`source_summaries`、`field_session_manifest`、`required_materials`、`operator_handoff`、`robot_diagnostics_summary`、`mobile_readonly_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+`required_materials` 至少要求同一 safe `evidence_ref` 下的 `nav2_fixed_route_runtime_log.json`、`route_completion_signal.json`、`task_record.json`、`door_state.json`、`target_floor_confirmation.json`、`human_assistance_operator_note.md`、`dropoff_or_cancel_completion.json`、`delivery_result.json` 和 `diagnostics_mobile_safe_summary.json`。本 gate 只生成 checklist/manifest，不读取 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、手机设备、外部云、OSS/CDN、DB/queue 或 4G。
+
+保守阻断规则：
+
+- 三份输入任一缺失、JSON 不可读或不是 JSON object：输出 blocked，不把异常当交接证据。
+- 任一输入 schema、evidence boundary 或显式 `source` 不支持：输出 blocked。
+- 任一输入缺 `evidence_ref`，或与 `--evidence-ref` 不一致：输出 blocked。
+- 任一输入或摘要含 unsafe copy、`primary_actions_enabled=true`、`delivery_success=true`、delivery/dropoff/cancel success 文案或 `hil_pass=true`：输出 blocked。
+
+`robot_diagnostics_summary` 和 `mobile_readonly_summary` 只能展示白名单摘要，不包含 raw artifact、本机完整路径、checksum、traceback、凭证、DB/queue URL、OSS AK/SK、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 参数。该 gate 是现场 session handoff，不是 delivery success，也不是 Objective 5 external proof；`not_proven` 必须继续包含真实 Nav2/fixed-route、真实电梯门状态、真实目标楼层、人工协助、HIL、dropoff/cancel completion、真实手机和 O5 外部材料。
+
 ## 5. 关键缺失与超时复现脚本（离线）
 
 ### 5.1 固定路线关键点缺失

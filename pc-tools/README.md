@@ -65,6 +65,26 @@ API `/api/status` 与 `/api/summary` 返回同一份只读 summary：`pc_route_d
 
 `route_elevator_reconciliation` 只接受 `trashbot.elevator_route_evidence_reconciliation.v1` 或 `trashbot.elevator_route_evidence_reconciliation_summary.v1`，输入边界必须是 `software_proof_docker_elevator_route_evidence_reconciliation_gate`。HTML/API 中该嵌套字段的 `evidence_boundary` 是 `software_proof_docker_pc_route_elevator_console_integration_gate`，并用 `source_evidence_boundary` 保留输入复账边界；只展示 safe evidence ref、status/verdict、same-evidence-ref 状态、source states、missing/mismatch 摘要、operator next steps、boundary、`not_proven` 和 `safe_copy`；缺失、坏 JSON、unsupported schema/boundary、unsafe copy、success claim 或 control claim 都会 blocked/not_proven。
 
+## route/elevator field-session handoff
+
+`pc-tools/evidence/route_elevator_field_session_handoff.py` 把 PC route debug console、route completion signal 和 elevator-route reconciliation 的 artifact 或 summary 整理成下一次真实现场 session 的交接材料：
+
+```bash
+python3 pc-tools/evidence/route_elevator_field_session_handoff.py \
+  --pc-route-debug-json /tmp/pc_route_debug_console.json \
+  --route-completion-json /tmp/route_task_completion_signal.json \
+  --elevator-route-reconciliation-json /tmp/elevator_route_evidence_reconciliation.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_elevator_field_session_handoff.json \
+  --summary-output /tmp/route_elevator_field_session_handoff_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_elevator_field_session_handoff.v1`，summary 使用 `schema=trashbot.route_elevator_field_session_handoff_summary.v1`，证据边界固定为 `software_proof_docker_route_elevator_field_session_handoff_gate`。核心字段包括 `source_summaries`、`field_session_manifest`、`required_materials`、`operator_handoff`、`robot_diagnostics_summary`、`mobile_readonly_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+`required_materials` 只是现场回填清单，覆盖 `nav2_fixed_route_runtime_log.json`、`route_completion_signal.json`、`task_record.json`、`door_state.json`、`target_floor_confirmation.json`、`human_assistance_operator_note.md`、`dropoff_or_cancel_completion.json`、`delivery_result.json` 和 `diagnostics_mobile_safe_summary.json`。这些材料后续必须使用同一 safe `evidence_ref`；本 gate 不读取 Nav2 runtime、ROS graph、serial/UART、WAVE ROVER、真实电梯、手机设备、外部云、OSS/CDN、DB/queue 或 4G。
+
+缺输入、坏 JSON、unsupported schema/boundary/source、`evidence_ref` mismatch、unsafe copy、`primary_actions_enabled=true`、`delivery_success=true` 或成功文案都会 fail closed。`robot_diagnostics_summary` 和 `mobile_readonly_summary` 只输出白名单摘要，不包含 raw artifact、本机完整路径、checksum、traceback、凭证、DB/queue URL、OSS AK/SK、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 参数。该 gate 是现场 session handoff，不是 delivery_success=false 之外的送达证明，也不是 Objective 5 external proof；`not_proven` 必须继续展示。
+
 ## route/task rehearsal artifact
 
 `pc-tools/evidence/evidence_crosscheck.py` 可在原有只读复账基础上额外写出 route/task rehearsal artifact：

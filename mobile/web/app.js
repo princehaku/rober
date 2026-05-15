@@ -55,6 +55,7 @@ const ELEVATOR_ASSIST_BOUNDARY = "software_proof_docker_elevator_assist_default_
 const ELEVATOR_ASSIST_REHEARSAL_EVIDENCE_BOUNDARY = "software_proof_docker_elevator_evidence_driven_mainline_gate";
 const ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_BOUNDARY = "software_proof_docker_elevator_route_evidence_reconciliation_gate";
 const PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_BOUNDARY = "software_proof_docker_pc_route_elevator_console_integration_gate";
+const ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_BOUNDARY = "software_proof_docker_route_elevator_field_session_handoff_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -128,6 +129,7 @@ const UNSAFE_ELEVATOR_FIELD_EXECUTION_PACK_TEXT = /(authorization|bearer|token|o
 const UNSAFE_ROUTE_TASK_COMPLETION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw completion|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_ELEVATOR_ASSIST_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|已送达成功|真实电梯完成|真实喇叭完成|真实 nav2|hil_pass)/i;
 const UNSAFE_ELEVATOR_ROUTE_RECONCILIATION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw reconciliation|raw diagnostics|complete artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
+const UNSAFE_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw handoff|raw diagnostics|raw material|complete artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 
@@ -353,6 +355,15 @@ function safeElevatorRouteReconciliationText(value, fallback = "not_proven") {
   // 电梯路线复账只展示 diagnostics/status 的安全摘要；路径、raw 材料和成功暗示全部降级。
   const text = safeText(value, fallback);
   if (UNSAFE_ELEVATOR_ROUTE_RECONCILIATION_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeRouteElevatorFieldSessionHandoffText(value, fallback = "not_proven") {
+  // 现场交接只给手机端展示白名单摘要；raw 材料、路径、硬件/云细节和成功暗示全部降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -5322,6 +5333,150 @@ function elevatorRouteEvidenceReconciliationFromStatus(status, readiness, diagno
   };
 }
 
+function routeElevatorFieldSessionHandoffCandidate(status, readiness, diagnostics) {
+  // 现场交接 summary 可由 status、phone_readiness 或 diagnostics 镜像提供；前端只消费摘要不读取 raw 文件。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.route_elevator_field_session_handoff,
+    status?.route_elevator_field_session_handoff_summary,
+    readiness?.route_elevator_field_session_handoff,
+    readiness?.route_elevator_field_session_handoff_summary,
+    diagnostics?.route_elevator_field_session_handoff,
+    diagnostics?.route_elevator_field_session_handoff_summary,
+    diagnosticsReadiness.route_elevator_field_session_handoff,
+    diagnosticsReadiness.route_elevator_field_session_handoff_summary,
+    diagnosticsSummary.route_elevator_field_session_handoff,
+    diagnosticsSummary.route_elevator_field_session_handoff_summary,
+    nestedDiagnosticsSummary.route_elevator_field_session_handoff,
+    nestedDiagnosticsSummary.route_elevator_field_session_handoff_summary,
+    nestedDiagnosticsInnerSummary.route_elevator_field_session_handoff,
+    nestedDiagnosticsInnerSummary.route_elevator_field_session_handoff_summary,
+    statusDiagnosticsSummary.route_elevator_field_session_handoff,
+    statusDiagnosticsSummary.route_elevator_field_session_handoff_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function routeElevatorFieldSessionHandoffNotProvenList(value) {
+  // handoff 只是下一次现场材料交接，不等同真实路线、电梯、投放、取消或交付完成。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实电梯门状态",
+    "真实目标楼层确认",
+    "真实人工协助记录",
+    "真实 Nav2/fixed-route",
+    "同一 evidence_ref 上车实机材料",
+    "真实 dropoff/cancel completion",
+    "真实 delivery",
+    "真实底盘执行",
+    "HIL",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 16);
+}
+
+function routeElevatorFieldSessionHandoffSummaryText(value, fallback) {
+  // required materials 与 operator next steps 可能是数组/对象；这里只拼接安全短摘要。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeRouteElevatorFieldSessionHandoffText(
+        item?.safe_phone_copy || item?.summary || item?.name || item?.material ||
+          item?.status || item?.state || item?.step || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.reason || value.material || value.step;
+    if (direct) {
+      return safeRouteElevatorFieldSessionHandoffText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeRouteElevatorFieldSessionHandoffText(key, "");
+        const copy = routeElevatorFieldSessionHandoffSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  return safeRouteElevatorFieldSessionHandoffText(value, fallback);
+}
+
+function routeElevatorFieldSessionHandoffFromStatus(status, readiness, diagnostics) {
+  const provided = routeElevatorFieldSessionHandoffCandidate(status, readiness, diagnostics) || {};
+  const manifest = provided.field_session_manifest && typeof provided.field_session_manifest === "object"
+    ? provided.field_session_manifest
+    : {};
+  const requiredMaterials = provided.required_materials_summary || provided.required_materials ||
+    manifest.required_materials || provided.required_material_templates;
+  const operatorNextSteps = provided.operator_next_steps || provided.next_steps || provided.operator_actions ||
+    provided.operator_handoff?.operator_next_steps || provided.operator_handoff;
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.route_elevator_field_session_handoff_summary.v1",
+    source_schema: "trashbot.route_elevator_field_session_handoff.v1",
+    schema_version: 1,
+    handoff_verdict: safeRouteElevatorFieldSessionHandoffText(
+      provided.handoff_verdict || provided.verdict || provided.overall_status || provided.status,
+      "blocked_missing_route_elevator_field_session_handoff_summary",
+    ),
+    evidence_ref: safeRouteElevatorFieldSessionHandoffText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "not_provided",
+    ),
+    same_evidence_ref_required: provided.same_evidence_ref_required === true,
+    same_evidence_ref_status: safeRouteElevatorFieldSessionHandoffText(
+      provided.same_evidence_ref_status || provided.same_ref_status || provided.evidence_ref_status,
+      provided.same_evidence_ref_required === true
+        ? "same_evidence_ref_required_not_proven"
+        : "same_evidence_ref_not_proven",
+    ),
+    required_materials_summary: routeElevatorFieldSessionHandoffSummaryText(
+      requiredMaterials,
+      "required_materials=not_proven",
+    ),
+    operator_next_steps_summary: routeElevatorFieldSessionHandoffSummaryText(
+      operatorNextSteps,
+      "等待 operator next steps 摘要；按同一 evidence_ref 补齐现场材料。",
+    ),
+    safe_phone_copy: safeRouteElevatorFieldSessionHandoffText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "route_elevator_field_session_handoff 摘要缺失；手机端只显示 blocked/not_proven，不读取原始交接材料。",
+    ),
+    recovery_hint: safeRouteElevatorFieldSessionHandoffText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由 diagnostics/status 提供 route_elevator_field_session_handoff_summary 后，再按同一 evidence_ref 组织现场交接。",
+    ),
+    evidence_boundary: safeRouteElevatorFieldSessionHandoffText(
+      provided.evidence_boundary,
+      ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: routeElevatorFieldSessionHandoffNotProvenList(provided),
+  };
+}
+
 function elevatorAssistCandidate(status, readiness, diagnostics) {
   // evidence-driven artifact 优先级高于旧 dry-run summary，避免新主链路被旧兼容字段遮住。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -6642,6 +6797,73 @@ function renderElevatorRouteEvidenceReconciliation(status) {
   $("elevatorRouteEvidenceReconciliationBoundary").textContent = summary.evidence_boundary;
   $("elevatorRouteEvidenceReconciliationNotProven").textContent = summary.not_proven.join("、");
   $("elevatorRouteEvidenceReconciliationHint").textContent = summary.recovery_hint;
+}
+
+function ensureRouteElevatorFieldSessionHandoffPanel() {
+  // 交接 panel 由 JS 注入，避免改 index.html；它只消费 status/diagnostics 的白名单摘要。
+  let panel = $("routeElevatorFieldSessionHandoffPanel");
+  if (panel) {
+    return panel;
+  }
+  panel = document.createElement("section");
+  panel.id = "routeElevatorFieldSessionHandoffPanel";
+  panel.className = "route-elevator-field-session-handoff-panel";
+  panel.setAttribute("aria-labelledby", "routeElevatorFieldSessionHandoffTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="routeElevatorFieldSessionHandoffTitle">路线电梯现场交接</h2>
+      <span id="routeElevatorFieldSessionHandoffBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="routeElevatorFieldSessionHandoffCopy" class="message">
+      等待 diagnostics/status 提供 route_elevator_field_session_handoff 的 phone-safe 交接摘要。
+    </p>
+    <dl class="route-elevator-field-session-handoff-grid">
+      <div><dt>Handoff Verdict</dt><dd id="routeElevatorFieldSessionHandoffVerdict">blocked/not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="routeElevatorFieldSessionHandoffEvidenceRef">not_provided</dd></div>
+      <div><dt>Same Evidence Ref</dt><dd id="routeElevatorFieldSessionHandoffSameRef">same evidence ref required=false/not_proven</dd></div>
+      <div><dt>Same Evidence Ref Status</dt><dd id="routeElevatorFieldSessionHandoffSameRefStatus">same_evidence_ref_status=not_proven</dd></div>
+      <div><dt>Required Materials</dt><dd id="routeElevatorFieldSessionHandoffMaterials">required_materials=not_proven</dd></div>
+      <div><dt>Operator Next Steps</dt><dd id="routeElevatorFieldSessionHandoffNextSteps">等待 operator next steps 摘要。</dd></div>
+      <div><dt>Control Boundary</dt><dd id="routeElevatorFieldSessionHandoffControls">delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="routeElevatorFieldSessionHandoffBoundary">software_proof_docker_route_elevator_field_session_handoff_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="routeElevatorFieldSessionHandoffNotProven">真实电梯、真实路线、HIL、dropoff/cancel completion 和 delivery success 未证明。</dd></div>
+    </dl>
+    <p id="routeElevatorFieldSessionHandoffHint" class="hint">路线电梯现场交接只读展示；不读取原始交接材料、本机路径、凭证、外部云材料、硬件控制细节、校验细节或错误堆栈，也不触发 Start、Confirm 或 Cancel。</p>
+  `;
+  const anchor = $("elevatorRouteEvidenceReconciliationPanel") ||
+    $("elevatorRouteEvidenceReconciliationHint")?.closest("section") ||
+    $("routeTaskCompletionSignalTitle")?.closest("section") ||
+    $("elevatorAssistPanel");
+  if (anchor && anchor.parentNode) {
+    anchor.parentNode.insertBefore(panel, anchor.nextSibling);
+  } else {
+    document.querySelector("main")?.appendChild(panel);
+  }
+  return panel;
+}
+
+function renderRouteElevatorFieldSessionHandoff(status) {
+  ensureRouteElevatorFieldSessionHandoffPanel();
+  const readiness = readinessFromStatus(status);
+  const summary = routeElevatorFieldSessionHandoffFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("routeElevatorFieldSessionHandoffBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 handoff" : "read-only handoff";
+  $("routeElevatorFieldSessionHandoffCopy").textContent = summary.safe_phone_copy;
+  $("routeElevatorFieldSessionHandoffVerdict").textContent = summary.handoff_verdict;
+  $("routeElevatorFieldSessionHandoffEvidenceRef").textContent = summary.evidence_ref;
+  $("routeElevatorFieldSessionHandoffSameRef").textContent = summary.same_evidence_ref_required
+    ? "same evidence ref required=true"
+    : "same evidence ref required=false/not_proven";
+  $("routeElevatorFieldSessionHandoffSameRefStatus").textContent = summary.same_evidence_ref_status;
+  $("routeElevatorFieldSessionHandoffMaterials").textContent = summary.required_materials_summary;
+  $("routeElevatorFieldSessionHandoffNextSteps").textContent = summary.operator_next_steps_summary;
+  $("routeElevatorFieldSessionHandoffControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("routeElevatorFieldSessionHandoffBoundary").textContent = summary.evidence_boundary;
+  $("routeElevatorFieldSessionHandoffNotProven").textContent = summary.not_proven.join("、");
+  $("routeElevatorFieldSessionHandoffHint").textContent = summary.recovery_hint;
 }
 
 function ensureElevatorAssistPanel() {
@@ -8299,6 +8521,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const routeElevatorFieldHandoff = routeElevatorFieldSessionHandoffFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const rows = [
     ["软件版本", payload?.software_version],
     ["地图版本", payload?.map_version],
@@ -8322,6 +8549,7 @@ function renderDiagnosticsSummary(payload) {
     ["Elevator assist default dry-run", elevatorAssist.overall_status],
     ["Route-task completion signal", routeTaskCompletion.completion_verdict],
     ["Elevator-route evidence reconciliation", elevatorRouteReconciliation.reconciliation_verdict],
+    ["Route-elevator field session handoff", routeElevatorFieldHandoff.handoff_verdict],
   ];
   rows.forEach(([label, value]) => {
     const box = document.createElement("div");
@@ -8387,6 +8615,7 @@ function renderOfflineFailure() {
   renderElevatorAssist({});
   renderElevatorRouteEvidenceReconciliation({});
   renderRouteTaskCompletionSignal({});
+  renderRouteElevatorFieldSessionHandoff({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -8430,6 +8659,7 @@ function renderStatus(status) {
   renderElevatorAssist(status);
   renderElevatorRouteEvidenceReconciliation(status);
   renderRouteTaskCompletionSignal(status);
+  renderRouteElevatorFieldSessionHandoff(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
@@ -8650,6 +8880,7 @@ async function openDiagnostics() {
     renderElevatorAssist(latestStatus || {});
     renderRouteTaskCompletionSignal(latestStatus || {});
     renderElevatorRouteEvidenceReconciliation(latestStatus || {});
+    renderRouteElevatorFieldSessionHandoff(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileDeviceEvidence(latestStatus || {});
     renderMobileDeviceHandoffSession(latestStatus || {});
