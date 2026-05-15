@@ -169,6 +169,14 @@ execution pack 使用 `schema=trashbot.elevator_field_run_execution_pack.v1`，s
 
 `controlled_rehearsal_manifest` 明确 human observer、stop path 和同一 `evidence_ref` 是受控演练前提；`required_material_templates` 继续要求门状态、目标楼层确认、人工协助记录、Nav2/fixed-route runtime log、task record、completion signal 和 diagnostics/mobile safe summary 七类材料。`ready_for_controlled_elevator_field_rehearsal_execution_pack_not_proven` 只表示 review 材料足以生成受控演练执行清单，不证明真实电梯门状态、真实目标楼层确认、真实人工协助、真实 Nav2/fixed-route、WAVE ROVER/UART/HIL、真实投放、真实取消完成或 delivery success。缺 review、坏 JSON、unsupported schema/boundary、unsafe copy、review blocked、`primary_actions_enabled=true` 或 `delivery_success=true` 都必须 fail closed。
 
+## Evidence-driven dry-run 主链路 Gate
+
+`pc-tools/evidence/elevator_assist_rehearsal_evidence.py` 是 Robot task_orchestrator dry-run 主链路的只读输入 gate。它从显式 `--evidence-ref` 和 `--target-floor` 生成 `trashbot.elevator_assist_rehearsal_evidence.v1` artifact，不读取现场 raw 材料，也不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G。
+
+artifact 使用 `evidence_boundary=software_proof_docker_elevator_evidence_driven_mainline_gate`，必须包含 `source=software_proof`、`phase_evidence`、`phone_safe_summary`、`same_evidence_ref_required=true`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。`phone_safe_summary` 同样保留 `source=software_proof`，供 Robot dry-run 和移动端只读摘要对齐。`phase_evidence` 固定覆盖 `waiting_elevator_open`、`entering_elevator`、`requesting_floor_help`、`waiting_target_floor` 和 `exiting_elevator`，供 Robot dry-run 只读复现阶段转移。
+
+可选 `--failure-phase` 生成 `failure.phase`、`failure.reason` 和 `failure.manual_takeover_reason`，用于验证 Robot fail-closed 和人工接管记录。该 gate 只证明 Docker/local rehearsal evidence artifact 可被主链路消费，不证明真实电梯门状态、真实目标楼层确认、真实人工协助、真实 Nav2/fixed-route、HIL、真实投放、真实取消完成或 delivery success。非法 `evidence_ref`、非法 `target_floor`、unsafe copy、成功文案、`primary_actions_enabled=true` 或 `delivery_success=true` 都必须保持 blocked。
+
 ## 不做什么
 
 - 不把电梯能力写成当前 MVP 已完成。

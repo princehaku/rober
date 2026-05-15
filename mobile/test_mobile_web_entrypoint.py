@@ -526,21 +526,34 @@ class MobileWebEntrypointTest(unittest.TestCase):
 
         # 电梯辅助只解释后端摘要，不改 index 静态结构，不改变 Start/Confirm/Cancel gating。
         self.assertIn("ELEVATOR_ASSIST_BOUNDARY", app)
+        self.assertIn("ELEVATOR_ASSIST_REHEARSAL_EVIDENCE_BOUNDARY", app)
         self.assertIn("UNSAFE_ELEVATOR_ASSIST_TEXT", app)
         self.assertIn("safeElevatorAssistText", app)
         self.assertIn("elevatorAssistCandidate", app)
         self.assertIn("elevatorAssistFromStatus", app)
+        self.assertIn("elevatorAssistPhaseEvidenceSummary", app)
+        self.assertIn("elevatorAssistFailureSummary", app)
         self.assertIn("ensureElevatorAssistPanel", app)
         self.assertIn("renderElevatorAssist", app)
+        self.assertIn("elevator_assist_rehearsal_evidence", app)
+        self.assertIn("elevator_assist_rehearsal_evidence_summary", app)
         self.assertIn("elevator_assist", app)
         self.assertIn("elevator_assist_summary", app)
         self.assertIn("phone_elevator_assist", app)
+        self.assertIn("diagnosticsSummary.elevator_assist_rehearsal_evidence", app)
+        self.assertIn("statusDiagnosticsSummary.elevator_assist_rehearsal_evidence_summary", app)
         self.assertIn("diagnosticsSummary.elevator_assist", app)
         self.assertIn("statusDiagnosticsSummary.elevator_assist_summary", app)
         self.assertIn("电梯辅助状态", app)
+        self.assertIn("Safe Evidence Ref", app)
+        self.assertIn("Phase Evidence", app)
+        self.assertIn("Same Evidence Ref", app)
+        self.assertIn("same evidence ref required=true", app)
+        self.assertIn("phase_evidence", app)
         self.assertIn("等待开门、进入电梯、请求人工按目标楼层、等待目标楼层、开门后驶出、继续送达", app)
         self.assertIn("delivery_success=false / primary_actions_enabled=false", app)
         self.assertIn("software_proof_docker_elevator_assist_default_mainline_gate", app)
+        self.assertIn("software_proof_docker_elevator_evidence_driven_mainline_gate", app)
         self.assertIn("真实电梯", app)
         self.assertIn("真实喇叭/TTS", app)
         self.assertIn("真实 Nav2/fixed-route", app)
@@ -550,18 +563,46 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertNotRegex(app, r"elevatorAssist.*fetchJson\(ENDPOINTS\.diagnostics")
 
         self.assertIn("trashbot.elevator_assist_summary.v1", fixture_text)
+        self.assertIn("trashbot.elevator_assist_rehearsal_evidence.v1", fixture_text)
+        self.assertIn("trashbot.elevator_assist_rehearsal_evidence_summary.v1", fixture_text)
+        self.assertIn("elevator_assist_rehearsal_evidence_fixture_20260516_0001", fixture_text)
+        self.assertIn("phone_readiness_elevator_assist_rehearsal_fixture_20260516_0001", fixture_text)
+        self.assertIn("status_diagnostics_elevator_assist_rehearsal_fixture_20260516_0001", fixture_text)
         self.assertIn("default_dry_run_enabled", fixture_text)
         self.assertIn("requesting_floor_help", fixture_text)
         self.assertIn("waiting_target_floor", fixture_text)
+        self.assertIn("same_evidence_ref_required", fixture_text)
+        self.assertIn("target_floor_unconfirmed", fixture_text)
+        self.assertIn("manual_takeover_reason", fixture_text)
         self.assertIn("disabled warning fixture", fixture_text)
         self.assertIn("未确认目标楼层或电梯未开门时需要人工接管", fixture_text)
         self.assertIn("software_proof_docker_elevator_assist_default_mainline_gate", fixture_text)
+        self.assertIn("software_proof_docker_elevator_evidence_driven_mainline_gate", fixture_text)
         self.assertIn("不证明真实电梯", fixture_text)
         self.assertIn("真实 Nav2/fixed-route", fixture_text)
+        self.assertEqual(
+            json.loads(FIXTURE.read_text(encoding="utf-8"))["elevator_assist_rehearsal_evidence"]["same_evidence_ref_required"],
+            True,
+        )
+        self.assertEqual(
+            json.loads(FIXTURE.read_text(encoding="utf-8"))["elevator_assist_rehearsal_evidence"]["delivery_success"],
+            False,
+        )
+        self.assertEqual(
+            json.loads(FIXTURE.read_text(encoding="utf-8"))["phone_readiness"]["elevator_assist_rehearsal_evidence_summary"]["primary_actions_enabled"],
+            False,
+        )
+        self.assertEqual(
+            json.loads(FIXTURE.read_text(encoding="utf-8"))["diagnostics"]["summary"]["elevator_assist_rehearsal_evidence_summary"]["delivery_success"],
+            False,
+        )
         elevator_fixture_text = json.dumps(
             {
                 "top_level": json.loads(FIXTURE.read_text(encoding="utf-8"))["elevator_assist"],
                 "readiness": json.loads(FIXTURE.read_text(encoding="utf-8"))["phone_readiness"]["elevator_assist_summary"],
+                "rehearsal_evidence": json.loads(FIXTURE.read_text(encoding="utf-8"))["elevator_assist_rehearsal_evidence"],
+                "rehearsal_readiness": json.loads(FIXTURE.read_text(encoding="utf-8"))["phone_readiness"]["elevator_assist_rehearsal_evidence_summary"],
+                "rehearsal_diagnostics": json.loads(FIXTURE.read_text(encoding="utf-8"))["diagnostics"]["summary"]["elevator_assist_rehearsal_evidence_summary"],
             },
             ensure_ascii=False,
         ).lower()

@@ -52,6 +52,7 @@ const ELEVATOR_FIELD_RUN_REVIEW_BOUNDARY = "software_proof_docker_elevator_field
 const ELEVATOR_FIELD_RUN_EXECUTION_PACK_BOUNDARY = "software_proof_docker_elevator_field_rehearsal_execution_pack_gate";
 const ROUTE_TASK_COMPLETION_SIGNAL_BOUNDARY = "software_proof_docker_route_task_completion_signal_gate";
 const ELEVATOR_ASSIST_BOUNDARY = "software_proof_docker_elevator_assist_default_mainline_gate";
+const ELEVATOR_ASSIST_REHEARSAL_EVIDENCE_BOUNDARY = "software_proof_docker_elevator_evidence_driven_mainline_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -5119,7 +5120,7 @@ function routeTaskCompletionSignalFromStatus(status, readiness, diagnostics) {
 }
 
 function elevatorAssistCandidate(status, readiness, diagnostics) {
-  // elevator_assist 兼容 status、phone_readiness、diagnostics 和 summary 嵌套；前端不读取 raw ROS 状态。
+  // evidence-driven artifact 优先级高于旧 dry-run summary，避免新主链路被旧兼容字段遮住。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
     ? diagnostics.phone_readiness
     : {};
@@ -5140,24 +5141,40 @@ function elevatorAssistCandidate(status, readiness, diagnostics) {
     ? statusDiagnostics.summary
     : {};
   const candidates = [
+    status?.elevator_assist_rehearsal_evidence,
+    status?.elevator_assist_rehearsal_evidence_summary,
     status?.elevator_assist,
     status?.elevator_assist_summary,
     status?.phone_elevator_assist,
+    readiness?.elevator_assist_rehearsal_evidence,
+    readiness?.elevator_assist_rehearsal_evidence_summary,
     readiness?.elevator_assist,
     readiness?.elevator_assist_summary,
     readiness?.phone_elevator_assist,
+    diagnostics?.elevator_assist_rehearsal_evidence,
+    diagnostics?.elevator_assist_rehearsal_evidence_summary,
     diagnostics?.elevator_assist,
     diagnostics?.elevator_assist_summary,
     diagnostics?.phone_elevator_assist,
+    diagnosticsReadiness.elevator_assist_rehearsal_evidence,
+    diagnosticsReadiness.elevator_assist_rehearsal_evidence_summary,
     diagnosticsReadiness.elevator_assist,
     diagnosticsReadiness.elevator_assist_summary,
     diagnosticsReadiness.phone_elevator_assist,
+    diagnosticsSummary.elevator_assist_rehearsal_evidence,
+    diagnosticsSummary.elevator_assist_rehearsal_evidence_summary,
     diagnosticsSummary.elevator_assist,
     diagnosticsSummary.elevator_assist_summary,
+    nestedDiagnosticsSummary.elevator_assist_rehearsal_evidence,
+    nestedDiagnosticsSummary.elevator_assist_rehearsal_evidence_summary,
     nestedDiagnosticsSummary.elevator_assist,
     nestedDiagnosticsSummary.elevator_assist_summary,
+    nestedDiagnosticsInnerSummary.elevator_assist_rehearsal_evidence,
+    nestedDiagnosticsInnerSummary.elevator_assist_rehearsal_evidence_summary,
     nestedDiagnosticsInnerSummary.elevator_assist,
     nestedDiagnosticsInnerSummary.elevator_assist_summary,
+    statusDiagnosticsSummary.elevator_assist_rehearsal_evidence,
+    statusDiagnosticsSummary.elevator_assist_rehearsal_evidence_summary,
     statusDiagnosticsSummary.elevator_assist,
     statusDiagnosticsSummary.elevator_assist_summary,
   ];
@@ -5185,6 +5202,44 @@ function elevatorAssistSummaryText(value, fallback) {
   return safeElevatorAssistText(value, fallback);
 }
 
+function elevatorAssistPhaseEvidenceSummary(value, fallback) {
+  // phase_evidence 是 evidence-driven 主链路字段；只显示阶段名和安全摘要，不展开原始证据对象。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeElevatorAssistText(
+        item?.safe_phone_copy || item?.summary || item?.phase || item?.status || item?.state || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 6).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const safeItems = Object.entries(value)
+      .map(([phase, detail]) => {
+        const label = safeElevatorAssistText(phase, "");
+        const copy = elevatorAssistSummaryText(detail, "");
+        return label && copy ? `${label}:${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 6).join("；") : fallback;
+  }
+  return elevatorAssistSummaryText(value, fallback);
+}
+
+function elevatorAssistFailureSummary(value, fallback) {
+  // failure 可能包含 phase/reason/manual_takeover_reason；三者合并后仍通过同一安全过滤。
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const parts = [
+      value.phase ? `phase=${safeElevatorAssistText(value.phase, "not_proven")}` : "",
+      value.reason ? `reason=${safeElevatorAssistText(value.reason, "not_proven")}` : "",
+      value.manual_takeover_reason
+        ? `manual_takeover=${safeElevatorAssistText(value.manual_takeover_reason, "not_proven")}`
+        : "",
+    ].filter(Boolean);
+    return parts.length ? parts.join(" / ") : elevatorAssistSummaryText(value, fallback);
+  }
+  return elevatorAssistSummaryText(value, fallback);
+}
+
 function elevatorAssistNotProvenList(value) {
   // 固定补齐真实电梯/喇叭/Nav2/HIL 缺口，防止 dry-run complete 被理解为交付完成。
   const provided = notProvenList(value?.not_proven);
@@ -5201,22 +5256,34 @@ function elevatorAssistNotProvenList(value) {
 
 function elevatorAssistFromStatus(status, readiness, diagnostics) {
   const provided = elevatorAssistCandidate(status, readiness, diagnostics) || {};
+  const evidenceDriven = provided.schema === "trashbot.elevator_assist_rehearsal_evidence.v1" ||
+    provided.source_schema === "trashbot.elevator_assist_rehearsal_evidence.v1" ||
+    Boolean(provided.phase_evidence);
   const phase = provided.phase || provided.current_phase || provided.state || provided.elevator_phase;
   const targetFloor = provided.target_floor || provided.targetFloor || provided.destination_floor;
   const prompt = provided.speaker_prompt || provided.human_help_request || provided.prompt_summary;
-  const failure = provided.failure_reason || provided.takeover_reason || provided.human_takeover_reason ||
-    provided.blocking_reason || provided.disabled_reason;
+  const failure = provided.failure || provided.failure_reason || provided.takeover_reason ||
+    provided.human_takeover_reason || provided.blocking_reason || provided.disabled_reason;
+  const defaultBoundary = evidenceDriven ? ELEVATOR_ASSIST_REHEARSAL_EVIDENCE_BOUNDARY : ELEVATOR_ASSIST_BOUNDARY;
   return {
     missing: !Object.keys(provided).length,
-    schema: "trashbot.elevator_assist_summary.v1",
+    schema: evidenceDriven ? "trashbot.elevator_assist_rehearsal_evidence.v1" : "trashbot.elevator_assist_summary.v1",
     schema_version: 1,
     overall_status: safeElevatorAssistText(
-      provided.overall_status || provided.status || provided.mode_status,
+      provided.overall_status || provided.status || provided.mode_status || provided.evidence_status,
       "blocked_missing_elevator_assist_summary",
     ),
     mode: safeElevatorAssistText(provided.mode || provided.elevator_assist_mode, "dry_run"),
+    evidence_ref: safeElevatorAssistText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "not_provided",
+    ),
     phase: safeElevatorAssistText(phase, "等待后端提供电梯阶段摘要"),
     target_floor: safeElevatorAssistText(targetFloor, "目标楼层未提供"),
+    phase_evidence_summary: elevatorAssistPhaseEvidenceSummary(
+      provided.phase_evidence || provided.phase_evidence_summary,
+      "phase_evidence=not_proven",
+    ),
     phase_plan_summary: elevatorAssistSummaryText(
       provided.phase_plan || provided.phases || provided.state_chain,
       "等待开门、进入电梯、请求人工按目标楼层、等待目标楼层、开门后驶出、继续送达。",
@@ -5225,10 +5292,11 @@ function elevatorAssistFromStatus(status, readiness, diagnostics) {
       prompt,
       "进入电梯后请求人工协助按目标楼层；未确认时需要人工接管。",
     ),
-    failure_takeover_summary: elevatorAssistSummaryText(
+    failure_takeover_summary: elevatorAssistFailureSummary(
       failure,
       "暂无失败/接管原因；若未开门、未确认目标楼层或超时，手机端提示人工接管。",
     ),
+    same_evidence_ref_required: provided.same_evidence_ref_required === true,
     safe_phone_copy: safeElevatorAssistText(
       provided.safe_phone_copy || provided.safe_summary,
       "电梯 assisted delivery 默认 dry-run 摘要缺失；手机端只显示 blocked/not_proven。",
@@ -5237,7 +5305,7 @@ function elevatorAssistFromStatus(status, readiness, diagnostics) {
       provided.recovery_hint || provided.retry_hint,
       "请等待后端提供 elevator_assist 摘要；默认 dry-run 不证明真实电梯或真实送达。",
     ),
-    evidence_boundary: safeElevatorAssistText(provided.evidence_boundary, ELEVATOR_ASSIST_BOUNDARY),
+    evidence_boundary: safeElevatorAssistText(provided.evidence_boundary, defaultBoundary),
     delivery_success: false,
     primary_actions_enabled: false,
     not_proven: elevatorAssistNotProvenList(provided),
@@ -6276,11 +6344,14 @@ function ensureElevatorAssistPanel() {
     <p id="elevatorAssistCopy" class="message">等待后端提供 elevator_assist 的 phone-safe 摘要。</p>
     <dl class="elevator-assist-grid">
       <div><dt>模式 / 状态</dt><dd id="elevatorAssistMode">dry_run / not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="elevatorAssistEvidenceRef">not_provided</dd></div>
       <div><dt>当前阶段</dt><dd id="elevatorAssistPhase">等待后端提供电梯阶段摘要</dd></div>
       <div><dt>目标楼层</dt><dd id="elevatorAssistTargetFloor">目标楼层未提供</dd></div>
+      <div><dt>Phase Evidence</dt><dd id="elevatorAssistPhaseEvidence">phase_evidence=not_proven</dd></div>
       <div><dt>阶段链路</dt><dd id="elevatorAssistPhasePlan">等待开门、进入电梯、请求人工按目标楼层、等待目标楼层、开门后驶出、继续送达。</dd></div>
       <div><dt>人工协助</dt><dd id="elevatorAssistHumanHelp">进入电梯后请求人工协助按目标楼层；未确认时需要人工接管。</dd></div>
       <div><dt>失败 / 接管原因</dt><dd id="elevatorAssistFailureTakeover">未开门、未确认目标楼层或超时时提示人工接管。</dd></div>
+      <div><dt>Same Evidence Ref</dt><dd id="elevatorAssistSameEvidenceRef">same evidence ref required=false/not_proven</dd></div>
       <div><dt>Control Boundary</dt><dd id="elevatorAssistControls">delivery_success=false / primary_actions_enabled=false</dd></div>
       <div><dt>Evidence Boundary</dt><dd id="elevatorAssistBoundary">software_proof_docker_elevator_assist_default_mainline_gate</dd></div>
       <div><dt>not_proven</dt><dd id="elevatorAssistNotProven">真实电梯、真实喇叭/TTS、真实 Nav2/fixed-route、HIL、真实送达未证明。</dd></div>
@@ -6304,11 +6375,16 @@ function renderElevatorAssist(status) {
   badge.textContent = summary.missing ? "等待 elevator_assist" : "dry-run only";
   $("elevatorAssistCopy").textContent = summary.safe_phone_copy;
   $("elevatorAssistMode").textContent = `${summary.mode} / ${summary.overall_status}`;
+  $("elevatorAssistEvidenceRef").textContent = summary.evidence_ref;
   $("elevatorAssistPhase").textContent = summary.phase;
   $("elevatorAssistTargetFloor").textContent = summary.target_floor;
+  $("elevatorAssistPhaseEvidence").textContent = summary.phase_evidence_summary;
   $("elevatorAssistPhasePlan").textContent = summary.phase_plan_summary;
   $("elevatorAssistHumanHelp").textContent = summary.human_help_summary;
   $("elevatorAssistFailureTakeover").textContent = summary.failure_takeover_summary;
+  $("elevatorAssistSameEvidenceRef").textContent = summary.same_evidence_ref_required
+    ? "same evidence ref required=true"
+    : "same evidence ref required=false/not_proven";
   $("elevatorAssistControls").textContent =
     `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
   $("elevatorAssistBoundary").textContent = summary.evidence_boundary;

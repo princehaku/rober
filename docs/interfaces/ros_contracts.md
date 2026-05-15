@@ -91,6 +91,7 @@ The ESP32 feedback frame used by this contract is vendor `T=1001` with at least 
 | `elevator_assist_mode` | `dry_run` | Default and only software-only elevator assisted delivery mode. It records waiting for elevator open, entering, requesting floor help, waiting target floor, exiting, and resume-delivery phases without claiming a real elevator, real speaker/TTS, real Nav2/fixed-route, or HIL. |
 | `elevator_assist_target_floor` | string | Target floor copied into elevator assisted delivery task records and prompt context. |
 | `elevator_assist_dry_run_failure` | empty, `door_timeout`, `target_floor_unconfirmed`, `unsafe_to_exit` | Optional software proof failure injection. Failure records must include phase, failure reason, manual takeover reason, and not-proven boundary metadata. |
+| `elevator_assist_evidence_file` | JSON file path or empty | Optional only when `elevator_assist_mode=dry_run`. Missing or empty files keep the default dry-run fallback. Non-empty files must use `schema=trashbot.elevator_assist_rehearsal_evidence.v1`, `evidence_boundary=software_proof_docker_elevator_evidence_driven_mainline_gate`, `source=software_proof`, safe `evidence_ref` matching `[A-Za-z0-9][A-Za-z0-9_.:-]{0,95}`, JSON boolean `same_evidence_ref_required=true`, `delivery_success=false`, and `primary_actions_enabled=false`; invalid artifacts fail closed through `elevator_failed` and require manual takeover. |
 
 ### Task Record Evidence Boundary
 
@@ -124,6 +125,19 @@ execution, not HIL, and 不证明真实电梯、真实喇叭、真实 Nav2、HIL
 If disabled by operator config, the payload must report
 `reason=disabled_by_operator` and keep the same boundary fields while allowing a
 non-cross-floor dry-run task to continue.
+
+When `elevator_assist_evidence_file` points to a non-empty rehearsal artifact,
+`task_orchestrator` consumes it only in `elevator_assist_mode=dry_run`. The
+artifact drives the `elevator_phase` sequence for `waiting_elevator_open`,
+`entering_elevator`, `requesting_floor_help`, `waiting_target_floor`, and
+`exiting_elevator`, then the task record promotes the artifact `evidence_ref`
+to top-level `task_record.evidence_ref` and `task_record.result_path`. Optional
+artifact `failure.phase/reason/manual_takeover_reason` fails closed through
+`elevator_failed`, sets `human_intervention_required=true`, and preserves
+`delivery_success=false` plus `primary_actions_enabled=false`. This is the
+`software_proof_docker_elevator_evidence_driven_mainline_gate`; it is not real
+elevator operation, not real Nav2/fixed-route execution, not WAVE ROVER motion,
+not HIL, and not delivery success.
 
 Operator diagnostics may additionally expose `route_task_rehearsal` from a
 configured route/task rehearsal artifact. The diagnostics summary uses

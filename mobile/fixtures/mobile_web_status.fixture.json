@@ -39,6 +39,42 @@
       "delivery success"
     ]
   },
+  "elevator_assist_rehearsal_evidence": {
+    "schema": "trashbot.elevator_assist_rehearsal_evidence.v1",
+    "schema_version": 1,
+    "evidence_boundary": "software_proof_docker_elevator_evidence_driven_mainline_gate",
+    "safe_evidence_ref": "elevator_assist_rehearsal_evidence_fixture_20260516_0001",
+    "target_floor": "1F",
+    "overall_status": "blocked_evidence_driven_dry_run",
+    "mode": "dry_run",
+    "phase": "waiting_target_floor",
+    "same_evidence_ref_required": true,
+    "phase_evidence": {
+      "waiting_elevator_open": {"safe_phone_copy": "等待电梯开门 evidence summary。"},
+      "entering_elevator": {"safe_phone_copy": "进入电梯 evidence summary。"},
+      "requesting_floor_help": {"safe_phone_copy": "请求人工按目标楼层 evidence summary。"},
+      "waiting_target_floor": {"safe_phone_copy": "等待目标楼层 evidence summary。"},
+      "exiting_elevator": {"safe_phone_copy": "目标楼层开门后驶出 evidence summary。"}
+    },
+    "failure": {
+      "phase": "waiting_target_floor",
+      "reason": "target_floor_unconfirmed",
+      "manual_takeover_reason": "未确认目标楼层时保持人工接管。"
+    },
+    "safe_phone_copy": "elevator_assist_rehearsal_evidence 只展示同一 evidence_ref 的电梯阶段证据摘要；这是 Docker/local software proof。",
+    "recovery_hint": "按同一 evidence_ref 补齐现场门状态、目标楼层、人工协助和运行记录；手机端不放行 Start、Confirm 或 Cancel。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实电梯门状态",
+      "真实目标楼层确认",
+      "真实人工协助记录",
+      "真实 Nav2/fixed-route",
+      "真实底盘/HIL",
+      "真实 dropoff/cancel completion",
+      "delivery success"
+    ]
+  },
   "mobile_action_confirmation": {
     "schema": "trashbot.mobile_action_confirmation.v1",
     "schema_version": 1,
@@ -2098,6 +2134,36 @@
           "HIL",
           "delivery success"
         ]
+      },
+      "elevator_assist_rehearsal_evidence_summary": {
+        "schema": "trashbot.elevator_assist_rehearsal_evidence_summary.v1",
+        "source_schema": "trashbot.elevator_assist_rehearsal_evidence.v1",
+        "schema_version": 1,
+        "overall_status": "status_diagnostics_summary_blocked_elevator_rehearsal_evidence",
+        "safe_evidence_ref": "status_diagnostics_elevator_assist_rehearsal_fixture_20260516_0001",
+        "target_floor": "1F",
+        "phase": "waiting_elevator_open",
+        "same_evidence_ref_required": true,
+        "phase_evidence": [
+          "status diagnostics elevator waiting_elevator_open evidence summary",
+          "status diagnostics elevator exiting_elevator evidence summary"
+        ],
+        "failure": {
+          "phase": "waiting_elevator_open",
+          "reason": "door_state_not_proven",
+          "manual_takeover_reason": "门状态未形成现场证据时人工接管。"
+        },
+        "safe_phone_copy": "status diagnostics summary 中的 elevator_assist_rehearsal_evidence_summary 只读展示，不放行控制动作。",
+        "recovery_hint": "按同一 evidence_ref 补齐门状态、楼层确认、人工协助和运行记录。",
+        "evidence_boundary": "software_proof_docker_elevator_evidence_driven_mainline_gate",
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "not_proven": [
+          "真实电梯门状态",
+          "真实目标楼层确认",
+          "HIL",
+          "delivery success"
+        ]
       }
     }
   },
@@ -2148,6 +2214,36 @@
         "真实 Nav2/fixed-route",
         "HIL",
         "真实送达"
+      ]
+    },
+    "elevator_assist_rehearsal_evidence_summary": {
+      "schema": "trashbot.elevator_assist_rehearsal_evidence_summary.v1",
+      "source_schema": "trashbot.elevator_assist_rehearsal_evidence.v1",
+      "schema_version": 1,
+      "overall_status": "phone_readiness_blocked_evidence_driven",
+      "safe_evidence_ref": "phone_readiness_elevator_assist_rehearsal_fixture_20260516_0001",
+      "target_floor": "1F",
+      "phase": "requesting_floor_help",
+      "same_evidence_ref_required": true,
+      "phase_evidence": [
+        "phone readiness elevator waiting_elevator_open evidence summary",
+        "phone readiness elevator requesting_floor_help evidence summary"
+      ],
+      "failure": {
+        "phase": "requesting_floor_help",
+        "reason": "manual_help_pending",
+        "manual_takeover_reason": "旁人未确认目标楼层时人工接管。"
+      },
+      "safe_phone_copy": "phone_readiness 中的 elevator_assist_rehearsal_evidence_summary 只展示 evidence-driven 摘要，不证明真实电梯或送达。",
+      "recovery_hint": "等待 Robot/Autonomy 用同一 evidence_ref 补齐受控演练材料。",
+      "evidence_boundary": "software_proof_docker_elevator_evidence_driven_mainline_gate",
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "not_proven": [
+        "真实电梯门状态",
+        "真实目标楼层确认",
+        "HIL",
+        "delivery success"
       ]
     },
     "action_permissions": {

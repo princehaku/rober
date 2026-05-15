@@ -154,10 +154,33 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         node.elevator_assist_mode = "dry_run"
         node.elevator_assist_target_floor = "1"
         node.elevator_assist_dry_run_failure = ""
+        node.elevator_assist_evidence_file = ""
         node.get_clock = lambda: FakeClock()
         node.get_logger = lambda: FakeLogger()
         node._clear_collection_active = lambda: None
         return node
+
+    def make_elevator_rehearsal_artifact(self, evidence_ref="elevator-rehearsal-001", **overrides):
+        payload = {
+            "schema": "trashbot.elevator_assist_rehearsal_evidence.v1",
+            "evidence_boundary": "software_proof_docker_elevator_evidence_driven_mainline_gate",
+            "source": "software_proof",
+            "evidence_ref": evidence_ref,
+            "target_floor": "1F",
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "same_evidence_ref_required": True,
+            "phase_evidence": {
+                "waiting_elevator_open": {"status": "door_open", "source": "software_proof"},
+                "entering_elevator": {"status": "entered", "source": "software_proof"},
+                "requesting_floor_help": {"status": "prompt_requested", "source": "software_proof"},
+                "waiting_target_floor": {"status": "target_floor_seen", "source": "software_proof"},
+                "exiting_elevator": {"status": "exit_clear", "source": "software_proof"},
+            },
+            "not_proven": ["real_elevator", "hil", "delivery_success", "real_nav2_or_fixed_route"],
+        }
+        payload.update(overrides)
+        return payload
 
     def test_execute_collection_default_elevator_assist_dry_run_success_sets_result_and_record(self):
         with tempfile.TemporaryDirectory() as td:
@@ -268,6 +291,157 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["elevator_assist"]["evidence"]["waiting_elevator_open"], "door_open")
         self.assertEqual(len(elevator_events), 7)
         self.assertEqual(payload["final_status"], "success")
+
+    def test_execute_collection_elevator_rehearsal_artifact_drives_phases_and_record_ref(self):
+        with tempfile.TemporaryDirectory() as td:
+            evidence_ref = "elevator:rehearsal-001"
+            artifact_file = Path(td) / "elevator-artifact.json"
+            artifact_file.write_text(
+                json.dumps(self.make_elevator_rehearsal_artifact(evidence_ref=evidence_ref)),
+                encoding="utf-8",
+            )
+            node = self.make_orchestrator(Path(td))
+            node.elevator_assist_evidence_file = str(artifact_file)
+            goal = FakeGoalHandle()
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        phases = [event["phase"] for event in payload["elevator_assist"]["events"]]
+        elevator_events = [
+            transition for transition in payload["state_transitions"]
+            if transition["event"] == "elevator_phase"
+        ]
+
+        self.assertTrue(result.success)
+        self.assertTrue(goal.succeeded)
+        self.assertEqual(payload["evidence_ref"], "elevator:rehearsal-001")
+        self.assertEqual(payload["result_path"], "elevator:rehearsal-001")
+        self.assertEqual(payload["elevator_assist"]["schema"], "trashbot.elevator_assist_rehearsal_evidence.v1")
+        self.assertEqual(
+            payload["elevator_assist"]["proof_gate"],
+            "software_proof_docker_elevator_evidence_driven_mainline_gate",
+        )
+        self.assertEqual(payload["elevator_assist"]["source"], "software_proof")
+        self.assertEqual(payload["elevator_assist"]["same_evidence_ref_required"], True)
+        self.assertEqual(payload["elevator_assist"]["delivery_success"], False)
+        self.assertEqual(payload["elevator_assist"]["primary_actions_enabled"], False)
+        self.assertEqual(payload["elevator_assist"]["target_floor"], "1F")
+        self.assertEqual(
+            phases,
+            [
+                "waiting_elevator_open",
+                "entering_elevator",
+                "requesting_floor_help",
+                "waiting_target_floor",
+                "exiting_elevator",
+            ],
+        )
+        self.assertEqual(len(elevator_events), 5)
+        self.assertEqual(
+            payload["elevator_assist"]["evidence"]["waiting_elevator_open"],
+            {"status": "door_open", "source": "software_proof"},
+        )
+        self.assertIn("不证明真实电梯", payload["elevator_assist"]["safe_phone_copy"])
+        self.assertEqual(payload["final_status"], "success")
+
+    def test_execute_collection_missing_elevator_rehearsal_artifact_uses_default_dry_run(self):
+        with tempfile.TemporaryDirectory() as td:
+            node = self.make_orchestrator(Path(td))
+            node.elevator_assist_evidence_file = str(Path(td) / "missing-artifact.json")
+            goal = FakeGoalHandle()
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        self.assertTrue(result.success)
+        self.assertTrue(goal.succeeded)
+        self.assertEqual(payload["elevator_assist"]["phase"], "resume_delivery")
+        self.assertEqual(
+            payload["elevator_assist"]["proof_gate"],
+            "software_proof_docker_elevator_assist_default_mainline_gate",
+        )
+        self.assertEqual(payload["evidence_ref"], "")
+        self.assertEqual(payload["result_path"], "")
+
+    def test_execute_collection_elevator_rehearsal_artifact_failure_requires_manual_takeover(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_file = Path(td) / "elevator-artifact-failure.json"
+            artifact_file.write_text(
+                json.dumps(
+                    self.make_elevator_rehearsal_artifact(
+                        evidence_ref="elevator-rehearsal-fail-001",
+                        failure={
+                            "phase": "waiting_target_floor",
+                            "reason": "target floor evidence blocked by operator review",
+                            "manual_takeover_reason": "target_floor_unconfirmed",
+                        },
+                    )
+                ),
+                encoding="utf-8",
+            )
+            node = self.make_orchestrator(Path(td))
+            node.elevator_assist_evidence_file = str(artifact_file)
+            goal = FakeGoalHandle()
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        self.assertFalse(result.success)
+        self.assertTrue(goal.aborted)
+        self.assertEqual(result.error_code, "elevator_failed")
+        self.assertEqual(payload["final_status"], "failed")
+        self.assertEqual(payload["failure_code"], "elevator_failed")
+        self.assertEqual(payload["evidence_ref"], "elevator-rehearsal-fail-001")
+        self.assertEqual(payload["result_path"], "elevator-rehearsal-fail-001")
+        self.assertEqual(payload["human_intervention_required"], True)
+        self.assertEqual(payload["elevator_assist"]["state"], "failed")
+        self.assertEqual(payload["elevator_assist"]["phase"], "waiting_target_floor")
+        self.assertEqual(payload["elevator_assist"]["manual_takeover_reason"], "target_floor_unconfirmed")
+        self.assertEqual(
+            payload["elevator_assist"]["proof_gate"],
+            "software_proof_docker_elevator_evidence_driven_mainline_gate",
+        )
+        self.assertEqual(payload["elevator_assist"]["delivery_success"], False)
+        self.assertEqual(payload["elevator_assist"]["primary_actions_enabled"], False)
+        self.assertIn("target floor evidence", payload["error_message"])
+
+    def test_execute_collection_invalid_elevator_rehearsal_artifact_fails_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_file = Path(td) / "unsafe-artifact.json"
+            artifact_file.write_text(
+                json.dumps(
+                    self.make_elevator_rehearsal_artifact(
+                        evidence_ref="elevator-rehearsal-unsafe-001",
+                        delivery_success=True,
+                    )
+                ),
+                encoding="utf-8",
+            )
+            node = self.make_orchestrator(Path(td))
+            node.elevator_assist_evidence_file = str(artifact_file)
+            goal = FakeGoalHandle()
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        self.assertFalse(result.success)
+        self.assertTrue(goal.aborted)
+        self.assertEqual(result.error_code, "elevator_failed")
+        self.assertEqual(payload["final_status"], "failed")
+        self.assertEqual(payload["failure_code"], "elevator_failed")
+        self.assertEqual(payload["evidence_ref"], "elevator-rehearsal-unsafe-001")
+        self.assertEqual(payload["result_path"], "elevator-rehearsal-unsafe-001")
+        self.assertEqual(payload["human_intervention_required"], True)
+        self.assertEqual(payload["elevator_assist"]["state"], "failed")
+        self.assertEqual(payload["elevator_assist"]["phase"], "elevator_rehearsal_evidence_validation")
+        self.assertEqual(
+            payload["elevator_assist"]["manual_takeover_reason"],
+            "invalid_rehearsal_evidence_artifact",
+        )
+        self.assertIn("delivery_success=false", payload["elevator_assist"]["failure_reason"])
+        self.assertEqual(payload["elevator_assist"]["delivery_success"], False)
+        self.assertEqual(payload["elevator_assist"]["primary_actions_enabled"], False)
 
     def test_execute_collection_elevator_assist_failure_aborts_with_record(self):
         with tempfile.TemporaryDirectory() as td:

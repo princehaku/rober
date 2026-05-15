@@ -416,6 +416,30 @@ python3 pc-tools/evidence/elevator_field_run_execution_pack.py \
 
 `controlled_rehearsal_manifest` 固定要求 human observer、stop path 和同一 `evidence_ref`；`required_material_templates` 覆盖 `door_state.json`、`target_floor_confirmation.json`、`human_assistance_operator_note.md`、`nav2_fixed_route_runtime_log.json`、`task_record.json`、`completion_signal.json` 和 `diagnostics_mobile_safe_summary.json`。该 execution pack 不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G；`ready_for_controlled_elevator_field_rehearsal_execution_pack_not_proven` 只表示 review 材料足以生成受控演练材料清单，不表示真实电梯门状态、真实目标楼层确认、真实 Nav2/fixed-route、HIL、真实投放、真实取消完成、真实手机设备或 delivery success。缺 review、坏 JSON、unsupported schema/boundary、unsafe copy、review blocked、`primary_actions_enabled=true` 或 `delivery_success=true` 时，CLI 会 fail closed，并继续保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
 
+## elevator assist rehearsal evidence
+
+`pc-tools/evidence/elevator_assist_rehearsal_evidence.py` 生成 Robot dry-run 主链路只读消费的 rehearsal evidence artifact。它不读取上一轮现场材料，也不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G：
+
+```bash
+python3 pc-tools/evidence/elevator_assist_rehearsal_evidence.py \
+  --evidence-ref elevator-rehearsal-001 \
+  --target-floor 1F \
+  --output /tmp/elevator_assist_rehearsal_evidence.json
+```
+
+需要直接给 Robot dry-run、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/elevator_assist_rehearsal_evidence.py \
+  --evidence-ref elevator-rehearsal-001 \
+  --target-floor 1F \
+  --once-json
+```
+
+输出 `schema=trashbot.elevator_assist_rehearsal_evidence.v1`、`schema_version=1`、`source=software_proof`、`evidence_boundary=software_proof_docker_elevator_evidence_driven_mainline_gate`、`same_evidence_ref_required=true`、`phase_evidence`、可选 `failure`、`phone_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。`phone_safe_summary` 同样保留 `source=software_proof`，供 Robot dry-run 和 mobile 只读摘要对齐。`phase_evidence` 固定覆盖 `waiting_elevator_open`、`entering_elevator`、`requesting_floor_help`、`waiting_target_floor` 和 `exiting_elevator`。
+
+`--failure-phase` 会把 artifact verdict 置为 `blocked_rehearsal_failure_injected_not_proven`，用于 Robot dry-run 验证失败分支和人工接管原因；未传 failure 时，verdict 为 `ready_for_robot_dry_run_readonly_rehearsal_evidence_not_proven`。该 gate 仍只是 Docker/local software proof：它只证明本机可以生成同一 `evidence_ref` 的电梯主链路 rehearsal evidence，供 Robot 只读复现状态转移。它不是真实电梯门状态、真实目标楼层确认、真实人工协助、真实 Nav2/fixed-route、HIL、真实投放、真实取消完成、真实手机设备或 delivery success。非法 `evidence_ref`、非法 `target_floor`、unsafe copy、成功文案或控制放行声明都必须 fail closed，并继续保留 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## Agent 工作纪律
 
 - 修改本目录前必读 `AGENTS.md`、`OKR.md`、对应 sprint 文档。

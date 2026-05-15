@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import threading
 import time
 from dataclasses import asdict, dataclass, field
@@ -63,6 +64,8 @@ FIXED_ROUTE_PROGRESS_FIELDS = (
 
 ELEVATOR_ASSIST_PROMPT = "你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,"
 ELEVATOR_ASSIST_PROOF_GATE = "software_proof_docker_elevator_assist_default_mainline_gate"
+ELEVATOR_ASSIST_REHEARSAL_SCHEMA = "trashbot.elevator_assist_rehearsal_evidence.v1"
+ELEVATOR_ASSIST_REHEARSAL_PROOF_GATE = "software_proof_docker_elevator_evidence_driven_mainline_gate"
 ELEVATOR_ASSIST_BOUNDARY = (
     "software proof dry-run only; not real elevator, not real speaker/TTS, "
     "not real Nav2/fixed-route, not HIL; 不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功"
@@ -87,6 +90,19 @@ ELEVATOR_ASSIST_DRY_RUN_PHASES = (
     "exiting_elevator",
     "resume_delivery",
 )
+ELEVATOR_ASSIST_REHEARSAL_REQUIRED_PHASES = (
+    "waiting_elevator_open",
+    "entering_elevator",
+    "requesting_floor_help",
+    "waiting_target_floor",
+    "exiting_elevator",
+)
+ELEVATOR_ASSIST_REHEARSAL_REQUIRED_NOT_PROVEN = (
+    "real_elevator",
+    "hil",
+    "delivery_success",
+)
+ELEVATOR_ASSIST_REHEARSAL_EVIDENCE_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,95}$")
 ELEVATOR_ASSIST_DRY_RUN_EVIDENCE = {
     "approaching_elevator": "door_closed_or_unknown",
     "waiting_elevator_open": "door_open",
@@ -142,6 +158,7 @@ class TaskOrchestrator(Node):
         self.declare_parameter("elevator_assist_mode", "dry_run")
         self.declare_parameter("elevator_assist_target_floor", "1")
         self.declare_parameter("elevator_assist_dry_run_failure", "")
+        self.declare_parameter("elevator_assist_evidence_file", "")
         self.task_record_dir = os.path.expanduser(self.get_parameter("task_record_dir").value)
         self.delivery_target = str(self.get_parameter("delivery_target").value)
         self.delivery_mode = str(self.get_parameter("delivery_mode").value).lower()
@@ -163,6 +180,9 @@ class TaskOrchestrator(Node):
         self.elevator_assist_dry_run_failure = str(
             self.get_parameter("elevator_assist_dry_run_failure").value
         ).strip().lower()
+        self.elevator_assist_evidence_file = os.path.expanduser(
+            str(self.get_parameter("elevator_assist_evidence_file").value).strip()
+        )
         if self.delivery_dry_run:
             self.delivery_mode = "dry_run"
         self.navigator = None
@@ -373,6 +393,7 @@ class TaskOrchestrator(Node):
             "elevator_assist_mode": self.elevator_assist_mode,
             "elevator_assist_target_floor": self.elevator_assist_target_floor,
             "elevator_assist_dry_run_failure": self.elevator_assist_dry_run_failure,
+            "elevator_assist_evidence_file": self.elevator_assist_evidence_file,
         }
 
         try:
@@ -644,8 +665,8 @@ class TaskOrchestrator(Node):
         source="software_proof",
     ):
         failure_code = "" if final_status == "success" else self._derive_failure_code(machine)
-        result_path = self._derive_result_path(nav_results)
-        evidence_ref = self._derive_evidence_ref(nav_results) or result_path
+        result_path = self._derive_elevator_assist_ref(elevator_assist) or self._derive_result_path(nav_results)
+        evidence_ref = self._derive_elevator_assist_ref(elevator_assist) or self._derive_evidence_ref(nav_results) or result_path
         human_intervention_required = bool(
             failure_code in ("NAV_FAIL", "NAV_TIMEOUT", "TASK_CANCEL")
             or (dropoff_result or {}).get("result_code") in ("manual_confirm_timeout", "unsupported_dropoff_mode")
@@ -722,6 +743,7 @@ class TaskOrchestrator(Node):
                     "elevator_assist_mode": self.elevator_assist_mode,
                     "elevator_assist_target_floor": self.elevator_assist_target_floor,
                     "elevator_assist_dry_run_failure": self.elevator_assist_dry_run_failure,
+                    "elevator_assist_evidence_file": self.elevator_assist_evidence_file,
                 },
                 source="software_proof",
             )
@@ -752,6 +774,17 @@ class TaskOrchestrator(Node):
                 candidate = evidence.get(key)
                 if isinstance(candidate, str) and candidate.strip():
                     return candidate.strip()
+        return ""
+
+    def _derive_elevator_assist_ref(self, elevator_assist):
+        if not isinstance(elevator_assist, dict):
+            return ""
+        # rehearsal artifact 的 evidence_ref 是本轮同证据链锚点。
+        # 它只作为 software_proof 记录引用，不代表真实电梯或 HIL 成功。
+        for key in ("evidence_ref", "result_path"):
+            candidate = elevator_assist.get(key)
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate.strip()
         return ""
 
     def _derive_failure_code(self, machine):
@@ -967,8 +1000,8 @@ class TaskOrchestrator(Node):
     def _with_elevator_assist_boundary(self, payload, *, phone_copy):
         payload.update(
             {
-                "proof_gate": ELEVATOR_ASSIST_PROOF_GATE,
-                "evidence_boundary": ELEVATOR_ASSIST_PROOF_GATE,
+                "proof_gate": payload.get("proof_gate") or ELEVATOR_ASSIST_PROOF_GATE,
+                "evidence_boundary": payload.get("evidence_boundary") or ELEVATOR_ASSIST_PROOF_GATE,
                 "boundary": ELEVATOR_ASSIST_BOUNDARY,
                 "not_proven": list(ELEVATOR_ASSIST_NOT_PROVEN),
                 "delivery_success": False,
@@ -999,6 +1032,10 @@ class TaskOrchestrator(Node):
                 "events": [],
                 "success": False,
             }, phone_copy="电梯辅助模式不是 dry_run，已保持失败关闭；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
+
+        artifact_status = self._perform_rehearsal_artifact_elevator_assist(machine)
+        if artifact_status is not None:
+            return artifact_status
 
         events = []
         evidence = {}
@@ -1053,6 +1090,189 @@ class TaskOrchestrator(Node):
             "events": events,
             "success": True,
         }, phone_copy="电梯辅助 dry-run 已走完默认软件主链路；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
+
+    def _perform_rehearsal_artifact_elevator_assist(self, machine):
+        artifact_path = str(getattr(self, "elevator_assist_evidence_file", "") or "").strip()
+        if not artifact_path:
+            return None
+        if not os.path.exists(artifact_path):
+            # 缺失或空文件按计划保持旧 dry-run fallback，方便 Docker 本地先跑通主链路。
+            return None
+        try:
+            if os.path.getsize(artifact_path) == 0:
+                # 缺失或空文件按计划保持旧 dry-run fallback，方便 Docker 本地先跑通主链路。
+                return None
+        except OSError as exc:
+            return self._rehearsal_artifact_failed_status(
+                machine,
+                f"invalid elevator rehearsal evidence file: {exc}",
+                "invalid_rehearsal_evidence_file",
+            )
+        try:
+            with open(artifact_path, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            return self._rehearsal_artifact_failed_status(
+                machine,
+                f"invalid elevator rehearsal evidence file: {exc}",
+                "invalid_rehearsal_evidence_file",
+            )
+
+        validation_error = self._validate_rehearsal_artifact(payload)
+        if validation_error:
+            return self._rehearsal_artifact_failed_status(
+                machine,
+                validation_error,
+                "invalid_rehearsal_evidence_artifact",
+                payload if isinstance(payload, dict) else {},
+            )
+
+        phase_evidence = payload["phase_evidence"]
+        events = []
+        evidence = {}
+        for phase in ELEVATOR_ASSIST_REHEARSAL_REQUIRED_PHASES:
+            phase_payload = phase_evidence[phase]
+            event = {
+                "phase": phase,
+                "state": phase,
+                "evidence": phase_payload,
+                "requires_human_help": phase in (
+                    "requesting_floor_help",
+                    "waiting_target_floor",
+                ),
+                "speaker_prompt": ELEVATOR_ASSIST_PROMPT
+                if phase == "requesting_floor_help"
+                else "",
+            }
+            events.append(event)
+            evidence[phase] = phase_payload
+            # machine 只记录可回放摘要，artifact 原文仍保存在文件侧，避免 state transition 膨胀。
+            machine.elevator_phase(phase, json.dumps(event, ensure_ascii=False, sort_keys=True))
+
+        failure = payload.get("failure")
+        if isinstance(failure, dict) and failure:
+            phase = str(failure.get("phase") or "").strip() or events[-1]["phase"]
+            reason = str(failure.get("reason") or "elevator rehearsal evidence requested manual takeover")
+            manual_reason = str(failure.get("manual_takeover_reason") or reason)
+            return self._with_elevator_assist_boundary({
+                "enabled": True,
+                "mode": "dry_run",
+                "state": "failed",
+                "phase": phase,
+                "requires_human_help": True,
+                "reason": reason,
+                "failure_reason": reason,
+                "manual_takeover_reason": manual_reason,
+                "target_floor": str(payload.get("target_floor") or self.elevator_assist_target_floor),
+                "speaker_prompt": ELEVATOR_ASSIST_PROMPT,
+                "evidence": {**evidence, "failure": failure},
+                "events": events,
+                "success": False,
+                "schema": ELEVATOR_ASSIST_REHEARSAL_SCHEMA,
+                "source": "software_proof",
+                "evidence_ref": payload["evidence_ref"],
+                "result_path": payload["evidence_ref"],
+                "proof_gate": ELEVATOR_ASSIST_REHEARSAL_PROOF_GATE,
+                "evidence_boundary": ELEVATOR_ASSIST_REHEARSAL_PROOF_GATE,
+                "same_evidence_ref_required": True,
+            }, phone_copy="电梯演练 artifact 要求人工接管，行为主链路已失败关闭；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
+
+        machine.elevator_completed("elevator assist rehearsal artifact complete; resume delivery")
+        return self._with_elevator_assist_boundary({
+            "enabled": True,
+            "mode": "dry_run",
+            "state": "resume_delivery",
+            "phase": "resume_delivery",
+            "requires_human_help": False,
+            "reason": "elevator rehearsal evidence artifact accepted",
+            "failure_reason": "",
+            "manual_takeover_reason": "",
+            "target_floor": str(payload.get("target_floor") or self.elevator_assist_target_floor),
+            "speaker_prompt": ELEVATOR_ASSIST_PROMPT,
+            "evidence": evidence,
+            "events": events,
+            "success": True,
+            "schema": ELEVATOR_ASSIST_REHEARSAL_SCHEMA,
+            "source": "software_proof",
+            "evidence_ref": payload["evidence_ref"],
+            "result_path": payload["evidence_ref"],
+            "proof_gate": ELEVATOR_ASSIST_REHEARSAL_PROOF_GATE,
+            "evidence_boundary": ELEVATOR_ASSIST_REHEARSAL_PROOF_GATE,
+            "same_evidence_ref_required": True,
+        }, phone_copy="电梯演练 artifact 已驱动 dry-run 主链路；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
+
+    def _validate_rehearsal_artifact(self, payload):
+        if not isinstance(payload, dict):
+            return "elevator rehearsal evidence artifact must be a JSON object"
+        if payload.get("schema") != ELEVATOR_ASSIST_REHEARSAL_SCHEMA:
+            return "elevator rehearsal evidence artifact schema mismatch"
+        if payload.get("evidence_boundary") != ELEVATOR_ASSIST_REHEARSAL_PROOF_GATE:
+            return "elevator rehearsal evidence artifact boundary mismatch"
+        if payload.get("source") != "software_proof":
+            return "elevator rehearsal evidence artifact source must be software_proof"
+        if payload.get("delivery_success") is not False:
+            return "elevator rehearsal evidence artifact must keep delivery_success=false"
+        if payload.get("primary_actions_enabled") is not False:
+            return "elevator rehearsal evidence artifact must keep primary_actions_enabled=false"
+        if payload.get("same_evidence_ref_required") is not True:
+            return "elevator rehearsal evidence artifact must keep same_evidence_ref_required=true"
+        evidence_ref = payload.get("evidence_ref")
+        if not self._is_safe_elevator_evidence_ref(evidence_ref):
+            return "elevator rehearsal evidence artifact evidence_ref must be a non-empty safe string"
+        phase_evidence = payload.get("phase_evidence")
+        if not isinstance(phase_evidence, dict):
+            return "elevator rehearsal evidence artifact phase_evidence must be an object"
+        for phase in ELEVATOR_ASSIST_REHEARSAL_REQUIRED_PHASES:
+            if phase not in phase_evidence:
+                return f"elevator rehearsal evidence artifact missing phase_evidence.{phase}"
+        not_proven = payload.get("not_proven")
+        normalized = {
+            str(item).strip().lower().replace(" ", "_")
+            for item in not_proven
+        } if isinstance(not_proven, list) else set()
+        for required in ELEVATOR_ASSIST_REHEARSAL_REQUIRED_NOT_PROVEN:
+            if required not in normalized:
+                return f"elevator rehearsal evidence artifact not_proven missing {required}"
+        return ""
+
+    def _is_safe_elevator_evidence_ref(self, value):
+        if not isinstance(value, str):
+            return False
+        value = value.strip()
+        # 与 Task A artifact 生成器保持同一安全 token 语义：
+        # 允许 run id 中的 ":"，但不允许路径分隔符、空白或凭证类字符进入 task_record 顶层。
+        return ELEVATOR_ASSIST_REHEARSAL_EVIDENCE_REF_RE.fullmatch(value) is not None
+
+    def _rehearsal_artifact_failed_status(self, machine, reason, manual_takeover_reason, payload=None):
+        machine.elevator_phase(
+            "elevator_rehearsal_evidence_validation",
+            json.dumps({"reason": reason}, ensure_ascii=False, sort_keys=True),
+        )
+        evidence_ref = ""
+        if isinstance(payload, dict) and self._is_safe_elevator_evidence_ref(payload.get("evidence_ref")):
+            evidence_ref = payload["evidence_ref"].strip()
+        return self._with_elevator_assist_boundary({
+            "enabled": True,
+            "mode": "dry_run",
+            "state": "failed",
+            "phase": "elevator_rehearsal_evidence_validation",
+            "requires_human_help": True,
+            "reason": reason,
+            "failure_reason": reason,
+            "manual_takeover_reason": manual_takeover_reason,
+            "target_floor": self.elevator_assist_target_floor,
+            "speaker_prompt": ELEVATOR_ASSIST_PROMPT,
+            "evidence": {},
+            "events": [],
+            "success": False,
+            "schema": ELEVATOR_ASSIST_REHEARSAL_SCHEMA,
+            "source": "software_proof",
+            "evidence_ref": evidence_ref,
+            "result_path": evidence_ref,
+            "proof_gate": ELEVATOR_ASSIST_REHEARSAL_PROOF_GATE,
+            "evidence_boundary": ELEVATOR_ASSIST_REHEARSAL_PROOF_GATE,
+            "same_evidence_ref_required": True,
+        }, phone_copy="电梯演练 artifact 未通过校验，行为主链路已失败关闭；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
 
     def _confirm_dropoff_callback(self, request, response):
         accepted, message = self.dropoff_gate.confirm(

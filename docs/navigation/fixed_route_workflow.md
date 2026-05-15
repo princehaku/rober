@@ -742,6 +742,29 @@ execution pack 使用 `schema=trashbot.elevator_field_run_execution_pack.v1`，s
 
 `ready_for_controlled_elevator_field_rehearsal_execution_pack_not_proven` 只表示 Docker/local review 材料可生成受控演练执行清单。它不是真实电梯门状态、真实目标楼层确认、真实 Nav2/fixed-route 实跑、真实路线采集、HIL、真实投放、真实取消完成或 delivery success。任何缺 review、坏 JSON、unsupported schema/boundary、unsafe copy、review blocked、`primary_actions_enabled=true` 或 `delivery_success=true` 都必须保持 blocked execution pack，并继续输出 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
 
+### 5.18 elevator assist rehearsal evidence mainline gate
+
+execution pack 之后，Robot dry-run 主链路需要一份更小的只读 evidence artifact 来驱动电梯阶段状态，而不是直接消费现场 raw 材料或成功声明。`pc-tools/evidence/elevator_assist_rehearsal_evidence.py` 生成 `trashbot.elevator_assist_rehearsal_evidence.v1`：
+
+```bash
+python3 pc-tools/evidence/elevator_assist_rehearsal_evidence.py \
+  --evidence-ref elevator-rehearsal-001 \
+  --target-floor 1F \
+  --once-json
+```
+
+artifact 的证据边界固定为 `software_proof_docker_elevator_evidence_driven_mainline_gate`。顶层必须包含 `source=software_proof`、`same_evidence_ref_required=true`、`phase_evidence`、`phone_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。`phone_safe_summary` 也必须保留 `source=software_proof`，让 Robot dry-run consumption 和移动端只读摘要使用同一证据来源。`phase_evidence` 至少覆盖：
+
+- `waiting_elevator_open`
+- `entering_elevator`
+- `requesting_floor_help`
+- `waiting_target_floor`
+- `exiting_elevator`
+
+Robot task_orchestrator 只能在 dry-run 下只读消费这份 artifact。`failure` 存在时必须 fail closed，并把 `phase`、`reason` 和 `manual_takeover_reason` 写入后续任务记录或诊断摘要；不存在 failure 时，也只允许输出 `ready_for_robot_dry_run_readonly_rehearsal_evidence_not_proven`，不能放行真实控制动作。
+
+该 gate 不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue 或 4G。它只证明 Docker/local rehearsal evidence artifact 可生成、可校验、可由 Robot dry-run 只读消费；不证明真实电梯门状态、真实目标楼层确认、真实人工协助、真实 Nav2/fixed-route、真实路线采集、HIL、真实投放、真实取消完成、真实手机设备或 delivery success。非法 `evidence_ref`、非法 `target_floor`、unsafe copy、成功文案、`primary_actions_enabled=true` 或 `delivery_success=true` 都必须保持 blocked，并继续输出 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## 6. Debug Web
 
 ### 6.1 Onboard ROS debug page

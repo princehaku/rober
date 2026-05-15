@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-05-16 系列
+
+更新时间：2026-05-16 01:18 Asia/Shanghai。
+
+### 2026-05-16 01-02｜elevator-evidence-driven-mainline｜O2/O3/O4 evidence-driven 电梯主链路 software proof，任务闭环由约 73% 上调到约 74%，固定路线由约 72% 上调到约 73%，手机体验由约 73% 上调到约 74%
+
+`sprints/2026.05.16_01-02_elevator-evidence-driven-mainline/` 完成 `software_proof_docker_elevator_evidence_driven_mainline_gate`：Task A `autonomy-engineer` 新增 `pc-tools/evidence/elevator_assist_rehearsal_evidence.py` 和 `pc-tools/evidence/test_elevator_assist_rehearsal_evidence.py`，同步更新 `pc-tools/README.md`、`docs/navigation/fixed_route_workflow.md`、`docs/product/elevator_assisted_delivery.md`。artifact 输出 `schema=trashbot.elevator_assist_rehearsal_evidence.v1`，summary 与 artifact 均包含 `source=software_proof`、`evidence_boundary=software_proof_docker_elevator_evidence_driven_mainline_gate`、`delivery_success=false`、`primary_actions_enabled=false`、`same_evidence_ref_required=true`、`phase_evidence` 和 `not_proven`；可选 failure path 写入 `failure.phase`、`failure.reason`、`failure.manual_takeover_reason`。Task A 验证输出 py_compile pass、`test_elevator_assist_rehearsal_evidence.py` `Ran 5 tests in 0.002s OK`、CLI `--help` pass、CLI `--once-json` pass、required `rg` pass、scoped diff check pass。
+
+Task B `robot-software-engineer` 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/task_orchestrator.py`、`onboard/src/ros2_trashbot_behavior/test/test_task_orchestrator_collection_execution.py` 与 `docs/interfaces/ros_contracts.md`，新增 `elevator_assist_evidence_file`。Robot 只在 `elevator_assist_mode=dry_run` 下只读 artifact；缺失/空文件保持既有 dry-run fallback；非法 artifact fail closed；artifact 通过时按 `phase_evidence` 驱动 `machine.elevator_phase(...)`，并把 artifact `evidence_ref` 提升到 task record 顶层 `evidence_ref/result_path`。该路径固定 `delivery_success=false`、`primary_actions_enabled=false`、`source=software_proof`，不触发真实 Nav2、HIL、ACK claim、dropoff/cancel completion 或 delivery success。Task B 验证输出 py_compile pass、`test_task_orchestrator_collection_execution.py` `Ran 15 tests in 0.017s OK`、required `rg` pass、scoped diff check pass。
+
+Task C `full-stack-software-engineer` 更新 `mobile/web/app.js`、`mobile/test_mobile_web_entrypoint.py`、`mobile/fixtures/mobile_web_status.fixture.json` 与 `docs/product/mobile_user_flow.md`。`mobile/web` 电梯辅助 panel 兼容 `elevator_assist_rehearsal_evidence` / summary，展示 safe `evidence_ref`、phase evidence、failure/manual takeover、same evidence ref requirement、boundary、`delivery_success=false`、`primary_actions_enabled=false` 和 `not_proven`；Start/Confirm/Cancel gating 未改。Task C 验证输出 `mobile/test_mobile_web_entrypoint.py` `Ran 44 tests in 0.130s OK`、py_compile pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped diff check pass。
+
+该证据只支持 Objective 2 从约 73% 保守上调到约 74%，Objective 3 从约 72% 保守上调到约 73%，Objective 4 从约 73% 保守上调到约 74%。Objective 2 的理由是电梯 assisted delivery 从 execution pack 推进到 Robot dry-run 主链路可消费的 rehearsal evidence artifact，并能把 phase/failure/manual takeover 与同一 `evidence_ref` 写入 task record。Objective 3 的理由是同一 `evidence_ref` 已进入 task record 顶层 anchor，为后续 Nav2/fixed-route runtime log 与 completion signal 的真实现场复账提供主链路位置。Objective 4 的理由是手机端能解释 evidence-driven 电梯阶段、失败和人工接管原因，同时保持主操作 fail-closed。Objective 1 保持约 73%，因为本轮未改硬件、WAVE ROVER、UART、Orange Pi 或真实串口证据；Objective 5 保持约 66%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部材料；not real Objective 5 external proof。本轮 `software_proof_docker_elevator_evidence_driven_mainline_gate` 只证明 Docker/local rehearsal evidence artifact、Robot behavior consumption、task record evidence anchor、mobile read-only summary 和只读控制边界，不证明真实电梯、真实门状态、真实目标楼层确认、真实人工协助、真实喇叭/TTS、真实 Nav2/fixed-route、真实路线采集、WAVE ROVER、真实串口/UART、HIL、同一 `evidence_ref` 上车实机复账、真实 dropoff/cancel completion、delivery success、真实手机/browser、Objective 5 external proof、公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue 或 worker/migration。
+
 ## 2026-05-15 系列
 
 更新时间：2026-05-16 00:18 Asia/Shanghai。
