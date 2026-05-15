@@ -1550,6 +1550,71 @@
       "delivery success"
     ]
   },
+  "mobile_field_material_intake": {
+    "schema": "trashbot.mobile_field_material_intake.v1",
+    "summary_schema": "trashbot.mobile_field_material_intake_summary.v1",
+    "schema_version": 1,
+    "intake_status": "ready_for_phone_safe_material_intake_not_proven",
+    "safe_entry": "mobile_field_material_intake",
+    "safe_evidence_ref": "route_elevator_field_handoff_fixture_20260516_0001",
+    "same_evidence_ref_status": "same_evidence_ref_required_pending_real_materials",
+    "real_device_pwa_observation_checklist": [
+      "真实手机打开当前 mobile/web PWA 并记录 display-mode。",
+      "真实 PWA prompt/user choice observation 仍为 not_proven。",
+      "Start / Confirm Dropoff / Cancel 继续 fail-closed。"
+    ],
+    "route_elevator_field_materials": [
+      "route/elevator field materials summary",
+      "door_state observation note",
+      "target_floor_confirmation note",
+      "human_assistance_operator_note",
+      "Nav2/fixed-route runtime log summary",
+      "task record / completion signal safe summary",
+      "dropoff/cancel completion material status"
+    ],
+    "safe_phone_copy": "mobile_field_material_intake 只摄取 phone-safe metadata；不证明真实手机、route/elevator field pass、dropoff/cancel completion 或 delivery success。",
+    "recovery_hint": "请用同一 safe evidence_ref 回填真实设备/PWA observation 与 route/elevator field materials；本地 PWA 仍保持 primary_actions_enabled=false。",
+    "evidence_boundary": "software_proof_docker_mobile_field_material_intake_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实手机",
+      "真实 iPhone/Android device behavior",
+      "production app",
+      "真实 PWA prompt/user choice",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success",
+      "HIL",
+      "Objective 5 external proof"
+    ]
+  },
+  "mobile_field_material_intake_summary": {
+    "schema": "trashbot.mobile_field_material_intake_summary.v1",
+    "source_schema": "trashbot.mobile_field_material_intake.v1",
+    "schema_version": 1,
+    "intake_status": "ready_for_phone_safe_material_intake_not_proven",
+    "safe_entry": "mobile_field_material_intake",
+    "safe_evidence_ref": "route_elevator_field_handoff_fixture_20260516_0001",
+    "same_evidence_ref_status": "same_evidence_ref_required_pending_real_materials",
+    "real_device_pwa_observation_checklist_summary": "真实设备/PWA observation checklist 只作为 phone-safe intake metadata；not_proven。",
+    "route_elevator_field_materials_summary": "route/elevator field materials 仍缺真实现场复账；delivery_success=false。",
+    "safe_phone_copy": "summary 只说明 mobile_field_material_intake 可导出白名单 metadata；不证明真实现场通过。",
+    "recovery_hint": "等待真实手机、PWA prompt/user choice、route/elevator field pass、dropoff/cancel completion 和 delivery result 材料。",
+    "evidence_boundary": "software_proof_docker_mobile_field_material_intake_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实手机",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success"
+    ]
+  },
   "route_task_field_run_readiness": {
     "schema": "trashbot.route_task_field_run_readiness.v1",
     "schema_version": 1,

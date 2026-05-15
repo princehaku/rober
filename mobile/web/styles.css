@@ -129,6 +129,7 @@ h2 {
 .hero-panel,
 .primary-journey-panel,
 .mobile-route-elevator-field-device-precheck-panel,
+.mobile-field-material-intake-panel,
 .recovery-decision-panel,
 .route-review-panel,
 .pc-route-debug-panel,
@@ -249,6 +250,7 @@ h2 {
 .status-grid,
 .cloud-grid,
 .mobile-route-elevator-field-device-precheck-grid,
+.mobile-field-material-intake-grid,
 .recovery-decision-grid,
 .route-review-grid,
 .pc-route-debug-grid,
@@ -289,6 +291,8 @@ h2 {
 
 .status-grid div,
 .cloud-grid div,
+.mobile-route-elevator-field-device-precheck-grid div,
+.mobile-field-material-intake-grid div,
 .recovery-decision-grid div,
 .route-review-grid div,
 .pc-route-debug-grid div,
@@ -680,6 +684,10 @@ dd {
   }
 
   .mobile-route-elevator-field-device-precheck-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mobile-field-material-intake-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

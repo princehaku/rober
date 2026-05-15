@@ -231,6 +231,12 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("copyMobileRouteElevatorFieldDevicePrecheckButton", index)
         self.assertIn("downloadMobileRouteElevatorFieldDevicePrecheckButton", index)
         self.assertIn("software_proof_docker_mobile_route_elevator_field_device_precheck_gate", app)
+        self.assertIn("mobile_field_material_intake", app)
+        self.assertIn("mobileFieldMaterialIntakeTitle", index)
+        self.assertIn("copyMobileFieldMaterialIntakeButton", index)
+        self.assertIn("downloadMobileFieldMaterialIntakeButton", index)
+        self.assertIn("software_proof_docker_mobile_field_material_intake_gate", app)
+        self.assertIn("trashbot.mobile_field_material_intake_copy.v1", app)
         self.assertIn("mobile_browser_acceptance_bundle", app)
         self.assertIn("phone_browser_acceptance_bundle", app)
         self.assertIn("mobile_acceptance_evidence_bundle", app)
@@ -242,6 +248,7 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("mobile_recovery_decision_gate", app)
         self.assertIn("mobile_recovery_decision_summary", app)
         self.assertIn("mobile_recovery_decision_gate", json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8"))))
+        self.assertIn("mobile_field_material_intake", json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8"))))
         self.assertIn("primaryJourneyTitle", index)
         self.assertEqual(manifest["evidence_boundary"], "software_proof_docker_mobile_web_entrypoint_gate")
         self.assertEqual(
@@ -903,6 +910,69 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "primary_actions_enabled\": true",
         ):
             self.assertNotIn(forbidden, precheck_fixture_text)
+
+    def test_mobile_field_material_intake_is_read_only_and_whitelist_exportable(self):
+        index = self.read("index.html")
+        app = self.read("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # intake panel 是 precheck 之后的 phone-safe 材料入口，不读取 raw artifact，也不触发控制 endpoint。
+        self.assertIn("mobileFieldMaterialIntakeTitle", index)
+        self.assertIn("Safe Evidence Ref", index)
+        self.assertIn("真实设备 / PWA Checklist", index)
+        self.assertIn("Route / Elevator Materials", index)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", index)
+        self.assertIn("copyMobileFieldMaterialIntakeButton", index)
+        self.assertIn("downloadMobileFieldMaterialIntakeButton", index)
+        self.assertIn("MOBILE_FIELD_MATERIAL_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_MOBILE_FIELD_MATERIAL_INTAKE_TEXT", app)
+        self.assertIn("safeMobileFieldMaterialIntakeText", app)
+        self.assertIn("mobileFieldMaterialIntakeCandidate", app)
+        self.assertIn("mobileFieldMaterialIntakeFromStatus", app)
+        self.assertIn("renderMobileFieldMaterialIntake", app)
+        self.assertIn("mobileFieldMaterialIntakeCopyPayload", app)
+        self.assertIn("mobile_field_material_intake", app)
+        self.assertIn("mobile_field_material_intake_summary", app)
+        self.assertIn("software_proof_docker_mobile_field_material_intake_gate", app)
+        self.assertNotRegex(app, r"mobileFieldMaterialIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"mobileFieldMaterialIntake.*fetchJson\(ENDPOINTS\.diagnostics")
+
+        intake = fixture["mobile_field_material_intake"]
+        self.assertEqual(intake["safe_entry"], "mobile_field_material_intake")
+        self.assertEqual(
+            intake["evidence_boundary"],
+            "software_proof_docker_mobile_field_material_intake_gate",
+        )
+        self.assertEqual(intake["delivery_success"], False)
+        self.assertEqual(intake["primary_actions_enabled"], False)
+        self.assertIn("mobile_field_material_intake_summary", fixture_text)
+        self.assertIn("route/elevator field materials", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("不证明真实手机", fixture_text)
+
+        intake_fixture_text = json.dumps(intake, ensure_ascii=False).lower()
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "baudrate",
+            "authorization",
+            "token",
+            "raw artifact",
+            "checksum",
+            "traceback",
+            "database url",
+            "queue url",
+            "oss ak",
+            "oss sk",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, intake_fixture_text)
 
     def test_elevator_field_run_material_validation_panel_is_read_only_and_phone_safe(self):
         app = self.read("app.js")

@@ -57,6 +57,7 @@ const ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_BOUNDARY = "software_proof_docker_e
 const PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_BOUNDARY = "software_proof_docker_pc_route_elevator_console_integration_gate";
 const ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_BOUNDARY = "software_proof_docker_route_elevator_field_session_handoff_gate";
 const MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_BOUNDARY = "software_proof_docker_mobile_route_elevator_field_device_precheck_gate";
+const MOBILE_FIELD_MATERIAL_INTAKE_BOUNDARY = "software_proof_docker_mobile_field_material_intake_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -132,6 +133,7 @@ const UNSAFE_ELEVATOR_ASSIST_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|a
 const UNSAFE_ELEVATOR_ROUTE_RECONCILIATION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw reconciliation|raw diagnostics|complete artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw handoff|raw diagnostics|raw material|complete artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw browser event|complete artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
+const UNSAFE_MOBILE_FIELD_MATERIAL_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw browser event|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 
@@ -146,6 +148,7 @@ let latestPwaInstallPromptEventCapturePackage = null;
 let latestPwaInstallPromptEvidenceExportPackage = null;
 let latestRouteTaskReview = null;
 let latestMobileRouteElevatorFieldDevicePrecheck = null;
+let latestMobileFieldMaterialIntake = null;
 let deferredPwaInstallPromptEvent = null;
 let pwaInstallPromptEventState = null;
 let latestRealDeviceEvidencePackage = null;
@@ -376,6 +379,15 @@ function safeMobileRouteElevatorFieldDevicePrecheckText(value, fallback = "not_p
   // 现场设备预检会被复制给支持人员，必须过滤 raw 材料、凭证、硬件细节和成功暗示。
   const text = safeText(value, fallback);
   if (UNSAFE_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeMobileFieldMaterialIntakeText(value, fallback = "not_proven") {
+  // intake 是现场材料进入手机端的白名单口，任何 raw 材料、凭证、硬件/云细节或成功暗示都降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_MOBILE_FIELD_MATERIAL_INTAKE_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -5624,6 +5636,146 @@ function mobileRouteElevatorFieldDevicePrecheckFromStatus(status, readiness, dia
   };
 }
 
+function mobileFieldMaterialIntakeCandidate(status, readiness, diagnostics) {
+  // intake 可来自 status、phone_readiness 或 diagnostics 安全摘要；前端不主动拉取 raw artifact。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.mobile_field_material_intake,
+    status?.mobile_field_material_intake_summary,
+    readiness?.mobile_field_material_intake,
+    readiness?.mobile_field_material_intake_summary,
+    diagnostics?.mobile_field_material_intake,
+    diagnostics?.mobile_field_material_intake_summary,
+    diagnosticsReadiness.mobile_field_material_intake,
+    diagnosticsReadiness.mobile_field_material_intake_summary,
+    diagnosticsSummary.mobile_field_material_intake,
+    diagnosticsSummary.mobile_field_material_intake_summary,
+    nestedDiagnosticsSummary.mobile_field_material_intake,
+    nestedDiagnosticsSummary.mobile_field_material_intake_summary,
+    nestedDiagnosticsInnerSummary.mobile_field_material_intake,
+    nestedDiagnosticsInnerSummary.mobile_field_material_intake_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function mobileFieldMaterialIntakeNotProvenList(value) {
+  // copy/export 必须持续携带这些未证明项，避免把摄取材料误读成现场通过。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实手机",
+    "真实 iPhone/Android device behavior",
+    "production app",
+    "真实 PWA prompt/user choice",
+    "真实 route/elevator field pass",
+    "真实 Nav2/fixed-route",
+    "真实 dropoff completion",
+    "真实 cancel completion",
+    "delivery success",
+    "HIL",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 18);
+}
+
+function mobileFieldMaterialIntakeSummaryText(value, fallback) {
+  // checklist 和 materials 允许数组/对象输入，但输出只能是短 phone-safe 摘要。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeMobileFieldMaterialIntakeText(
+        item?.safe_phone_copy || item?.summary || item?.name || item?.material ||
+          item?.status || item?.state || item?.step || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.reason || value.material || value.step;
+    if (direct) {
+      return safeMobileFieldMaterialIntakeText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeMobileFieldMaterialIntakeText(key, "");
+        const copy = mobileFieldMaterialIntakeSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  return safeMobileFieldMaterialIntakeText(value, fallback);
+}
+
+function mobileFieldMaterialIntakeFromStatus(status, readiness, diagnostics) {
+  const provided = mobileFieldMaterialIntakeCandidate(status, readiness, diagnostics) || {};
+  const precheck = mobileRouteElevatorFieldDevicePrecheckFromStatus(status, readiness, diagnostics);
+  const checklist = provided.real_device_pwa_observation_checklist ||
+    provided.device_pwa_observation_checklist || provided.observation_checklist ||
+    precheck.observation_checklist_summary;
+  const materials = provided.route_elevator_field_materials ||
+    provided.route_elevator_materials || provided.field_materials ||
+    provided.field_material_checklist || precheck.field_material_checklist_summary;
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.mobile_field_material_intake_summary.v1",
+    source_schema: "trashbot.mobile_field_material_intake.v1",
+    schema_version: 1,
+    intake_status: safeMobileFieldMaterialIntakeText(
+      provided.intake_status || provided.overall_status || provided.status,
+      "blocked_missing_mobile_field_material_intake_summary",
+    ),
+    safe_entry: safeMobileFieldMaterialIntakeText(
+      provided.safe_entry || provided.entry || "mobile_field_material_intake",
+      "mobile_field_material_intake",
+    ),
+    safe_evidence_ref: safeMobileFieldMaterialIntakeText(
+      provided.safe_evidence_ref || provided.evidence_ref || precheck.route_elevator_handoff_reference,
+      "evidence_ref=not_proven",
+    ),
+    real_device_pwa_observation_checklist_summary: mobileFieldMaterialIntakeSummaryText(
+      checklist,
+      "真实设备/PWA observation checklist=not_proven",
+    ),
+    route_elevator_field_materials_summary: mobileFieldMaterialIntakeSummaryText(
+      materials,
+      "route/elevator field materials=not_proven",
+    ),
+    same_evidence_ref_status: safeMobileFieldMaterialIntakeText(
+      provided.same_evidence_ref_status || provided.same_evidence_ref || precheck.route_elevator_handoff_reference,
+      "same_evidence_ref_status=not_proven",
+    ),
+    safe_phone_copy: safeMobileFieldMaterialIntakeText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "mobile_field_material_intake 只读摄取摘要缺失；手机端保持 not_proven 和主操作关闭。",
+    ),
+    recovery_hint: safeMobileFieldMaterialIntakeText(
+      provided.recovery_hint || provided.retry_hint,
+      "请用同一 safe evidence_ref 回填真实设备/PWA observation 和 route/elevator 现场材料；Start、Confirm、Cancel 继续 fail closed。",
+    ),
+    evidence_boundary: safeMobileFieldMaterialIntakeText(
+      provided.evidence_boundary,
+      MOBILE_FIELD_MATERIAL_INTAKE_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: mobileFieldMaterialIntakeNotProvenList(provided),
+  };
+}
+
 function elevatorAssistCandidate(status, readiness, diagnostics) {
   // evidence-driven artifact 优先级高于旧 dry-run summary，避免新主链路被旧兼容字段遮住。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -7040,6 +7192,30 @@ function renderMobileRouteElevatorFieldDevicePrecheck(status) {
   $("mobileRouteElevatorFieldDevicePrecheckHint").textContent = summary.recovery_hint;
 }
 
+function renderMobileFieldMaterialIntake(status) {
+  const readiness = readinessFromStatus(status);
+  const summary = mobileFieldMaterialIntakeFromStatus(status, readiness, latestDiagnostics);
+  latestMobileFieldMaterialIntake = summary;
+  const badge = $("mobileFieldMaterialIntakeBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 intake 摘要" : "read-only intake";
+  $("mobileFieldMaterialIntakeCopy").textContent = summary.safe_phone_copy;
+  $("mobileFieldMaterialIntakeSafeEntry").textContent = summary.safe_entry;
+  $("mobileFieldMaterialIntakeEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("mobileFieldMaterialIntakeObservationChecklist").textContent =
+    summary.real_device_pwa_observation_checklist_summary;
+  $("mobileFieldMaterialIntakeRouteElevatorMaterials").textContent =
+    summary.route_elevator_field_materials_summary;
+  $("mobileFieldMaterialIntakeSameRef").textContent = summary.same_evidence_ref_status;
+  $("mobileFieldMaterialIntakeControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("mobileFieldMaterialIntakeStatus").textContent = `${summary.intake_status} / not_proven`;
+  $("mobileFieldMaterialIntakeBoundary").textContent = summary.evidence_boundary;
+  $("mobileFieldMaterialIntakeNotProven").textContent = summary.not_proven.join("、");
+  $("mobileFieldMaterialIntakeHint").textContent = summary.recovery_hint;
+}
+
 function ensureElevatorAssistPanel() {
   // 本轮文件范围不改 index.html，因此用 JS 注入只读 panel，保持静态壳兼容旧浏览器测试。
   let panel = $("elevatorAssistPanel");
@@ -7557,6 +7733,35 @@ function mobileRouteElevatorFieldDevicePrecheckCopyPayload(summary) {
     safe_phone_copy: source.safe_phone_copy,
     recovery_hint: source.recovery_hint,
     evidence_boundary: MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_BOUNDARY,
+    not_proven: source.not_proven,
+  };
+}
+
+function mobileFieldMaterialIntakeCopyPayload(summary) {
+  // intake 导出只保留现场复核所需白名单字段，避免把 raw ROS/现场材料或完整附件复制出去。
+  const source = summary?.schema
+    ? summary
+    : mobileFieldMaterialIntakeFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  return {
+    schema: "trashbot.mobile_field_material_intake_copy.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    intake_schema: source.schema,
+    intake_status: source.intake_status,
+    safe_entry: source.safe_entry,
+    safe_evidence_ref: source.safe_evidence_ref,
+    real_device_pwa_observation_checklist_summary: source.real_device_pwa_observation_checklist_summary,
+    route_elevator_field_materials_summary: source.route_elevator_field_materials_summary,
+    same_evidence_ref_status: source.same_evidence_ref_status,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    safe_phone_copy: source.safe_phone_copy,
+    recovery_hint: source.recovery_hint,
+    evidence_boundary: MOBILE_FIELD_MATERIAL_INTAKE_BOUNDARY,
     not_proven: source.not_proven,
   };
 }
@@ -8737,6 +8942,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const mobileFieldMaterialIntake = mobileFieldMaterialIntakeFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const rows = [
     ["软件版本", payload?.software_version],
     ["地图版本", payload?.map_version],
@@ -8762,6 +8972,7 @@ function renderDiagnosticsSummary(payload) {
     ["Elevator-route evidence reconciliation", elevatorRouteReconciliation.reconciliation_verdict],
     ["Route-elevator field session handoff", routeElevatorFieldHandoff.handoff_verdict],
     ["mobile_route_elevator_field_device_precheck", mobileRouteElevatorPrecheck.precheck_status],
+    ["mobile_field_material_intake", mobileFieldMaterialIntake.intake_status],
   ];
   rows.forEach(([label, value]) => {
     const box = document.createElement("div");
@@ -8829,6 +9040,7 @@ function renderOfflineFailure() {
   renderRouteTaskCompletionSignal({});
   renderRouteElevatorFieldSessionHandoff({});
   renderMobileRouteElevatorFieldDevicePrecheck({});
+  renderMobileFieldMaterialIntake({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -8874,6 +9086,7 @@ function renderStatus(status) {
   renderRouteTaskCompletionSignal(status);
   renderRouteElevatorFieldSessionHandoff(status);
   renderMobileRouteElevatorFieldDevicePrecheck(status);
+  renderMobileFieldMaterialIntake(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
@@ -9096,6 +9309,7 @@ async function openDiagnostics() {
     renderElevatorRouteEvidenceReconciliation(latestStatus || {});
     renderRouteElevatorFieldSessionHandoff(latestStatus || {});
     renderMobileRouteElevatorFieldDevicePrecheck(latestStatus || {});
+    renderMobileFieldMaterialIntake(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileDeviceEvidence(latestStatus || {});
     renderMobileDeviceHandoffSession(latestStatus || {});
@@ -9180,6 +9394,31 @@ function wireEvents() {
     $("mobileRouteElevatorFieldDevicePrecheckSafeCopy").textContent = payload;
     downloadJsonPackage("mobile_route_elevator_field_device_precheck_copy.json", payload);
     $("mobileRouteElevatorFieldDevicePrecheckCopyStatus").textContent = "已导出预检 whitelist-only JSON。";
+  });
+  $("copyMobileFieldMaterialIntakeButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(
+      mobileFieldMaterialIntakeCopyPayload(latestMobileFieldMaterialIntake || {}),
+      null,
+      2,
+    );
+    $("mobileFieldMaterialIntakeSafeCopy").textContent = payload;
+    // intake copy 是现场材料回填入口；剪贴板失败时保留页面内手动复制路径。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("mobileFieldMaterialIntakeCopyStatus").textContent = "已复制 intake phone-safe metadata。";
+    } catch (_error) {
+      $("mobileFieldMaterialIntakeCopyStatus").textContent = "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadMobileFieldMaterialIntakeButton").addEventListener("click", () => {
+    const payload = JSON.stringify(
+      mobileFieldMaterialIntakeCopyPayload(latestMobileFieldMaterialIntake || {}),
+      null,
+      2,
+    );
+    $("mobileFieldMaterialIntakeSafeCopy").textContent = payload;
+    downloadJsonPackage("mobile_field_material_intake_copy.json", payload);
+    $("mobileFieldMaterialIntakeCopyStatus").textContent = "已导出 intake whitelist-only JSON。";
   });
   $("copyRouteTaskReviewButton").addEventListener("click", async () => {
     // operator review 复制只使用后端提供的 safe_copy 白名单对象，缺失时不生成替代 bundle。

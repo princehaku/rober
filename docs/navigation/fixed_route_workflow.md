@@ -357,6 +357,27 @@ artifact 使用 `schema=trashbot.route_elevator_field_session_handoff.v1`，summ
 
 `robot_diagnostics_summary` 和 `mobile_readonly_summary` 只能展示白名单摘要，不包含 raw artifact、本机完整路径、checksum、traceback、凭证、DB/queue URL、OSS AK/SK、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 参数。该 gate 是现场 session handoff，不是 delivery success，也不是 Objective 5 external proof；`not_proven` 必须继续包含真实 Nav2/fixed-route、真实电梯门状态、真实目标楼层、人工协助、HIL、dropoff/cancel completion、真实手机和 O5 外部材料。
 
+## 4.10 Mobile Field Material Intake
+
+现场前检查完成后，`pc-tools/evidence/mobile_field_material_intake.py` 负责把手机设备观察、route/elevator 材料、Nav2/fixed-route runtime log、task record、completion signal、dropoff/cancel material status 收到同一条 `evidence_ref` 证据链里：
+
+```bash
+python3 pc-tools/evidence/mobile_field_material_intake.py \
+  --precheck-json /tmp/mobile_route_elevator_field_device_precheck_summary.json \
+  --device-pwa-observation-json /tmp/device_pwa_observation.json \
+  --route-elevator-field-materials-json /tmp/route_elevator_field_materials.json \
+  --nav2-fixed-route-runtime-log-json /tmp/nav2_fixed_route_runtime_log.json \
+  --task-record-json /tmp/task_record.json \
+  --completion-signal-json /tmp/route_completion_signal.json \
+  --dropoff-cancel-material-status-json /tmp/dropoff_cancel_material_status.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+summary 使用 `schema=trashbot.mobile_field_material_intake_summary.v1`，证据边界固定为 `software_proof_docker_mobile_field_material_intake_gate`。它只做现场材料回填前/回填后的 fail-closed 检查：所有 required material 都必须是 JSON object、带同一 safe `evidence_ref`、不含 placeholder、不含 unsafe copy、不含 success wording，且保持 `delivery_success=false`、`primary_actions_enabled=false`。
+
+该 gate 的 route/elevator 检查重点是材料是否可复核，而不是判断现场已经成功。必须继续把 `route_elevator_field_pass=false`、`nav2_fixed_route_completed=false`、`dropoff_completion=false`、`cancel_completion=false` 和 `not_proven` 暴露给 mobile/support。缺真实手机、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、HIL 或 Objective 5 external proof 时，summary 只能作为 `software_proof` / `not_proven`，不证明真实手机或真实送达成功。
+
 ## 5. 关键缺失与超时复现脚本（离线）
 
 ### 5.1 固定路线关键点缺失

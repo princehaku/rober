@@ -8,7 +8,17 @@
 
 ## 2026-05-16 系列
 
-更新时间：2026-05-16 06:18 Asia/Shanghai。
+更新时间：2026-05-16 07:16 Asia/Shanghai。
+
+### 2026-05-16 07-08｜mobile-field-material-intake｜O4 phone-safe material intake，手机体验由约 77% 上调到约 78%
+
+`sprints/2026.05.16_07-08_mobile-field-material-intake/` 完成 `software_proof_docker_mobile_field_material_intake_gate`：Task A `full-stack-software-engineer` 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，在 first-screen 新增 `mobile_field_material_intake` panel，显示 safe entry/evidence_ref、真实设备/PWA checklist、route/elevator field materials、same-evidence-ref status，并支持 whitelist-only copy/export；Start / Confirm Dropoff / Cancel gating 未改变。Task A 验证输出 `mobile/test_mobile_web_entrypoint.py` `Ran 49 tests ... OK`、`py_compile` pass、`node --check mobile/web/app.js` pass、required `rg` pass、scoped `git diff --check` pass。
+
+Task B `robot-software-engineer` 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`、`onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py` 与 `docs/interfaces/ros_contracts.md`，新增 `mobile_field_material_intake` / `_summary` diagnostics metadata-only consumer。该 consumer 严格检查 schema/boundary，bad JSON、missing、unsupported、unsafe、success claim 均 fail closed，并清理 `latest_status` 防止 sanitizer bypass；command、ACK、control、cursor、persistence、terminal ACK、Nav2、HIL、dropoff/cancel、delivery success 旗标强制 false。Task B 验证输出 diagnostics unittest `Ran 87 tests ... OK`、required `rg` pass、scoped `git diff --check` pass。
+
+Task C `autonomy-engineer` 新增 `pc-tools/evidence/mobile_field_material_intake.py` 与 `pc-tools/evidence/test_mobile_field_material_intake.py`，更新 `pc-tools/README.md` 与 `docs/navigation/fixed_route_workflow.md`。intake/gate 把真实设备/PWA observation、route/elevator field materials、Nav2/fixed-route runtime log、task record、completion signal、dropoff/cancel material status 收到同一 safe `evidence_ref` 下检查，并对缺失、placeholder、evidence-ref mismatch、unsafe copy、success wording fail closed。Task C 验证输出 py_compile pass、`test_mobile_field_material_intake.py` `Ran 5 tests ... OK`、CLI `--help` pass、required `rg` pass、scoped `git diff --check` pass；首轮 unittest 发现 evidence-ref mismatch 被 precheck 层优先拦截，测试断言按更严格 fail-closed 顺序修正后通过。
+
+该证据只支持 Objective 4 从约 77% 保守上调到约 78%。理由是 current `mobile/web` PWA 已从 06-07 precheck 推进为 phone-safe material intake surface，能把真实设备/PWA observation、route/elevator field materials 和 same-evidence-ref status 变成首屏可见、可复制、可由 Robot diagnostics 与 pc-tools gate 复核的下一步入口。Objective 2 和 Objective 3 保持约 76%，因为本轮只增强 same-evidence-ref 现场材料摄取支撑，没有新增真实电梯、真实 Nav2/fixed-route runtime log、真实 task record、dropoff/cancel completion 或 delivery success。Objective 5 保持约 66%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；not real Objective 5 external proof。Objective 1 保持约 73%，因为本轮未改 WAVE ROVER、UART、Orange Pi、真实串口、`T=1001` feedback 或 HIL。本轮不证明真实手机、真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、delivery_success=false 之外的 delivery success、WAVE ROVER、真实串口/UART 或 HIL。
 
 ### 2026-05-16 06-07｜mobile-route-elevator-field-device-precheck｜O4 真实设备/路线电梯现场 precheck 入口，手机体验由约 76% 上调到约 77%
 

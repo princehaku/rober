@@ -131,6 +131,63 @@
         </p>
       </section>
 
+      <section class="mobile-field-material-intake-panel" aria-labelledby="mobileFieldMaterialIntakeTitle">
+        <div class="section-heading">
+          <h2 id="mobileFieldMaterialIntakeTitle">现场材料摄取</h2>
+          <span id="mobileFieldMaterialIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="mobileFieldMaterialIntakeCopy" class="message">
+          等待后端提供 mobile_field_material_intake 的 phone-safe 摘要。
+        </p>
+        <dl class="mobile-field-material-intake-grid">
+          <div>
+            <dt>Safe Entry</dt>
+            <dd id="mobileFieldMaterialIntakeSafeEntry">mobile_field_material_intake=not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="mobileFieldMaterialIntakeEvidenceRef">evidence_ref=not_proven</dd>
+          </div>
+          <div>
+            <dt>真实设备 / PWA Checklist</dt>
+            <dd id="mobileFieldMaterialIntakeObservationChecklist">真实设备/PWA observation checklist=not_proven</dd>
+          </div>
+          <div>
+            <dt>Route / Elevator Materials</dt>
+            <dd id="mobileFieldMaterialIntakeRouteElevatorMaterials">route/elevator field materials=not_proven</dd>
+          </div>
+          <div>
+            <dt>Same Evidence Ref</dt>
+            <dd id="mobileFieldMaterialIntakeSameRef">same_evidence_ref_status=not_proven</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="mobileFieldMaterialIntakeControls">delivery_success=false / primary_actions_enabled=false</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd id="mobileFieldMaterialIntakeStatus">not_proven</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileFieldMaterialIntakeBoundary">software_proof_docker_mobile_field_material_intake_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileFieldMaterialIntakeNotProven">真实手机、真实 route/elevator field pass、dropoff/cancel completion 和 delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <div class="bundle-copy-row">
+          <button id="copyMobileFieldMaterialIntakeButton" type="button">复制 intake safe_copy</button>
+          <button id="downloadMobileFieldMaterialIntakeButton" type="button">导出 intake JSON</button>
+          <span id="mobileFieldMaterialIntakeCopyStatus" class="hint">whitelist-only phone-safe metadata</span>
+        </div>
+        <pre id="mobileFieldMaterialIntakeSafeCopy" class="safe-copy" aria-label="mobile_field_material_intake safe_copy">whitelist-only phone-safe metadata</pre>
+        <p id="mobileFieldMaterialIntakeHint" class="hint">
+          intake panel 只读展示并导出白名单 metadata；不证明真实手机或现场通过，也不改变 Start、Confirm Dropoff 或 Cancel gating。
+        </p>
+      </section>
+
       <section class="recovery-decision-panel" aria-labelledby="recoveryDecisionTitle">
         <div class="section-heading">
           <h2 id="recoveryDecisionTitle">恢复决策</h2>

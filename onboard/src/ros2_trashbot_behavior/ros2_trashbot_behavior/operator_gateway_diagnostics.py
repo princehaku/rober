@@ -205,6 +205,9 @@ MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_SUMMARY_SCHEMA = (
 MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_GATE = (
     "software_proof_docker_mobile_route_elevator_field_device_precheck_gate"
 )
+MOBILE_FIELD_MATERIAL_INTAKE_SCHEMA = "trashbot.mobile_field_material_intake.v1"
+MOBILE_FIELD_MATERIAL_INTAKE_SUMMARY_SCHEMA = "trashbot.mobile_field_material_intake_summary.v1"
+MOBILE_FIELD_MATERIAL_INTAKE_GATE = "software_proof_docker_mobile_field_material_intake_gate"
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -835,6 +838,41 @@ def _mobile_route_elevator_field_device_precheck_not_proven(precheck=None, summa
         "dropoff_completion",
         "cancel_completion",
         "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _mobile_field_material_intake_not_proven(intake=None, summary_fragment=None):
+    # 手机现场材料 intake 只汇总人工回填材料；真实控制、ACK、Nav2、HIL 和交付结论必须继续外部证明。
+    intake = intake if isinstance(intake, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(intake.get("not_proven"), list):
+        source_values.extend(intake.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "real_phone_device_proof",
+        "real_route_elevator_field_pass",
+        "real_nav2_fixed_route_run",
+        "task_record_real_world_completion",
+        "completion_signal_real_world",
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "dropoff_completion",
+        "cancel_completion",
+        "delivery_success",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
         "objective_5_external_proof",
     )
     for item in list(source_values) + list(required):
@@ -1719,6 +1757,63 @@ def _default_mobile_route_elevator_field_device_precheck_summary(
     }
 
 
+def _default_mobile_field_material_intake_summary(
+    path,
+    status="not_configured",
+    read_error="",
+):
+    # intake 默认必须封死所有动作旗标，避免现场材料摘要被误读成 command/ACK 或真实完成。
+    return {
+        "schema": MOBILE_FIELD_MATERIAL_INTAKE_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": MOBILE_FIELD_MATERIAL_INTAKE_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "intake_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "reason": read_error or "mobile field material intake is not configured",
+        },
+        "safe_evidence_ref": "",
+        "device_observation_summary": {},
+        "route_elevator_materials_summary": {},
+        "nav2_fixed_route_materials_summary": {},
+        "task_record_materials_summary": {},
+        "completion_signal_summary": {},
+        "dropoff_cancel_materials_summary": {},
+        "operator_next_steps": [],
+        "mobile_readonly_summary": {
+            "safe_copy": "Mobile field material intake is metadata-only; delivery_success=false.",
+            "safe_phone_copy": "Mobile field material intake is metadata-only; delivery_success=false.",
+        },
+        "not_proven": _mobile_field_material_intake_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "same_evidence_ref_required": True,
+        "real_device_observed": False,
+        "route_elevator_field_pass": False,
+        "nav2_fixed_route_run": False,
+        "task_record_completion": False,
+        "completion_signal_received": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -2085,6 +2180,112 @@ def _mobile_route_elevator_field_device_precheck_has_unsafe_fields(value, key_pa
     return False
 
 
+def _mobile_field_material_intake_has_unsafe_fields(value, key_path=""):
+    # intake 会承接手机和现场人工材料；只要出现 raw 控制/ACK/硬件字段或完成 claim，就必须 fail closed。
+    unsafe_key_fragments = (
+        "authorization",
+        "token",
+        "secret",
+        "access_key",
+        "password",
+        "credential",
+        "checksum",
+        "traceback",
+        "raw_artifact",
+        "raw_payload",
+        "raw_response",
+        "raw_robot",
+        "raw_command",
+        "raw_ack",
+        "command_envelope",
+        "status_envelope",
+        "serial",
+        "uart",
+        "baud",
+        "cmd_vel",
+        "wave_rover",
+    )
+    unsafe_true_keys = {
+        "delivery_success",
+        "primary_actions_enabled",
+        "real_device_observed",
+        "route_elevator_field_pass",
+        "nav2_fixed_route_run",
+        "task_record_completion",
+        "completion_signal_received",
+        "dropoff_completion",
+        "cancel_completion",
+        "ack_post_allowed",
+        "remote_ack_allowed",
+        "cursor_updates_allowed",
+        "persistence_updates_allowed",
+        "terminal_ack_allowed",
+        "nav2_triggered",
+        "hil_pass",
+        "production_ready",
+        "collect_triggered",
+        "dropoff_triggered",
+        "cancel_triggered",
+        "remote_ack_posted",
+        "terminal_ack_posted",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            current_path = f"{key_path}.{key_text}" if key_path else key_text
+            if key_text in unsafe_true_keys and bool(item):
+                return True
+            if key_text == "same_evidence_ref_required" and item is not True:
+                return True
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if key_text == "not_proven":
+                continue
+            if _mobile_field_material_intake_has_unsafe_fields(item, current_path):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_mobile_field_material_intake_has_unsafe_fields(item, key_path) for item in value)
+    if isinstance(value, str):
+        redacted = _redact_route_task_rehearsal_text(value)
+        guarded = redacted.lower()
+        for phrase in (
+            "not delivery success",
+            "delivery_success=false",
+            "not_proven",
+            "not proven",
+            "metadata-only",
+            "must not",
+            "not real",
+            "不证明",
+        ):
+            guarded = guarded.replace(phrase, "")
+        return (
+            "/api/collect" in guarded
+            or "ack posted" in guarded
+            or "remote ack" in guarded
+            or "terminal ack" in guarded
+            or "cursor advanced" in guarded
+            or "persistence updated" in guarded
+            or "nav2 started" in guarded
+            or "hil pass" in guarded
+            or "dropoff complete" in guarded
+            or "cancel complete" in guarded
+            or "delivery success" in guarded
+            or "real route/elevator field pass" in guarded
+            or any(marker in redacted for marker in (
+                "[REDACTED_AUTH_HEADER]",
+                "Bearer [REDACTED]",
+                "[REDACTED_URL]",
+                "/dev/[REDACTED_SERIAL]",
+                "[REDACTED_BAUD]",
+                "[REDACTED_TRACEBACK]",
+                "[REDACTED_LOCAL_PATH]",
+            ))
+        )
+    return False
+
+
 def _route_task_field_run_evidence_kit_source_contract(value):
     # 支持直接消费 evidence kit，也支持消费 diagnostics/mobile 传来的 summary wrapper，但 wrapper 仍必须指向 kit schema。
     source_schema = str(value.get("schema") or "")
@@ -2170,6 +2371,16 @@ def _mobile_route_elevator_field_device_precheck_source_contract(value):
     source_schema = str(value.get("schema") or "")
     source_boundary = str(value.get("evidence_boundary") or "")
     if source_schema == MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or source_schema)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _mobile_field_material_intake_source_contract(value):
+    # 支持直接 artifact 或已生成 summary；summary wrapper 仍必须回指 intake schema 和同一 evidence boundary。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == MOBILE_FIELD_MATERIAL_INTAKE_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or source_schema)
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
@@ -6662,6 +6873,235 @@ def summarize_mobile_route_elevator_field_device_precheck(path):
     return summary
 
 
+def summarize_mobile_field_material_intake(path):
+    """构建 mobile field material intake 的 metadata-only diagnostics 摘要。"""
+    intake_path = os.path.expanduser(str(path or ""))
+    summary = _default_mobile_field_material_intake_summary(
+        intake_path,
+        read_error="mobile field material intake is not configured",
+    )
+    if not intake_path:
+        return summary
+    if not os.path.exists(intake_path):
+        summary.update(
+            {
+                "intake_status": {
+                    "status": "missing",
+                    "verdict": "not_proven",
+                    "reason": "mobile field material intake artifact missing",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Mobile field material intake is missing; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Mobile field material intake is missing; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    try:
+        with open(intake_path, "r", encoding="utf-8") as f:
+            intake = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        safe_error = _redact_route_task_rehearsal_text(f"failed reading mobile field material intake: {exc}")
+        summary.update(
+            {
+                "intake_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": safe_error,
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Mobile field material intake could not be read; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Mobile field material intake could not be read; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    if not isinstance(intake, dict):
+        summary.update(
+            {
+                "intake_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "mobile field material intake JSON must be an object",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Mobile field material intake shape is invalid; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Mobile field material intake shape is invalid; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    # 只消费 phone-safe summary 形态，避免 raw 手机材料、控制 envelope 或完整现场 artifact 进入 diagnostics。
+    summary_fragment = {}
+    for candidate in (
+        intake.get("mobile_field_material_intake_summary"),
+        intake.get("mobile_readonly_summary"),
+        intake.get("phone_safe_summary"),
+        intake.get("robot_diagnostics_summary"),
+        intake.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+    source_schema, source_boundary = _mobile_field_material_intake_source_contract(intake)
+    status_source = (
+        intake.get("intake_status")
+        if isinstance(intake.get("intake_status"), dict)
+        else summary_fragment.get("intake_status")
+        if isinstance(summary_fragment.get("intake_status"), dict)
+        else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or intake.get("safe_copy")
+        or intake.get("safe_phone_copy")
+        or "Mobile field material intake is metadata-only; delivery_success=false."
+    )
+    mobile_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(summary_fragment.get(key) or "").strip():
+            mobile_summary[key] = _redact_route_task_rehearsal_text(summary_fragment.get(key))
+    mobile_summary["safe_copy"] = safe_copy
+    mobile_summary["safe_phone_copy"] = safe_copy
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": intake.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "intake_status": {
+                "status": _redact_route_task_rehearsal_text(
+                    status_source.get("status")
+                    or summary_fragment.get("status")
+                    or intake.get("status")
+                    or "blocked"
+                ),
+                "verdict": _redact_route_task_rehearsal_text(
+                    status_source.get("verdict")
+                    or summary_fragment.get("verdict")
+                    or intake.get("verdict")
+                    or "not_proven"
+                ),
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or intake.get("reason")
+                    or "mobile field material intake consumed without explicit reason"
+                ),
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("safe_evidence_ref")
+                or summary_fragment.get("evidence_ref")
+                or intake.get("safe_evidence_ref")
+                or intake.get("evidence_ref", "")
+            ),
+            "device_observation_summary": _safe_pc_route_debug_dict(
+                intake.get("device_observation_summary")
+                if isinstance(intake.get("device_observation_summary"), dict)
+                else summary_fragment.get("device_observation_summary")
+            ),
+            "route_elevator_materials_summary": _safe_pc_route_debug_dict(
+                intake.get("route_elevator_materials_summary")
+                if isinstance(intake.get("route_elevator_materials_summary"), dict)
+                else summary_fragment.get("route_elevator_materials_summary")
+            ),
+            "nav2_fixed_route_materials_summary": _safe_pc_route_debug_dict(
+                intake.get("nav2_fixed_route_materials_summary")
+                if isinstance(intake.get("nav2_fixed_route_materials_summary"), dict)
+                else summary_fragment.get("nav2_fixed_route_materials_summary")
+            ),
+            "task_record_materials_summary": _safe_pc_route_debug_dict(
+                intake.get("task_record_materials_summary")
+                if isinstance(intake.get("task_record_materials_summary"), dict)
+                else summary_fragment.get("task_record_materials_summary")
+            ),
+            "completion_signal_summary": _safe_pc_route_debug_dict(
+                intake.get("completion_signal_summary")
+                if isinstance(intake.get("completion_signal_summary"), dict)
+                else summary_fragment.get("completion_signal_summary")
+            ),
+            "dropoff_cancel_materials_summary": _safe_pc_route_debug_dict(
+                intake.get("dropoff_cancel_materials_summary")
+                if isinstance(intake.get("dropoff_cancel_materials_summary"), dict)
+                else summary_fragment.get("dropoff_cancel_materials_summary")
+            ),
+            "operator_next_steps": _safe_route_task_rehearsal_list(
+                intake.get("operator_next_steps")
+                if isinstance(intake.get("operator_next_steps"), list)
+                else summary_fragment.get("operator_next_steps")
+            ),
+            "mobile_readonly_summary": mobile_summary,
+            "not_proven": _mobile_field_material_intake_not_proven(intake, summary_fragment),
+            "read_error": "",
+            "metadata_only": True,
+            "same_evidence_ref_required": True,
+            "real_device_observed": False,
+            "route_elevator_field_pass": False,
+            "nav2_fixed_route_run": False,
+            "task_record_completion": False,
+            "completion_signal_received": False,
+            "dropoff_completion": False,
+            "cancel_completion": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    accepted_schemas = {
+        MOBILE_FIELD_MATERIAL_INTAKE_SCHEMA,
+        MOBILE_FIELD_MATERIAL_INTAKE_SUMMARY_SCHEMA,
+    }
+    if source_schema not in accepted_schemas or source_boundary != MOBILE_FIELD_MATERIAL_INTAKE_GATE:
+        summary.update(
+            {
+                "intake_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "mobile field material intake schema or evidence boundary is unsupported",
+                },
+                "device_observation_summary": {},
+                "route_elevator_materials_summary": {},
+                "nav2_fixed_route_materials_summary": {},
+                "task_record_materials_summary": {},
+                "completion_signal_summary": {},
+                "dropoff_cancel_materials_summary": {},
+                "operator_next_steps": [],
+                "mobile_readonly_summary": {
+                    "safe_copy": "Mobile field material intake is not a supported diagnostics source; no delivery result is proven.",
+                    "safe_phone_copy": "Mobile field material intake is not a supported diagnostics source; no delivery result is proven.",
+                },
+            }
+        )
+        return summary
+
+    if _mobile_field_material_intake_has_unsafe_fields(intake) or _route_task_field_run_readiness_copy_is_unsafe(safe_copy):
+        summary.update(
+            {
+                "intake_status": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": "mobile field material intake contains unsafe fields or success/control claims",
+                },
+                "device_observation_summary": {},
+                "route_elevator_materials_summary": {},
+                "nav2_fixed_route_materials_summary": {},
+                "task_record_materials_summary": {},
+                "completion_signal_summary": {},
+                "dropoff_cancel_materials_summary": {},
+                "operator_next_steps": [],
+                "mobile_readonly_summary": {
+                    "safe_copy": "Mobile field material intake was blocked because fields could expose control data or imply delivery success.",
+                    "safe_phone_copy": "Mobile field material intake was blocked because fields could expose control data or imply delivery success.",
+                },
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -7789,6 +8229,7 @@ def build_diagnostics_payload(
     elevator_route_evidence_reconciliation_ref="",
     route_elevator_field_session_handoff_ref="",
     mobile_route_elevator_field_device_precheck_ref="",
+    mobile_field_material_intake_ref="",
 ):
     latest_status = dict(latest_status or {})
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
@@ -7798,6 +8239,9 @@ def build_diagnostics_payload(
     latest_status.pop("mobile_route_elevator_field_device_precheck", None)
     latest_status.pop("mobile_route_elevator_field_device_precheck_summary", None)
     latest_status.pop("mobile_route_elevator_field_device_precheck_copy", None)
+    latest_status.pop("mobile_field_material_intake", None)
+    latest_status.pop("mobile_field_material_intake_summary", None)
+    latest_status.pop("mobile_field_material_intake_copy", None)
     last_task = dict(latest_status.get("last_task") or {})
     task_record_path = str(
         latest_status.get("task_record_path")
@@ -7925,6 +8369,11 @@ def build_diagnostics_payload(
             or os.environ.get("TRASHBOT_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_SUMMARY", "")
         )
     )
+    mobile_field_material_intake_summary = summarize_mobile_field_material_intake(
+        mobile_field_material_intake_ref
+        or os.environ.get("TRASHBOT_MOBILE_FIELD_MATERIAL_INTAKE", "")
+        or os.environ.get("TRASHBOT_MOBILE_FIELD_MATERIAL_INTAKE_SUMMARY", "")
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -7999,6 +8448,8 @@ def build_diagnostics_payload(
         route_elevator_field_session_handoff_summary=route_elevator_field_session_handoff_summary,
         mobile_route_elevator_field_device_precheck=mobile_route_elevator_field_device_precheck_summary,
         mobile_route_elevator_field_device_precheck_summary=mobile_route_elevator_field_device_precheck_summary,
+        mobile_field_material_intake=mobile_field_material_intake_summary,
+        mobile_field_material_intake_summary=mobile_field_material_intake_summary,
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),
