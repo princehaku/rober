@@ -946,6 +946,51 @@ cursor updates, persistence updates, terminal ACK, Nav2 trigger, HIL, hardware
 action, dropoff/cancel completion, or delivery-success behavior, and it
 不证明真实传感器采购、真实装机、真实 Nav2/fixed-route、真实 HIL 或 delivery success。
 
+Operator diagnostics may also expose `hardware_sensor_procurement_execution_pack`
+and the alias `hardware_sensor_procurement_execution_pack_summary` from an
+explicit `hardware_sensor_procurement_execution_pack_ref`,
+`TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK`,
+`TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SUMMARY`,
+`latest_status`, or an already sanitized diagnostics source. The source JSON
+must use `schema=trashbot.hardware_sensor_procurement_execution_pack.v1` or
+`schema=trashbot.hardware_sensor_procurement_execution_pack_summary.v1` with
+`evidence_boundary=software_proof_docker_hardware_sensor_procurement_execution_pack_gate`.
+If the source is already a Robot diagnostics summary wrapper, it may point back
+to the same source schema/evidence boundary. This field is metadata-only Robot
+diagnostics support for consuming a Hardware-owned sensor-procurement execution
+pack. It may expose only summary schema/evidence boundary, source
+schema/evidence boundary, `execution_pack_status`,
+`hardware_material_status=hardware_material_pending`, `blockers`,
+`material_templates`, `owner_handoff`, `rerun_commands`, `blocked_reason`,
+`next_required_evidence`, safe evidence ref, `operator_next_steps`,
+`robot_diagnostics_summary`, `not_proven`, and conservative false fields
+including `real_hardware_observed=false`, `sensor_procurement_completed=false`,
+`sensor_installed_on_robot=false`, `sensor_calibrated_on_robot=false`,
+`route_elevator_field_pass=false`, `nav2_fixed_route_run=false`,
+`dropoff_completion=false`, `cancel_completion=false`,
+`delivery_success=false`, and `primary_actions_enabled=false`. Missing or
+unconfigured sources fail closed as
+`blocked_missing_hardware_sensor_procurement_execution_pack`; unreadable JSON
+uses `read_error`, unsupported schema/boundary uses `unsupported_schema`, and
+success/control claims use `unsafe_fields`. Diagnostics consumers must treat it
+as fence-only metadata: `metadata_only=true`,
+`execution_pack_status.verdict=not_proven`,
+`execution_pack_status.evidence_source=software_proof`,
+`hardware_material_pending=true`, `collect_triggered=false`,
+`dropoff_triggered=false`, `cancel_triggered=false`, `ack_post_allowed=false`,
+`remote_ack_allowed=false`, `cursor_updates_allowed=false`,
+`persistence_updates_allowed=false`, `terminal_ack_allowed=false`,
+`nav2_triggered=false`, `hil_pass=false`, and `production_ready=false` remain
+required even when an execution pack source is present. Raw artifact payloads,
+raw JSON, raw ROS topics, serial/UART details, baudrate, hardware paths,
+credentials, checksums, full vendor/source documents, raw ACK payloads, raw
+command envelopes, success copy, and traceback content must not enter the
+diagnostics summary. The field does not change `/api/collect`,
+`POST /api/dropoff/confirm`, `POST /api/cancel`, command, ACK, remote control,
+cursor updates, persistence updates, terminal ACK, Nav2 trigger, HIL, hardware
+action, dropoff/cancel completion, or delivery-success behavior, and it
+不证明真实传感器采购、真实装机、真实校准、真实 Nav2/fixed-route、真实 HIL 或 delivery success。
+
 ### Dropoff Confirmation Service
 
 | Name | Type | Contract |

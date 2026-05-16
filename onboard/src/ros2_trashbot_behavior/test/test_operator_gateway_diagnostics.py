@@ -41,6 +41,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_hardware_baseline_review,
     summarize_hardware_sensor_procurement_intake,
     summarize_hardware_sensor_procurement_review_decision,
+    summarize_hardware_sensor_procurement_execution_pack,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
     summarize_vision_manifest,
@@ -6293,6 +6294,247 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(unsafe_summary["primary_actions_enabled"])
         self.assertIn("blocked_missing_hardware_sensor_procurement_review_decision", encoded)
         self.assertIn("software_proof_docker_hardware_sensor_procurement_review_decision_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("hardware_material_pending", encoded)
+        self.assertIn("metadata-only", encoded)
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("raw_ack_payload", encoded)
+
+    def test_diagnostics_payload_includes_hardware_sensor_procurement_execution_pack_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            pack_path = Path(td) / "hardware_sensor_procurement_execution_pack.json"
+            pack_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.hardware_sensor_procurement_execution_pack.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": "software_proof_docker_hardware_sensor_procurement_execution_pack_gate",
+                        "evidence_ref": "evidence://hardware-sensor-procurement-execution-pack-1",
+                        "execution_pack_status": {
+                            "status": "hardware_material_pending",
+                            "verdict": "not_proven",
+                            "evidence_source": "software_proof",
+                            "reason": "execution pack is ready for Hardware owner procurement work only",
+                        },
+                        "blockers": ["hardware_material_pending"],
+                        "material_templates": [
+                            {
+                                "name": "sensor_sku_capture",
+                                "required_fields": ["vendor", "model", "quantity", "owner"],
+                            }
+                        ],
+                        "owner_handoff": ["Hardware owns SKU/source/procurement execution."],
+                        "rerun_commands": ["python3 pc-tools/evidence/hardware_sensor_procurement_execution_pack_gate.py --once-json"],
+                        "blocked_reason": "waiting for purchase order, installation, calibration, and HIL evidence",
+                        "next_required_evidence": ["purchase order", "installed sensor proof", "calibration log"],
+                        "operator_next_steps": ["Wait for Hardware execution before enabling robot actions."],
+                        "robot_diagnostics_summary": {
+                            "safe_copy": (
+                                "Hardware sensor procurement execution pack is metadata-only; software_proof only, "
+                                "delivery_success=false and primary_actions_enabled=false."
+                            ),
+                        },
+                        "not_proven": ["hardware_material_pending", "sensor_installed_on_robot"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "hardware_sensor_procurement_execution_pack": {"delivery_success": True},
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                hardware_sensor_procurement_execution_pack_ref=str(pack_path),
+            )
+            summary = payload["hardware_sensor_procurement_execution_pack"]
+            summary_alias = payload["hardware_sensor_procurement_execution_pack_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertNotIn("hardware_sensor_procurement_execution_pack", payload["latest_status"])
+        self.assertEqual(summary["schema"], "trashbot.hardware_sensor_procurement_execution_pack_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_hardware_sensor_procurement_execution_pack_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.hardware_sensor_procurement_execution_pack.v1")
+        self.assertEqual(summary["source_schema_version"], 1)
+        self.assertEqual(summary["execution_pack_status"]["status"], "hardware_material_pending")
+        self.assertEqual(summary["execution_pack_status"]["verdict"], "not_proven")
+        self.assertEqual(summary["execution_pack_status"]["evidence_source"], "software_proof")
+        self.assertEqual(summary["hardware_material_status"], "hardware_material_pending")
+        self.assertIn("hardware_material_pending", summary["blockers"])
+        self.assertEqual(summary["material_templates"][0]["name"], "sensor_sku_capture")
+        self.assertIn("Hardware owns SKU/source/procurement execution.", summary["owner_handoff"])
+        self.assertIn("execution_pack_gate.py", summary["rerun_commands"][0])
+        self.assertIn("purchase order", summary["next_required_evidence"])
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://hardware-sensor-procurement-execution-pack-1")
+        self.assertIn("software_proof", summary["not_proven"])
+        self.assertIn("sensor_procurement_completed", summary["not_proven"])
+        self.assertIn("sensor_installed_on_robot", summary["not_proven"])
+        self.assertIn("sensor_calibrated_on_robot", summary["not_proven"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertTrue(summary["hardware_material_pending"])
+        self.assertFalse(summary["real_hardware_observed"])
+        self.assertFalse(summary["sensor_procurement_completed"])
+        self.assertFalse(summary["sensor_installed_on_robot"])
+        self.assertFalse(summary["sensor_calibrated_on_robot"])
+        self.assertFalse(summary["route_elevator_field_pass"])
+        self.assertFalse(summary["nav2_fixed_route_run"])
+        self.assertFalse(summary["dropoff_completion"])
+        self.assertFalse(summary["cancel_completion"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        # execution pack 只进 Robot diagnostics metadata，不能触发 collect/dropoff/cancel、ACK、cursor、Nav2 或 HIL。
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["persistence_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["production_ready"])
+        self.assertIn("delivery_success=false", summary["robot_diagnostics_summary"]["safe_phone_copy"])
+        self.assertNotIn(str(pack_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_hardware_sensor_procurement_execution_pack_summary_missing_unsupported_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "hardware_sensor_procurement_execution_pack_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.hardware_sensor_procurement_execution_pack_summary.v1",
+                        "source_schema": "trashbot.hardware_sensor_procurement_execution_pack.v1",
+                        "evidence_boundary": "software_proof_docker_hardware_sensor_procurement_execution_pack_gate",
+                        "source_evidence_boundary": "software_proof_docker_hardware_sensor_procurement_execution_pack_gate",
+                        "safe_evidence_ref": "evidence://hardware-sensor-procurement-execution-pack-2",
+                        "execution_pack_status": {
+                            "status": "hardware_material_pending",
+                            "verdict": "not_proven",
+                            "evidence_source": "software_proof",
+                            "reason": "execution pack still waits for real procurement and installation proof",
+                        },
+                        "blockers": ["hardware_material_pending"],
+                        "material_templates": [{"name": "owner_handoff_checklist"}],
+                        "robot_diagnostics_summary": {
+                            "safe_copy": "Hardware sensor procurement execution pack is metadata-only; delivery_success=false.",
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_artifact = os.environ.get("TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK")
+            previous_summary = os.environ.get("TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SUMMARY")
+            os.environ.pop("TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK", None)
+            os.environ["TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "hardware_sensor_procurement_execution_pack"
+                ]
+            finally:
+                if previous_artifact is None:
+                    os.environ.pop("TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK", None)
+                else:
+                    os.environ["TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK"] = previous_artifact
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SUMMARY"] = previous_summary
+
+            diagnostics_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "hardware_sensor_procurement_execution_pack_summary": {
+                            "schema": "trashbot.hardware_sensor_procurement_execution_pack_summary.v1",
+                            "source_schema": "trashbot.hardware_sensor_procurement_execution_pack.v1",
+                            "evidence_boundary": "software_proof_docker_hardware_sensor_procurement_execution_pack_gate",
+                            "source_evidence_boundary": "software_proof_docker_hardware_sensor_procurement_execution_pack_gate",
+                            "execution_pack_status": {
+                                "status": "hardware_material_pending",
+                                "verdict": "not_proven",
+                                "evidence_source": "software_proof",
+                            },
+                            "robot_diagnostics_summary": {
+                                "safe_copy": "Hardware sensor procurement execution pack is metadata-only; delivery_success=false.",
+                            },
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["hardware_sensor_procurement_execution_pack"]
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_hardware_sensor_procurement_execution_pack.json"
+            missing_summary = summarize_hardware_sensor_procurement_execution_pack(str(missing_path))
+
+            unsupported_summary = summarize_hardware_sensor_procurement_execution_pack(
+                {
+                    "schema": "trashbot.hardware_sensor_procurement_review_decision.v1",
+                    "evidence_boundary": "software_proof_docker_hardware_sensor_procurement_review_decision_gate",
+                    "safe_copy": "Unsupported execution pack is metadata-only; delivery_success=false.",
+                }
+            )
+            unsafe_summary = summarize_hardware_sensor_procurement_execution_pack(
+                {
+                    "schema": "trashbot.hardware_sensor_procurement_execution_pack.v1",
+                    "evidence_boundary": "software_proof_docker_hardware_sensor_procurement_execution_pack_gate",
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "raw_ack_payload": {"ack": "posted"},
+                    "serial_device": "/dev/ttyUSB0",
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Hardware execution pack confirms delivery success and ACK posted.",
+                    },
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    diagnostics_summary,
+                    missing_summary,
+                    unsupported_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["execution_pack_status"]["status"], "hardware_material_pending")
+        self.assertEqual(diagnostics_summary["execution_pack_status"]["status"], "hardware_material_pending")
+        self.assertEqual(
+            missing_summary["execution_pack_status"]["status"],
+            "blocked_missing_hardware_sensor_procurement_execution_pack",
+        )
+        self.assertEqual(unsupported_summary["execution_pack_status"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["execution_pack_status"]["status"], "unsafe_fields")
+        self.assertEqual(env_summary["execution_pack_status"]["evidence_source"], "software_proof")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertFalse(diagnostics_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["primary_actions_enabled"])
+        self.assertIn("blocked_missing_hardware_sensor_procurement_execution_pack", encoded)
+        self.assertIn("software_proof_docker_hardware_sensor_procurement_execution_pack_gate", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("hardware_material_pending", encoded)
         self.assertIn("metadata-only", encoded)

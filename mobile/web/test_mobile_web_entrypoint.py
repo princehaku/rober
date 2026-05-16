@@ -1,0 +1,96 @@
+import json
+import re
+import unittest
+from pathlib import Path
+
+
+WEB_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = WEB_ROOT.parent.parent
+FIXTURE = WEB_ROOT / "fixtures" / "status.json"
+DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
+
+
+class HardwareSensorProcurementExecutionPackMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_execution_pack_panel_is_read_only_and_exportable(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 执行包 panel 由 JS 放在 review decision 后，避免本轮越权改静态 index 结构。
+        self.assertIn("hardwareSensorProcurementExecutionPackTitle", app)
+        self.assertIn("传感器采购执行包", app)
+        self.assertIn("hardwareSensorProcurementReviewDecisionTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("hardware-sensor-procurement-execution-pack-panel", styles)
+        self.assertIn("hardware-sensor-procurement-execution-pack-grid", styles)
+
+        # 状态来源只接受 phone-safe 摘要，不展示 raw 包、路径、凭证或底盘控制细节。
+        self.assertIn("HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_BOUNDARY", app)
+        self.assertIn("UNSAFE_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_TEXT", app)
+        self.assertIn("safeHardwareSensorProcurementExecutionPackText", app)
+        self.assertIn("hardwareSensorProcurementExecutionPackCandidate", app)
+        self.assertIn("hardwareSensorProcurementExecutionPackFromStatus", app)
+        self.assertIn("hardware_sensor_procurement_execution_pack", app)
+        self.assertIn("hardware_sensor_procurement_execution_pack_summary", app)
+        self.assertIn("diagnosticsSummary.hardware_sensor_procurement_execution_pack", app)
+        self.assertIn("statusDiagnosticsSummary.hardware_sensor_procurement_execution_pack", app)
+        self.assertIn("execution_pack_status", app)
+        self.assertIn("material_templates", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("safe_rerun_command", app)
+        self.assertIn("safe_evidence_ref", app)
+
+        # copy/export whitelist 只输出执行包交接字段，不能改变 Start/Confirm/Cancel gating。
+        self.assertIn("hardwareSensorProcurementExecutionPackCopyPayload", app)
+        self.assertIn("trashbot.hardware_sensor_procurement_execution_pack_copy.v1", app)
+        self.assertIn("copyHardwareSensorProcurementExecutionPackButton", app)
+        self.assertIn("downloadHardwareSensorProcurementExecutionPackButton", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"hardwareSensorProcurementExecutionPack.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须明确 software proof / not_proven 边界。
+        execution_pack = fixture["hardware_sensor_procurement_execution_pack"]
+        self.assertEqual(execution_pack["execution_pack_status"], "hardware_material_pending")
+        self.assertEqual(execution_pack["delivery_success"], False)
+        self.assertEqual(execution_pack["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_hardware_sensor_procurement_execution_pack_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("hardware_sensor_procurement_execution_pack", doc)
+        self.assertIn("传感器采购执行包", doc)
+
+    def test_execution_pack_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        execution_pack_text = json.dumps(
+            fixture["hardware_sensor_procurement_execution_pack"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 白名单 fixture 不能把真实控制、底层硬件或凭证材料伪装成可复制执行包。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw vendor document",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, execution_pack_text)
+
+
+if __name__ == "__main__":
+    unittest.main()

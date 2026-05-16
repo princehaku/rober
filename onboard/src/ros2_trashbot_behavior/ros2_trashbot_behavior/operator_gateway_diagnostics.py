@@ -242,6 +242,15 @@ HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_SUMMARY_SCHEMA = (
 HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_GATE = (
     "software_proof_docker_hardware_sensor_procurement_review_decision_gate"
 )
+HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SCHEMA = (
+    "trashbot.hardware_sensor_procurement_execution_pack.v1"
+)
+HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SUMMARY_SCHEMA = (
+    "trashbot.hardware_sensor_procurement_execution_pack_summary.v1"
+)
+HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_GATE = (
+    "software_proof_docker_hardware_sensor_procurement_execution_pack_gate"
+)
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -1062,6 +1071,39 @@ def _hardware_sensor_procurement_review_decision_not_proven(review=None, summary
         "hardware_material_pending",
         "sensor_procurement_completed",
         "sensor_installed_on_robot",
+        "real_sensor_device_proof",
+        "real_nav2_fixed_route_run",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "dropoff_completion",
+        "cancel_completion",
+        "delivery_success",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _hardware_sensor_procurement_execution_pack_not_proven(pack=None, summary_fragment=None):
+    # execution pack 只能证明执行材料已被整理；不能证明 SKU 采购、传感器装机、校准或机器人闭环。
+    pack = pack if isinstance(pack, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(pack.get("not_proven"), list):
+        source_values.extend(pack.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "not_proven",
+        "software_proof",
+        "hardware_material_pending",
+        "sensor_procurement_completed",
+        "sensor_installed_on_robot",
+        "sensor_calibrated_on_robot",
         "real_sensor_device_proof",
         "real_nav2_fixed_route_run",
         "wave_rover_motion",
@@ -2317,6 +2359,72 @@ def _default_hardware_sensor_procurement_review_decision_summary(
     }
 
 
+def _default_hardware_sensor_procurement_execution_pack_summary(
+    path,
+    status="blocked_missing_hardware_sensor_procurement_execution_pack",
+    read_error="",
+):
+    # 缺失 execution pack 时必须显式 fail closed；Robot 侧不能把 review decision 当成执行材料包。
+    return {
+        "schema": HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "execution_pack_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": read_error or "hardware sensor procurement execution pack is not configured",
+        },
+        "hardware_material_status": "hardware_material_pending",
+        "blockers": ["blocked_missing_hardware_sensor_procurement_execution_pack"],
+        "material_templates": [],
+        "owner_handoff": [],
+        "rerun_commands": [],
+        "blocked_reason": "hardware sensor procurement execution pack is not configured",
+        "next_required_evidence": [],
+        "safe_evidence_ref": "",
+        "operator_next_steps": [],
+        "robot_diagnostics_summary": {
+            "safe_copy": (
+                "Hardware sensor procurement execution pack is metadata-only; "
+                "software_proof only, delivery_success=false."
+            ),
+            "safe_phone_copy": (
+                "Hardware sensor procurement execution pack is metadata-only; "
+                "software_proof only, delivery_success=false."
+            ),
+        },
+        "not_proven": _hardware_sensor_procurement_execution_pack_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "real_hardware_observed": False,
+        "hardware_material_pending": True,
+        "sensor_procurement_completed": False,
+        "sensor_installed_on_robot": False,
+        "sensor_calibrated_on_robot": False,
+        "route_elevator_field_pass": False,
+        "nav2_fixed_route_run": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -2938,6 +3046,16 @@ def _hardware_sensor_procurement_review_decision_source_contract(value):
     source_schema = str(value.get("schema") or "")
     source_boundary = str(value.get("evidence_boundary") or "")
     if source_schema == HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or source_schema)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _hardware_sensor_procurement_execution_pack_source_contract(value):
+    # 支持直接 execution pack artifact 或 Robot diagnostics summary；wrapper 必须回指同一执行包 boundary。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or source_schema)
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
@@ -8836,6 +8954,247 @@ def summarize_hardware_sensor_procurement_review_decision(source):
     return summary
 
 
+def summarize_hardware_sensor_procurement_execution_pack(source):
+    """构建 hardware sensor procurement execution pack 的 metadata-only diagnostics 摘要。"""
+    # Robot diagnostics 只消费执行包的安全摘要；采购、装机、校准、Nav2 和 HIL 都必须继续保持 not_proven。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_hardware_sensor_procurement_execution_pack_summary(
+        source_path,
+        read_error="hardware sensor procurement execution pack is not configured",
+    )
+    if isinstance(source, dict):
+        pack = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "execution_pack_status": {
+                        "status": "blocked_missing_hardware_sensor_procurement_execution_pack",
+                        "verdict": "not_proven",
+                        "evidence_source": "software_proof",
+                        "reason": "hardware sensor procurement execution pack artifact missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Hardware sensor procurement execution pack is missing; hardware_material_pending remains true.",
+                        "safe_phone_copy": "Hardware sensor procurement execution pack is missing; hardware_material_pending remains true.",
+                    },
+                }
+            )
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                pack = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading hardware sensor procurement execution pack: {exc}"
+            )
+            summary.update(
+                {
+                    "execution_pack_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "evidence_source": "software_proof",
+                        "reason": safe_error,
+                    },
+                    "read_error": safe_error,
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Hardware sensor procurement execution pack could not be read; hardware_material_pending remains true.",
+                        "safe_phone_copy": "Hardware sensor procurement execution pack could not be read; hardware_material_pending remains true.",
+                    },
+                }
+            )
+            return summary
+
+    if not isinstance(pack, dict):
+        summary.update(
+            {
+                "execution_pack_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware sensor procurement execution pack JSON must be an object",
+                },
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Hardware sensor procurement execution pack shape is invalid; hardware_material_pending remains true.",
+                    "safe_phone_copy": "Hardware sensor procurement execution pack shape is invalid; hardware_material_pending remains true.",
+                },
+            }
+        )
+        return summary
+
+    summary_fragment = {}
+    for candidate in (
+        pack.get("hardware_sensor_procurement_execution_pack_summary"),
+        pack.get("robot_diagnostics_summary"),
+        pack.get("diagnostics_summary"),
+        pack.get("phone_safe_summary"),
+        pack.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+    source_schema, source_boundary = _hardware_sensor_procurement_execution_pack_source_contract(pack)
+    status_source = (
+        pack.get("execution_pack_status")
+        if isinstance(pack.get("execution_pack_status"), dict)
+        else summary_fragment.get("execution_pack_status")
+        if isinstance(summary_fragment.get("execution_pack_status"), dict)
+        else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or pack.get("safe_copy")
+        or pack.get("safe_phone_copy")
+        or "Hardware sensor procurement execution pack is metadata-only; software_proof only, delivery_success=false."
+    )
+    robot_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(summary_fragment.get(key) or "").strip():
+            robot_summary[key] = _redact_route_task_rehearsal_text(summary_fragment.get(key))
+    robot_summary["safe_copy"] = safe_copy
+    robot_summary["safe_phone_copy"] = safe_copy
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": pack.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "execution_pack_status": {
+                "status": _redact_route_task_rehearsal_text(
+                    status_source.get("status")
+                    or summary_fragment.get("status")
+                    or pack.get("status")
+                    or "hardware_material_pending"
+                ),
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or pack.get("reason")
+                    or "hardware sensor procurement execution pack consumed without real hardware evidence"
+                ),
+            },
+            "hardware_material_status": "hardware_material_pending",
+            "blockers": _safe_route_task_rehearsal_list(
+                pack.get("blockers")
+                if isinstance(pack.get("blockers"), list)
+                else summary_fragment.get("blockers")
+            )
+            or ["hardware_material_pending"],
+            "material_templates": _safe_pc_route_debug_value(
+                pack.get("material_templates")
+                if isinstance(pack.get("material_templates"), list)
+                else summary_fragment.get("material_templates", [])
+            ),
+            "owner_handoff": _safe_route_task_rehearsal_list(
+                pack.get("owner_handoff")
+                if isinstance(pack.get("owner_handoff"), list)
+                else summary_fragment.get("owner_handoff")
+            ),
+            "rerun_commands": _safe_route_task_rehearsal_list(
+                pack.get("rerun_commands")
+                if isinstance(pack.get("rerun_commands"), list)
+                else summary_fragment.get("rerun_commands")
+            ),
+            "blocked_reason": _redact_route_task_rehearsal_text(
+                pack.get("blocked_reason")
+                or summary_fragment.get("blocked_reason")
+                or status_source.get("reason")
+                or "hardware sensor procurement execution pack remains not_proven"
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                pack.get("next_required_evidence")
+                if isinstance(pack.get("next_required_evidence"), list)
+                else summary_fragment.get("next_required_evidence")
+            ),
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("safe_evidence_ref")
+                or summary_fragment.get("evidence_ref")
+                or pack.get("safe_evidence_ref")
+                or pack.get("evidence_ref", "")
+            ),
+            "operator_next_steps": _safe_route_task_rehearsal_list(
+                pack.get("operator_next_steps")
+                if isinstance(pack.get("operator_next_steps"), list)
+                else summary_fragment.get("operator_next_steps")
+            ),
+            "robot_diagnostics_summary": robot_summary,
+            "not_proven": _hardware_sensor_procurement_execution_pack_not_proven(
+                pack, summary_fragment
+            ),
+            "read_error": "",
+            "metadata_only": True,
+            "real_hardware_observed": False,
+            "hardware_material_pending": True,
+            "sensor_procurement_completed": False,
+            "sensor_installed_on_robot": False,
+            "sensor_calibrated_on_robot": False,
+            "route_elevator_field_pass": False,
+            "nav2_fixed_route_run": False,
+            "dropoff_completion": False,
+            "cancel_completion": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    accepted_schemas = {
+        HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SCHEMA,
+        HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SUMMARY_SCHEMA,
+    }
+    if source_schema not in accepted_schemas or source_boundary != HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_GATE:
+        summary.update(
+            {
+                "execution_pack_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware sensor procurement execution pack schema or evidence boundary is unsupported",
+                },
+                "blockers": ["blocked_missing_hardware_sensor_procurement_execution_pack"],
+                "material_templates": [],
+                "owner_handoff": [],
+                "rerun_commands": [],
+                "blocked_reason": "blocked_missing_hardware_sensor_procurement_execution_pack",
+                "next_required_evidence": [],
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Hardware sensor procurement execution pack is not a supported diagnostics source; no hardware or delivery result is proven.",
+                    "safe_phone_copy": "Hardware sensor procurement execution pack is not a supported diagnostics source; no hardware or delivery result is proven.",
+                },
+            }
+        )
+        return summary
+
+    if _mobile_field_material_intake_has_unsafe_fields(pack) or _route_task_field_run_readiness_copy_is_unsafe(safe_copy):
+        summary.update(
+            {
+                "execution_pack_status": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware sensor procurement execution pack contains unsafe fields or success/control claims",
+                },
+                "blockers": ["blocked_missing_hardware_sensor_procurement_execution_pack"],
+                "material_templates": [],
+                "owner_handoff": [],
+                "rerun_commands": [],
+                "blocked_reason": "blocked_missing_hardware_sensor_procurement_execution_pack",
+                "next_required_evidence": [],
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Hardware sensor procurement execution pack was blocked because fields could expose control data or imply delivery success.",
+                    "safe_phone_copy": "Hardware sensor procurement execution pack was blocked because fields could expose control data or imply delivery success.",
+                },
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -9969,6 +10328,7 @@ def build_diagnostics_payload(
     hardware_baseline_review_ref="",
     hardware_sensor_procurement_intake_ref="",
     hardware_sensor_procurement_review_decision_ref="",
+    hardware_sensor_procurement_execution_pack_ref="",
 ):
     latest_status = dict(latest_status or {})
     diagnostics_source = latest_status.get("diagnostics") if isinstance(latest_status.get("diagnostics"), dict) else {}
@@ -10003,6 +10363,17 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("hardware_sensor_procurement_review_decision"), dict)
         else diagnostics_source.get("hardware_sensor_procurement_review_decision_summary")
         if isinstance(diagnostics_source.get("hardware_sensor_procurement_review_decision_summary"), dict)
+        else {}
+    )
+    hardware_sensor_procurement_execution_pack_source = (
+        latest_status.get("hardware_sensor_procurement_execution_pack")
+        if isinstance(latest_status.get("hardware_sensor_procurement_execution_pack"), dict)
+        else latest_status.get("hardware_sensor_procurement_execution_pack_summary")
+        if isinstance(latest_status.get("hardware_sensor_procurement_execution_pack_summary"), dict)
+        else diagnostics_source.get("hardware_sensor_procurement_execution_pack")
+        if isinstance(diagnostics_source.get("hardware_sensor_procurement_execution_pack"), dict)
+        else diagnostics_source.get("hardware_sensor_procurement_execution_pack_summary")
+        if isinstance(diagnostics_source.get("hardware_sensor_procurement_execution_pack_summary"), dict)
         else {}
     )
     mobile_field_material_review_decision_source = (
@@ -10052,6 +10423,9 @@ def build_diagnostics_payload(
     latest_status.pop("hardware_sensor_procurement_review_decision", None)
     latest_status.pop("hardware_sensor_procurement_review_decision_summary", None)
     latest_status.pop("hardware_sensor_procurement_review_decision_copy", None)
+    latest_status.pop("hardware_sensor_procurement_execution_pack", None)
+    latest_status.pop("hardware_sensor_procurement_execution_pack_summary", None)
+    latest_status.pop("hardware_sensor_procurement_execution_pack_copy", None)
     last_task = dict(latest_status.get("last_task") or {})
     task_record_path = str(
         latest_status.get("task_record_path")
@@ -10231,6 +10605,17 @@ def build_diagnostics_payload(
             hardware_sensor_procurement_review_decision_source
         )
     )
+    hardware_sensor_procurement_execution_pack_source = (
+        hardware_sensor_procurement_execution_pack_ref
+        or os.environ.get("TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK", "")
+        or os.environ.get("TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SUMMARY", "")
+        or hardware_sensor_procurement_execution_pack_source
+    )
+    hardware_sensor_procurement_execution_pack_summary = (
+        summarize_hardware_sensor_procurement_execution_pack(
+            hardware_sensor_procurement_execution_pack_source
+        )
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -10317,6 +10702,8 @@ def build_diagnostics_payload(
         hardware_sensor_procurement_intake_summary=hardware_sensor_procurement_intake_summary,
         hardware_sensor_procurement_review_decision=hardware_sensor_procurement_review_decision_summary,
         hardware_sensor_procurement_review_decision_summary=hardware_sensor_procurement_review_decision_summary,
+        hardware_sensor_procurement_execution_pack=hardware_sensor_procurement_execution_pack_summary,
+        hardware_sensor_procurement_execution_pack_summary=hardware_sensor_procurement_execution_pack_summary,
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),

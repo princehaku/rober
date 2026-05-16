@@ -8,7 +8,15 @@
 
 ## 2026-05-16 系列
 
-更新时间：2026-05-16 13:20 Asia/Shanghai。
+更新时间：2026-05-16 14:15 Asia/Shanghai。
+
+### 2026-05-16 14-15｜hardware-sensor-procurement-execution-pack｜O4 量产传感器采购执行包闭环，手机体验与低成本量产边界由约 83% 上调到约 84%
+
+`sprints/2026.05.16_14-15_hardware-sensor-procurement-execution-pack/` 完成 `software_proof_docker_hardware_sensor_procurement_execution_pack_gate`：Hardware worker 新增 `hardware_sensor_procurement_execution_pack` PC gate，把上一轮 `hardware_sensor_procurement_review_decision` 的真实 2D LiDAR / ToF SKU、vendor/source document、采购、安装、接线、电源预算、标定和 HIL entry 缺口转换为 execution pack、material templates、`owner_handoff`、safe `rerun_commands`、`blocked_reason` 和 `next_required_evidence`；保留 `hardware_material_pending`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。Hardware worker 已读取 `docs/vendor/VENDOR_INDEX.md` 和 Waveshare sources，结论是当前本地 vendor 资料不证明真实 2D LiDAR / ToF SKU、采购、安装、接线、标定或 HIL entry。Task 验证输出 `py_compile` passed、`test_hardware_sensor_procurement_execution_pack_gate.py` `Ran 9 tests ... OK`、CLI `--help` passed、required `rg` passed、scoped `git diff --check` passed。
+
+Robot worker 更新 diagnostics metadata-only consumption，新增 `hardware_sensor_procurement_execution_pack` / `_summary` 只读摘要。该 consumer 对缺失 summary、unsupported schema、unsafe fields 均 blocked，保持 no collect/dropoff/cancel、ACK、cursor、Nav2、HIL、dropoff/cancel completion、delivery result；diagnostics unittest 输出 `Ran 100 tests ... OK`，py_compile、required `rg`、scoped diff check 通过。Full-stack worker 更新 mobile first-screen，只读展示“传感器采购执行包” panel，展示 source review schema/decision、`execution_pack_status`、blocker、material templates、`owner_handoff`、safe `rerun_commands`、safe `evidence_ref`、`delivery_success=false`、`primary_actions_enabled=false`、`not_proven` 和 boundary；Start / Confirm Dropoff / Cancel 继续 fail closed；mobile unittest 输出 `Ran 2 tests ... OK`，`node --check`、required `rg`、scoped diff check 通过。
+
+该证据只支持 Objective 4 从约 83% 保守上调到约 84%。理由是上一轮 sensor procurement review decision 之后，真实 2D LiDAR / ToF 量产材料缺口已从采购评审决策推进到采购执行包、Robot diagnostics metadata-only consumer 和 mobile phone-safe read-only panel 的闭环；团队可以用同一 execution pack 链路管理 material templates、`owner_handoff`、safe `rerun_commands`、`blocked_reason`、`next_required_evidence`、`hardware_material_pending`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。Objective 1 保持约 73%，因为本轮没有真实 WAVE ROVER、UART、Orange Pi、真实串口、`T=1001` feedback 或 HIL。Objective 2 和 Objective 3 保持约 78%，因为本轮没有真实 route/elevator field pass、真实 Nav2/fixed-route runtime log、task record、dropoff/cancel completion 或 delivery success。Objective 5 保持约 66%，因为本机只有 Docker，且本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；not real Objective 5 external proof。本轮不证明真实 2D LiDAR、真实 ToF、真实采购、真实安装、真实标定、真实手机/PWA、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、delivery_success=false 之外的 delivery success、真实 WAVE ROVER、真实串口/UART、HIL 或 Objective 5 external proof。
 
 ### 2026-05-16 13-14｜hardware-sensor-procurement-review-decision｜O4 量产传感器采购评审决策闭环，手机体验与低成本量产边界由约 82% 上调到约 83%
 

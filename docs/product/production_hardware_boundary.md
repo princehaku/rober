@@ -104,6 +104,37 @@ Supported decisions are
 `software_proof`, `hardware_material_pending`, `not_proven`,
 `delivery_success=false`, and `primary_actions_enabled=false`.
 
+## Hardware Sensor Procurement Execution Pack Gate
+
+`hardware_sensor_procurement_execution_pack` is the metadata-only PC gate after
+`hardware_sensor_procurement_review_decision`. It converts the supported review
+decision artifact or summary into procurement execution material templates,
+`owner_handoff`, `rerun_commands`, `blocked_reason`, and
+`next_required_evidence` for the same 2D LiDAR / ToF material chain.
+
+The execution pack remains a software-proof planning artifact. It does not call
+any procurement system, read sensor drivers, access ROS, open serial devices,
+install hardware, calibrate hardware, run HIL, prove route/elevator behavior,
+or prove delivery success. Its evidence boundary is
+`software_proof_docker_hardware_sensor_procurement_execution_pack_gate`.
+
+Supported output states include
+`blocked_missing_hardware_sensor_procurement_review_decision`,
+`blocked_unsupported_hardware_sensor_procurement_review_decision`,
+`blocked_hardware_sensor_procurement_review_not_ready`,
+`blocked_unsafe_hardware_sensor_procurement_execution_pack_copy`,
+`blocked_weak_hardware_sensor_procurement_review_contract`, and
+`ready_for_hardware_sensor_procurement_execution_pack_not_proven`. Every state
+must keep `software_proof`, `hardware_material_pending`, `not_proven`,
+`delivery_success=false`, and `primary_actions_enabled=false`.
+
+The source boundary is still `docs/vendor/VENDOR_INDEX.md` and its local
+Orange Pi / WAVE ROVER / UART / firmware / vendor-app references. Those local
+vendor references are useful for preventing hardware guesses, but they still do
+not prove a project 2D LiDAR or ToF SKU, purchase order, mounting/wiring plan,
+power budget, calibration result, HIL entry, Nav2/SLAM field pass, near-field
+safety pass, route/elevator pass, or delivery result.
+
 ## Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)
 
 - Target baseline combo: monocular camera + one 2D LiDAR + ToF safety ring.

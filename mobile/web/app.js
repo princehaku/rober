@@ -63,6 +63,7 @@ const MOBILE_FIELD_MATERIAL_RETEST_REQUEST_BOUNDARY = "software_proof_docker_mob
 const HARDWARE_BASELINE_REVIEW_BOUNDARY = "software_proof_docker_hardware_baseline_review_gate";
 const HARDWARE_SENSOR_PROCUREMENT_INTAKE_BOUNDARY = "software_proof_docker_hardware_sensor_procurement_intake_gate";
 const HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_BOUNDARY = "software_proof_docker_hardware_sensor_procurement_review_decision_gate";
+const HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_BOUNDARY = "software_proof_docker_hardware_sensor_procurement_execution_pack_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -144,6 +145,7 @@ const UNSAFE_MOBILE_FIELD_MATERIAL_RETEST_REQUEST_TEXT = /(authorization|bearer|
 const UNSAFE_HARDWARE_BASELINE_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw baseline|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass|已通过|可发车|已采购|已 hil)/i;
 const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass|已\s*通过|可\s*发车|已\s*采购|已\s*hil|已\s*送达)/i;
+const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw execution pack|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass|已\s*通过|可\s*发车|已\s*采购|已\s*hil|已\s*送达)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 
@@ -164,6 +166,7 @@ let latestMobileFieldMaterialRetestRequest = null;
 let latestHardwareBaselineReview = null;
 let latestHardwareSensorProcurementIntake = null;
 let latestHardwareSensorProcurementReviewDecision = null;
+let latestHardwareSensorProcurementExecutionPack = null;
 let deferredPwaInstallPromptEvent = null;
 let pwaInstallPromptEventState = null;
 let latestRealDeviceEvidencePackage = null;
@@ -448,6 +451,15 @@ function safeHardwareSensorProcurementReviewDecisionText(value, fallback = "not_
   // 采购评审决策只能作为只读交接信息；任何原始材料、凭证、硬件细节或成功暗示都降级。
   const text = safeText(value, fallback);
   if (UNSAFE_HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeHardwareSensorProcurementExecutionPackText(value, fallback = "not_proven") {
+  // 执行包只面向采购材料交接，必须过滤 raw 包、硬件底层细节、凭证和成功暗示。
+  const text = safeText(value, fallback);
+  if (UNSAFE_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -6608,6 +6620,164 @@ function hardwareSensorProcurementReviewDecisionFromStatus(status, readiness, di
   };
 }
 
+function hardwareSensorProcurementExecutionPackCandidate(status, readiness, diagnostics) {
+  // execution pack 可以来自 status、phone_readiness 或 Robot diagnostics；只接受对象摘要。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.hardware_sensor_procurement_execution_pack,
+    status?.hardware_sensor_procurement_execution_pack_summary,
+    readiness?.hardware_sensor_procurement_execution_pack,
+    readiness?.hardware_sensor_procurement_execution_pack_summary,
+    diagnostics?.hardware_sensor_procurement_execution_pack,
+    diagnostics?.hardware_sensor_procurement_execution_pack_summary,
+    diagnosticsReadiness.hardware_sensor_procurement_execution_pack,
+    diagnosticsReadiness.hardware_sensor_procurement_execution_pack_summary,
+    diagnosticsSummary.hardware_sensor_procurement_execution_pack,
+    diagnosticsSummary.hardware_sensor_procurement_execution_pack_summary,
+    nestedDiagnosticsSummary.hardware_sensor_procurement_execution_pack,
+    nestedDiagnosticsSummary.hardware_sensor_procurement_execution_pack_summary,
+    nestedDiagnosticsInnerSummary.hardware_sensor_procurement_execution_pack,
+    nestedDiagnosticsInnerSummary.hardware_sensor_procurement_execution_pack_summary,
+    statusDiagnosticsSummary.hardware_sensor_procurement_execution_pack,
+    statusDiagnosticsSummary.hardware_sensor_procurement_execution_pack_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function hardwareSensorProcurementExecutionPackNotProvenList(value) {
+  // 执行包只是把 review decision 转成采购材料清单，不证明真实采购或 HIL entry。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实 2D LiDAR SKU/source/procurement",
+    "真实 ToF SKU/source/procurement",
+    "真实 material templates filled by owner",
+    "真实 mounting material",
+    "真实 wiring material",
+    "真实 calibration material",
+    "真实 HIL entry evidence",
+    "真实 Nav2/fixed-route",
+    "真实 dropoff completion",
+    "真实 cancel completion",
+    "delivery success",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 18);
+}
+
+function hardwareSensorProcurementExecutionPackSummaryText(value, fallback) {
+  // material templates、handoff 和 rerun command 可能为数组/对象；手机端只合成短白名单摘要。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeHardwareSensorProcurementExecutionPackText(
+        item?.safe_phone_copy || item?.summary || item?.template || item?.template_name ||
+          item?.owner || item?.material || item?.status || item?.state ||
+          item?.command_summary || item?.safe_rerun_command || item?.rerun_command_summary || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.reason || value.owner || value.template || value.template_name || value.material ||
+      value.next_action || value.command_summary || value.safe_rerun_command ||
+      value.rerun_command_summary || value.step;
+    if (direct) {
+      return safeHardwareSensorProcurementExecutionPackText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeHardwareSensorProcurementExecutionPackText(key, "");
+        const copy = hardwareSensorProcurementExecutionPackSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safeHardwareSensorProcurementExecutionPackText(value, fallback);
+}
+
+function hardwareSensorProcurementExecutionPackFromStatus(status, readiness, diagnostics) {
+  const provided = hardwareSensorProcurementExecutionPackCandidate(status, readiness, diagnostics) || {};
+  const blocker = provided.blocker || provided.blockers || provided.blocker_summary ||
+    provided.blocker_categories || {};
+  const templates = provided.material_templates || provided.required_material_templates ||
+    provided.template_summary || provided.material_template_summary || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.hardware_sensor_procurement_execution_pack_summary.v1",
+    source_schema: provided.source_schema || "trashbot.hardware_sensor_procurement_execution_pack.v1",
+    schema_version: 1,
+    source_review_schema: safeHardwareSensorProcurementExecutionPackText(
+      provided.source_review_schema,
+      "trashbot.hardware_sensor_procurement_review_decision_summary.v1",
+    ),
+    source_review_decision: safeHardwareSensorProcurementExecutionPackText(
+      provided.source_review_decision || provided.review_decision,
+      "hardware_material_pending",
+    ),
+    execution_pack_status: safeHardwareSensorProcurementExecutionPackText(
+      provided.execution_pack_status || provided.execution_status ||
+        provided.overall_status || provided.status,
+      "hardware_material_pending",
+    ),
+    blocker: hardwareSensorProcurementExecutionPackSummaryText(
+      blocker,
+      "blocker=hardware_material_pending",
+    ),
+    material_templates: hardwareSensorProcurementExecutionPackSummaryText(
+      templates,
+      "material_templates=2D LiDAR / ToF source、procurement、mounting、wiring、calibration、HIL entry phone-safe templates pending.",
+    ),
+    owner_handoff: hardwareSensorProcurementExecutionPackSummaryText(
+      provided.owner_handoff || provided.owner_next_action || provided.owner_next_steps ||
+        provided.operator_next_steps,
+      "owner_handoff=Hardware owner 按 execution pack 模板补齐采购材料。",
+    ),
+    safe_rerun_command: hardwareSensorProcurementExecutionPackSummaryText(
+      provided.safe_rerun_command || provided.safe_rerun_commands || provided.rerun_commands ||
+        provided.commands_to_rerun || provided.rerun_command_summary,
+      "safe_rerun_command=使用 safe command summary 重跑 hardware_sensor_procurement_execution_pack gate。",
+    ),
+    safe_evidence_ref: safeHardwareSensorProcurementExecutionPackText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "evidence_ref=not_proven",
+    ),
+    safe_phone_copy: safeHardwareSensorProcurementExecutionPackText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "hardware_sensor_procurement_execution_pack 只读摘要缺失；手机端保持 hardware_material_pending 和主操作关闭。",
+    ),
+    recovery_hint: safeHardwareSensorProcurementExecutionPackText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由硬件 owner 按模板补齐 2D LiDAR / ToF 采购执行材料后重跑 execution pack gate。",
+    ),
+    evidence_boundary: safeHardwareSensorProcurementExecutionPackText(
+      provided.evidence_boundary,
+      HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: hardwareSensorProcurementExecutionPackNotProvenList(provided),
+  };
+}
+
 function elevatorAssistCandidate(status, readiness, diagnostics) {
   // evidence-driven artifact 优先级高于旧 dry-run summary，避免新主链路被旧兼容字段遮住。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -8171,6 +8341,79 @@ function renderHardwareSensorProcurementReviewDecision(status) {
   $("hardwareSensorProcurementReviewDecisionHint").textContent = summary.recovery_hint;
 }
 
+function ensureHardwareSensorProcurementExecutionPackPanel() {
+  // 本轮文件范围不改 index.html；运行时把执行包 panel 插在采购评审决策之后。
+  let panel = $("hardwareSensorProcurementExecutionPackPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("hardwareSensorProcurementReviewDecisionTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "hardwareSensorProcurementExecutionPackPanel";
+  panel.className = "hardware-sensor-procurement-execution-pack-panel";
+  panel.setAttribute("aria-labelledby", "hardwareSensorProcurementExecutionPackTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="hardwareSensorProcurementExecutionPackTitle">传感器采购执行包</h2>
+      <span id="hardwareSensorProcurementExecutionPackBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="hardwareSensorProcurementExecutionPackCopy" class="message">
+      hardware_sensor_procurement_execution_pack 只读展示 execution pack status、blocker、material templates、owner handoff、safe rerun command 和 safe evidence_ref。
+    </p>
+    <dl class="hardware-sensor-procurement-execution-pack-grid">
+      <div><dt>Execution Pack Status</dt><dd id="hardwareSensorProcurementExecutionPackStatus">hardware_material_pending</dd></div>
+      <div><dt>Blocker</dt><dd id="hardwareSensorProcurementExecutionPackBlocker">blocker=hardware_material_pending</dd></div>
+      <div><dt>Material Templates</dt><dd id="hardwareSensorProcurementExecutionPackTemplates">material_templates=not_proven</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="hardwareSensorProcurementExecutionPackOwnerHandoff">owner_handoff=Hardware owner 补齐 phone-safe 执行材料。</dd></div>
+      <div><dt>Safe Rerun Command</dt><dd id="hardwareSensorProcurementExecutionPackRerunCommand">safe_rerun_command=等待 safe summary</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="hardwareSensorProcurementExecutionPackEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Control Boundary</dt><dd id="hardwareSensorProcurementExecutionPackControls">delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="hardwareSensorProcurementExecutionPackBoundary">software_proof_docker_hardware_sensor_procurement_execution_pack_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="hardwareSensorProcurementExecutionPackNotProven">真实 2D LiDAR / ToF source、采购、安装、接线、标定、HIL entry 和 delivery success 未证明。</dd></div>
+    </dl>
+    <div class="bundle-copy-row">
+      <button id="copyHardwareSensorProcurementExecutionPackButton" type="button">复制 procurement execution pack</button>
+      <button id="downloadHardwareSensorProcurementExecutionPackButton" type="button">导出 procurement execution pack</button>
+      <span id="hardwareSensorProcurementExecutionPackCopyStatus" class="hint">whitelist-only phone-safe metadata</span>
+    </div>
+    <pre id="hardwareSensorProcurementExecutionPackSafeCopy" class="safe-copy" aria-label="hardware_sensor_procurement_execution_pack safe_copy">whitelist-only phone-safe metadata</pre>
+    <p id="hardwareSensorProcurementExecutionPackHint" class="hint">
+      procurement execution pack panel 只读展示并导出白名单 metadata；不暴露 raw 执行包、底层调试字段、凭证或成功文案，也不改变 Start、Confirm Dropoff 或 Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderHardwareSensorProcurementExecutionPack(status) {
+  const panel = ensureHardwareSensorProcurementExecutionPackPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = hardwareSensorProcurementExecutionPackFromStatus(status, readiness, latestDiagnostics);
+  latestHardwareSensorProcurementExecutionPack = summary;
+  const badge = $("hardwareSensorProcurementExecutionPackBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 execution pack" : "hardware_material_pending";
+  $("hardwareSensorProcurementExecutionPackCopy").textContent = summary.safe_phone_copy;
+  $("hardwareSensorProcurementExecutionPackStatus").textContent = summary.execution_pack_status;
+  $("hardwareSensorProcurementExecutionPackBlocker").textContent = summary.blocker;
+  $("hardwareSensorProcurementExecutionPackTemplates").textContent = summary.material_templates;
+  $("hardwareSensorProcurementExecutionPackOwnerHandoff").textContent = summary.owner_handoff;
+  $("hardwareSensorProcurementExecutionPackRerunCommand").textContent = summary.safe_rerun_command;
+  $("hardwareSensorProcurementExecutionPackEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("hardwareSensorProcurementExecutionPackControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("hardwareSensorProcurementExecutionPackBoundary").textContent = summary.evidence_boundary;
+  $("hardwareSensorProcurementExecutionPackNotProven").textContent = summary.not_proven.join("、");
+  $("hardwareSensorProcurementExecutionPackHint").textContent = summary.recovery_hint;
+}
+
 function ensureElevatorAssistPanel() {
   // 本轮文件范围不改 index.html，因此用 JS 注入只读 panel，保持静态壳兼容旧浏览器测试。
   let panel = $("elevatorAssistPanel");
@@ -8875,6 +9118,38 @@ function hardwareSensorProcurementReviewDecisionCopyPayload(summary) {
     safe_phone_copy: source.safe_phone_copy,
     recovery_hint: source.recovery_hint,
     evidence_boundary: HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_BOUNDARY,
+    not_proven: source.not_proven,
+  };
+}
+
+function hardwareSensorProcurementExecutionPackCopyPayload(summary) {
+  // procurement execution pack copy/export 只保留执行包交接字段，不复制 raw 包或硬件底层细节。
+  const source = summary?.schema
+    ? summary
+    : hardwareSensorProcurementExecutionPackFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  return {
+    schema: "trashbot.hardware_sensor_procurement_execution_pack_copy.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    hardware_sensor_procurement_execution_pack_schema: source.schema,
+    source_schema: source.source_schema,
+    source_review_schema: source.source_review_schema,
+    source_review_decision: source.source_review_decision,
+    execution_pack_status: source.execution_pack_status,
+    blocker: source.blocker,
+    material_templates: source.material_templates,
+    owner_handoff: source.owner_handoff,
+    safe_rerun_command: source.safe_rerun_command,
+    safe_evidence_ref: source.safe_evidence_ref,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    safe_phone_copy: source.safe_phone_copy,
+    recovery_hint: source.recovery_hint,
+    evidence_boundary: HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_BOUNDARY,
     not_proven: source.not_proven,
   };
 }
@@ -10085,6 +10360,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const hardwareSensorProcurementExecutionPack = hardwareSensorProcurementExecutionPackFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const rows = [
     ["软件版本", payload?.software_version],
     ["地图版本", payload?.map_version],
@@ -10116,6 +10396,7 @@ function renderDiagnosticsSummary(payload) {
     ["hardware_baseline_review", hardwareBaselineReview.review_status],
     ["hardware_sensor_procurement_intake", hardwareSensorProcurementIntake.procurement_status],
     ["hardware_sensor_procurement_review_decision", hardwareSensorProcurementReviewDecision.review_decision],
+    ["hardware_sensor_procurement_execution_pack", hardwareSensorProcurementExecutionPack.execution_pack_status],
   ];
   rows.forEach(([label, value]) => {
     const box = document.createElement("div");
@@ -10189,6 +10470,7 @@ function renderOfflineFailure() {
   renderHardwareBaselineReview({});
   renderHardwareSensorProcurementIntake({});
   renderHardwareSensorProcurementReviewDecision({});
+  renderHardwareSensorProcurementExecutionPack({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -10240,6 +10522,7 @@ function renderStatus(status) {
   renderHardwareBaselineReview(status);
   renderHardwareSensorProcurementIntake(status);
   renderHardwareSensorProcurementReviewDecision(status);
+  renderHardwareSensorProcurementExecutionPack(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
@@ -10466,6 +10749,9 @@ async function openDiagnostics() {
     renderMobileFieldMaterialReviewDecision(latestStatus || {});
     renderMobileFieldMaterialRetestRequest(latestStatus || {});
     renderHardwareBaselineReview(latestStatus || {});
+    renderHardwareSensorProcurementIntake(latestStatus || {});
+    renderHardwareSensorProcurementReviewDecision(latestStatus || {});
+    renderHardwareSensorProcurementExecutionPack(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileDeviceEvidence(latestStatus || {});
     renderMobileDeviceHandoffSession(latestStatus || {});
@@ -10526,6 +10812,7 @@ async function submitAction(actionName) {
 
 function wireEvents() {
   $("diagnosticsButton").addEventListener("click", openDiagnostics);
+  ensureHardwareSensorProcurementExecutionPackPanel();
   $("copyMobileRouteElevatorFieldDevicePrecheckButton").addEventListener("click", async () => {
     const payload = JSON.stringify(
       mobileRouteElevatorFieldDevicePrecheckCopyPayload(latestMobileRouteElevatorFieldDevicePrecheck || {}),
@@ -10715,6 +11002,34 @@ function wireEvents() {
     downloadJsonPackage("hardware_sensor_procurement_review_decision_copy.json", payload);
     $("hardwareSensorProcurementReviewDecisionCopyStatus").textContent =
       "已导出 procurement review whitelist-only JSON。";
+  });
+  $("copyHardwareSensorProcurementExecutionPackButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(
+      hardwareSensorProcurementExecutionPackCopyPayload(latestHardwareSensorProcurementExecutionPack || {}),
+      null,
+      2,
+    );
+    $("hardwareSensorProcurementExecutionPackSafeCopy").textContent = payload;
+    // execution pack copy 只服务硬件采购执行交接；剪贴板失败时保留页面内手动复制文本。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("hardwareSensorProcurementExecutionPackCopyStatus").textContent =
+        "已复制 procurement execution pack phone-safe metadata。";
+    } catch (_error) {
+      $("hardwareSensorProcurementExecutionPackCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadHardwareSensorProcurementExecutionPackButton").addEventListener("click", () => {
+    const payload = JSON.stringify(
+      hardwareSensorProcurementExecutionPackCopyPayload(latestHardwareSensorProcurementExecutionPack || {}),
+      null,
+      2,
+    );
+    $("hardwareSensorProcurementExecutionPackSafeCopy").textContent = payload;
+    downloadJsonPackage("hardware_sensor_procurement_execution_pack_copy.json", payload);
+    $("hardwareSensorProcurementExecutionPackCopyStatus").textContent =
+      "已导出 procurement execution pack whitelist-only JSON。";
   });
   $("copyRouteTaskReviewButton").addEventListener("click", async () => {
     // operator review 复制只使用后端提供的 safe_copy 白名单对象，缺失时不生成替代 bundle。
