@@ -145,6 +145,33 @@ python3 pc-tools/evidence/mobile_field_material_intake.py \
 
 `mobile_field_material_intake` 只输出 `software_proof` / `not_proven`，用于现场材料回填前/回填后检查。它不访问 ROS graph、Nav2 runtime、serial/UART、真实手机、真实 route/elevator field pass、真实 dropoff/cancel completion、真实 delivery success、HIL、外部云、OSS/CDN、DB/queue 或 4G；也不证明 Objective 5 external proof。
 
+## mobile_field_material_review_decision
+
+`pc-tools/evidence/mobile_field_material_review_decision.py` 只读上一轮 `mobile_field_material_intake` artifact 或 summary，把 intake 材料状态转换成 owner handoff、next-required-evidence 和 review decision：
+
+```bash
+python3 pc-tools/evidence/mobile_field_material_review_decision.py \
+  --intake-json /tmp/mobile_field_material_intake_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/mobile_field_material_review_decision.json \
+  --summary-output /tmp/mobile_field_material_review_decision_summary.json
+```
+
+需要直接给 Robot diagnostics、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/mobile_field_material_review_decision.py \
+  --intake-json /tmp/mobile_field_material_intake_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+输出 artifact 使用 `schema=trashbot.mobile_field_material_review_decision.v1`，summary 使用 `schema=trashbot.mobile_field_material_review_decision_summary.v1`，证据边界固定为 `software_proof_docker_mobile_field_material_review_decision_gate`。核心字段包括 `review_decision`、`owner handoff`、`owner_handoff`、`next-required-evidence`、`next_required_evidence`、`blocked_materials`、`same_evidence_ref_required=true`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+review decision 的枚举至少覆盖 `blocked_missing_real_phone_or_pwa_observation`、`blocked_missing_route_elevator_field_materials`、`blocked_missing_nav2_or_fixed_route_runtime_log`、`blocked_missing_same_evidence_ref_task_record_or_completion_signal`、`blocked_missing_dropoff_or_cancel_completion` 和 `ready_for_owner_handoff_not_proven`；unsupported schema/boundary、missing JSON、placeholder、unsafe copy、same-evidence-ref mismatch 或 success wording 会 fail closed 为 `blocked_invalid_intake`。owner handoff 只映射到 `Full-stack`、`Robot`、`Autonomy` 或 `Product closeout`。
+
+该 review decision 仍只是 `software_proof` / `not_proven`：它不访问 ROS graph、Nav2 runtime、serial/UART、真实手机、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、真实 delivery success、HIL、WAVE ROVER/UART、外部云、OSS/CDN、DB/queue 或 4G；也不证明 Objective 5 external proof。
+
 ## route/task rehearsal artifact
 
 `pc-tools/evidence/evidence_crosscheck.py` 可在原有只读复账基础上额外写出 route/task rehearsal artifact：

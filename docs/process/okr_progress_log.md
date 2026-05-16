@@ -8,7 +8,17 @@
 
 ## 2026-05-16 系列
 
-更新时间：2026-05-16 07:16 Asia/Shanghai。
+更新时间：2026-05-16 08:18 Asia/Shanghai。
+
+### 2026-05-16 08-09｜mobile-field-material-review-decision｜O2/O3 review decision 能力模块，任务闭环与固定路线均由约 76% 上调到约 77%，手机体验由约 78% 上调到约 79%
+
+`sprints/2026.05.16_08-09_mobile-field-material-review-decision/` 完成 `software_proof_docker_mobile_field_material_review_decision_gate`：Task A `full-stack-software-engineer` 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增只读“现场材料评审决策”panel，展示 review decision、blocker、next-required-evidence、owner handoff、safe `evidence_ref`、same-evidence-ref、`not_proven` 和 boundary；copy/export whitelist-only；Start / Confirm Dropoff / Cancel gating 未改变。Task A 验证输出 `mobile/test_mobile_web_entrypoint.py` `Ran 50 tests ... OK`、`py_compile` OK、`node --check mobile/web/app.js` OK、required `rg` OK、scoped `git diff --check` OK。
+
+Task B `robot-software-engineer` 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`、`onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py` 与 `docs/interfaces/ros_contracts.md`，新增 `mobile_field_material_review_decision` / `_summary` diagnostics metadata-only consumer。该 consumer 支持 explicit ref、`TRASHBOT_MOBILE_FIELD_MATERIAL_REVIEW_DECISION`、summary env 和 diagnostics source；schema/boundary enforce；bad/missing/unsafe/success claim fail closed；command、ACK、cursor、persistence、Nav2、HIL、dropoff/cancel、delivery-success flags false。Task B 验证输出 diagnostics unittest `Ran 89 tests ... OK`、`py_compile` OK、required `rg` OK、scoped `git diff --check` OK。
+
+Task C `autonomy-engineer` 新增/更新 `pc-tools/evidence/mobile_field_material_review_decision.py`、`pc-tools/evidence/test_mobile_field_material_review_decision.py`、`pc-tools/README.md` 与 `docs/navigation/fixed_route_workflow.md`。pc-tools gate 把 `mobile_field_material_intake` artifact/summary 转成 `mobile_field_material_review_decision` artifact/summary；owner handoff 映射 Full-stack、Robot、Autonomy、Product closeout；保留 same `evidence_ref`；missing / mismatch / placeholder / unsafe success wording fail closed。Task C 验证输出 `py_compile` OK、`test_mobile_field_material_review_decision.py` `Ran 4 tests ... OK`、CLI `--help` OK、required `rg` OK、scoped `git diff --check` OK。
+
+该证据支持 Objective 2 和 Objective 3 各从约 76% 保守上调到约 77%。Objective 2 的理由是 route/elevator intake 材料现在可被转换为 review decision、blocker、next-required-evidence 和 owner handoff，能把真实送达/电梯材料缺口转成可执行补证路径。Objective 3 的理由是 fixed-route/Nav2 runtime log、task record/completion signal 和 same `evidence_ref` 缺口现在能被 fail-closed gate 明确分类和分派。Objective 4 从约 78% 保守上调到约 79%，因为手机入口从 material intake 推进到 phone-safe review decision surface，现场人员能直接看到评审、缺口和交接 owner。Objective 5 保持约 66%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；not real Objective 5 external proof。Objective 1 保持约 73%，因为本轮未改 WAVE ROVER、UART、Orange Pi、真实串口、`T=1001` feedback 或 HIL。本轮不证明真实手机/PWA、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、delivery_success=false 之外的 delivery success、WAVE ROVER、真实串口/UART、HIL 或 Objective 5 external proof。
 
 ### 2026-05-16 07-08｜mobile-field-material-intake｜O4 phone-safe material intake，手机体验由约 77% 上调到约 78%
 

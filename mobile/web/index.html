@@ -188,6 +188,67 @@
         </p>
       </section>
 
+      <section class="mobile-field-material-review-decision-panel" aria-labelledby="mobileFieldMaterialReviewDecisionTitle">
+        <div class="section-heading">
+          <h2 id="mobileFieldMaterialReviewDecisionTitle">现场材料评审决策</h2>
+          <span id="mobileFieldMaterialReviewDecisionBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="mobileFieldMaterialReviewDecisionCopy" class="message">
+          mobile_field_material_review_decision 只读展示 review decision、blocker、next-required-evidence 和 owner handoff。
+        </p>
+        <dl class="mobile-field-material-review-decision-grid">
+          <div>
+            <dt>Review Decision</dt>
+            <dd id="mobileFieldMaterialReviewDecisionState">review decision=not_proven</dd>
+          </div>
+          <div>
+            <dt>Blocker</dt>
+            <dd id="mobileFieldMaterialReviewDecisionBlocker">blocker=not_proven</dd>
+          </div>
+          <div>
+            <dt>Next-required-evidence</dt>
+            <dd id="mobileFieldMaterialReviewDecisionNextEvidence">next-required-evidence=not_proven</dd>
+          </div>
+          <div>
+            <dt>Owner Handoff</dt>
+            <dd id="mobileFieldMaterialReviewDecisionOwnerHandoff">owner handoff=not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="mobileFieldMaterialReviewDecisionEvidenceRef">evidence_ref=not_proven</dd>
+          </div>
+          <div>
+            <dt>Same Evidence Ref</dt>
+            <dd id="mobileFieldMaterialReviewDecisionSameRef">same_evidence_ref_status=not_proven</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="mobileFieldMaterialReviewDecisionControls">delivery_success=false / primary_actions_enabled=false</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd id="mobileFieldMaterialReviewDecisionStatus">not_proven</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileFieldMaterialReviewDecisionBoundary">software_proof_docker_mobile_field_material_review_decision_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileFieldMaterialReviewDecisionNotProven">真实手机、真实 route/elevator field pass、真实 Nav2/fixed-route、dropoff/cancel completion 和 delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <div class="bundle-copy-row">
+          <button id="copyMobileFieldMaterialReviewDecisionButton" type="button">复制 review decision</button>
+          <button id="downloadMobileFieldMaterialReviewDecisionButton" type="button">导出 review decision</button>
+          <span id="mobileFieldMaterialReviewDecisionCopyStatus" class="hint">whitelist-only phone-safe metadata</span>
+        </div>
+        <pre id="mobileFieldMaterialReviewDecisionSafeCopy" class="safe-copy" aria-label="mobile_field_material_review_decision safe_copy">whitelist-only phone-safe metadata</pre>
+        <p id="mobileFieldMaterialReviewDecisionHint" class="hint">
+          review decision panel 只读展示并导出白名单 metadata；不证明真实手机或现场通过，也不改变 Start、Confirm Dropoff 或 Cancel gating。
+        </p>
+      </section>
+
       <section class="recovery-decision-panel" aria-labelledby="recoveryDecisionTitle">
         <div class="section-heading">
           <h2 id="recoveryDecisionTitle">恢复决策</h2>

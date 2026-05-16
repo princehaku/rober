@@ -1615,6 +1615,76 @@
       "delivery success"
     ]
   },
+  "mobile_field_material_review_decision": {
+    "schema": "trashbot.mobile_field_material_review_decision.v1",
+    "summary_schema": "trashbot.mobile_field_material_review_decision_summary.v1",
+    "schema_version": 1,
+    "review_decision": "blocked_missing_route_elevator_field_materials",
+    "blocker": [
+      "blocked_missing_real_phone_or_pwa_observation",
+      "blocked_missing_route_elevator_field_materials",
+      "blocked_missing_nav2_or_fixed_route_runtime_log",
+      "blocked_missing_same_evidence_ref_task_record_or_completion_signal",
+      "blocked_missing_dropoff_or_cancel_completion"
+    ],
+    "next_required_evidence": [
+      "真实 iPhone/Android 或 PWA observation 摘要",
+      "route/elevator field materials safe summary",
+      "Nav2/fixed-route runtime log safe summary",
+      "同一 evidence_ref 的 task record 或 completion signal",
+      "dropoff/cancel completion material status"
+    ],
+    "owner_handoff": [
+      "Full-stack: 展示 phone-safe review decision 和 whitelist-only copy/export",
+      "Robot: diagnostics metadata-only consumer",
+      "Autonomy: review decision gate artifact",
+      "Product: closeout 保持 not_proven 边界"
+    ],
+    "safe_evidence_ref": "route_elevator_field_handoff_fixture_20260516_0001",
+    "same_evidence_ref_status": "same_evidence_ref_required_pending_real_materials",
+    "safe_phone_copy": "mobile_field_material_review_decision review decision blocked：fixture 只展示 phone-safe blocker、next-required-evidence 和 owner handoff。",
+    "recovery_hint": "按 blocker 补齐 next-required-evidence；Start、Confirm、Cancel 继续 fail closed。",
+    "evidence_boundary": "software_proof_docker_mobile_field_material_review_decision_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实手机",
+      "真实 iPhone/Android device behavior",
+      "production app",
+      "真实 PWA prompt/user choice",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success",
+      "HIL",
+      "Objective 5 external proof"
+    ]
+  },
+  "mobile_field_material_review_decision_summary": {
+    "schema": "trashbot.mobile_field_material_review_decision_summary.v1",
+    "source_schema": "trashbot.mobile_field_material_review_decision.v1",
+    "schema_version": 1,
+    "review_decision": "blocked_missing_route_elevator_field_materials",
+    "blocker_summary": "blocked_missing_real_phone_or_pwa_observation；blocked_missing_route_elevator_field_materials；blocked_missing_nav2_or_fixed_route_runtime_log",
+    "next_required_evidence_summary": "真实手机/PWA observation、route/elevator field materials、Nav2/fixed-route runtime log、同一 evidence_ref task record/completion signal、dropoff/cancel material status",
+    "owner_handoff_summary": "Full-stack panel、Robot diagnostics、Autonomy gate、Product closeout",
+    "safe_evidence_ref": "route_elevator_field_handoff_fixture_20260516_0001",
+    "same_evidence_ref_status": "same_evidence_ref_required_pending_real_materials",
+    "safe_phone_copy": "review decision 摘要只说明材料评审缺口，不证明真实现场通过。",
+    "recovery_hint": "等待 owner handoff 补齐 next-required-evidence 后再人工复核。",
+    "evidence_boundary": "software_proof_docker_mobile_field_material_review_decision_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实手机",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success"
+    ]
+  },
   "route_task_field_run_readiness": {
     "schema": "trashbot.route_task_field_run_readiness.v1",
     "schema_version": 1,
