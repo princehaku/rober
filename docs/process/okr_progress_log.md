@@ -8,6 +8,18 @@
 
 ## 2026-05-16 系列
 
+更新时间：2026-05-16 16:19 Asia/Shanghai。
+
+### 2026-05-16 16-17｜route-task-terminal-completion-rehearsal｜O2/O3 任务终态复账 software proof，任务闭环与固定路线均由约 78% 上调到约 79%，手机体验由约 85% 上调到约 86%
+
+`sprints/2026.05.16_16-17_route-task-terminal-completion-rehearsal/` 完成 `software_proof_docker_route_task_terminal_completion_rehearsal_gate`：Robot worker 更新 `task_record.py`、`task_orchestrator.py`、`operator_gateway_diagnostics.py`、相关三组测试和 `docs/interfaces/ros_contracts.md`，实现 task record 写入 `route_task_terminal_completion_rehearsal` 摘要，task_orchestrator 保守保留 software-proof 终态上下文，diagnostics 新增 `route_task_terminal_completion_rehearsal` / `_summary` metadata-only consumer，支持 explicit ref、env、status 和 diagnostics nested source；缺失、unsupported、unsafe、same evidence_ref mismatch 均 fail closed。Task A 验证输出 py_compile passed、unittest `Ran 127 tests in 0.257s OK`、required `rg` passed、scoped `git diff --check` passed。首轮失败是 missing source 状态仍为 `missing`，已修正为 `blocked_missing_route_task_terminal_completion_rehearsal` 并复验通过。
+
+Autonomy worker 新增 `pc-tools/evidence/route_task_terminal_completion_rehearsal.py` 和 `test_route_task_terminal_completion_rehearsal.py`，更新 `pc-tools/README.md` 与 `docs/navigation/fixed_route_workflow.md`。该 dependency-free PC gate 读取 route status、task record、existing `route_task_completion_signal` 和可选 dropoff/cancel material summary，输出 `trashbot.route_task_terminal_completion_rehearsal.v1` artifact 与 `_summary.v1` summary，保留 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，并对缺 source、bad JSON、unsupported schema/boundary、same `evidence_ref` mismatch、unsafe copy 和 success/control wording fail closed。Task B 验证输出 py_compile passed、unittest `Ran 8 tests in 0.016s OK`、CLI help passed、required `rg` passed、scoped `git diff --check` passed。
+
+Full-stack worker 更新 `mobile/web/app.js`、`styles.css`、`test_mobile_web_entrypoint.py`、`fixtures/status.json` 和 `docs/product/mobile_user_flow.md`，新增只读“任务终态复账” panel，展示 terminal verdict、safe `evidence_ref`、dropoff/cancel material status、failure/recovery reason、operator next steps 和 fixed boundary；Start / Confirm Dropoff / Cancel gating 未改；copy/export whitelist-only。Task C 验证输出 mobile unittest `Ran 6 tests OK`、`node --check` passed、required `rg` passed、scoped `git diff --check` passed。Product closeout 更新 sprint 留档、`OKR.md` 和本日志，required `rg` 与 closeout scoped `git diff --check` 均通过。
+
+该证据只支持 Objective 2 从约 78% 保守上调到约 79%，Objective 3 从约 78% 保守上调到约 79%，Objective 4 从约 85% 保守上调到约 86%。Objective 2 的理由是 task record、Robot diagnostics 和 mobile read-only summary 现在能围绕同一 `evidence_ref` 复账 terminal verdict、dropoff/cancel material status、failure/recovery reason 和 fail-closed 状态。Objective 3 的理由是 PC gate 已能交叉核对 route status、task record、existing completion signal 与 optional dropoff/cancel materials，并输出可复用 artifact / summary。Objective 4 的理由是 mobile first-screen 新增 phone-safe “任务终态复账” panel，用户和现场支持能看懂终态和下一步，但控制按钮授权不变。Objective 1 保持约 73%，因为本轮没有真实 WAVE ROVER、UART、Orange Pi 串口、`T=1001` feedback 或 HIL。Objective 5 保持约 66%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；not real Objective 5 external proof。本轮不证明真实 Nav2/fixed-route、真实 route/elevator field pass、真实 route runtime log、真实 dropoff completion、真实 cancel completion、delivery success、真实手机/browser、production app、WAVE ROVER、真实串口/UART、HIL 或 Objective 5 external proof。
+
 更新时间：2026-05-16 15:16 Asia/Shanghai。
 
 ### 2026-05-16 15-16｜hardware-sensor-procurement-receipt-intake｜O4 量产传感器采购收货回填闭环，手机体验与低成本量产边界由约 84% 上调到约 85%

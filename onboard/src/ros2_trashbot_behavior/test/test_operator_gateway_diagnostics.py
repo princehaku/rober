@@ -27,6 +27,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_run_readiness,
     summarize_route_task_field_run_review,
     summarize_route_task_completion_signal,
+    summarize_route_task_terminal_completion_rehearsal,
     summarize_route_task_field_run_console,
     summarize_route_task_field_run_evidence_kit,
     summarize_route_task_field_run_material_bundle,
@@ -2684,6 +2685,176 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["delivery_success"])
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_route_task_completion_signal_gate", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_terminal_completion_rehearsal_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            rehearsal_path = Path(td) / "terminal_completion_rehearsal.json"
+            rehearsal_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_terminal_completion_rehearsal.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_terminal_completion_rehearsal_gate"
+                        ),
+                        "evidence_ref": "terminal-rehearsal-001",
+                        "route_task_terminal_completion_rehearsal_summary": {
+                            "terminal_verdict": {
+                                "status": "route_task_terminal_completion_rehearsal",
+                                "verdict": "not_proven",
+                                "reason": "materials share the same evidence_ref",
+                            },
+                            "final_status": "failed",
+                            "final_state": "error",
+                            "dropoff_result": {
+                                "status": "not_proven",
+                                "result_code": "manual_confirm_timeout",
+                            },
+                            "cancel_reason": "",
+                            "failure_reason": "dropoff confirmation timed out",
+                            "recovery_reason": "manual_recovery_required",
+                            "safe_evidence_ref": "terminal-rehearsal-001",
+                            "same_evidence_ref_required": True,
+                            "route_progress": {
+                                "present": True,
+                                "evidence_ref": "terminal-rehearsal-001",
+                            },
+                            "materials_status": {
+                                "status": "not_proven",
+                                "reason": "real dropoff/cancel completion is still missing",
+                            },
+                            "operator_next_steps": ["Attach field dropoff/cancel material."],
+                            "phone_safe_summary": {
+                                "safe_copy": (
+                                    "Route/task terminal completion rehearsal is metadata-only; "
+                                    "delivery_success=false; primary_actions_enabled=false."
+                                )
+                            },
+                            "not_proven": ["real_dropoff_completion"],
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_terminal_completion_rehearsal_ref=str(rehearsal_path),
+            )
+            summary = payload["route_task_terminal_completion_rehearsal"]
+            summary_alias = payload["route_task_terminal_completion_rehearsal_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.route_task_terminal_completion_rehearsal_summary.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_terminal_completion_rehearsal_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_terminal_completion_rehearsal.v1")
+        self.assertEqual(summary["terminal_verdict"]["status"], "route_task_terminal_completion_rehearsal")
+        self.assertEqual(summary["terminal_verdict"]["verdict"], "not_proven")
+        self.assertEqual(summary["final_status"], "failed")
+        self.assertEqual(summary["dropoff_result"]["result_code"], "manual_confirm_timeout")
+        self.assertEqual(summary["failure_reason"], "dropoff confirmation timed out")
+        self.assertEqual(summary["recovery_reason"], "manual_recovery_required")
+        self.assertEqual(summary["safe_evidence_ref"], "terminal-rehearsal-001")
+        self.assertTrue(summary["route_progress"]["present"])
+        self.assertIn("real_dropoff_completion", summary["not_proven"])
+        self.assertIn("real_cancel_completion", summary["not_proven"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertNotIn(str(rehearsal_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_terminal_completion_rehearsal_missing_mismatch_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_terminal.json"
+            missing_summary = summarize_route_task_terminal_completion_rehearsal(str(missing_path))
+
+            unsupported_path = Path(td) / "unsupported_terminal.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_completion_signal.v1",
+                        "evidence_boundary": "software_proof_docker_route_task_completion_signal_gate",
+                        "safe_copy": "Unsupported terminal rehearsal is metadata-only; delivery_success=false.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsupported_summary = summarize_route_task_terminal_completion_rehearsal(str(unsupported_path))
+
+            mismatch_path = Path(td) / "mismatch_terminal.json"
+            mismatch_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_terminal_completion_rehearsal_summary.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_terminal_completion_rehearsal_gate"
+                        ),
+                        "safe_evidence_ref": "terminal-a",
+                        "route_progress": {"present": True, "evidence_ref": "terminal-b"},
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            mismatch_summary = summarize_route_task_terminal_completion_rehearsal(str(mismatch_path))
+
+            unsafe_path = Path(td) / "unsafe_terminal.json"
+            unsafe_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_terminal_completion_rehearsal.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_terminal_completion_rehearsal_gate"
+                        ),
+                        "evidence_ref": "terminal-unsafe",
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                        "route_task_terminal_completion_rehearsal_summary": {
+                            "safe_evidence_ref": "terminal-unsafe",
+                            "phone_safe_summary": {
+                                "safe_copy": "Terminal rehearsal confirms delivery success and ACK posted.",
+                            },
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsafe_summary = summarize_route_task_terminal_completion_rehearsal(str(unsafe_path))
+            encoded = json.dumps(
+                [missing_summary, unsupported_summary, mismatch_summary, unsafe_summary],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(
+            missing_summary["terminal_verdict"]["status"],
+            "blocked_missing_route_task_terminal_completion_rehearsal",
+        )
+        self.assertEqual(unsupported_summary["terminal_verdict"]["status"], "unsupported_schema")
+        self.assertEqual(mismatch_summary["terminal_verdict"]["status"], "evidence_ref_mismatch")
+        self.assertEqual(unsafe_summary["terminal_verdict"]["status"], "unsafe_fields")
+        self.assertIn("blocked_missing_route_task_terminal_completion_rehearsal", encoded)
+        self.assertIn("software_proof_docker_route_task_terminal_completion_rehearsal_gate", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)

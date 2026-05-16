@@ -83,5 +83,37 @@
       "delivery success",
       "Objective 5 external proof"
     ]
+  },
+  "route_task_terminal_completion_rehearsal": {
+    "schema": "trashbot.route_task_terminal_completion_rehearsal.v1",
+    "summary_schema": "trashbot.route_task_terminal_completion_rehearsal_summary.v1",
+    "schema_version": 1,
+    "terminal_verdict": "blocked_missing_real_terminal_materials_not_proven",
+    "safe_evidence_ref": "route_task_terminal_completion_rehearsal_fixture_20260516_0001",
+    "dropoff_material_status": "dropoff_material_status=not_proven",
+    "cancel_material_status": "cancel_material_status=not_proven",
+    "failure_reason": "failure_reason=real route/task/dropoff/cancel source materials missing",
+    "recovery_reason": "recovery_reason=collect same evidence_ref task record, completion signal, dropoff/cancel material and diagnostics summary before field review",
+    "operator_next_steps": [
+      "使用同一 safe evidence_ref 回填 task record 摘要",
+      "补齐 route_task_completion_signal summary",
+      "补齐 dropoff 或 cancel terminal material phone-safe 摘要"
+    ],
+    "safe_phone_copy": "任务终态复账只读展示 terminal verdict、dropoff/cancel material status、failure/recovery reason 和 operator next steps；这是 software proof only。",
+    "recovery_hint": "请在下一次受控现场 session 中按同一 evidence_ref 补齐 task record、completion signal、dropoff/cancel material 和 diagnostics mobile summary。",
+    "evidence_boundary": "software_proof_docker_route_task_terminal_completion_rehearsal_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field pass",
+      "真实 task record/completion material",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success",
+      "真实手机设备/browser",
+      "WAVE ROVER/UART",
+      "Objective 5 external proof"
+    ]
   }
 }

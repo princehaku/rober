@@ -129,6 +129,15 @@ ROUTE_TASK_COMPLETION_SIGNAL_SUMMARY_SCHEMA = (
 ROUTE_TASK_COMPLETION_SIGNAL_GATE = (
     "software_proof_docker_route_task_completion_signal_gate"
 )
+ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_SCHEMA = (
+    "trashbot.route_task_terminal_completion_rehearsal.v1"
+)
+ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_SUMMARY_SCHEMA = (
+    "trashbot.route_task_terminal_completion_rehearsal_summary.v1"
+)
+ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_GATE = (
+    "software_proof_docker_route_task_terminal_completion_rehearsal_gate"
+)
 ROUTE_TASK_FIELD_RUN_CONSOLE_SCHEMA = "trashbot.route_task_field_run_console.v1"
 ROUTE_TASK_FIELD_RUN_CONSOLE_SUMMARY_SCHEMA = (
     "trashbot.route_task_field_run_console_summary.v1"
@@ -522,6 +531,40 @@ def _route_task_completion_signal_not_proven(signal=None, phone_summary=None):
         source_values.extend(signal.get("not_proven"))
     if isinstance(phone_summary.get("not_proven"), list):
         source_values.extend(phone_summary.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "real_route_collection",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "production_readiness",
+        "real_dropoff_completion",
+        "real_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_terminal_completion_rehearsal_not_proven(source=None, summary=None):
+    # terminal rehearsal 只核对终态材料是否可复账；真实投放、取消完成、Nav2/HIL 仍要外部材料证明。
+    source = source if isinstance(source, dict) else {}
+    summary = summary if isinstance(summary, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(source.get("not_proven"), list):
+        source_values.extend(source.get("not_proven"))
+    if isinstance(summary.get("not_proven"), list):
+        source_values.extend(summary.get("not_proven"))
     required = (
         "collect_dropoff_cancel_control",
         "remote_ack",
@@ -1521,6 +1564,48 @@ def _default_route_task_completion_signal_summary(path, status="not_configured",
             "safe_phone_copy": "Route-task completion signal is metadata-only; delivery_success=false.",
         },
         "not_proven": _route_task_completion_signal_not_proven(),
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+
+
+def _default_route_task_terminal_completion_rehearsal_summary(
+    path,
+    status="blocked_missing_route_task_terminal_completion_rehearsal",
+    read_error="",
+):
+    # terminal completion rehearsal 默认就是 blocked/not_proven，缺 artifact 时不能给手机或 Robot 侧任何完成暗示。
+    return {
+        "schema": ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_GATE,
+        "source_schema": "",
+        "source_evidence_boundary": "",
+        "terminal_verdict": {
+            "status": status,
+            "verdict": "not_proven",
+            "reason": read_error or "route/task terminal completion rehearsal source is not configured",
+        },
+        "final_status": "",
+        "final_state": "",
+        "dropoff_result": {"status": "not_proven"},
+        "cancel_reason": "",
+        "failure_reason": "",
+        "recovery_reason": "",
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "route_progress": {"present": False, "evidence_ref": ""},
+        "materials_status": {
+            "status": "blocked",
+            "reason": "route/task terminal completion rehearsal source is not configured",
+        },
+        "operator_next_steps": [],
+        "phone_safe_summary": {
+            "safe_copy": "Route/task terminal completion rehearsal is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+            "safe_phone_copy": "Route/task terminal completion rehearsal is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+        },
+        "not_proven": _route_task_terminal_completion_rehearsal_not_proven(),
         "metadata_only": True,
         "delivery_success": False,
         "primary_actions_enabled": False,
@@ -5181,6 +5266,219 @@ def summarize_route_task_completion_signal(path):
         )
         return summary
 
+    return summary
+
+
+def _route_task_terminal_completion_evidence_refs_match(source, source_summary):
+    # 同一 evidence_ref 是本轮复账合同的核心；只比较安全摘要字段，不展开 raw artifact。
+    refs = []
+    for value in (
+        source.get("safe_evidence_ref"),
+        source.get("evidence_ref"),
+        source_summary.get("safe_evidence_ref"),
+        source_summary.get("evidence_ref"),
+    ):
+        safe_ref = _safe_route_task_rehearsal_ref(value)
+        if safe_ref and safe_ref not in refs:
+            refs.append(safe_ref)
+    for container in (source.get("route_progress"), source_summary.get("route_progress")):
+        if isinstance(container, dict):
+            safe_ref = _safe_route_task_rehearsal_ref(container.get("evidence_ref"))
+            if safe_ref and safe_ref not in refs:
+                refs.append(safe_ref)
+    return len(refs) <= 1
+
+
+def summarize_route_task_terminal_completion_rehearsal(path):
+    """构建 route/task 终态复账的 metadata-only diagnostics 摘要。"""
+    source = path if isinstance(path, dict) else None
+    source_path = "" if source is not None else os.path.expanduser(str(path or ""))
+    summary = _default_route_task_terminal_completion_rehearsal_summary(source_path)
+    if source is None:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "terminal_verdict": {
+                        "status": "blocked_missing_route_task_terminal_completion_rehearsal",
+                        "verdict": "not_proven",
+                        "reason": "route/task terminal completion rehearsal source missing",
+                    },
+                    "materials_status": {
+                        "status": "blocked",
+                        "reason": "terminal completion rehearsal source missing",
+                    },
+                }
+            )
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                source = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading route/task terminal completion rehearsal source: {exc}"
+            )
+            summary.update(
+                {
+                    "terminal_verdict": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": safe_error,
+                    },
+                    "materials_status": {
+                        "status": "blocked",
+                        "reason": "terminal completion rehearsal JSON read error",
+                    },
+                }
+            )
+            return summary
+    if not isinstance(source, dict):
+        summary.update(
+            {
+                "terminal_verdict": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "route/task terminal completion rehearsal JSON must be an object",
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "terminal completion rehearsal JSON shape is invalid",
+                },
+            }
+        )
+        return summary
+
+    source_schema = str(source.get("schema") or "")
+    source_boundary = str(source.get("evidence_boundary") or "")
+    source_summary = source
+    for candidate_key in (
+        "route_task_terminal_completion_rehearsal_summary",
+        "route_task_terminal_completion_rehearsal",
+        "terminal_completion_rehearsal_summary",
+        "summary",
+    ):
+        candidate = source.get(candidate_key)
+        if isinstance(candidate, dict):
+            source_summary = candidate
+            break
+    if source_schema == ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_SUMMARY_SCHEMA:
+        source_summary = source
+    verdict = (
+        source_summary.get("terminal_verdict")
+        if isinstance(source_summary.get("terminal_verdict"), dict)
+        else {}
+    )
+    phone_summary = (
+        source_summary.get("phone_safe_summary")
+        if isinstance(source_summary.get("phone_safe_summary"), dict)
+        else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        phone_summary.get("safe_copy")
+        or phone_summary.get("safe_phone_copy")
+        or "Route/task terminal completion rehearsal is metadata-only; delivery_success=false; primary_actions_enabled=false."
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": source.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "terminal_verdict": {
+                "status": _redact_route_task_rehearsal_text(
+                    verdict.get("status") or source_summary.get("status") or "route_task_terminal_completion_rehearsal"
+                ),
+                "verdict": _redact_route_task_rehearsal_text(
+                    verdict.get("verdict") or source_summary.get("verdict") or "not_proven"
+                ),
+                "reason": _redact_route_task_rehearsal_text(
+                    verdict.get("reason") or source_summary.get("reason") or "terminal completion rehearsal consumed"
+                ),
+            },
+            "final_status": _redact_route_task_rehearsal_text(source_summary.get("final_status")),
+            "final_state": _redact_route_task_rehearsal_text(source_summary.get("final_state")),
+            "dropoff_result": _safe_pc_route_debug_value(
+                source_summary.get("dropoff_result") or {"status": "not_proven"}
+            ),
+            "cancel_reason": _redact_route_task_rehearsal_text(source_summary.get("cancel_reason")),
+            "failure_reason": _redact_route_task_rehearsal_text(source_summary.get("failure_reason")),
+            "recovery_reason": _redact_route_task_rehearsal_text(source_summary.get("recovery_reason")),
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                source_summary.get("safe_evidence_ref")
+                or source_summary.get("evidence_ref")
+                or source.get("evidence_ref", "")
+            ),
+            "same_evidence_ref_required": bool(source_summary.get("same_evidence_ref_required", True)),
+            "route_progress": _safe_pc_route_debug_dict(source_summary.get("route_progress"))
+            or {"present": False, "evidence_ref": ""},
+            "materials_status": _safe_pc_route_debug_dict(source_summary.get("materials_status"))
+            or {
+                "status": "not_proven",
+                "reason": "terminal completion rehearsal consumed without explicit materials status",
+            },
+            "operator_next_steps": _safe_route_task_rehearsal_list(source_summary.get("operator_next_steps")),
+            "phone_safe_summary": {
+                "safe_copy": safe_copy,
+                "safe_phone_copy": safe_copy,
+            },
+            "not_proven": _route_task_terminal_completion_rehearsal_not_proven(source, source_summary),
+            "metadata_only": True,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    if source_schema not in (
+        ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_SCHEMA,
+        ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_SUMMARY_SCHEMA,
+    ) or source_boundary != ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_GATE:
+        summary.update(
+            {
+                "terminal_verdict": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "route/task terminal completion rehearsal schema or evidence boundary is unsupported",
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+            }
+        )
+        return summary
+    if not _route_task_terminal_completion_evidence_refs_match(source, source_summary):
+        summary.update(
+            {
+                "terminal_verdict": {
+                    "status": "evidence_ref_mismatch",
+                    "verdict": "not_proven",
+                    "reason": "terminal completion rehearsal evidence_ref values do not match",
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "same evidence_ref mismatch",
+                },
+            }
+        )
+        return summary
+    if (
+        _route_task_field_run_readiness_has_unsafe_fields(source_summary)
+        or _route_task_completion_signal_has_unsafe_control_claims(source)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "terminal_verdict": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": "terminal completion rehearsal contains unsafe summary fields or control claims",
+                },
+                "materials_status": {
+                    "status": "blocked",
+                    "reason": "unsafe terminal completion rehearsal fields",
+                },
+            }
+        )
+        return summary
     return summary
 
 
@@ -10690,6 +10988,7 @@ def build_diagnostics_payload(
     route_task_field_run_execution_pack_ref="",
     route_task_field_run_reconciliation_ref="",
     route_task_completion_signal_ref="",
+    route_task_terminal_completion_rehearsal_ref="",
     route_task_field_run_console_ref="",
     route_task_field_run_evidence_kit_ref="",
     route_task_field_run_material_bundle_ref="",
@@ -10788,6 +11087,17 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("mobile_field_material_retest_request_summary"), dict)
         else {}
     )
+    route_task_terminal_completion_rehearsal_source = (
+        latest_status.get("route_task_terminal_completion_rehearsal")
+        if isinstance(latest_status.get("route_task_terminal_completion_rehearsal"), dict)
+        else latest_status.get("route_task_terminal_completion_rehearsal_summary")
+        if isinstance(latest_status.get("route_task_terminal_completion_rehearsal_summary"), dict)
+        else diagnostics_source.get("route_task_terminal_completion_rehearsal")
+        if isinstance(diagnostics_source.get("route_task_terminal_completion_rehearsal"), dict)
+        else diagnostics_source.get("route_task_terminal_completion_rehearsal_summary")
+        if isinstance(diagnostics_source.get("route_task_terminal_completion_rehearsal_summary"), dict)
+        else {}
+    )
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
     latest_status.pop("phone_support_bundle", None)
     latest_status.pop("voice_prompt_readiness", None)
@@ -10804,6 +11114,9 @@ def build_diagnostics_payload(
     latest_status.pop("mobile_field_material_retest_request", None)
     latest_status.pop("mobile_field_material_retest_request_summary", None)
     latest_status.pop("mobile_field_material_retest_request_copy", None)
+    latest_status.pop("route_task_terminal_completion_rehearsal", None)
+    latest_status.pop("route_task_terminal_completion_rehearsal_summary", None)
+    latest_status.pop("route_task_terminal_completion_rehearsal_copy", None)
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -10893,6 +11206,14 @@ def build_diagnostics_payload(
     route_task_completion_signal_summary = summarize_route_task_completion_signal(
         route_task_completion_signal_ref
         or os.environ.get("TRASHBOT_ROUTE_TASK_COMPLETION_SIGNAL", "")
+    )
+    route_task_terminal_completion_rehearsal_summary = (
+        summarize_route_task_terminal_completion_rehearsal(
+            route_task_terminal_completion_rehearsal_ref
+            or os.environ.get("TRASHBOT_ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL", "")
+            or os.environ.get("TRASHBOT_ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_SUMMARY", "")
+            or route_task_terminal_completion_rehearsal_source
+        )
     )
     route_task_field_run_console_summary = summarize_route_task_field_run_console(
         route_task_field_run_console_ref
@@ -11074,6 +11395,8 @@ def build_diagnostics_payload(
         route_task_field_run_reconciliation_summary=route_task_field_run_reconciliation_summary,
         route_task_completion_signal=route_task_completion_signal_summary,
         route_task_completion_signal_summary=route_task_completion_signal_summary,
+        route_task_terminal_completion_rehearsal=route_task_terminal_completion_rehearsal_summary,
+        route_task_terminal_completion_rehearsal_summary=route_task_terminal_completion_rehearsal_summary,
         route_task_field_run_console=route_task_field_run_console_summary,
         route_task_field_run_console_summary=route_task_field_run_console_summary,
         route_task_field_run_evidence_kit=route_task_field_run_evidence_kit_summary,

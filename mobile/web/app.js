@@ -51,6 +51,7 @@ const ELEVATOR_FIELD_RUN_MATERIAL_VALIDATION_BOUNDARY = "software_proof_docker_e
 const ELEVATOR_FIELD_RUN_REVIEW_BOUNDARY = "software_proof_docker_elevator_field_review_decision_gate";
 const ELEVATOR_FIELD_RUN_EXECUTION_PACK_BOUNDARY = "software_proof_docker_elevator_field_rehearsal_execution_pack_gate";
 const ROUTE_TASK_COMPLETION_SIGNAL_BOUNDARY = "software_proof_docker_route_task_completion_signal_gate";
+const ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_BOUNDARY = "software_proof_docker_route_task_terminal_completion_rehearsal_gate";
 const ELEVATOR_ASSIST_BOUNDARY = "software_proof_docker_elevator_assist_default_mainline_gate";
 const ELEVATOR_ASSIST_REHEARSAL_EVIDENCE_BOUNDARY = "software_proof_docker_elevator_evidence_driven_mainline_gate";
 const ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_BOUNDARY = "software_proof_docker_elevator_route_evidence_reconciliation_gate";
@@ -136,6 +137,7 @@ const UNSAFE_ELEVATOR_FIELD_MATERIAL_VALIDATION_TEXT = /(authorization|bearer|to
 const UNSAFE_ELEVATOR_FIELD_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw review|full review|review artifact|raw validation|validation artifact|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|真实送达成功|投放完成|取消完成|hil_pass)/i;
 const UNSAFE_ELEVATOR_FIELD_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw execution pack|full execution pack|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|field run complete|completed delivery|真实送达成功|投放完成|取消完成|hil_pass)/i;
 const UNSAFE_ROUTE_TASK_COMPLETION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw completion|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
+const UNSAFE_ROUTE_TASK_TERMINAL_COMPLETION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw completion|raw rehearsal|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|真实送达成功|投放完成|取消完成|hil_pass|hil)/i;
 const UNSAFE_ELEVATOR_ASSIST_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|已送达成功|真实电梯完成|真实喇叭完成|真实 nav2|hil_pass)/i;
 const UNSAFE_ELEVATOR_ROUTE_RECONCILIATION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw reconciliation|raw diagnostics|complete artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw handoff|raw diagnostics|raw material|complete artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
@@ -170,6 +172,7 @@ let latestHardwareSensorProcurementIntake = null;
 let latestHardwareSensorProcurementReviewDecision = null;
 let latestHardwareSensorProcurementExecutionPack = null;
 let latestHardwareSensorProcurementReceiptIntake = null;
+let latestRouteTaskTerminalCompletionRehearsal = null;
 let deferredPwaInstallPromptEvent = null;
 let pwaInstallPromptEventState = null;
 let latestRealDeviceEvidencePackage = null;
@@ -364,6 +367,15 @@ function safeRouteTaskCompletionText(value, fallback = "not_proven") {
   // completion signal 只展示完成信号摘要；raw artifact、硬件和外部云细节必须 fail closed。
   const text = safeText(value, fallback);
   if (UNSAFE_ROUTE_TASK_COMPLETION_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeRouteTaskTerminalCompletionText(value, fallback = "not_proven") {
+  // 终态复账 panel 只给现场复核人员看白名单摘要，命中 raw JSON、路径、硬件或成功语义时降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_ROUTE_TASK_TERMINAL_COMPLETION_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -5293,6 +5305,170 @@ function routeTaskCompletionSignalFromStatus(status, readiness, diagnostics) {
   };
 }
 
+function routeTaskTerminalCompletionRehearsalCandidate(status, readiness, diagnostics) {
+  // Robot/PC worker 可能把终态复账摘要放在 status、phone_readiness 或 diagnostics 的多层 summary 中。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.route_task_terminal_completion_rehearsal,
+    status?.route_task_terminal_completion_rehearsal_summary,
+    readiness?.route_task_terminal_completion_rehearsal,
+    readiness?.route_task_terminal_completion_rehearsal_summary,
+    diagnostics?.route_task_terminal_completion_rehearsal,
+    diagnostics?.route_task_terminal_completion_rehearsal_summary,
+    diagnosticsReadiness.route_task_terminal_completion_rehearsal,
+    diagnosticsReadiness.route_task_terminal_completion_rehearsal_summary,
+    diagnosticsSummary.route_task_terminal_completion_rehearsal,
+    diagnosticsSummary.route_task_terminal_completion_rehearsal_summary,
+    nestedDiagnosticsSummary.route_task_terminal_completion_rehearsal,
+    nestedDiagnosticsSummary.route_task_terminal_completion_rehearsal_summary,
+    nestedDiagnosticsInnerSummary.route_task_terminal_completion_rehearsal,
+    nestedDiagnosticsInnerSummary.route_task_terminal_completion_rehearsal_summary,
+    statusDiagnosticsSummary.route_task_terminal_completion_rehearsal,
+    statusDiagnosticsSummary.route_task_terminal_completion_rehearsal_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function routeTaskTerminalCompletionNotProvenList(value) {
+  // 终态复账只能证明字段链路，不补齐真实路线、投放、取消或硬件实测证据。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实 Nav2/fixed-route",
+    "真实 route/elevator field pass",
+    "真实 dropoff completion",
+    "真实 cancel completion",
+    "delivery success",
+    "真实 task record/completion material",
+    "WAVE ROVER/UART",
+    "真实手机设备/browser",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 14);
+}
+
+function routeTaskTerminalCompletionSummaryText(value, fallback) {
+  // 复账字段可能来自数组、对象或字符串；前端只抽取 safe_phone_copy/summary 这类白名单文案。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeRouteTaskTerminalCompletionText(
+        item?.safe_phone_copy || item?.summary || item?.name || item?.status || item?.reason || item?.step || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 5).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    return safeRouteTaskTerminalCompletionText(
+      value.safe_phone_copy || value.summary || value.status || value.state || value.reason || value.step,
+      fallback,
+    );
+  }
+  return safeRouteTaskTerminalCompletionText(value, fallback);
+}
+
+function routeTaskTerminalCompletionRehearsalFromStatus(status, readiness, diagnostics) {
+  const provided = routeTaskTerminalCompletionRehearsalCandidate(status, readiness, diagnostics) || {};
+  const dropoff = provided.dropoff_material_status || provided.dropoff_completion_material_status ||
+    provided.dropoff_material || provided.dropoff_completion || provided.dropoff;
+  const cancel = provided.cancel_material_status || provided.cancel_completion_material_status ||
+    provided.cancel_material || provided.cancel_completion || provided.cancel;
+  const failure = provided.failure_reason || provided.failure_summary || provided.failure;
+  const recovery = provided.recovery_reason || provided.recovery_summary || provided.recovery;
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.route_task_terminal_completion_rehearsal.v1",
+    summary_schema: "trashbot.route_task_terminal_completion_rehearsal_summary.v1",
+    schema_version: 1,
+    terminal_verdict: safeRouteTaskTerminalCompletionText(
+      provided.terminal_verdict || provided.completion_verdict || provided.verdict ||
+        provided.overall_status || provided.status,
+      "blocked_missing_route_task_terminal_completion_rehearsal",
+    ),
+    safe_evidence_ref: safeRouteTaskTerminalCompletionText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "not_provided",
+    ),
+    dropoff_material_status: routeTaskTerminalCompletionSummaryText(
+      dropoff,
+      "dropoff_material_status=not_proven",
+    ),
+    cancel_material_status: routeTaskTerminalCompletionSummaryText(
+      cancel,
+      "cancel_material_status=not_proven",
+    ),
+    failure_recovery_reason: [
+      routeTaskTerminalCompletionSummaryText(failure, "failure_reason=not_proven"),
+      routeTaskTerminalCompletionSummaryText(recovery, "recovery_reason=not_proven"),
+    ].join(" / "),
+    operator_next_steps: routeTaskTerminalCompletionSummaryText(
+      provided.operator_next_steps || provided.next_steps || provided.operator_actions,
+      "等待 operator next steps 摘要；保持只读任务终态复账。",
+    ),
+    safe_phone_copy: safeRouteTaskTerminalCompletionText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "route_task_terminal_completion_rehearsal 摘要缺失；手机端只显示 blocked/not_proven，不读取 raw JSON 或完整 artifact。",
+    ),
+    recovery_hint: safeRouteTaskTerminalCompletionText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由 diagnostics 提供 route_task_terminal_completion_rehearsal_summary 后，再按同一 evidence_ref 复核终态材料。",
+    ),
+    evidence_boundary: safeRouteTaskTerminalCompletionText(
+      provided.evidence_boundary,
+      ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: routeTaskTerminalCompletionNotProvenList(provided),
+  };
+}
+
+function routeTaskTerminalCompletionRehearsalCopyPayload(summary) {
+  // copy/export 只保留终态复账白名单字段，不复制 raw JSON、完整 artifact、路径或控制材料。
+  const source = summary?.schema
+    ? summary
+    : routeTaskTerminalCompletionRehearsalFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  return {
+    schema: "trashbot.route_task_terminal_completion_rehearsal_copy.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    route_task_terminal_completion_rehearsal_schema: source.schema,
+    summary_schema: source.summary_schema,
+    terminal_verdict: source.terminal_verdict,
+    safe_evidence_ref: source.safe_evidence_ref,
+    dropoff_material_status: source.dropoff_material_status,
+    cancel_material_status: source.cancel_material_status,
+    failure_recovery_reason: source.failure_recovery_reason,
+    operator_next_steps: source.operator_next_steps,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    safe_phone_copy: source.safe_phone_copy,
+    recovery_hint: source.recovery_hint,
+    evidence_boundary: ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_BOUNDARY,
+    not_proven: source.not_proven,
+  };
+}
+
 function elevatorRouteEvidenceReconciliationCandidate(status, readiness, diagnostics) {
   // 复账摘要可能由 Robot diagnostics 或 status/readiness 镜像提供；前端只消费 summary 形态。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -8205,6 +8381,81 @@ function renderRouteTaskCompletionSignal(status) {
   $("routeTaskCompletionSignalHint").textContent = summary.recovery_hint;
 }
 
+function ensureRouteTaskTerminalCompletionRehearsalPanel() {
+  // 终态复账 panel 运行时注入到 completion signal 附近，避免改静态 shell 并保持只读职责清晰。
+  let panel = $("routeTaskTerminalCompletionRehearsalPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("routeTaskCompletionSignalTitle")?.closest("section") ||
+    $("routeTaskFieldRunMaterialValidationHint")?.closest("section") ||
+    $("elevatorAssistPanel");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "routeTaskTerminalCompletionRehearsalPanel";
+  panel.className = "route-task-terminal-completion-panel";
+  panel.setAttribute("aria-labelledby", "routeTaskTerminalCompletionRehearsalTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="routeTaskTerminalCompletionRehearsalTitle">任务终态复账</h2>
+      <span id="routeTaskTerminalCompletionRehearsalBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="routeTaskTerminalCompletionRehearsalCopy" class="message">
+      route_task_terminal_completion_rehearsal 只读展示 terminal verdict、dropoff/cancel material status、failure/recovery reason、operator next steps 和 safe evidence_ref。
+    </p>
+    <dl class="route-task-terminal-completion-grid">
+      <div><dt>Terminal Verdict</dt><dd id="routeTaskTerminalCompletionRehearsalVerdict">blocked/not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="routeTaskTerminalCompletionRehearsalEvidenceRef">not_provided</dd></div>
+      <div><dt>Dropoff Material Status</dt><dd id="routeTaskTerminalCompletionRehearsalDropoff">dropoff_material_status=not_proven</dd></div>
+      <div><dt>Cancel Material Status</dt><dd id="routeTaskTerminalCompletionRehearsalCancel">cancel_material_status=not_proven</dd></div>
+      <div><dt>Failure / Recovery</dt><dd id="routeTaskTerminalCompletionRehearsalFailureRecovery">failure_reason=not_proven / recovery_reason=not_proven</dd></div>
+      <div><dt>Operator Next Steps</dt><dd id="routeTaskTerminalCompletionRehearsalNextSteps">等待 operator next steps 摘要。</dd></div>
+      <div><dt>Control Boundary</dt><dd id="routeTaskTerminalCompletionRehearsalControls">delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="routeTaskTerminalCompletionRehearsalBoundary">software_proof_docker_route_task_terminal_completion_rehearsal_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="routeTaskTerminalCompletionRehearsalNotProven">真实路线、真实投放、真实取消和 delivery success 未证明。</dd></div>
+    </dl>
+    <div class="bundle-copy-row">
+      <button id="copyRouteTaskTerminalCompletionRehearsalButton" type="button">复制 terminal rehearsal</button>
+      <button id="downloadRouteTaskTerminalCompletionRehearsalButton" type="button">导出 terminal rehearsal</button>
+      <span id="routeTaskTerminalCompletionRehearsalCopyStatus" class="hint">whitelist-only phone-safe metadata</span>
+    </div>
+    <pre id="routeTaskTerminalCompletionRehearsalSafeCopy" class="safe-copy" aria-label="route_task_terminal_completion_rehearsal safe_copy">whitelist-only phone-safe metadata</pre>
+    <p id="routeTaskTerminalCompletionRehearsalHint" class="hint">
+      任务终态复账只读展示并导出白名单 metadata；不暴露 raw JSON、ROS topic、串口、凭证、完整路径、checksum、完整 artifact 或成功送达文案，也不改变 Start、Confirm Dropoff 或 Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderRouteTaskTerminalCompletionRehearsal(status) {
+  const panel = ensureRouteTaskTerminalCompletionRehearsalPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = routeTaskTerminalCompletionRehearsalFromStatus(status, readiness, latestDiagnostics);
+  latestRouteTaskTerminalCompletionRehearsal = summary;
+  const badge = $("routeTaskTerminalCompletionRehearsalBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 terminal rehearsal" : "read-only terminal rehearsal";
+  $("routeTaskTerminalCompletionRehearsalCopy").textContent = summary.safe_phone_copy;
+  $("routeTaskTerminalCompletionRehearsalVerdict").textContent = summary.terminal_verdict;
+  $("routeTaskTerminalCompletionRehearsalEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("routeTaskTerminalCompletionRehearsalDropoff").textContent = summary.dropoff_material_status;
+  $("routeTaskTerminalCompletionRehearsalCancel").textContent = summary.cancel_material_status;
+  $("routeTaskTerminalCompletionRehearsalFailureRecovery").textContent = summary.failure_recovery_reason;
+  $("routeTaskTerminalCompletionRehearsalNextSteps").textContent = summary.operator_next_steps;
+  $("routeTaskTerminalCompletionRehearsalControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("routeTaskTerminalCompletionRehearsalBoundary").textContent = summary.evidence_boundary;
+  $("routeTaskTerminalCompletionRehearsalNotProven").textContent = summary.not_proven.join("、");
+  $("routeTaskTerminalCompletionRehearsalHint").textContent = summary.recovery_hint;
+}
+
 function ensureElevatorRouteEvidenceReconciliationPanel() {
   // 本 panel 由 JS 注入，避免改动静态 index；它只读展示 Robot diagnostics/status 的复账摘要。
   let panel = $("elevatorRouteEvidenceReconciliationPanel");
@@ -10600,6 +10851,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const routeTaskTerminalCompletion = routeTaskTerminalCompletionRehearsalFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const elevatorRouteReconciliation = elevatorRouteEvidenceReconciliationFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -10677,6 +10933,7 @@ function renderDiagnosticsSummary(payload) {
     ["Elevator field execution pack", elevatorFieldExecutionPack.execution_pack_verdict],
     ["Elevator assist default dry-run", elevatorAssist.overall_status],
     ["Route-task completion signal", routeTaskCompletion.completion_verdict],
+    ["route_task_terminal_completion_rehearsal", routeTaskTerminalCompletion.terminal_verdict],
     ["Elevator-route evidence reconciliation", elevatorRouteReconciliation.reconciliation_verdict],
     ["Route-elevator field session handoff", routeElevatorFieldHandoff.handoff_verdict],
     ["mobile_route_elevator_field_device_precheck", mobileRouteElevatorPrecheck.precheck_status],
@@ -10753,6 +11010,7 @@ function renderOfflineFailure() {
   renderElevatorAssist({});
   renderElevatorRouteEvidenceReconciliation({});
   renderRouteTaskCompletionSignal({});
+  renderRouteTaskTerminalCompletionRehearsal({});
   renderRouteElevatorFieldSessionHandoff({});
   renderMobileRouteElevatorFieldDevicePrecheck({});
   renderMobileFieldMaterialIntake({});
@@ -10806,6 +11064,7 @@ function renderStatus(status) {
   renderElevatorAssist(status);
   renderElevatorRouteEvidenceReconciliation(status);
   renderRouteTaskCompletionSignal(status);
+  renderRouteTaskTerminalCompletionRehearsal(status);
   renderRouteElevatorFieldSessionHandoff(status);
   renderMobileRouteElevatorFieldDevicePrecheck(status);
   renderMobileFieldMaterialIntake(status);
@@ -11035,6 +11294,7 @@ async function openDiagnostics() {
     renderElevatorFieldRunExecutionPack(latestStatus || {});
     renderElevatorAssist(latestStatus || {});
     renderRouteTaskCompletionSignal(latestStatus || {});
+    renderRouteTaskTerminalCompletionRehearsal(latestStatus || {});
     renderElevatorRouteEvidenceReconciliation(latestStatus || {});
     renderRouteElevatorFieldSessionHandoff(latestStatus || {});
     renderMobileRouteElevatorFieldDevicePrecheck(latestStatus || {});
@@ -11108,6 +11368,7 @@ function wireEvents() {
   $("diagnosticsButton").addEventListener("click", openDiagnostics);
   ensureHardwareSensorProcurementExecutionPackPanel();
   ensureHardwareSensorProcurementReceiptIntakePanel();
+  ensureRouteTaskTerminalCompletionRehearsalPanel();
   $("copyMobileRouteElevatorFieldDevicePrecheckButton").addEventListener("click", async () => {
     const payload = JSON.stringify(
       mobileRouteElevatorFieldDevicePrecheckCopyPayload(latestMobileRouteElevatorFieldDevicePrecheck || {}),
@@ -11353,6 +11614,33 @@ function wireEvents() {
     downloadJsonPackage("hardware_sensor_procurement_receipt_intake_copy.json", payload);
     $("hardwareSensorProcurementReceiptIntakeCopyStatus").textContent =
       "已导出 procurement receipt intake whitelist-only JSON。";
+  });
+  $("copyRouteTaskTerminalCompletionRehearsalButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(
+      routeTaskTerminalCompletionRehearsalCopyPayload(latestRouteTaskTerminalCompletionRehearsal || {}),
+      null,
+      2,
+    );
+    $("routeTaskTerminalCompletionRehearsalSafeCopy").textContent = payload;
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("routeTaskTerminalCompletionRehearsalCopyStatus").textContent =
+        "已复制 route_task_terminal_completion_rehearsal phone-safe metadata。";
+    } catch (_error) {
+      $("routeTaskTerminalCompletionRehearsalCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadRouteTaskTerminalCompletionRehearsalButton").addEventListener("click", () => {
+    const payload = JSON.stringify(
+      routeTaskTerminalCompletionRehearsalCopyPayload(latestRouteTaskTerminalCompletionRehearsal || {}),
+      null,
+      2,
+    );
+    $("routeTaskTerminalCompletionRehearsalSafeCopy").textContent = payload;
+    downloadJsonPackage("route_task_terminal_completion_rehearsal_copy.json", payload);
+    $("routeTaskTerminalCompletionRehearsalCopyStatus").textContent =
+      "已导出 terminal rehearsal whitelist-only JSON。";
   });
   $("copyRouteTaskReviewButton").addEventListener("click", async () => {
     // operator review 复制只使用后端提供的 safe_copy 白名单对象，缺失时不生成替代 bundle。

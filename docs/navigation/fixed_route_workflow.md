@@ -702,7 +702,34 @@ python3 pc-tools/evidence/route_task_completion_signal.py \
 
 该 gate 仍是 software proof。`completed_not_proven` 只表示 Docker/local 材料形状足够进入人工复核，不触发 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G；它不是真实 delivery、真实 dropoff/cancel completion、真实 fixed-route/Nav2、真实路线采集、HIL、真实手机设备或 Objective 5 external proof。
 
-### 5.10.1 elevator route evidence reconciliation
+### 5.10.1 route/task terminal completion rehearsal
+
+completion signal 之后，PC/operator 可以用 terminal completion rehearsal 把 route status、task record、既有 `route_task_completion_signal` 和可选 dropoff/cancel material summary 复账成 Robot/mobile 可读的终态摘要：
+
+```bash
+python3 pc-tools/evidence/route_task_terminal_completion_rehearsal.py \
+  --route-status-json /tmp/route_status.json \
+  --task-record-json /tmp/task_record.json \
+  --completion-signal-json /tmp/route_task_completion_signal.json \
+  --dropoff-material-json /tmp/dropoff_completion.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+取消/失败分支可把 `--dropoff-material-json` 换成 `--cancel-material-json`。输出 artifact 使用 `schema=trashbot.route_task_terminal_completion_rehearsal.v1`，summary 使用 `schema=trashbot.route_task_terminal_completion_rehearsal_summary.v1`，证据边界固定为 `software_proof_docker_route_task_terminal_completion_rehearsal_gate`。顶层固定包含 `same_evidence_ref_required=true`、`terminal_verdict`、`route_status_summary`、`task_record_summary`、`completion_signal_summary`、`dropoff`、`cancel`、`failure_reason`、`recovery_reason`、`materials_status`、`operator_next_steps`、`robot_diagnostics_summary`、`mobile_readonly_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+保守阻断规则：
+
+- route status、task record 或 completion signal 缺失、JSON 不可读或不是 JSON object：输出 blocked，不把异常当终态复账通过。
+- 任一输入 schema 或 completion signal evidence boundary 不支持：输出 blocked。
+- 任一已加载材料缺 `evidence_ref` 或与 `--evidence-ref` 不一致：输出 `blocked_mismatch_evidence_ref` 或缺材料 blocked。
+- phone/support/operator copy 命中凭证、raw path、raw ROS topic、serial/UART、baudrate、WAVE ROVER、HIL、traceback、checksum、complete artifact、raw robot response 或成功文案：输出 `blocked_unsafe_copy`。
+- 任一输入含 `delivery_success=true` 或 `primary_actions_enabled=true`：输出 `blocked_success_or_control_claim`，继续强制 `delivery_success=false` 与 `primary_actions_enabled=false`。
+- task record 状态机进入 dropoff/cancel 分支但缺对应 `dropoff` / `cancel` material：输出 `blocked_missing_route_task_terminal_completion_rehearsal`。
+
+该 gate 仍是 software proof。`ready_for_terminal_completion_rehearsal_not_proven` 只表示 Docker/local 终态复账材料形状足够进入 Robot diagnostics、mobile 只读面板或下一轮现场复核；它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G，也不证明真实 dropoff/cancel completion、delivery success、HIL、真实手机设备或 Objective 5 external proof。
+
+### 5.10.2 elevator route evidence reconciliation
 
 电梯 rehearsal evidence 进入 Robot dry-run 主链路后，route/task completion signal 还需要与它按同一 `evidence_ref` 复账，避免电梯阶段材料和路线完成信号来自不同 run：
 
@@ -726,7 +753,7 @@ python3 pc-tools/evidence/elevator_route_evidence_reconciliation.py \
 
 该 gate 仍是 software proof。`reconciled_not_proven` 只表示 Docker/local 电梯 rehearsal evidence 与 route completion signal 的材料形状、同一 `evidence_ref` 和安全摘要可进入人工复核；它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、硬件、外部云、OSS/CDN、DB/queue 或 4G，也不证明真实 fixed-route/Nav2、真实路线采集、HIL、dropoff/cancel completion、手机设备现场验收或 delivery success。
 
-### 5.10.2 mobile route/elevator field-device precheck
+### 5.10.3 mobile route/elevator field-device precheck
 
 真实设备和 route/elevator 现场开始前，使用 PC helper 把上一轮 route/elevator field-session handoff 转成 phone-safe precheck summary：
 

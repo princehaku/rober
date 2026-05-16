@@ -341,6 +341,28 @@ are not command/status/ACK robot contract fields and do not prove real
 fixed-route execution, real HIL, production readiness, dropoff completion,
 cancel completion, or delivery success.
 
+Task records now also include `route_task_terminal_completion_rehearsal`, and
+operator diagnostics may expose `route_task_terminal_completion_rehearsal` plus
+the alias `route_task_terminal_completion_rehearsal_summary` from an explicit
+`route_task_terminal_completion_rehearsal_ref`,
+`TRASHBOT_ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL`, or
+`TRASHBOT_ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_SUMMARY`. The source JSON
+must use `schema=trashbot.route_task_terminal_completion_rehearsal.v1` or
+`schema=trashbot.route_task_terminal_completion_rehearsal_summary.v1` with
+`evidence_boundary=software_proof_docker_route_task_terminal_completion_rehearsal_gate`.
+This contract is metadata-only support for route/task terminal completion
+rehearsal: it may expose only terminal verdict, final status/state,
+dropoff-result metadata, cancel/failure/recovery reason, safe evidence ref,
+route-progress presence, materials status, operator next steps,
+phone-safe summary, `not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. Missing sources default to
+`blocked_missing_route_task_terminal_completion_rehearsal`. Unsupported schema,
+unsafe fields, `delivery_success=true`, `primary_actions_enabled=true`, or
+same-`evidence_ref` mismatch remain blocked/not_proven. The fields do not
+trigger collect/dropoff/cancel, remote ACK, cursor advance/persistence,
+terminal ACK, Nav2, WAVE ROVER, HIL, production readiness, real dropoff
+completion, real cancel completion, or delivery success.
+
 Operator diagnostics may also expose `route_task_field_run_console` and the
 alias `route_task_field_run_console_summary` from an explicit
 `route_task_field_run_console_ref`, `TRASHBOT_ROUTE_TASK_FIELD_RUN_CONSOLE`, or

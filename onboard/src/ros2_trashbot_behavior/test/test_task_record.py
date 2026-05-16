@@ -120,6 +120,24 @@ class TaskRecordTest(unittest.TestCase):
         self.assertEqual(payload["route_progress"]["checkpoint"], "cp-1")
         self.assertEqual(payload["route_progress"]["current_index"], 1)
         self.assertEqual(payload["route_progress"]["evidence_ref"], "/tmp/routes/fixed_route.yaml")
+        rehearsal = payload["route_task_terminal_completion_rehearsal"]
+        self.assertEqual(
+            rehearsal["schema"],
+            "trashbot.route_task_terminal_completion_rehearsal_summary.v1",
+        )
+        self.assertEqual(
+            rehearsal["evidence_boundary"],
+            "software_proof_docker_route_task_terminal_completion_rehearsal_gate",
+        )
+        self.assertEqual(rehearsal["terminal_verdict"]["verdict"], "not_proven")
+        self.assertEqual(rehearsal["final_status"], "success")
+        self.assertEqual(rehearsal["final_state"], "idle")
+        self.assertEqual(rehearsal["dropoff_result"]["result_code"], "manual_confirmed")
+        self.assertEqual(rehearsal["safe_evidence_ref"], "/tmp/routes/fixed_route.yaml")
+        self.assertTrue(rehearsal["route_progress"]["present"])
+        self.assertFalse(rehearsal["delivery_success"])
+        self.assertFalse(rehearsal["primary_actions_enabled"])
+        self.assertIn("real_dropoff_completion", rehearsal["not_proven"])
         self.assertEqual(payload["state_transition_history"], payload["state_transitions"])
         self.assertGreaterEqual(len(payload["state_transitions"]), 4)
 

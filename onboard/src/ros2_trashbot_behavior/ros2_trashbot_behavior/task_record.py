@@ -20,6 +20,23 @@ ROUTE_PROGRESS_FIELDS = (
     "evidence_ref",
     "failure_code",
 )
+TERMINAL_COMPLETION_REHEARSAL_SUMMARY_SCHEMA = (
+    "trashbot.route_task_terminal_completion_rehearsal_summary.v1"
+)
+TERMINAL_COMPLETION_REHEARSAL_GATE = (
+    "software_proof_docker_route_task_terminal_completion_rehearsal_gate"
+)
+TERMINAL_COMPLETION_REHEARSAL_NOT_PROVEN = (
+    "real_nav2_fixed_route_run",
+    "real_route_collection",
+    "wave_rover_motion",
+    "real_serial_or_uart_feedback",
+    "real_hil_pass",
+    "real_dropoff_completion",
+    "real_cancel_completion",
+    "delivery_success",
+    "objective_5_external_proof",
+)
 
 
 def _normalize_task_record_source(value):
@@ -61,6 +78,93 @@ def _route_progress_evidence_ref(route_progress):
         return ""
     value = route_progress.get("evidence_ref")
     return str(value).strip() if value is not None else ""
+
+
+def _terminal_completion_rehearsal_summary(
+    *,
+    task_id,
+    final_status,
+    final_state,
+    error_code,
+    error_message,
+    failure_code,
+    human_intervention_required,
+    evidence_ref,
+    route_progress,
+    dropoff_result,
+):
+    # 终态复账摘要只服务 Docker/software proof 下的材料对齐。
+    # 即便 dry-run 成功，也不能从 task_record 推导真实投放、取消完成或 delivery success。
+    route_progress_present = isinstance(route_progress, dict) and bool(route_progress)
+    dropoff = dropoff_result if isinstance(dropoff_result, dict) else {}
+    dropoff_code = str(dropoff.get("result_code") or "").strip()
+    dropoff_success = bool(dropoff.get("success")) if "success" in dropoff else False
+    normalized_final_status = str(final_status or "").strip() or "unknown"
+    normalized_final_state = str(final_state or "").strip() or "unknown"
+    normalized_error_code = str(error_code or "").strip()
+    normalized_failure_code = str(failure_code or normalized_error_code or "").strip()
+    cancel_reason = ""
+    if normalized_final_status == "canceled" or normalized_failure_code == "TASK_CANCEL":
+        cancel_reason = str(error_message or "user canceled").strip()
+    failure_reason = ""
+    if normalized_final_status not in ("success", "canceled"):
+        failure_reason = str(error_message or normalized_failure_code or "task terminal state is not successful").strip()
+    recovery_reason = (
+        "manual_recovery_required"
+        if human_intervention_required
+        else "no_real_recovery_evidence_in_software_proof"
+    )
+    return {
+        "schema": TERMINAL_COMPLETION_REHEARSAL_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": TERMINAL_COMPLETION_REHEARSAL_GATE,
+        "source_schema": "trashbot.task_record.v1",
+        "task_id": str(task_id or ""),
+        "terminal_verdict": {
+            "status": (
+                "route_task_terminal_completion_rehearsal"
+                if normalized_final_status
+                else "blocked_missing_route_task_terminal_completion_rehearsal"
+            ),
+            "verdict": "not_proven",
+            "reason": "task record terminal state is metadata-only; delivery_success=false; primary_actions_enabled=false",
+        },
+        "final_status": normalized_final_status,
+        "final_state": normalized_final_state,
+        "error_code": normalized_error_code,
+        "failure_code": normalized_failure_code,
+        "dropoff_result": {
+            "status": "not_proven",
+            "result_code": dropoff_code,
+            "reported_success": dropoff_success,
+            "reason": str(dropoff.get("message") or "").strip(),
+        },
+        "cancel_reason": cancel_reason,
+        "failure_reason": failure_reason,
+        "recovery_reason": recovery_reason,
+        "safe_evidence_ref": str(evidence_ref or "").strip(),
+        "same_evidence_ref_required": True,
+        "route_progress": {
+            "present": route_progress_present,
+            "evidence_ref": _route_progress_evidence_ref(route_progress),
+        },
+        "materials_status": {
+            "status": "not_proven",
+            "reason": "terminal completion rehearsal needs real field materials before any completion claim",
+        },
+        "operator_next_steps": [
+            "Attach route status, task record, dropoff/cancel material, and completion signal with the same evidence_ref.",
+            "Keep Robot/mobile summaries read-only until real field evidence is reviewed.",
+        ],
+        "phone_safe_summary": {
+            "safe_copy": "Route/task terminal completion rehearsal is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+            "safe_phone_copy": "Route/task terminal completion rehearsal is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+        },
+        "not_proven": list(TERMINAL_COMPLETION_REHEARSAL_NOT_PROVEN),
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
 
 
 def write_task_record(
@@ -154,6 +258,22 @@ def write_task_record(
         "failure_code": failure_code,
         "human_intervention_required": bool(human_intervention_required),
         "route_progress": normalized_route_progress,
+        "route_task_terminal_completion_rehearsal": _terminal_completion_rehearsal_summary(
+            task_id=task_id,
+            final_status=final_status,
+            final_state=final_state if final_state is not None else machine.state.value,
+            error_code=(
+                error_code
+                if error_code is not None
+                else (machine.events[-1].event.value if machine.events else "")
+            ),
+            error_message=error_message,
+            failure_code=failure_code,
+            human_intervention_required=bool(human_intervention_required),
+            evidence_ref=payload_evidence_ref,
+            route_progress=normalized_route_progress,
+            dropoff_result=dropoff_result,
+        ),
         "duration": max(0.0, ended_at - started_at),
         "written_at": time.time(),
         "state_transitions": state_transitions,

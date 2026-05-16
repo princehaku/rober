@@ -85,6 +85,25 @@ python3 pc-tools/evidence/route_elevator_field_session_handoff.py \
 
 缺输入、坏 JSON、unsupported schema/boundary/source、`evidence_ref` mismatch、unsafe copy、`primary_actions_enabled=true`、`delivery_success=true` 或成功文案都会 fail closed。`robot_diagnostics_summary` 和 `mobile_readonly_summary` 只输出白名单摘要，不包含 raw artifact、本机完整路径、checksum、traceback、凭证、DB/queue URL、OSS AK/SK、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 参数。该 gate 是现场 session handoff，不是 delivery_success=false 之外的送达证明，也不是 Objective 5 external proof；`not_proven` 必须继续展示。
 
+## route/task terminal completion rehearsal
+
+`pc-tools/evidence/route_task_terminal_completion_rehearsal.py` 只读 route status、task record、既有 `route_task_completion_signal` artifact/summary，以及可选 dropoff/cancel material summary，生成终态复账 rehearsal：
+
+```bash
+python3 pc-tools/evidence/route_task_terminal_completion_rehearsal.py \
+  --route-status-json /tmp/route_status.json \
+  --task-record-json /tmp/task_record.json \
+  --completion-signal-json /tmp/route_task_completion_signal.json \
+  --dropoff-material-json /tmp/dropoff_completion.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_terminal_completion_rehearsal.json \
+  --summary-output /tmp/route_task_terminal_completion_rehearsal_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_terminal_completion_rehearsal.v1`，summary 使用 `schema=trashbot.route_task_terminal_completion_rehearsal_summary.v1`，证据边界固定为 `software_proof_docker_route_task_terminal_completion_rehearsal_gate`。核心字段包括 `terminal_verdict`、safe `evidence_ref`、`dropoff` / `cancel` material status、`failure_reason`、`recovery_reason`、`operator_next_steps`、`robot_diagnostics_summary`、`mobile_readonly_summary`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+该 gate 不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、真实手机、外部云、OSS/CDN、DB/queue 或 4G。缺 required source、坏 JSON、unsupported schema/boundary、same `evidence_ref` mismatch、unsafe copy、raw path/credential/ROS topic/serial/WAVE ROVER/HIL/success wording、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_terminal_completion_rehearsal_not_proven` 只表示 Docker/local 终态复账材料可读，不是真实 dropoff/cancel completion、delivery success、HIL 或 Objective 5 external proof。
+
 ## mobile route/elevator field-device precheck
 
 `pc-tools/evidence/mobile_route_elevator_field_device_precheck.py` 只读 route/elevator field-session handoff，生成或校验真实设备/现场前检查 summary：

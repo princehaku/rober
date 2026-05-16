@@ -672,6 +672,8 @@ class TaskOrchestrator(Node):
             or (dropoff_result or {}).get("result_code") in ("manual_confirm_timeout", "unsupported_dropoff_mode")
             or (elevator_assist or {}).get("requires_human_help")
         )
+        # write_task_record 会基于这些终态字段生成 terminal completion rehearsal 摘要。
+        # 这里仍固定传 software_proof 上下文，避免 dry-run/dropoff timeout/cancel 被误读成真实完成。
         return write_task_record(
             self.task_record_dir,
             task_id,

@@ -219,6 +219,16 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["evidence_ref"], "")
         self.assertEqual(payload["failure_code"], "")
         self.assertEqual(payload["human_intervention_required"], False)
+        rehearsal = payload["route_task_terminal_completion_rehearsal"]
+        self.assertEqual(
+            rehearsal["evidence_boundary"],
+            "software_proof_docker_route_task_terminal_completion_rehearsal_gate",
+        )
+        self.assertEqual(rehearsal["terminal_verdict"]["verdict"], "not_proven")
+        self.assertEqual(rehearsal["dropoff_result"]["result_code"], "dry_run")
+        self.assertFalse(rehearsal["delivery_success"])
+        self.assertFalse(rehearsal["primary_actions_enabled"])
+        self.assertIn("real_dropoff_completion", rehearsal["not_proven"])
 
     def test_execute_collection_elevator_assist_explicitly_disabled_records_warning_boundary(self):
         with tempfile.TemporaryDirectory() as td:
@@ -244,6 +254,10 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["elevator_assist"]["delivery_success"], False)
         self.assertEqual(payload["elevator_assist"]["primary_actions_enabled"], False)
         self.assertIn("elevator_assist_enabled=true", payload["elevator_assist"]["rerun_guidance"])
+        self.assertEqual(
+            payload["route_task_terminal_completion_rehearsal"]["terminal_verdict"]["verdict"],
+            "not_proven",
+        )
 
     def test_execute_collection_elevator_assist_dry_run_records_happy_path(self):
         with tempfile.TemporaryDirectory() as td:

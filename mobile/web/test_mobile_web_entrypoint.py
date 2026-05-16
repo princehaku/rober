@@ -181,5 +181,88 @@ class HardwareSensorProcurementReceiptIntakeMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, receipt_intake_text)
 
 
+class RouteTaskTerminalCompletionRehearsalMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_terminal_completion_rehearsal_panel_is_read_only_and_exportable(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 终态复账 panel 靠近 completion signal，但只展示终态复核摘要，不新增控制授权。
+        self.assertIn("routeTaskTerminalCompletionRehearsalTitle", app)
+        self.assertIn("任务终态复账", app)
+        self.assertIn("routeTaskCompletionSignalTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("route-task-terminal-completion-panel", styles)
+        self.assertIn("route-task-terminal-completion-grid", styles)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 nested diagnostics summary。
+        self.assertIn("ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_TERMINAL_COMPLETION_TEXT", app)
+        self.assertIn("safeRouteTaskTerminalCompletionText", app)
+        self.assertIn("routeTaskTerminalCompletionRehearsalCandidate", app)
+        self.assertIn("routeTaskTerminalCompletionRehearsalFromStatus", app)
+        self.assertIn("route_task_terminal_completion_rehearsal", app)
+        self.assertIn("route_task_terminal_completion_rehearsal_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_terminal_completion_rehearsal", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_terminal_completion_rehearsal", app)
+        self.assertIn("terminal_verdict", app)
+        self.assertIn("dropoff_material_status", app)
+        self.assertIn("cancel_material_status", app)
+        self.assertIn("failure_recovery_reason", app)
+        self.assertIn("operator_next_steps", app)
+        self.assertIn("safe_evidence_ref", app)
+
+        # copy/export 只输出白名单字段，不能新增 Start/Confirm/Cancel 请求或成功文案。
+        self.assertIn("routeTaskTerminalCompletionRehearsalCopyPayload", app)
+        self.assertIn("trashbot.route_task_terminal_completion_rehearsal_copy.v1", app)
+        self.assertIn("copyRouteTaskTerminalCompletionRehearsalButton", app)
+        self.assertIn("downloadRouteTaskTerminalCompletionRehearsalButton", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"routeTaskTerminalCompletionRehearsal.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须明确 software proof / not_proven 边界。
+        rehearsal = fixture["route_task_terminal_completion_rehearsal"]
+        self.assertEqual(rehearsal["terminal_verdict"], "blocked_missing_real_terminal_materials_not_proven")
+        self.assertEqual(rehearsal["delivery_success"], False)
+        self.assertEqual(rehearsal["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_route_task_terminal_completion_rehearsal_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("route_task_terminal_completion_rehearsal", doc)
+        self.assertIn("任务终态复账", doc)
+
+    def test_terminal_completion_rehearsal_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        rehearsal_text = json.dumps(
+            fixture["route_task_terminal_completion_rehearsal"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 终态复账 fixture 不能携带 raw JSON、底层控制、完整 artifact、校验值或成功状态。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, rehearsal_text)
+
+
 if __name__ == "__main__":
     unittest.main()
