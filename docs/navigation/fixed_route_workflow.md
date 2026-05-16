@@ -1029,6 +1029,24 @@ python3 pc-tools/evidence/hardware_baseline_review_gate.py --once-json
 
 The `hardware_baseline_review` output is `software_proof` only. It records the product baseline from `docs/product/production_hardware_boundary.md`: `2D LiDAR` is the SLAM/Nav2 primary mapping and localization input, monocular camera is elevator door / target-floor semantic evidence, and `ToF` is a near-field safety gate rather than a primary mapping input. The artifact keeps every sensor at `hardware_material_pending` and `not_proven`, with `delivery_success=false` and `primary_actions_enabled=false`; it does not prove LiDAR field pass, ToF field pass, real monocular semantic pass, real Nav2/fixed-route execution, HIL, or delivery success.
 
+When Hardware provides a procurement-specific intake summary, treat it as a narrower follow-up gate:
+
+```bash
+python3 pc-tools/evidence/hardware_sensor_procurement_intake.py \
+  --procurement-json /tmp/hardware_sensor_procurement_intake.json \
+  --summary-output /tmp/hardware_sensor_procurement_intake_summary.json
+```
+
+The PC gate / Robot / mobile handoff contract uses artifact `schema=trashbot.hardware_sensor_procurement_intake_gate.v1`, summary `schema=trashbot.hardware_sensor_procurement_intake_summary.v1`, and `boundary=software_proof_docker_hardware_sensor_procurement_intake_gate`. This summary is still `software_proof` / `not_proven`: it can tell Autonomy that procurement, installation, calibration, or owner handoff material is present or missing, but it cannot upgrade a route run into real SLAM/Nav2, fixed-route, elevator, HIL, or dropoff/cancel evidence. When the real procurement intake JSON is missing, the CLI must fail closed with `blocked_missing_hardware_sensor_procurement_intake`; that is the expected handoff state, not a broken field run. Robot diagnostics and mobile read-only surfaces may show the blocked summary as context, but must keep `not_proven`, `primary_actions_enabled=false`, and `delivery_success=false`.
+
+Use the summary with these ownership rules:
+
+- `2D LiDAR` remains the SLAM/Nav2 main-chain target only after procurement, physical install, calibration, and a later runtime evidence package are all available. Until then, fixed-route dry-run, route replay, and route/elevator handoff must keep relying on their existing status/task/evidence_ref contracts.
+- `ToF` remains a near-field safety gate target. It may inform future conservative enter/exit or stop checks, but it must not be wired into the primary SLAM map, localization source, or fixed-route completion decision.
+- `monocular` remains the elevator door / target-floor semantic evidence sensor. It may support `door_state.json`, `target_floor_confirmation.json`, and human-assistance notes in the elevator evidence chain, but it does not prove navigation completion by itself.
+
+The procurement summary can be attached to route/elevator handoff material as context, not as a replacement for `nav2_fixed_route_runtime_log.json`, route status, task record, completion signal, door state, target-floor confirmation, or diagnostics mobile-safe summary. If any sensor material is missing, placeholder, cross-run, or outside the safe copy whitelist, keep the owner handoff blocked/not_proven and rerun the Hardware intake before Autonomy treats it as planning input.
+
 ## 8. Delivery Action Modes
 
 The task orchestrator defaults to safe dry-run delivery:

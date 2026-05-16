@@ -258,6 +258,13 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("downloadHardwareBaselineReviewButton", index)
         self.assertIn("software_proof_docker_hardware_baseline_review_gate", app)
         self.assertIn("trashbot.hardware_baseline_review_copy.v1", app)
+        self.assertIn("hardware_sensor_procurement_intake", app)
+        self.assertIn("hardware_sensor_procurement_intake_summary", app)
+        self.assertIn("hardwareSensorProcurementIntakeTitle", index)
+        self.assertIn("copyHardwareSensorProcurementIntakeButton", index)
+        self.assertIn("downloadHardwareSensorProcurementIntakeButton", index)
+        self.assertIn("software_proof_docker_hardware_sensor_procurement_intake_gate", app)
+        self.assertIn("trashbot.hardware_sensor_procurement_intake_copy.v1", app)
         self.assertIn("mobile_browser_acceptance_bundle", app)
         self.assertIn("phone_browser_acceptance_bundle", app)
         self.assertIn("mobile_acceptance_evidence_bundle", app)
@@ -480,6 +487,94 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "primary_actions_enabled\": true",
         ):
             self.assertNotIn(forbidden, baseline_fixture_text)
+
+    def test_hardware_sensor_procurement_intake_panel_is_read_only_and_whitelist_exportable(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # procurement intake panel 只展示传感器材料缺口，不提供任何 Start/Confirm/Cancel 控制路径。
+        self.assertIn("hardwareSensorProcurementIntakeTitle", index)
+        self.assertIn("传感器采购摄取状态", index)
+        self.assertIn("hardwareSensorProcurementIntakeStatus", index)
+        self.assertIn("hardwareSensorProcurementIntakeSource", index)
+        self.assertIn("hardwareSensorProcurementIntakeProcurement", index)
+        self.assertIn("hardwareSensorProcurementIntakeMounting", index)
+        self.assertIn("hardwareSensorProcurementIntakeWiring", index)
+        self.assertIn("hardwareSensorProcurementIntakeCalibration", index)
+        self.assertIn("hardwareSensorProcurementIntakeHilEntry", index)
+        self.assertIn("hardwareSensorProcurementIntakeOwnerNextAction", index)
+        self.assertIn("hardwareSensorProcurementIntakeEvidenceRef", index)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", index)
+        self.assertIn("software_proof_docker_hardware_sensor_procurement_intake_gate", index)
+        self.assertIn("HARDWARE_SENSOR_PROCUREMENT_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_HARDWARE_SENSOR_PROCUREMENT_INTAKE_TEXT", app)
+        self.assertIn("safeHardwareSensorProcurementIntakeText", app)
+        self.assertIn("hardwareSensorProcurementIntakeCandidate", app)
+        self.assertIn("hardwareSensorProcurementIntakeFromStatus", app)
+        self.assertIn("hardwareSensorProcurementIntakeCopyPayload", app)
+        self.assertIn("hardware_sensor_procurement_intake", app)
+        self.assertIn("hardware_sensor_procurement_intake_summary", app)
+        self.assertIn("diagnosticsSummary.hardware_sensor_procurement_intake", app)
+        self.assertIn("statusDiagnosticsSummary.hardware_sensor_procurement_intake", app)
+        self.assertIn("procurement_status", app)
+        self.assertIn("source_status", app)
+        self.assertIn("mounting_status", app)
+        self.assertIn("wiring_status", app)
+        self.assertIn("calibration_status", app)
+        self.assertIn("hil_entry_status", app)
+        self.assertIn("owner_next_action", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("trashbot.hardware_sensor_procurement_intake_copy.v1", app)
+        self.assertIn("copyHardwareSensorProcurementIntakeButton", app)
+        self.assertIn("downloadHardwareSensorProcurementIntakeButton", app)
+
+        intake = fixture["hardware_sensor_procurement_intake"]
+        self.assertEqual(
+            intake["evidence_boundary"],
+            "software_proof_docker_hardware_sensor_procurement_intake_gate",
+        )
+        self.assertEqual(intake["procurement_status"], "hardware_material_pending")
+        self.assertEqual(intake["delivery_success"], False)
+        self.assertEqual(intake["primary_actions_enabled"], False)
+        self.assertIn("hardware_sensor_procurement_intake_summary", fixture_text)
+        self.assertIn("2D LiDAR", fixture_text)
+        self.assertIn("ToF", fixture_text)
+        self.assertIn("missing source", fixture_text)
+        self.assertIn("missing procurement", fixture_text)
+        self.assertIn("missing mounting", fixture_text)
+        self.assertIn("missing wiring", fixture_text)
+        self.assertIn("missing calibration", fixture_text)
+        self.assertIn("missing HIL entry", fixture_text)
+        self.assertIn("hardware_material_pending", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("software_proof_docker_hardware_sensor_procurement_intake_gate", fixture_text)
+        self.assertNotRegex(app, r"hardwareSensorProcurementIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"hardwareSensorProcurementIntake.*fetchJson\(ENDPOINTS\.diagnostics")
+
+        intake_fixture_text = json.dumps(intake, ensure_ascii=False).lower()
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "baudrate",
+            "authorization",
+            "token",
+            "raw artifact",
+            "raw vendor document",
+            "checksum",
+            "traceback",
+            "database url",
+            "queue url",
+            "oss ak",
+            "oss sk",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, intake_fixture_text)
 
     def test_cloud_hosted_pwa_installability_gate_uses_relay_and_browser(self):
         script = CLOUD_PWA_GATE.read_text(encoding="utf-8")

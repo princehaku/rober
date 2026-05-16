@@ -375,6 +375,75 @@
         </p>
       </section>
 
+      <section class="hardware-sensor-procurement-intake-panel" aria-labelledby="hardwareSensorProcurementIntakeTitle">
+        <div class="section-heading">
+          <h2 id="hardwareSensorProcurementIntakeTitle">传感器采购摄取状态</h2>
+          <span id="hardwareSensorProcurementIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="hardwareSensorProcurementIntakeCopy" class="message">
+          hardware_sensor_procurement_intake 只读展示 2D LiDAR / ToF 的采购摄取状态、缺口、owner 下一步和 safe evidence_ref。
+        </p>
+        <dl class="hardware-sensor-procurement-intake-grid">
+          <div>
+            <dt>Procurement / Intake Status</dt>
+            <dd id="hardwareSensorProcurementIntakeStatus">hardware_material_pending</dd>
+          </div>
+          <div>
+            <dt>Missing Source</dt>
+            <dd id="hardwareSensorProcurementIntakeSource">missing source=not_proven</dd>
+          </div>
+          <div>
+            <dt>Missing Procurement</dt>
+            <dd id="hardwareSensorProcurementIntakeProcurement">missing procurement=not_proven</dd>
+          </div>
+          <div>
+            <dt>Missing Mounting</dt>
+            <dd id="hardwareSensorProcurementIntakeMounting">missing mounting=not_proven</dd>
+          </div>
+          <div>
+            <dt>Missing Wiring</dt>
+            <dd id="hardwareSensorProcurementIntakeWiring">missing wiring=not_proven</dd>
+          </div>
+          <div>
+            <dt>Missing Calibration</dt>
+            <dd id="hardwareSensorProcurementIntakeCalibration">missing calibration=not_proven</dd>
+          </div>
+          <div>
+            <dt>Missing HIL Entry</dt>
+            <dd id="hardwareSensorProcurementIntakeHilEntry">missing HIL entry=not_proven</dd>
+          </div>
+          <div>
+            <dt>Owner Next Action</dt>
+            <dd id="hardwareSensorProcurementIntakeOwnerNextAction">owner next action=补齐 phone-safe 材料摘要。</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="hardwareSensorProcurementIntakeEvidenceRef">evidence_ref=not_proven</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="hardwareSensorProcurementIntakeControls">delivery_success=false / primary_actions_enabled=false</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="hardwareSensorProcurementIntakeBoundary">software_proof_docker_hardware_sensor_procurement_intake_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="hardwareSensorProcurementIntakeNotProven">真实 2D LiDAR / ToF source、采购、安装、接线、标定、HIL entry 和 delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <div class="bundle-copy-row">
+          <button id="copyHardwareSensorProcurementIntakeButton" type="button">复制 procurement intake</button>
+          <button id="downloadHardwareSensorProcurementIntakeButton" type="button">导出 procurement intake</button>
+          <span id="hardwareSensorProcurementIntakeCopyStatus" class="hint">whitelist-only phone-safe metadata</span>
+        </div>
+        <pre id="hardwareSensorProcurementIntakeSafeCopy" class="safe-copy" aria-label="hardware_sensor_procurement_intake safe_copy">whitelist-only phone-safe metadata</pre>
+        <p id="hardwareSensorProcurementIntakeHint" class="hint">
+          procurement intake panel 只读展示并导出白名单 metadata；不暴露底层调试字段、完整资料、凭证或成功文案，也不改变 Start、Confirm Dropoff 或 Cancel gating。
+        </p>
+      </section>
+
       <section class="recovery-decision-panel" aria-labelledby="recoveryDecisionTitle">
         <div class="section-heading">
           <h2 id="recoveryDecisionTitle">恢复决策</h2>

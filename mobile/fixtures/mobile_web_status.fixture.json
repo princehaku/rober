@@ -1834,6 +1834,65 @@
       "delivery success"
     ]
   },
+  "hardware_sensor_procurement_intake": {
+    "schema": "trashbot.hardware_sensor_procurement_intake_gate.v1",
+    "summary_schema": "trashbot.hardware_sensor_procurement_intake_summary.v1",
+    "schema_version": 1,
+    "procurement_status": "hardware_material_pending",
+    "missing_material_summary": {
+      "source": "missing source: 2D LiDAR / ToF source summary pending hardware owner.",
+      "procurement": "missing procurement: 2D LiDAR / ToF procurement record pending review.",
+      "mounting": "missing mounting: mounting plan summary pending review.",
+      "wiring": "missing wiring: wiring summary pending review.",
+      "calibration": "missing calibration: calibration plan summary pending review.",
+      "hil_entry": "missing HIL entry: HIL entry evidence pending review."
+    },
+    "owner_next_action": "Hardware owner 补齐 source、procurement、mounting、wiring、calibration、HIL entry 的 phone-safe 摘要。",
+    "safe_evidence_ref": "hardware_sensor_procurement_intake_fixture_20260516_0001",
+    "safe_phone_copy": "hardware_sensor_procurement_intake fixture 只展示 2D LiDAR / ToF 采购摄取缺口、owner next action 和 safe evidence_ref；这是 local static software_proof。",
+    "recovery_hint": "补齐 source/procurement/mounting/wiring/calibration/HIL entry 后再人工复核；手机端不放行 Start、Confirm 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_hardware_sensor_procurement_intake_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 2D LiDAR SKU/source/procurement",
+      "真实 ToF SKU/source/procurement",
+      "真实 mounting material",
+      "真实 wiring material",
+      "真实 calibration material",
+      "真实 HIL entry evidence",
+      "真实 Nav2/fixed-route",
+      "delivery success"
+    ]
+  },
+  "hardware_sensor_procurement_intake_summary": {
+    "schema": "trashbot.hardware_sensor_procurement_intake_summary.v1",
+    "source_schema": "trashbot.hardware_sensor_procurement_intake_gate.v1",
+    "schema_version": 1,
+    "procurement_status": "hardware_material_pending",
+    "source_status": "missing source: 2D LiDAR / ToF source summary pending hardware owner.",
+    "procurement_material_status": "missing procurement: procurement record pending review.",
+    "mounting_status": "missing mounting: mounting plan summary pending review.",
+    "wiring_status": "missing wiring: wiring summary pending review.",
+    "calibration_status": "missing calibration: calibration plan summary pending review.",
+    "hil_entry_status": "missing HIL entry: HIL entry evidence pending review.",
+    "owner_next_action": "Hardware owner 补齐 source、procurement、mounting、wiring、calibration、HIL entry 的 phone-safe 摘要。",
+    "safe_evidence_ref": "hardware_sensor_procurement_intake_fixture_20260516_0001",
+    "safe_phone_copy": "hardware sensor procurement intake 摘要只说明材料缺口，不证明真实采购、安装、接线、标定或 HIL。",
+    "recovery_hint": "补齐缺口材料后再复核；手机端不放行 Start、Confirm 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_hardware_sensor_procurement_intake_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 2D LiDAR SKU/source/procurement",
+      "真实 ToF SKU/source/procurement",
+      "真实 mounting material",
+      "真实 wiring material",
+      "真实 calibration material",
+      "真实 HIL entry evidence",
+      "delivery success"
+    ]
+  },
   "route_task_field_run_readiness": {
     "schema": "trashbot.route_task_field_run_readiness.v1",
     "schema_version": 1,

@@ -8,7 +8,17 @@
 
 ## 2026-05-16 系列
 
-更新时间：2026-05-16 11:22 Asia/Shanghai。
+更新时间：2026-05-16 12:24 Asia/Shanghai。
+
+### 2026-05-16 12-13｜hardware-sensor-procurement-intake｜O4 量产传感器材料入口闭环，手机体验与低成本量产边界由约 81% 上调到约 82%
+
+`sprints/2026.05.16_12-13_hardware-sensor-procurement-intake/` 完成 `software_proof_docker_hardware_sensor_procurement_intake_gate`：Hardware worker 新增 `pc-tools/evidence/hardware_sensor_procurement_intake_gate.py` 与 `pc-tools/evidence/test_hardware_sensor_procurement_intake_gate.py`，更新 `docs/product/production_hardware_boundary.md`。gate 将真实 2D LiDAR / ToF SKU、vendor/source document、采购状态、机械安装、接线、电源预算、标定和 HIL entry checklist 收敛为 fail-closed intake；缺真实 intake JSON 时返回 exit 2，并输出 `blocked_missing_hardware_sensor_procurement_intake`。Hardware worker 已读取 `docs/vendor/VENDOR_INDEX.md`、Waveshare `base_ctrl.py`、`config.yaml`、`json_cmd.h`，结论是当前 vendor index 不覆盖真实 2D LiDAR / ToF SKU、采购、接线、标定或 HIL。Task 验证输出 `test_hardware_sensor_procurement_intake_gate.py` `Ran 6 tests ... OK`、`py_compile` passed、CLI `--help` passed、required `rg` passed、scoped `git diff --check` passed。
+
+Autonomy worker 更新 `pc-tools/README.md` 与 `docs/navigation/fixed_route_workflow.md`，把 intake summary 与 SLAM/Nav2、fixed-route 和 elevator evidence chain 对齐；2D LiDAR 仍是采购/安装/标定后进入 SLAM/Nav2 主链的 target，ToF 仍是近场 safety target，不是主建图输入。集成 worker 修复 PC summary -> Robot diagnostics -> mobile handoff schema drift，最终 artifact schema 为 `trashbot.hardware_sensor_procurement_intake_gate.v1`，summary schema 为 `trashbot.hardware_sensor_procurement_intake_summary.v1`，boundary 为 `software_proof_docker_hardware_sensor_procurement_intake_gate`。
+
+Robot worker 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`、diagnostics tests 与 `docs/interfaces/ros_contracts.md`，新增 `hardware_sensor_procurement_intake` diagnostics metadata-only consumer。该 consumer 保持 no collect/dropoff/cancel、ACK、cursor、Nav2、HIL、completion、delivery result；diagnostics unittest 输出 `Ran 96 tests ... OK`。Full-stack worker 更新 mobile web、fixture、test 和 `docs/product/mobile_user_flow.md`，新增 phone-safe 只读 panel、copy/export whitelist，Start / Confirm Dropoff / Cancel 继续 fail closed；mobile unittest 输出 `Ran 53 tests ... OK`。集成后 combined tests 输出 `Ran 149 tests ... OK`；inline diagnostics 输出 `trashbot.hardware_sensor_procurement_intake_summary.v1`、status `blocked_missing_hardware_sensor_procurement_intake`、`delivery_success=False`、`primary_actions_enabled=False`。
+
+该证据只支持 Objective 4 从约 81% 保守上调到约 82%。理由是上一轮硬件基线评审之后，真实 2D LiDAR / ToF 量产材料缺口已从文档边界推进到 PC fail-closed gate、Robot diagnostics metadata-only consumer 和 mobile phone-safe read-only panel 的闭环；团队可以用同一 summary schema 管理 `hardware_material_pending`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。Objective 1 保持约 73%，因为本轮没有真实 WAVE ROVER、UART、Orange Pi、真实串口、`T=1001` feedback 或 HIL。Objective 2 和 Objective 3 保持约 78%，因为本轮没有真实 route/elevator field pass、真实 Nav2/fixed-route runtime log、task record、dropoff/cancel completion 或 delivery success。Objective 5 保持约 66%，因为本机只有 Docker，且本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；not real Objective 5 external proof。本轮不证明真实 2D LiDAR、真实 ToF、真实手机/PWA、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、delivery_success=false 之外的 delivery success、真实 WAVE ROVER、真实串口/UART、HIL 或 Objective 5 external proof。
 
 ### 2026-05-16 11-12｜hardware-baseline-review-gate｜O4 硬件基线评审闭环，手机体验与低成本量产边界由约 80% 上调到约 81%
 

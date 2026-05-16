@@ -215,6 +215,26 @@ python3 pc-tools/evidence/hardware_baseline_review_gate.py --once-json
 
 该 gate 明确责任边界：`2D LiDAR` 是 SLAM/Nav2 主链 product baseline / pending material；`monocular` 只承接电梯门/目标楼层语义证据；`ToF` 是 near-field safety gate，不是主建图输入。缺 production boundary、缺任一责任短语、`delivery_success=true`、`primary_actions_enabled=true`、`LiDAR field pass`、`ToF field pass` 或 HIL 成功断言都会 fail closed。该结果只证明 PC/local/Docker 能把产品硬件基线转成 autonomy responsibility summary，不证明真实 LiDAR/ToF field pass、真实 monocular 语义通过、真实 SLAM/Nav2 field run、HIL 或 delivery_success。
 
+## hardware_sensor_procurement_intake
+
+`pc-tools/evidence/hardware_sensor_procurement_intake_gate.py` 是硬件采购/安装/标定材料进入 Autonomy 主链前的只读 intake gate。它接收 Hardware worker 维护的 sensor procurement artifact，并生成 Autonomy、Robot diagnostics 和 sprint 复核可消费的 summary：
+
+```bash
+python3 pc-tools/evidence/hardware_sensor_procurement_intake_gate.py \
+  --intake-json /tmp/hardware_sensor_procurement_intake.json \
+  --summary-output /tmp/hardware_sensor_procurement_intake_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.hardware_sensor_procurement_intake_gate.v1`，summary 使用 `schema=trashbot.hardware_sensor_procurement_intake_summary.v1`，证据边界固定为 `software_proof_docker_hardware_sensor_procurement_intake_gate`。summary 只说明采购/安装/标定材料是否足够进入下一轮 Autonomy 计划复核，必须继续显示 `software_proof`、`not_proven`、`primary_actions_enabled=false` 和 safe `evidence_ref`。
+
+Autonomy 责任边界如下：
+
+- `2D LiDAR`: 只在完成采购、安装、标定和后续现场复核后，才是 SLAM/Nav2 主建图与定位链路的 target；intake summary 本身不把 LiDAR 加入当前 fixed-route 或 SLAM/Nav2 运行证据。
+- `ToF`: 只作为近场 safety gate target，用于保守进入/退出、避障或停车前检查；它不是主 SLAM 输入，也不能替代 2D LiDAR 的地图/定位责任。
+- `monocular`: 保留 elevator door / target-floor semantic evidence role，用于门状态、目标楼层和人工协助材料链；它不承担主定位、主建图或 fixed-route 完成判定。
+
+该 gate 不访问 ROS graph、Nav2 runtime、SLAM map、serial/UART、WAVE ROVER、真实电梯、真实手机、外部云、OSS/CDN、DB/queue 或 4G。缺 procurement artifact、坏 JSON、unsupported schema/boundary、unsafe copy、控制放行字段或成功断言时，都必须保持 blocked/not_proven，并把下一步留给 Hardware procurement、Autonomy 标定计划或 Product closeout 复核。
+
 ## route/task rehearsal artifact
 
 `pc-tools/evidence/evidence_crosscheck.py` 可在原有只读复账基础上额外写出 route/task rehearsal artifact：

@@ -56,6 +56,28 @@ vendor-proven installed hardware and not O5 external proof.
 
 Evidence state: `hardware_material_pending`, `not_proven`.
 
+## Hardware Sensor Procurement Intake Gate
+
+`hardware_sensor_procurement_intake` is the fail-closed PC gate for future 2D
+LiDAR and ToF material intake. It converts the exact SKU, vendor/source
+document, procurement status, mounting plan, wiring plan, power budget,
+calibration plan, ToF channel count/source, and HIL entry material into a
+machine-readable artifact and sanitized summary.
+
+The gate starts from `docs/vendor/VENDOR_INDEX.md` only to record the current
+source boundary: the local vendor index covers Orange Pi Zero 3, WAVE ROVER,
+UART/JSON control, firmware/vendor app references, and camera-related vendor
+material. It does **not** prove that a project 2D LiDAR or ToF SKU/source has
+been selected, purchased, installed, wired, calibrated, accepted into Nav2, or
+passed HIL.
+
+Until real materials are provided and reviewed, the gate summary must remain
+`hardware_material_pending`, `not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. ToF channel count is still a product target
+unless the intake links a concrete source document; when no source exists it
+must be explicitly marked as product target pending validation rather than
+vendor-proven hardware.
+
 ## Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)
 
 - Target baseline combo: monocular camera + one 2D LiDAR + ToF safety ring.
