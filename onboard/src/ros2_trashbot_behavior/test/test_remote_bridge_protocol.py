@@ -3330,6 +3330,49 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("Authorization", encoded_command)
         self.assertNotIn("/cmd_vel", encoded_command)
 
+    def test_validate_command_ignores_cloud_worker_migration_rehearsal_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-cloud-worker-migration-rehearsal-metadata",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 0},
+            "cloud_worker_migration_rehearsal": {
+                "schema": "trashbot.cloud_worker_migration_rehearsal.v1",
+                "evidence_boundary": (
+                    "software_proof_docker_cloud_worker_migration_rehearsal_gate"
+                ),
+                "migration_rehearsal_status": "ready",
+                "worker_rehearsal_status": "ready",
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+                "production_ready": True,
+                "primary_actions_enabled": True,
+                "Authorization": "Bearer must-not-leak",
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "cloud_worker_migration_rehearsal_summary": {
+                "schema": "trashbot.cloud_worker_migration_rehearsal_summary.v1",
+                "ack_semantics": "delivery_success",
+                "next_action": "confirm_dropoff",
+                "db_url": "postgres://robot:secret@example.invalid/db",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-cloud-worker-migration-rehearsal-metadata")
+        self.assertEqual(command["type"], "collect")
+        self.assertEqual(command["payload"], {"target": "trash_station", "trash_type": 0})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # cloud worker migration rehearsal 是 metadata-only 诊断摘要，normalization 只能保留 command envelope。
+        self.assertNotIn("cloud_worker_migration_rehearsal", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("production_ready", encoded_command)
+        self.assertNotIn("primary_actions_enabled", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("postgres://", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+
     def test_validate_command_keeps_command_id_order_as_supplied(self):
         command = validate_command({
             "id": "cmd-10",

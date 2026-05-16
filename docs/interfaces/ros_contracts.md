@@ -2658,6 +2658,33 @@ Nav2/fixed-route result, HIL result, or delivery success proof. The robot bridge
 must ignore those fields outside the `trashbot.remote.v1` command envelope, and
 protocol normalization must strip them from any command object before execution.
 
+Cloud worker migration rehearsal metadata, including
+`cloud_worker_migration_rehearsal` and
+`cloud_worker_migration_rehearsal_summary`, is a metadata-only diagnostics and
+preflight summary for
+`software_proof_docker_cloud_worker_migration_rehearsal_gate`. Robot diagnostics
+may expose only safe summary, schema, boundary, migration rehearsal status,
+worker rehearsal status, retry hint, `not_proven`, `production_ready=false`,
+`delivery_success=false`, and `primary_actions_enabled=false`. Missing
+artifacts, unsupported schema/boundary, unsafe copy, credential-bearing fields,
+success wording, `production_ready=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` must fail closed. These fields are not a
+`trashbot.remote.v1` command/status/ACK envelope, backend action result, ACK
+payload, terminal ACK, cursor instruction, ROS2 action result, Nav2 or
+fixed-route result, WAVE ROVER feedback, HIL result, real worker/migration
+evidence, or delivery success proof. Metadata-only responses must not invoke
+`collect`, `confirm_dropoff`, or `cancel`, must not POST ACK, must not advance
+in-memory `last_ack_id`, and must not persist `last_terminal_ack_id`. If these
+fields appear beside a valid `collect`, `confirm_dropoff`, or `cancel` command,
+the robot bridge must execute only the `trashbot.remote.v1` command envelope and
+must not copy `trigger_robot_action`, `next_action`, `cursor_override`,
+`terminal_ack`, `delivery_success`, `production_ready`,
+`primary_actions_enabled`, credentials, DB/queue URLs, raw ROS topics,
+`/cmd_vel`, serial devices, hardware parameters, or rehearsal internals into
+robot status, ACK, backend action result, normalized command payload, or cursor
+state. ACK remains accepted/processing evidence only and must not be interpreted
+as cloud worker migration success, production readiness, or delivery success.
+
 Allowed remote commands are `collect`, `confirm_dropoff`, and `cancel`. The bridge only calls behavior-layer ROS contracts and never exposes direct base velocity control.
 For `collect`, `acked` means the command was accepted/submitted locally; final delivery success or failure is reported through later status payloads.
 

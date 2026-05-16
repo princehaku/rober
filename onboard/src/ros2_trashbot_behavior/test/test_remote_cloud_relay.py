@@ -51,6 +51,9 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA,
     CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
     CLOUD_EXTERNAL_PROBE_SCHEMA,
+    CLOUD_WORKER_MIGRATION_REHEARSAL_EVIDENCE_BOUNDARY,
+    CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA,
+    CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA,
     CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY,
     CLOUD_PUBLIC_INGRESS_TLS_SCHEMA,
     CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY,
@@ -109,6 +112,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     build_cloud_external_probe_bundle_payload,
     build_cloud_public_ingress_tls_artifact_payload,
     build_external_evidence_intake_artifact_payload,
+    build_cloud_worker_migration_rehearsal_artifact_payload,
     cloud_deployment_readiness_artifact_summary,
     cloud_db_queue_config_artifact_summary,
     cloud_db_queue_external_probe_bundle_summary,
@@ -137,7 +141,9 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     create_cloud_external_probe_bundle_artifact,
     create_cloud_public_ingress_tls_artifact,
     create_external_evidence_intake_artifact,
+    create_cloud_worker_migration_rehearsal_artifact,
     external_evidence_intake_artifact_summary,
+    cloud_worker_migration_rehearsal_artifact_summary,
     network_recovery_artifact_summary,
     network_recovery_drill_payload,
     oss_cdn_live_probe_summary,
@@ -3458,6 +3464,183 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
                 "raw state path",
                 "/dev/ttyUSB0",
                 "baudrate",
+                "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_worker_migration_rehearsal_artifact_and_preflight_are_blocked_by_design(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            state_path = root / "worker_migration_rehearsal.sqlite"
+            artifact_path = root / "cloud_worker_migration_rehearsal.json"
+            env = {
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "preflight_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+
+            result = create_cloud_worker_migration_rehearsal_artifact(artifact_path, state_path)
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            summary = cloud_worker_migration_rehearsal_artifact_summary(artifact_path)
+            preflight_env = dict(env)
+            preflight_env["TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT"] = str(artifact_path)
+            payload = production_preflight_payload(preflight_env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps(
+                {"result": result, "artifact": artifact, "summary": summary, "preflight": payload},
+                ensure_ascii=False,
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(summary["ok"])
+            self.assertEqual(artifact["schema"], CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA)
+            self.assertEqual(artifact["schema_version"], 1)
+            self.assertEqual(artifact["summary_schema"], CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA)
+            self.assertEqual(artifact["evidence_boundary"], CLOUD_WORKER_MIGRATION_REHEARSAL_EVIDENCE_BOUNDARY)
+            self.assertFalse(artifact["production_ready"])
+            self.assertFalse(artifact["delivery_success"])
+            self.assertFalse(artifact["primary_actions_enabled"])
+            self.assertEqual(artifact["overall_status"], "blocked")
+            self.assertTrue(artifact["migration_rehearsal"]["sqlite_state_initialized"])
+            self.assertTrue(artifact["migration_rehearsal"]["schema_version_marked"])
+            self.assertEqual(artifact["migration_rehearsal"]["idempotent_replay_status"], "passed")
+            self.assertTrue(artifact["migration_rehearsal"]["bad_schema_fail_closed"])
+            self.assertTrue(artifact["migration_rehearsal"]["bad_checksum_fail_closed"])
+            self.assertTrue(artifact["migration_rehearsal"]["stale_artifact_fail_closed"])
+            self.assertEqual(artifact["worker_rehearsal"]["command_enqueue_status"], "passed")
+            self.assertEqual(artifact["worker_rehearsal"]["ack_acceptance_status"], "accepted")
+            self.assertEqual(artifact["worker_rehearsal"]["ack_processing_status"], "processing")
+            self.assertFalse(artifact["worker_rehearsal"]["terminal_ack_is_delivery_success"])
+            self.assertTrue(artifact["worker_rehearsal"]["cursor_semantics_preserved"])
+            self.assertFalse(payload["production_ready"])
+            self.assertTrue(payload["software_proof_ready"])
+            self.assertEqual(payload["overall_status"], "blocked")
+            self.assertEqual(payload["evidence_boundary"], CLOUD_WORKER_MIGRATION_REHEARSAL_EVIDENCE_BOUNDARY)
+            self.assertEqual(checks["cloud_worker_migration_rehearsal"]["status"], "pass")
+            self.assertFalse(checks["cloud_worker_migration_rehearsal"]["details"]["production_ready"])
+            self.assertFalse(checks["cloud_worker_migration_rehearsal"]["details"]["delivery_success"])
+            self.assertFalse(checks["cloud_worker_migration_rehearsal"]["details"]["primary_actions_enabled"])
+            self.assertEqual(
+                checks["cloud_worker_migration_rehearsal"]["details"]["redaction_status"]["status"],
+                "pass",
+            )
+            for marker in (
+                "software_proof_docker_cloud_worker_migration_rehearsal_gate",
+                "real_production_db_connectivity",
+                "production_migration_run",
+                "production_queue_worker_run",
+                "delivery_success",
+            ):
+                self.assertIn(marker, encoded)
+            for forbidden in (
+                str(artifact_path),
+                str(state_path),
+                str(root / "preflight_state.sqlite"),
+                "Authorization",
+                "Bearer",
+                "token",
+                "postgres://",
+                "mysql://",
+                "redis://",
+                "amqp://",
+                "database URL",
+                "queue URL",
+                "credential-bearing endpoint",
+                "root password",
+                "raw local path",
+                "/tmp/",
+                "/dev/ttyUSB0",
+                "UART",
+                "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_worker_migration_rehearsal_blocks_bad_schema_checksum_and_stale_without_leaks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            state_path = root / "worker_migration_rehearsal.sqlite"
+            base_env = {
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "preflight_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+            missing_payload = production_preflight_payload(base_env)
+            missing_checks = {check["name"]: check for check in missing_payload["checks"]}
+            self.assertEqual(missing_checks["cloud_worker_migration_rehearsal"]["status"], "warning")
+            self.assertEqual(
+                missing_checks["cloud_worker_migration_rehearsal"]["code"],
+                "cloud_worker_migration_rehearsal_artifact_missing",
+            )
+
+            bad_schema_path = root / "bad_schema_cloud_worker_migration_rehearsal.json"
+            bad_schema = build_cloud_worker_migration_rehearsal_artifact_payload(
+                state_path,
+                generated_at="2026-05-17T00:00:00Z",
+            )
+            bad_schema["schema"] = "trashbot.unsupported"
+            bad_schema_path.write_text(json.dumps(bad_schema, ensure_ascii=False), encoding="utf-8")
+            bad_schema_env = dict(base_env)
+            bad_schema_env["TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT"] = str(bad_schema_path)
+            bad_schema_payload = production_preflight_payload(bad_schema_env)
+            bad_schema_checks = {check["name"]: check for check in bad_schema_payload["checks"]}
+            self.assertFalse(cloud_worker_migration_rehearsal_artifact_summary(bad_schema_path)["ok"])
+            self.assertEqual(bad_schema_checks["cloud_worker_migration_rehearsal"]["status"], "blocked")
+
+            bad_checksum_path = root / "bad_checksum_cloud_worker_migration_rehearsal.json"
+            bad_checksum = build_cloud_worker_migration_rehearsal_artifact_payload(
+                root / "bad_checksum_state.sqlite",
+                generated_at="2026-05-17T00:00:00Z",
+            )
+            bad_checksum["checksum"] = "sha256:bad"
+            bad_checksum_path.write_text(json.dumps(bad_checksum, ensure_ascii=False), encoding="utf-8")
+            bad_checksum_env = dict(base_env)
+            bad_checksum_env["TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT"] = str(bad_checksum_path)
+            bad_checksum_payload = production_preflight_payload(bad_checksum_env)
+            bad_checksum_checks = {check["name"]: check for check in bad_checksum_payload["checks"]}
+            self.assertFalse(cloud_worker_migration_rehearsal_artifact_summary(bad_checksum_path)["ok"])
+            self.assertEqual(bad_checksum_checks["cloud_worker_migration_rehearsal"]["status"], "blocked")
+
+            stale_path = root / "stale_cloud_worker_migration_rehearsal.json"
+            stale = build_cloud_worker_migration_rehearsal_artifact_payload(
+                root / "stale_state.sqlite",
+                generated_at="2020-01-01T00:00:00Z",
+            )
+            body = {key: value for key, value in stale.items() if key != "checksum"}
+            stale["checksum"] = _sha256_checksum(body)
+            stale_path.write_text(json.dumps(stale, ensure_ascii=False), encoding="utf-8")
+            stale_env = dict(base_env)
+            stale_env["TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT"] = str(stale_path)
+            stale_payload = production_preflight_payload(stale_env)
+            stale_checks = {check["name"]: check for check in stale_payload["checks"]}
+            encoded = json.dumps(
+                {
+                    "bad_schema": bad_schema_payload,
+                    "bad_checksum": bad_checksum_payload,
+                    "stale": stale_payload,
+                },
+                ensure_ascii=False,
+            )
+
+            self.assertFalse(cloud_worker_migration_rehearsal_artifact_summary(stale_path)["ok"])
+            self.assertEqual(stale_checks["cloud_worker_migration_rehearsal"]["status"], "blocked")
+            for forbidden in (
+                str(bad_schema_path),
+                str(bad_checksum_path),
+                str(stale_path),
+                str(state_path),
+                str(root / "preflight_state.sqlite"),
+                "Authorization",
+                "Bearer",
+                "token",
+                "postgres://",
+                "redis://",
+                "queue URL",
+                "raw local path",
+                "/tmp/",
+                "/dev/ttyUSB0",
+                "UART",
                 "WAVE ROVER",
                 "ROS topic",
                 "/cmd_vel",

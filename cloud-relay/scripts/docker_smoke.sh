@@ -463,6 +463,93 @@ if payload.get("evidence_boundary") != "software_proof_docker_cloud_db_queue_con
     raise SystemExit("wrong evidence boundary")
 PY
 
+echo "== cloud worker migration rehearsal artifact =="
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  rm -f /tmp/trashbot_cloud_worker_migration_rehearsal.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+    --state-backend sqlite \
+    --state-path "${TRASHBOT_REMOTE_CLOUD_STATE}" \
+    --write-cloud-worker-migration-rehearsal-artifact /tmp/trashbot_cloud_worker_migration_rehearsal.json \
+    >/tmp/trashbot_cloud_worker_migration_rehearsal_result.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  cat /tmp/trashbot_cloud_worker_migration_rehearsal.json \
+    >/tmp/trashbot_cloud_worker_migration_rehearsal.json
+cat /tmp/trashbot_cloud_worker_migration_rehearsal.json
+echo
+python3 - /tmp/trashbot_cloud_worker_migration_rehearsal.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+encoded = json.dumps(payload, ensure_ascii=False)
+if payload.get("schema") != "trashbot.cloud_worker_migration_rehearsal.v1":
+    raise SystemExit("wrong cloud worker migration rehearsal schema")
+if payload.get("summary_schema") != "trashbot.cloud_worker_migration_rehearsal_summary.v1":
+    raise SystemExit("wrong cloud worker migration rehearsal summary schema")
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_worker_migration_rehearsal_gate":
+    raise SystemExit("wrong cloud worker migration rehearsal evidence boundary")
+if payload.get("production_ready") or payload.get("delivery_success") or payload.get("primary_actions_enabled"):
+    raise SystemExit("cloud worker migration rehearsal must remain blocked and action-disabled")
+if payload.get("migration_rehearsal", {}).get("idempotent_replay_status") != "passed":
+    raise SystemExit("migration rehearsal did not prove idempotent replay")
+if payload.get("worker_rehearsal", {}).get("ack_acceptance_status") != "accepted":
+    raise SystemExit("worker rehearsal did not record ACK accepted state")
+if payload.get("worker_rehearsal", {}).get("ack_processing_status") != "processing":
+    raise SystemExit("worker rehearsal did not record ACK processing state")
+if payload.get("worker_rehearsal", {}).get("terminal_ack_is_delivery_success"):
+    raise SystemExit("terminal ACK must not be delivery success")
+if not payload.get("worker_rehearsal", {}).get("cursor_semantics_preserved"):
+    raise SystemExit("cursor semantics were not preserved")
+for marker in (
+    "real_production_db_connectivity",
+    "production_migration_run",
+    "production_queue_worker_run",
+    "delivery_success",
+):
+    if marker not in encoded:
+        raise SystemExit(f"missing worker migration boundary marker: {marker}")
+for forbidden in ("Authorization", "Bearer", "postgres://", "redis://", "queue URL", "database URL", "root password", "/tmp/", "/dev/", "UART", "WAVE ROVER", "ROS topic", "/cmd_vel"):
+    if forbidden in encoded:
+        raise SystemExit(f"cloud worker migration rehearsal leaked forbidden marker: {forbidden}")
+PY
+
+echo "== production preflight CLI consumes cloud worker migration rehearsal without production ready =="
+set +e
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T \
+  -e TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT=/tmp/trashbot_cloud_worker_migration_rehearsal.json \
+  remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight \
+  >/tmp/remote_cloud_relay_preflight_worker_migration_rehearsal.json
+PREFLIGHT_WORKER_MIGRATION_STATUS="$?"
+set -e
+cat /tmp/remote_cloud_relay_preflight_worker_migration_rehearsal.json
+echo
+if [ "${PREFLIGHT_WORKER_MIGRATION_STATUS}" != "0" ]; then
+  echo "worker migration rehearsal preflight CLI unexpectedly returned ${PREFLIGHT_WORKER_MIGRATION_STATUS}" >&2
+  exit 1
+fi
+python3 - /tmp/remote_cloud_relay_preflight_worker_migration_rehearsal.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+checks = {check["name"]: check for check in payload.get("checks", [])}
+encoded = json.dumps(payload, ensure_ascii=False)
+if payload.get("production_ready") or payload.get("overall_status") != "blocked":
+    raise SystemExit("worker migration rehearsal preflight must remain blocked")
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_worker_migration_rehearsal_gate":
+    raise SystemExit("preflight did not report worker migration rehearsal boundary")
+if checks.get("cloud_worker_migration_rehearsal", {}).get("status") != "pass":
+    raise SystemExit("preflight did not recognize worker migration rehearsal artifact")
+details = checks["cloud_worker_migration_rehearsal"].get("details", {})
+if details.get("delivery_success") or details.get("primary_actions_enabled"):
+    raise SystemExit("worker migration rehearsal preflight must not enable delivery actions")
+for forbidden in ("Authorization", "Bearer", "postgres://", "redis://", "queue URL", "database URL", "root password", "/tmp/", "/dev/", "UART", "WAVE ROVER", "ROS topic", "/cmd_vel"):
+    if forbidden in encoded:
+        raise SystemExit(f"worker migration rehearsal preflight leaked forbidden marker: {forbidden}")
+PY
+
 echo "== post status =="
 NOW="$(python3 - <<'PY'
 import time

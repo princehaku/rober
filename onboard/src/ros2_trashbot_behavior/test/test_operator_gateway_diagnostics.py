@@ -60,6 +60,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_hardware_sensor_hil_entry_execution_pack,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
+    summarize_cloud_worker_migration_rehearsal,
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import (
@@ -10984,6 +10985,116 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn(str(artifact_path), encoded)
         self.assertNotIn("robot-diagnostics", encoded)
         self.assertNotIn("checksum", encoded)
+
+    def test_diagnostics_payload_includes_metadata_only_cloud_worker_migration_rehearsal_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_path = Path(td) / "cloud_worker_migration_rehearsal.json"
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.cloud_worker_migration_rehearsal.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_cloud_worker_migration_rehearsal_gate"
+                        ),
+                        "status": "ready",
+                        "migration_rehearsal": {"status": "schema_version_marked"},
+                        "worker_rehearsal": {"status": "ack_processing_not_delivery"},
+                        "retry_hint": "rerun_with_external_cloud_when_available",
+                        "not_proven": ["delivery_success"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                cloud_worker_migration_rehearsal_artifact_ref=str(artifact_path),
+            )
+            summary = payload["cloud_worker_migration_rehearsal"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary["schema"], "trashbot.cloud_worker_migration_rehearsal_summary.v1")
+        self.assertEqual(summary["status"], "ready")
+        self.assertEqual(summary["migration_rehearsal_status"], "schema_version_marked")
+        self.assertEqual(summary["worker_rehearsal_status"], "ack_processing_not_delivery")
+        self.assertFalse(summary["production_ready"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertIn("real_cloud_worker", summary["not_proven"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertNotIn(str(artifact_path), encoded)
+        self.assertNotIn("command_payload", encoded)
+        self.assertNotIn("ack_post_allowed", encoded)
+        self.assertNotIn("cursor_updates_allowed", encoded)
+
+    def test_cloud_worker_migration_rehearsal_summary_fails_closed_for_unsafe_sources(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_path = Path(td) / "unsafe_cloud_worker_migration_rehearsal.json"
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.cloud_worker_migration_rehearsal.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_cloud_worker_migration_rehearsal_gate"
+                        ),
+                        "status": "ready",
+                        "migration_rehearsal_status": "ready",
+                        "worker_rehearsal_status": "ready",
+                        "production_ready": True,
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                        "safe_summary": "delivery success",
+                        "Authorization": "Bearer must-not-leak",
+                        "credential_url": "https://user:secret@example.invalid/db",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            summary = summarize_cloud_worker_migration_rehearsal(str(artifact_path))
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary["status"], "unsafe_copy")
+        self.assertFalse(summary["production_ready"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertIn("regenerate_redacted_metadata_only_rehearsal_artifact", summary["retry_hint"])
+        self.assertNotIn("Bearer", encoded)
+        self.assertNotIn("credential_url", encoded)
+        self.assertNotIn("https://user:secret", encoded)
+
+    def test_cloud_worker_migration_rehearsal_summary_fails_closed_for_missing_or_unsupported(self):
+        with tempfile.TemporaryDirectory() as td:
+            missing_path = Path(td) / "missing_cloud_worker_migration_rehearsal.json"
+            unsupported_path = Path(td) / "unsupported_cloud_worker_migration_rehearsal.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.other_summary.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": "software_proof_docker_other_gate",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            missing = summarize_cloud_worker_migration_rehearsal(str(missing_path))
+            unsupported = summarize_cloud_worker_migration_rehearsal(str(unsupported_path))
+
+        self.assertEqual(missing["status"], "missing")
+        self.assertEqual(unsupported["status"], "unsupported_schema")
+        self.assertFalse(missing["production_ready"])
+        self.assertFalse(unsupported["delivery_success"])
+        self.assertFalse(unsupported["primary_actions_enabled"])
 
     def test_diagnostics_phone_support_bundle_is_phone_safe(self):
         class Gateway:

@@ -7855,6 +7855,119 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
                     self.assertNotIn("trigger_robot_action", encoded_status)
                     self.assertNotIn("delivery_success", encoded_status)
 
+    def test_metadata_only_cloud_worker_migration_rehearsal_response_does_not_start_ack_or_persist_cursor(self):
+        metadata_cases = (
+            "cloud_worker_migration_rehearsal",
+            "cloud_worker_migration_rehearsal_summary",
+        )
+        for metadata_name in metadata_cases:
+            with self.subTest(metadata_name=metadata_name):
+                self.cloud.status_posts.clear()
+                self.cloud.ack_posts.clear()
+                self.backend.calls.clear()
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+                    worker = RemoteBridgeWorker(
+                        self.client,
+                        self.backend,
+                        "robot-1",
+                        last_ack_id=f"cmd-before-{metadata_name}",
+                        cursor_state_path=state_path,
+                    )
+                    self.cloud.response_extras["command_response"] = {
+                        metadata_name: {
+                            "schema": f"trashbot.{metadata_name}.v1",
+                            "evidence_boundary": (
+                                "software_proof_docker_cloud_worker_migration_rehearsal_gate"
+                            ),
+                            "migration_rehearsal_status": "ready",
+                            "worker_rehearsal_status": "ready",
+                            "trigger_robot_action": "collect",
+                            "next_action": "confirm_dropoff",
+                            "cursor_override": "cmd-future",
+                            "delivery_success": True,
+                            "production_ready": True,
+                            "primary_actions_enabled": True,
+                            "terminal_ack": {"state": "acked"},
+                        },
+                        "preflight": {"overall_status": "blocked", "production_ready": False},
+                    }
+
+                    handled = worker.poll_once()
+
+                    # 只有 cloud worker migration rehearsal metadata 时，Robot 不生成动作、ACK 或游标持久化。
+                    self.assertFalse(handled)
+                    self.assertEqual(self.backend.calls, [])
+                    self.assertEqual(self.cloud.ack_posts, [])
+                    self.assertEqual(worker.last_ack_id, f"cmd-before-{metadata_name}")
+                    self.assertFalse(state_path.exists())
+                    encoded_status = json.dumps(self.cloud.status_posts, ensure_ascii=False)
+                    self.assertNotIn(metadata_name, encoded_status)
+                    self.assertNotIn("cursor_override", encoded_status)
+                    self.assertNotIn("delivery_success", encoded_status)
+                    self.assertNotIn("primary_actions_enabled", encoded_status)
+                    self.cloud.response_extras["command_response"] = {}
+
+    def test_cloud_worker_migration_rehearsal_metadata_is_ignored_by_valid_collect_envelope(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                last_ack_id="cmd-before-cloud-worker-migration",
+                cursor_state_path=state_path,
+            )
+            self.cloud.response_extras.update({
+                "status_response": {
+                    "cloud_worker_migration_rehearsal": {
+                        "production_ready": True,
+                        "delivery_success": True,
+                    },
+                },
+                "command_response": {
+                    "cloud_worker_migration_rehearsal_summary": {
+                        "schema": "trashbot.cloud_worker_migration_rehearsal_summary.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_cloud_worker_migration_rehearsal_gate"
+                        ),
+                        "cursor_override": "cmd-future",
+                        "delivery_success": True,
+                        "production_ready": True,
+                        "primary_actions_enabled": True,
+                    },
+                },
+                "ack_response": {
+                    "cloud_worker_migration_rehearsal": {
+                        "ack_semantics": "delivery_success",
+                        "delivery_success": True,
+                    },
+                },
+            })
+            self.cloud.commands.append({
+                "id": "cmd-cloud-worker-migration-collect",
+                "type": "collect",
+                "payload": {"target": "trash_station", "trash_type": 0},
+            })
+
+            self.assertTrue(worker.poll_once())
+
+            self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+            self.assertEqual(worker.last_ack_id, "cmd-cloud-worker-migration-collect")
+            cursor_payload = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(cursor_payload["last_terminal_ack_id"], "cmd-cloud-worker-migration-collect")
+            ack_payload = self.cloud.ack_posts[0]
+            self.assertEqual(ack_payload["protocol_version"], "trashbot.remote.v1")
+            self.assertEqual(ack_payload["command_id"], "cmd-cloud-worker-migration-collect")
+            self.assertEqual(ack_payload["state"], "acked")
+            # 有效 command 混入 rehearsal metadata 时，动作和 ACK 仍只跟随 trashbot.remote.v1 envelope。
+            encoded_ack = json.dumps(ack_payload, ensure_ascii=False)
+            self.assertNotIn("cloud_worker_migration_rehearsal", encoded_ack)
+            self.assertNotIn("cursor_override", encoded_ack)
+            self.assertNotIn("delivery_success", encoded_ack)
+            self.assertNotIn("production_ready", encoded_ack)
+            self.assertNotIn("primary_actions_enabled", encoded_ack)
+
     def test_ack_failure_does_not_persist_cursor_state(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = pathlib.Path(tmpdir) / "remote_cursor.json"

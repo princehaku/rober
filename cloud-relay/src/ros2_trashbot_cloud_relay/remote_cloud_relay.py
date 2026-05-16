@@ -3,6 +3,12 @@
 当前云中转协议实现仍由 onboard behavior 包维护；这里作为 thin wrapper 暴露
 `python -m ros2_trashbot_cloud_relay.remote_cloud_relay`，让 Docker、smoke 和
 产品文档都能指向 cloud-relay/ 自己的入口。
+
+本入口同时暴露 `cloud_worker_migration_rehearsal` CLI：
+`trashbot.cloud_worker_migration_rehearsal.v1` /
+`trashbot.cloud_worker_migration_rehearsal_summary.v1`，证据边界固定为
+`software_proof_docker_cloud_worker_migration_rehearsal_gate`，并保持
+`production_ready=false`、`delivery_success=false`、`primary_actions_enabled=false`。
 """
 
 # 复用原模块的全部公共符号，测试和后续工具仍可按需从这个入口导入 helper。

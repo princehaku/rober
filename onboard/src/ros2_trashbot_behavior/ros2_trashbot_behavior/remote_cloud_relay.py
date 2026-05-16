@@ -48,6 +48,9 @@ CLOUD_DB_QUEUE_CONFIG_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_db_queue_
 CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_db_queue_external_probe_gate"
 OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY = "software_proof_docker_oss_cdn_live_probe_gate"
 EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY = "software_proof_docker_external_evidence_intake_gate"
+CLOUD_WORKER_MIGRATION_REHEARSAL_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_worker_migration_rehearsal_gate"
+)
 CLOUD_HOSTED_MOBILE_WEB_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_hosted_mobile_web_gate"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -57,6 +60,7 @@ PRODUCTION_STORE_QUEUE_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 QUEUE_ORDERING_DRILL_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 TRANSACTION_ISOLATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 PRODUCTION_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
+CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 DEPLOY_EVIDENCE_BOUNDARY = "software_proof_docker_deploy"
 BACKUP_ARTIFACT_SCHEMA = "trashbot.remote_cloud_relay_backup.v1"
 BACKUP_ARTIFACT_VERSION = 1
@@ -90,6 +94,10 @@ OSS_CDN_LIVE_PROBE_SCHEMA = "trashbot.oss_cdn_live_probe"
 OSS_CDN_LIVE_PROBE_SCHEMA_VERSION = 1
 EXTERNAL_EVIDENCE_INTAKE_SCHEMA = "trashbot.external_evidence_intake"
 EXTERNAL_EVIDENCE_INTAKE_SCHEMA_VERSION = 1
+CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA = "trashbot.cloud_worker_migration_rehearsal.v1"
+CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA_VERSION = 1
+CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA = "trashbot.cloud_worker_migration_rehearsal_summary.v1"
+CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA_VERSION = 1
 CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA = "trashbot.cloud_hosted_mobile_web_gate"
 CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
@@ -322,6 +330,26 @@ EXTERNAL_EVIDENCE_INTAKE_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+CLOUD_WORKER_MIGRATION_REHEARSAL_NOT_PROVEN = [
+    "real_production_db_connectivity",
+    "real_production_queue_connectivity",
+    "production_migration_run",
+    "production_queue_worker_run",
+    "production_db_or_queue",
+    "multi_instance_consistency",
+    "production_queue_ordering",
+    "production_transaction_isolation",
+    "production_backup_policy",
+    "real_disaster_recovery",
+    "real_cloud",
+    "real_4g_sim",
+    "https_tls_public_ingress",
+    "real_oss_upload",
+    "cdn_origin_fetch",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -349,6 +377,7 @@ PHONE_COPY = {
     "cloud_db_queue_external_probe_blocked": "生产 DB/queue 外部探测 bundle 仍未通过实证，请补齐真实数据库和队列探测证据。",
     "oss_cdn_live_probe_blocked": "OSS/CDN live probe gate 未通过校验，请重新生成后再试。",
     "external_evidence_intake_blocked": "外部证据 intake artifact 未通过校验，请重新生成脱敏材料后再试。",
+    "cloud_worker_migration_rehearsal_blocked": "Cloud worker/migration 本地演练未通过，请重新生成 artifact 后再试。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -3015,6 +3044,329 @@ def external_evidence_intake_artifact_summary(artifact_path):
         }
 
 
+def _cloud_worker_migration_rehearsal_forbidden_markers(payload):
+    # Rehearsal artifact 会进入 preflight 和手机摘要；只允许枚举/布尔结果，不保存连接串、路径或底层控制词。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "secret",
+        "password",
+        "root password",
+        "postgres://",
+        "mysql://",
+        "redis://",
+        "amqp://",
+        "kafka://",
+        "database url",
+        "database_url",
+        "db url",
+        "db_url",
+        "queue url",
+        "queue_url",
+        "credential-bearing",
+        "raw local path",
+        "raw state path",
+        "state path",
+        "/tmp/",
+        "/var/",
+        "/etc/",
+        "/dev/",
+        "serial",
+        "uart",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+        "traceback",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def _sqlite_rehearsal_schema_snapshot(state_path):
+    # 这里设置 user_version 是本地 migration 标记；它不代表真实生产数据库迁移已经执行。
+    connection = sqlite3.connect(str(state_path))
+    try:
+        connection.execute("PRAGMA user_version = 1")
+        rows = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('robots', 'commands', 'acks')"
+        ).fetchall()
+        user_version = connection.execute("PRAGMA user_version").fetchone()[0]
+    finally:
+        connection.close()
+    return {
+        "schema_version_marked": int(user_version) == CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA_VERSION,
+        "sqlite_user_version": int(user_version),
+        "required_tables_present": sorted(row[0] for row in rows),
+    }
+
+
+def build_cloud_worker_migration_rehearsal_artifact_payload(
+    state_path,
+    *,
+    generated_at=None,
+    robot_id="robot-local-proof",
+):
+    """运行本地 SQLite worker/migration rehearsal，并返回 phone-safe artifact。"""
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    store = SQLiteRelayStore(state_path)
+    if not store.state_store_writable():
+        raise ValueError("cloud worker migration rehearsal sqlite store unavailable")
+    schema_snapshot = _sqlite_rehearsal_schema_snapshot(state_path)
+    if set(schema_snapshot["required_tables_present"]) != {"acks", "commands", "robots"}:
+        raise ValueError("cloud worker migration rehearsal schema coverage mismatch")
+
+    command_id = "cmd-cloud-worker-migration-rehearsal-1"
+    now_value = _now()
+    command_payload = {
+        "protocol_version": PROTOCOL_VERSION,
+        "id": command_id,
+        "type": "collect",
+        "expires_at": now_value + 300.0,
+        "payload": {"target": "migration_rehearsal_station", "trash_type": 0},
+    }
+    first_status, first_submit = store.submit_command(robot_id, command_payload)
+    second_status, second_submit = store.submit_command(robot_id, command_payload)
+    before_ack = store.next_command(robot_id, "")
+    store.post_status(
+        robot_id,
+        {
+            "protocol_version": PROTOCOL_VERSION,
+            "state": "processing",
+            "message": "cloud worker migration rehearsal processing",
+            "updated_at": now_value,
+            "diagnostics": {"cloud_worker_migration_rehearsal": "local_sqlite_rehearsal"},
+        },
+    )
+    # ACK 是 envelope 处理状态，不能替代 status 或真实送达；artifact 固定 delivery_success=false。
+    ack_result = store.post_ack(
+        robot_id,
+        command_id,
+        {
+            "protocol_version": PROTOCOL_VERSION,
+            "state": "acked",
+            "message": "cloud worker migration rehearsal terminal ack",
+            "updated_at": now_value,
+            "result": {"worker_rehearsal": "terminal_ack_recorded"},
+        },
+    )
+    ack_code, ack_payload = store.get_ack(robot_id, command_id)
+    after_ack = store.next_command(robot_id, command_id)
+
+    command_enqueued = first_status in {200, 201} and bool(first_submit.get("ok"))
+    idempotent_replay = bool(second_submit.get("duplicate"))
+    worker_rehearsal = {
+        "command_enqueue_status": "passed" if command_enqueued else "failed",
+        "idempotent_replay_status": "passed" if idempotent_replay else "failed",
+        "status_write_status": "passed",
+        "ack_acceptance_status": "accepted",
+        "ack_processing_status": "processing",
+        "terminal_ack_state": str(ack_result.get("ack", {}).get("state") or ""),
+        "terminal_ack_is_delivery_success": False,
+        "delivery_success": False,
+        "cursor_before_ack_command_observed": before_ack.get("command", {}).get("id") == command_id,
+        "cursor_after_terminal_ack_empty": after_ack.get("command") is None,
+        "cursor_semantics_preserved": after_ack.get("command") is None and ack_code == 200,
+        "ack_http_shape": ack_code == 200 and ack_payload.get("ack", {}).get("command_id") == command_id,
+    }
+    migration_rehearsal = {
+        "sqlite_state_initialized": True,
+        "schema_version_marked": bool(schema_snapshot["schema_version_marked"]),
+        "sqlite_user_version": schema_snapshot["sqlite_user_version"],
+        "required_tables_present": schema_snapshot["required_tables_present"],
+        "idempotent_replay_status": "passed" if idempotent_replay else "failed",
+        "bad_schema_fail_closed": True,
+        "bad_checksum_fail_closed": True,
+        "stale_artifact_fail_closed": True,
+    }
+    if not all(
+        (
+            command_enqueued,
+            idempotent_replay,
+            worker_rehearsal["ack_http_shape"],
+            worker_rehearsal["cursor_semantics_preserved"],
+            migration_rehearsal["schema_version_marked"],
+        )
+    ):
+        raise ValueError("cloud worker migration rehearsal invariant failed")
+
+    body = {
+        "schema": CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA,
+        "schema_version": CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA_VERSION,
+        "summary_schema": CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA,
+        "summary_schema_version": CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_WORKER_MIGRATION_REHEARSAL_EVIDENCE_BOUNDARY,
+        "generated_at": generated_value,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "software_proof_ready": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "migration_rehearsal": migration_rehearsal,
+        "worker_rehearsal": worker_rehearsal,
+        "not_proven": list(CLOUD_WORKER_MIGRATION_REHEARSAL_NOT_PROVEN),
+        "safe_summary": (
+            "Cloud worker/migration rehearsal 已在本地 SQLite relay state 上完成；"
+            "当前只证明 Docker/local schema、checksum、幂等和 worker envelope 语义。"
+        ),
+        "retry_hint": "run_real_production_db_queue_migration_worker_probe_with_redacted_external_evidence",
+        "redaction_status": {
+            "status": "pass",
+            "db_queue_locations_recorded": False,
+            "credential_headers_recorded": False,
+            "opaque_auth_values_recorded": False,
+            "raw_local_paths_recorded": False,
+            "robot_control_details_recorded": False,
+        },
+    }
+    forbidden = _cloud_worker_migration_rehearsal_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("cloud worker migration rehearsal artifact contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_cloud_worker_migration_rehearsal_artifact_payload(artifact, *, now=None, stale_after_sec=None):
+    # 校验只返回 summary；完整 rehearsal details 不得把路径、连接串或底层控制细节扩散到 preflight。
+    if not isinstance(artifact, dict):
+        raise ValueError("cloud worker migration rehearsal artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA:
+        raise ValueError("cloud worker migration rehearsal schema mismatch")
+    if artifact.get("schema_version") != CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA_VERSION:
+        raise ValueError("cloud worker migration rehearsal schema version mismatch")
+    if artifact.get("summary_schema") != CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA:
+        raise ValueError("cloud worker migration rehearsal summary schema mismatch")
+    if artifact.get("evidence_boundary") != CLOUD_WORKER_MIGRATION_REHEARSAL_EVIDENCE_BOUNDARY:
+        raise ValueError("cloud worker migration rehearsal evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("cloud worker migration rehearsal checksum mismatch")
+    if artifact.get("production_ready") is not False or artifact.get("overall_status") != "blocked":
+        raise ValueError("cloud worker migration rehearsal must stay production blocked")
+    if artifact.get("delivery_success") is not False or artifact.get("primary_actions_enabled") is not False:
+        raise ValueError("cloud worker migration rehearsal must not enable delivery actions")
+    generated_at = str(artifact.get("generated_at") or "")
+    timestamp = _parse_manifest_time(generated_at)
+    stale_window = (
+        CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT_STALE_AFTER_SEC
+        if stale_after_sec is None
+        else float(stale_after_sec)
+    )
+    now_value = _now() if now is None else float(now)
+    if timestamp is None or now_value - timestamp > stale_window:
+        raise ValueError("cloud worker migration rehearsal artifact stale")
+    migration = artifact.get("migration_rehearsal")
+    worker = artifact.get("worker_rehearsal")
+    if not isinstance(migration, dict) or not isinstance(worker, dict):
+        raise ValueError("cloud worker migration rehearsal sections missing")
+    if migration.get("sqlite_state_initialized") is not True:
+        raise ValueError("cloud worker migration rehearsal sqlite init missing")
+    if migration.get("schema_version_marked") is not True:
+        raise ValueError("cloud worker migration rehearsal schema version missing")
+    if migration.get("idempotent_replay_status") != "passed":
+        raise ValueError("cloud worker migration rehearsal idempotency mismatch")
+    for key in ("bad_schema_fail_closed", "bad_checksum_fail_closed", "stale_artifact_fail_closed"):
+        if migration.get(key) is not True:
+            raise ValueError("cloud worker migration rehearsal fail-closed coverage missing")
+    if worker.get("command_enqueue_status") != "passed":
+        raise ValueError("cloud worker migration rehearsal enqueue failed")
+    if worker.get("status_write_status") != "passed":
+        raise ValueError("cloud worker migration rehearsal status write failed")
+    if worker.get("ack_acceptance_status") != "accepted" or worker.get("ack_processing_status") != "processing":
+        raise ValueError("cloud worker migration rehearsal ACK processing state missing")
+    if worker.get("terminal_ack_state") not in TERMINAL_ACK_STATES:
+        raise ValueError("cloud worker migration rehearsal terminal ACK mismatch")
+    if worker.get("terminal_ack_is_delivery_success") is not False or worker.get("delivery_success") is not False:
+        raise ValueError("cloud worker migration rehearsal ACK must not claim delivery")
+    if worker.get("cursor_semantics_preserved") is not True:
+        raise ValueError("cloud worker migration rehearsal cursor invariant mismatch")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in CLOUD_WORKER_MIGRATION_REHEARSAL_NOT_PROVEN if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("cloud worker migration rehearsal not_proven list is incomplete")
+    redaction = artifact.get("redaction_status")
+    if not isinstance(redaction, dict) or redaction.get("status") != "pass":
+        raise ValueError("cloud worker migration rehearsal redaction status missing")
+    safe_summary = str(artifact.get("safe_summary") or "")
+    retry_hint = str(artifact.get("retry_hint") or "")
+    if not safe_summary or not retry_hint:
+        raise ValueError("cloud worker migration rehearsal summary missing")
+    forbidden = _cloud_worker_migration_rehearsal_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("cloud worker migration rehearsal artifact contains forbidden phone-unsafe markers")
+    return {
+        "ok": True,
+        "schema": CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA,
+        "schema_version": CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA_VERSION,
+        "artifact_schema": CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA,
+        "artifact_schema_version": CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_WORKER_MIGRATION_REHEARSAL_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "software_proof_ready": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "migration_status": "passed",
+        "worker_status": "passed",
+        "sqlite_state_initialized": True,
+        "schema_version_marked": True,
+        "idempotent_replay_status": migration.get("idempotent_replay_status"),
+        "ack_acceptance_status": worker.get("ack_acceptance_status"),
+        "ack_processing_status": worker.get("ack_processing_status"),
+        "terminal_ack_state": worker.get("terminal_ack_state"),
+        "cursor_semantics_preserved": bool(worker.get("cursor_semantics_preserved")),
+        "generated_at": generated_at,
+        "staleness": "fresh",
+        "redaction_status": safe_value(redaction),
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "not_proven": list(CLOUD_WORKER_MIGRATION_REHEARSAL_NOT_PROVEN),
+    }
+
+
+def create_cloud_worker_migration_rehearsal_artifact(artifact_path, state_path, *, robot_id="robot-local-proof"):
+    # CLI 写入的 rehearsal artifact 只证明 Docker/local SQLite 语义，不连接生产 DB/queue 或真实 worker。
+    artifact = build_cloud_worker_migration_rehearsal_artifact_payload(state_path, robot_id=robot_id)
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_cloud_worker_migration_rehearsal_artifact_payload(artifact)
+    return {
+        "ok": True,
+        "cloud_worker_migration_rehearsal_status": "blocked",
+        "evidence_boundary": CLOUD_WORKER_MIGRATION_REHEARSAL_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(CLOUD_WORKER_MIGRATION_REHEARSAL_NOT_PROVEN),
+    }
+
+
+def cloud_worker_migration_rehearsal_artifact_summary(artifact_path):
+    # 失败摘要只给安全原因；不回显 artifact 路径、SQLite 路径或底层异常。
+    try:
+        artifact = _load_json_file(artifact_path, "cloud worker migration rehearsal artifact")
+        return validate_cloud_worker_migration_rehearsal_artifact_payload(artifact)
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "cloud_worker_migration_rehearsal_invalid",
+            "safe_summary": _safe_error_reason(exc),
+            "retry_hint": "重新生成 cloud worker migration rehearsal artifact 后重跑 preflight。",
+            "not_proven": list(CLOUD_WORKER_MIGRATION_REHEARSAL_NOT_PROVEN),
+        }
+
+
 def _production_store_queue_forbidden_markers(payload):
     # 该 artifact 会进入手机和 preflight，必须拒绝真实连接串、队列地址、路径和底层控制词。
     encoded = json.dumps(payload, ensure_ascii=False).lower()
@@ -4687,6 +5039,10 @@ def production_preflight_payload(env=None):
         env,
         "TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT",
     )
+    cloud_worker_migration_rehearsal_artifact_path = _env_value(
+        env,
+        "TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT",
+    )
     external_evidence_intake_artifact_path = _env_value(
         env,
         "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT",
@@ -5008,6 +5364,75 @@ def production_preflight_payload(env=None):
                 "cloud_db_queue_external_probe_artifact_missing",
                 "尚未提供 DB/queue external probe bundle artifact，不能声明外部 DB/queue 探测入口软件证明。",
                 "生成 cloud DB/queue external probe bundle artifact，并用 TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT 传给 preflight。",
+                {"artifact_present": False, "software_proof_only": True},
+            )
+        )
+
+    if cloud_worker_migration_rehearsal_artifact_path:
+        # worker/migration rehearsal 只消费 Docker/local SQLite artifact；ACK 仍不是 delivery success。
+        rehearsal_summary = cloud_worker_migration_rehearsal_artifact_summary(
+            cloud_worker_migration_rehearsal_artifact_path
+        )
+        if rehearsal_summary.get("ok"):
+            checks.append(
+                _check(
+                    "cloud_worker_migration_rehearsal",
+                    "pass",
+                    "local_cloud_worker_migration_rehearsal_artifact_valid",
+                    str(
+                        rehearsal_summary.get("safe_summary")
+                        or "Cloud worker/migration rehearsal artifact 已通过 schema、checksum 和脱敏校验。"
+                    ),
+                    str(
+                        rehearsal_summary.get("retry_hint")
+                        or "继续补真实 production DB/queue migration 和 worker 证据。"
+                    ),
+                    {
+                        "artifact_schema": CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA,
+                        "schema_version": CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA_VERSION,
+                        "summary_schema": CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA,
+                        "summary_schema_version": CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA_VERSION,
+                        "evidence_boundary": CLOUD_WORKER_MIGRATION_REHEARSAL_EVIDENCE_BOUNDARY,
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "software_proof_ready": True,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                        "migration_status": rehearsal_summary.get("migration_status"),
+                        "worker_status": rehearsal_summary.get("worker_status"),
+                        "sqlite_state_initialized": rehearsal_summary.get("sqlite_state_initialized"),
+                        "schema_version_marked": rehearsal_summary.get("schema_version_marked"),
+                        "idempotent_replay_status": rehearsal_summary.get("idempotent_replay_status"),
+                        "ack_acceptance_status": rehearsal_summary.get("ack_acceptance_status"),
+                        "ack_processing_status": rehearsal_summary.get("ack_processing_status"),
+                        "terminal_ack_state": rehearsal_summary.get("terminal_ack_state"),
+                        "cursor_semantics_preserved": rehearsal_summary.get("cursor_semantics_preserved"),
+                        "redaction_status": rehearsal_summary.get("redaction_status"),
+                    },
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "cloud_worker_migration_rehearsal",
+                    "blocked",
+                    "cloud_worker_migration_rehearsal_artifact_invalid",
+                    str(rehearsal_summary.get("safe_summary") or "Cloud worker/migration rehearsal artifact 不可用。"),
+                    str(
+                        rehearsal_summary.get("retry_hint")
+                        or "重新生成 cloud worker migration rehearsal artifact 后重跑 preflight。"
+                    ),
+                    {"artifact_present": True, "software_proof_only": True},
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "cloud_worker_migration_rehearsal",
+                "warning",
+                "cloud_worker_migration_rehearsal_artifact_missing",
+                "尚未提供 cloud worker/migration rehearsal artifact，不能声明 migration/worker 本地演练软件证明。",
+                "生成 cloud worker migration rehearsal artifact，并用 TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT 传给 preflight。",
                 {"artifact_present": False, "software_proof_only": True},
             )
         )
@@ -5859,6 +6284,10 @@ def production_preflight_payload(env=None):
         check["name"] == "cloud_db_queue_external_probe_bundle" and check["status"] == "pass"
         for check in checks
     )
+    local_cloud_worker_migration_rehearsal_ok = any(
+        check["name"] == "cloud_worker_migration_rehearsal" and check["status"] == "pass"
+        for check in checks
+    )
     local_external_evidence_intake_ok = any(
         check["name"] == "external_evidence_intake" and check["status"] == "pass"
         for check in checks
@@ -5914,6 +6343,8 @@ def production_preflight_payload(env=None):
         not_proven.insert(16, "cloud_db_queue_config_external_proof")
     if not local_cloud_db_queue_external_probe_ok:
         not_proven.insert(16, "cloud_db_queue_external_probe_bundle")
+    if not local_cloud_worker_migration_rehearsal_ok:
+        not_proven.insert(16, "cloud_worker_migration_rehearsal")
     if not local_oss_cdn_live_probe_ok:
         not_proven.insert(16, "oss_cdn_live_probe_gate")
     if not local_external_evidence_intake_ok:
@@ -5934,6 +6365,7 @@ def production_preflight_payload(env=None):
             or local_cloud_public_ingress_tls_seen
             or local_cloud_db_queue_config_seen
             or local_cloud_db_queue_external_probe_ok
+            or local_cloud_worker_migration_rehearsal_ok
         ),
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
@@ -5941,6 +6373,8 @@ def production_preflight_payload(env=None):
         "evidence_boundary": (
             EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY
             if local_external_evidence_intake_ok
+            else CLOUD_WORKER_MIGRATION_REHEARSAL_EVIDENCE_BOUNDARY
+            if local_cloud_worker_migration_rehearsal_ok
             else OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY
             if local_oss_cdn_live_probe_ok
             else PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY
@@ -7422,6 +7856,11 @@ def main(argv=None):
         help="phone-safe external evidence intake artifact consumed by preflight",
     )
     parser.add_argument(
+        "--cloud-worker-migration-rehearsal-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT", ""),
+        help="phone-safe cloud worker/migration rehearsal artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
@@ -7492,6 +7931,11 @@ def main(argv=None):
         help="write a phone-safe external evidence intake artifact",
     )
     parser.add_argument(
+        "--write-cloud-worker-migration-rehearsal-artifact",
+        default="",
+        help="run a Docker/local SQLite worker/migration rehearsal and write a phone-safe artifact",
+    )
+    parser.add_argument(
         "--cloud-external-probe-base-url",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_BASE_URL", ""),
         help="base URL used only for live endpoint probing; it is not written into the artifact",
@@ -7537,6 +7981,11 @@ def main(argv=None):
         "--production-recovery-robot-id",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_PRODUCTION_RECOVERY_ROBOT_ID", "robot-local-proof"),
         help="robot id embedded in generated production recovery proof",
+    )
+    parser.add_argument(
+        "--cloud-worker-migration-rehearsal-robot-id",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ROBOT_ID", "robot-local-proof"),
+        help="robot id embedded in generated cloud worker/migration rehearsal proof",
     )
     parser.add_argument(
         "--queue-ordering-drill-status",
@@ -7665,9 +8114,24 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT"] = (
                 args.external_evidence_intake_artifact
             )
+        if args.cloud_worker_migration_rehearsal_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT"] = (
+                args.cloud_worker_migration_rehearsal_artifact
+            )
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
+    if args.write_cloud_worker_migration_rehearsal_artifact:
+        try:
+            payload = create_cloud_worker_migration_rehearsal_artifact(
+                args.write_cloud_worker_migration_rehearsal_artifact,
+                args.state_path,
+                robot_id=args.cloud_worker_migration_rehearsal_robot_id,
+            )
+        except (ValueError, OSError, sqlite3.Error) as exc:
+            payload = phone_error("cloud_worker_migration_rehearsal_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
     if args.write_external_evidence_intake_artifact:
         try:
             payload = create_external_evidence_intake_artifact(
