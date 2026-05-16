@@ -444,6 +444,107 @@ class HardwareSensorHilEntryReadinessReviewMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, review_text)
 
 
+class HardwareSensorHilEntryExecutionPackMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_hil_entry_execution_pack_panel_is_read_only_and_exportable(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 执行包 panel 接在 readiness review 后，只展示 HIL-entry 现场交接摘要。
+        self.assertIn("hardwareSensorHilEntryExecutionPackTitle", app)
+        self.assertIn("传感器 HIL 准入执行包", app)
+        self.assertIn("hardwareSensorHilEntryReadinessReviewTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("hardware-sensor-hil-entry-execution-pack-panel", styles)
+        self.assertIn("hardware-sensor-hil-entry-execution-pack-grid", styles)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 nested diagnostics summary。
+        self.assertIn("HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_BOUNDARY", app)
+        self.assertIn("UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_TEXT", app)
+        self.assertIn("safeHardwareSensorHilEntryExecutionPackText", app)
+        self.assertIn("hardwareSensorHilEntryExecutionPackCandidate", app)
+        self.assertIn("hardwareSensorHilEntryExecutionPackFromStatus", app)
+        self.assertIn("hardware_sensor_hil_entry_execution_pack", app)
+        self.assertIn("hardware_sensor_hil_entry_execution_pack_summary", app)
+        self.assertIn("diagnosticsSummary.hardware_sensor_hil_entry_execution_pack", app)
+        self.assertIn("statusDiagnosticsSummary.hardware_sensor_hil_entry_execution_pack", app)
+        self.assertIn("execution_status", app)
+        self.assertIn("readiness_status", app)
+        self.assertIn("required_materials", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("rerun_commands", app)
+        self.assertIn("boundary_summary", app)
+
+        # copy/export whitelist 不新增任何 Start Delivery / Confirm Dropoff / Cancel 请求或控制授权。
+        self.assertIn("hardwareSensorHilEntryExecutionPackCopyPayload", app)
+        self.assertIn("trashbot.hardware_sensor_hil_entry_execution_pack_copy.v1", app)
+        self.assertIn("copyHardwareSensorHilEntryExecutionPackButton", app)
+        self.assertIn("downloadHardwareSensorHilEntryExecutionPackButton", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("Start Delivery", app)
+        self.assertIn("Confirm Dropoff", app)
+        self.assertIn("Cancel", app)
+        self.assertNotRegex(app, r"hardwareSensorHilEntryExecutionPack.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须明确 software proof / not_proven 边界。
+        execution_pack = fixture["hardware_sensor_hil_entry_execution_pack"]
+        self.assertEqual(
+            execution_pack["execution_status"],
+            "hardware_sensor_hil_entry_execution_pack_not_proven",
+        )
+        self.assertEqual(execution_pack["delivery_success"], False)
+        self.assertEqual(execution_pack["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_hardware_sensor_hil_entry_execution_pack_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("hardware_sensor_hil_entry_execution_pack", doc)
+        self.assertIn("传感器 HIL 准入执行包", doc)
+
+    def test_hil_entry_execution_pack_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        execution_pack_text = json.dumps(
+            fixture["hardware_sensor_hil_entry_execution_pack"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 执行包 fixture 只能携带脱敏摘要，不能把原始材料、凭证、路径或完成声明带进手机端。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "serial/uart",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "complete artifacts",
+            "raw vendor document",
+            "raw material",
+            "absolute path",
+            "control grant",
+            "hil passed",
+            "field pass",
+            "采购完成",
+            "安装完成",
+            "接线完成",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, execution_pack_text)
+
+
 class RouteTaskTerminalCompletionRehearsalMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

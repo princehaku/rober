@@ -432,6 +432,20 @@ python3 pc-tools/evidence/hardware_sensor_hil_entry_readiness_review_gate.py \
 
 该 review gate 明确采用 `docs/vendor/VENDOR_INDEX.md` 及其本地 Orange Pi / WAVE ROVER / UART JSON / firmware/vendor app coverage 作为资料边界；这些资料不证明项目 2D LiDAR 或 ToF SKU/source、采购、安装、接线、供电、标定、HIL-entry、Nav2/SLAM field pass、near-field safety pass 或 delivery success。缺任一上游 summary、unsupported schema/boundary、上游未 ready、`evidence_ref` 不一致、weak boolean、unsafe copy、HIL/field/delivery success claim、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_hardware_sensor_hil_entry_readiness_review_not_proven` 只表示材料可进入人工评审，仍是 `software_proof` / `not_proven`。
 
+## hardware_sensor_hil_entry_execution_pack
+
+`pc-tools/evidence/hardware_sensor_hil_entry_execution_pack_gate.py` 是 HIL-entry readiness review 后的 dependency-free PC evidence gate。它只消费上一轮 `hardware_sensor_hil_entry_readiness_review` artifact、summary 或 wrapper 内嵌 summary 的白名单字段，把 readiness review 转成 HIL-entry execution pack 的材料模板、owner handoff、rerun commands、next required evidence 和 fail-closed phone-safe summary：
+
+```bash
+python3 pc-tools/evidence/hardware_sensor_hil_entry_execution_pack_gate.py \
+  --readiness-review-json /tmp/hardware_sensor_hil_entry_readiness_review_summary.json \
+  --summary-output /tmp/hardware_sensor_hil_entry_execution_pack_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.hardware_sensor_hil_entry_execution_pack.v1`，summary 使用 `schema=trashbot.hardware_sensor_hil_entry_execution_pack_summary.v1`，证据边界固定为 `software_proof_docker_hardware_sensor_hil_entry_execution_pack_gate`。execution pack 模板列出 2D LiDAR SKU/source/receipt、ToF SKU/source/receipt、mounting plan、wiring/power plan、calibration plan、HIL-entry operator checklist、safe `evidence_ref`、rerun commands、owner handoff 和 next required evidence。summary 必须继续输出 `software_proof`、`hardware_material_pending`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+该 execution pack 明确采用 `docs/vendor/VENDOR_INDEX.md`、`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、`docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`、`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h` 和 `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h` 作为 vendor/source boundary；这些资料只证明本地 WAVE ROVER / UART JSON / firmware/vendor app 参考存在，不证明真实 2D LiDAR 或 ToF SKU/source、采购、收货、安装、接线、供电、标定、HIL-entry、Nav2/SLAM field pass、near-field safety pass 或 delivery success。缺 readiness review、坏 JSON、unsupported schema/boundary、readiness 未 ready、missing unsafe `evidence_ref`、weak boolean、unsafe copy、raw credentials、完整本机路径、raw serial/UART path、raw JSON artifact copy、OSS/DB/queue/token、HIL passed/field pass/采购完成/接线完成等成功断言、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_hardware_sensor_hil_entry_execution_pack_not_proven` 只表示 PC gate 生成了待人工履约材料模板，仍是 `software_proof` / `hardware_material_pending` / `not_proven`。
+
 ## hardware_sensor_procurement_review_decision
 
 `pc-tools/evidence/hardware_sensor_procurement_review_decision_gate.py` 读取上一轮 `hardware_sensor_procurement_intake` artifact 或 summary，把 2D LiDAR / ToF 的缺 SKU、缺 source、缺采购、缺 mounting/wiring/power/calibration/HIL entry 转成采购评审决策、blocker、`next_required_evidence`、`owner_handoff` 和 `rerun_commands`：

@@ -280,6 +280,46 @@ plan, power budget, calibration result, HIL entry, Nav2/SLAM field pass,
 near-field safety pass, route/elevator pass, Objective 5 external proof, or
 delivery result.
 
+## Hardware Sensor HIL-entry Execution Pack Gate
+
+`hardware_sensor_hil_entry_execution_pack` is the fail-closed PC gate after
+`hardware_sensor_hil_entry_readiness_review`. It emits
+`schema=trashbot.hardware_sensor_hil_entry_execution_pack.v1` and
+`schema=trashbot.hardware_sensor_hil_entry_execution_pack_summary.v1` under
+`software_proof_docker_hardware_sensor_hil_entry_execution_pack_gate`.
+
+The gate consumes only a supported readiness review artifact, summary, or
+nested wrapper summary. It keeps the source status, safe `evidence_ref`,
+`owner_handoff`, and `next_required_evidence`, then emits material templates
+for 2D LiDAR SKU/source/receipt, ToF SKU/source/receipt, mounting plan,
+wiring/power plan, calibration plan, and a HIL-entry operator checklist.
+
+The gate must fail closed for missing or invalid readiness review JSON,
+unsupported schema or evidence boundary, readiness status not equal to
+`ready_for_hardware_sensor_hil_entry_readiness_review_not_proven`, missing or
+unsafe `evidence_ref`, weak boolean contracts, raw credentials, full local
+paths, raw serial/UART paths, raw JSON artifact copies, OSS/DB/queue/token
+material, HIL passed / field pass / procurement complete / wiring complete
+copy, `delivery_success=true`, or `primary_actions_enabled=true`.
+
+Every output must remain `software_proof`, `hardware_material_pending`,
+`not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. `ready_for_hardware_sensor_hil_entry_execution_pack_not_proven`
+means only that the PC gate prepared a HIL-entry material template package; it
+is not a procurement pass, receipt acceptance, installation pass, wiring pass,
+power validation, calibration pass, HIL-entry pass, Nav2/SLAM field pass,
+near-field safety pass, Objective 5 external proof, or delivery result.
+
+The explicit vendor/source boundary for this gate is
+`docs/vendor/VENDOR_INDEX.md`,
+`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`,
+`docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`,
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`, and
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`. These files are
+local source references for WAVE ROVER / UART JSON / firmware/vendor app
+behavior only; they do not prove real 2D LiDAR or ToF procurement,
+installation, wiring, power, calibration, HIL, field, or delivery evidence.
+
 ## Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)
 
 - Target baseline combo: monocular camera + one 2D LiDAR + ToF safety ring.
