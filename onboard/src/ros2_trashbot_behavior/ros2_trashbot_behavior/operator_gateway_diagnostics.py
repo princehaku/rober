@@ -115,6 +115,15 @@ ROUTE_TASK_FIELD_RUN_EXECUTION_PACK_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RUN_EXECUTION_PACK_GATE = (
     "software_proof_docker_route_task_field_run_execution_pack_gate"
 )
+ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_SCHEMA = (
+    "trashbot.route_task_field_retest_execution_pack.v1"
+)
+ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_retest_execution_pack_summary.v1"
+)
+ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_GATE = (
+    "software_proof_docker_route_task_field_retest_execution_pack_gate"
+)
 ROUTE_TASK_FIELD_RUN_RECONCILIATION_SCHEMA = "trashbot.route_task_field_run_reconciliation.v1"
 ROUTE_TASK_FIELD_RUN_RECONCILIATION_SUMMARY_SCHEMA = (
     "trashbot.route_task_field_run_reconciliation_summary.v1"
@@ -503,6 +512,39 @@ def _route_task_field_run_execution_pack_not_proven(pack=None, phone_summary=Non
         "real_serial_or_uart_feedback",
         "real_hil_pass",
         "production_readiness",
+        "dropoff_or_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_retest_execution_pack_not_proven(pack=None, summary_fragment=None):
+    # retest execution pack 是下一轮现场补测材料，不得把补测准备态误升为控制、ACK、Nav2/HIL 或送达证据。
+    pack = pack if isinstance(pack, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(pack.get("not_proven"), list):
+        source_values.extend(pack.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "production_readiness",
+        "real_phone_device_or_browser_proof",
         "dropoff_or_cancel_completion",
         "delivery_success",
         "objective_5_external_proof",
@@ -1632,6 +1674,56 @@ def _default_route_task_field_run_execution_pack_summary(path, status="not_confi
         "safe_copy": "Route-task field-run execution pack is metadata-only; not delivery success.",
         "safe_phone_copy": "Route-task field-run execution pack is metadata-only; not delivery success.",
         "metadata_only": True,
+    }
+
+
+def _default_route_task_field_retest_execution_pack_summary(
+    path,
+    execution_status="blocked_missing_route_task_field_retest_execution_pack",
+    read_error="",
+):
+    # retest execution pack 默认就是 fail-closed；缺 source 时也必须输出完整 false 栅栏，方便手机/diagnostics 只读展示。
+    return {
+        "schema": ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "execution_status": execution_status,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "required_field_materials_summary": {
+            "status": "blocked",
+            "reason": "route-task field retest execution pack is not configured",
+            "items": [],
+        },
+        "rerun_commands_summary": [],
+        "operator_handoff": {},
+        "field_retest_checklist": [],
+        "boundary": ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_GATE,
+        "not_proven": _route_task_field_retest_execution_pack_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": "Route-task field retest execution pack is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+        "safe_phone_copy": "Route-task field retest execution pack is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
     }
 
 
@@ -3135,6 +3227,42 @@ def _route_task_field_run_intake_has_unsafe_control_claims(value):
     return False
 
 
+def _route_task_field_retest_execution_pack_has_success_wording(value):
+    # 补测包允许解释 blocked/not_proven/false，但任何未防护的成功、ACK、Nav2/HIL 或完成措辞都要 fail closed。
+    if isinstance(value, dict):
+        return any(_route_task_field_retest_execution_pack_has_success_wording(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_route_task_field_retest_execution_pack_has_success_wording(item) for item in value)
+    if not isinstance(value, str):
+        return False
+    redacted = _redact_route_task_rehearsal_text(value)
+    guarded = redacted.lower()
+    for phrase in (
+        "not delivery success",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "not_proven",
+        "not proven",
+        "metadata-only",
+        "must not",
+        "not real",
+        "不证明",
+    ):
+        guarded = guarded.replace(phrase, "")
+    return (
+        "delivery success" in guarded
+        or "ack posted" in guarded
+        or "remote ack" in guarded
+        or "terminal ack" in guarded
+        or "cursor advanced" in guarded
+        or "nav2 started" in guarded
+        or "hil pass" in guarded
+        or "dropoff complete" in guarded
+        or "cancel complete" in guarded
+        or "primary actions enabled" in guarded
+    )
+
+
 def _route_task_completion_signal_has_unsafe_control_claims(value):
     # completion signal 允许暴露 dropoff/cancel 的只读状态摘要，但不能把布尔成功或控制动作带进 diagnostics。
     unsafe_true_keys = {
@@ -3554,6 +3682,16 @@ def _elevator_field_run_execution_pack_source_contract(value):
     return source_schema, source_boundary
 
 
+def _route_task_field_retest_execution_pack_source_contract(value):
+    # retest execution pack 支持直接 artifact 或 summary wrapper；wrapper 必须回指同一 source/boundary 才能被 diagnostics 消费。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or "")
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _elevator_route_evidence_reconciliation_source_contract(value):
     # 允许直接 artifact 或 summary wrapper；wrapper 必须保留原始 schema/boundary，防止把别的 gate 混入。
     source_schema = str(value.get("schema") or "")
@@ -3754,6 +3892,28 @@ def _route_elevator_field_session_handoff_requires_same_evidence_ref(summary_fra
         else True
     )
     return value is True
+
+
+def _route_task_field_retest_execution_pack_requires_same_evidence_ref(summary_fragment, pack):
+    # 同 evidence_ref 是补测执行包的主约束；只接受 JSON boolean true，字符串真值不能算通过。
+    value = (
+        summary_fragment.get("same_evidence_ref_required")
+        if isinstance(summary_fragment, dict) and "same_evidence_ref_required" in summary_fragment
+        else pack.get("same_evidence_ref_required", True)
+        if isinstance(pack, dict)
+        else True
+    )
+    return value is True
+
+
+def _route_task_field_retest_execution_pack_has_disabled_actions(pack):
+    # source 必须显式保留 fail-closed 布尔值；缺失或字符串 false 都不能被手机端当作控制授权。
+    if not isinstance(pack, dict):
+        return False
+    return (
+        pack.get("delivery_success") is False
+        and pack.get("primary_actions_enabled") is False
+    )
 
 
 def _route_elevator_field_session_handoff_has_disabled_actions(handoff):
@@ -5235,6 +5395,234 @@ def summarize_route_task_field_run_execution_pack(path):
         )
         return summary
 
+    return summary
+
+
+def summarize_route_task_field_retest_execution_pack(source):
+    """构建 route-task field retest execution pack 的 metadata-only diagnostics 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        pack = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_route_task_field_retest_execution_pack_summary(
+            source_path,
+            read_error="route-task field retest execution pack is not configured",
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "execution_status": "missing",
+                    "read_error": "route-task field retest execution pack not found",
+                    "required_field_materials_summary": {
+                        "status": "blocked",
+                        "reason": "route-task field retest execution pack artifact missing",
+                        "items": [],
+                    },
+                    "safe_copy": "Route-task field retest execution pack is missing; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field retest execution pack is missing; metadata remains blocked/not_proven.",
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                pack = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "execution_status": "read_error",
+                    "read_error": _redact_route_task_rehearsal_text(
+                        f"failed reading route-task field retest execution pack: {exc}"
+                    ),
+                    "required_field_materials_summary": {
+                        "status": "blocked",
+                        "reason": "route-task field retest execution pack JSON read error",
+                        "items": [],
+                    },
+                    "safe_copy": "Route-task field retest execution pack could not be read; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field retest execution pack could not be read; metadata remains blocked/not_proven.",
+                }
+            )
+            return summary
+    summary = _default_route_task_field_retest_execution_pack_summary(
+        source_path,
+        read_error="route-task field retest execution pack is not configured",
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(pack, dict):
+        summary.update(
+            {
+                "execution_status": "read_error",
+                "read_error": "route-task field retest execution pack JSON must be an object",
+                "required_field_materials_summary": {
+                    "status": "blocked",
+                    "reason": "route-task field retest execution pack shape is invalid",
+                    "items": [],
+                },
+                "safe_copy": "Route-task field retest execution pack shape is invalid; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field retest execution pack shape is invalid; metadata remains blocked/not_proven.",
+            }
+        )
+        return summary
+
+    diagnostics = pack.get("diagnostics") if isinstance(pack.get("diagnostics"), dict) else {}
+    # summary wrapper 本身就是已消毒摘要，必须优先读取它的 safe_evidence_ref 和白名单字段。
+    summary_fragment = pack if str(pack.get("schema") or "") == ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_SUMMARY_SCHEMA else {}
+    for candidate in (
+        pack.get("route_task_field_retest_execution_pack_summary"),
+        pack.get("route_task_field_retest_execution_pack"),
+        pack.get("phone_readiness"),
+        diagnostics.get("summary"),
+        diagnostics.get("diagnostics_summary"),
+        diagnostics.get("route_task_field_retest_execution_pack_summary"),
+        diagnostics.get("route_task_field_retest_execution_pack"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+
+    source_schema, source_boundary = _route_task_field_retest_execution_pack_source_contract(pack)
+    execution_status = _redact_route_task_rehearsal_text(
+        summary_fragment.get("execution_status")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or pack.get("execution_status")
+        or pack.get("status")
+        or pack.get("overall_status")
+        or "blocked"
+    )
+    field_materials_source = (
+        summary_fragment.get("required_field_materials_summary")
+        if "required_field_materials_summary" in summary_fragment
+        else summary_fragment.get("required_field_materials")
+        if "required_field_materials" in summary_fragment
+        else pack.get("required_field_materials_summary")
+        if "required_field_materials_summary" in pack
+        else pack.get("required_field_materials")
+    )
+    rerun_source = (
+        summary_fragment.get("rerun_commands_summary")
+        if "rerun_commands_summary" in summary_fragment
+        else summary_fragment.get("rerun_commands")
+        if "rerun_commands" in summary_fragment
+        else pack.get("rerun_commands_summary")
+        if "rerun_commands_summary" in pack
+        else pack.get("rerun_commands")
+    )
+    checklist_source = (
+        summary_fragment.get("field_retest_checklist")
+        if "field_retest_checklist" in summary_fragment
+        else pack.get("field_retest_checklist")
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or pack.get("safe_copy")
+        or pack.get("safe_phone_copy")
+        or "Route-task field retest execution pack is metadata-only; delivery_success=false; primary_actions_enabled=false."
+    )
+    source_ref = str(pack.get("evidence_ref") or "").strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref") or summary_fragment.get("evidence_ref") or ""
+    ).strip()
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(summary_ref or source_ref)
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": pack.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "execution_status": execution_status or "blocked",
+            "safe_evidence_ref": safe_evidence_ref,
+            "same_evidence_ref_required": _route_task_field_retest_execution_pack_requires_same_evidence_ref(
+                summary_fragment,
+                pack,
+            ),
+            "required_field_materials_summary": _safe_pc_route_debug_value(field_materials_source)
+            or {
+                "status": execution_status or "blocked",
+                "reason": "route-task field retest execution pack lacks required field materials summary",
+                "items": [],
+            },
+            "rerun_commands_summary": _safe_pc_route_debug_value(rerun_source),
+            "operator_handoff": _safe_pc_route_debug_value(
+                summary_fragment.get("operator_handoff", pack.get("operator_handoff", {}))
+            ),
+            "field_retest_checklist": _safe_pc_route_debug_value(checklist_source),
+            "boundary": ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_GATE,
+            "not_proven": _route_task_field_retest_execution_pack_not_proven(pack, summary_fragment),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "read_error": "",
+        }
+    )
+
+    if source_schema != ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_SCHEMA or source_boundary != ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_GATE:
+        summary.update(
+            {
+                "execution_status": "unsupported_schema",
+                "read_error": "route-task field retest execution pack schema or evidence boundary is unsupported",
+                "required_field_materials_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                    "items": [],
+                },
+                "safe_copy": "Route-task field retest execution pack is not a supported diagnostics source; no delivery result is proven.",
+                "safe_phone_copy": "Route-task field retest execution pack is not a supported diagnostics source; no delivery result is proven.",
+            }
+        )
+        return summary
+    if not safe_evidence_ref:
+        summary.update(
+            {
+                "execution_status": "missing_evidence_ref",
+                "read_error": "route-task field retest execution pack is missing evidence_ref",
+                "required_field_materials_summary": {
+                    "status": "blocked",
+                    "reason": "missing evidence_ref",
+                    "items": [],
+                },
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary.update(
+            {
+                "execution_status": "evidence_ref_mismatch",
+                "read_error": "route-task field retest execution pack summary evidence_ref does not match source evidence_ref",
+                "required_field_materials_summary": {
+                    "status": "blocked",
+                    "reason": "same evidence_ref mismatch",
+                    "items": [],
+                },
+            }
+        )
+        return summary
+    if (
+        not summary["same_evidence_ref_required"]
+        or not _route_task_field_retest_execution_pack_has_disabled_actions(pack)
+        or _route_task_field_run_readiness_has_unsafe_fields(summary_fragment)
+        or _route_task_field_run_readiness_has_unsafe_fields(pack)
+        or _route_task_field_run_intake_has_unsafe_control_claims(pack)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+        or _route_task_field_retest_execution_pack_has_success_wording(summary_fragment)
+        or _route_task_field_retest_execution_pack_has_success_wording(pack)
+    ):
+        summary.update(
+            {
+                "execution_status": "unsafe_fields",
+                "read_error": "route-task field retest execution pack contains unsafe fields, weak evidence_ref constraints, enabled actions, or success wording",
+                "required_field_materials_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe route-task field retest execution pack summary fields",
+                    "items": [],
+                },
+                "safe_copy": "Route-task field retest execution pack was blocked because summary fields could imply control, ACK, Nav2/HIL, or delivery success.",
+                "safe_phone_copy": "Route-task field retest execution pack was blocked because summary fields could imply control, ACK, Nav2/HIL, or delivery success.",
+            }
+        )
     return summary
 
 
@@ -12299,6 +12687,7 @@ def build_diagnostics_payload(
     route_task_field_run_intake_ref="",
     route_task_field_run_review_ref="",
     route_task_field_run_execution_pack_ref="",
+    route_task_field_retest_execution_pack_ref="",
     route_task_field_run_reconciliation_ref="",
     route_task_completion_signal_ref="",
     route_task_terminal_completion_rehearsal_ref="",
@@ -12447,6 +12836,23 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("route_task_terminal_review_decision_summary"), dict)
         else {}
     )
+    route_task_field_retest_execution_pack_source = (
+        latest_status.get("route_task_field_retest_execution_pack")
+        if isinstance(latest_status.get("route_task_field_retest_execution_pack"), dict)
+        else latest_status.get("route_task_field_retest_execution_pack_summary")
+        if isinstance(latest_status.get("route_task_field_retest_execution_pack_summary"), dict)
+        else latest_status.get("phone_readiness")
+        if isinstance(latest_status.get("phone_readiness"), dict)
+        else diagnostics_source.get("route_task_field_retest_execution_pack")
+        if isinstance(diagnostics_source.get("route_task_field_retest_execution_pack"), dict)
+        else diagnostics_source.get("route_task_field_retest_execution_pack_summary")
+        if isinstance(diagnostics_source.get("route_task_field_retest_execution_pack_summary"), dict)
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
+        else {}
+    )
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
     latest_status.pop("phone_support_bundle", None)
     latest_status.pop("voice_prompt_readiness", None)
@@ -12469,6 +12875,9 @@ def build_diagnostics_payload(
     latest_status.pop("route_task_terminal_review_decision", None)
     latest_status.pop("route_task_terminal_review_decision_summary", None)
     latest_status.pop("route_task_terminal_review_decision_copy", None)
+    latest_status.pop("route_task_field_retest_execution_pack", None)
+    latest_status.pop("route_task_field_retest_execution_pack_summary", None)
+    latest_status.pop("route_task_field_retest_execution_pack_copy", None)
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -12556,6 +12965,15 @@ def build_diagnostics_payload(
     route_task_field_run_execution_pack_summary = summarize_route_task_field_run_execution_pack(
         route_task_field_run_execution_pack_ref
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RUN_EXECUTION_PACK", "")
+    )
+    route_task_field_retest_execution_pack_source = (
+        route_task_field_retest_execution_pack_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK", "")
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_SUMMARY", "")
+        or route_task_field_retest_execution_pack_source
+    )
+    route_task_field_retest_execution_pack_summary = summarize_route_task_field_retest_execution_pack(
+        route_task_field_retest_execution_pack_source
     )
     route_task_field_run_reconciliation_summary = summarize_route_task_field_run_reconciliation(
         route_task_field_run_reconciliation_ref
@@ -12780,6 +13198,8 @@ def build_diagnostics_payload(
         route_task_field_run_review_summary=route_task_field_run_review_summary,
         route_task_field_run_execution_pack=route_task_field_run_execution_pack_summary,
         route_task_field_run_execution_pack_summary=route_task_field_run_execution_pack_summary,
+        route_task_field_retest_execution_pack=route_task_field_retest_execution_pack_summary,
+        route_task_field_retest_execution_pack_summary=route_task_field_retest_execution_pack_summary,
         route_task_field_run_reconciliation=route_task_field_run_reconciliation_summary,
         route_task_field_run_reconciliation_summary=route_task_field_run_reconciliation_summary,
         route_task_completion_signal=route_task_completion_signal_summary,

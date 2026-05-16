@@ -237,5 +237,45 @@
       "真实手机设备/browser",
       "Objective 5 external proof"
     ]
+  },
+  "route_task_field_retest_execution_pack": {
+    "schema": "trashbot.route_task_field_retest_execution_pack.v1",
+    "summary_schema": "trashbot.route_task_field_retest_execution_pack_summary.v1",
+    "schema_version": 1,
+    "source_review_decision_schema": "trashbot.route_task_terminal_review_decision_summary.v1",
+    "execution_status": "blocked_missing_real_field_retest_materials_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_execution_pack_fixture_20260516_0001",
+    "same_evidence_ref_required": true,
+    "required_field_materials_summary": [
+      "required_field_material=真实 Nav2/fixed-route runtime log phone-safe summary",
+      "required_field_material=route completion signal phone-safe summary",
+      "required_field_material=task record and operator field note phone-safe summary",
+      "required_field_material=diagnostics and mobile summary on same evidence_ref"
+    ],
+    "rerun_command_summary": [
+      "rerun_command_summary=run controlled field retest gate with redacted same evidence_ref materials",
+      "rerun_command_summary=rerun diagnostics/mobile summary publication after field materials are attached"
+    ],
+    "operator_handoff": "operator_handoff=Autonomy owner runs the controlled field retest; Robot owner republishes metadata-only diagnostics; Full-stack keeps the phone panel read-only.",
+    "field_retest_checklist": [
+      "field_retest_checklist=confirm same safe evidence_ref across route log, completion signal, task record and diagnostics summary",
+      "field_retest_checklist=attach operator field note and dropoff/cancel terminal material summary",
+      "field_retest_checklist=keep Start, Confirm Dropoff and Cancel gating unchanged"
+    ],
+    "safe_phone_copy": "现场复测执行包只读展示 execution status、same evidence_ref requirement、field materials、rerun command summary、operator handoff 和 checklist；这是 software proof only。",
+    "recovery_hint": "下一次真实现场复测前，请按同一 safe evidence_ref 补齐真实路线日志、completion signal、task record、operator note 和 diagnostics/mobile summary。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_execution_pack_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实 operator field note",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "WAVE ROVER/UART/HIL",
+      "Objective 5 external proof"
+    ]
   }
 }

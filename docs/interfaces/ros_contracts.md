@@ -293,6 +293,34 @@ not command/status/ACK robot contract fields and do not prove real fixed-route
 execution, real HIL, production readiness, dropoff/cancel completion, or
 delivery success.
 
+Operator diagnostics may also expose `route_task_field_retest_execution_pack`
+and the alias `route_task_field_retest_execution_pack_summary` from an
+explicit `route_task_field_retest_execution_pack_ref`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_SUMMARY`, top-level
+`phone_readiness`, top-level status fields, or an already sanitized nested
+`diagnostics.summary` / `diagnostics.diagnostics_summary` source. The source
+JSON must use `schema=trashbot.route_task_field_retest_execution_pack.v1` and
+`evidence_boundary=software_proof_docker_route_task_field_retest_execution_pack_gate`.
+If the source is already a summary wrapper, it must still point to
+`source_schema=trashbot.route_task_field_retest_execution_pack.v1` and the same
+evidence boundary. This summary is metadata-only support material for the next
+route-task field retest execution pack: it may expose only summary schema,
+execution status, safe `evidence_ref`, `same_evidence_ref_required`, required
+field materials summary, rerun commands summary, operator handoff, field retest
+checklist, boundary,
+`software_proof_docker_route_task_field_retest_execution_pack_gate`,
+`not_proven`, `delivery_success=false`, and `primary_actions_enabled=false`.
+Missing, unreadable, unsupported-schema, unsafe copy, missing `evidence_ref`,
+same-`evidence_ref` mismatch, success wording, `delivery_success=true`, or
+`primary_actions_enabled=true` sources remain blocked/not_proven. The fields do
+not trigger `/api/collect`, dropoff, cancel, remote ACK, cursor
+advance/persistence, terminal ACK, Nav2, WAVE ROVER, HIL, production readiness,
+dropoff/cancel completion, or delivery success. They are not command/status/ACK
+robot contract fields and do not prove real fixed-route execution, real HIL,
+real phone/browser proof, production readiness, Objective 5 external proof, or
+delivery success.
+
 Operator diagnostics may also expose `route_task_field_run_reconciliation` and
 the alias `route_task_field_run_reconciliation_summary` from an explicit
 `route_task_field_run_reconciliation_ref` or

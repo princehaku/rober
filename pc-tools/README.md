@@ -120,6 +120,24 @@ python3 pc-tools/evidence/route_task_terminal_review_decision.py \
 
 该 gate 不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、真实手机、外部云、OSS/CDN、DB/queue 或 4G。缺输入、坏 JSON、unsupported schema/boundary、same `evidence_ref` mismatch、unsafe copy、raw path/credential/ROS topic/serial/WAVE ROVER/HIL/success wording、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_operator_terminal_review_not_proven` 只表示 Docker/local 终态复账材料足够进入 operator review 或 field retest 请求准备，不是真实 dropoff/cancel completion、delivery success、HIL、真实手机设备或 Objective 5 external proof。
 
+## route/task field retest execution pack
+
+`pc-tools/evidence/route_task_field_retest_execution_pack.py` 只读上一轮 `route_task_terminal_review_decision` artifact、summary 或 wrapper/nested JSON，把 review decision、owner handoff、next required evidence 和 field retest guidance 整理成下一次真实现场复测可用的 execution pack：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_execution_pack.py \
+  --review-decision-json /tmp/route_task_terminal_review_decision.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_execution_pack.json \
+  --summary-output /tmp/route_task_field_retest_execution_pack_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_execution_pack.v1`，summary 使用 `schema=trashbot.route_task_field_retest_execution_pack_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_execution_pack_gate`。核心字段包括 safe `evidence_ref`、`same_evidence_ref_required=true`、`required_field_materials`、`rerun_commands`、`operator_handoff`、`field_retest_checklist`、`boundary`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+`required_field_materials` 默认列出下一次复测必须回填的真实 Nav2/fixed-route runtime log、route completion signal、task record、operator field note 和 mobile/diagnostics safe summary；如果 source review decision 提到 elevator，还会追加 door state、target floor confirmation 和 human assistance note。该 pack 服务 Objective 2 / Objective 3 的路线-任务现场复测准备，不推进 Objective 5 external proof。
+
+该 gate 不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、真实手机/browser、外部云、OSS/CDN、DB/queue 或 4G。缺输入、坏 JSON、unsupported schema/boundary、unsafe copy、missing `evidence_ref`、`same_evidence_ref_required=false`、success/control claim、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_execution_pack_not_proven` 只表示 Docker/local software proof 足以生成复测材料清单，不是真实 field pass、HIL、真实手机/browser、delivery success 或 Objective 5 external proof。
+
 ## mobile route/elevator field-device precheck
 
 `pc-tools/evidence/mobile_route_elevator_field_device_precheck.py` 只读 route/elevator field-session handoff，生成或校验真实设备/现场前检查 summary：

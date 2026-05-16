@@ -753,7 +753,33 @@ python3 pc-tools/evidence/route_task_terminal_review_decision.py \
 
 该 gate 仍是 software proof。`ready_for_operator_terminal_review_not_proven` 只表示 Docker/local 终态复账材料足够让 operator 做 review decision、owner handoff 和下一轮 field retest request guidance；它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G，也不证明真实 route/elevator field pass、真实 dropoff/cancel completion、delivery success、HIL、真实手机设备或 Objective 5 external proof。
 
-### 5.10.3 elevator route evidence reconciliation
+### 5.10.3 route/task field retest execution pack
+
+terminal review decision 之后，下一次真实现场复测还需要一份可直接交给现场同学的 execution pack。`pc-tools/evidence/route_task_field_retest_execution_pack.py` 只读上一轮 `route_task_terminal_review_decision` artifact、summary 或 wrapper/nested JSON，输出复测材料清单、复跑命令、owner handoff 和检查表：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_execution_pack.py \
+  --review-decision-json /tmp/route_task_terminal_review_decision.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_execution_pack.v1`，summary 使用 `schema=trashbot.route_task_field_retest_execution_pack_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_execution_pack_gate`。顶层固定包含 `same_evidence_ref_required=true`、safe `evidence_ref`、`required_field_materials`、`rerun_commands`、`operator_handoff`、`field_retest_checklist`、`robot_diagnostics_summary`、`mobile_readonly_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+`required_field_materials` 至少包括真实 Nav2/fixed-route runtime log、route completion signal、task record、operator field note 和 mobile/diagnostics safe summary。source review decision 只要提到 elevator，就必须额外回填 door state、target floor confirmation 和 human assistance note，继续沿用同一 `evidence_ref`。
+
+保守阻断规则：
+
+- terminal review decision 输入缺失、JSON 不可读或不是 JSON object：输出 blocked，不生成 ready 复测包。
+- 输入 schema 或 evidence boundary 不支持：输出 `blocked_unsupported_schema`。
+- 输入缺 safe `evidence_ref`：输出 `blocked_missing_evidence_ref`。
+- 输入声明 `same_evidence_ref_required=false` 或与 `--evidence-ref` 不一致：输出 blocked，必须先对齐同一证据主键。
+- phone/support/operator copy 命中凭证、raw path、raw ROS topic、serial/UART、baudrate、WAVE ROVER、HIL pass、traceback、checksum、complete artifact、raw robot response 或成功文案：输出 `blocked_unsafe_copy`。
+- 输入含 `delivery_success=true`、`primary_actions_enabled=true`、field pass 或 control claim：输出 `blocked_success_or_control_claim`，继续强制 `delivery_success=false` 与 `primary_actions_enabled=false`。
+
+该 gate 仍是 software proof。`ready_for_field_retest_execution_pack_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_execution_pack_gate` 已把上一轮 review decision 转成 Objective 2 / Objective 3 现场复测准备包；它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G，也不证明真实 field pass、真实 Nav2/fixed-route、真实手机/browser、delivery success、HIL 或 Objective 5 external proof。
+
+### 5.10.4 elevator route evidence reconciliation
 
 电梯 rehearsal evidence 进入 Robot dry-run 主链路后，route/task completion signal 还需要与它按同一 `evidence_ref` 复账，避免电梯阶段材料和路线完成信号来自不同 run：
 
