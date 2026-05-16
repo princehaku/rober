@@ -30,6 +30,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_operator_drill,
     summarize_route_task_field_retest_drill_console,
     summarize_route_task_field_retest_acceptance_brief,
+    summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_run_intake,
     summarize_route_task_field_run_reconciliation,
     summarize_route_task_field_run_readiness,
@@ -4301,6 +4302,259 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["delivery_success"])
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_route_task_field_retest_acceptance_brief_gate", encoded)
+        self.assertIn("metadata-only", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_retest_evidence_dispatch_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            dispatch_path = Path(td) / "route_task_field_retest_evidence_dispatch.json"
+            dispatch_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_evidence_dispatch.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_evidence_dispatch_gate"
+                        ),
+                        "evidence_ref": "evidence://route-task-field-retest-evidence-dispatch-1",
+                        "route_task_field_retest_evidence_dispatch_summary": {
+                            "schema": "trashbot.route_task_field_retest_evidence_dispatch_summary.v1",
+                            "source_schema": "trashbot.route_task_field_retest_evidence_dispatch.v1",
+                            "source_evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_evidence_dispatch_gate"
+                            ),
+                            "safe_evidence_ref": "evidence://route-task-field-retest-evidence-dispatch-1",
+                            "dispatch_status": {
+                                "status": "ready_for_owner_dispatch_not_proven",
+                                "verdict": "not_proven",
+                                "reason": "safe owner/file dispatch is ready",
+                            },
+                            "material_owners": {
+                                "robot": "Robot keeps diagnostics metadata-only.",
+                                "autonomy": "Autonomy owns field evidence packet.",
+                            },
+                            "recommended_filenames": [
+                                "nav2_fixed_route_runtime_log.jsonl",
+                                "task_record.json",
+                            ],
+                            "backfill_order": ["route completion signal", "task record"],
+                            "callback_checklist": ["Call support with the same evidence_ref."],
+                            "fail_closed_rerun_notes": [
+                                "Rerun only when delivery_success=false and primary_actions_enabled=false."
+                            ],
+                            "robot_diagnostics_summary": {
+                                "status": "metadata_only",
+                                "reason": "Robot mirrors safe dispatch summary only.",
+                            },
+                            "safe_copy": (
+                                "Route-task field retest evidence dispatch is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                            "not_proven": ["delivery_success", "real_hil_pass"],
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_evidence_dispatch_ref=str(dispatch_path),
+            )
+            summary = payload["route_task_field_retest_evidence_dispatch"]
+            summary_alias = payload["route_task_field_retest_evidence_dispatch_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["schema"], "trashbot.route_task_field_retest_evidence_dispatch_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_evidence_dispatch_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_field_retest_evidence_dispatch.v1")
+        self.assertEqual(summary["dispatch_status"]["status"], "ready_for_owner_dispatch_not_proven")
+        self.assertEqual(summary["dispatch_status"]["verdict"], "not_proven")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://route-task-field-retest-evidence-dispatch-1")
+        self.assertEqual(summary["material_owners"]["robot"], "Robot keeps diagnostics metadata-only.")
+        self.assertIn("task_record.json", summary["recommended_filenames"])
+        self.assertIn("task record", summary["backfill_order"])
+        self.assertIn("same evidence_ref", summary["callback_checklist"][0])
+        self.assertIn("delivery_success=false", summary["fail_closed_rerun_notes"][0])
+        self.assertEqual(summary["robot_diagnostics_summary"]["status"], "metadata_only")
+        self.assertIn("delivery_success=false", summary["safe_summary"]["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        # evidence dispatch 是 metadata-only consumer，不能触发 collect/dropoff/cancel、ACK、cursor、Nav2 或 HIL。
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(dispatch_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_retest_evidence_dispatch_env_nested_missing_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "route_task_field_retest_evidence_dispatch_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_evidence_dispatch_summary.v1",
+                        "source_schema": "trashbot.route_task_field_retest_evidence_dispatch.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_evidence_dispatch_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_evidence_dispatch_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://route-task-field-retest-evidence-dispatch-2",
+                        "dispatch_status": {"status": "blocked_missing_callback", "verdict": "not_proven"},
+                        "material_owners": {"product": "review missing callback"},
+                        "recommended_filenames": ["delivery_result.json"],
+                        "backfill_order": ["delivery_result"],
+                        "callback_checklist": ["Call operator back."],
+                        "fail_closed_rerun_notes": ["Keep route evidence dispatch fail closed."],
+                        "safe_copy": (
+                            "Route-task field retest evidence dispatch is metadata-only; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_dispatch = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH")
+            previous_summary = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SUMMARY")
+            os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH", None)
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_retest_evidence_dispatch"
+                ]
+            finally:
+                if previous_dispatch is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH"] = previous_dispatch
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SUMMARY"] = previous_summary
+
+            nested_summary = summarize_route_task_field_retest_evidence_dispatch(
+                {
+                    "schema": "trashbot.route_task_field_retest_evidence_dispatch.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_evidence_dispatch_gate",
+                    "evidence_ref": "evidence://route-task-field-retest-evidence-dispatch-3",
+                    "diagnostics": {
+                        "diagnostics_summary": {
+                            "schema": "trashbot.route_task_field_retest_evidence_dispatch_summary.v1",
+                            "source_schema": "trashbot.route_task_field_retest_evidence_dispatch.v1",
+                            "source_evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_evidence_dispatch_gate"
+                            ),
+                            "safe_evidence_ref": "evidence://route-task-field-retest-evidence-dispatch-3",
+                            "dispatch_status": {"status": "nested_ready", "verdict": "not_proven"},
+                            "material_owners": {"robot": "read-only"},
+                            "recommended_filenames": ["task_record.json"],
+                            "backfill_order": ["task record"],
+                            "callback_checklist": ["Keep action isolation."],
+                            "fail_closed_rerun_notes": ["Rerun only as software proof."],
+                            "safe_copy": (
+                                "Nested evidence dispatch is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_evidence_dispatch.json"
+            missing_summary = summarize_route_task_field_retest_evidence_dispatch(str(missing_path))
+            no_summary = summarize_route_task_field_retest_evidence_dispatch(
+                {
+                    "schema": "trashbot.route_task_field_retest_evidence_dispatch.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_evidence_dispatch_gate",
+                    "evidence_ref": "evidence://route-task-field-retest-evidence-dispatch-4",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsupported_summary = summarize_route_task_field_retest_evidence_dispatch(
+                {
+                    "schema": "trashbot.route_task_field_retest_acceptance_brief.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_brief_gate",
+                    "route_task_field_retest_evidence_dispatch_summary": {
+                        "safe_copy": "Unsupported evidence dispatch is metadata-only; delivery_success=false.",
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                }
+            )
+            unsafe_summary = summarize_route_task_field_retest_evidence_dispatch(
+                {
+                    "schema": "trashbot.route_task_field_retest_evidence_dispatch.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_evidence_dispatch_gate",
+                    "evidence_ref": "evidence://route-task-field-retest-evidence-dispatch-5",
+                    "route_task_field_retest_evidence_dispatch_summary": {
+                        "safe_evidence_ref": "evidence://route-task-field-retest-evidence-dispatch-5",
+                        "safe_copy": "Evidence dispatch confirms delivery success and ACK posted.",
+                        "delivery_success": False,
+                        "primary_actions_enabled": True,
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    nested_summary,
+                    missing_summary,
+                    no_summary,
+                    unsupported_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["dispatch_status"]["status"], "blocked_missing_callback")
+        self.assertIn("delivery_result.json", env_summary["recommended_filenames"])
+        self.assertEqual(env_summary["material_owners"]["product"], "review missing callback")
+        self.assertEqual(nested_summary["dispatch_status"]["status"], "nested_ready")
+        self.assertIn("action isolation", nested_summary["callback_checklist"][0])
+        self.assertEqual(missing_summary["dispatch_status"]["status"], "missing")
+        self.assertEqual(no_summary["dispatch_status"]["status"], "missing_summary")
+        self.assertEqual(unsupported_summary["dispatch_status"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["dispatch_status"]["status"], "unsafe_fields")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_route_task_field_retest_evidence_dispatch_gate", encoded)
         self.assertIn("metadata-only", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])

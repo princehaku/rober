@@ -486,7 +486,34 @@ required evidence packet 固定列出 Nav2/fixed-route runtime log、route compl
 
 `route_task_field_retest_acceptance_brief` 仍是 software proof。`ready_for_field_retest_acceptance_brief_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_acceptance_brief_gate` 已把现场复测验收简报复账清楚；它不是真实 field pass、真实 fixed-route/Nav2、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
-## 4.9.10 Route Task Field Retest Result Intake
+## 4.9.10 Route Task Field Retest Evidence Dispatch
+
+acceptance brief 之后，可以运行 PC 侧 evidence dispatch gate，把上一轮 `route_task_field_retest_acceptance_brief` 的 required evidence packet 转成现场材料 owner、推荐文件名、回填顺序、callback checklist 和 fail-closed rerun notes：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_evidence_dispatch.py \
+  --acceptance-brief-json /tmp/route_task_field_retest_acceptance_brief_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_evidence_dispatch.json \
+  --summary-output /tmp/route_task_field_retest_evidence_dispatch_summary.json
+```
+
+artifact 使用 `schema=trashbot.route_task_field_retest_evidence_dispatch.v1`，summary 使用 `schema=trashbot.route_task_field_retest_evidence_dispatch_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_evidence_dispatch_gate`。顶层固定包含 `same_evidence_ref_required=true`、safe `evidence_ref`、dispatch status、material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist、fail-closed rerun notes、required evidence packet、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+required evidence packet 固定列出 Nav2/fixed-route runtime log、route completion signal、task record、door_state、target_floor_confirmation、human_assistance_note、dropoff_or_cancel_completion 和 delivery_result。evidence dispatch 只读取 acceptance brief artifact/summary/wrapper/nested JSON，不读取真实材料目录、ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。它只把下一次现场要回填的证据包分派清楚，供 Robot/mobile 只读消费。
+
+保守阻断规则：
+
+- 输入缺失、JSON 不可读或不是 JSON object：输出 blocked，不猜测 acceptance brief 已存在。
+- 输入 schema 或 evidence boundary 不支持：输出 blocked。
+- 缺 safe `evidence_ref`、与 `--evidence-ref` 不一致或 `same_evidence_ref_required` 不是严格 true：输出 blocked。
+- 上游 acceptance brief 不是 `ready_for_field_retest_acceptance_brief_not_proven`：输出 blocked，不把未 ready 简报推进成 dispatch ready。
+- required evidence packet 缺任一固定材料：输出 blocked，避免现场回填口径不完整。
+- 输入含 unsafe copy、raw path、credential、ROS topic、serial/UART、WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true`：输出 blocked。
+
+`route_task_field_retest_evidence_dispatch` 仍是 software proof。`ready_for_field_retest_evidence_dispatch_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_evidence_dispatch_gate` 已把现场证据包派发口径复账清楚；它不是真实 field pass、真实 fixed-route/Nav2、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
+## 4.9.11 Route Task Field Retest Result Intake
 
 现场复测 session handoff 被现场同学回填 summary 后，可以运行 result intake gate，把同一 `evidence_ref` 下的八类结果材料摘要转成 Robot diagnostics 和 mobile/web 可只读展示的 fail-closed result intake：
 
@@ -512,7 +539,7 @@ result intake 必须看到八类现场复测结果材料摘要：Nav2/fixed-rout
 
 `robot_diagnostics_summary` 和 `mobile_readonly_summary` 只能消费白名单 summary、safe copy 和 fail-closed flags，不展示 raw artifact、本机路径、checksum、traceback、凭证、DB/queue URL、OSS AK/SK、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 参数。`ready_for_field_retest_result_intake_not_proven` 只表示 Docker/local software proof 足以接收同一 `evidence_ref` 的八类复测结果材料摘要，不是真实 fixed-route/Nav2、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
-## 4.9.10 Route Task Field Retest Result Reconciliation
+## 4.9.12 Route Task Field Retest Result Reconciliation
 
 result intake 之后，可以运行 PC-side reconciliation gate，把上一轮 `route_task_field_retest_result_intake`、`route_task_field_retest_session_handoff`、`route_task_field_retest_execution_pack` 或现场 result wrapper/nested JSON 复账成 artifact / summary：
 

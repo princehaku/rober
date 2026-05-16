@@ -1402,6 +1402,98 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, acceptance_brief_text)
 
+    def test_field_retest_evidence_dispatch_panel_is_read_only_and_copy_gated(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # dispatch panel 跟在 acceptance brief 后，只读解释现场证据包派发，不新增控制按钮语义。
+        self.assertIn("routeTaskFieldRetestEvidenceDispatchTitle", app)
+        self.assertIn("现场证据包派发", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceBriefTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("route-task-field-retest-evidence-dispatch-panel", styles)
+        self.assertIn("route-task-field-retest-evidence-dispatch-grid", styles)
+
+        # 状态来源兼容 artifact、summary 和 Robot diagnostics compatible summary。
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestEvidenceDispatchText", app)
+        self.assertIn("routeTaskFieldRetestEvidenceDispatchCandidate", app)
+        self.assertIn("routeTaskFieldRetestEvidenceDispatchFromStatus", app)
+        self.assertIn("route_task_field_retest_evidence_dispatch", app)
+        self.assertIn("route_task_field_retest_evidence_dispatch_summary", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_evidence_dispatch_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_evidence_dispatch", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_evidence_dispatch", app)
+        self.assertIn("dispatch_status", app)
+        self.assertIn("material_owners", app)
+        self.assertIn("recommended_filenames", app)
+        self.assertIn("backfill_order", app)
+        self.assertIn("callback_checklist", app)
+        self.assertIn("fail_closed_rerun_notes", app)
+        self.assertIn("required_evidence_packet", app)
+
+        # copy/export 必须由 safe_copy 驱动，只导出白名单字段，且不触发主操作 endpoint。
+        self.assertIn("routeTaskFieldRetestEvidenceDispatchCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_evidence_dispatch_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestEvidenceDispatchButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestEvidenceDispatchButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("Start Delivery", app)
+        self.assertIn("Confirm Dropoff", app)
+        self.assertIn("Cancel", app)
+        self.assertNotRegex(app, r"routeTaskFieldRetestEvidenceDispatch.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须固定 evidence dispatch 的 software proof / not_proven 边界。
+        dispatch = fixture["route_task_field_retest_evidence_dispatch"]
+        self.assertEqual(
+            dispatch["dispatch_status"],
+            "blocked_missing_route_task_field_retest_evidence_dispatch_not_proven",
+        )
+        self.assertEqual(dispatch["delivery_success"], False)
+        self.assertEqual(dispatch["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_route_task_field_retest_evidence_dispatch_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("route_task_field_retest_evidence_dispatch", doc)
+        self.assertIn("现场证据包派发", doc)
+
+    def test_field_retest_evidence_dispatch_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        dispatch_text = json.dumps(
+            fixture["route_task_field_retest_evidence_dispatch"],
+            ensure_ascii=False,
+        ).lower()
+
+        # dispatch fixture 只能携带白名单 summary，不能带 raw artifact、路径、凭证、底层控制或成功状态。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw dispatch",
+            "raw robot response",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, dispatch_text)
+
 
 if __name__ == "__main__":
     unittest.main()

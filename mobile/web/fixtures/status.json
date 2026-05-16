@@ -708,5 +708,73 @@
       "真实硬件/HIL",
       "Objective 5 external proof"
     ]
+  },
+  "route_task_field_retest_evidence_dispatch": {
+    "schema": "trashbot.route_task_field_retest_evidence_dispatch.v1",
+    "summary_schema": "trashbot.route_task_field_retest_evidence_dispatch_summary.v1",
+    "schema_version": 1,
+    "source_acceptance_brief_schema": "trashbot.route_task_field_retest_acceptance_brief_summary.v1",
+    "dispatch_status": "blocked_missing_route_task_field_retest_evidence_dispatch_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "material_owners": [
+      "owner=Autonomy supplies Nav2/fixed-route runtime log and route completion signal summary",
+      "owner=Robot supplies task record, diagnostics compatible summary and callback status",
+      "owner=Full-stack displays phone-safe dispatch only and keeps Start Delivery, Confirm Dropoff and Cancel gating unchanged"
+    ],
+    "recommended_filenames": [
+      "filename=nav2_runtime_log.redacted.txt",
+      "filename=route_completion_signal.summary.json",
+      "filename=task_record.summary.json",
+      "filename=field_callback_checklist.summary.md",
+      "filename=robot_diagnostics_route_task_field_retest_evidence_dispatch_summary.json"
+    ],
+    "backfill_order": [
+      "step=1 collect Nav2/fixed-route runtime log summary",
+      "step=2 collect route completion signal summary",
+      "step=3 collect task record and field notes",
+      "step=4 collect Robot diagnostics compatible summary",
+      "step=5 rerun evidence dispatch gate with the same safe evidence_ref"
+    ],
+    "callback_checklist": [
+      "callback=confirm material owner and same safe evidence_ref",
+      "callback=confirm required evidence packet remains not_proven until real field materials arrive",
+      "callback=confirm delivery_success=false",
+      "callback=confirm primary_actions_enabled=false"
+    ],
+    "fail_closed_rerun_notes": [
+      "rerun=missing summary, unsafe copy, unsupported boundary or success wording must stay blocked/not_proven",
+      "rerun=non-redacted implementation detail or credential-bearing material must be rejected"
+    ],
+    "required_evidence_packet": [
+      "evidence=Nav2/fixed-route runtime log remains not_proven",
+      "evidence=route completion signal remains not_proven",
+      "evidence=task record remains not_proven",
+      "evidence=door_state remains not_proven",
+      "evidence=target_floor_confirmation remains not_proven",
+      "evidence=human_assistance_note remains not_proven",
+      "evidence=dropoff_or_cancel_completion remains not_proven",
+      "evidence=delivery_result remains not_proven"
+    ],
+    "safe_phone_copy": "现场证据包派发只读展示 dispatch status、safe evidence ref、material owners、recommended filenames、backfill order、callback checklist、fail-closed rerun notes、required evidence packet 和 evidence boundary；这是 software proof only。",
+    "safe_copy": "现场证据包派发 safe copy：当前 dispatch status blocked_missing_route_task_field_retest_evidence_dispatch_not_proven；只允许复制白名单 summary fields；delivery_success=false；primary_actions_enabled=false。",
+    "recovery_hint": "请按同一 safe evidence_ref 补齐现场复测材料，并由 Robot diagnostics 发布 compatible evidence dispatch summary。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_evidence_dispatch_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实 door_state",
+      "真实 target_floor_confirmation",
+      "真实 human_assistance_note",
+      "真实 dropoff_or_cancel_completion",
+      "真实 delivery_result",
+      "真实 Robot diagnostics callback",
+      "真实 route/elevator field pass",
+      "真实手机设备/browser",
+      "真实硬件/HIL",
+      "Objective 5 external proof"
+    ]
   }
 }
