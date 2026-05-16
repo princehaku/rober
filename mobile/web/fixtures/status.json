@@ -604,5 +604,58 @@
       "真实硬件/HIL",
       "Objective 5 external proof"
     ]
+  },
+  "route_task_field_retest_drill_console": {
+    "schema": "trashbot.route_task_field_retest_drill_console.v1",
+    "summary_schema": "trashbot.route_task_field_retest_drill_console_summary.v1",
+    "schema_version": 1,
+    "source_operator_drill_schema": "trashbot.route_task_field_retest_operator_drill_summary.v1",
+    "console_status": "blocked_missing_route_task_field_retest_drill_console_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "safe_checklist": [
+      "safe_check=confirm same safe evidence_ref before material pack drill",
+      "safe_check=confirm result intake summary remains phone-safe",
+      "safe_check=confirm result reconciliation summary remains phone-safe",
+      "safe_check=confirm delivery_success=false",
+      "safe_check=confirm primary_actions_enabled=false"
+    ],
+    "safe_copy_summary": "safe_copy=console export allows only console status, safe evidence_ref, checklist, command labels, missing prompts, callback checklist, boundary and not_proven.",
+    "command_labels": [
+      "command_label=route task field retest material pack gate",
+      "command_label=route task field retest result intake gate",
+      "command_label=route task field retest result reconciliation gate"
+    ],
+    "missing_material_prompts": [
+      "missing_prompt=real Nav2/fixed-route runtime log remains not_proven",
+      "missing_prompt=door_state phone-safe summary remains not_proven",
+      "missing_prompt=target_floor_confirmation phone-safe summary remains not_proven",
+      "missing_prompt=human_assistance_note phone-safe summary remains not_proven"
+    ],
+    "operator_callback_checklist": [
+      "callback_check=operator publishes Robot diagnostics compatible summary",
+      "callback_check=operator keeps same safe evidence_ref",
+      "callback_check=operator confirms Start Delivery gating unchanged",
+      "callback_check=operator confirms Confirm Dropoff gating unchanged",
+      "callback_check=operator confirms Cancel gating unchanged"
+    ],
+    "safe_phone_copy": "现场复测演练控制台只读展示 console status、safe evidence ref、safe checklist/copy、command labels、missing material prompts、operator callback checklist 和 evidence boundary；这是 software proof only。",
+    "safe_copy": "现场复测演练控制台 safe_copy：当前 console_status blocked_missing_route_task_field_retest_drill_console_not_proven；只允许复制白名单 summary fields；delivery_success=false；primary_actions_enabled=false。",
+    "recovery_hint": "请按同一 safe evidence_ref 补齐真实现场复测材料，并由 Robot diagnostics 发布 compatible drill console summary。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_drill_console_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 drill console field execution",
+      "真实 material pack command execution",
+      "真实 result intake command execution",
+      "真实 result reconciliation command execution",
+      "真实 operator callback",
+      "真实 route/elevator field pass",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机设备/browser",
+      "真实硬件/HIL",
+      "Objective 5 external proof"
+    ]
   }
 }

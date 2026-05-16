@@ -169,6 +169,15 @@ ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_GATE = (
     "software_proof_docker_route_task_field_retest_operator_drill_gate"
 )
+ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_SCHEMA = (
+    "trashbot.route_task_field_retest_drill_console.v1"
+)
+ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_retest_drill_console_summary.v1"
+)
+ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_GATE = (
+    "software_proof_docker_route_task_field_retest_drill_console_gate"
+)
 ROUTE_TASK_FIELD_RUN_RECONCILIATION_SCHEMA = "trashbot.route_task_field_run_reconciliation.v1"
 ROUTE_TASK_FIELD_RUN_RECONCILIATION_SUMMARY_SCHEMA = (
     "trashbot.route_task_field_run_reconciliation_summary.v1"
@@ -790,6 +799,48 @@ def _route_task_field_retest_operator_drill_not_proven(drill=None, summary_fragm
     source_values = []
     if isinstance(drill.get("not_proven"), list):
         source_values.extend(drill.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_elevator_operation",
+        "real_elevator_door_state",
+        "real_floor_confirmation",
+        "human_assistance_outcome",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "route_task_completion_real_world",
+        "field_retest_pass",
+        "operator_callback_completed",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "real_phone_device_or_browser_proof",
+        "production_readiness",
+        "real_dropoff_completion",
+        "real_cancel_completion",
+        "dropoff_or_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_retest_drill_console_not_proven(console=None, summary_fragment=None):
+    # drill console 只把 PC/Robot 可读摘要搬到 diagnostics；真实控制和现场通过必须继续由外部证据证明。
+    console = console if isinstance(console, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(console.get("not_proven"), list):
+        source_values.extend(console.get("not_proven"))
     if isinstance(summary_fragment.get("not_proven"), list):
         source_values.extend(summary_fragment.get("not_proven"))
     required = (
@@ -2360,6 +2411,65 @@ def _default_route_task_field_retest_operator_drill_summary(
         "read_error": _redact_route_task_rehearsal_text(read_error),
         "safe_copy": "Route-task field retest operator drill is metadata-only; delivery_success=false; primary_actions_enabled=false.",
         "safe_phone_copy": "Route-task field retest operator drill is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
+def _default_route_task_field_retest_drill_console_summary(
+    path,
+    console_status="blocked_missing_route_task_field_retest_drill_console",
+    read_error="",
+):
+    # drill console 默认 fail closed；缺 artifact 或缺摘要时不能让 diagnostics 推导任何机器人动作。
+    return {
+        "schema": ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "console_status": {
+            "status": console_status,
+            "verdict": "not_proven",
+            "reason": read_error or "route-task field retest drill console is not configured",
+        },
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "command_labels": [],
+        "safe_checklist": [],
+        "missing_material_prompts": [],
+        "operator_callback_checklist": [],
+        "safe_summary": {
+            "summary": "Route-task field retest drill console is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+            "safe_copy": "Route-task field retest drill console is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+            "safe_phone_copy": "Route-task field retest drill console is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+        },
+        "robot_diagnostics_summary": {
+            "status": "blocked",
+            "reason": "route-task field retest drill console is not configured",
+        },
+        "boundary": ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_GATE,
+        "not_proven": _route_task_field_retest_drill_console_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": "Route-task field retest drill console is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+        "safe_phone_copy": "Route-task field retest drill console is metadata-only; delivery_success=false; primary_actions_enabled=false.",
         "metadata_only": True,
         "delivery_success": False,
         "primary_actions_enabled": False,
@@ -4555,6 +4665,16 @@ def _route_task_field_retest_operator_drill_source_contract(value):
     return source_schema, source_boundary
 
 
+def _route_task_field_retest_drill_console_source_contract(value):
+    # drill console 支持直接 artifact 或 summary wrapper；wrapper 必须回指 console source，避免误接 operator_drill gate。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or "")
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _elevator_route_evidence_reconciliation_source_contract(value):
     # 允许直接 artifact 或 summary wrapper；wrapper 必须保留原始 schema/boundary，防止把别的 gate 混入。
     source_schema = str(value.get("schema") or "")
@@ -4898,6 +5018,23 @@ def _route_task_field_retest_operator_drill_has_disabled_actions(drill, summary_
         summary_fragment.get("primary_actions_enabled")
         if "primary_actions_enabled" in summary_fragment
         else drill.get("primary_actions_enabled")
+    )
+    return delivery_success is False and primary_actions_enabled is False
+
+
+def _route_task_field_retest_drill_console_has_disabled_actions(console, summary_fragment):
+    # console source 和 Robot-compatible summary 都必须显式关闭主动作；缺字段不能被解释成可点击或可 ACK。
+    console = console if isinstance(console, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    delivery_success = (
+        summary_fragment.get("delivery_success")
+        if "delivery_success" in summary_fragment
+        else console.get("delivery_success")
+    )
+    primary_actions_enabled = (
+        summary_fragment.get("primary_actions_enabled")
+        if "primary_actions_enabled" in summary_fragment
+        else console.get("primary_actions_enabled")
     )
     return delivery_success is False and primary_actions_enabled is False
 
@@ -8265,6 +8402,321 @@ def summarize_route_task_field_retest_operator_drill(source):
                 },
                 "safe_copy": "Route-task field retest operator drill was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
                 "safe_phone_copy": "Route-task field retest operator drill was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+            }
+        )
+    return summary
+
+
+def summarize_route_task_field_retest_drill_console(source):
+    """构建 route-task field retest drill console 的 metadata-only diagnostics 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        console = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_route_task_field_retest_drill_console_summary(
+            source_path,
+            read_error="route-task field retest drill console is not configured",
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "console_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": "route-task field retest drill console artifact missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "drill console artifact missing",
+                    },
+                    "safe_copy": "Route-task field retest drill console is missing; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field retest drill console is missing; metadata remains blocked/not_proven.",
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                console = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "console_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            f"failed reading route-task field retest drill console: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "drill console JSON read error",
+                    },
+                    "safe_copy": "Route-task field retest drill console could not be read; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field retest drill console could not be read; metadata remains blocked/not_proven.",
+                }
+            )
+            return summary
+    summary = _default_route_task_field_retest_drill_console_summary(
+        source_path,
+        read_error="route-task field retest drill console is not configured",
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(console, dict):
+        summary.update(
+            {
+                "console_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest drill console JSON must be an object",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "drill console JSON shape is invalid",
+                },
+                "safe_copy": "Route-task field retest drill console shape is invalid; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field retest drill console shape is invalid; metadata remains blocked/not_proven.",
+            }
+        )
+        return summary
+
+    diagnostics = console.get("diagnostics") if isinstance(console.get("diagnostics"), dict) else {}
+    # Robot 只消费 console 的白名单摘要；raw command、ACK、路径、材料和现场记录不能穿过 diagnostics 边界。
+    summary_fragment = (
+        console
+        if str(console.get("schema") or "") == ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_SUMMARY_SCHEMA
+        else {}
+    )
+    for candidate in (
+        console.get("route_task_field_retest_drill_console_summary"),
+        console.get("route_task_field_retest_drill_console"),
+        console.get("robot_compatible_summary"),
+        console.get("robot_diagnostics_summary"),
+        console.get("mobile_readonly_summary"),
+        console.get("phone_safe_summary"),
+        diagnostics.get("summary"),
+        diagnostics.get("diagnostics_summary"),
+        diagnostics.get("route_task_field_retest_drill_console_summary"),
+        diagnostics.get("route_task_field_retest_drill_console"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+
+    source_schema, source_boundary = _route_task_field_retest_drill_console_source_contract(console)
+    if not summary_fragment:
+        summary.update(
+            {
+                "source_schema": _redact_route_task_rehearsal_text(source_schema),
+                "source_schema_version": console.get("schema_version"),
+                "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "console_status": {
+                    "status": "missing_summary",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest drill console lacks a safe diagnostics summary",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing safe drill console summary",
+                },
+                "safe_copy": "Route-task field retest drill console is blocked because no safe summary was provided.",
+                "safe_phone_copy": "Route-task field retest drill console is blocked because no safe summary was provided.",
+            }
+        )
+        return summary
+
+    status_source = summary_fragment.get("console_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("drill_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("status_summary")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    console_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or status_source.get("verdict")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or "blocked"
+    )
+    console_verdict = _redact_route_task_rehearsal_text(
+        status_source.get("verdict")
+        or status_source.get("decision")
+        or summary_fragment.get("verdict")
+        or "not_proven"
+    )
+    console_reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or status_source.get("summary")
+        or summary_fragment.get("reason")
+        or "route-task field retest drill console consumed without explicit reason"
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or "Route-task field retest drill console is metadata-only; delivery_success=false; primary_actions_enabled=false."
+    )
+    safe_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(summary_fragment.get(key) or "").strip():
+            safe_summary[key] = _redact_route_task_rehearsal_text(summary_fragment.get(key))
+    safe_summary["safe_copy"] = safe_copy
+    safe_summary["safe_phone_copy"] = safe_copy
+    source_ref = str(console.get("evidence_ref") or "").strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref") or summary_fragment.get("evidence_ref") or ""
+    ).strip()
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else diagnostics.get("robot_diagnostics_summary")
+        if isinstance(diagnostics.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": console.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "console_status": {
+                "status": console_status or "blocked",
+                "verdict": console_verdict or "not_proven",
+                "reason": console_reason,
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(summary_ref or source_ref),
+            "same_evidence_ref_required": (
+                summary_fragment.get("same_evidence_ref_required")
+                if "same_evidence_ref_required" in summary_fragment
+                else console.get("same_evidence_ref_required", True)
+            )
+            is True,
+            "command_labels": _safe_route_task_rehearsal_list(
+                summary_fragment.get("command_labels")
+                if isinstance(summary_fragment.get("command_labels"), list)
+                else summary_fragment.get("next_command_labels")
+            ),
+            "safe_checklist": _safe_route_task_rehearsal_list(
+                summary_fragment.get("safe_checklist")
+                if isinstance(summary_fragment.get("safe_checklist"), list)
+                else summary_fragment.get("operator_checklist")
+            ),
+            "missing_material_prompts": _safe_route_task_rehearsal_list(
+                summary_fragment.get("missing_material_prompts")
+                if isinstance(summary_fragment.get("missing_material_prompts"), list)
+                else summary_fragment.get("missing_materials")
+            ),
+            "operator_callback_checklist": _safe_route_task_rehearsal_list(
+                summary_fragment.get("operator_callback_checklist")
+                if isinstance(summary_fragment.get("operator_callback_checklist"), list)
+                else summary_fragment.get("callback_checklist")
+            ),
+            "safe_summary": safe_summary,
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": console_status or "blocked",
+                "reason": "drill console consumed without explicit robot diagnostics summary",
+            },
+            "boundary": ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_GATE,
+            "not_proven": _route_task_field_retest_drill_console_not_proven(
+                console,
+                summary_fragment,
+            ),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "read_error": "",
+        }
+    )
+
+    if (
+        source_schema != ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_SCHEMA
+        or source_boundary != ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_GATE
+    ):
+        summary.update(
+            {
+                "console_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest drill console schema or evidence boundary is unsupported",
+                },
+                "command_labels": [],
+                "safe_checklist": [],
+                "missing_material_prompts": [],
+                "operator_callback_checklist": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "safe_summary": {
+                    "safe_copy": "Route-task field retest drill console is not a supported diagnostics source; no delivery result is proven.",
+                    "safe_phone_copy": "Route-task field retest drill console is not a supported diagnostics source; no delivery result is proven.",
+                },
+            }
+        )
+        return summary
+    if not summary["safe_evidence_ref"]:
+        summary.update(
+            {
+                "console_status": {
+                    "status": "missing_evidence_ref",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest drill console is missing evidence_ref",
+                },
+                "robot_diagnostics_summary": {"status": "blocked", "reason": "missing evidence_ref"},
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary.update(
+            {
+                "console_status": {
+                    "status": "evidence_ref_mismatch",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest drill console summary evidence_ref does not match source evidence_ref",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "same evidence_ref mismatch",
+                },
+            }
+        )
+        return summary
+    if (
+        not summary["same_evidence_ref_required"]
+        or not _route_task_field_retest_drill_console_has_disabled_actions(
+            console,
+            summary_fragment,
+        )
+        or _route_task_field_run_console_has_unsafe_fields(console)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+        or _route_task_field_retest_execution_pack_has_success_wording(summary_fragment)
+        or _route_task_field_retest_execution_pack_has_success_wording(console)
+    ):
+        summary.update(
+            {
+                "console_status": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest drill console contains unsafe fields, weak evidence_ref constraints, enabled actions, or success wording",
+                },
+                "command_labels": [],
+                "safe_checklist": [],
+                "missing_material_prompts": [],
+                "operator_callback_checklist": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe drill console summary fields",
+                },
+                "safe_summary": {
+                    "safe_copy": "Route-task field retest drill console was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+                    "safe_phone_copy": "Route-task field retest drill console was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+                },
+                "safe_copy": "Route-task field retest drill console was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+                "safe_phone_copy": "Route-task field retest drill console was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
             }
         )
     return summary
@@ -15869,6 +16321,7 @@ def build_diagnostics_payload(
     route_task_field_retest_result_reconciliation_ref="",
     route_task_field_retest_material_pack_ref="",
     route_task_field_retest_operator_drill_ref="",
+    route_task_field_retest_drill_console_ref="",
     route_task_field_run_reconciliation_ref="",
     route_task_completion_signal_ref="",
     route_task_terminal_completion_rehearsal_ref="",
@@ -16133,6 +16586,21 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
         else {}
     )
+    route_task_field_retest_drill_console_source = (
+        latest_status.get("route_task_field_retest_drill_console")
+        if isinstance(latest_status.get("route_task_field_retest_drill_console"), dict)
+        else latest_status.get("route_task_field_retest_drill_console_summary")
+        if isinstance(latest_status.get("route_task_field_retest_drill_console_summary"), dict)
+        else diagnostics_source.get("route_task_field_retest_drill_console")
+        if isinstance(diagnostics_source.get("route_task_field_retest_drill_console"), dict)
+        else diagnostics_source.get("route_task_field_retest_drill_console_summary")
+        if isinstance(diagnostics_source.get("route_task_field_retest_drill_console_summary"), dict)
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
+        else {}
+    )
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
     latest_status.pop("phone_support_bundle", None)
     latest_status.pop("voice_prompt_readiness", None)
@@ -16173,6 +16641,9 @@ def build_diagnostics_payload(
     latest_status.pop("route_task_field_retest_operator_drill", None)
     latest_status.pop("route_task_field_retest_operator_drill_summary", None)
     latest_status.pop("route_task_field_retest_operator_drill_copy", None)
+    latest_status.pop("route_task_field_retest_drill_console", None)
+    latest_status.pop("route_task_field_retest_drill_console_summary", None)
+    latest_status.pop("route_task_field_retest_drill_console_copy", None)
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -16321,6 +16792,15 @@ def build_diagnostics_payload(
     )
     route_task_field_retest_operator_drill_summary = summarize_route_task_field_retest_operator_drill(
         route_task_field_retest_operator_drill_source
+    )
+    route_task_field_retest_drill_console_source = (
+        route_task_field_retest_drill_console_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE", "")
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_SUMMARY", "")
+        or route_task_field_retest_drill_console_source
+    )
+    route_task_field_retest_drill_console_summary = summarize_route_task_field_retest_drill_console(
+        route_task_field_retest_drill_console_source
     )
     route_task_field_run_reconciliation_summary = summarize_route_task_field_run_reconciliation(
         route_task_field_run_reconciliation_ref
@@ -16579,6 +17059,8 @@ def build_diagnostics_payload(
         route_task_field_retest_material_pack_summary=route_task_field_retest_material_pack_summary,
         route_task_field_retest_operator_drill=route_task_field_retest_operator_drill_summary,
         route_task_field_retest_operator_drill_summary=route_task_field_retest_operator_drill_summary,
+        route_task_field_retest_drill_console=route_task_field_retest_drill_console_summary,
+        route_task_field_retest_drill_console_summary=route_task_field_retest_drill_console_summary,
         route_task_field_run_reconciliation=route_task_field_run_reconciliation_summary,
         route_task_field_run_reconciliation_summary=route_task_field_run_reconciliation_summary,
         route_task_completion_signal=route_task_completion_signal_summary,

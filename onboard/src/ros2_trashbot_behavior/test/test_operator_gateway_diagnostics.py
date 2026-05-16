@@ -28,6 +28,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_result_reconciliation,
     summarize_route_task_field_retest_material_pack,
     summarize_route_task_field_retest_operator_drill,
+    summarize_route_task_field_retest_drill_console,
     summarize_route_task_field_run_intake,
     summarize_route_task_field_run_reconciliation,
     summarize_route_task_field_run_readiness,
@@ -3801,6 +3802,247 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["delivery_success"])
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_route_task_field_retest_operator_drill_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_retest_drill_console_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            console_path = Path(td) / "route_task_field_retest_drill_console.json"
+            console_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_drill_console.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_drill_console_gate"
+                        ),
+                        "evidence_ref": "evidence://route-task-field-retest-drill-console-1",
+                        "route_task_field_retest_drill_console_summary": {
+                            "schema": "trashbot.route_task_field_retest_drill_console_summary.v1",
+                            "source_schema": "trashbot.route_task_field_retest_drill_console.v1",
+                            "source_evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_drill_console_gate"
+                            ),
+                            "safe_evidence_ref": "evidence://route-task-field-retest-drill-console-1",
+                            "same_evidence_ref_required": True,
+                            "console_status": {
+                                "status": "ready_for_drill_console_not_proven",
+                                "verdict": "not_proven",
+                                "reason": "safe console labels are ready",
+                            },
+                            "command_labels": ["Open material pack", "Compare result reconciliation"],
+                            "safe_checklist": ["Keep console read-only before field callback."],
+                            "missing_material_prompts": ["Capture same evidence_ref door state."],
+                            "operator_callback_checklist": ["Call operator after upload."],
+                            "robot_diagnostics_summary": {
+                                "status": "metadata_only",
+                                "reason": "Robot mirrors safe drill console summary only.",
+                            },
+                            "safe_copy": (
+                                "Route-task field retest drill console is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                            "not_proven": ["delivery_success", "real_hil_pass"],
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_drill_console_ref=str(console_path),
+            )
+            summary = payload["route_task_field_retest_drill_console"]
+            summary_alias = payload["route_task_field_retest_drill_console_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["schema"], "trashbot.route_task_field_retest_drill_console_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_drill_console_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_field_retest_drill_console.v1")
+        self.assertEqual(summary["console_status"]["status"], "ready_for_drill_console_not_proven")
+        self.assertEqual(summary["console_status"]["verdict"], "not_proven")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://route-task-field-retest-drill-console-1")
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertIn("Open material pack", summary["command_labels"])
+        self.assertIn("read-only", summary["safe_checklist"][0])
+        self.assertIn("door state", summary["missing_material_prompts"][0])
+        self.assertIn("Call operator", summary["operator_callback_checklist"][0])
+        self.assertEqual(summary["robot_diagnostics_summary"]["status"], "metadata_only")
+        self.assertIn("delivery_success=false", summary["safe_summary"]["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(console_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_retest_drill_console_env_nested_missing_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "route_task_field_retest_drill_console_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_drill_console_summary.v1",
+                        "source_schema": "trashbot.route_task_field_retest_drill_console.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_drill_console_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_drill_console_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://route-task-field-retest-drill-console-2",
+                        "same_evidence_ref_required": True,
+                        "console_status": {"status": "blocked_missing_material", "verdict": "not_proven"},
+                        "command_labels": ["Run retest material pack"],
+                        "safe_checklist": ["Do not enable robot actions from this summary."],
+                        "missing_material_prompts": ["Capture missing callback note."],
+                        "operator_callback_checklist": ["Call support after upload."],
+                        "safe_copy": (
+                            "Route-task field retest drill console is metadata-only; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_console = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE")
+            previous_summary = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_SUMMARY")
+            os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE", None)
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_retest_drill_console"
+                ]
+            finally:
+                if previous_console is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE"] = previous_console
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_SUMMARY"] = previous_summary
+
+            nested_summary = summarize_route_task_field_retest_drill_console(
+                {
+                    "schema": "trashbot.route_task_field_retest_drill_console.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_drill_console_gate",
+                    "evidence_ref": "evidence://route-task-field-retest-drill-console-3",
+                    "diagnostics": {
+                        "diagnostics_summary": {
+                            "schema": "trashbot.route_task_field_retest_drill_console_summary.v1",
+                            "source_schema": "trashbot.route_task_field_retest_drill_console.v1",
+                            "source_evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_drill_console_gate"
+                            ),
+                            "safe_evidence_ref": "evidence://route-task-field-retest-drill-console-3",
+                            "same_evidence_ref_required": True,
+                            "console_status": {"status": "nested_ready", "verdict": "not_proven"},
+                            "command_labels": ["Use nested summary"],
+                            "safe_checklist": ["Keep action isolation."],
+                            "safe_copy": (
+                                "Nested drill console is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_drill_console.json"
+            missing_summary = summarize_route_task_field_retest_drill_console(str(missing_path))
+            no_summary = summarize_route_task_field_retest_drill_console(
+                {
+                    "schema": "trashbot.route_task_field_retest_drill_console.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_drill_console_gate",
+                    "evidence_ref": "evidence://route-task-field-retest-drill-console-4",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsupported_summary = summarize_route_task_field_retest_drill_console(
+                {
+                    "schema": "trashbot.route_task_field_retest_operator_drill.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_operator_drill_gate",
+                    "route_task_field_retest_drill_console_summary": {
+                        "safe_copy": "Unsupported drill console is metadata-only; delivery_success=false.",
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                }
+            )
+            unsafe_summary = summarize_route_task_field_retest_drill_console(
+                {
+                    "schema": "trashbot.route_task_field_retest_drill_console.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_drill_console_gate",
+                    "evidence_ref": "evidence://route-task-field-retest-drill-console-5",
+                    "route_task_field_retest_drill_console_summary": {
+                        "safe_evidence_ref": "evidence://route-task-field-retest-drill-console-5",
+                        "same_evidence_ref_required": True,
+                        "safe_copy": "Drill console confirms delivery success and ACK posted.",
+                        "delivery_success": False,
+                        "primary_actions_enabled": True,
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    nested_summary,
+                    missing_summary,
+                    no_summary,
+                    unsupported_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["console_status"]["status"], "blocked_missing_material")
+        self.assertIn("Run retest material pack", env_summary["command_labels"])
+        self.assertIn("robot actions", env_summary["safe_checklist"][0])
+        self.assertIn("callback note", env_summary["missing_material_prompts"][0])
+        self.assertIn("Call support", env_summary["operator_callback_checklist"][0])
+        self.assertEqual(nested_summary["console_status"]["status"], "nested_ready")
+        self.assertIn("Use nested summary", nested_summary["command_labels"])
+        self.assertEqual(missing_summary["console_status"]["status"], "missing")
+        self.assertEqual(no_summary["console_status"]["status"], "missing_summary")
+        self.assertEqual(unsupported_summary["console_status"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["console_status"]["status"], "unsafe_fields")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_route_task_field_retest_drill_console_gate", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertNotIn(str(missing_path), encoded)

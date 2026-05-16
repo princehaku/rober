@@ -1226,6 +1226,93 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, operator_drill_text)
 
+    def test_field_retest_drill_console_panel_is_read_only_and_copy_gated(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # drill console 跟在 operator drill 后，只读解释复测演练状态，不新增控制按钮语义。
+        self.assertIn("routeTaskFieldRetestDrillConsoleTitle", app)
+        self.assertIn("现场复测演练控制台", app)
+        self.assertIn("routeTaskFieldRetestOperatorDrillTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("route-task-field-retest-drill-console-panel", styles)
+        self.assertIn("route-task-field-retest-drill-console-grid", styles)
+
+        # 状态来源兼容 artifact、summary 和 Robot diagnostics compatible summary。
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestDrillConsoleText", app)
+        self.assertIn("routeTaskFieldRetestDrillConsoleCandidate", app)
+        self.assertIn("routeTaskFieldRetestDrillConsoleFromStatus", app)
+        self.assertIn("route_task_field_retest_drill_console", app)
+        self.assertIn("route_task_field_retest_drill_console_summary", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_drill_console_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_drill_console", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_drill_console", app)
+        self.assertIn("console_status", app)
+        self.assertIn("safe_checklist", app)
+        self.assertIn("command_labels", app)
+        self.assertIn("missing_material_prompts", app)
+        self.assertIn("operator_callback_checklist", app)
+
+        # copy/export 必须由 safe_copy 驱动，只导出白名单字段，且不触发主操作 endpoint。
+        self.assertIn("routeTaskFieldRetestDrillConsoleCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_drill_console_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestDrillConsoleButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestDrillConsoleButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"routeTaskFieldRetestDrillConsole.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须固定 drill console 的 software proof / not_proven 边界。
+        drill_console = fixture["route_task_field_retest_drill_console"]
+        self.assertEqual(
+            drill_console["console_status"],
+            "blocked_missing_route_task_field_retest_drill_console_not_proven",
+        )
+        self.assertEqual(drill_console["delivery_success"], False)
+        self.assertEqual(drill_console["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_route_task_field_retest_drill_console_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("route_task_field_retest_drill_console", doc)
+        self.assertIn("现场复测演练控制台", doc)
+
+    def test_field_retest_drill_console_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        drill_console_text = json.dumps(
+            fixture["route_task_field_retest_drill_console"],
+            ensure_ascii=False,
+        ).lower()
+
+        # drill console fixture 只能携带白名单 summary，不能带 raw artifact、底层控制、凭证或成功状态。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw drill console",
+            "raw console",
+            "raw robot response",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, drill_console_text)
+
 
 if __name__ == "__main__":
     unittest.main()

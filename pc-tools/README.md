@@ -191,6 +191,22 @@ python3 pc-tools/evidence/route_task_field_retest_operator_drill.py \
 
 该 drill 不读取材料目录或真实日志，只把 material pack summary 的 missing/rejected 状态转成现场同学可复跑的命令、必需输出和 callback checklist。缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_operator_drill_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_operator_drill_gate` 已把复测材料链的操作顺序复账清楚，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
+## route/task field retest drill console
+
+`pc-tools/evidence/route_task_field_retest_drill_console.py` 只读上一节 operator drill artifact、summary 或 wrapper/nested JSON，把 `material_pack -> result_intake -> result_reconciliation` 的命令标签、安全 checklist、缺失材料提示和 operator callback checklist 汇总成 PC console artifact / summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_drill_console.py \
+  --operator-drill-json /tmp/route_task_field_retest_operator_drill_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_drill_console.json \
+  --summary-output /tmp/route_task_field_retest_drill_console_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_drill_console.v1`，summary 使用 `schema=trashbot.route_task_field_retest_drill_console_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_drill_console_gate`。核心字段包括 safe `evidence_ref`、`console_status`、`same_evidence_ref_required=true`、material pack / result intake / result reconciliation command labels、`safe_checklist`、`missing_material_prompts`、`operator_callback_checklist`、`rerun_notes`、`safe_copy`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+该 console 不读取真实材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、operator drill 未 ready、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_drill_console_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_drill_console_gate` 已把 operator drill 的复测演练控制台摘要整理清楚，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## route/task field retest result intake
 
 `pc-tools/evidence/route_task_field_retest_result_intake.py` 只读现场复测回填后的 result artifact、summary、session handoff artifact/summary 或 wrapper/nested JSON，把同一 `evidence_ref` 下的结果材料元数据整理成 fail-closed result intake artifact / summary：
