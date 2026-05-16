@@ -409,7 +409,32 @@ material pack 固定要求八类现场复测材料：Nav2/fixed-route runtime lo
 
 `route_task_field_retest_material_pack` 仍是 software proof。`ready_for_field_retest_material_pack_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_material_pack_gate` 已把目录材料整理成可交给 result intake / reconciliation 的安全摘要；它不是真实 field pass、真实 fixed-route/Nav2、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
-## 4.9.7 Route Task Field Retest Result Intake
+## 4.9.7 Route Task Field Retest Operator Drill
+
+material pack 之后，可以运行 PC 侧 operator drill gate，把 material pack、result intake 和 result reconciliation 的操作顺序固化为现场同学可复账的 artifact / summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_operator_drill.py \
+  --material-pack-json /tmp/route_task_field_retest_material_pack_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_operator_drill.json \
+  --summary-output /tmp/route_task_field_retest_operator_drill_summary.json
+```
+
+artifact 使用 `schema=trashbot.route_task_field_retest_operator_drill.v1`，summary 使用 `schema=trashbot.route_task_field_retest_operator_drill_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_operator_drill_gate`。顶层固定包含 `same_evidence_ref_required=true`、safe `evidence_ref`、`material_pack_command`、`result_intake_command`、`result_reconciliation_command`、`required_outputs`、`missing_material_prompts`、`operator_callback_checklist`、`rerun_notes`、`safe_copy`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+operator drill 只读取 material pack artifact/summary/wrapper/nested JSON，不读取材料目录、ROS graph、Nav2 runtime、真实日志、硬件、真实手机/browser、外部云、OSS/CDN、DB/queue、4G 或任何真实现场文件内容。它把 material pack 的 missing/rejected 状态转成补采提示，把同一 `evidence_ref` 串到 result intake 和 result reconciliation 命令，并要求现场 callback 只回填事实摘要、失败原因和安全结果输入。
+
+保守阻断规则：
+
+- 输入缺失、JSON 不可读或不是 JSON object：输出 blocked，不猜测 material pack 已存在。
+- 输入 schema 或 evidence boundary 不支持：输出 blocked。
+- 缺 safe `evidence_ref`、与 `--evidence-ref` 不一致或 `same_evidence_ref_required` 不是严格 true：输出 blocked。
+- 输入含 unsafe copy、raw path、credential、ROS topic、serial/UART、WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true`：输出 blocked。
+
+`route_task_field_retest_operator_drill` 仍是 software proof。`ready_for_operator_drill_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_operator_drill_gate` 已把 material pack 到 result intake/reconciliation 的演练顺序复账清楚；它不是真实 field pass、真实 fixed-route/Nav2、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
+## 4.9.8 Route Task Field Retest Result Intake
 
 现场复测 session handoff 被现场同学回填 summary 后，可以运行 result intake gate，把同一 `evidence_ref` 下的八类结果材料摘要转成 Robot diagnostics 和 mobile/web 可只读展示的 fail-closed result intake：
 
@@ -435,7 +460,7 @@ result intake 必须看到八类现场复测结果材料摘要：Nav2/fixed-rout
 
 `robot_diagnostics_summary` 和 `mobile_readonly_summary` 只能消费白名单 summary、safe copy 和 fail-closed flags，不展示 raw artifact、本机路径、checksum、traceback、凭证、DB/queue URL、OSS AK/SK、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 参数。`ready_for_field_retest_result_intake_not_proven` 只表示 Docker/local software proof 足以接收同一 `evidence_ref` 的八类复测结果材料摘要，不是真实 fixed-route/Nav2、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
-## 4.9.8 Route Task Field Retest Result Reconciliation
+## 4.9.9 Route Task Field Retest Result Reconciliation
 
 result intake 之后，可以运行 PC-side reconciliation gate，把上一轮 `route_task_field_retest_result_intake`、`route_task_field_retest_session_handoff`、`route_task_field_retest_execution_pack` 或现场 result wrapper/nested JSON 复账成 artifact / summary：
 

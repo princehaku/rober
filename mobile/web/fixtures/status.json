@@ -478,5 +478,51 @@
       "真实硬件/HIL",
       "Objective 5 external proof"
     ]
+  },
+  "route_task_field_retest_operator_drill": {
+    "schema": "trashbot.route_task_field_retest_operator_drill.v1",
+    "summary_schema": "trashbot.route_task_field_retest_operator_drill_summary.v1",
+    "schema_version": 1,
+    "source_material_pack_schema": "trashbot.route_task_field_retest_material_pack_summary.v1",
+    "drill_status": "blocked_missing_route_task_field_retest_operator_drill_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "next_command_labels": [
+      "command_label=run material pack gate",
+      "command_label=run result intake gate",
+      "command_label=run result reconciliation gate"
+    ],
+    "missing_material_prompts": [
+      "missing_prompt=door_state phone-safe summary",
+      "missing_prompt=target_floor_confirmation phone-safe summary",
+      "missing_prompt=human_assistance_note phone-safe summary",
+      "missing_prompt=delivery_result remains not_proven"
+    ],
+    "operator_callback_checklist": [
+      "callback_check=same safe evidence_ref",
+      "callback_check=material pack summary republished through Robot diagnostics",
+      "callback_check=result intake summary collected",
+      "callback_check=result reconciliation summary collected",
+      "callback_check=delivery_success=false",
+      "callback_check=primary_actions_enabled=false"
+    ],
+    "safe_phone_copy": "现场操作演练只读展示 drill status、safe evidence ref、next command labels、missing material prompts、operator callback checklist 和 evidence boundary；这是 software proof only。",
+    "safe_copy": "现场操作演练 safe_copy：当前 drill_status blocked_missing_route_task_field_retest_operator_drill_not_proven；只允许现场支持按 labels/checklist 补材料；delivery_success=false；primary_actions_enabled=false。",
+    "recovery_hint": "请按同一 safe evidence_ref 执行材料包、结果入口和结果复账的 phone-safe 演练，并由 Robot diagnostics 发布 compatible operator drill summary。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_operator_drill_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 field retest operator drill",
+      "真实 material pack command execution",
+      "真实 result intake command execution",
+      "真实 result reconciliation command execution",
+      "真实 operator callback",
+      "真实 route/elevator field pass",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机设备/browser",
+      "真实硬件/HIL",
+      "Objective 5 external proof"
+    ]
   }
 }

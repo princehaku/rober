@@ -27,6 +27,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_result_intake,
     summarize_route_task_field_retest_result_reconciliation,
     summarize_route_task_field_retest_material_pack,
+    summarize_route_task_field_retest_operator_drill,
     summarize_route_task_field_run_intake,
     summarize_route_task_field_run_reconciliation,
     summarize_route_task_field_run_readiness,
@@ -3591,6 +3592,213 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["delivery_success"])
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_route_task_field_retest_material_pack_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_retest_operator_drill_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            drill_path = Path(td) / "route_task_field_retest_operator_drill.json"
+            drill_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_operator_drill.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_operator_drill_gate"
+                        ),
+                        "evidence_ref": "evidence://route-task-field-retest-operator-drill-1",
+                        "route_task_field_retest_operator_drill_summary": {
+                            "schema": "trashbot.route_task_field_retest_operator_drill_summary.v1",
+                            "source_schema": "trashbot.route_task_field_retest_operator_drill.v1",
+                            "source_evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_operator_drill_gate"
+                            ),
+                            "safe_evidence_ref": "evidence://route-task-field-retest-operator-drill-1",
+                            "same_evidence_ref_required": True,
+                            "drill_status": {
+                                "status": "ready_for_operator_drill_not_proven",
+                                "verdict": "not_proven",
+                                "reason": "operator callback checklist is ready",
+                            },
+                            "next_command_labels": [
+                                "Run material pack gate",
+                                "Run result intake gate",
+                                "Run result reconciliation gate",
+                            ],
+                            "missing_material_prompts": [
+                                "Ask operator to capture door state under the same evidence_ref."
+                            ],
+                            "operator_callback_checklist": [
+                                "Confirm field operator used the same evidence_ref."
+                            ],
+                            "robot_diagnostics_summary": {
+                                "status": "metadata_only",
+                                "reason": "Robot diagnostics mirrors safe operator drill labels only.",
+                            },
+                            "safe_copy": (
+                                "Route-task field retest operator drill is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                            "not_proven": ["delivery_success", "real_hil_pass"],
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_operator_drill_ref=str(drill_path),
+            )
+            summary = payload["route_task_field_retest_operator_drill"]
+            summary_alias = payload["route_task_field_retest_operator_drill_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["schema"], "trashbot.route_task_field_retest_operator_drill_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_operator_drill_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_field_retest_operator_drill.v1")
+        self.assertEqual(summary["drill_status"]["status"], "ready_for_operator_drill_not_proven")
+        self.assertEqual(summary["drill_status"]["verdict"], "not_proven")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://route-task-field-retest-operator-drill-1")
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertIn("Run material pack gate", summary["next_command_labels"])
+        self.assertIn("door state", summary["missing_material_prompts"][0])
+        self.assertIn("same evidence_ref", summary["operator_callback_checklist"][0])
+        self.assertEqual(summary["robot_diagnostics_summary"]["status"], "metadata_only")
+        self.assertIn("delivery_success=false", summary["safe_summary"]["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(drill_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_retest_operator_drill_env_summary_missing_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "route_task_field_retest_operator_drill_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_operator_drill_summary.v1",
+                        "source_schema": "trashbot.route_task_field_retest_operator_drill.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_operator_drill_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_operator_drill_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://route-task-field-retest-operator-drill-2",
+                        "same_evidence_ref_required": True,
+                        "drill_status": {"status": "blocked_missing_material", "verdict": "not_proven"},
+                        "next_command_labels": ["Run retest material pack"],
+                        "missing_material_prompts": ["Capture missing door state."],
+                        "operator_callback_checklist": ["Call support after upload."],
+                        "safe_copy": (
+                            "Route-task field retest operator drill is metadata-only; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_drill = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL")
+            previous_summary = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_SUMMARY")
+            os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL", None)
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_retest_operator_drill"
+                ]
+            finally:
+                if previous_drill is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL"] = previous_drill
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_SUMMARY"] = previous_summary
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_operator_drill.json"
+            missing_summary = summarize_route_task_field_retest_operator_drill(str(missing_path))
+            no_summary = summarize_route_task_field_retest_operator_drill(
+                {
+                    "schema": "trashbot.route_task_field_retest_operator_drill.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_operator_drill_gate",
+                    "evidence_ref": "evidence://route-task-field-retest-operator-drill-3",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsupported_summary = summarize_route_task_field_retest_operator_drill(
+                {
+                    "schema": "trashbot.route_task_field_retest_material_pack.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_material_pack_gate",
+                    "route_task_field_retest_operator_drill_summary": {
+                        "safe_copy": "Unsupported operator drill is metadata-only; delivery_success=false.",
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                }
+            )
+            unsafe_summary = summarize_route_task_field_retest_operator_drill(
+                {
+                    "schema": "trashbot.route_task_field_retest_operator_drill.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_operator_drill_gate",
+                    "evidence_ref": "evidence://route-task-field-retest-operator-drill-4",
+                    "route_task_field_retest_operator_drill_summary": {
+                        "safe_evidence_ref": "evidence://route-task-field-retest-operator-drill-4",
+                        "same_evidence_ref_required": True,
+                        "safe_copy": "Operator drill confirms delivery success and ACK posted.",
+                        "delivery_success": True,
+                        "primary_actions_enabled": False,
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            encoded = json.dumps(
+                [env_summary, missing_summary, no_summary, unsupported_summary, unsafe_summary],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["drill_status"]["status"], "blocked_missing_material")
+        self.assertIn("Run retest material pack", env_summary["next_command_labels"])
+        self.assertIn("door state", env_summary["missing_material_prompts"][0])
+        self.assertIn("Call support", env_summary["operator_callback_checklist"][0])
+        self.assertEqual(missing_summary["drill_status"]["status"], "missing")
+        self.assertEqual(no_summary["drill_status"]["status"], "missing_summary")
+        self.assertEqual(unsupported_summary["drill_status"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["drill_status"]["status"], "unsafe_fields")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_route_task_field_retest_operator_drill_gate", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertNotIn(str(missing_path), encoded)

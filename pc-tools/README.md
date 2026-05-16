@@ -175,6 +175,22 @@ material pack 固定校验八类材料：`nav2_or_fixed_route_runtime_log`、`ro
 
 该 gate 只输出目录材料的脱敏状态和拒绝原因，不复制 raw filesystem path、credential、完整 artifact、traceback、checksum、raw ROS topic、`/cmd_vel`、串口/UART 细节或硬件参数。`ready_for_field_retest_material_pack_not_proven` 只表示 Docker/local software proof 足以把目录材料交给 result intake/reconciliation 继续复账，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
+## route/task field retest operator drill
+
+`pc-tools/evidence/route_task_field_retest_operator_drill.py` 只读上一节 material pack artifact、summary 或 wrapper/nested JSON，把 `material_pack -> result_intake -> result_reconciliation` 的 PC 操作顺序整理成 operator drill artifact / summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_operator_drill.py \
+  --material-pack-json /tmp/route_task_field_retest_material_pack_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_operator_drill.json \
+  --summary-output /tmp/route_task_field_retest_operator_drill_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_operator_drill.v1`，summary 使用 `schema=trashbot.route_task_field_retest_operator_drill_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_operator_drill_gate`。核心字段包括 safe `evidence_ref`、`same_evidence_ref_required=true`、`material_pack_command`、`result_intake_command`、`result_reconciliation_command`、`required_outputs`、`missing_material_prompts`、`operator_callback_checklist`、`rerun_notes`、`safe_copy`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+该 drill 不读取材料目录或真实日志，只把 material pack summary 的 missing/rejected 状态转成现场同学可复跑的命令、必需输出和 callback checklist。缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_operator_drill_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_operator_drill_gate` 已把复测材料链的操作顺序复账清楚，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## route/task field retest result intake
 
 `pc-tools/evidence/route_task_field_retest_result_intake.py` 只读现场复测回填后的 result artifact、summary、session handoff artifact/summary 或 wrapper/nested JSON，把同一 `evidence_ref` 下的结果材料元数据整理成 fail-closed result intake artifact / summary：

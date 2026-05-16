@@ -58,6 +58,7 @@ const ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF_BOUNDARY = "software_proof_docker_
 const ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_BOUNDARY = "software_proof_docker_route_task_field_retest_result_intake_gate";
 const ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION_BOUNDARY = "software_proof_docker_route_task_field_retest_result_reconciliation_gate";
 const ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_BOUNDARY = "software_proof_docker_route_task_field_retest_material_pack_gate";
+const ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_BOUNDARY = "software_proof_docker_route_task_field_retest_operator_drill_gate";
 const ELEVATOR_ASSIST_BOUNDARY = "software_proof_docker_elevator_assist_default_mainline_gate";
 const ELEVATOR_ASSIST_REHEARSAL_EVIDENCE_BOUNDARY = "software_proof_docker_elevator_evidence_driven_mainline_gate";
 const ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_BOUNDARY = "software_proof_docker_elevator_route_evidence_reconciliation_gate";
@@ -151,6 +152,7 @@ const UNSAFE_ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_TEXT = /(authorization|beare
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw result|raw intake|full result|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw result|raw reconciliation|raw diagnostics|raw intake|full result|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw material pack|full material pack|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
+const UNSAFE_ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw operator drill|raw drill|full drill|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
 const UNSAFE_ELEVATOR_ASSIST_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|已送达成功|真实电梯完成|真实喇叭完成|真实 nav2|hil_pass)/i;
 const UNSAFE_ELEVATOR_ROUTE_RECONCILIATION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw reconciliation|raw diagnostics|complete artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw handoff|raw diagnostics|raw material|complete artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
@@ -196,6 +198,7 @@ let latestRouteTaskFieldRetestSessionHandoff = null;
 let latestRouteTaskFieldRetestResultIntake = null;
 let latestRouteTaskFieldRetestResultReconciliation = null;
 let latestRouteTaskFieldRetestMaterialPack = null;
+let latestRouteTaskFieldRetestOperatorDrill = null;
 let deferredPwaInstallPromptEvent = null;
 let pwaInstallPromptEventState = null;
 let latestRealDeviceEvidencePackage = null;
@@ -444,6 +447,15 @@ function safeRouteTaskFieldRetestMaterialPackText(value, fallback = "not_proven"
   // 现场材料包只展示 Robot diagnostics 兼容摘要；raw 材料、路径、凭证、topic 和成功暗示都必须降级。
   const text = safeText(value, fallback);
   if (UNSAFE_ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeRouteTaskFieldRetestOperatorDrillText(value, fallback = "not_proven") {
+  // 现场操作演练只读消费脱敏 summary；raw drill、命令实现细节和成功暗示都必须降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -6687,6 +6699,206 @@ function routeTaskFieldRetestMaterialPackCopyPayload(summary) {
   };
 }
 
+function routeTaskFieldRetestOperatorDrillCandidate(status, readiness, diagnostics) {
+  // operator drill 可从 PC gate、Robot diagnostics 或 status 镜像进入；前端只取对象型安全摘要。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.route_task_field_retest_operator_drill,
+    status?.route_task_field_retest_operator_drill_summary,
+    status?.robot_diagnostics_route_task_field_retest_operator_drill_summary,
+    readiness?.route_task_field_retest_operator_drill,
+    readiness?.route_task_field_retest_operator_drill_summary,
+    readiness?.robot_diagnostics_route_task_field_retest_operator_drill_summary,
+    diagnostics?.route_task_field_retest_operator_drill,
+    diagnostics?.route_task_field_retest_operator_drill_summary,
+    diagnostics?.robot_diagnostics_route_task_field_retest_operator_drill_summary,
+    diagnosticsReadiness.route_task_field_retest_operator_drill,
+    diagnosticsReadiness.route_task_field_retest_operator_drill_summary,
+    diagnosticsReadiness.robot_diagnostics_route_task_field_retest_operator_drill_summary,
+    diagnosticsSummary.route_task_field_retest_operator_drill,
+    diagnosticsSummary.route_task_field_retest_operator_drill_summary,
+    diagnosticsSummary.robot_diagnostics_route_task_field_retest_operator_drill_summary,
+    nestedDiagnosticsSummary.route_task_field_retest_operator_drill,
+    nestedDiagnosticsSummary.route_task_field_retest_operator_drill_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_route_task_field_retest_operator_drill_summary,
+    nestedDiagnosticsInnerSummary.route_task_field_retest_operator_drill,
+    nestedDiagnosticsInnerSummary.route_task_field_retest_operator_drill_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_route_task_field_retest_operator_drill_summary,
+    statusDiagnosticsSummary.route_task_field_retest_operator_drill,
+    statusDiagnosticsSummary.route_task_field_retest_operator_drill_summary,
+    statusDiagnosticsSummary.robot_diagnostics_route_task_field_retest_operator_drill_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function routeTaskFieldRetestOperatorDrillNotProvenList(value) {
+  // 演练摘要解释下一步现场动作，不证明命令真实执行、复测通过、投放完成或 HIL。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实 field retest operator drill",
+    "真实 material pack command execution",
+    "真实 result intake command execution",
+    "真实 result reconciliation command execution",
+    "真实 operator callback",
+    "真实 route/elevator field pass",
+    "真实 dropoff/cancel completion",
+    "真实 delivery result",
+    "真实手机设备/browser",
+    "真实硬件/HIL",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 16);
+}
+
+function routeTaskFieldRetestOperatorDrillSummaryText(value, fallback) {
+  // 命令 labels、缺失提示和 callback checklist 只显示短标签，避免把 raw 命令或路径带到手机端。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeRouteTaskFieldRetestOperatorDrillText(
+        item?.label || item?.safe_label || item?.safe_phone_copy || item?.summary ||
+          item?.prompt || item?.check || item?.status || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_label || value.label || value.safe_phone_copy ||
+      value.summary || value.prompt_summary || value.checklist_summary ||
+      value.status || value.state || value.result;
+    if (direct) {
+      return safeRouteTaskFieldRetestOperatorDrillText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeRouteTaskFieldRetestOperatorDrillText(key, "");
+        const copy = routeTaskFieldRetestOperatorDrillSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  return safeRouteTaskFieldRetestOperatorDrillText(value, fallback);
+}
+
+function routeTaskFieldRetestOperatorDrillSafeCopy(value) {
+  // copy/export 只能使用后端 safe_copy；前端不从 command labels 反向拼 raw drill。
+  const source = value?.safe_copy || value?.safe_copy_payload;
+  if (!source) {
+    return null;
+  }
+  const text = typeof source === "object"
+    ? source.safe_phone_copy || source.summary || source.copy
+    : source;
+  const safeCopy = safeRouteTaskFieldRetestOperatorDrillText(text, "");
+  if (!safeCopy) {
+    return null;
+  }
+  return {
+    schema: "trashbot.route_task_field_retest_operator_drill_copy.v1",
+    schema_version: 1,
+    safe_phone_copy: safeCopy,
+  };
+}
+
+function routeTaskFieldRetestOperatorDrillFromStatus(status, readiness, diagnostics) {
+  const provided = routeTaskFieldRetestOperatorDrillCandidate(status, readiness, diagnostics) || {};
+  const safeCopyPayload = routeTaskFieldRetestOperatorDrillSafeCopy(provided);
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.route_task_field_retest_operator_drill.v1",
+    summary_schema: "trashbot.route_task_field_retest_operator_drill_summary.v1",
+    schema_version: 1,
+    drill_status: safeRouteTaskFieldRetestOperatorDrillText(
+      provided.drill_status || provided.operator_drill_status || provided.status || provided.overall_status,
+      "blocked_missing_route_task_field_retest_operator_drill",
+    ),
+    safe_evidence_ref: safeRouteTaskFieldRetestOperatorDrillText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "not_provided",
+    ),
+    next_command_labels: routeTaskFieldRetestOperatorDrillSummaryText(
+      provided.next_command_labels || provided.command_labels || provided.safe_command_labels ||
+        provided.commands_to_run || provided.next_commands,
+      "next_command_labels=material pack、result intake、result reconciliation 待由 summary 提供",
+    ),
+    missing_material_prompts: routeTaskFieldRetestOperatorDrillSummaryText(
+      provided.missing_material_prompts || provided.missing_prompts || provided.missing_materials ||
+        provided.required_material_prompts,
+      "missing_material_prompts=door_state、target_floor_confirmation、human_assistance_note 等提示待补齐",
+    ),
+    operator_callback_checklist: routeTaskFieldRetestOperatorDrillSummaryText(
+      provided.operator_callback_checklist || provided.callback_checklist || provided.operator_checklist,
+      "operator_callback_checklist=现场人员回填同一 evidence_ref、结果材料和 diagnostics compatible summary。",
+    ),
+    safe_phone_copy: safeRouteTaskFieldRetestOperatorDrillText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "route_task_field_retest_operator_drill 摘要缺失；手机端只显示 blocked/not_proven，不读取 raw drill。",
+    ),
+    safe_copy_payload: safeCopyPayload,
+    safe_copy_status: safeCopyPayload ? "safe_copy_available" : "blocked copy unavailable",
+    recovery_hint: safeRouteTaskFieldRetestOperatorDrillText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由 diagnostics/status 提供 route_task_field_retest_operator_drill_summary 和 safe_copy 后，再交接现场操作演练。",
+    ),
+    evidence_boundary: safeRouteTaskFieldRetestOperatorDrillText(
+      provided.evidence_boundary,
+      ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: routeTaskFieldRetestOperatorDrillNotProvenList(provided),
+  };
+}
+
+function routeTaskFieldRetestOperatorDrillCopyPayload(summary) {
+  // 白名单导出只保留演练状态、命令标签和 callback checklist，不导出 raw command/path/artifact。
+  const source = summary?.schema
+    ? summary
+    : routeTaskFieldRetestOperatorDrillFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  if (!source.safe_copy_payload) {
+    return null;
+  }
+  return {
+    schema: source.safe_copy_payload.schema,
+    schema_version: source.safe_copy_payload.schema_version,
+    source: "mobile_web",
+    route_task_field_retest_operator_drill_schema: source.schema,
+    summary_schema: source.summary_schema,
+    drill_status: source.drill_status,
+    safe_evidence_ref: source.safe_evidence_ref,
+    next_command_labels: source.next_command_labels,
+    missing_material_prompts: source.missing_material_prompts,
+    operator_callback_checklist: source.operator_callback_checklist,
+    safe_phone_copy: source.safe_copy_payload.safe_phone_copy,
+    evidence_boundary: ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_BOUNDARY,
+    not_proven: source.not_proven,
+    delivery_success: false,
+    primary_actions_enabled: false,
+  };
+}
+
 function elevatorRouteEvidenceReconciliationCandidate(status, readiness, diagnostics) {
   // 复账摘要可能由 Robot diagnostics 或 status/readiness 镜像提供；前端只消费 summary 形态。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -10478,6 +10690,90 @@ function renderRouteTaskFieldRetestMaterialPack(status) {
   $("downloadRouteTaskFieldRetestMaterialPackButton").disabled = !summary.safe_copy_payload;
 }
 
+function ensureRouteTaskFieldRetestOperatorDrillPanel() {
+  // 现场操作演练跟在材料包后，只读解释下一步命令标签和 callback checklist，不新增控制入口。
+  let panel = $("routeTaskFieldRetestOperatorDrillPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("routeTaskFieldRetestMaterialPackTitle")?.closest("section") ||
+    $("routeTaskFieldRetestResultReconciliationTitle")?.closest("section") ||
+    $("routeTaskFieldRetestResultIntakeTitle")?.closest("section") ||
+    $("routeTaskFieldRetestSessionHandoffTitle")?.closest("section") ||
+    $("routeTaskFieldRetestExecutionPackTitle")?.closest("section") ||
+    $("routeTaskTerminalReviewDecisionTitle")?.closest("section") ||
+    $("elevatorAssistPanel");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "routeTaskFieldRetestOperatorDrillPanel";
+  panel.className = "route-task-field-retest-operator-drill-panel";
+  panel.setAttribute("aria-labelledby", "routeTaskFieldRetestOperatorDrillTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="routeTaskFieldRetestOperatorDrillTitle">现场操作演练</h2>
+      <span id="routeTaskFieldRetestOperatorDrillBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="routeTaskFieldRetestOperatorDrillCopy" class="message">
+      route_task_field_retest_operator_drill 只读展示 drill status、safe evidence ref、next command labels、missing material prompts、operator callback checklist 和 boundary。
+    </p>
+    <dl class="route-task-field-retest-operator-drill-grid">
+      <div><dt>Drill Status</dt><dd id="routeTaskFieldRetestOperatorDrillStatus">blocked_missing_route_task_field_retest_operator_drill</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="routeTaskFieldRetestOperatorDrillEvidenceRef">not_provided</dd></div>
+      <div><dt>Next Command Labels</dt><dd id="routeTaskFieldRetestOperatorDrillCommandLabels">next_command_labels=not_proven</dd></div>
+      <div><dt>Missing Material Prompts</dt><dd id="routeTaskFieldRetestOperatorDrillMissingPrompts">missing_material_prompts=not_proven</dd></div>
+      <div><dt>Operator Callback Checklist</dt><dd id="routeTaskFieldRetestOperatorDrillChecklist">operator_callback_checklist=not_proven</dd></div>
+      <div><dt>Safe Copy Status</dt><dd id="routeTaskFieldRetestOperatorDrillSafeCopyStatus">blocked copy unavailable</dd></div>
+      <div><dt>Control Boundary</dt><dd id="routeTaskFieldRetestOperatorDrillControls">delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="routeTaskFieldRetestOperatorDrillBoundary">software_proof_docker_route_task_field_retest_operator_drill_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="routeTaskFieldRetestOperatorDrillNotProven">真实现场复测、HIL、真机浏览器和 delivery success 未证明。</dd></div>
+    </dl>
+    <div class="bundle-copy-row">
+      <button id="copyRouteTaskFieldRetestOperatorDrillButton" type="button" disabled>复制 operator drill</button>
+      <button id="downloadRouteTaskFieldRetestOperatorDrillButton" type="button" disabled>导出 operator drill</button>
+      <span id="routeTaskFieldRetestOperatorDrillCopyStatus" class="hint">blocked copy unavailable</span>
+    </div>
+    <pre id="routeTaskFieldRetestOperatorDrillSafeCopy" class="safe-copy" aria-label="route_task_field_retest_operator_drill safe_copy">blocked copy unavailable</pre>
+    <p id="routeTaskFieldRetestOperatorDrillHint" class="hint">
+      现场操作演练只展示 Robot diagnostics compatible summary 和后端 safe_copy；不暴露 raw JSON、raw artifacts、raw commands、paths、credentials、ROS topic、串口/UART、WAVE ROVER 或成功文案，也不改变 Start Delivery、Confirm Dropoff 或 Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderRouteTaskFieldRetestOperatorDrill(status) {
+  const panel = ensureRouteTaskFieldRetestOperatorDrillPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = routeTaskFieldRetestOperatorDrillFromStatus(status, readiness, latestDiagnostics);
+  latestRouteTaskFieldRetestOperatorDrill = summary;
+  const badge = $("routeTaskFieldRetestOperatorDrillBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 operator drill" : "read-only operator drill";
+  $("routeTaskFieldRetestOperatorDrillCopy").textContent = summary.safe_phone_copy;
+  $("routeTaskFieldRetestOperatorDrillStatus").textContent = summary.drill_status;
+  $("routeTaskFieldRetestOperatorDrillEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("routeTaskFieldRetestOperatorDrillCommandLabels").textContent = summary.next_command_labels;
+  $("routeTaskFieldRetestOperatorDrillMissingPrompts").textContent = summary.missing_material_prompts;
+  $("routeTaskFieldRetestOperatorDrillChecklist").textContent = summary.operator_callback_checklist;
+  $("routeTaskFieldRetestOperatorDrillSafeCopyStatus").textContent = summary.safe_copy_status;
+  $("routeTaskFieldRetestOperatorDrillControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("routeTaskFieldRetestOperatorDrillBoundary").textContent = summary.evidence_boundary;
+  $("routeTaskFieldRetestOperatorDrillNotProven").textContent = summary.not_proven.join("、");
+  $("routeTaskFieldRetestOperatorDrillHint").textContent = summary.recovery_hint;
+  $("routeTaskFieldRetestOperatorDrillSafeCopy").textContent =
+    summary.safe_copy_payload?.safe_phone_copy || "blocked copy unavailable";
+  $("routeTaskFieldRetestOperatorDrillCopyStatus").textContent = summary.safe_copy_status;
+  $("copyRouteTaskFieldRetestOperatorDrillButton").disabled = !summary.safe_copy_payload;
+  $("downloadRouteTaskFieldRetestOperatorDrillButton").disabled = !summary.safe_copy_payload;
+}
+
 function ensureElevatorRouteEvidenceReconciliationPanel() {
   // 本 panel 由 JS 注入，避免改动静态 index；它只读展示 Robot diagnostics/status 的复账摘要。
   let panel = $("elevatorRouteEvidenceReconciliationPanel");
@@ -13122,6 +13418,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const routeTaskFieldRetestOperatorDrill = routeTaskFieldRetestOperatorDrillFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const elevatorRouteReconciliation = elevatorRouteEvidenceReconciliationFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -13216,6 +13517,7 @@ function renderDiagnosticsSummary(payload) {
     ["route_task_field_retest_result_intake", routeTaskFieldRetestResultIntake.intake_status],
     ["route_task_field_retest_result_reconciliation", routeTaskFieldRetestResultReconciliation.reconciliation_verdict],
     ["route_task_field_retest_material_pack", routeTaskFieldRetestMaterialPack.pack_status],
+    ["route_task_field_retest_operator_drill", routeTaskFieldRetestOperatorDrill.drill_status],
     ["Elevator-route evidence reconciliation", elevatorRouteReconciliation.reconciliation_verdict],
     ["Route-elevator field session handoff", routeElevatorFieldHandoff.handoff_verdict],
     ["mobile_route_elevator_field_device_precheck", mobileRouteElevatorPrecheck.precheck_status],
@@ -13301,6 +13603,7 @@ function renderOfflineFailure() {
   renderRouteTaskFieldRetestResultIntake({});
   renderRouteTaskFieldRetestResultReconciliation({});
   renderRouteTaskFieldRetestMaterialPack({});
+  renderRouteTaskFieldRetestOperatorDrill({});
   renderRouteElevatorFieldSessionHandoff({});
   renderMobileRouteElevatorFieldDevicePrecheck({});
   renderMobileFieldMaterialIntake({});
@@ -13363,6 +13666,7 @@ function renderStatus(status) {
   renderRouteTaskFieldRetestResultIntake(status);
   renderRouteTaskFieldRetestResultReconciliation(status);
   renderRouteTaskFieldRetestMaterialPack(status);
+  renderRouteTaskFieldRetestOperatorDrill(status);
   renderRouteElevatorFieldSessionHandoff(status);
   renderMobileRouteElevatorFieldDevicePrecheck(status);
   renderMobileFieldMaterialIntake(status);
@@ -13601,6 +13905,7 @@ async function openDiagnostics() {
     renderRouteTaskFieldRetestResultIntake(latestStatus || {});
     renderRouteTaskFieldRetestResultReconciliation(latestStatus || {});
     renderRouteTaskFieldRetestMaterialPack(latestStatus || {});
+    renderRouteTaskFieldRetestOperatorDrill(latestStatus || {});
     renderElevatorRouteEvidenceReconciliation(latestStatus || {});
     renderRouteElevatorFieldSessionHandoff(latestStatus || {});
     renderMobileRouteElevatorFieldDevicePrecheck(latestStatus || {});
@@ -13685,6 +13990,7 @@ function wireEvents() {
   ensureRouteTaskFieldRetestResultIntakePanel();
   ensureRouteTaskFieldRetestResultReconciliationPanel();
   ensureRouteTaskFieldRetestMaterialPackPanel();
+  ensureRouteTaskFieldRetestOperatorDrillPanel();
   $("copyMobileRouteElevatorFieldDevicePrecheckButton").addEventListener("click", async () => {
     const payload = JSON.stringify(
       mobileRouteElevatorFieldDevicePrecheckCopyPayload(latestMobileRouteElevatorFieldDevicePrecheck || {}),
@@ -14202,6 +14508,42 @@ function wireEvents() {
     downloadJsonPackage("route_task_field_retest_material_pack_copy.json", payload);
     $("routeTaskFieldRetestMaterialPackCopyStatus").textContent =
       "已导出 route retest material pack whitelist-only JSON。";
+  });
+  $("copyRouteTaskFieldRetestOperatorDrillButton").addEventListener("click", async () => {
+    const copyPayload = routeTaskFieldRetestOperatorDrillCopyPayload(
+      latestRouteTaskFieldRetestOperatorDrill || {},
+    );
+    if (!copyPayload) {
+      $("routeTaskFieldRetestOperatorDrillCopyStatus").textContent = "blocked copy unavailable";
+      $("routeTaskFieldRetestOperatorDrillSafeCopy").textContent = "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("routeTaskFieldRetestOperatorDrillSafeCopy").textContent = payload;
+    // 演练复制只保留安全标签和 checklist；剪贴板失败时页面仍保留可人工复制文本。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("routeTaskFieldRetestOperatorDrillCopyStatus").textContent =
+        "已复制 route_task_field_retest_operator_drill phone-safe metadata。";
+    } catch (_error) {
+      $("routeTaskFieldRetestOperatorDrillCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadRouteTaskFieldRetestOperatorDrillButton").addEventListener("click", () => {
+    const copyPayload = routeTaskFieldRetestOperatorDrillCopyPayload(
+      latestRouteTaskFieldRetestOperatorDrill || {},
+    );
+    if (!copyPayload) {
+      $("routeTaskFieldRetestOperatorDrillCopyStatus").textContent = "blocked copy unavailable";
+      $("routeTaskFieldRetestOperatorDrillSafeCopy").textContent = "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("routeTaskFieldRetestOperatorDrillSafeCopy").textContent = payload;
+    downloadJsonPackage("route_task_field_retest_operator_drill_copy.json", payload);
+    $("routeTaskFieldRetestOperatorDrillCopyStatus").textContent =
+      "已导出 route retest operator drill whitelist-only JSON。";
   });
   $("copyRouteTaskReviewButton").addEventListener("click", async () => {
     // operator review 复制只使用后端提供的 safe_copy 白名单对象，缺失时不生成替代 bundle。
