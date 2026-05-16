@@ -251,6 +251,15 @@ HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SUMMARY_SCHEMA = (
 HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_GATE = (
     "software_proof_docker_hardware_sensor_procurement_execution_pack_gate"
 )
+HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_SCHEMA = (
+    "trashbot.hardware_sensor_procurement_receipt_intake.v1"
+)
+HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_SUMMARY_SCHEMA = (
+    "trashbot.hardware_sensor_procurement_receipt_intake_summary.v1"
+)
+HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_GATE = (
+    "software_proof_docker_hardware_sensor_procurement_receipt_intake_gate"
+)
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -1103,6 +1112,42 @@ def _hardware_sensor_procurement_execution_pack_not_proven(pack=None, summary_fr
         "hardware_material_pending",
         "sensor_procurement_completed",
         "sensor_installed_on_robot",
+        "sensor_calibrated_on_robot",
+        "real_sensor_device_proof",
+        "real_nav2_fixed_route_run",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "dropoff_completion",
+        "cancel_completion",
+        "delivery_success",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _hardware_sensor_procurement_receipt_intake_not_proven(receipt=None, summary_fragment=None):
+    # receipt intake 只把收货回填材料带到 Robot diagnostics；真实采购、收货、装机、校准和 HIL 仍必须另证。
+    receipt = receipt if isinstance(receipt, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(receipt.get("not_proven"), list):
+        source_values.extend(receipt.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "not_proven",
+        "software_proof",
+        "hardware_material_pending",
+        "sensor_receipt_verified",
+        "sensor_procurement_completed",
+        "sensor_installed_on_robot",
+        "sensor_wiring_verified",
+        "sensor_power_budget_verified",
         "sensor_calibrated_on_robot",
         "real_sensor_device_proof",
         "real_nav2_fixed_route_run",
@@ -2425,6 +2470,76 @@ def _default_hardware_sensor_procurement_execution_pack_summary(
     }
 
 
+def _default_hardware_sensor_procurement_receipt_intake_summary(
+    path,
+    status="blocked_missing_hardware_sensor_procurement_receipt_intake",
+    read_error="",
+):
+    # 缺失 receipt intake 时必须明确 fail closed；Robot 侧不能把执行包或收货回填入口误读成真实硬件到货。
+    return {
+        "schema": HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "receipt_intake_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": read_error or "hardware sensor procurement receipt intake is not configured",
+        },
+        "hardware_material_status": "hardware_material_pending",
+        "material_status": "hardware_material_pending",
+        "blockers": ["blocked_missing_hardware_sensor_procurement_receipt_intake"],
+        "accepted_materials": [],
+        "missing_materials": [],
+        "rejected_materials": [],
+        "owner_handoff": [],
+        "next_required_evidence": [],
+        "safe_evidence_ref": "",
+        "operator_next_steps": [],
+        "robot_diagnostics_summary": {
+            "safe_copy": (
+                "Hardware sensor procurement receipt intake is metadata-only; "
+                "software_proof only, delivery_success=false."
+            ),
+            "safe_phone_copy": (
+                "Hardware sensor procurement receipt intake is metadata-only; "
+                "software_proof only, delivery_success=false."
+            ),
+        },
+        "not_proven": _hardware_sensor_procurement_receipt_intake_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "real_hardware_observed": False,
+        "hardware_material_pending": True,
+        "sensor_receipt_verified": False,
+        "sensor_procurement_completed": False,
+        "sensor_installed_on_robot": False,
+        "sensor_wiring_verified": False,
+        "sensor_power_budget_verified": False,
+        "sensor_calibrated_on_robot": False,
+        "route_elevator_field_pass": False,
+        "nav2_fixed_route_run": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -3056,6 +3171,16 @@ def _hardware_sensor_procurement_execution_pack_source_contract(value):
     source_schema = str(value.get("schema") or "")
     source_boundary = str(value.get("evidence_boundary") or "")
     if source_schema == HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or source_schema)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _hardware_sensor_procurement_receipt_intake_source_contract(value):
+    # 支持直接 receipt intake artifact 或已消毒 summary；summary wrapper 必须回指同一 receipt intake gate。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or source_schema)
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
@@ -9195,6 +9320,259 @@ def summarize_hardware_sensor_procurement_execution_pack(source):
     return summary
 
 
+def summarize_hardware_sensor_procurement_receipt_intake(source):
+    """构建 hardware sensor procurement receipt intake 的 metadata-only diagnostics 摘要。"""
+    # Robot diagnostics 只消费 Hardware PC gate 的安全摘要；真实 receipt、装机、接线、电源、校准和 HIL 都保持 not_proven。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_hardware_sensor_procurement_receipt_intake_summary(
+        source_path,
+        read_error="hardware sensor procurement receipt intake is not configured",
+    )
+    if isinstance(source, dict):
+        receipt = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "receipt_intake_status": {
+                        "status": "blocked_missing_hardware_sensor_procurement_receipt_intake",
+                        "verdict": "not_proven",
+                        "evidence_source": "software_proof",
+                        "reason": "hardware sensor procurement receipt intake artifact missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Hardware sensor procurement receipt intake is missing; hardware_material_pending remains true.",
+                        "safe_phone_copy": "Hardware sensor procurement receipt intake is missing; hardware_material_pending remains true.",
+                    },
+                }
+            )
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                receipt = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading hardware sensor procurement receipt intake: {exc}"
+            )
+            summary.update(
+                {
+                    "receipt_intake_status": {
+                        "status": "blocked_missing_hardware_sensor_procurement_receipt_intake",
+                        "verdict": "not_proven",
+                        "evidence_source": "software_proof",
+                        "reason": safe_error,
+                    },
+                    "read_error": safe_error,
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Hardware sensor procurement receipt intake could not be read; hardware_material_pending remains true.",
+                        "safe_phone_copy": "Hardware sensor procurement receipt intake could not be read; hardware_material_pending remains true.",
+                    },
+                }
+            )
+            return summary
+
+    if not isinstance(receipt, dict):
+        summary.update(
+            {
+                "receipt_intake_status": {
+                    "status": "blocked_missing_hardware_sensor_procurement_receipt_intake",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware sensor procurement receipt intake JSON must be an object",
+                },
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Hardware sensor procurement receipt intake shape is invalid; hardware_material_pending remains true.",
+                    "safe_phone_copy": "Hardware sensor procurement receipt intake shape is invalid; hardware_material_pending remains true.",
+                },
+            }
+        )
+        return summary
+
+    # Hardware gate 可以给完整 artifact 或 summary wrapper；Robot 侧只抽取白名单给 diagnostics/mobile 使用。
+    summary_fragment = {}
+    for candidate in (
+        receipt.get("hardware_sensor_procurement_receipt_intake_summary"),
+        receipt.get("robot_diagnostics_summary"),
+        receipt.get("diagnostics_summary"),
+        receipt.get("phone_safe_summary"),
+        receipt.get("mobile_readonly_summary"),
+        receipt.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+    source_schema, source_boundary = _hardware_sensor_procurement_receipt_intake_source_contract(receipt)
+    status_source = (
+        receipt.get("receipt_intake_status")
+        if isinstance(receipt.get("receipt_intake_status"), dict)
+        else summary_fragment.get("receipt_intake_status")
+        if isinstance(summary_fragment.get("receipt_intake_status"), dict)
+        else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or receipt.get("safe_copy")
+        or receipt.get("safe_phone_copy")
+        or "Hardware sensor procurement receipt intake is metadata-only; software_proof only, delivery_success=false."
+    )
+    robot_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(summary_fragment.get(key) or "").strip():
+            robot_summary[key] = _redact_route_task_rehearsal_text(summary_fragment.get(key))
+    robot_summary["safe_copy"] = safe_copy
+    robot_summary["safe_phone_copy"] = safe_copy
+    material_status = _redact_route_task_rehearsal_text(
+        receipt.get("material_status")
+        or summary_fragment.get("material_status")
+        or receipt.get("hardware_material_status")
+        or summary_fragment.get("hardware_material_status")
+        or "hardware_material_pending"
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": receipt.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "receipt_intake_status": {
+                "status": _redact_route_task_rehearsal_text(
+                    status_source.get("status")
+                    or summary_fragment.get("status")
+                    or receipt.get("status")
+                    or "hardware_material_pending"
+                ),
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or receipt.get("reason")
+                    or "hardware sensor procurement receipt intake consumed without real hardware evidence"
+                ),
+            },
+            "hardware_material_status": "hardware_material_pending",
+            "material_status": material_status or "hardware_material_pending",
+            "blockers": _safe_route_task_rehearsal_list(
+                receipt.get("blockers")
+                if isinstance(receipt.get("blockers"), list)
+                else summary_fragment.get("blockers")
+            )
+            or ["hardware_material_pending"],
+            "accepted_materials": _safe_pc_route_debug_value(
+                receipt.get("accepted_materials")
+                if isinstance(receipt.get("accepted_materials"), list)
+                else summary_fragment.get("accepted_materials", [])
+            ),
+            "missing_materials": _safe_route_task_rehearsal_list(
+                receipt.get("missing_materials")
+                if isinstance(receipt.get("missing_materials"), list)
+                else summary_fragment.get("missing_materials")
+            ),
+            "rejected_materials": _safe_pc_route_debug_value(
+                receipt.get("rejected_materials")
+                if isinstance(receipt.get("rejected_materials"), list)
+                else summary_fragment.get("rejected_materials", [])
+            ),
+            "owner_handoff": _safe_route_task_rehearsal_list(
+                receipt.get("owner_handoff")
+                if isinstance(receipt.get("owner_handoff"), list)
+                else summary_fragment.get("owner_handoff")
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                receipt.get("next_required_evidence")
+                if isinstance(receipt.get("next_required_evidence"), list)
+                else summary_fragment.get("next_required_evidence")
+            ),
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("safe_evidence_ref")
+                or summary_fragment.get("evidence_ref")
+                or receipt.get("safe_evidence_ref")
+                or receipt.get("evidence_ref", "")
+            ),
+            "operator_next_steps": _safe_route_task_rehearsal_list(
+                receipt.get("operator_next_steps")
+                if isinstance(receipt.get("operator_next_steps"), list)
+                else summary_fragment.get("operator_next_steps")
+            ),
+            "robot_diagnostics_summary": robot_summary,
+            "not_proven": _hardware_sensor_procurement_receipt_intake_not_proven(
+                receipt, summary_fragment
+            ),
+            "read_error": "",
+            "metadata_only": True,
+            "real_hardware_observed": False,
+            "hardware_material_pending": True,
+            "sensor_receipt_verified": False,
+            "sensor_procurement_completed": False,
+            "sensor_installed_on_robot": False,
+            "sensor_wiring_verified": False,
+            "sensor_power_budget_verified": False,
+            "sensor_calibrated_on_robot": False,
+            "route_elevator_field_pass": False,
+            "nav2_fixed_route_run": False,
+            "dropoff_completion": False,
+            "cancel_completion": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    accepted_schemas = {
+        HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_SCHEMA,
+        HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_SUMMARY_SCHEMA,
+    }
+    if source_schema not in accepted_schemas or source_boundary != HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_GATE:
+        summary.update(
+            {
+                "receipt_intake_status": {
+                    "status": "blocked_missing_hardware_sensor_procurement_receipt_intake",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware sensor procurement receipt intake schema or evidence boundary is unsupported",
+                },
+                "blockers": ["blocked_missing_hardware_sensor_procurement_receipt_intake"],
+                "accepted_materials": [],
+                "missing_materials": [],
+                "rejected_materials": [],
+                "owner_handoff": [],
+                "next_required_evidence": [],
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Hardware sensor procurement receipt intake is not a supported diagnostics source; no hardware or delivery result is proven.",
+                    "safe_phone_copy": "Hardware sensor procurement receipt intake is not a supported diagnostics source; no hardware or delivery result is proven.",
+                },
+            }
+        )
+        return summary
+
+    if _mobile_field_material_intake_has_unsafe_fields(receipt) or _route_task_field_run_readiness_copy_is_unsafe(safe_copy):
+        summary.update(
+            {
+                "receipt_intake_status": {
+                    "status": "blocked_missing_hardware_sensor_procurement_receipt_intake",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware sensor procurement receipt intake contains unsafe fields or success/control claims",
+                },
+                "blockers": ["blocked_missing_hardware_sensor_procurement_receipt_intake"],
+                "accepted_materials": [],
+                "missing_materials": [],
+                "rejected_materials": [],
+                "owner_handoff": [],
+                "next_required_evidence": [],
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Hardware sensor procurement receipt intake was blocked because fields could expose control data or imply delivery success.",
+                    "safe_phone_copy": "Hardware sensor procurement receipt intake was blocked because fields could expose control data or imply delivery success.",
+                },
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -10329,6 +10707,7 @@ def build_diagnostics_payload(
     hardware_sensor_procurement_intake_ref="",
     hardware_sensor_procurement_review_decision_ref="",
     hardware_sensor_procurement_execution_pack_ref="",
+    hardware_sensor_procurement_receipt_intake_ref="",
 ):
     latest_status = dict(latest_status or {})
     diagnostics_source = latest_status.get("diagnostics") if isinstance(latest_status.get("diagnostics"), dict) else {}
@@ -10374,6 +10753,17 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("hardware_sensor_procurement_execution_pack"), dict)
         else diagnostics_source.get("hardware_sensor_procurement_execution_pack_summary")
         if isinstance(diagnostics_source.get("hardware_sensor_procurement_execution_pack_summary"), dict)
+        else {}
+    )
+    hardware_sensor_procurement_receipt_intake_source = (
+        latest_status.get("hardware_sensor_procurement_receipt_intake")
+        if isinstance(latest_status.get("hardware_sensor_procurement_receipt_intake"), dict)
+        else latest_status.get("hardware_sensor_procurement_receipt_intake_summary")
+        if isinstance(latest_status.get("hardware_sensor_procurement_receipt_intake_summary"), dict)
+        else diagnostics_source.get("hardware_sensor_procurement_receipt_intake")
+        if isinstance(diagnostics_source.get("hardware_sensor_procurement_receipt_intake"), dict)
+        else diagnostics_source.get("hardware_sensor_procurement_receipt_intake_summary")
+        if isinstance(diagnostics_source.get("hardware_sensor_procurement_receipt_intake_summary"), dict)
         else {}
     )
     mobile_field_material_review_decision_source = (
@@ -10426,6 +10816,9 @@ def build_diagnostics_payload(
     latest_status.pop("hardware_sensor_procurement_execution_pack", None)
     latest_status.pop("hardware_sensor_procurement_execution_pack_summary", None)
     latest_status.pop("hardware_sensor_procurement_execution_pack_copy", None)
+    latest_status.pop("hardware_sensor_procurement_receipt_intake", None)
+    latest_status.pop("hardware_sensor_procurement_receipt_intake_summary", None)
+    latest_status.pop("hardware_sensor_procurement_receipt_intake_copy", None)
     last_task = dict(latest_status.get("last_task") or {})
     task_record_path = str(
         latest_status.get("task_record_path")
@@ -10616,6 +11009,17 @@ def build_diagnostics_payload(
             hardware_sensor_procurement_execution_pack_source
         )
     )
+    hardware_sensor_procurement_receipt_intake_source = (
+        hardware_sensor_procurement_receipt_intake_ref
+        or os.environ.get("TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE", "")
+        or os.environ.get("TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_SUMMARY", "")
+        or hardware_sensor_procurement_receipt_intake_source
+    )
+    hardware_sensor_procurement_receipt_intake_summary = (
+        summarize_hardware_sensor_procurement_receipt_intake(
+            hardware_sensor_procurement_receipt_intake_source
+        )
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -10704,6 +11108,8 @@ def build_diagnostics_payload(
         hardware_sensor_procurement_review_decision_summary=hardware_sensor_procurement_review_decision_summary,
         hardware_sensor_procurement_execution_pack=hardware_sensor_procurement_execution_pack_summary,
         hardware_sensor_procurement_execution_pack_summary=hardware_sensor_procurement_execution_pack_summary,
+        hardware_sensor_procurement_receipt_intake=hardware_sensor_procurement_receipt_intake_summary,
+        hardware_sensor_procurement_receipt_intake_summary=hardware_sensor_procurement_receipt_intake_summary,
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),

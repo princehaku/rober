@@ -64,6 +64,7 @@ const HARDWARE_BASELINE_REVIEW_BOUNDARY = "software_proof_docker_hardware_baseli
 const HARDWARE_SENSOR_PROCUREMENT_INTAKE_BOUNDARY = "software_proof_docker_hardware_sensor_procurement_intake_gate";
 const HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_BOUNDARY = "software_proof_docker_hardware_sensor_procurement_review_decision_gate";
 const HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_BOUNDARY = "software_proof_docker_hardware_sensor_procurement_execution_pack_gate";
+const HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_BOUNDARY = "software_proof_docker_hardware_sensor_procurement_receipt_intake_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -146,6 +147,7 @@ const UNSAFE_HARDWARE_BASELINE_REVIEW_TEXT = /(authorization|bearer|token|oss\s*
 const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass|已通过|可发车|已采购|已 hil)/i;
 const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass|已\s*通过|可\s*发车|已\s*采购|已\s*hil|已\s*送达)/i;
 const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw execution pack|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass|已\s*通过|可\s*发车|已\s*采购|已\s*hil|已\s*送达)/i;
+const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw receipt|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|hil_pass|已\s*通过|可\s*发车|采购\s*成功|已\s*采购|已\s*收货\s*完成|收货\s*完成|已\s*hil|已\s*送达)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 
@@ -167,6 +169,7 @@ let latestHardwareBaselineReview = null;
 let latestHardwareSensorProcurementIntake = null;
 let latestHardwareSensorProcurementReviewDecision = null;
 let latestHardwareSensorProcurementExecutionPack = null;
+let latestHardwareSensorProcurementReceiptIntake = null;
 let deferredPwaInstallPromptEvent = null;
 let pwaInstallPromptEventState = null;
 let latestRealDeviceEvidencePackage = null;
@@ -460,6 +463,15 @@ function safeHardwareSensorProcurementExecutionPackText(value, fallback = "not_p
   // 执行包只面向采购材料交接，必须过滤 raw 包、硬件底层细节、凭证和成功暗示。
   const text = safeText(value, fallback);
   if (UNSAFE_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeHardwareSensorProcurementReceiptIntakeText(value, fallback = "not_proven") {
+  // 收货回填来自硬件材料摘要，只允许展示接收/缺失/拒绝结论和下一步证据。
+  const text = safeText(value, fallback);
+  if (UNSAFE_HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -6778,6 +6790,169 @@ function hardwareSensorProcurementExecutionPackFromStatus(status, readiness, dia
   };
 }
 
+function hardwareSensorProcurementReceiptIntakeCandidate(status, readiness, diagnostics) {
+  // 收货回填兼容 status、phone_readiness、diagnostics 和嵌套 summary，避免 Robot 侧字段位置变化让手机首屏空白。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.hardware_sensor_procurement_receipt_intake,
+    status?.hardware_sensor_procurement_receipt_intake_summary,
+    readiness?.hardware_sensor_procurement_receipt_intake,
+    readiness?.hardware_sensor_procurement_receipt_intake_summary,
+    diagnostics?.hardware_sensor_procurement_receipt_intake,
+    diagnostics?.hardware_sensor_procurement_receipt_intake_summary,
+    diagnosticsReadiness.hardware_sensor_procurement_receipt_intake,
+    diagnosticsReadiness.hardware_sensor_procurement_receipt_intake_summary,
+    diagnosticsSummary.hardware_sensor_procurement_receipt_intake,
+    diagnosticsSummary.hardware_sensor_procurement_receipt_intake_summary,
+    nestedDiagnosticsSummary.hardware_sensor_procurement_receipt_intake,
+    nestedDiagnosticsSummary.hardware_sensor_procurement_receipt_intake_summary,
+    nestedDiagnosticsInnerSummary.hardware_sensor_procurement_receipt_intake,
+    nestedDiagnosticsInnerSummary.hardware_sensor_procurement_receipt_intake_summary,
+    statusDiagnosticsSummary.hardware_sensor_procurement_receipt_intake,
+    statusDiagnosticsSummary.hardware_sensor_procurement_receipt_intake_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function hardwareSensorProcurementReceiptIntakeNotProvenList(value) {
+  // 收货回填只说明材料被接收/缺失/拒绝的安全摘要，不证明真实传感器或上车闭环。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实 2D LiDAR SKU/source/receipt",
+    "真实 ToF SKU/source/receipt",
+    "真实 accepted material packet",
+    "真实 installation material",
+    "真实 wiring material",
+    "真实 calibration material",
+    "真实 HIL entry evidence",
+    "真实 Nav2/fixed-route",
+    "真实 route/elevator field pass",
+    "真实 dropoff completion",
+    "真实 cancel completion",
+    "delivery success",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 18);
+}
+
+function hardwareSensorProcurementReceiptIntakeSummaryText(value, fallback) {
+  // 材料摘要可能是数组或对象；这里只拼接白名单字段，避免 raw receipt 或本机路径进入复制区。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeHardwareSensorProcurementReceiptIntakeText(
+        item?.safe_phone_copy || item?.summary || item?.material || item?.status ||
+          item?.state || item?.reason || item?.owner || item?.next_required_evidence ||
+          item?.handoff || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.reason || value.material || value.owner || value.next_action ||
+      value.next_required_evidence || value.handoff;
+    if (direct) {
+      return safeHardwareSensorProcurementReceiptIntakeText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeHardwareSensorProcurementReceiptIntakeText(key, "");
+        const copy = hardwareSensorProcurementReceiptIntakeSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safeHardwareSensorProcurementReceiptIntakeText(value, fallback);
+}
+
+function hardwareSensorProcurementReceiptIntakeFromStatus(status, readiness, diagnostics) {
+  const provided = hardwareSensorProcurementReceiptIntakeCandidate(status, readiness, diagnostics) || {};
+  const missing = provided.missing_materials || provided.missing_material_summary ||
+    provided.missing_summary || {};
+  const accepted = provided.accepted_materials || provided.accepted_material_summary ||
+    provided.received_materials || provided.received_material_summary || {};
+  const rejected = provided.rejected_materials || provided.rejected_material_summary ||
+    provided.rejection_reasons || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.hardware_sensor_procurement_receipt_intake_summary.v1",
+    source_schema: provided.source_schema || "trashbot.hardware_sensor_procurement_receipt_intake.v1",
+    schema_version: 1,
+    source_execution_pack_schema: safeHardwareSensorProcurementReceiptIntakeText(
+      provided.source_execution_pack_schema,
+      "trashbot.hardware_sensor_procurement_execution_pack_summary.v1",
+    ),
+    receipt_intake_status: safeHardwareSensorProcurementReceiptIntakeText(
+      provided.receipt_intake_status || provided.intake_status ||
+        provided.receipt_status || provided.overall_status || provided.status,
+      "hardware_material_pending",
+    ),
+    material_status: safeHardwareSensorProcurementReceiptIntakeText(
+      provided.material_status || provided.materials_status,
+      "hardware_material_pending",
+    ),
+    missing_materials: hardwareSensorProcurementReceiptIntakeSummaryText(
+      missing,
+      "missing_materials=2D LiDAR / ToF receipt、source、SKU、install、wiring、calibration、HIL entry materials pending.",
+    ),
+    accepted_materials: hardwareSensorProcurementReceiptIntakeSummaryText(
+      accepted,
+      "accepted_materials=not_proven",
+    ),
+    rejected_materials: hardwareSensorProcurementReceiptIntakeSummaryText(
+      rejected,
+      "rejected_materials=not_proven",
+    ),
+    owner_handoff: hardwareSensorProcurementReceiptIntakeSummaryText(
+      provided.owner_handoff || provided.owner_next_action || provided.owner_next_steps ||
+        provided.operator_next_steps,
+      "owner_handoff=Hardware owner 回填 phone-safe 收货材料并保留 not_proven 边界。",
+    ),
+    next_required_evidence: hardwareSensorProcurementReceiptIntakeSummaryText(
+      provided.next_required_evidence || provided.next_evidence || provided.next_steps,
+      "next_required_evidence=真实 receipt/source/SKU、安装、接线、标定和 HIL entry phone-safe 摘要。",
+    ),
+    safe_evidence_ref: safeHardwareSensorProcurementReceiptIntakeText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "evidence_ref=not_proven",
+    ),
+    safe_phone_copy: safeHardwareSensorProcurementReceiptIntakeText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "hardware_sensor_procurement_receipt_intake 只读摘要缺失；手机端保持 hardware_material_pending 和主操作关闭。",
+    ),
+    recovery_hint: safeHardwareSensorProcurementReceiptIntakeText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由硬件 owner 回填脱敏收货材料后重跑 receipt intake gate。",
+    ),
+    evidence_boundary: safeHardwareSensorProcurementReceiptIntakeText(
+      provided.evidence_boundary,
+      HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: hardwareSensorProcurementReceiptIntakeNotProvenList(provided),
+  };
+}
+
 function elevatorAssistCandidate(status, readiness, diagnostics) {
   // evidence-driven artifact 优先级高于旧 dry-run summary，避免新主链路被旧兼容字段遮住。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -8414,6 +8589,83 @@ function renderHardwareSensorProcurementExecutionPack(status) {
   $("hardwareSensorProcurementExecutionPackHint").textContent = summary.recovery_hint;
 }
 
+function ensureHardwareSensorProcurementReceiptIntakePanel() {
+  // 本轮不改 index.html；运行时把收货回填 panel 固定插在执行包 panel 后，维持首屏顺序。
+  let panel = $("hardwareSensorProcurementReceiptIntakePanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("hardwareSensorProcurementExecutionPackTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "hardwareSensorProcurementReceiptIntakePanel";
+  panel.className = "hardware-sensor-procurement-receipt-intake-panel";
+  panel.setAttribute("aria-labelledby", "hardwareSensorProcurementReceiptIntakeTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="hardwareSensorProcurementReceiptIntakeTitle">传感器采购收货回填</h2>
+      <span id="hardwareSensorProcurementReceiptIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="hardwareSensorProcurementReceiptIntakeCopy" class="message">
+      hardware_sensor_procurement_receipt_intake 只读展示 receipt intake status、材料接收/缺失/拒绝摘要、owner handoff、next required evidence 和 safe evidence_ref。
+    </p>
+    <dl class="hardware-sensor-procurement-receipt-intake-grid">
+      <div><dt>Receipt Intake Status</dt><dd id="hardwareSensorProcurementReceiptIntakeStatus">hardware_material_pending</dd></div>
+      <div><dt>Material Status</dt><dd id="hardwareSensorProcurementReceiptIntakeMaterialStatus">hardware_material_pending</dd></div>
+      <div><dt>Missing Materials</dt><dd id="hardwareSensorProcurementReceiptIntakeMissing">missing_materials=not_proven</dd></div>
+      <div><dt>Accepted Materials</dt><dd id="hardwareSensorProcurementReceiptIntakeAccepted">accepted_materials=not_proven</dd></div>
+      <div><dt>Rejected Materials</dt><dd id="hardwareSensorProcurementReceiptIntakeRejected">rejected_materials=not_proven</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="hardwareSensorProcurementReceiptIntakeOwnerHandoff">owner_handoff=Hardware owner 回填 phone-safe 收货材料。</dd></div>
+      <div><dt>Next Required Evidence</dt><dd id="hardwareSensorProcurementReceiptIntakeNextEvidence">next_required_evidence=真实材料摘要待回填。</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="hardwareSensorProcurementReceiptIntakeEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Control Boundary</dt><dd id="hardwareSensorProcurementReceiptIntakeControls">delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="hardwareSensorProcurementReceiptIntakeBoundary">software_proof_docker_hardware_sensor_procurement_receipt_intake_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="hardwareSensorProcurementReceiptIntakeNotProven">真实 2D LiDAR / ToF receipt、安装、接线、标定、HIL entry 和 delivery success 未证明。</dd></div>
+    </dl>
+    <div class="bundle-copy-row">
+      <button id="copyHardwareSensorProcurementReceiptIntakeButton" type="button">复制 procurement receipt intake</button>
+      <button id="downloadHardwareSensorProcurementReceiptIntakeButton" type="button">导出 procurement receipt intake</button>
+      <span id="hardwareSensorProcurementReceiptIntakeCopyStatus" class="hint">whitelist-only phone-safe metadata</span>
+    </div>
+    <pre id="hardwareSensorProcurementReceiptIntakeSafeCopy" class="safe-copy" aria-label="hardware_sensor_procurement_receipt_intake safe_copy">whitelist-only phone-safe metadata</pre>
+    <p id="hardwareSensorProcurementReceiptIntakeHint" class="hint">
+      receipt intake panel 只读展示并导出白名单 metadata；不暴露 raw receipt、底层调试字段、凭证或成功文案，也不改变 Start、Confirm Dropoff 或 Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderHardwareSensorProcurementReceiptIntake(status) {
+  const panel = ensureHardwareSensorProcurementReceiptIntakePanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = hardwareSensorProcurementReceiptIntakeFromStatus(status, readiness, latestDiagnostics);
+  latestHardwareSensorProcurementReceiptIntake = summary;
+  const badge = $("hardwareSensorProcurementReceiptIntakeBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 receipt intake" : "hardware_material_pending";
+  $("hardwareSensorProcurementReceiptIntakeCopy").textContent = summary.safe_phone_copy;
+  $("hardwareSensorProcurementReceiptIntakeStatus").textContent = summary.receipt_intake_status;
+  $("hardwareSensorProcurementReceiptIntakeMaterialStatus").textContent = summary.material_status;
+  $("hardwareSensorProcurementReceiptIntakeMissing").textContent = summary.missing_materials;
+  $("hardwareSensorProcurementReceiptIntakeAccepted").textContent = summary.accepted_materials;
+  $("hardwareSensorProcurementReceiptIntakeRejected").textContent = summary.rejected_materials;
+  $("hardwareSensorProcurementReceiptIntakeOwnerHandoff").textContent = summary.owner_handoff;
+  $("hardwareSensorProcurementReceiptIntakeNextEvidence").textContent = summary.next_required_evidence;
+  $("hardwareSensorProcurementReceiptIntakeEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("hardwareSensorProcurementReceiptIntakeControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("hardwareSensorProcurementReceiptIntakeBoundary").textContent = summary.evidence_boundary;
+  $("hardwareSensorProcurementReceiptIntakeNotProven").textContent = summary.not_proven.join("、");
+  $("hardwareSensorProcurementReceiptIntakeHint").textContent = summary.recovery_hint;
+}
+
 function ensureElevatorAssistPanel() {
   // 本轮文件范围不改 index.html，因此用 JS 注入只读 panel，保持静态壳兼容旧浏览器测试。
   let panel = $("elevatorAssistPanel");
@@ -9150,6 +9402,39 @@ function hardwareSensorProcurementExecutionPackCopyPayload(summary) {
     safe_phone_copy: source.safe_phone_copy,
     recovery_hint: source.recovery_hint,
     evidence_boundary: HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_BOUNDARY,
+    not_proven: source.not_proven,
+  };
+}
+
+function hardwareSensorProcurementReceiptIntakeCopyPayload(summary) {
+  // procurement receipt intake copy/export 只保留收货回填白名单字段，不复制 raw receipt。
+  const source = summary?.schema
+    ? summary
+    : hardwareSensorProcurementReceiptIntakeFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  return {
+    schema: "trashbot.hardware_sensor_procurement_receipt_intake_copy.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    hardware_sensor_procurement_receipt_intake_schema: source.schema,
+    source_schema: source.source_schema,
+    source_execution_pack_schema: source.source_execution_pack_schema,
+    receipt_intake_status: source.receipt_intake_status,
+    material_status: source.material_status,
+    missing_materials: source.missing_materials,
+    accepted_materials: source.accepted_materials,
+    rejected_materials: source.rejected_materials,
+    owner_handoff: source.owner_handoff,
+    next_required_evidence: source.next_required_evidence,
+    safe_evidence_ref: source.safe_evidence_ref,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    safe_phone_copy: source.safe_phone_copy,
+    recovery_hint: source.recovery_hint,
+    evidence_boundary: HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_BOUNDARY,
     not_proven: source.not_proven,
   };
 }
@@ -10365,6 +10650,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const hardwareSensorProcurementReceiptIntake = hardwareSensorProcurementReceiptIntakeFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const rows = [
     ["软件版本", payload?.software_version],
     ["地图版本", payload?.map_version],
@@ -10397,6 +10687,7 @@ function renderDiagnosticsSummary(payload) {
     ["hardware_sensor_procurement_intake", hardwareSensorProcurementIntake.procurement_status],
     ["hardware_sensor_procurement_review_decision", hardwareSensorProcurementReviewDecision.review_decision],
     ["hardware_sensor_procurement_execution_pack", hardwareSensorProcurementExecutionPack.execution_pack_status],
+    ["hardware_sensor_procurement_receipt_intake", hardwareSensorProcurementReceiptIntake.receipt_intake_status],
   ];
   rows.forEach(([label, value]) => {
     const box = document.createElement("div");
@@ -10471,6 +10762,7 @@ function renderOfflineFailure() {
   renderHardwareSensorProcurementIntake({});
   renderHardwareSensorProcurementReviewDecision({});
   renderHardwareSensorProcurementExecutionPack({});
+  renderHardwareSensorProcurementReceiptIntake({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -10523,6 +10815,7 @@ function renderStatus(status) {
   renderHardwareSensorProcurementIntake(status);
   renderHardwareSensorProcurementReviewDecision(status);
   renderHardwareSensorProcurementExecutionPack(status);
+  renderHardwareSensorProcurementReceiptIntake(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
@@ -10752,6 +11045,7 @@ async function openDiagnostics() {
     renderHardwareSensorProcurementIntake(latestStatus || {});
     renderHardwareSensorProcurementReviewDecision(latestStatus || {});
     renderHardwareSensorProcurementExecutionPack(latestStatus || {});
+    renderHardwareSensorProcurementReceiptIntake(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileDeviceEvidence(latestStatus || {});
     renderMobileDeviceHandoffSession(latestStatus || {});
@@ -10813,6 +11107,7 @@ async function submitAction(actionName) {
 function wireEvents() {
   $("diagnosticsButton").addEventListener("click", openDiagnostics);
   ensureHardwareSensorProcurementExecutionPackPanel();
+  ensureHardwareSensorProcurementReceiptIntakePanel();
   $("copyMobileRouteElevatorFieldDevicePrecheckButton").addEventListener("click", async () => {
     const payload = JSON.stringify(
       mobileRouteElevatorFieldDevicePrecheckCopyPayload(latestMobileRouteElevatorFieldDevicePrecheck || {}),
@@ -11030,6 +11325,34 @@ function wireEvents() {
     downloadJsonPackage("hardware_sensor_procurement_execution_pack_copy.json", payload);
     $("hardwareSensorProcurementExecutionPackCopyStatus").textContent =
       "已导出 procurement execution pack whitelist-only JSON。";
+  });
+  $("copyHardwareSensorProcurementReceiptIntakeButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(
+      hardwareSensorProcurementReceiptIntakeCopyPayload(latestHardwareSensorProcurementReceiptIntake || {}),
+      null,
+      2,
+    );
+    $("hardwareSensorProcurementReceiptIntakeSafeCopy").textContent = payload;
+    // receipt intake copy 只服务收货材料交接；剪贴板失败时仍保留页面内手动复制文本。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("hardwareSensorProcurementReceiptIntakeCopyStatus").textContent =
+        "已复制 procurement receipt intake phone-safe metadata。";
+    } catch (_error) {
+      $("hardwareSensorProcurementReceiptIntakeCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadHardwareSensorProcurementReceiptIntakeButton").addEventListener("click", () => {
+    const payload = JSON.stringify(
+      hardwareSensorProcurementReceiptIntakeCopyPayload(latestHardwareSensorProcurementReceiptIntake || {}),
+      null,
+      2,
+    );
+    $("hardwareSensorProcurementReceiptIntakeSafeCopy").textContent = payload;
+    downloadJsonPackage("hardware_sensor_procurement_receipt_intake_copy.json", payload);
+    $("hardwareSensorProcurementReceiptIntakeCopyStatus").textContent =
+      "已导出 procurement receipt intake whitelist-only JSON。";
   });
   $("copyRouteTaskReviewButton").addEventListener("click", async () => {
     // operator review 复制只使用后端提供的 safe_copy 白名单对象，缺失时不生成替代 bundle。

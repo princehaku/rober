@@ -41,5 +41,47 @@
       "delivery success",
       "Objective 5 external proof"
     ]
+  },
+  "hardware_sensor_procurement_receipt_intake": {
+    "schema": "trashbot.hardware_sensor_procurement_receipt_intake.v1",
+    "summary_schema": "trashbot.hardware_sensor_procurement_receipt_intake_summary.v1",
+    "schema_version": 1,
+    "source_execution_pack_schema": "trashbot.hardware_sensor_procurement_execution_pack_summary.v1",
+    "receipt_intake_status": "hardware_material_pending",
+    "material_status": "hardware_material_pending",
+    "missing_materials": [
+      "2D LiDAR receipt/source/SKU material=not_proven",
+      "ToF receipt/source/SKU material=not_proven",
+      "installation / wiring / calibration / HIL entry material=not_proven"
+    ],
+    "accepted_materials": [
+      "safe receipt intake envelope accepted for software proof only"
+    ],
+    "rejected_materials": [
+      "non-redacted receipt material must be rejected"
+    ],
+    "owner_handoff": "owner_handoff=Hardware owner回填脱敏收货摘要，再进入安装/接线/标定/HIL entry review。",
+    "next_required_evidence": "next_required_evidence=真实 receipt/source/SKU、安装、接线、标定和 HIL entry 的 phone-safe 摘要。",
+    "safe_evidence_ref": "hardware_sensor_procurement_receipt_intake_fixture_20260516_0001",
+    "safe_phone_copy": "传感器采购收货回填只读展示材料接收、缺失、拒绝、owner handoff 和 next required evidence；这是 software proof only。",
+    "recovery_hint": "补齐脱敏 receipt/source/SKU、安装、接线、标定和 HIL entry 材料后再重跑收货回填 gate。",
+    "evidence_boundary": "software_proof_docker_hardware_sensor_procurement_receipt_intake_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 2D LiDAR SKU/source/receipt",
+      "真实 ToF SKU/source/receipt",
+      "真实 accepted material packet",
+      "真实 installation material",
+      "真实 wiring material",
+      "真实 calibration material",
+      "真实 HIL entry evidence",
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field pass",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success",
+      "Objective 5 external proof"
+    ]
   }
 }

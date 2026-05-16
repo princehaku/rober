@@ -92,5 +92,94 @@ class HardwareSensorProcurementExecutionPackMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, execution_pack_text)
 
 
+class HardwareSensorProcurementReceiptIntakeMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_receipt_intake_panel_is_read_only_and_exportable(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 收货回填 panel 由 JS 放在执行包后，保持首屏材料链顺序且不改静态 shell。
+        self.assertIn("hardwareSensorProcurementReceiptIntakeTitle", app)
+        self.assertIn("传感器采购收货回填", app)
+        self.assertIn("hardwareSensorProcurementExecutionPackTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("hardware-sensor-procurement-receipt-intake-panel", styles)
+        self.assertIn("hardware-sensor-procurement-receipt-intake-grid", styles)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 nested diagnostics summary。
+        self.assertIn("HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_TEXT", app)
+        self.assertIn("safeHardwareSensorProcurementReceiptIntakeText", app)
+        self.assertIn("hardwareSensorProcurementReceiptIntakeCandidate", app)
+        self.assertIn("hardwareSensorProcurementReceiptIntakeFromStatus", app)
+        self.assertIn("hardware_sensor_procurement_receipt_intake", app)
+        self.assertIn("hardware_sensor_procurement_receipt_intake_summary", app)
+        self.assertIn("diagnosticsSummary.hardware_sensor_procurement_receipt_intake", app)
+        self.assertIn("statusDiagnosticsSummary.hardware_sensor_procurement_receipt_intake", app)
+        self.assertIn("receipt_intake_status", app)
+        self.assertIn("material_status", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("accepted_materials", app)
+        self.assertIn("rejected_materials", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("safe_evidence_ref", app)
+
+        # copy/export 只输出白名单字段，不能新增任何主操作请求或控制授权。
+        self.assertIn("hardwareSensorProcurementReceiptIntakeCopyPayload", app)
+        self.assertIn("trashbot.hardware_sensor_procurement_receipt_intake_copy.v1", app)
+        self.assertIn("copyHardwareSensorProcurementReceiptIntakeButton", app)
+        self.assertIn("downloadHardwareSensorProcurementReceiptIntakeButton", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"hardwareSensorProcurementReceiptIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须明确 software proof / not_proven 边界。
+        receipt_intake = fixture["hardware_sensor_procurement_receipt_intake"]
+        self.assertEqual(receipt_intake["receipt_intake_status"], "hardware_material_pending")
+        self.assertEqual(receipt_intake["material_status"], "hardware_material_pending")
+        self.assertEqual(receipt_intake["delivery_success"], False)
+        self.assertEqual(receipt_intake["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_hardware_sensor_procurement_receipt_intake_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("hardware_sensor_procurement_receipt_intake", doc)
+        self.assertIn("传感器采购收货回填", doc)
+
+    def test_receipt_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        receipt_intake_text = json.dumps(
+            fixture["hardware_sensor_procurement_receipt_intake"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 收货回填 fixture 只能承载脱敏摘要，不能把真实控制、凭证或成功语义带进手机端。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw vendor document",
+            "procurement success",
+            "采购成功",
+            "hil passed",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, receipt_intake_text)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -135,6 +135,50 @@ not prove a project 2D LiDAR or ToF SKU, purchase order, mounting/wiring plan,
 power budget, calibration result, HIL entry, Nav2/SLAM field pass, near-field
 safety pass, route/elevator pass, or delivery result.
 
+## Hardware Sensor Procurement Receipt Intake Gate
+
+`hardware_sensor_procurement_receipt_intake` is the fail-closed PC gate after
+`hardware_sensor_procurement_execution_pack`. It accepts only sanitized
+summaries or references for future receipt, source, vendor, SKU, cost,
+install, wiring, power, calibration, and HIL-entry materials, then emits
+`accepted_materials`, `missing_materials`, `rejected_materials`,
+`next_required_evidence`, and `owner_handoff` for the same 2D LiDAR / ToF
+material chain.
+
+The receipt intake remains software proof only. It does not call a procurement
+system, inspect warehouse/shipping state, read sensor drivers, access ROS,
+open serial/UART devices, install hardware, validate wiring or power, calibrate
+hardware, run HIL, prove route/elevator behavior, prove Objective 5 external
+cloud proof, or prove delivery success. Its evidence boundary is
+`software_proof_docker_hardware_sensor_procurement_receipt_intake_gate`.
+
+Supported output states include
+`blocked_missing_hardware_sensor_procurement_execution_pack`,
+`blocked_unsupported_hardware_sensor_procurement_execution_pack`,
+`blocked_hardware_sensor_procurement_execution_pack_not_ready`,
+`blocked_missing_hardware_sensor_procurement_receipt_materials`,
+`blocked_unsafe_hardware_sensor_procurement_receipt_intake_copy`,
+`blocked_weak_hardware_sensor_procurement_execution_pack_contract`, and
+`ready_for_hardware_sensor_procurement_receipt_intake_not_proven`. Every state
+must keep `software_proof`, `hardware_material_pending`, `not_proven`,
+`delivery_success=false`, and `primary_actions_enabled=false`.
+
+The required entry materials for the intake gate are receipt, source, vendor,
+and SKU summaries or references. Cost, install, wiring, power, calibration, and
+HIL-entry materials may be missing and must remain listed in
+`missing_materials` until real reviewed evidence exists. The gate must reject
+raw credentials, token/OSS AK/SK material, DB/queue URLs, raw serial/UART
+paths, complete local filesystem paths, checksums, raw JSON, complete artifact
+copies, procurement-success wording, HIL-success wording, delivery success, or
+Objective 5 external proof claims.
+
+The source boundary remains `docs/vendor/VENDOR_INDEX.md` plus the local Orange
+Pi / WAVE ROVER / UART / firmware / vendor-app references listed there. Those
+local vendor files still do not prove a project 2D LiDAR or ToF SKU, receipt,
+vendor/source acceptance, purchase order, mounting/wiring plan, power budget,
+calibration result, HIL entry, Nav2/SLAM field pass, near-field safety pass,
+route/elevator pass, Objective 5 external proof, or delivery result.
+
 ## Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)
 
 - Target baseline combo: monocular camera + one 2D LiDAR + ToF safety ring.
