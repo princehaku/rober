@@ -53,6 +53,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_hardware_sensor_procurement_execution_pack,
     summarize_hardware_sensor_procurement_receipt_intake,
     summarize_hardware_sensor_hil_entry_config_precheck,
+    summarize_hardware_sensor_hil_entry_readiness_review,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
     summarize_vision_manifest,
@@ -9370,6 +9371,313 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(unsafe_summary["primary_actions_enabled"])
         self.assertIn("blocked_missing_hardware_sensor_hil_entry_config_precheck", encoded)
         self.assertIn("software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("hardware_material_pending", encoded)
+        self.assertIn("metadata-only", encoded)
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("raw_artifact", encoded)
+
+    def test_diagnostics_payload_includes_hardware_sensor_hil_entry_readiness_review_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            review_path = Path(td) / "hardware_sensor_hil_entry_readiness_review.json"
+            review_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.hardware_sensor_hil_entry_readiness_review.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate"
+                        ),
+                        "evidence_ref": "evidence://hardware-sensor-hil-entry-readiness-review-1",
+                        "readiness_review_status": {
+                            "status": "readiness_review_blocked_missing_hil_materials",
+                            "verdict": "not_proven",
+                            "evidence_source": "software_proof",
+                            "reason": "HIL-entry readiness review is staged but field evidence is missing",
+                        },
+                        "blockers": ["missing_hil_entry_log"],
+                        "readiness_gates": {
+                            "sensor_install": "missing",
+                            "power_budget": "missing",
+                            "calibration": "missing",
+                        },
+                        "accepted_materials": ["procurement_receipt_summary"],
+                        "missing_materials": ["install_photo", "power_budget", "hil_entry_log"],
+                        "rejected_materials": ["unlinked_calibration_note"],
+                        "next_required_evidence": ["real install/wiring/power/calibration/HIL-entry material"],
+                        "owner_handoff": ["Hardware owns field readiness material collection."],
+                        "rerun_commands": [
+                            "python3 pc-tools/evidence/hardware_sensor_hil_entry_readiness_review_gate.py --once-json"
+                        ],
+                        "robot_diagnostics_summary": {
+                            "safe_copy": (
+                                "Hardware sensor HIL-entry readiness review is metadata-only; "
+                                "software_proof only, delivery_success=false and primary_actions_enabled=false."
+                            ),
+                        },
+                        "not_proven": ["real_sensor_device_proof", "real_hil_pass"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "hardware_sensor_hil_entry_readiness_review": {"delivery_success": True},
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                hardware_sensor_hil_entry_readiness_review_ref=str(review_path),
+            )
+            summary = payload["hardware_sensor_hil_entry_readiness_review"]
+            summary_alias = payload["hardware_sensor_hil_entry_readiness_review_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertNotIn("hardware_sensor_hil_entry_readiness_review", payload["latest_status"])
+        self.assertEqual(summary["schema"], "trashbot.hardware_sensor_hil_entry_readiness_review_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.hardware_sensor_hil_entry_readiness_review.v1")
+        self.assertEqual(summary["source_schema_version"], 1)
+        self.assertEqual(
+            summary["source_contract"]["evidence_boundary"],
+            "software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate",
+        )
+        self.assertEqual(
+            summary["readiness_review_status"]["status"],
+            "readiness_review_blocked_missing_hil_materials",
+        )
+        self.assertEqual(summary["readiness_review_status"]["verdict"], "not_proven")
+        self.assertEqual(summary["readiness_review_status"]["evidence_source"], "software_proof")
+        self.assertEqual(summary["review_status"], "readiness_review_blocked_missing_hil_materials")
+        self.assertEqual(summary["readiness_gates"]["sensor_install"], "missing")
+        self.assertIn("procurement_receipt_summary", summary["accepted_materials"])
+        self.assertIn("install_photo", summary["missing_materials"])
+        self.assertIn("unlinked_calibration_note", summary["rejected_materials"])
+        self.assertIn("real install/wiring/power/calibration/HIL-entry material", summary["next_required_evidence"])
+        self.assertIn("Hardware owns field readiness material collection.", summary["owner_handoff"])
+        self.assertIn("hardware_sensor_hil_entry_readiness_review_gate.py --once-json", summary["rerun_commands"][0])
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://hardware-sensor-hil-entry-readiness-review-1",
+        )
+        self.assertIn("software_proof", summary["not_proven"])
+        self.assertIn("real_sensor_device_proof", summary["not_proven"])
+        self.assertIn("real_hil_pass", summary["not_proven"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertTrue(summary["sensor_hil_entry_readiness_review_only"])
+        self.assertFalse(summary["sensor_hil_entry_ready"])
+        self.assertFalse(summary["sensor_procurement_completed"])
+        self.assertFalse(summary["sensor_installed_on_robot"])
+        self.assertFalse(summary["sensor_wiring_verified"])
+        self.assertFalse(summary["sensor_power_budget_verified"])
+        self.assertFalse(summary["sensor_calibrated_on_robot"])
+        self.assertFalse(summary["route_elevator_field_pass"])
+        self.assertFalse(summary["nav2_fixed_route_run"])
+        self.assertFalse(summary["dropoff_completion"])
+        self.assertFalse(summary["cancel_completion"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        # readiness review 是 metadata-only consumer，不能触发 collect/dropoff/cancel、ACK、cursor、Nav2 或 HIL。
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["persistence_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["production_ready"])
+        self.assertIn("metadata-only", summary["safe_copy"])
+        self.assertIn("delivery_success=false", summary["robot_diagnostics_summary"]["safe_phone_copy"])
+        self.assertNotIn(str(review_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_hardware_sensor_hil_entry_readiness_review_env_inline_unsupported_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "hardware_sensor_hil_entry_readiness_review_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.hardware_sensor_hil_entry_readiness_review_summary.v1",
+                        "source_schema": "trashbot.hardware_sensor_hil_entry_readiness_review.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate"
+                        ),
+                        "readiness_review_status": {
+                            "status": "readiness_review_blocked_missing_hil_materials",
+                            "verdict": "not_proven",
+                            "evidence_source": "software_proof",
+                        },
+                        "readiness_gates": {"install_material": "missing"},
+                        "robot_diagnostics_summary": {
+                            "safe_copy": (
+                                "Hardware sensor HIL-entry readiness review is metadata-only; "
+                                "delivery_success=false and primary_actions_enabled=false."
+                            ),
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_artifact = os.environ.get("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW")
+            previous_summary = os.environ.get("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_SUMMARY")
+            os.environ.pop("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW", None)
+            os.environ["TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "hardware_sensor_hil_entry_readiness_review"
+                ]
+            finally:
+                if previous_artifact is None:
+                    os.environ.pop("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW", None)
+                else:
+                    os.environ["TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW"] = previous_artifact
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_SUMMARY"] = previous_summary
+
+            diagnostics_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "hardware_sensor_hil_entry_readiness_review_summary": {
+                            "schema": "trashbot.hardware_sensor_hil_entry_readiness_review_summary.v1",
+                            "source_schema": "trashbot.hardware_sensor_hil_entry_readiness_review.v1",
+                            "evidence_boundary": (
+                                "software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate"
+                            ),
+                            "source_evidence_boundary": (
+                                "software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate"
+                            ),
+                            "readiness_review_status": {
+                                "status": "readiness_review_blocked_missing_hil_materials",
+                                "verdict": "not_proven",
+                                "evidence_source": "software_proof",
+                            },
+                            "readiness_gates": {"install_material": "missing"},
+                            "robot_diagnostics_summary": {
+                                "safe_copy": (
+                                    "Hardware sensor HIL-entry readiness review is metadata-only; "
+                                    "delivery_success=false and primary_actions_enabled=false."
+                                ),
+                            },
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["hardware_sensor_hil_entry_readiness_review"]
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_hardware_sensor_hil_entry_readiness_review.json"
+            missing_summary = summarize_hardware_sensor_hil_entry_readiness_review(str(missing_path))
+
+            bad_json_path = Path(td) / "bad_hardware_sensor_hil_entry_readiness_review.json"
+            bad_json_path.write_text("{bad-json", encoding="utf-8")
+            bad_json_summary = summarize_hardware_sensor_hil_entry_readiness_review(str(bad_json_path))
+
+            unsupported_summary = summarize_hardware_sensor_hil_entry_readiness_review(
+                {
+                    "schema": "trashbot.hardware_sensor_hil_entry_config_precheck.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate"
+                    ),
+                    "safe_copy": "Unsupported readiness review is metadata-only; delivery_success=false.",
+                }
+            )
+            unsafe_summary = summarize_hardware_sensor_hil_entry_readiness_review(
+                {
+                    "schema": "trashbot.hardware_sensor_hil_entry_readiness_review.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate"
+                    ),
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "raw_artifact": {"serial_device": "/dev/ttyUSB0"},
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Hardware sensor readiness review confirms HIL pass and delivery success.",
+                    },
+                }
+            )
+            weak_boundary_summary = summarize_hardware_sensor_hil_entry_readiness_review(
+                {
+                    "schema": "trashbot.hardware_sensor_hil_entry_readiness_review.v1",
+                    "evidence_boundary": "software_proof",
+                    "safe_copy": "Hardware sensor readiness review is metadata-only; delivery_success=false.",
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    diagnostics_summary,
+                    missing_summary,
+                    bad_json_summary,
+                    unsupported_summary,
+                    unsafe_summary,
+                    weak_boundary_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(
+            env_summary["readiness_review_status"]["status"],
+            "readiness_review_blocked_missing_hil_materials",
+        )
+        self.assertEqual(
+            diagnostics_summary["readiness_review_status"]["status"],
+            "readiness_review_blocked_missing_hil_materials",
+        )
+        self.assertEqual(
+            missing_summary["readiness_review_status"]["status"],
+            "blocked_missing_hardware_sensor_hil_entry_readiness_review",
+        )
+        self.assertEqual(
+            bad_json_summary["readiness_review_status"]["status"],
+            "blocked_missing_hardware_sensor_hil_entry_readiness_review",
+        )
+        self.assertEqual(
+            unsupported_summary["readiness_review_status"]["status"],
+            "blocked_missing_hardware_sensor_hil_entry_readiness_review",
+        )
+        self.assertEqual(
+            unsafe_summary["readiness_review_status"]["status"],
+            "blocked_missing_hardware_sensor_hil_entry_readiness_review",
+        )
+        self.assertEqual(
+            weak_boundary_summary["readiness_review_status"]["status"],
+            "blocked_missing_hardware_sensor_hil_entry_readiness_review",
+        )
+        self.assertEqual(env_summary["readiness_review_status"]["evidence_source"], "software_proof")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertFalse(diagnostics_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["primary_actions_enabled"])
+        self.assertIn("blocked_missing_hardware_sensor_hil_entry_readiness_review", encoded)
+        self.assertIn("software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("hardware_material_pending", encoded)
         self.assertIn("metadata-only", encoded)

@@ -353,6 +353,97 @@ class HardwareSensorHilEntryConfigPrecheckMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, precheck_text)
 
 
+class HardwareSensorHilEntryReadinessReviewMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_hil_entry_readiness_review_panel_is_read_only_and_exportable(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 准入评审 panel 接在 config precheck 后，只展示 Hardware/Robot 脱敏 summary。
+        self.assertIn("hardwareSensorHilEntryReadinessReviewTitle", app)
+        self.assertIn("传感器 HIL 准入评审", app)
+        self.assertIn("hardwareSensorHilEntryConfigPrecheckTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("hardware-sensor-hil-entry-readiness-review-panel", styles)
+        self.assertIn("hardware-sensor-hil-entry-readiness-review-grid", styles)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 nested diagnostics summary。
+        self.assertIn("HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_BOUNDARY", app)
+        self.assertIn("UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_TEXT", app)
+        self.assertIn("safeHardwareSensorHilEntryReadinessReviewText", app)
+        self.assertIn("hardwareSensorHilEntryReadinessReviewCandidate", app)
+        self.assertIn("hardwareSensorHilEntryReadinessReviewFromStatus", app)
+        self.assertIn("hardware_sensor_hil_entry_readiness_review", app)
+        self.assertIn("hardware_sensor_hil_entry_readiness_review_summary", app)
+        self.assertIn("diagnosticsSummary.hardware_sensor_hil_entry_readiness_review", app)
+        self.assertIn("statusDiagnosticsSummary.hardware_sensor_hil_entry_readiness_review", app)
+        self.assertIn("readiness_status", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("boundary_summary", app)
+
+        # copy/export whitelist 不新增任何 Start/Confirm/Cancel 请求或控制授权。
+        self.assertIn("hardwareSensorHilEntryReadinessReviewCopyPayload", app)
+        self.assertIn("trashbot.hardware_sensor_hil_entry_readiness_review_copy.v1", app)
+        self.assertIn("copyHardwareSensorHilEntryReadinessReviewButton", app)
+        self.assertIn("downloadHardwareSensorHilEntryReadinessReviewButton", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"hardwareSensorHilEntryReadinessReview.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须明确 software proof / not_proven 边界。
+        review = fixture["hardware_sensor_hil_entry_readiness_review"]
+        self.assertEqual(
+            review["readiness_status"],
+            "hardware_sensor_hil_entry_readiness_review_not_proven",
+        )
+        self.assertEqual(review["delivery_success"], False)
+        self.assertEqual(review["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("hardware_sensor_hil_entry_readiness_review", doc)
+        self.assertIn("传感器 HIL 准入评审", doc)
+
+    def test_hil_entry_readiness_review_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        review_text = json.dumps(
+            fixture["hardware_sensor_hil_entry_readiness_review"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 准入评审 fixture 不能携带 raw vendor、raw JSON、串口、路径、凭证、完整材料或成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "serial/uart",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "complete artifacts",
+            "raw vendor document",
+            "raw material",
+            "absolute path",
+            "control grant",
+            "hil passed",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, review_text)
+
+
 class RouteTaskTerminalCompletionRehearsalMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

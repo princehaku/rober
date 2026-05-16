@@ -175,6 +175,41 @@
       "Objective 5 external proof"
     ]
   },
+  "hardware_sensor_hil_entry_readiness_review": {
+    "schema": "trashbot.hardware_sensor_hil_entry_readiness_review.v1",
+    "summary_schema": "trashbot.hardware_sensor_hil_entry_readiness_review_summary.v1",
+    "schema_version": 1,
+    "readiness_status": "hardware_sensor_hil_entry_readiness_review_not_proven",
+    "safe_evidence_ref": "hardware_sensor_hil_entry_readiness_review_fixture_20260517_0001",
+    "missing_materials": [
+      "2D LiDAR install/wiring/power/calibration material=not_proven",
+      "ToF safety-ring install/wiring/power/calibration material=not_proven",
+      "HIL bench run evidence=not_proven"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=phone-safe sensor install, wiring, power, calibration, and HIL bench summaries",
+      "next_required_evidence=Robot diagnostics metadata-only readiness summary"
+    ],
+    "owner_handoff": "owner_handoff=Hardware owner supplies sanitized HIL-entry readiness materials; Robot owner exposes metadata-only diagnostics summary; Full-stack keeps panel read-only.",
+    "boundary_summary": "boundary=software proof only; phone-safe metadata only; sensitive implementation details withheld.",
+    "safe_copy": "传感器 HIL 准入评审只读展示 readiness、缺失材料、下一步证据、owner handoff 和边界；这是 software proof only。",
+    "evidence_boundary": "software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 HIL",
+      "真实 2D LiDAR / ToF",
+      "真实 sensor install/wiring/power/calibration",
+      "真实 HIL bench run",
+      "真实手机/browser",
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field pass",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success",
+      "Objective 5 external proof"
+    ]
+  },
   "route_task_terminal_completion_rehearsal": {
     "schema": "trashbot.route_task_terminal_completion_rehearsal.v1",
     "summary_schema": "trashbot.route_task_terminal_completion_rehearsal_summary.v1",

@@ -241,6 +241,45 @@ future sensor config is shaped well enough for human material review; it is not
 real procurement, installation, calibration, HIL-entry, Nav2/SLAM field pass,
 near-field safety pass, Objective 5 external proof, or delivery result.
 
+## Hardware Sensor HIL-entry Readiness Review Gate
+
+`hardware_sensor_hil_entry_readiness_review` is the fail-closed PC review gate
+after `hardware_sensor_procurement_receipt_intake` and
+`hardware_sensor_hil_entry_config_precheck`. It emits
+`schema=trashbot.hardware_sensor_hil_entry_readiness_review.v1` and
+`schema=trashbot.hardware_sensor_hil_entry_readiness_review_summary.v1` under
+`software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate`.
+
+The readiness review combines only sanitized, white-listed source status from
+receipt intake and config precheck. It checks that both sources use supported
+schemas and evidence boundaries, remain `software_proof`, preserve
+`delivery_success=false` and `primary_actions_enabled=false`, share the same
+safe `evidence_ref`, and are ready only in their own `not_proven` sense.
+
+The gate does not read real hardware, serial/UART devices, WAVE ROVER runtime
+state, Orange Pi runtime state, ROS graph, sensor drivers, Nav2 runtime,
+network services, field materials, HIL rigs, or Objective 5 external
+infrastructure. Missing source summaries, unsupported source schemas or
+boundaries, upstream blocked states, evidence-ref mismatch, weak boolean
+contracts, unsafe copy, HIL success claims, field success claims,
+`delivery_success=true`, or `primary_actions_enabled=true` must fail closed.
+
+Every output must remain `software_proof`, `not_proven`,
+`hardware_material_pending`, `delivery_success=false`, and
+`primary_actions_enabled=false`. `ready_for_hardware_sensor_hil_entry_readiness_review_not_proven`
+means only that receipt/source/SKU material and parameterized config summaries
+can enter human HIL-entry readiness review; it is not a procurement pass,
+installation pass, calibration pass, HIL-entry pass, Nav2/SLAM field pass,
+near-field safety pass, Objective 5 external proof, or delivery success.
+
+The source boundary remains `docs/vendor/VENDOR_INDEX.md` plus the local Orange
+Pi / WAVE ROVER / UART JSON / firmware / vendor-app references listed there.
+Those local vendor files still do not prove a project 2D LiDAR or ToF SKU,
+receipt acceptance, vendor/source acceptance, purchase order, mounting/wiring
+plan, power budget, calibration result, HIL entry, Nav2/SLAM field pass,
+near-field safety pass, route/elevator pass, Objective 5 external proof, or
+delivery result.
+
 ## Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)
 
 - Target baseline combo: monocular camera + one 2D LiDAR + ToF safety ring.
