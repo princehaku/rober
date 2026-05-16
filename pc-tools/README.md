@@ -138,6 +138,25 @@ python3 pc-tools/evidence/route_task_field_retest_execution_pack.py \
 
 该 gate 不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、真实手机/browser、外部云、OSS/CDN、DB/queue 或 4G。缺输入、坏 JSON、unsupported schema/boundary、unsafe copy、missing `evidence_ref`、`same_evidence_ref_required=false`、success/control claim、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_execution_pack_not_proven` 只表示 Docker/local software proof 足以生成复测材料清单，不是真实 field pass、HIL、真实手机/browser、delivery success 或 Objective 5 external proof。
 
+## route/task field retest session handoff
+
+`pc-tools/evidence/route_task_field_retest_session_handoff.py` 只读上一轮 `route_task_field_retest_execution_pack` artifact、summary 或 wrapper/nested JSON，把复测执行包转换成下一次现场复测 session 的交接 artifact / summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_session_handoff.py \
+  --execution-pack-json /tmp/route_task_field_retest_execution_pack.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --session-owner "Autonomy Algorithm Engineer" \
+  --output /tmp/route_task_field_retest_session_handoff.json \
+  --summary-output /tmp/route_task_field_retest_session_handoff_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_session_handoff.v1`，summary 使用 `schema=trashbot.route_task_field_retest_session_handoff_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_session_handoff_gate`。核心字段包括 safe `evidence_ref`、`same_evidence_ref_required=true`、`session_handoff`、`operator_handoff`、`material_placeholders`、`material_paths`、`rerun_commands`、`field_callback_checklist`、`safe_copy`、`fail_closed_summary`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+该 handoff 要求 source execution pack 已列出下一次真实现场回填材料：Nav2/fixed-route runtime log、route completion signal、task record、door state、target floor confirmation、human assistance note、dropoff/cancel completion 和 delivery result。`material_placeholders` 只给出相对 placeholder path 和 required fields，便于现场回填；本 gate 不读取这些真实材料，也不访问 ROS graph、Nav2 runtime、硬件、真实手机/browser、外部云、OSS/CDN、DB/queue 或 4G。
+
+缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、缺 required materials、placeholder-only materials、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_session_handoff_not_proven` 只表示 Docker/local software proof 足以生成现场 session 交接材料，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## mobile route/elevator field-device precheck
 
 `pc-tools/evidence/mobile_route_elevator_field_device_precheck.py` 只读 route/elevator field-session handoff，生成或校验真实设备/现场前检查 summary：

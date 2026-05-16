@@ -277,5 +277,47 @@
       "WAVE ROVER/UART/HIL",
       "Objective 5 external proof"
     ]
+  },
+  "route_task_field_retest_session_handoff": {
+    "schema": "trashbot.route_task_field_retest_session_handoff.v1",
+    "summary_schema": "trashbot.route_task_field_retest_session_handoff_summary.v1",
+    "schema_version": 1,
+    "source_execution_pack_schema": "trashbot.route_task_field_retest_execution_pack_summary.v1",
+    "handoff_status": "ready_for_field_retest_session_handoff_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_session_handoff_fixture_20260516_0001",
+    "session_owner": "session_owner=Autonomy owner hosts the field retest session; Robot owner republishes metadata-only diagnostics; Full-stack keeps mobile read-only.",
+    "required_field_materials_summary": [
+      "required_field_material=Nav2/fixed-route runtime log phone-safe summary",
+      "required_field_material=route completion signal and task record phone-safe summary",
+      "required_field_material=door state, target floor confirmation and human assistance note summary",
+      "required_field_material=dropoff/cancel completion and delivery result phone-safe summary",
+      "required_field_material=diagnostics/mobile safe summary on same evidence_ref"
+    ],
+    "rerun_commands_summary": [
+      "rerun_commands_summary=run route-task field retest session handoff gate with redacted same evidence_ref materials",
+      "rerun_commands_summary=rerun Robot diagnostics publication after handoff summary is attached"
+    ],
+    "operator_next_steps": [
+      "operator_next_step=confirm all required field materials before starting the on-site retest session",
+      "operator_next_step=copy only safe_copy into Product closeout and support notes",
+      "operator_next_step=leave Start, Confirm Dropoff and Cancel gating unchanged"
+    ],
+    "safe_phone_copy": "路线任务现场复测交接只读展示 handoff status、session owner、required materials、rerun commands、operator next steps 和 evidence boundary；这是 software proof only。",
+    "safe_copy": "路线任务现场复测交接 safe_copy：当前状态 ready_for_field_retest_session_handoff_not_proven；session owner 已分配；下一次现场会只允许使用同一 safe evidence_ref 的脱敏材料；delivery_success=false；primary_actions_enabled=false。",
+    "recovery_hint": "如果缺少 safe_copy 或同一 evidence_ref 的现场材料，请保持 blocked/not_proven，并要求 Autonomy/Robot owner 重新发布 session handoff summary。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_session_handoff_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实电梯门状态和目标楼层确认",
+      "真实人工协助记录",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "真实硬件/HIL",
+      "Objective 5 external proof"
+    ]
   }
 }

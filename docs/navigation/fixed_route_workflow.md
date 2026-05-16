@@ -357,6 +357,33 @@ artifact 使用 `schema=trashbot.route_elevator_field_session_handoff.v1`，summ
 
 `robot_diagnostics_summary` 和 `mobile_readonly_summary` 只能展示白名单摘要，不包含 raw artifact、本机完整路径、checksum、traceback、凭证、DB/queue URL、OSS AK/SK、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 参数。该 gate 是现场 session handoff，不是 delivery success，也不是 Objective 5 external proof；`not_proven` 必须继续包含真实 Nav2/fixed-route、真实电梯门状态、真实目标楼层、人工协助、HIL、dropoff/cancel completion、真实手机和 O5 外部材料。
 
+## 4.9.5 Route Task Field Retest Session Handoff
+
+上一轮 `route_task_field_retest_execution_pack` 准备好后，可以生成路线-任务现场复测 session handoff，供 Robot diagnostics 和 mobile/web 只读展示同一 `evidence_ref` 的下一步回填要求：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_session_handoff.py \
+  --execution-pack-json /tmp/route_task_field_retest_execution_pack.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --session-owner "Autonomy Algorithm Engineer" \
+  --output /tmp/route_task_field_retest_session_handoff.json \
+  --summary-output /tmp/route_task_field_retest_session_handoff_summary.json
+```
+
+artifact 使用 `schema=trashbot.route_task_field_retest_session_handoff.v1`，summary 使用 `schema=trashbot.route_task_field_retest_session_handoff_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_session_handoff_gate`。顶层固定包含 `same_evidence_ref_required=true`、`source_execution_pack`、`session_handoff`、`operator_handoff`、`material_placeholders`、`material_paths`、`rerun_commands`、`field_callback_checklist`、`safe_copy`、`fail_closed_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+source execution pack 必须已经列出八类下一次真实现场回填材料：Nav2/fixed-route runtime log、route completion signal、task record、door state、target floor confirmation、human assistance note、dropoff/cancel completion 和 delivery result。handoff 输出的 `material_placeholders` 只是相对路径和 required fields 清单，用于现场回填目录约定；本 gate 不读取 ROS graph、Nav2 runtime、硬件、真实手机/browser、外部云、OSS/CDN、DB/queue、4G 或任何真实现场材料。
+
+保守阻断规则：
+
+- 输入缺失、JSON 不可读或不是 JSON object：输出 blocked，不把异常当交接证据。
+- 输入 schema 或 evidence boundary 不支持：输出 blocked。
+- 缺 safe `evidence_ref`、与 `--evidence-ref` 不一致或 `same_evidence_ref_required` 不是严格 true：输出 blocked。
+- source execution pack 缺任一 required material，或只给 TBD/sample/placeholder 材料：输出 blocked。
+- 输入含 unsafe copy、raw path、credential、ROS topic、serial/UART、WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true`：输出 blocked。
+
+`robot_diagnostics_summary` 和 `mobile_readonly_summary` 只能消费白名单 summary、safe copy 和 fail-closed flags，不展示 raw artifact、本机路径、checksum、traceback、凭证、DB/queue URL、OSS AK/SK、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 参数。`ready_for_field_retest_session_handoff_not_proven` 只表示 Docker/local software proof 足以生成复测 session 交接材料，不是真实 fixed-route/Nav2、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## 4.10 Mobile Field Material Intake
 
 现场前检查完成后，`pc-tools/evidence/mobile_field_material_intake.py` 负责把手机设备观察、route/elevator 材料、Nav2/fixed-route runtime log、task record、completion signal、dropoff/cancel material status 收到同一条 `evidence_ref` 证据链里：

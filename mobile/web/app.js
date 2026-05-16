@@ -54,6 +54,7 @@ const ROUTE_TASK_COMPLETION_SIGNAL_BOUNDARY = "software_proof_docker_route_task_
 const ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_BOUNDARY = "software_proof_docker_route_task_terminal_completion_rehearsal_gate";
 const ROUTE_TASK_TERMINAL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_route_task_terminal_review_decision_gate";
 const ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_BOUNDARY = "software_proof_docker_route_task_field_retest_execution_pack_gate";
+const ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF_BOUNDARY = "software_proof_docker_route_task_field_retest_session_handoff_gate";
 const ELEVATOR_ASSIST_BOUNDARY = "software_proof_docker_elevator_assist_default_mainline_gate";
 const ELEVATOR_ASSIST_REHEARSAL_EVIDENCE_BOUNDARY = "software_proof_docker_elevator_evidence_driven_mainline_gate";
 const ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_BOUNDARY = "software_proof_docker_elevator_route_evidence_reconciliation_gate";
@@ -185,6 +186,7 @@ let latestHardwareSensorHilEntryConfigPrecheck = null;
 let latestRouteTaskTerminalCompletionRehearsal = null;
 let latestRouteTaskTerminalReviewDecision = null;
 let latestRouteTaskFieldRetestExecutionPack = null;
+let latestRouteTaskFieldRetestSessionHandoff = null;
 let deferredPwaInstallPromptEvent = null;
 let pwaInstallPromptEventState = null;
 let latestRealDeviceEvidencePackage = null;
@@ -5724,7 +5726,7 @@ function routeTaskFieldRetestExecutionPackNotProvenList(value) {
     "真实 operator field note",
     "真实 dropoff/cancel completion",
     "真实手机设备/browser",
-    "WAVE ROVER/UART/HIL",
+    "真实硬件验证",
     "Objective 5 external proof",
   ];
   return Array.from(new Set([...provided, ...required])).slice(0, 16);
@@ -5834,6 +5836,200 @@ function routeTaskFieldRetestExecutionPackCopyPayload(summary) {
     operator_handoff: source.operator_handoff,
     field_retest_checklist: source.field_retest_checklist,
     evidence_boundary: ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_BOUNDARY,
+    not_proven: source.not_proven,
+    delivery_success: false,
+    primary_actions_enabled: false,
+  };
+}
+
+function routeTaskFieldRetestSessionHandoffCandidate(status, readiness, diagnostics) {
+  // session handoff 可由 status、phone_readiness 或 Robot diagnostics 多层 summary 提供；前端只接受对象摘要。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.route_task_field_retest_session_handoff,
+    status?.route_task_field_retest_session_handoff_summary,
+    readiness?.route_task_field_retest_session_handoff,
+    readiness?.route_task_field_retest_session_handoff_summary,
+    diagnostics?.route_task_field_retest_session_handoff,
+    diagnostics?.route_task_field_retest_session_handoff_summary,
+    diagnosticsReadiness.route_task_field_retest_session_handoff,
+    diagnosticsReadiness.route_task_field_retest_session_handoff_summary,
+    diagnosticsSummary.route_task_field_retest_session_handoff,
+    diagnosticsSummary.route_task_field_retest_session_handoff_summary,
+    nestedDiagnosticsSummary.route_task_field_retest_session_handoff,
+    nestedDiagnosticsSummary.route_task_field_retest_session_handoff_summary,
+    nestedDiagnosticsInnerSummary.route_task_field_retest_session_handoff,
+    nestedDiagnosticsInnerSummary.route_task_field_retest_session_handoff_summary,
+    statusDiagnosticsSummary.route_task_field_retest_session_handoff,
+    statusDiagnosticsSummary.route_task_field_retest_session_handoff_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function routeTaskFieldRetestSessionHandoffNotProvenList(value) {
+  // session handoff 是现场会前交接，不证明真实路线、电梯、终态动作、手机验收或外部云证据。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实 Nav2/fixed-route runtime log",
+    "真实 route completion signal",
+    "真实 task record",
+    "真实电梯门状态/目标楼层确认",
+    "真实人工协助记录",
+    "真实 dropoff/cancel completion",
+    "真实手机设备/browser",
+    "WAVE ROVER/UART/HIL",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 16);
+}
+
+function routeTaskFieldRetestSessionHandoffSummaryText(value, fallback) {
+  // required materials、rerun commands 和 next steps 都只取短摘要，避免 raw 命令、路径或完整材料进手机端。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeRouteTaskFieldRetestExecutionPackText(
+        item?.safe_phone_copy || item?.summary || item?.name || item?.material ||
+          item?.command_summary || item?.status || item?.step || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.command_summary ||
+      value.material_summary || value.status || value.state || value.step;
+    if (direct) {
+      return safeRouteTaskFieldRetestExecutionPackText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeRouteTaskFieldRetestExecutionPackText(key, "");
+        const copy = routeTaskFieldRetestSessionHandoffSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  return safeRouteTaskFieldRetestExecutionPackText(value, fallback);
+}
+
+function routeTaskFieldRetestSessionSafeCopy(value) {
+  // copy/export 必须由后端显式 safe_copy 驱动；缺失时前端不合成可复制交接包。
+  const source = value?.safe_copy;
+  if (!source) {
+    return null;
+  }
+  const text = typeof source === "object"
+    ? source.safe_phone_copy || source.summary || source.copy
+    : source;
+  const safeCopy = safeRouteTaskFieldRetestExecutionPackText(text, "");
+  if (!safeCopy) {
+    return null;
+  }
+  return {
+    schema: "trashbot.route_task_field_retest_session_handoff_copy.v1",
+    schema_version: 1,
+    safe_phone_copy: safeCopy,
+  };
+}
+
+function routeTaskFieldRetestSessionHandoffFromStatus(status, readiness, diagnostics) {
+  const provided = routeTaskFieldRetestSessionHandoffCandidate(status, readiness, diagnostics) || {};
+  const safeCopyPayload = routeTaskFieldRetestSessionSafeCopy(provided);
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.route_task_field_retest_session_handoff.v1",
+    summary_schema: "trashbot.route_task_field_retest_session_handoff_summary.v1",
+    schema_version: 1,
+    handoff_status: safeRouteTaskFieldRetestExecutionPackText(
+      provided.handoff_status || provided.session_handoff_status || provided.status || provided.overall_status,
+      "blocked_missing_route_task_field_retest_session_handoff",
+    ),
+    safe_evidence_ref: safeRouteTaskFieldRetestExecutionPackText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "not_provided",
+    ),
+    session_owner: routeTaskFieldRetestSessionHandoffSummaryText(
+      provided.session_owner || provided.owner || provided.owner_handoff || provided.operator_handoff,
+      "session_owner=Autonomy/Robot owner 现场补齐同一 evidence_ref 的真实复测材料。",
+    ),
+    required_field_materials_summary: routeTaskFieldRetestSessionHandoffSummaryText(
+      provided.required_field_materials_summary || provided.required_field_materials ||
+        provided.required_materials || provided.materials_summary,
+      "required_field_materials=not_proven",
+    ),
+    rerun_commands_summary: routeTaskFieldRetestSessionHandoffSummaryText(
+      provided.rerun_commands_summary || provided.rerun_command_summary ||
+        provided.rerun_commands || provided.commands_to_rerun,
+      "rerun_commands_summary=not_proven",
+    ),
+    operator_next_steps_summary: routeTaskFieldRetestSessionHandoffSummaryText(
+      provided.operator_next_steps || provided.next_steps || provided.operator_actions,
+      "operator_next_steps=按同一 evidence_ref 补齐现场材料，再回填 diagnostics/mobile safe summary。",
+    ),
+    safe_phone_copy: safeRouteTaskFieldRetestExecutionPackText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "route_task_field_retest_session_handoff 摘要缺失；手机端只显示 blocked/not_proven，不读取 raw artifacts。",
+    ),
+    safe_copy_payload: safeCopyPayload,
+    safe_copy_status: safeCopyPayload ? "safe_copy_available" : "blocked copy unavailable",
+    recovery_hint: safeRouteTaskFieldRetestExecutionPackText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由 diagnostics/status 提供 route_task_field_retest_session_handoff_summary 和 safe_copy 后，再交接现场复测会。",
+    ),
+    evidence_boundary: safeRouteTaskFieldRetestExecutionPackText(
+      provided.evidence_boundary,
+      ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: routeTaskFieldRetestSessionHandoffNotProvenList(provided),
+  };
+}
+
+function routeTaskFieldRetestSessionHandoffCopyPayload(summary) {
+  // session handoff copy 只在后端给出 safe_copy 时导出，避免把 UI fallback 文案伪装成现场交接材料。
+  const source = summary?.schema
+    ? summary
+    : routeTaskFieldRetestSessionHandoffFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  if (!source.safe_copy_payload) {
+    return null;
+  }
+  return {
+    schema: source.safe_copy_payload.schema,
+    schema_version: source.safe_copy_payload.schema_version,
+    source: "mobile_web",
+    route_task_field_retest_session_handoff_schema: source.schema,
+    summary_schema: source.summary_schema,
+    handoff_status: source.handoff_status,
+    safe_evidence_ref: source.safe_evidence_ref,
+    session_owner: source.session_owner,
+    required_field_materials_summary: source.required_field_materials_summary,
+    rerun_commands_summary: source.rerun_commands_summary,
+    operator_next_steps_summary: source.operator_next_steps_summary,
+    safe_phone_copy: source.safe_copy_payload.safe_phone_copy,
+    evidence_boundary: ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF_BOUNDARY,
     not_proven: source.not_proven,
     delivery_success: false,
     primary_actions_enabled: false,
@@ -9285,6 +9481,90 @@ function renderRouteTaskFieldRetestExecutionPack(status) {
   $("routeTaskFieldRetestExecutionPackHint").textContent = summary.recovery_hint;
 }
 
+function ensureRouteTaskFieldRetestSessionHandoffPanel() {
+  // session handoff 独立于旧 execution pack，避免把执行包语义改成现场会交接语义。
+  let panel = $("routeTaskFieldRetestSessionHandoffPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("routeTaskFieldRetestExecutionPackTitle")?.closest("section") ||
+    $("routeTaskTerminalReviewDecisionTitle")?.closest("section") ||
+    $("routeTaskTerminalCompletionRehearsalTitle")?.closest("section") ||
+    $("routeTaskCompletionSignalTitle")?.closest("section") ||
+    $("elevatorAssistPanel");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "routeTaskFieldRetestSessionHandoffPanel";
+  panel.className = "route-task-field-retest-session-handoff-panel";
+  panel.setAttribute("aria-labelledby", "routeTaskFieldRetestSessionHandoffTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="routeTaskFieldRetestSessionHandoffTitle">路线任务现场复测交接</h2>
+      <span id="routeTaskFieldRetestSessionHandoffBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="routeTaskFieldRetestSessionHandoffCopy" class="message">
+      route_task_field_retest_session_handoff 只读展示 handoff status、session owner、required materials、rerun commands、operator next steps 和 safe copy。
+    </p>
+    <dl class="route-task-field-retest-session-handoff-grid">
+      <div><dt>Handoff Status</dt><dd id="routeTaskFieldRetestSessionHandoffStatus">blocked_missing_route_task_field_retest_session_handoff</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="routeTaskFieldRetestSessionHandoffEvidenceRef">not_provided</dd></div>
+      <div><dt>Session Owner</dt><dd id="routeTaskFieldRetestSessionHandoffOwner">session_owner=not_proven</dd></div>
+      <div><dt>Required Field Materials</dt><dd id="routeTaskFieldRetestSessionHandoffMaterials">required_field_materials=not_proven</dd></div>
+      <div><dt>Rerun Commands Summary</dt><dd id="routeTaskFieldRetestSessionHandoffRerun">rerun_commands_summary=not_proven</dd></div>
+      <div><dt>Operator Next Steps</dt><dd id="routeTaskFieldRetestSessionHandoffNextSteps">operator_next_steps=not_proven</dd></div>
+      <div><dt>Safe Copy Status</dt><dd id="routeTaskFieldRetestSessionHandoffSafeCopyStatus">blocked copy unavailable</dd></div>
+      <div><dt>Control Boundary</dt><dd id="routeTaskFieldRetestSessionHandoffControls">delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="routeTaskFieldRetestSessionHandoffBoundary">software_proof_docker_route_task_field_retest_session_handoff_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="routeTaskFieldRetestSessionHandoffNotProven">真实现场复测、HIL、真机浏览器和 delivery success 未证明。</dd></div>
+    </dl>
+    <div class="bundle-copy-row">
+      <button id="copyRouteTaskFieldRetestSessionHandoffButton" type="button" disabled>复制 session handoff</button>
+      <button id="downloadRouteTaskFieldRetestSessionHandoffButton" type="button" disabled>导出 session handoff</button>
+      <span id="routeTaskFieldRetestSessionHandoffCopyStatus" class="hint">blocked copy unavailable</span>
+    </div>
+    <pre id="routeTaskFieldRetestSessionHandoffSafeCopy" class="safe-copy" aria-label="route_task_field_retest_session_handoff safe_copy">blocked copy unavailable</pre>
+    <p id="routeTaskFieldRetestSessionHandoffHint" class="hint">
+      路线任务现场复测交接只读展示并只导出后端 safe_copy 白名单；不暴露原始材料、底层控制或硬件通信字段、凭证、外部服务地址、本机路径、错误堆栈、校验细节或完整材料，也不改变 Start、Confirm Dropoff 或 Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderRouteTaskFieldRetestSessionHandoff(status) {
+  const panel = ensureRouteTaskFieldRetestSessionHandoffPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = routeTaskFieldRetestSessionHandoffFromStatus(status, readiness, latestDiagnostics);
+  latestRouteTaskFieldRetestSessionHandoff = summary;
+  const badge = $("routeTaskFieldRetestSessionHandoffBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 session handoff" : "read-only session handoff";
+  $("routeTaskFieldRetestSessionHandoffCopy").textContent = summary.safe_phone_copy;
+  $("routeTaskFieldRetestSessionHandoffStatus").textContent = summary.handoff_status;
+  $("routeTaskFieldRetestSessionHandoffEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("routeTaskFieldRetestSessionHandoffOwner").textContent = summary.session_owner;
+  $("routeTaskFieldRetestSessionHandoffMaterials").textContent = summary.required_field_materials_summary;
+  $("routeTaskFieldRetestSessionHandoffRerun").textContent = summary.rerun_commands_summary;
+  $("routeTaskFieldRetestSessionHandoffNextSteps").textContent = summary.operator_next_steps_summary;
+  $("routeTaskFieldRetestSessionHandoffSafeCopyStatus").textContent = summary.safe_copy_status;
+  $("routeTaskFieldRetestSessionHandoffControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("routeTaskFieldRetestSessionHandoffBoundary").textContent = summary.evidence_boundary;
+  $("routeTaskFieldRetestSessionHandoffNotProven").textContent = summary.not_proven.join("、");
+  $("routeTaskFieldRetestSessionHandoffHint").textContent = summary.recovery_hint;
+  $("routeTaskFieldRetestSessionHandoffSafeCopy").textContent =
+    summary.safe_copy_payload?.safe_phone_copy || "blocked copy unavailable";
+  $("routeTaskFieldRetestSessionHandoffCopyStatus").textContent = summary.safe_copy_status;
+  $("copyRouteTaskFieldRetestSessionHandoffButton").disabled = !summary.safe_copy_payload;
+  $("downloadRouteTaskFieldRetestSessionHandoffButton").disabled = !summary.safe_copy_payload;
+}
+
 function ensureElevatorRouteEvidenceReconciliationPanel() {
   // 本 panel 由 JS 注入，避免改动静态 index；它只读展示 Robot diagnostics/status 的复账摘要。
   let panel = $("elevatorRouteEvidenceReconciliationPanel");
@@ -11909,6 +12189,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const routeTaskFieldRetestSessionHandoff = routeTaskFieldRetestSessionHandoffFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const elevatorRouteReconciliation = elevatorRouteEvidenceReconciliationFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -11999,6 +12284,7 @@ function renderDiagnosticsSummary(payload) {
     ["route_task_terminal_completion_rehearsal", routeTaskTerminalCompletion.terminal_verdict],
     ["route_task_terminal_review_decision", routeTaskTerminalReviewDecision.review_decision],
     ["route_task_field_retest_execution_pack", routeTaskFieldRetestExecutionPack.execution_status],
+    ["route_task_field_retest_session_handoff", routeTaskFieldRetestSessionHandoff.handoff_status],
     ["Elevator-route evidence reconciliation", elevatorRouteReconciliation.reconciliation_verdict],
     ["Route-elevator field session handoff", routeElevatorFieldHandoff.handoff_verdict],
     ["mobile_route_elevator_field_device_precheck", mobileRouteElevatorPrecheck.precheck_status],
@@ -12080,6 +12366,7 @@ function renderOfflineFailure() {
   renderRouteTaskTerminalCompletionRehearsal({});
   renderRouteTaskTerminalReviewDecision({});
   renderRouteTaskFieldRetestExecutionPack({});
+  renderRouteTaskFieldRetestSessionHandoff({});
   renderRouteElevatorFieldSessionHandoff({});
   renderMobileRouteElevatorFieldDevicePrecheck({});
   renderMobileFieldMaterialIntake({});
@@ -12138,6 +12425,7 @@ function renderStatus(status) {
   renderRouteTaskTerminalCompletionRehearsal(status);
   renderRouteTaskTerminalReviewDecision(status);
   renderRouteTaskFieldRetestExecutionPack(status);
+  renderRouteTaskFieldRetestSessionHandoff(status);
   renderRouteElevatorFieldSessionHandoff(status);
   renderMobileRouteElevatorFieldDevicePrecheck(status);
   renderMobileFieldMaterialIntake(status);
@@ -12372,6 +12660,7 @@ async function openDiagnostics() {
     renderRouteTaskTerminalCompletionRehearsal(latestStatus || {});
     renderRouteTaskTerminalReviewDecision(latestStatus || {});
     renderRouteTaskFieldRetestExecutionPack(latestStatus || {});
+    renderRouteTaskFieldRetestSessionHandoff(latestStatus || {});
     renderElevatorRouteEvidenceReconciliation(latestStatus || {});
     renderRouteElevatorFieldSessionHandoff(latestStatus || {});
     renderMobileRouteElevatorFieldDevicePrecheck(latestStatus || {});
@@ -12834,6 +13123,37 @@ function wireEvents() {
     downloadJsonPackage("route_task_field_retest_execution_pack_copy.json", payload);
     $("routeTaskFieldRetestExecutionPackCopyStatus").textContent =
       "已导出 route retest execution pack whitelist-only JSON。";
+  });
+  $("copyRouteTaskFieldRetestSessionHandoffButton").addEventListener("click", async () => {
+    const copyPayload = routeTaskFieldRetestSessionHandoffCopyPayload(latestRouteTaskFieldRetestSessionHandoff || {});
+    if (!copyPayload) {
+      $("routeTaskFieldRetestSessionHandoffCopyStatus").textContent = "blocked copy unavailable";
+      $("routeTaskFieldRetestSessionHandoffSafeCopy").textContent = "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("routeTaskFieldRetestSessionHandoffSafeCopy").textContent = payload;
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("routeTaskFieldRetestSessionHandoffCopyStatus").textContent =
+        "已复制 route_task_field_retest_session_handoff phone-safe metadata。";
+    } catch (_error) {
+      $("routeTaskFieldRetestSessionHandoffCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadRouteTaskFieldRetestSessionHandoffButton").addEventListener("click", () => {
+    const copyPayload = routeTaskFieldRetestSessionHandoffCopyPayload(latestRouteTaskFieldRetestSessionHandoff || {});
+    if (!copyPayload) {
+      $("routeTaskFieldRetestSessionHandoffCopyStatus").textContent = "blocked copy unavailable";
+      $("routeTaskFieldRetestSessionHandoffSafeCopy").textContent = "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("routeTaskFieldRetestSessionHandoffSafeCopy").textContent = payload;
+    downloadJsonPackage("route_task_field_retest_session_handoff_copy.json", payload);
+    $("routeTaskFieldRetestSessionHandoffCopyStatus").textContent =
+      "已导出 route retest session handoff whitelist-only JSON。";
   });
   $("copyRouteTaskReviewButton").addEventListener("click", async () => {
     // operator review 复制只使用后端提供的 safe_copy 白名单对象，缺失时不生成替代 bundle。

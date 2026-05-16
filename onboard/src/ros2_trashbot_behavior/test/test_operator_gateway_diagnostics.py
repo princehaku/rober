@@ -23,6 +23,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_rehearsal_operator_review,
     summarize_route_task_field_run_execution_pack,
     summarize_route_task_field_retest_execution_pack,
+    summarize_route_task_field_retest_session_handoff,
     summarize_route_task_field_run_intake,
     summarize_route_task_field_run_reconciliation,
     summarize_route_task_field_run_readiness,
@@ -2540,6 +2541,285 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(unsafe_summary["execution_status"], "unsafe_fields")
         self.assertEqual(enabled_summary["execution_status"], "unsafe_fields")
         self.assertIn("software_proof_docker_route_task_field_retest_execution_pack_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertFalse(env_summary["ack_post_allowed"])
+        self.assertFalse(env_summary["nav2_triggered"])
+        self.assertFalse(env_summary["hil_pass"])
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_retest_session_handoff_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            handoff_path = Path(td) / "route_task_field_retest_session_handoff.json"
+            handoff_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_session_handoff.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_session_handoff_gate"
+                        ),
+                        "handoff_status": {
+                            "status": "ready_for_field_retest_session_handoff_not_proven",
+                            "verdict": "not_proven",
+                            "reason": "handoff is ready for field materials only",
+                        },
+                        "evidence_ref": "evidence://route-task-field-retest-session-handoff-1",
+                        "same_evidence_ref_required": True,
+                        "session_owner": "Autonomy",
+                        "required_field_materials": {
+                            "status": "blocked_until_real_field_materials",
+                            "items": [
+                                "real Nav2/fixed-route runtime log",
+                                "route completion signal",
+                                "task record",
+                                "door state",
+                            ],
+                        },
+                        "material_placeholders": ["Nav2 runtime log placeholder", "task record placeholder"],
+                        "rerun_commands": ["python3 pc-tools/evidence/route_task_field_retest_session_handoff.py --once-json"],
+                        "operator_next_steps": ["Collect same evidence_ref field materials."],
+                        "field_callback_checklist": ["capture target floor confirmation"],
+                        "robot_diagnostics_summary": {
+                            "status": "metadata_only",
+                            "reason": "Robot diagnostics only mirrors safe handoff metadata.",
+                        },
+                        "mobile_readonly_summary": {
+                            "safe_copy": (
+                                "Route-task field retest session handoff is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                        },
+                        "not_proven": ["delivery_success"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_session_handoff_ref=str(handoff_path),
+            )
+            summary = payload["route_task_field_retest_session_handoff"]
+            summary_alias = payload["route_task_field_retest_session_handoff_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["schema"], "trashbot.route_task_field_retest_session_handoff_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_session_handoff_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_field_retest_session_handoff.v1")
+        self.assertEqual(
+            summary["handoff_status"]["status"],
+            "ready_for_field_retest_session_handoff_not_proven",
+        )
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://route-task-field-retest-session-handoff-1",
+        )
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertEqual(summary["session_owner"], "Autonomy")
+        self.assertIn("door state", summary["required_field_materials_summary"]["items"])
+        self.assertIn("route_task_field_retest_session_handoff.py", summary["rerun_commands_summary"][0])
+        self.assertIn("capture target floor confirmation", summary["field_callback_checklist"])
+        self.assertEqual(summary["robot_diagnostics_summary"]["status"], "metadata_only")
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("real_nav2_fixed_route_run", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["production_ready"])
+        self.assertNotIn(str(handoff_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_retest_session_handoff_env_nested_missing_mismatch_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "route_task_field_retest_session_handoff_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_session_handoff_summary.v1",
+                        "source_schema": "trashbot.route_task_field_retest_session_handoff.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_session_handoff_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_session_handoff_gate"
+                        ),
+                        "handoff_status": {
+                            "status": "blocked_missing_field_material",
+                            "verdict": "not_proven",
+                            "reason": "field materials are not attached",
+                        },
+                        "safe_evidence_ref": "evidence://route-task-field-retest-session-handoff-2",
+                        "same_evidence_ref_required": True,
+                        "session_owner": "Robot",
+                        "required_field_materials_summary": {"status": "blocked", "items": ["field note"]},
+                        "rerun_commands_summary": ["collect field note"],
+                        "operator_next_steps": ["keep metadata-only"],
+                        "field_callback_checklist": ["same evidence_ref"],
+                        "safe_phone_copy": "Route-task field retest session handoff is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_handoff = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF")
+            previous_summary = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF_SUMMARY")
+            os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF", None)
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_retest_session_handoff"
+                ]
+            finally:
+                if previous_handoff is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF"] = previous_handoff
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF_SUMMARY"] = previous_summary
+
+            nested_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "route_task_field_retest_session_handoff_summary": {
+                            "schema": "trashbot.route_task_field_retest_session_handoff.v1",
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_session_handoff_gate"
+                            ),
+                            "handoff_status": "ready_nested_not_proven",
+                            "evidence_ref": "evidence://route-task-field-retest-session-handoff-3",
+                            "same_evidence_ref_required": True,
+                            "required_field_materials_summary": {"status": "ready", "items": ["task record"]},
+                            "rerun_commands_summary": ["rerun route task"],
+                            "session_owner": "Autonomy",
+                            "field_callback_checklist": ["capture route completion signal"],
+                            "safe_copy": "Route-task field retest session handoff is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["route_task_field_retest_session_handoff"]
+            missing_summary = summarize_route_task_field_retest_session_handoff(
+                Path(td) / "Bearer-secret-token" / "missing_session_handoff.json"
+            )
+            unsupported_summary = summarize_route_task_field_retest_session_handoff(
+                {
+                    "schema": "trashbot.route_task_field_retest_execution_pack.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_execution_pack_gate"
+                    ),
+                    "evidence_ref": "evidence://unsupported",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Unsupported route-task field retest session handoff is metadata-only; delivery_success=false.",
+                }
+            )
+            missing_ref_summary = summarize_route_task_field_retest_session_handoff(
+                {
+                    "schema": "trashbot.route_task_field_retest_session_handoff.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_session_handoff_gate"
+                    ),
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Route-task field retest session handoff is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                }
+            )
+            mismatch_summary = summarize_route_task_field_retest_session_handoff(
+                {
+                    "schema": "trashbot.route_task_field_retest_session_handoff.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_session_handoff_gate"
+                    ),
+                    "evidence_ref": "evidence://source-ref",
+                    "route_task_field_retest_session_handoff_summary": {
+                        "safe_evidence_ref": "evidence://summary-ref",
+                    },
+                    "same_evidence_ref_required": True,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Route-task field retest session handoff is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                }
+            )
+            weak_same_ref_summary = summarize_route_task_field_retest_session_handoff(
+                {
+                    "schema": "trashbot.route_task_field_retest_session_handoff.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_session_handoff_gate"
+                    ),
+                    "evidence_ref": "evidence://weak-same-ref",
+                    "same_evidence_ref_required": "true",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Route-task field retest session handoff is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                }
+            )
+            unsafe_summary = summarize_route_task_field_retest_session_handoff(
+                {
+                    "schema": "trashbot.route_task_field_retest_session_handoff.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_session_handoff_gate"
+                    ),
+                    "evidence_ref": "evidence://unsafe",
+                    "same_evidence_ref_required": True,
+                    "delivery_success": False,
+                    "primary_actions_enabled": True,
+                    "safe_copy": "Route-task field retest session handoff confirms delivery success and ACK posted.",
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    nested_summary,
+                    missing_summary,
+                    unsupported_summary,
+                    missing_ref_summary,
+                    mismatch_summary,
+                    weak_same_ref_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["handoff_status"]["status"], "blocked_missing_field_material")
+        self.assertEqual(nested_summary["handoff_status"]["status"], "ready_nested_not_proven")
+        self.assertEqual(missing_summary["handoff_status"]["status"], "missing")
+        self.assertEqual(unsupported_summary["handoff_status"]["status"], "unsupported_schema")
+        self.assertEqual(missing_ref_summary["handoff_status"]["status"], "missing_evidence_ref")
+        self.assertEqual(mismatch_summary["handoff_status"]["status"], "evidence_ref_mismatch")
+        self.assertEqual(weak_same_ref_summary["handoff_status"]["status"], "unsafe_fields")
+        self.assertEqual(unsafe_summary["handoff_status"]["status"], "unsafe_fields")
+        self.assertIn("software_proof_docker_route_task_field_retest_session_handoff_gate", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertFalse(env_summary["delivery_success"])

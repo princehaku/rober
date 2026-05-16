@@ -603,5 +603,88 @@ class RouteTaskFieldRetestExecutionPackMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, execution_pack_text)
 
 
+class RouteTaskFieldRetestSessionHandoffMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_field_retest_session_handoff_panel_is_read_only_and_copy_gated(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # session handoff 是 execution pack 后的新独立 panel，不修改旧 execution pack 语义。
+        self.assertIn("routeTaskFieldRetestSessionHandoffTitle", app)
+        self.assertIn("路线任务现场复测交接", app)
+        self.assertIn("routeTaskFieldRetestExecutionPackTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("route-task-field-retest-session-handoff-panel", styles)
+        self.assertIn("route-task-field-retest-session-handoff-grid", styles)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 Robot diagnostics compatible summary。
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF_BOUNDARY", app)
+        self.assertIn("routeTaskFieldRetestSessionHandoffCandidate", app)
+        self.assertIn("routeTaskFieldRetestSessionHandoffFromStatus", app)
+        self.assertIn("route_task_field_retest_session_handoff", app)
+        self.assertIn("route_task_field_retest_session_handoff_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_session_handoff", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_session_handoff", app)
+        self.assertIn("handoff_status", app)
+        self.assertIn("safe_evidence_ref", app)
+        self.assertIn("session_owner", app)
+        self.assertIn("required_field_materials_summary", app)
+        self.assertIn("rerun_commands_summary", app)
+        self.assertIn("operator_next_steps_summary", app)
+
+        # copy/export 必须由 safe_copy 驱动；缺失时显示 blocked copy unavailable，不合成 raw 交接包。
+        self.assertIn("routeTaskFieldRetestSessionHandoffCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_session_handoff_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestSessionHandoffButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestSessionHandoffButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"routeTaskFieldRetestSessionHandoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须固定 session handoff 的 software proof / not_proven 边界。
+        handoff = fixture["route_task_field_retest_session_handoff"]
+        self.assertEqual(handoff["handoff_status"], "ready_for_field_retest_session_handoff_not_proven")
+        self.assertEqual(handoff["delivery_success"], False)
+        self.assertEqual(handoff["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_route_task_field_retest_session_handoff_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("route_task_field_retest_session_handoff", doc)
+        self.assertIn("路线任务现场复测交接", doc)
+
+    def test_field_retest_session_handoff_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        handoff_text = json.dumps(
+            fixture["route_task_field_retest_session_handoff"],
+            ensure_ascii=False,
+        ).lower()
+
+        # session handoff fixture 只能携带白名单摘要，不能带 raw 材料、底层控制、凭证或成功状态。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, handoff_text)
+
+
 if __name__ == "__main__":
     unittest.main()
