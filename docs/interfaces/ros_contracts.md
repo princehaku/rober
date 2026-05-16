@@ -363,6 +363,32 @@ trigger collect/dropoff/cancel, remote ACK, cursor advance/persistence,
 terminal ACK, Nav2, WAVE ROVER, HIL, production readiness, real dropoff
 completion, real cancel completion, or delivery success.
 
+Operator diagnostics may also expose `route_task_terminal_review_decision` and
+the alias `route_task_terminal_review_decision_summary` from an explicit
+`route_task_terminal_review_decision_ref`,
+`TRASHBOT_ROUTE_TASK_TERMINAL_REVIEW_DECISION`,
+`TRASHBOT_ROUTE_TASK_TERMINAL_REVIEW_DECISION_SUMMARY`, or an already
+sanitized diagnostics nested source. The source JSON must use
+`schema=trashbot.route_task_terminal_review_decision.v1` and
+`evidence_boundary=software_proof_docker_route_task_terminal_review_decision_gate`.
+If the source is already a summary wrapper, it must still point to
+`source_schema=trashbot.route_task_terminal_review_decision.v1` and the same
+evidence boundary. This contract is metadata-only support for route-task
+terminal review: it may expose only review decision, safe evidence ref,
+`owner_handoff`, `next_required_evidence`, `field_retest_request_guidance`,
+review summary, operator next steps, robot diagnostics summary,
+phone-safe summary, `not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. Missing sources default to
+`blocked_missing_route_task_terminal_review_decision`. Unsupported schema,
+unsafe fields, `same_evidence_ref_required=false`, `delivery_success=true`,
+`primary_actions_enabled=true`, or same-`evidence_ref` mismatch remain
+blocked/not_proven. The fields do not trigger `/api/collect`, dropoff, cancel,
+ACK POST, cursor advance/persistence, terminal ACK, Nav2, WAVE ROVER, HIL,
+production readiness, real dropoff/cancel completion, or delivery success.
+They are not command/status/ACK robot contract fields and do not prove real
+fixed-route execution, real HIL, production readiness, dropoff completion,
+cancel completion, or delivery success.
+
 Operator diagnostics may also expose `route_task_field_run_console` and the
 alias `route_task_field_run_console_summary` from an explicit
 `route_task_field_run_console_ref`, `TRASHBOT_ROUTE_TASK_FIELD_RUN_CONSOLE`, or

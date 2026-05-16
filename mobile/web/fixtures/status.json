@@ -206,5 +206,36 @@
       "WAVE ROVER/UART",
       "Objective 5 external proof"
     ]
+  },
+  "route_task_terminal_review_decision": {
+    "schema": "trashbot.route_task_terminal_review_decision.v1",
+    "summary_schema": "trashbot.route_task_terminal_review_decision_summary.v1",
+    "schema_version": 1,
+    "source_rehearsal_schema": "trashbot.route_task_terminal_completion_rehearsal_summary.v1",
+    "review_decision": "blocked_missing_real_terminal_materials_not_proven",
+    "decision_reason": "decision_reason=real route/task/dropoff/cancel terminal materials are still missing",
+    "safe_evidence_ref": "route_task_terminal_review_decision_fixture_20260516_0001",
+    "owner_handoff": "owner_handoff=Autonomy owner collects same evidence_ref route/task terminal material; Robot owner republishes metadata-only diagnostics summary; Full-stack keeps phone panel read-only.",
+    "next_required_evidence": [
+      "next_required_evidence=same evidence_ref task record summary",
+      "next_required_evidence=route_task_completion_signal summary",
+      "next_required_evidence=dropoff or cancel terminal material phone-safe summary",
+      "next_required_evidence=diagnostics nested summary"
+    ],
+    "field_retest_request_guidance": "field_retest_request_guidance=request controlled field retest only after same evidence_ref terminal materials are redacted and attached.",
+    "safe_phone_copy": "终态复核决策只读展示 review decision、decision reason、owner handoff、next evidence 和 field retest guidance；这是 software proof only。",
+    "recovery_hint": "补齐同一 evidence_ref 的 task record、completion signal、dropoff/cancel material 和 diagnostics summary 后再请求复测。",
+    "evidence_boundary": "software_proof_docker_route_task_terminal_review_decision_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field pass",
+      "真实 task record/completion material",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "真实手机设备/browser",
+      "Objective 5 external proof"
+    ]
   }
 }

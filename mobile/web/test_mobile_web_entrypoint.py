@@ -436,5 +436,89 @@ class RouteTaskTerminalCompletionRehearsalMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, rehearsal_text)
 
 
+class RouteTaskTerminalReviewDecisionMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_terminal_review_decision_panel_is_read_only_and_exportable(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 终态复核决策 panel 紧跟终态复账，只做复测指导展示，不改变主操作 gating。
+        self.assertIn("routeTaskTerminalReviewDecisionTitle", app)
+        self.assertIn("终态复核决策", app)
+        self.assertIn("routeTaskTerminalCompletionRehearsalTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("route-task-terminal-review-decision-panel", styles)
+        self.assertIn("route-task-terminal-review-decision-grid", styles)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 nested diagnostics summary。
+        self.assertIn("ROUTE_TASK_TERMINAL_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_TERMINAL_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeRouteTaskTerminalReviewDecisionText", app)
+        self.assertIn("routeTaskTerminalReviewDecisionCandidate", app)
+        self.assertIn("routeTaskTerminalReviewDecisionFromStatus", app)
+        self.assertIn("route_task_terminal_review_decision", app)
+        self.assertIn("route_task_terminal_review_decision_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_terminal_review_decision", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_terminal_review_decision", app)
+        self.assertIn("review_decision", app)
+        self.assertIn("decision_reason", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("field_retest_request_guidance", app)
+        self.assertIn("safe_evidence_ref", app)
+
+        # copy/export 只输出白名单字段，不能新增 Start/Confirm/Cancel 请求或成功文案。
+        self.assertIn("routeTaskTerminalReviewDecisionCopyPayload", app)
+        self.assertIn("trashbot.route_task_terminal_review_decision_copy.v1", app)
+        self.assertIn("copyRouteTaskTerminalReviewDecisionButton", app)
+        self.assertIn("downloadRouteTaskTerminalReviewDecisionButton", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"routeTaskTerminalReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须明确 software proof / not_proven 边界。
+        review = fixture["route_task_terminal_review_decision"]
+        self.assertEqual(review["review_decision"], "blocked_missing_real_terminal_materials_not_proven")
+        self.assertEqual(review["delivery_success"], False)
+        self.assertEqual(review["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_route_task_terminal_review_decision_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("route_task_terminal_review_decision", doc)
+        self.assertIn("终态复核决策", doc)
+
+    def test_terminal_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        review_text = json.dumps(
+            fixture["route_task_terminal_review_decision"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 终态复核决策 fixture 只能携带复测指导摘要，不能带 raw 材料、底层控制或成功状态。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "uart",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "hil",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, review_text)
+
+
 if __name__ == "__main__":
     unittest.main()

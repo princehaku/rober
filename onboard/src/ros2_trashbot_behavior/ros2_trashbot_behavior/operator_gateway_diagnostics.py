@@ -138,6 +138,15 @@ ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_SUMMARY_SCHEMA = (
 ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_GATE = (
     "software_proof_docker_route_task_terminal_completion_rehearsal_gate"
 )
+ROUTE_TASK_TERMINAL_REVIEW_DECISION_SCHEMA = (
+    "trashbot.route_task_terminal_review_decision.v1"
+)
+ROUTE_TASK_TERMINAL_REVIEW_DECISION_SUMMARY_SCHEMA = (
+    "trashbot.route_task_terminal_review_decision_summary.v1"
+)
+ROUTE_TASK_TERMINAL_REVIEW_DECISION_GATE = (
+    "software_proof_docker_route_task_terminal_review_decision_gate"
+)
 ROUTE_TASK_FIELD_RUN_CONSOLE_SCHEMA = "trashbot.route_task_field_run_console.v1"
 ROUTE_TASK_FIELD_RUN_CONSOLE_SUMMARY_SCHEMA = (
     "trashbot.route_task_field_run_console_summary.v1"
@@ -595,6 +604,41 @@ def _route_task_terminal_completion_rehearsal_not_proven(source=None, summary=No
         "production_readiness",
         "real_dropoff_completion",
         "real_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_terminal_review_decision_not_proven(source=None, summary=None):
+    # terminal review 只给人工复核和 owner handoff 使用；真实控制、ACK、Nav2/HIL 和交付完成必须继续外部证明。
+    source = source if isinstance(source, dict) else {}
+    summary = summary if isinstance(summary, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(source.get("not_proven"), list):
+        source_values.extend(source.get("not_proven"))
+    if isinstance(summary.get("not_proven"), list):
+        source_values.extend(summary.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "real_route_collection",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "production_readiness",
+        "real_dropoff_completion",
+        "real_cancel_completion",
+        "dropoff_or_cancel_completion",
         "delivery_success",
         "objective_5_external_proof",
     )
@@ -1698,6 +1742,64 @@ def _default_route_task_terminal_completion_rehearsal_summary(
         "metadata_only": True,
         "delivery_success": False,
         "primary_actions_enabled": False,
+    }
+
+
+def _default_route_task_terminal_review_decision_summary(
+    path,
+    status="blocked_missing_route_task_terminal_review_decision",
+    read_error="",
+):
+    # terminal review decision 默认保持 blocked/not_proven，避免缺 artifact 时被误读成终态 ACK 或交付完成。
+    return {
+        "schema": ROUTE_TASK_TERMINAL_REVIEW_DECISION_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_TERMINAL_REVIEW_DECISION_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "review_decision": {
+            "status": status,
+            "decision": "not_proven",
+            "reason": read_error or "route-task terminal review decision is not configured",
+        },
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "owner_handoff": "Robot",
+        "next_required_evidence": [],
+        "field_retest_request_guidance": {
+            "status": "blocked",
+            "reason": "route-task terminal review decision is not configured",
+        },
+        "review_summary": {
+            "status": "blocked",
+            "reason": "route-task terminal review decision is not configured",
+        },
+        "operator_next_steps": [],
+        "robot_diagnostics_summary": {
+            "status": "blocked",
+            "reason": "route-task terminal review decision is not configured",
+        },
+        "phone_safe_summary": {
+            "safe_copy": "Route-task terminal review decision is metadata-only; delivery_success=false.",
+            "safe_phone_copy": "Route-task terminal review decision is metadata-only; delivery_success=false.",
+        },
+        "not_proven": _route_task_terminal_review_decision_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
     }
 
 
@@ -3427,6 +3529,16 @@ def _elevator_field_run_review_source_contract(value):
     source_schema = str(value.get("schema") or "")
     source_boundary = str(value.get("evidence_boundary") or "")
     if source_schema == ELEVATOR_FIELD_RUN_REVIEW_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or "")
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _route_task_terminal_review_decision_source_contract(value):
+    # terminal review 支持直接 artifact 或 summary wrapper；wrapper 仍必须保留原始 source/boundary。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == ROUTE_TASK_TERMINAL_REVIEW_DECISION_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or "")
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
@@ -5802,6 +5914,316 @@ def summarize_route_task_terminal_completion_rehearsal(path):
                 "materials_status": {
                     "status": "blocked",
                     "reason": "unsafe terminal completion rehearsal fields",
+                },
+            }
+        )
+        return summary
+    return summary
+
+
+def _route_task_terminal_review_decision_evidence_refs_match(source, source_summary):
+    # terminal review 复核必须沿用同一 evidence_ref；只比较安全 ref 字段，避免展开 raw 现场材料。
+    refs = []
+    for value in (
+        source.get("safe_evidence_ref"),
+        source.get("evidence_ref"),
+        source_summary.get("safe_evidence_ref"),
+        source_summary.get("evidence_ref"),
+    ):
+        safe_ref = _safe_route_task_rehearsal_ref(value)
+        if safe_ref and safe_ref not in refs:
+            refs.append(safe_ref)
+    return len(refs) <= 1
+
+
+def summarize_route_task_terminal_review_decision(source):
+    """构建 route-task terminal review decision 的 metadata-only diagnostics 摘要。"""
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_route_task_terminal_review_decision_summary(source_path)
+    if isinstance(source, dict):
+        review = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "review_decision": {
+                        "status": "blocked_missing_route_task_terminal_review_decision",
+                        "decision": "not_proven",
+                        "reason": "route-task terminal review decision source missing",
+                    },
+                    "review_summary": {
+                        "status": "blocked",
+                        "reason": "route-task terminal review decision source missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "route-task terminal review decision source missing",
+                    },
+                    "phone_safe_summary": {
+                        "safe_copy": "Route-task terminal review decision is missing; metadata remains blocked/not_proven.",
+                        "safe_phone_copy": "Route-task terminal review decision is missing; metadata remains blocked/not_proven.",
+                    },
+                }
+            )
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                review = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading route-task terminal review decision: {exc}"
+            )
+            summary.update(
+                {
+                    "review_decision": {
+                        "status": "read_error",
+                        "decision": "not_proven",
+                        "reason": safe_error,
+                    },
+                    "review_summary": {"status": "blocked", "reason": "terminal review JSON read error"},
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "terminal review JSON read error",
+                    },
+                    "phone_safe_summary": {
+                        "safe_copy": "Route-task terminal review decision could not be read; metadata remains blocked/not_proven.",
+                        "safe_phone_copy": "Route-task terminal review decision could not be read; metadata remains blocked/not_proven.",
+                    },
+                }
+            )
+            return summary
+    if not isinstance(review, dict):
+        summary.update(
+            {
+                "review_decision": {
+                    "status": "read_error",
+                    "decision": "not_proven",
+                    "reason": "route-task terminal review decision JSON must be an object",
+                },
+                "review_summary": {"status": "blocked", "reason": "terminal review JSON shape is invalid"},
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "terminal review JSON shape is invalid",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Route-task terminal review decision shape is invalid; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task terminal review decision shape is invalid; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    # PC/Autonomy/Product 可能传 artifact、summary wrapper 或 diagnostics nested source；这里只消费白名单摘要字段。
+    source_summary = review
+    for candidate_key in (
+        "route_task_terminal_review_decision_summary",
+        "route_task_terminal_review_decision",
+        "terminal_review_decision_summary",
+        "robot_diagnostics_summary",
+        "phone_safe_summary",
+        "summary",
+    ):
+        candidate = review.get(candidate_key)
+        if isinstance(candidate, dict):
+            source_summary = candidate
+            break
+    if review.get("schema") == ROUTE_TASK_TERMINAL_REVIEW_DECISION_SUMMARY_SCHEMA:
+        source_summary = review
+    source_schema, source_boundary = _route_task_terminal_review_decision_source_contract(review)
+    source_decision = (
+        source_summary.get("review_decision")
+        if isinstance(source_summary.get("review_decision"), dict)
+        else review.get("review_decision")
+        if isinstance(review.get("review_decision"), dict)
+        else {}
+    )
+    decision_text = (
+        review.get("review_decision")
+        if not isinstance(review.get("review_decision"), dict)
+        else source_summary.get("decision")
+    )
+    review_fragment = (
+        source_summary.get("review_summary")
+        if isinstance(source_summary.get("review_summary"), dict)
+        else source_summary.get("summary")
+        if isinstance(source_summary.get("summary"), dict)
+        else review.get("review_summary")
+        if isinstance(review.get("review_summary"), dict)
+        else {}
+    )
+    robot_summary = (
+        review.get("robot_diagnostics_summary")
+        if isinstance(review.get("robot_diagnostics_summary"), dict)
+        else source_summary.get("robot_diagnostics_summary")
+        if isinstance(source_summary.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    phone_summary = (
+        source_summary.get("phone_safe_summary")
+        if isinstance(source_summary.get("phone_safe_summary"), dict)
+        else source_summary.get("mobile_readonly_summary")
+        if isinstance(source_summary.get("mobile_readonly_summary"), dict)
+        else review.get("phone_safe_summary")
+        if isinstance(review.get("phone_safe_summary"), dict)
+        else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        phone_summary.get("safe_copy")
+        or phone_summary.get("safe_phone_copy")
+        or source_summary.get("safe_copy")
+        or review.get("safe_copy")
+        or "Route-task terminal review decision is metadata-only; delivery_success=false."
+    )
+    safe_phone_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(phone_summary.get(key) or "").strip():
+            safe_phone_summary[key] = _redact_route_task_rehearsal_text(phone_summary.get(key))
+    safe_phone_summary["safe_copy"] = safe_copy
+    safe_phone_summary["safe_phone_copy"] = safe_copy
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": review.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "review_decision": {
+                "status": _redact_route_task_rehearsal_text(
+                    source_decision.get("status") or source_summary.get("status") or review.get("status") or "blocked"
+                ),
+                "decision": _redact_route_task_rehearsal_text(
+                    source_decision.get("decision")
+                    or source_decision.get("verdict")
+                    or decision_text
+                    or source_summary.get("decision")
+                    or "not_proven"
+                ),
+                "reason": _redact_route_task_rehearsal_text(
+                    source_decision.get("reason")
+                    or source_decision.get("summary")
+                    or source_summary.get("reason")
+                    or review.get("reason")
+                    or "route-task terminal review decision consumed without explicit reason"
+                ),
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                source_summary.get("safe_evidence_ref")
+                or source_summary.get("evidence_ref")
+                or review.get("safe_evidence_ref")
+                or review.get("evidence_ref", "")
+            ),
+            "same_evidence_ref_required": bool(
+                source_summary.get(
+                    "same_evidence_ref_required",
+                    review.get("same_evidence_ref_required", True),
+                )
+            ),
+            "owner_handoff": _redact_route_task_rehearsal_text(
+                source_summary.get("owner_handoff") or review.get("owner_handoff") or "Robot"
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                source_summary.get("next_required_evidence")
+                if isinstance(source_summary.get("next_required_evidence"), list)
+                else review.get("next_required_evidence")
+            ),
+            "field_retest_request_guidance": _safe_pc_route_debug_dict(
+                source_summary.get("field_retest_request_guidance")
+                if isinstance(source_summary.get("field_retest_request_guidance"), dict)
+                else review.get("field_retest_request_guidance")
+            )
+            or {"status": "blocked", "reason": "terminal review decision consumed without explicit retest guidance"},
+            "review_summary": _safe_pc_route_debug_dict(review_fragment)
+            or {"status": "blocked", "reason": "terminal review decision consumed without explicit summary"},
+            "operator_next_steps": _safe_route_task_rehearsal_list(
+                source_summary.get("operator_next_steps")
+                if isinstance(source_summary.get("operator_next_steps"), list)
+                else review.get("operator_next_steps")
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {"status": "blocked", "reason": "terminal review decision consumed without explicit robot diagnostics summary"},
+            "phone_safe_summary": safe_phone_summary,
+            "not_proven": _route_task_terminal_review_decision_not_proven(review, source_summary),
+            "read_error": "",
+            "metadata_only": True,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    if source_schema != ROUTE_TASK_TERMINAL_REVIEW_DECISION_SCHEMA or source_boundary != ROUTE_TASK_TERMINAL_REVIEW_DECISION_GATE:
+        summary.update(
+            {
+                "review_decision": {
+                    "status": "unsupported_schema",
+                    "decision": "not_proven",
+                    "reason": "route-task terminal review decision schema or evidence boundary is unsupported",
+                },
+                "next_required_evidence": [],
+                "field_retest_request_guidance": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "review_summary": {"status": "blocked", "reason": "unsupported schema or evidence boundary"},
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Route-task terminal review decision is not a supported diagnostics source; no delivery result is proven.",
+                    "safe_phone_copy": "Route-task terminal review decision is not a supported diagnostics source; no delivery result is proven.",
+                },
+            }
+        )
+        return summary
+    if (
+        not summary["same_evidence_ref_required"]
+        or not _route_task_terminal_review_decision_evidence_refs_match(review, source_summary)
+    ):
+        summary.update(
+            {
+                "review_decision": {
+                    "status": "evidence_ref_mismatch",
+                    "decision": "not_proven",
+                    "reason": "route-task terminal review decision evidence_ref constraints do not match",
+                },
+                "field_retest_request_guidance": {
+                    "status": "blocked",
+                    "reason": "same evidence_ref mismatch",
+                },
+                "review_summary": {"status": "blocked", "reason": "same evidence_ref mismatch"},
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "same evidence_ref mismatch",
+                },
+            }
+        )
+        return summary
+    if (
+        _route_task_field_run_console_has_unsafe_fields(review)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "review_decision": {
+                    "status": "unsafe_fields",
+                    "decision": "not_proven",
+                    "reason": "route-task terminal review decision contains unsafe summary fields or control claims",
+                },
+                "next_required_evidence": [],
+                "field_retest_request_guidance": {
+                    "status": "blocked",
+                    "reason": "unsafe terminal review decision fields",
+                },
+                "review_summary": {"status": "blocked", "reason": "unsafe terminal review decision fields"},
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe terminal review decision fields",
+                },
+                "phone_safe_summary": {
+                    "safe_copy": "Route-task terminal review decision was blocked because fields could expose control data, weaken evidence_ref constraints, or imply delivery success.",
+                    "safe_phone_copy": "Route-task terminal review decision was blocked because fields could expose control data, weaken evidence_ref constraints, or imply delivery success.",
                 },
             }
         )
@@ -11880,6 +12302,7 @@ def build_diagnostics_payload(
     route_task_field_run_reconciliation_ref="",
     route_task_completion_signal_ref="",
     route_task_terminal_completion_rehearsal_ref="",
+    route_task_terminal_review_decision_ref="",
     route_task_field_run_console_ref="",
     route_task_field_run_evidence_kit_ref="",
     route_task_field_run_material_bundle_ref="",
@@ -12013,6 +12436,17 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("route_task_terminal_completion_rehearsal_summary"), dict)
         else {}
     )
+    route_task_terminal_review_decision_source = (
+        latest_status.get("route_task_terminal_review_decision")
+        if isinstance(latest_status.get("route_task_terminal_review_decision"), dict)
+        else latest_status.get("route_task_terminal_review_decision_summary")
+        if isinstance(latest_status.get("route_task_terminal_review_decision_summary"), dict)
+        else diagnostics_source.get("route_task_terminal_review_decision")
+        if isinstance(diagnostics_source.get("route_task_terminal_review_decision"), dict)
+        else diagnostics_source.get("route_task_terminal_review_decision_summary")
+        if isinstance(diagnostics_source.get("route_task_terminal_review_decision_summary"), dict)
+        else {}
+    )
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
     latest_status.pop("phone_support_bundle", None)
     latest_status.pop("voice_prompt_readiness", None)
@@ -12032,6 +12466,9 @@ def build_diagnostics_payload(
     latest_status.pop("route_task_terminal_completion_rehearsal", None)
     latest_status.pop("route_task_terminal_completion_rehearsal_summary", None)
     latest_status.pop("route_task_terminal_completion_rehearsal_copy", None)
+    latest_status.pop("route_task_terminal_review_decision", None)
+    latest_status.pop("route_task_terminal_review_decision_summary", None)
+    latest_status.pop("route_task_terminal_review_decision_copy", None)
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -12135,6 +12572,15 @@ def build_diagnostics_payload(
             or os.environ.get("TRASHBOT_ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_SUMMARY", "")
             or route_task_terminal_completion_rehearsal_source
         )
+    )
+    route_task_terminal_review_decision_source = (
+        route_task_terminal_review_decision_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_TERMINAL_REVIEW_DECISION", "")
+        or os.environ.get("TRASHBOT_ROUTE_TASK_TERMINAL_REVIEW_DECISION_SUMMARY", "")
+        or route_task_terminal_review_decision_source
+    )
+    route_task_terminal_review_decision_summary = summarize_route_task_terminal_review_decision(
+        route_task_terminal_review_decision_source
     )
     route_task_field_run_console_summary = summarize_route_task_field_run_console(
         route_task_field_run_console_ref
@@ -12340,6 +12786,8 @@ def build_diagnostics_payload(
         route_task_completion_signal_summary=route_task_completion_signal_summary,
         route_task_terminal_completion_rehearsal=route_task_terminal_completion_rehearsal_summary,
         route_task_terminal_completion_rehearsal_summary=route_task_terminal_completion_rehearsal_summary,
+        route_task_terminal_review_decision=route_task_terminal_review_decision_summary,
+        route_task_terminal_review_decision_summary=route_task_terminal_review_decision_summary,
         route_task_field_run_console=route_task_field_run_console_summary,
         route_task_field_run_console_summary=route_task_field_run_console_summary,
         route_task_field_run_evidence_kit=route_task_field_run_evidence_kit_summary,

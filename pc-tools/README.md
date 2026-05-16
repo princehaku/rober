@@ -104,6 +104,22 @@ python3 pc-tools/evidence/route_task_terminal_completion_rehearsal.py \
 
 该 gate 不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、真实手机、外部云、OSS/CDN、DB/queue 或 4G。缺 required source、坏 JSON、unsupported schema/boundary、same `evidence_ref` mismatch、unsafe copy、raw path/credential/ROS topic/serial/WAVE ROVER/HIL/success wording、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_terminal_completion_rehearsal_not_proven` 只表示 Docker/local 终态复账材料可读，不是真实 dropoff/cancel completion、delivery success、HIL 或 Objective 5 external proof。
 
+## route/task terminal review decision
+
+`pc-tools/evidence/route_task_terminal_review_decision.py` 只读上一轮 `route_task_terminal_completion_rehearsal` artifact 或 summary，把终态复账材料转成 operator review decision、`owner_handoff`、`next_required_evidence` 和 field retest request guidance：
+
+```bash
+python3 pc-tools/evidence/route_task_terminal_review_decision.py \
+  --terminal-rehearsal-json /tmp/route_task_terminal_completion_rehearsal.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_terminal_review_decision.json \
+  --summary-output /tmp/route_task_terminal_review_decision_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_terminal_review_decision.v1`，summary 使用 `schema=trashbot.route_task_terminal_review_decision_summary.v1`，证据边界固定为 `software_proof_docker_route_task_terminal_review_decision_gate`。核心字段包括 `review_decision`、`decision_reason`、safe `evidence_ref`、`owner_handoff`、`next_required_evidence`、`field_retest_request_guidance`、`software_proof`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+该 gate 不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、真实手机、外部云、OSS/CDN、DB/queue 或 4G。缺输入、坏 JSON、unsupported schema/boundary、same `evidence_ref` mismatch、unsafe copy、raw path/credential/ROS topic/serial/WAVE ROVER/HIL/success wording、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_operator_terminal_review_not_proven` 只表示 Docker/local 终态复账材料足够进入 operator review 或 field retest 请求准备，不是真实 dropoff/cancel completion、delivery success、HIL、真实手机设备或 Objective 5 external proof。
+
 ## mobile route/elevator field-device precheck
 
 `pc-tools/evidence/mobile_route_elevator_field_device_precheck.py` 只读 route/elevator field-session handoff，生成或校验真实设备/现场前检查 summary：

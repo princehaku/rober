@@ -729,7 +729,31 @@ python3 pc-tools/evidence/route_task_terminal_completion_rehearsal.py \
 
 该 gate 仍是 software proof。`ready_for_terminal_completion_rehearsal_not_proven` 只表示 Docker/local 终态复账材料形状足够进入 Robot diagnostics、mobile 只读面板或下一轮现场复核；它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G，也不证明真实 dropoff/cancel completion、delivery success、HIL、真实手机设备或 Objective 5 external proof。
 
-### 5.10.2 elevator route evidence reconciliation
+### 5.10.2 route/task terminal review decision
+
+terminal completion rehearsal 之后，PC/operator 可以用 review decision gate 把终态复账结果整理成下一轮 operator decision、owner 交接和 field retest 请求清单：
+
+```bash
+python3 pc-tools/evidence/route_task_terminal_review_decision.py \
+  --terminal-rehearsal-json /tmp/route_task_terminal_completion_rehearsal.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_terminal_review_decision.v1`，summary 使用 `schema=trashbot.route_task_terminal_review_decision_summary.v1`，证据边界固定为 `software_proof_docker_route_task_terminal_review_decision_gate`。顶层固定包含 `same_evidence_ref_required=true`、`review_decision`、`decision_reason`、`owner_handoff`、`next_required_evidence`、`field_retest_request_guidance`、`robot_diagnostics_summary`、`mobile_readonly_summary`、`software_proof`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+保守阻断规则：
+
+- terminal rehearsal 输入缺失、JSON 不可读或不是 JSON object：输出 blocked，不生成 field retest 请求。
+- 输入 schema 或 evidence boundary 不支持：输出 `blocked_unsupported_schema`。
+- 输入缺 safe `evidence_ref` 或与 `--evidence-ref` 不一致：输出 `blocked_mismatch_evidence_ref`。
+- phone/support/operator copy 命中凭证、raw path、raw ROS topic、serial/UART、baudrate、WAVE ROVER、HIL、traceback、checksum、complete artifact、raw robot response 或成功文案：输出 `blocked_unsafe_copy`。
+- 输入含 `delivery_success=true` 或 `primary_actions_enabled=true`：输出 `blocked_success_or_control_claim`，继续强制 `delivery_success=false` 与 `primary_actions_enabled=false`。
+- 上一轮 terminal rehearsal 仍是 blocked 或缺 recovery reason：只输出 repair guidance，不进入 field retest request guidance。
+
+该 gate 仍是 software proof。`ready_for_operator_terminal_review_not_proven` 只表示 Docker/local 终态复账材料足够让 operator 做 review decision、owner handoff 和下一轮 field retest request guidance；它不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、外部云、OSS/CDN、DB/queue 或 4G，也不证明真实 route/elevator field pass、真实 dropoff/cancel completion、delivery success、HIL、真实手机设备或 Objective 5 external proof。
+
+### 5.10.3 elevator route evidence reconciliation
 
 电梯 rehearsal evidence 进入 Robot dry-run 主链路后，route/task completion signal 还需要与它按同一 `evidence_ref` 复账，避免电梯阶段材料和路线完成信号来自不同 run：
 
