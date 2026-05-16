@@ -151,6 +151,15 @@ ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION_GATE = (
     "software_proof_docker_route_task_field_retest_result_reconciliation_gate"
 )
+ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_SCHEMA = (
+    "trashbot.route_task_field_retest_material_pack.v1"
+)
+ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_retest_material_pack_summary.v1"
+)
+ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_GATE = (
+    "software_proof_docker_route_task_field_retest_material_pack_gate"
+)
 ROUTE_TASK_FIELD_RUN_RECONCILIATION_SCHEMA = "trashbot.route_task_field_run_reconciliation.v1"
 ROUTE_TASK_FIELD_RUN_RECONCILIATION_SUMMARY_SCHEMA = (
     "trashbot.route_task_field_run_reconciliation_summary.v1"
@@ -672,6 +681,47 @@ def _route_task_field_retest_result_reconciliation_not_proven(reconciliation=Non
     source_values = []
     if isinstance(reconciliation.get("not_proven"), list):
         source_values.extend(reconciliation.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_elevator_operation",
+        "real_elevator_door_state",
+        "real_floor_confirmation",
+        "human_assistance_outcome",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "route_task_completion_real_world",
+        "field_retest_pass",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "real_phone_device_or_browser_proof",
+        "production_readiness",
+        "real_dropoff_completion",
+        "real_cancel_completion",
+        "dropoff_or_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_retest_material_pack_not_proven(pack=None, summary_fragment=None):
+    # material pack 只把补测材料包安全摘要投到 diagnostics；真实动作、ACK、Nav2/HIL 和送达结论继续外部证明。
+    pack = pack if isinstance(pack, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(pack.get("not_proven"), list):
+        source_values.extend(pack.get("not_proven"))
     if isinstance(summary_fragment.get("not_proven"), list):
         source_values.extend(summary_fragment.get("not_proven"))
     required = (
@@ -2047,6 +2097,67 @@ def _default_route_task_field_retest_result_reconciliation_summary(
         "read_error": _redact_route_task_rehearsal_text(read_error),
         "safe_copy": "Route-task field retest result reconciliation is metadata-only; delivery_success=false; primary_actions_enabled=false.",
         "safe_phone_copy": "Route-task field retest result reconciliation is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
+def _default_route_task_field_retest_material_pack_summary(
+    path,
+    material_status="blocked_missing_route_task_field_retest_material_pack",
+    read_error="",
+):
+    # material pack 默认 fail-closed，因为缺少现场材料摘要时不能推导 collect/dropoff/cancel 或 Nav2/HIL 成功。
+    return {
+        "schema": ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "material_status": {
+            "status": material_status,
+            "verdict": "not_proven",
+            "reason": read_error or "route-task field retest material pack is not configured",
+        },
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "material_completeness": {
+            "status": "blocked",
+            "reason": "route-task field retest material pack is not configured",
+        },
+        "missing_materials": [],
+        "rejected_materials": [],
+        "operator_next_steps": [],
+        "robot_diagnostics_summary": {
+            "status": "blocked",
+            "reason": "route-task field retest material pack is not configured",
+        },
+        "mobile_readonly_summary": {
+            "safe_copy": "Route-task field retest material pack is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+            "safe_phone_copy": "Route-task field retest material pack is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+        },
+        "boundary": ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_GATE,
+        "not_proven": _route_task_field_retest_material_pack_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": "Route-task field retest material pack is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+        "safe_phone_copy": "Route-task field retest material pack is metadata-only; delivery_success=false; primary_actions_enabled=false.",
         "metadata_only": True,
         "delivery_success": False,
         "primary_actions_enabled": False,
@@ -4061,6 +4172,16 @@ def _route_task_field_retest_result_reconciliation_source_contract(value):
     return source_schema, source_boundary
 
 
+def _route_task_field_retest_material_pack_source_contract(value):
+    # material pack 支持直接 artifact 或 summary wrapper；wrapper 必须回指 material_pack source，不能混入 result gate。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or "")
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _elevator_route_evidence_reconciliation_source_contract(value):
     # 允许直接 artifact 或 summary wrapper；wrapper 必须保留原始 schema/boundary，防止把别的 gate 混入。
     source_schema = str(value.get("schema") or "")
@@ -4352,6 +4473,23 @@ def _route_task_field_retest_result_reconciliation_has_disabled_actions(reconcil
         reconciliation.get("delivery_success") is False
         and reconciliation.get("primary_actions_enabled") is False
     )
+
+
+def _route_task_field_retest_material_pack_has_disabled_actions(pack, summary_fragment):
+    # material pack 的 source 或 summary wrapper 必须显式关闭动作；缺字段不能被解释成安全授权。
+    pack = pack if isinstance(pack, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    delivery_success = (
+        summary_fragment.get("delivery_success")
+        if "delivery_success" in summary_fragment
+        else pack.get("delivery_success")
+    )
+    primary_actions_enabled = (
+        summary_fragment.get("primary_actions_enabled")
+        if "primary_actions_enabled" in summary_fragment
+        else pack.get("primary_actions_enabled")
+    )
+    return delivery_success is False and primary_actions_enabled is False
 
 
 def _route_elevator_field_session_handoff_has_disabled_actions(handoff):
@@ -7088,6 +7226,335 @@ def summarize_route_task_field_retest_result_reconciliation(source):
                 },
                 "safe_copy": "Route-task field retest result reconciliation was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
                 "safe_phone_copy": "Route-task field retest result reconciliation was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+            }
+        )
+    return summary
+
+
+def summarize_route_task_field_retest_material_pack(source):
+    """构建 route-task field retest material pack 的 metadata-only diagnostics 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        pack = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_route_task_field_retest_material_pack_summary(
+            source_path,
+            read_error="route-task field retest material pack is not configured",
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "material_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": "route-task field retest material pack artifact missing",
+                    },
+                    "material_completeness": {
+                        "status": "blocked",
+                        "reason": "route-task field retest material pack artifact missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "material pack artifact missing",
+                    },
+                    "safe_copy": "Route-task field retest material pack is missing; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field retest material pack is missing; metadata remains blocked/not_proven.",
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                pack = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "material_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            f"failed reading route-task field retest material pack: {exc}"
+                        ),
+                    },
+                    "material_completeness": {
+                        "status": "blocked",
+                        "reason": "route-task field retest material pack JSON read error",
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "material pack JSON read error",
+                    },
+                    "safe_copy": "Route-task field retest material pack could not be read; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field retest material pack could not be read; metadata remains blocked/not_proven.",
+                }
+            )
+            return summary
+    summary = _default_route_task_field_retest_material_pack_summary(
+        source_path,
+        read_error="route-task field retest material pack is not configured",
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(pack, dict):
+        summary.update(
+            {
+                "material_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest material pack JSON must be an object",
+                },
+                "material_completeness": {
+                    "status": "blocked",
+                    "reason": "route-task field retest material pack shape is invalid",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "material pack JSON shape is invalid",
+                },
+                "safe_copy": "Route-task field retest material pack shape is invalid; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field retest material pack shape is invalid; metadata remains blocked/not_proven.",
+            }
+        )
+        return summary
+
+    diagnostics = pack.get("diagnostics") if isinstance(pack.get("diagnostics"), dict) else {}
+    # raw material pack 只做契约校验；Robot diagnostics 只消费白名单 summary，避免 raw path/凭据/完整 artifact 泄漏。
+    summary_fragment = (
+        pack
+        if str(pack.get("schema") or "") == ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_SUMMARY_SCHEMA
+        else {}
+    )
+    for candidate in (
+        pack.get("route_task_field_retest_material_pack_summary"),
+        pack.get("route_task_field_retest_material_pack"),
+        pack.get("robot_diagnostics_summary"),
+        pack.get("mobile_readonly_summary"),
+        pack.get("phone_safe_summary"),
+        diagnostics.get("summary"),
+        diagnostics.get("diagnostics_summary"),
+        diagnostics.get("route_task_field_retest_material_pack_summary"),
+        diagnostics.get("route_task_field_retest_material_pack"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+
+    source_schema, source_boundary = _route_task_field_retest_material_pack_source_contract(pack)
+    if not summary_fragment:
+        summary.update(
+            {
+                "source_schema": _redact_route_task_rehearsal_text(source_schema),
+                "source_schema_version": pack.get("schema_version"),
+                "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "material_status": {
+                    "status": "missing_summary",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest material pack lacks a safe diagnostics summary",
+                },
+                "material_completeness": {
+                    "status": "blocked",
+                    "reason": "missing safe material pack summary",
+                },
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing safe material pack summary",
+                },
+                "safe_copy": "Route-task field retest material pack is blocked because no safe summary was provided.",
+                "safe_phone_copy": "Route-task field retest material pack is blocked because no safe summary was provided.",
+            }
+        )
+        return summary
+
+    status_source = summary_fragment.get("material_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("pack_status")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    material_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or status_source.get("verdict")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or "blocked"
+    )
+    material_verdict = _redact_route_task_rehearsal_text(
+        status_source.get("verdict")
+        or status_source.get("decision")
+        or summary_fragment.get("verdict")
+        or "not_proven"
+    )
+    material_reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or status_source.get("summary")
+        or summary_fragment.get("reason")
+        or "route-task field retest material pack consumed without explicit reason"
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or "Route-task field retest material pack is metadata-only; delivery_success=false; primary_actions_enabled=false."
+    )
+    mobile_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(summary_fragment.get(key) or "").strip():
+            mobile_summary[key] = _redact_route_task_rehearsal_text(summary_fragment.get(key))
+    mobile_summary["safe_copy"] = safe_copy
+    mobile_summary["safe_phone_copy"] = safe_copy
+    source_ref = str(pack.get("evidence_ref") or "").strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref") or summary_fragment.get("evidence_ref") or ""
+    ).strip()
+    material_completeness_source = (
+        summary_fragment.get("material_completeness")
+        if "material_completeness" in summary_fragment
+        else summary_fragment.get("materials_status")
+        if "materials_status" in summary_fragment
+        else {}
+    )
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else diagnostics.get("robot_diagnostics_summary")
+        if isinstance(diagnostics.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": pack.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "material_status": {
+                "status": material_status or "blocked",
+                "verdict": material_verdict or "not_proven",
+                "reason": material_reason,
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(summary_ref or source_ref),
+            "same_evidence_ref_required": (
+                summary_fragment.get("same_evidence_ref_required")
+                if "same_evidence_ref_required" in summary_fragment
+                else pack.get("same_evidence_ref_required", True)
+            )
+            is True,
+            "material_completeness": _safe_pc_route_debug_dict(material_completeness_source)
+            or {
+                "status": material_status or "blocked",
+                "reason": "route-task field retest material pack lacks material completeness summary",
+            },
+            "missing_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("missing_materials")
+                if isinstance(summary_fragment.get("missing_materials"), list)
+                else summary_fragment.get("missing")
+            ),
+            "rejected_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("rejected_materials")
+                if isinstance(summary_fragment.get("rejected_materials"), list)
+                else summary_fragment.get("rejected")
+            ),
+            "operator_next_steps": _safe_route_task_rehearsal_list(
+                summary_fragment.get("operator_next_steps")
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": material_status or "blocked",
+                "reason": "material pack consumed without explicit robot diagnostics summary",
+            },
+            "mobile_readonly_summary": mobile_summary,
+            "boundary": ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_GATE,
+            "not_proven": _route_task_field_retest_material_pack_not_proven(pack, summary_fragment),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "read_error": "",
+        }
+    )
+
+    if (
+        source_schema != ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_SCHEMA
+        or source_boundary != ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_GATE
+    ):
+        summary.update(
+            {
+                "material_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest material pack schema or evidence boundary is unsupported",
+                },
+                "material_completeness": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "missing_materials": [],
+                "rejected_materials": [],
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Route-task field retest material pack is not a supported diagnostics source; no delivery result is proven.",
+                    "safe_phone_copy": "Route-task field retest material pack is not a supported diagnostics source; no delivery result is proven.",
+                },
+            }
+        )
+        return summary
+    if not summary["safe_evidence_ref"]:
+        summary.update(
+            {
+                "material_status": {
+                    "status": "missing_evidence_ref",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest material pack is missing evidence_ref",
+                },
+                "material_completeness": {"status": "blocked", "reason": "missing evidence_ref"},
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary.update(
+            {
+                "material_status": {
+                    "status": "evidence_ref_mismatch",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest material pack summary evidence_ref does not match source evidence_ref",
+                },
+                "material_completeness": {"status": "blocked", "reason": "same evidence_ref mismatch"},
+            }
+        )
+        return summary
+    if (
+        not summary["same_evidence_ref_required"]
+        or not _route_task_field_retest_material_pack_has_disabled_actions(pack, summary_fragment)
+        or _route_task_field_run_console_has_unsafe_fields(pack)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+        or _route_task_field_retest_execution_pack_has_success_wording(summary_fragment)
+        or _route_task_field_retest_execution_pack_has_success_wording(pack)
+    ):
+        summary.update(
+            {
+                "material_status": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest material pack contains unsafe fields, weak evidence_ref constraints, enabled actions, or success wording",
+                },
+                "material_completeness": {
+                    "status": "blocked",
+                    "reason": "unsafe material pack summary fields",
+                },
+                "missing_materials": [],
+                "rejected_materials": [],
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe material pack summary fields",
+                },
+                "mobile_readonly_summary": {
+                    "safe_copy": "Route-task field retest material pack was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+                    "safe_phone_copy": "Route-task field retest material pack was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+                },
+                "safe_copy": "Route-task field retest material pack was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+                "safe_phone_copy": "Route-task field retest material pack was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
             }
         )
     return summary
@@ -14158,6 +14625,7 @@ def build_diagnostics_payload(
     route_task_field_retest_session_handoff_ref="",
     route_task_field_retest_result_intake_ref="",
     route_task_field_retest_result_reconciliation_ref="",
+    route_task_field_retest_material_pack_ref="",
     route_task_field_run_reconciliation_ref="",
     route_task_completion_signal_ref="",
     route_task_terminal_completion_rehearsal_ref="",
@@ -14368,6 +14836,21 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
         else {}
     )
+    route_task_field_retest_material_pack_source = (
+        latest_status.get("route_task_field_retest_material_pack")
+        if isinstance(latest_status.get("route_task_field_retest_material_pack"), dict)
+        else latest_status.get("route_task_field_retest_material_pack_summary")
+        if isinstance(latest_status.get("route_task_field_retest_material_pack_summary"), dict)
+        else diagnostics_source.get("route_task_field_retest_material_pack")
+        if isinstance(diagnostics_source.get("route_task_field_retest_material_pack"), dict)
+        else diagnostics_source.get("route_task_field_retest_material_pack_summary")
+        if isinstance(diagnostics_source.get("route_task_field_retest_material_pack_summary"), dict)
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
+        else {}
+    )
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
     latest_status.pop("phone_support_bundle", None)
     latest_status.pop("voice_prompt_readiness", None)
@@ -14402,6 +14885,9 @@ def build_diagnostics_payload(
     latest_status.pop("route_task_field_retest_result_reconciliation", None)
     latest_status.pop("route_task_field_retest_result_reconciliation_summary", None)
     latest_status.pop("route_task_field_retest_result_reconciliation_copy", None)
+    latest_status.pop("route_task_field_retest_material_pack", None)
+    latest_status.pop("route_task_field_retest_material_pack_summary", None)
+    latest_status.pop("route_task_field_retest_material_pack_copy", None)
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -14527,6 +15013,15 @@ def build_diagnostics_payload(
         summarize_route_task_field_retest_result_reconciliation(
             route_task_field_retest_result_reconciliation_source
         )
+    )
+    route_task_field_retest_material_pack_source = (
+        route_task_field_retest_material_pack_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK", "")
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_SUMMARY", "")
+        or route_task_field_retest_material_pack_source
+    )
+    route_task_field_retest_material_pack_summary = summarize_route_task_field_retest_material_pack(
+        route_task_field_retest_material_pack_source
     )
     route_task_field_run_reconciliation_summary = summarize_route_task_field_run_reconciliation(
         route_task_field_run_reconciliation_ref
@@ -14759,6 +15254,8 @@ def build_diagnostics_payload(
         route_task_field_retest_result_intake_summary=route_task_field_retest_result_intake_summary,
         route_task_field_retest_result_reconciliation=route_task_field_retest_result_reconciliation_summary,
         route_task_field_retest_result_reconciliation_summary=route_task_field_retest_result_reconciliation_summary,
+        route_task_field_retest_material_pack=route_task_field_retest_material_pack_summary,
+        route_task_field_retest_material_pack_summary=route_task_field_retest_material_pack_summary,
         route_task_field_run_reconciliation=route_task_field_run_reconciliation_summary,
         route_task_field_run_reconciliation_summary=route_task_field_run_reconciliation_summary,
         route_task_completion_signal=route_task_completion_signal_summary,

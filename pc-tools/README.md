@@ -157,6 +157,24 @@ python3 pc-tools/evidence/route_task_field_retest_session_handoff.py \
 
 缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、缺 required materials、placeholder-only materials、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_session_handoff_not_proven` 只表示 Docker/local software proof 足以生成现场 session 交接材料，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
+## route/task field retest material pack
+
+`pc-tools/evidence/route_task_field_retest_material_pack.py` 读取现场复测回填目录 `--material-dir`，把八类材料打包并校验成 sanitized artifact / summary，供现有 `route_task_field_retest_result_intake.py` 和 `route_task_field_retest_result_reconciliation.py` 消费：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_material_pack.py \
+  --material-dir /tmp/route_task_field_retest_materials \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_material_pack.json \
+  --summary-output /tmp/route_task_field_retest_material_pack_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_material_pack.v1`，summary 使用 `schema=trashbot.route_task_field_retest_material_pack_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_material_pack_gate`。核心字段包括 safe `evidence_ref`、`same_evidence_ref_required=true`、`material_manifest`、`material_completeness`、`missing_materials`、`rejected_materials`、`operator_next_steps`、`safe_copy`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+material pack 固定校验八类材料：`nav2_or_fixed_route_runtime_log`、`route_completion_signal`、`task_record`、`door_state`、`target_floor_confirmation`、`human_assistance_note`、`dropoff_or_cancel_completion` 和 `delivery_result`。每类材料必须使用同一 safe `evidence_ref`；缺失材料、placeholder/TBD/sample、evidence ref mismatch、raw path、credential、ROS topic、`/cmd_vel`、serial/UART/WAVE ROVER detail、unsafe success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed 或进入 rejected/missing。
+
+该 gate 只输出目录材料的脱敏状态和拒绝原因，不复制 raw filesystem path、credential、完整 artifact、traceback、checksum、raw ROS topic、`/cmd_vel`、串口/UART 细节或硬件参数。`ready_for_field_retest_material_pack_not_proven` 只表示 Docker/local software proof 足以把目录材料交给 result intake/reconciliation 继续复账，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## route/task field retest result intake
 
 `pc-tools/evidence/route_task_field_retest_result_intake.py` 只读现场复测回填后的 result artifact、summary、session handoff artifact/summary 或 wrapper/nested JSON，把同一 `evidence_ref` 下的结果材料元数据整理成 fail-closed result intake artifact / summary：

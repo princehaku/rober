@@ -57,6 +57,7 @@ const ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_BOUNDARY = "software_proof_docker_r
 const ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF_BOUNDARY = "software_proof_docker_route_task_field_retest_session_handoff_gate";
 const ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_BOUNDARY = "software_proof_docker_route_task_field_retest_result_intake_gate";
 const ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION_BOUNDARY = "software_proof_docker_route_task_field_retest_result_reconciliation_gate";
+const ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_BOUNDARY = "software_proof_docker_route_task_field_retest_material_pack_gate";
 const ELEVATOR_ASSIST_BOUNDARY = "software_proof_docker_elevator_assist_default_mainline_gate";
 const ELEVATOR_ASSIST_REHEARSAL_EVIDENCE_BOUNDARY = "software_proof_docker_elevator_evidence_driven_mainline_gate";
 const ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_BOUNDARY = "software_proof_docker_elevator_route_evidence_reconciliation_gate";
@@ -149,6 +150,7 @@ const UNSAFE_ROUTE_TASK_TERMINAL_REVIEW_DECISION_TEXT = /(authorization|bearer|t
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw execution pack|full execution pack|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw result|raw intake|full result|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw result|raw reconciliation|raw diagnostics|raw intake|full result|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
+const UNSAFE_ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw material pack|full material pack|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
 const UNSAFE_ELEVATOR_ASSIST_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|已送达成功|真实电梯完成|真实喇叭完成|真实 nav2|hil_pass)/i;
 const UNSAFE_ELEVATOR_ROUTE_RECONCILIATION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw reconciliation|raw diagnostics|complete artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw handoff|raw diagnostics|raw material|complete artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
@@ -193,6 +195,7 @@ let latestRouteTaskFieldRetestExecutionPack = null;
 let latestRouteTaskFieldRetestSessionHandoff = null;
 let latestRouteTaskFieldRetestResultIntake = null;
 let latestRouteTaskFieldRetestResultReconciliation = null;
+let latestRouteTaskFieldRetestMaterialPack = null;
 let deferredPwaInstallPromptEvent = null;
 let pwaInstallPromptEventState = null;
 let latestRealDeviceEvidencePackage = null;
@@ -432,6 +435,15 @@ function safeRouteTaskFieldRetestResultReconciliationText(value, fallback = "not
   // 结果复账面向手机端 support 交接，只能展示后端脱敏结论；raw 复账、底层控制和成功暗示全部降级。
   const text = safeText(value, fallback);
   if (UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeRouteTaskFieldRetestMaterialPackText(value, fallback = "not_proven") {
+  // 现场材料包只展示 Robot diagnostics 兼容摘要；raw 材料、路径、凭证、topic 和成功暗示都必须降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -6462,6 +6474,219 @@ function routeTaskFieldRetestResultReconciliationCopyPayload(summary) {
   };
 }
 
+function routeTaskFieldRetestMaterialPackCandidate(status, readiness, diagnostics) {
+  // material pack 可由 PC gate 或 Robot diagnostics 镜像；前端只接受对象摘要，不读取 raw artifacts。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.route_task_field_retest_material_pack,
+    status?.route_task_field_retest_material_pack_summary,
+    status?.robot_diagnostics_route_task_field_retest_material_pack_summary,
+    readiness?.route_task_field_retest_material_pack,
+    readiness?.route_task_field_retest_material_pack_summary,
+    readiness?.robot_diagnostics_route_task_field_retest_material_pack_summary,
+    diagnostics?.route_task_field_retest_material_pack,
+    diagnostics?.route_task_field_retest_material_pack_summary,
+    diagnostics?.robot_diagnostics_route_task_field_retest_material_pack_summary,
+    diagnosticsReadiness.route_task_field_retest_material_pack,
+    diagnosticsReadiness.route_task_field_retest_material_pack_summary,
+    diagnosticsReadiness.robot_diagnostics_route_task_field_retest_material_pack_summary,
+    diagnosticsSummary.route_task_field_retest_material_pack,
+    diagnosticsSummary.route_task_field_retest_material_pack_summary,
+    diagnosticsSummary.robot_diagnostics_route_task_field_retest_material_pack_summary,
+    nestedDiagnosticsSummary.route_task_field_retest_material_pack,
+    nestedDiagnosticsSummary.route_task_field_retest_material_pack_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_route_task_field_retest_material_pack_summary,
+    nestedDiagnosticsInnerSummary.route_task_field_retest_material_pack,
+    nestedDiagnosticsInnerSummary.route_task_field_retest_material_pack_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_route_task_field_retest_material_pack_summary,
+    statusDiagnosticsSummary.route_task_field_retest_material_pack,
+    statusDiagnosticsSummary.route_task_field_retest_material_pack_summary,
+    statusDiagnosticsSummary.robot_diagnostics_route_task_field_retest_material_pack_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function routeTaskFieldRetestMaterialPackNotProvenList(value) {
+  // material pack 是现场复测准备材料，不证明真实路线、电梯、投放、取消、真机或 HIL 通过。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实 Nav2/fixed-route runtime log",
+    "真实 route completion signal",
+    "真实 task record",
+    "真实 door_state",
+    "真实 target_floor_confirmation",
+    "真实 human_assistance_note",
+    "真实 dropoff/cancel completion",
+    "真实 delivery result",
+    "真实手机设备/browser",
+    "真实硬件/HIL",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 16);
+}
+
+function routeTaskFieldRetestMaterialPackSummaryText(value, fallback) {
+  // 八类材料、missing/rejected 和 next steps 只输出短摘要，防止展开 raw 材料包。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeRouteTaskFieldRetestMaterialPackText(
+        item?.safe_phone_copy || item?.summary || item?.name || item?.material ||
+          item?.reason || item?.status || item?.state || item?.result || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.material_summary ||
+      value.reason_summary || value.status || value.state || value.result;
+    if (direct) {
+      return safeRouteTaskFieldRetestMaterialPackText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeRouteTaskFieldRetestMaterialPackText(key, "");
+        const copy = routeTaskFieldRetestMaterialPackSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  return safeRouteTaskFieldRetestMaterialPackText(value, fallback);
+}
+
+function routeTaskFieldRetestMaterialPackSafeCopy(value) {
+  // copy/export 只允许后端显式 safe_copy；缺失时显示 blocked copy unavailable，避免前端合成材料包。
+  const source = value?.safe_copy || value?.safe_copy_payload;
+  if (!source) {
+    return null;
+  }
+  const text = typeof source === "object"
+    ? source.safe_phone_copy || source.summary || source.copy
+    : source;
+  const safeCopy = safeRouteTaskFieldRetestMaterialPackText(text, "");
+  if (!safeCopy) {
+    return null;
+  }
+  return {
+    schema: "trashbot.route_task_field_retest_material_pack_copy.v1",
+    schema_version: 1,
+    safe_phone_copy: safeCopy,
+  };
+}
+
+function routeTaskFieldRetestMaterialPackFromStatus(status, readiness, diagnostics) {
+  const provided = routeTaskFieldRetestMaterialPackCandidate(status, readiness, diagnostics) || {};
+  const safeCopyPayload = routeTaskFieldRetestMaterialPackSafeCopy(provided);
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.route_task_field_retest_material_pack.v1",
+    summary_schema: "trashbot.route_task_field_retest_material_pack_summary.v1",
+    schema_version: 1,
+    pack_status: safeRouteTaskFieldRetestMaterialPackText(
+      provided.pack_status || provided.material_pack_status || provided.status || provided.overall_status,
+      "blocked_missing_route_task_field_retest_material_pack",
+    ),
+    safe_evidence_ref: safeRouteTaskFieldRetestMaterialPackText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "not_provided",
+    ),
+    same_evidence_ref_status: safeRouteTaskFieldRetestMaterialPackText(
+      provided.same_evidence_ref_status || provided.same_evidence_ref || provided.evidence_ref_status,
+      "same_evidence_ref_status=not_proven",
+    ),
+    material_completeness: routeTaskFieldRetestMaterialPackSummaryText(
+      provided.material_completeness || provided.completeness || provided.material_completeness_summary,
+      "material_completeness=not_proven",
+    ),
+    material_status_summary: routeTaskFieldRetestMaterialPackSummaryText(
+      provided.material_status_summary || provided.material_status || provided.eight_material_status ||
+        provided.eight_materials_status || provided.required_materials_status,
+      "material_status=八类现场材料仍 not_proven",
+    ),
+    missing_material_list: routeTaskFieldRetestMaterialPackSummaryText(
+      provided.missing_material_list || provided.missing_materials || provided.missing_required_materials,
+      "missing_materials=door_state、target_floor_confirmation、human_assistance_note 等材料待补齐",
+    ),
+    rejected_material_list: routeTaskFieldRetestMaterialPackSummaryText(
+      provided.rejected_material_list || provided.rejected_materials || provided.rejection_reasons,
+      "rejected_materials=not_proven",
+    ),
+    operator_next_steps_summary: routeTaskFieldRetestMaterialPackSummaryText(
+      provided.operator_next_steps || provided.next_steps || provided.operator_actions,
+      "operator_next_steps=按同一 evidence_ref 补齐八类现场材料，再发布 Robot diagnostics compatible summary。",
+    ),
+    safe_phone_copy: safeRouteTaskFieldRetestMaterialPackText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "route_task_field_retest_material_pack 摘要缺失；手机端只显示 blocked/not_proven，不读取 raw material pack。",
+    ),
+    safe_copy_payload: safeCopyPayload,
+    safe_copy_status: safeCopyPayload ? "safe_copy_available" : "blocked copy unavailable",
+    recovery_hint: safeRouteTaskFieldRetestMaterialPackText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由 diagnostics/status 提供 route_task_field_retest_material_pack_summary 和 safe_copy 后，再交接现场材料包。",
+    ),
+    evidence_boundary: safeRouteTaskFieldRetestMaterialPackText(
+      provided.evidence_boundary,
+      ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: routeTaskFieldRetestMaterialPackNotProvenList(provided),
+  };
+}
+
+function routeTaskFieldRetestMaterialPackCopyPayload(summary) {
+  // 白名单导出只保留材料完整性、缺失/拒绝和下一步；不导出 raw paths、完整 artifacts 或控制字段。
+  const source = summary?.schema
+    ? summary
+    : routeTaskFieldRetestMaterialPackFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  if (!source.safe_copy_payload) {
+    return null;
+  }
+  return {
+    schema: source.safe_copy_payload.schema,
+    schema_version: source.safe_copy_payload.schema_version,
+    source: "mobile_web",
+    route_task_field_retest_material_pack_schema: source.schema,
+    summary_schema: source.summary_schema,
+    pack_status: source.pack_status,
+    safe_evidence_ref: source.safe_evidence_ref,
+    same_evidence_ref_status: source.same_evidence_ref_status,
+    material_completeness: source.material_completeness,
+    material_status_summary: source.material_status_summary,
+    missing_material_list: source.missing_material_list,
+    rejected_material_list: source.rejected_material_list,
+    operator_next_steps_summary: source.operator_next_steps_summary,
+    safe_phone_copy: source.safe_copy_payload.safe_phone_copy,
+    evidence_boundary: ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_BOUNDARY,
+    not_proven: source.not_proven,
+    delivery_success: false,
+    primary_actions_enabled: false,
+  };
+}
+
 function elevatorRouteEvidenceReconciliationCandidate(status, readiness, diagnostics) {
   // 复账摘要可能由 Robot diagnostics 或 status/readiness 镜像提供；前端只消费 summary 形态。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -10163,6 +10388,96 @@ function renderRouteTaskFieldRetestResultReconciliation(status) {
   $("downloadRouteTaskFieldRetestResultReconciliationButton").disabled = !summary.safe_copy_payload;
 }
 
+function ensureRouteTaskFieldRetestMaterialPackPanel() {
+  // 现场材料包跟在结果复账后，只读展示 PC/Robot 脱敏 summary，不能新增任何控制入口。
+  let panel = $("routeTaskFieldRetestMaterialPackPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("routeTaskFieldRetestResultReconciliationTitle")?.closest("section") ||
+    $("routeTaskFieldRetestResultIntakeTitle")?.closest("section") ||
+    $("routeTaskFieldRetestSessionHandoffTitle")?.closest("section") ||
+    $("routeTaskFieldRetestExecutionPackTitle")?.closest("section") ||
+    $("routeTaskTerminalReviewDecisionTitle")?.closest("section") ||
+    $("routeTaskCompletionSignalTitle")?.closest("section") ||
+    $("elevatorAssistPanel");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "routeTaskFieldRetestMaterialPackPanel";
+  panel.className = "route-task-field-retest-material-pack-panel";
+  panel.setAttribute("aria-labelledby", "routeTaskFieldRetestMaterialPackTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="routeTaskFieldRetestMaterialPackTitle">现场材料包</h2>
+      <span id="routeTaskFieldRetestMaterialPackBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="routeTaskFieldRetestMaterialPackCopy" class="message">
+      route_task_field_retest_material_pack 只读展示 material completeness、same evidence ref、八类材料状态、missing/rejected、operator next steps 和 boundary。
+    </p>
+    <dl class="route-task-field-retest-material-pack-grid">
+      <div><dt>Pack Status</dt><dd id="routeTaskFieldRetestMaterialPackStatus">blocked_missing_route_task_field_retest_material_pack</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="routeTaskFieldRetestMaterialPackEvidenceRef">not_provided</dd></div>
+      <div><dt>Same Evidence Ref</dt><dd id="routeTaskFieldRetestMaterialPackSameRef">same_evidence_ref_status=not_proven</dd></div>
+      <div><dt>Material Completeness</dt><dd id="routeTaskFieldRetestMaterialPackCompleteness">material_completeness=not_proven</dd></div>
+      <div><dt>Eight Material Status</dt><dd id="routeTaskFieldRetestMaterialPackMaterials">material_status=not_proven</dd></div>
+      <div><dt>Missing Materials</dt><dd id="routeTaskFieldRetestMaterialPackMissing">missing_materials=not_proven</dd></div>
+      <div><dt>Rejected Materials</dt><dd id="routeTaskFieldRetestMaterialPackRejected">rejected_materials=not_proven</dd></div>
+      <div><dt>Operator Next Steps</dt><dd id="routeTaskFieldRetestMaterialPackNextSteps">operator_next_steps=not_proven</dd></div>
+      <div><dt>Safe Copy Status</dt><dd id="routeTaskFieldRetestMaterialPackSafeCopyStatus">blocked copy unavailable</dd></div>
+      <div><dt>Control Boundary</dt><dd id="routeTaskFieldRetestMaterialPackControls">delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="routeTaskFieldRetestMaterialPackBoundary">software_proof_docker_route_task_field_retest_material_pack_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="routeTaskFieldRetestMaterialPackNotProven">真实现场材料包、HIL、真机浏览器和 delivery success 未证明。</dd></div>
+    </dl>
+    <div class="bundle-copy-row">
+      <button id="copyRouteTaskFieldRetestMaterialPackButton" type="button" disabled>复制 material pack</button>
+      <button id="downloadRouteTaskFieldRetestMaterialPackButton" type="button" disabled>导出 material pack</button>
+      <span id="routeTaskFieldRetestMaterialPackCopyStatus" class="hint">blocked copy unavailable</span>
+    </div>
+    <pre id="routeTaskFieldRetestMaterialPackSafeCopy" class="safe-copy" aria-label="route_task_field_retest_material_pack safe_copy">blocked copy unavailable</pre>
+    <p id="routeTaskFieldRetestMaterialPackHint" class="hint">
+      现场材料包只读展示 Robot diagnostics compatible summary，并只导出后端 safe_copy 白名单；不暴露 raw paths、credentials、完整 artifacts、tracebacks、checksums、raw ROS topic、/cmd_vel、串口/UART 或成功控制文案，也不改变 Start Delivery、Confirm Dropoff 或 Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderRouteTaskFieldRetestMaterialPack(status) {
+  const panel = ensureRouteTaskFieldRetestMaterialPackPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = routeTaskFieldRetestMaterialPackFromStatus(status, readiness, latestDiagnostics);
+  latestRouteTaskFieldRetestMaterialPack = summary;
+  const badge = $("routeTaskFieldRetestMaterialPackBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 material pack" : "read-only material pack";
+  $("routeTaskFieldRetestMaterialPackCopy").textContent = summary.safe_phone_copy;
+  $("routeTaskFieldRetestMaterialPackStatus").textContent = summary.pack_status;
+  $("routeTaskFieldRetestMaterialPackEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("routeTaskFieldRetestMaterialPackSameRef").textContent = summary.same_evidence_ref_status;
+  $("routeTaskFieldRetestMaterialPackCompleteness").textContent = summary.material_completeness;
+  $("routeTaskFieldRetestMaterialPackMaterials").textContent = summary.material_status_summary;
+  $("routeTaskFieldRetestMaterialPackMissing").textContent = summary.missing_material_list;
+  $("routeTaskFieldRetestMaterialPackRejected").textContent = summary.rejected_material_list;
+  $("routeTaskFieldRetestMaterialPackNextSteps").textContent = summary.operator_next_steps_summary;
+  $("routeTaskFieldRetestMaterialPackSafeCopyStatus").textContent = summary.safe_copy_status;
+  $("routeTaskFieldRetestMaterialPackControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("routeTaskFieldRetestMaterialPackBoundary").textContent = summary.evidence_boundary;
+  $("routeTaskFieldRetestMaterialPackNotProven").textContent = summary.not_proven.join("、");
+  $("routeTaskFieldRetestMaterialPackHint").textContent = summary.recovery_hint;
+  $("routeTaskFieldRetestMaterialPackSafeCopy").textContent =
+    summary.safe_copy_payload?.safe_phone_copy || "blocked copy unavailable";
+  $("routeTaskFieldRetestMaterialPackCopyStatus").textContent = summary.safe_copy_status;
+  $("copyRouteTaskFieldRetestMaterialPackButton").disabled = !summary.safe_copy_payload;
+  $("downloadRouteTaskFieldRetestMaterialPackButton").disabled = !summary.safe_copy_payload;
+}
+
 function ensureElevatorRouteEvidenceReconciliationPanel() {
   // 本 panel 由 JS 注入，避免改动静态 index；它只读展示 Robot diagnostics/status 的复账摘要。
   let panel = $("elevatorRouteEvidenceReconciliationPanel");
@@ -12802,6 +13117,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const routeTaskFieldRetestMaterialPack = routeTaskFieldRetestMaterialPackFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const elevatorRouteReconciliation = elevatorRouteEvidenceReconciliationFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -12895,6 +13215,7 @@ function renderDiagnosticsSummary(payload) {
     ["route_task_field_retest_session_handoff", routeTaskFieldRetestSessionHandoff.handoff_status],
     ["route_task_field_retest_result_intake", routeTaskFieldRetestResultIntake.intake_status],
     ["route_task_field_retest_result_reconciliation", routeTaskFieldRetestResultReconciliation.reconciliation_verdict],
+    ["route_task_field_retest_material_pack", routeTaskFieldRetestMaterialPack.pack_status],
     ["Elevator-route evidence reconciliation", elevatorRouteReconciliation.reconciliation_verdict],
     ["Route-elevator field session handoff", routeElevatorFieldHandoff.handoff_verdict],
     ["mobile_route_elevator_field_device_precheck", mobileRouteElevatorPrecheck.precheck_status],
@@ -12979,6 +13300,7 @@ function renderOfflineFailure() {
   renderRouteTaskFieldRetestSessionHandoff({});
   renderRouteTaskFieldRetestResultIntake({});
   renderRouteTaskFieldRetestResultReconciliation({});
+  renderRouteTaskFieldRetestMaterialPack({});
   renderRouteElevatorFieldSessionHandoff({});
   renderMobileRouteElevatorFieldDevicePrecheck({});
   renderMobileFieldMaterialIntake({});
@@ -13040,6 +13362,7 @@ function renderStatus(status) {
   renderRouteTaskFieldRetestSessionHandoff(status);
   renderRouteTaskFieldRetestResultIntake(status);
   renderRouteTaskFieldRetestResultReconciliation(status);
+  renderRouteTaskFieldRetestMaterialPack(status);
   renderRouteElevatorFieldSessionHandoff(status);
   renderMobileRouteElevatorFieldDevicePrecheck(status);
   renderMobileFieldMaterialIntake(status);
@@ -13277,6 +13600,7 @@ async function openDiagnostics() {
     renderRouteTaskFieldRetestSessionHandoff(latestStatus || {});
     renderRouteTaskFieldRetestResultIntake(latestStatus || {});
     renderRouteTaskFieldRetestResultReconciliation(latestStatus || {});
+    renderRouteTaskFieldRetestMaterialPack(latestStatus || {});
     renderElevatorRouteEvidenceReconciliation(latestStatus || {});
     renderRouteElevatorFieldSessionHandoff(latestStatus || {});
     renderMobileRouteElevatorFieldDevicePrecheck(latestStatus || {});
@@ -13359,6 +13683,8 @@ function wireEvents() {
   ensureRouteTaskFieldRetestExecutionPackPanel();
   ensureRouteTaskFieldRetestSessionHandoffPanel();
   ensureRouteTaskFieldRetestResultIntakePanel();
+  ensureRouteTaskFieldRetestResultReconciliationPanel();
+  ensureRouteTaskFieldRetestMaterialPackPanel();
   $("copyMobileRouteElevatorFieldDevicePrecheckButton").addEventListener("click", async () => {
     const payload = JSON.stringify(
       mobileRouteElevatorFieldDevicePrecheckCopyPayload(latestMobileRouteElevatorFieldDevicePrecheck || {}),
@@ -13840,6 +14166,42 @@ function wireEvents() {
     downloadJsonPackage("route_task_field_retest_result_reconciliation_copy.json", payload);
     $("routeTaskFieldRetestResultReconciliationCopyStatus").textContent =
       "已导出 route retest result reconciliation whitelist-only JSON。";
+  });
+  $("copyRouteTaskFieldRetestMaterialPackButton").addEventListener("click", async () => {
+    const copyPayload = routeTaskFieldRetestMaterialPackCopyPayload(
+      latestRouteTaskFieldRetestMaterialPack || {},
+    );
+    if (!copyPayload) {
+      $("routeTaskFieldRetestMaterialPackCopyStatus").textContent = "blocked copy unavailable";
+      $("routeTaskFieldRetestMaterialPackSafeCopy").textContent = "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("routeTaskFieldRetestMaterialPackSafeCopy").textContent = payload;
+    // 材料包复制只面向现场交接；剪贴板失败时仍保留页面内白名单文本。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("routeTaskFieldRetestMaterialPackCopyStatus").textContent =
+        "已复制 route_task_field_retest_material_pack phone-safe metadata。";
+    } catch (_error) {
+      $("routeTaskFieldRetestMaterialPackCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadRouteTaskFieldRetestMaterialPackButton").addEventListener("click", () => {
+    const copyPayload = routeTaskFieldRetestMaterialPackCopyPayload(
+      latestRouteTaskFieldRetestMaterialPack || {},
+    );
+    if (!copyPayload) {
+      $("routeTaskFieldRetestMaterialPackCopyStatus").textContent = "blocked copy unavailable";
+      $("routeTaskFieldRetestMaterialPackSafeCopy").textContent = "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("routeTaskFieldRetestMaterialPackSafeCopy").textContent = payload;
+    downloadJsonPackage("route_task_field_retest_material_pack_copy.json", payload);
+    $("routeTaskFieldRetestMaterialPackCopyStatus").textContent =
+      "已导出 route retest material pack whitelist-only JSON。";
   });
   $("copyRouteTaskReviewButton").addEventListener("click", async () => {
     // operator review 复制只使用后端提供的 safe_copy 白名单对象，缺失时不生成替代 bundle。

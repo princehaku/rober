@@ -423,5 +423,60 @@
       "真实硬件/HIL",
       "Objective 5 external proof"
     ]
+  },
+  "route_task_field_retest_material_pack": {
+    "schema": "trashbot.route_task_field_retest_material_pack.v1",
+    "summary_schema": "trashbot.route_task_field_retest_material_pack_summary.v1",
+    "schema_version": 1,
+    "source_reconciliation_schema": "trashbot.route_task_field_retest_result_reconciliation_summary.v1",
+    "pack_status": "blocked_missing_route_task_field_retest_material_pack_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=blocked_missing_same_evidence_ref_material_pack",
+    "material_completeness": "material_completeness=3/8 available as phone-safe summaries; 5/8 missing or rejected",
+    "material_status_summary": [
+      "nav2_or_fixed_route_runtime_log=summary_pending",
+      "route_completion_signal=summary_pending",
+      "task_record=summary_pending",
+      "door_state=missing",
+      "target_floor_confirmation=missing",
+      "human_assistance_note=missing",
+      "dropoff_or_cancel_completion=rejected_not_field_proof",
+      "delivery_result=not_proven"
+    ],
+    "missing_material_list": [
+      "missing_material=door_state",
+      "missing_material=target_floor_confirmation",
+      "missing_material=human_assistance_note",
+      "missing_material=delivery_result",
+      "missing_material=Robot diagnostics compatible summary"
+    ],
+    "rejected_material_list": [
+      "rejected_material=dropoff_or_cancel_completion because only software rehearsal copy is present",
+      "rejected_material=delivery_result because delivery_success=false"
+    ],
+    "operator_next_steps": [
+      "operator_next_step=collect phone-safe door_state and target_floor_confirmation under same evidence_ref",
+      "operator_next_step=collect human_assistance_note and delivery_result under same evidence_ref",
+      "operator_next_step=publish route_task_field_retest_material_pack_summary through Robot diagnostics"
+    ],
+    "safe_phone_copy": "现场材料包只读展示 material completeness、same evidence ref、八类材料状态、missing/rejected、operator next steps 和 evidence boundary；这是 software proof only。",
+    "safe_copy": "现场材料包 safe_copy：当前 pack_status blocked_missing_route_task_field_retest_material_pack_not_proven；八类材料仍未完整；delivery_success=false；primary_actions_enabled=false。",
+    "recovery_hint": "请按同一 safe evidence_ref 补齐八类现场材料，并由 Robot diagnostics 发布 compatible material pack summary 后再交接。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_material_pack_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实 door_state",
+      "真实 target_floor_confirmation",
+      "真实 human_assistance_note",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机设备/browser",
+      "真实硬件/HIL",
+      "Objective 5 external proof"
+    ]
   }
 }
