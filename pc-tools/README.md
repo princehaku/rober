@@ -235,6 +235,20 @@ Autonomy 责任边界如下：
 
 该 gate 不访问 ROS graph、Nav2 runtime、SLAM map、serial/UART、WAVE ROVER、真实电梯、真实手机、外部云、OSS/CDN、DB/queue 或 4G。缺 procurement artifact、坏 JSON、unsupported schema/boundary、unsafe copy、控制放行字段或成功断言时，都必须保持 blocked/not_proven，并把下一步留给 Hardware procurement、Autonomy 标定计划或 Product closeout 复核。
 
+## hardware_sensor_procurement_review_decision
+
+`pc-tools/evidence/hardware_sensor_procurement_review_decision_gate.py` 读取上一轮 `hardware_sensor_procurement_intake` artifact 或 summary，把 2D LiDAR / ToF 的缺 SKU、缺 source、缺采购、缺 mounting/wiring/power/calibration/HIL entry 转成采购评审决策、blocker、`next_required_evidence`、`owner_handoff` 和 `rerun_commands`：
+
+```bash
+python3 pc-tools/evidence/hardware_sensor_procurement_review_decision_gate.py \
+  --intake-json /tmp/hardware_sensor_procurement_intake.json \
+  --summary-output /tmp/hardware_sensor_procurement_review_decision_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.hardware_sensor_procurement_review_decision.v1`，summary 使用 `schema=trashbot.hardware_sensor_procurement_review_decision_summary.v1`，证据边界固定为 `software_proof_docker_hardware_sensor_procurement_review_decision_gate`。该 gate 只证明 PC/local/Docker 能把上一轮 intake 缺口转成 review decision；`docs/vendor/VENDOR_INDEX.md` 仍只证明当前 Orange Pi / WAVE ROVER / UART / camera vendor coverage，不证明真实 2D LiDAR 或 ToF source/procurement。
+
+summary 必须继续输出 `software_proof`、`hardware_material_pending`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。缺 intake、坏 JSON、unsupported schema/boundary、`delivery_success=true`、`primary_actions_enabled=true`、HIL pass 或 LiDAR/ToF field pass 成功断言时，review decision 必须 fail closed。
+
 ## route/task rehearsal artifact
 
 `pc-tools/evidence/evidence_crosscheck.py` 可在原有只读复账基础上额外写出 route/task rehearsal artifact：

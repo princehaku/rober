@@ -1893,6 +1893,72 @@
       "delivery success"
     ]
   },
+  "hardware_sensor_procurement_review_decision": {
+    "schema": "trashbot.hardware_sensor_procurement_review_decision.v1",
+    "summary_schema": "trashbot.hardware_sensor_procurement_review_decision_summary.v1",
+    "schema_version": 1,
+    "source_intake_schema": "trashbot.hardware_sensor_procurement_intake_summary.v1",
+    "source_intake_status": "hardware_material_pending",
+    "review_decision": "blocked_missing_procurement_materials",
+    "blockers": [
+      "2D LiDAR source/procurement material pending",
+      "ToF source/procurement material pending",
+      "mounting/wiring/calibration/HIL entry material pending"
+    ],
+    "next_required_evidence": [
+      "2D LiDAR SKU、source 和采购记录 phone-safe 摘要。",
+      "ToF SKU、source 和采购记录 phone-safe 摘要。",
+      "mounting、wiring、calibration、HIL entry 的 phone-safe 摘要。"
+    ],
+    "owner_handoff": "Hardware owner 补齐 2D LiDAR / ToF procurement review 材料后重跑 review decision gate。",
+    "rerun_commands": [
+      "python3 pc-tools/evidence/hardware_sensor_procurement_review_decision_gate.py --intake <safe_intake_summary> --output <safe_review_summary>",
+      "python3 pc-tools/evidence/test_hardware_sensor_procurement_review_decision_gate.py"
+    ],
+    "safe_evidence_ref": "hardware_sensor_procurement_review_decision_fixture_20260516_0001",
+    "safe_phone_copy": "hardware_sensor_procurement_review_decision fixture 只展示 2D LiDAR / ToF 采购评审 blocker、next_required_evidence、owner_handoff、rerun_commands 和 safe evidence_ref；这是 local static software_proof。",
+    "recovery_hint": "按 safe evidence_ref 补齐采购评审材料后重跑 review decision gate；手机端不放行 Start、Confirm 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_hardware_sensor_procurement_review_decision_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 2D LiDAR SKU/source/procurement",
+      "真实 ToF SKU/source/procurement",
+      "真实 mounting material",
+      "真实 wiring material",
+      "真实 calibration material",
+      "真实 HIL entry evidence",
+      "真实 Nav2/fixed-route",
+      "delivery success"
+    ]
+  },
+  "hardware_sensor_procurement_review_decision_summary": {
+    "schema": "trashbot.hardware_sensor_procurement_review_decision_summary.v1",
+    "source_schema": "trashbot.hardware_sensor_procurement_review_decision.v1",
+    "schema_version": 1,
+    "source_intake_schema": "trashbot.hardware_sensor_procurement_intake_summary.v1",
+    "source_intake_status": "hardware_material_pending",
+    "review_decision": "blocked_missing_procurement_materials",
+    "blocker_summary": "2D LiDAR / ToF source、procurement、mounting、wiring、calibration、HIL entry material pending。",
+    "next_required_evidence": "补齐 2D LiDAR / ToF SKU/source/procurement、mounting、wiring、calibration、HIL entry 的 phone-safe 摘要。",
+    "owner_handoff": "Hardware owner 补齐 procurement review 材料并重跑 gate。",
+    "rerun_commands": "重跑 hardware_sensor_procurement_review_decision gate 和对应 unittest；仅使用 safe command summary。",
+    "safe_evidence_ref": "hardware_sensor_procurement_review_decision_fixture_20260516_0001",
+    "safe_phone_copy": "hardware sensor procurement review decision 摘要只说明采购评审阻塞和下一步证据，不证明真实采购、安装、接线、标定或 HIL。",
+    "recovery_hint": "补齐缺口材料后再复核；手机端不放行 Start、Confirm 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_hardware_sensor_procurement_review_decision_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 2D LiDAR SKU/source/procurement",
+      "真实 ToF SKU/source/procurement",
+      "真实 mounting material",
+      "真实 wiring material",
+      "真实 calibration material",
+      "真实 HIL entry evidence",
+      "delivery success"
+    ]
+  },
   "route_task_field_run_readiness": {
     "schema": "trashbot.route_task_field_run_readiness.v1",
     "schema_version": 1,

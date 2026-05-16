@@ -265,6 +265,13 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("downloadHardwareSensorProcurementIntakeButton", index)
         self.assertIn("software_proof_docker_hardware_sensor_procurement_intake_gate", app)
         self.assertIn("trashbot.hardware_sensor_procurement_intake_copy.v1", app)
+        self.assertIn("hardware_sensor_procurement_review_decision", app)
+        self.assertIn("hardware_sensor_procurement_review_decision_summary", app)
+        self.assertIn("hardwareSensorProcurementReviewDecisionTitle", index)
+        self.assertIn("copyHardwareSensorProcurementReviewDecisionButton", index)
+        self.assertIn("downloadHardwareSensorProcurementReviewDecisionButton", index)
+        self.assertIn("software_proof_docker_hardware_sensor_procurement_review_decision_gate", app)
+        self.assertIn("trashbot.hardware_sensor_procurement_review_decision_copy.v1", app)
         self.assertIn("mobile_browser_acceptance_bundle", app)
         self.assertIn("phone_browser_acceptance_bundle", app)
         self.assertIn("mobile_acceptance_evidence_bundle", app)
@@ -575,6 +582,85 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "primary_actions_enabled\": true",
         ):
             self.assertNotIn(forbidden, intake_fixture_text)
+
+    def test_hardware_sensor_procurement_review_decision_panel_is_read_only_and_whitelist_exportable(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # review decision panel 只把 intake 缺口转成采购评审交接，不增加控制按钮或诊断拉取。
+        self.assertIn("hardwareSensorProcurementReviewDecisionTitle", index)
+        self.assertIn("传感器采购评审决策", index)
+        self.assertIn("hardwareSensorProcurementReviewDecisionState", index)
+        self.assertIn("hardwareSensorProcurementReviewDecisionBlockers", index)
+        self.assertIn("hardwareSensorProcurementReviewDecisionNextEvidence", index)
+        self.assertIn("hardwareSensorProcurementReviewDecisionOwnerHandoff", index)
+        self.assertIn("hardwareSensorProcurementReviewDecisionRerunCommands", index)
+        self.assertIn("hardwareSensorProcurementReviewDecisionEvidenceRef", index)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", index)
+        self.assertIn("software_proof_docker_hardware_sensor_procurement_review_decision_gate", index)
+        self.assertIn("HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeHardwareSensorProcurementReviewDecisionText", app)
+        self.assertIn("hardwareSensorProcurementReviewDecisionCandidate", app)
+        self.assertIn("hardwareSensorProcurementReviewDecisionFromStatus", app)
+        self.assertIn("hardwareSensorProcurementReviewDecisionCopyPayload", app)
+        self.assertIn("hardware_sensor_procurement_review_decision", app)
+        self.assertIn("hardware_sensor_procurement_review_decision_summary", app)
+        self.assertIn("diagnosticsSummary.hardware_sensor_procurement_review_decision", app)
+        self.assertIn("statusDiagnosticsSummary.hardware_sensor_procurement_review_decision", app)
+        self.assertIn("review_decision", app)
+        self.assertIn("blocker_summary", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("rerun_commands", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("trashbot.hardware_sensor_procurement_review_decision_copy.v1", app)
+        self.assertIn("copyHardwareSensorProcurementReviewDecisionButton", app)
+        self.assertIn("downloadHardwareSensorProcurementReviewDecisionButton", app)
+
+        review = fixture["hardware_sensor_procurement_review_decision"]
+        self.assertEqual(
+            review["evidence_boundary"],
+            "software_proof_docker_hardware_sensor_procurement_review_decision_gate",
+        )
+        self.assertEqual(review["source_intake_status"], "hardware_material_pending")
+        self.assertEqual(review["delivery_success"], False)
+        self.assertEqual(review["primary_actions_enabled"], False)
+        self.assertIn("hardware_sensor_procurement_review_decision_summary", fixture_text)
+        self.assertIn("hardware_sensor_procurement_intake", fixture_text)
+        self.assertIn("2D LiDAR", fixture_text)
+        self.assertIn("ToF", fixture_text)
+        self.assertIn("next_required_evidence", fixture_text)
+        self.assertIn("owner_handoff", fixture_text)
+        self.assertIn("rerun_commands", fixture_text)
+        self.assertIn("hardware_material_pending", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("software_proof_docker_hardware_sensor_procurement_review_decision_gate", fixture_text)
+        self.assertNotRegex(app, r"hardwareSensorProcurementReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"hardwareSensorProcurementReviewDecision.*fetchJson\(ENDPOINTS\.diagnostics")
+
+        review_fixture_text = json.dumps(review, ensure_ascii=False).lower()
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw vendor document",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, review_fixture_text)
 
     def test_cloud_hosted_pwa_installability_gate_uses_relay_and_browser(self):
         script = CLOUD_PWA_GATE.read_text(encoding="utf-8")

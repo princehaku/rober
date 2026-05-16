@@ -134,6 +134,7 @@ h2 {
 .mobile-field-material-retest-request-panel,
 .hardware-baseline-review-panel,
 .hardware-sensor-procurement-intake-panel,
+.hardware-sensor-procurement-review-panel,
 .recovery-decision-panel,
 .route-review-panel,
 .pc-route-debug-panel,
@@ -258,6 +259,7 @@ h2 {
 .mobile-field-material-review-decision-grid,
 .mobile-field-material-retest-request-grid,
 .hardware-sensor-procurement-intake-grid,
+.hardware-sensor-procurement-review-grid,
 .recovery-decision-grid,
 .route-review-grid,
 .pc-route-debug-grid,
@@ -302,6 +304,7 @@ h2 {
 .mobile-field-material-intake-grid div,
 .mobile-field-material-review-decision-grid div,
 .mobile-field-material-retest-request-grid div,
+.hardware-sensor-procurement-review-grid div,
 .recovery-decision-grid div,
 .route-review-grid div,
 .pc-route-debug-grid div,
@@ -409,6 +412,10 @@ dd {
 }
 
 .mobile-field-material-retest-request-grid {
+  grid-template-columns: 1fr;
+}
+
+.hardware-sensor-procurement-review-grid {
   grid-template-columns: 1fr;
 }
 

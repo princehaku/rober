@@ -444,6 +444,63 @@
         </p>
       </section>
 
+      <section class="hardware-sensor-procurement-review-panel" aria-labelledby="hardwareSensorProcurementReviewDecisionTitle">
+        <div class="section-heading">
+          <h2 id="hardwareSensorProcurementReviewDecisionTitle">传感器采购评审决策</h2>
+          <span id="hardwareSensorProcurementReviewDecisionBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="hardwareSensorProcurementReviewDecisionCopy" class="message">
+          hardware_sensor_procurement_review_decision 只读展示 2D LiDAR / ToF 的 review_decision、blocker、next_required_evidence、owner_handoff、rerun_commands 和 safe evidence_ref。
+        </p>
+        <dl class="hardware-sensor-procurement-review-grid">
+          <div>
+            <dt>Review Decision</dt>
+            <dd id="hardwareSensorProcurementReviewDecisionState">blocked_missing_hardware_sensor_procurement_intake</dd>
+          </div>
+          <div>
+            <dt>Blocker 分类</dt>
+            <dd id="hardwareSensorProcurementReviewDecisionBlockers">blocker=hardware_material_pending</dd>
+          </div>
+          <div>
+            <dt>Next Required Evidence</dt>
+            <dd id="hardwareSensorProcurementReviewDecisionNextEvidence">next_required_evidence=not_proven</dd>
+          </div>
+          <div>
+            <dt>Owner Handoff</dt>
+            <dd id="hardwareSensorProcurementReviewDecisionOwnerHandoff">owner_handoff=Hardware owner 补齐 phone-safe 采购材料。</dd>
+          </div>
+          <div>
+            <dt>Rerun Commands</dt>
+            <dd id="hardwareSensorProcurementReviewDecisionRerunCommands">rerun_commands=等待 safe summary</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="hardwareSensorProcurementReviewDecisionEvidenceRef">evidence_ref=not_proven</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="hardwareSensorProcurementReviewDecisionControls">delivery_success=false / primary_actions_enabled=false</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="hardwareSensorProcurementReviewDecisionBoundary">software_proof_docker_hardware_sensor_procurement_review_decision_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="hardwareSensorProcurementReviewDecisionNotProven">真实 2D LiDAR / ToF source、采购、安装、接线、标定、HIL entry 和 delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <div class="bundle-copy-row">
+          <button id="copyHardwareSensorProcurementReviewDecisionButton" type="button">复制 procurement review</button>
+          <button id="downloadHardwareSensorProcurementReviewDecisionButton" type="button">导出 procurement review</button>
+          <span id="hardwareSensorProcurementReviewDecisionCopyStatus" class="hint">whitelist-only phone-safe metadata</span>
+        </div>
+        <pre id="hardwareSensorProcurementReviewDecisionSafeCopy" class="safe-copy" aria-label="hardware_sensor_procurement_review_decision safe_copy">whitelist-only phone-safe metadata</pre>
+        <p id="hardwareSensorProcurementReviewDecisionHint" class="hint">
+          procurement review panel 只读展示并导出白名单 metadata；不暴露底层调试字段、完整资料、凭证或成功文案，也不改变 Start、Confirm Dropoff 或 Cancel gating。
+        </p>
+      </section>
+
       <section class="recovery-decision-panel" aria-labelledby="recoveryDecisionTitle">
         <div class="section-heading">
           <h2 id="recoveryDecisionTitle">恢复决策</h2>

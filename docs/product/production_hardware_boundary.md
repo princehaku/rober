@@ -78,6 +78,32 @@ unless the intake links a concrete source document; when no source exists it
 must be explicitly marked as product target pending validation rather than
 vendor-proven hardware.
 
+## Hardware Sensor Procurement Review Decision Gate
+
+`hardware_sensor_procurement_review_decision` is the follow-up fail-closed PC
+gate for the previous `hardware_sensor_procurement_intake` artifact or summary.
+It converts intake gaps into a review decision, blockers,
+`next_required_evidence`, `owner_handoff`, and `rerun_commands` so hardware,
+Robot diagnostics, mobile/web, and Product closeout can act on the same
+material state without weakening the evidence boundary.
+
+The review decision gate still starts from `docs/vendor/VENDOR_INDEX.md` only
+as the current vendor/source boundary. That index covers Orange Pi Zero 3,
+WAVE ROVER, UART/JSON control, firmware/vendor app references, and
+camera-related vendor material; it does not prove a project `2D LiDAR` or
+`ToF` SKU/source, purchase order, mounting bracket, wiring path, power budget,
+calibration artifact, HIL entry, Nav2/SLAM field pass, near-field safety pass,
+or delivery result.
+
+Supported decisions are
+`blocked_missing_hardware_sensor_procurement_intake`,
+`blocked_unsupported_hardware_sensor_procurement_intake`,
+`blocked_missing_procurement_materials`,
+`blocked_missing_mounting_wiring_calibration`, and
+`ready_for_procurement_review_not_proven`. Every decision must keep
+`software_proof`, `hardware_material_pending`, `not_proven`,
+`delivery_success=false`, and `primary_actions_enabled=false`.
+
 ## Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)
 
 - Target baseline combo: monocular camera + one 2D LiDAR + ToF safety ring.
