@@ -62,6 +62,7 @@ const MOBILE_FIELD_MATERIAL_INTAKE_BOUNDARY = "software_proof_docker_mobile_fiel
 const MOBILE_FIELD_MATERIAL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_mobile_field_material_review_decision_gate";
 const MOBILE_FIELD_MATERIAL_RETEST_REQUEST_BOUNDARY = "software_proof_docker_mobile_field_material_retest_request_gate";
 const HARDWARE_BASELINE_REVIEW_BOUNDARY = "software_proof_docker_hardware_baseline_review_gate";
+const HARDWARE_BASELINE_SOURCE_ALIGNMENT_BOUNDARY = "software_proof_docker_hardware_baseline_source_alignment_gate";
 const HARDWARE_SENSOR_PROCUREMENT_INTAKE_BOUNDARY = "software_proof_docker_hardware_sensor_procurement_intake_gate";
 const HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_BOUNDARY = "software_proof_docker_hardware_sensor_procurement_review_decision_gate";
 const HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_BOUNDARY = "software_proof_docker_hardware_sensor_procurement_execution_pack_gate";
@@ -146,6 +147,7 @@ const UNSAFE_MOBILE_FIELD_MATERIAL_INTAKE_TEXT = /(authorization|bearer|token|os
 const UNSAFE_MOBILE_FIELD_MATERIAL_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_MOBILE_FIELD_MATERIAL_RETEST_REQUEST_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw retest|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_HARDWARE_BASELINE_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw baseline|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
+const UNSAFE_HARDWARE_BASELINE_SOURCE_ALIGNMENT_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw baseline|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|control grant|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass|已\s*通过|可\s*发车|已\s*采购|已\s*hil|已\s*送达)/i;
 const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass|已通过|可发车|已采购|已 hil)/i;
 const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass|已\s*通过|可\s*发车|已\s*采购|已\s*hil|已\s*送达)/i;
 const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw execution pack|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass|已\s*通过|可\s*发车|已\s*采购|已\s*hil|已\s*送达)/i;
@@ -168,6 +170,7 @@ let latestMobileFieldMaterialIntake = null;
 let latestMobileFieldMaterialReviewDecision = null;
 let latestMobileFieldMaterialRetestRequest = null;
 let latestHardwareBaselineReview = null;
+let latestHardwareBaselineSourceAlignment = null;
 let latestHardwareSensorProcurementIntake = null;
 let latestHardwareSensorProcurementReviewDecision = null;
 let latestHardwareSensorProcurementExecutionPack = null;
@@ -448,6 +451,15 @@ function safeHardwareBaselineReviewText(value, fallback = "not_proven") {
   // 硬件基线评审给手机端只读查看，必须过滤 raw ROS、raw JSON、路径、凭证和成功暗示。
   const text = safeText(value, fallback);
   if (UNSAFE_HARDWARE_BASELINE_REVIEW_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeHardwareBaselineSourceAlignmentText(value, fallback = "not_proven") {
+  // 来源对齐摘要只展示产品/供应商边界结论，命中 raw vendor、串口、路径或成功暗示时降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_HARDWARE_BASELINE_SOURCE_ALIGNMENT_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -6496,6 +6508,157 @@ function hardwareBaselineReviewFromStatus(status, readiness, diagnostics) {
   };
 }
 
+function hardwareBaselineSourceAlignmentCandidate(status, readiness, diagnostics) {
+  // source alignment 和 baseline review 同属硬件首屏，只读消费多层 diagnostics/status 安全摘要。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.hardware_baseline_source_alignment,
+    status?.hardware_baseline_source_alignment_summary,
+    readiness?.hardware_baseline_source_alignment,
+    readiness?.hardware_baseline_source_alignment_summary,
+    diagnostics?.hardware_baseline_source_alignment,
+    diagnostics?.hardware_baseline_source_alignment_summary,
+    diagnosticsReadiness.hardware_baseline_source_alignment,
+    diagnosticsReadiness.hardware_baseline_source_alignment_summary,
+    diagnosticsSummary.hardware_baseline_source_alignment,
+    diagnosticsSummary.hardware_baseline_source_alignment_summary,
+    nestedDiagnosticsSummary.hardware_baseline_source_alignment,
+    nestedDiagnosticsSummary.hardware_baseline_source_alignment_summary,
+    nestedDiagnosticsInnerSummary.hardware_baseline_source_alignment,
+    nestedDiagnosticsInnerSummary.hardware_baseline_source_alignment_summary,
+    statusDiagnosticsSummary.hardware_baseline_source_alignment,
+    statusDiagnosticsSummary.hardware_baseline_source_alignment_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function hardwareBaselineSourceAlignmentNotProvenList(value) {
+  // 对齐通过软件门禁也不能替代真实传感器、安装、标定、串口/HIL 或真实手机验收。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实硬件基线来源对齐",
+    "真实 2D LiDAR SKU/source/receipt",
+    "真实 ToF SKU/source/receipt",
+    "真实 vendor/source material review",
+    "真实 mounting/wiring/calibration material",
+    "真实 HIL entry evidence",
+    "真实 Nav2/fixed-route",
+    "真实 route/elevator field pass",
+    "真实 dropoff completion",
+    "真实 cancel completion",
+    "delivery success",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 18);
+}
+
+function hardwareBaselineSourceAlignmentSummaryText(value, fallback) {
+  // 默认硬件集、目标传感器和缺口字段可能是数组/对象；这里只拼接脱敏短摘要。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeHardwareBaselineSourceAlignmentText(
+        item?.safe_phone_copy || item?.summary || item?.name || item?.owner ||
+          item?.material || item?.boundary || item?.status || item?.state ||
+          item?.source || item?.target || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.reason || value.owner || value.material || value.boundary || value.source ||
+      value.target || value.step;
+    if (direct) {
+      return safeHardwareBaselineSourceAlignmentText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeHardwareBaselineSourceAlignmentText(key, "");
+        const copy = hardwareBaselineSourceAlignmentSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safeHardwareBaselineSourceAlignmentText(value, fallback);
+}
+
+function hardwareBaselineSourceAlignmentFromStatus(status, readiness, diagnostics) {
+  const provided = hardwareBaselineSourceAlignmentCandidate(status, readiness, diagnostics) || {};
+  const defaultHardwareSet = provided.default_hardware_set_summary || provided.default_hardware_set ||
+    provided.default_hardware || provided.hardware_set_summary;
+  const targetSensorBaseline = provided.target_sensor_baseline_summary ||
+    provided.target_sensor_baseline || provided.sensor_baseline_summary || provided.sensor_baseline;
+  const vendorSourceBoundary = provided.vendor_source_boundary || provided.vendor_boundary ||
+    provided.source_boundary || provided.vendor_coverage_summary;
+  const missingAlignmentItems = provided.missing_alignment_items ||
+    provided.missing_alignment_summary || provided.missing_items || provided.blockers ||
+    provided.blocker_summary;
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.hardware_baseline_source_alignment_summary.v1",
+    source_schema: provided.source_schema || "trashbot.hardware_baseline_source_alignment.v1",
+    schema_version: 1,
+    alignment_status: safeHardwareBaselineSourceAlignmentText(
+      provided.alignment_status || provided.overall_status || provided.status,
+      "hardware_baseline_source_alignment_not_proven",
+    ),
+    default_hardware_set_summary: hardwareBaselineSourceAlignmentSummaryText(
+      defaultHardwareSet,
+      "default_hardware_set=小车底盘、上位板、随身 WiFi、摄像头、麦克风、喇叭；source alignment=not_proven",
+    ),
+    target_sensor_baseline_summary: hardwareBaselineSourceAlignmentSummaryText(
+      targetSensorBaseline,
+      "target_sensor_baseline=单目摄像头 + 2D LiDAR + ToF safety ring；source material=not_proven",
+    ),
+    vendor_source_boundary: hardwareBaselineSourceAlignmentSummaryText(
+      vendorSourceBoundary,
+      "vendor_source_boundary=docs/vendor/VENDOR_INDEX.md local vendor materials only",
+    ),
+    missing_alignment_items: hardwareBaselineSourceAlignmentSummaryText(
+      missingAlignmentItems,
+      "missing_alignment_items=2D LiDAR / ToF source、receipt、安装、接线、标定、HIL entry material pending",
+    ),
+    safe_evidence_ref: safeHardwareBaselineSourceAlignmentText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "evidence_ref=not_proven",
+    ),
+    safe_phone_copy: safeHardwareBaselineSourceAlignmentText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "hardware_baseline_source_alignment 只读摘要缺失；手机端保持 not_proven 和主操作关闭。",
+    ),
+    recovery_hint: safeHardwareBaselineSourceAlignmentText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由硬件 owner 按 docs/vendor/VENDOR_INDEX.md 和产品硬件边界补齐 source alignment 材料。",
+    ),
+    evidence_boundary: safeHardwareBaselineSourceAlignmentText(
+      provided.evidence_boundary,
+      HARDWARE_BASELINE_SOURCE_ALIGNMENT_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: hardwareBaselineSourceAlignmentNotProvenList(provided),
+  };
+}
+
 function hardwareSensorProcurementIntakeCandidate(status, readiness, diagnostics) {
   // intake 只读取后端已经脱敏的 summary，兼容 status、phone_readiness 和 diagnostics 多层挂载。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -8720,6 +8883,79 @@ function renderHardwareBaselineReview(status) {
   $("hardwareBaselineReviewHint").textContent = summary.recovery_hint;
 }
 
+function ensureHardwareBaselineSourceAlignmentPanel() {
+  // 不改 index.html；把来源对齐 panel 插在硬件基线评审后，保持硬件首屏阅读顺序。
+  let panel = $("hardwareBaselineSourceAlignmentPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("hardwareBaselineReviewTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "hardwareBaselineSourceAlignmentPanel";
+  panel.className = "hardware-baseline-source-alignment-panel";
+  panel.setAttribute("aria-labelledby", "hardwareBaselineSourceAlignmentTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="hardwareBaselineSourceAlignmentTitle">硬件基线来源对齐</h2>
+      <span id="hardwareBaselineSourceAlignmentBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="hardwareBaselineSourceAlignmentCopy" class="message">
+      hardware_baseline_source_alignment 只读展示 alignment status、default hardware set、target sensor baseline、vendor/source boundary、missing alignment items 和 safe evidence_ref。
+    </p>
+    <dl class="hardware-baseline-source-alignment-grid">
+      <div><dt>Alignment Status</dt><dd id="hardwareBaselineSourceAlignmentStatus">hardware_baseline_source_alignment_not_proven</dd></div>
+      <div><dt>Default Hardware Set</dt><dd id="hardwareBaselineSourceAlignmentDefaultSet">default_hardware_set=not_proven</dd></div>
+      <div><dt>Target Sensor Baseline</dt><dd id="hardwareBaselineSourceAlignmentTargetBaseline">target_sensor_baseline=not_proven</dd></div>
+      <div><dt>Vendor / Source Boundary</dt><dd id="hardwareBaselineSourceAlignmentVendorBoundary">docs/vendor/VENDOR_INDEX.md local vendor materials only</dd></div>
+      <div><dt>Missing Alignment Items</dt><dd id="hardwareBaselineSourceAlignmentMissingItems">missing_alignment_items=not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="hardwareBaselineSourceAlignmentEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Control Boundary</dt><dd id="hardwareBaselineSourceAlignmentControls">delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="hardwareBaselineSourceAlignmentBoundary">software_proof_docker_hardware_baseline_source_alignment_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="hardwareBaselineSourceAlignmentNotProven">真实 2D LiDAR / ToF source、安装、接线、标定、HIL entry 和 delivery success 未证明。</dd></div>
+    </dl>
+    <div class="bundle-copy-row">
+      <button id="copyHardwareBaselineSourceAlignmentButton" type="button">复制 baseline source alignment</button>
+      <button id="downloadHardwareBaselineSourceAlignmentButton" type="button">导出 baseline source alignment</button>
+      <span id="hardwareBaselineSourceAlignmentCopyStatus" class="hint">whitelist-only phone-safe metadata</span>
+    </div>
+    <pre id="hardwareBaselineSourceAlignmentSafeCopy" class="safe-copy" aria-label="hardware_baseline_source_alignment safe_copy">whitelist-only phone-safe metadata</pre>
+    <p id="hardwareBaselineSourceAlignmentHint" class="hint">
+      source alignment panel 只读展示并导出白名单 metadata；不复制 raw vendor docs、raw JSON、本机路径、serial/UART path、credential、完整 artifact 或 success/control 文案，也不改变 Start、Confirm Dropoff 或 Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderHardwareBaselineSourceAlignment(status) {
+  const panel = ensureHardwareBaselineSourceAlignmentPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = hardwareBaselineSourceAlignmentFromStatus(status, readiness, latestDiagnostics);
+  latestHardwareBaselineSourceAlignment = summary;
+  const badge = $("hardwareBaselineSourceAlignmentBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 source alignment" : "source alignment not_proven";
+  $("hardwareBaselineSourceAlignmentCopy").textContent = summary.safe_phone_copy;
+  $("hardwareBaselineSourceAlignmentStatus").textContent = summary.alignment_status;
+  $("hardwareBaselineSourceAlignmentDefaultSet").textContent = summary.default_hardware_set_summary;
+  $("hardwareBaselineSourceAlignmentTargetBaseline").textContent = summary.target_sensor_baseline_summary;
+  $("hardwareBaselineSourceAlignmentVendorBoundary").textContent = summary.vendor_source_boundary;
+  $("hardwareBaselineSourceAlignmentMissingItems").textContent = summary.missing_alignment_items;
+  $("hardwareBaselineSourceAlignmentEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("hardwareBaselineSourceAlignmentControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("hardwareBaselineSourceAlignmentBoundary").textContent = summary.evidence_boundary;
+  $("hardwareBaselineSourceAlignmentNotProven").textContent = summary.not_proven.join("、");
+  $("hardwareBaselineSourceAlignmentHint").textContent = summary.recovery_hint;
+}
+
 function renderHardwareSensorProcurementIntake(status) {
   const readiness = readinessFromStatus(status);
   const summary = hardwareSensorProcurementIntakeFromStatus(status, readiness, latestDiagnostics);
@@ -9556,6 +9792,36 @@ function hardwareBaselineReviewCopyPayload(summary) {
     safe_phone_copy: source.safe_phone_copy,
     recovery_hint: source.recovery_hint,
     evidence_boundary: HARDWARE_BASELINE_REVIEW_BOUNDARY,
+    not_proven: source.not_proven,
+  };
+}
+
+function hardwareBaselineSourceAlignmentCopyPayload(summary) {
+  // source alignment copy/export 只保留白名单摘要，避免 raw vendor docs 或串口路径进入手机交接。
+  const source = summary?.schema
+    ? summary
+    : hardwareBaselineSourceAlignmentFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  return {
+    schema: "trashbot.hardware_baseline_source_alignment_copy.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    hardware_baseline_source_alignment_schema: source.schema,
+    source_schema: source.source_schema,
+    alignment_status: source.alignment_status,
+    default_hardware_set_summary: source.default_hardware_set_summary,
+    target_sensor_baseline_summary: source.target_sensor_baseline_summary,
+    vendor_source_boundary: source.vendor_source_boundary,
+    missing_alignment_items: source.missing_alignment_items,
+    safe_evidence_ref: source.safe_evidence_ref,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    safe_phone_copy: source.safe_phone_copy,
+    recovery_hint: source.recovery_hint,
+    evidence_boundary: HARDWARE_BASELINE_SOURCE_ALIGNMENT_BOUNDARY,
     not_proven: source.not_proven,
   };
 }
@@ -10891,6 +11157,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const hardwareBaselineSourceAlignment = hardwareBaselineSourceAlignmentFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const hardwareSensorProcurementIntake = hardwareSensorProcurementIntakeFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -10941,6 +11212,7 @@ function renderDiagnosticsSummary(payload) {
     ["mobile_field_material_review_decision", mobileFieldMaterialReviewDecision.review_decision],
     ["mobile_field_material_retest_request", mobileFieldMaterialRetestRequest.source_review_decision],
     ["hardware_baseline_review", hardwareBaselineReview.review_status],
+    ["hardware_baseline_source_alignment", hardwareBaselineSourceAlignment.alignment_status],
     ["hardware_sensor_procurement_intake", hardwareSensorProcurementIntake.procurement_status],
     ["hardware_sensor_procurement_review_decision", hardwareSensorProcurementReviewDecision.review_decision],
     ["hardware_sensor_procurement_execution_pack", hardwareSensorProcurementExecutionPack.execution_pack_status],
@@ -11017,6 +11289,7 @@ function renderOfflineFailure() {
   renderMobileFieldMaterialReviewDecision({});
   renderMobileFieldMaterialRetestRequest({});
   renderHardwareBaselineReview({});
+  renderHardwareBaselineSourceAlignment({});
   renderHardwareSensorProcurementIntake({});
   renderHardwareSensorProcurementReviewDecision({});
   renderHardwareSensorProcurementExecutionPack({});
@@ -11071,6 +11344,7 @@ function renderStatus(status) {
   renderMobileFieldMaterialReviewDecision(status);
   renderMobileFieldMaterialRetestRequest(status);
   renderHardwareBaselineReview(status);
+  renderHardwareBaselineSourceAlignment(status);
   renderHardwareSensorProcurementIntake(status);
   renderHardwareSensorProcurementReviewDecision(status);
   renderHardwareSensorProcurementExecutionPack(status);
@@ -11302,6 +11576,7 @@ async function openDiagnostics() {
     renderMobileFieldMaterialReviewDecision(latestStatus || {});
     renderMobileFieldMaterialRetestRequest(latestStatus || {});
     renderHardwareBaselineReview(latestStatus || {});
+    renderHardwareBaselineSourceAlignment(latestStatus || {});
     renderHardwareSensorProcurementIntake(latestStatus || {});
     renderHardwareSensorProcurementReviewDecision(latestStatus || {});
     renderHardwareSensorProcurementExecutionPack(latestStatus || {});
@@ -11366,6 +11641,7 @@ async function submitAction(actionName) {
 
 function wireEvents() {
   $("diagnosticsButton").addEventListener("click", openDiagnostics);
+  ensureHardwareBaselineSourceAlignmentPanel();
   ensureHardwareSensorProcurementExecutionPackPanel();
   ensureHardwareSensorProcurementReceiptIntakePanel();
   ensureRouteTaskTerminalCompletionRehearsalPanel();
@@ -11502,6 +11778,34 @@ function wireEvents() {
     downloadJsonPackage("hardware_baseline_review_copy.json", payload);
     $("hardwareBaselineReviewCopyStatus").textContent =
       "已导出 hardware baseline whitelist-only JSON。";
+  });
+  $("copyHardwareBaselineSourceAlignmentButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(
+      hardwareBaselineSourceAlignmentCopyPayload(latestHardwareBaselineSourceAlignment || {}),
+      null,
+      2,
+    );
+    $("hardwareBaselineSourceAlignmentSafeCopy").textContent = payload;
+    // source alignment copy 只服务硬件来源交接；剪贴板失败时仍保留页面内手动复制文本。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("hardwareBaselineSourceAlignmentCopyStatus").textContent =
+        "已复制 baseline source alignment phone-safe metadata。";
+    } catch (_error) {
+      $("hardwareBaselineSourceAlignmentCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadHardwareBaselineSourceAlignmentButton").addEventListener("click", () => {
+    const payload = JSON.stringify(
+      hardwareBaselineSourceAlignmentCopyPayload(latestHardwareBaselineSourceAlignment || {}),
+      null,
+      2,
+    );
+    $("hardwareBaselineSourceAlignmentSafeCopy").textContent = payload;
+    downloadJsonPackage("hardware_baseline_source_alignment_copy.json", payload);
+    $("hardwareBaselineSourceAlignmentCopyStatus").textContent =
+      "已导出 baseline source alignment whitelist-only JSON。";
   });
   $("copyHardwareSensorProcurementIntakeButton").addEventListener("click", async () => {
     const payload = JSON.stringify(

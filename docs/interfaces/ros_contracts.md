@@ -873,6 +873,58 @@ cursor updates, persistence updates, terminal ACK, Nav2 trigger, HIL, hardware
 action, or delivery-success behavior, and it 不证明真实硬件材料、真实传感器、真实
 Nav2/fixed-route、真实 HIL 或 delivery success。
 
+Operator diagnostics may also expose `hardware_baseline_source_alignment` and
+the alias `hardware_baseline_source_alignment_summary` from an explicit
+`hardware_baseline_source_alignment_ref`,
+`TRASHBOT_HARDWARE_BASELINE_SOURCE_ALIGNMENT`,
+`TRASHBOT_HARDWARE_BASELINE_SOURCE_ALIGNMENT_SUMMARY`, `latest_status`, or an
+already sanitized diagnostics source. The source JSON must use
+`schema=trashbot.hardware_baseline_source_alignment.v1` or
+`schema=trashbot.hardware_baseline_source_alignment_summary.v1` with
+`evidence_boundary=software_proof_docker_hardware_baseline_source_alignment_gate`.
+If the source is already a Robot diagnostics summary wrapper, it must point back
+to the same source schema/evidence boundary; the Hardware gate `--summary-output`
+shape is also accepted when it preserves
+`source_schema=trashbot.hardware_baseline_source_alignment.v1` and the same
+`evidence_boundary` even if it omits `source_evidence_boundary`. This field is metadata-only Robot
+diagnostics support for consuming a Hardware-owned baseline/source-alignment
+artifact or summary. It may expose only the summary schema/evidence boundary,
+source schema/evidence boundary, `source_contract`, `alignment_status`,
+`source_alignment_status`, `hardware_material_status=hardware_material_pending`,
+`blockers`, `baseline_source_summary`, `default_hardware_set_summary`,
+`target_sensor_baseline_summary`, `vendor_source_boundary`,
+`missing_alignment_items`, `source_inventory_summary`, `unresolved_sources`,
+safe evidence ref, `owner_handoff`,
+`next_required_evidence`, `operator_next_steps`, `robot_diagnostics_summary`,
+`not_proven`, and conservative false fields including
+`source_alignment_reviewed=false`, `sensor_procurement_completed=false`,
+`sensor_installed_on_robot=false`, `sensor_wiring_verified=false`,
+`sensor_power_budget_verified=false`, `route_elevator_field_pass=false`,
+`nav2_fixed_route_run=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`. It is not a `trashbot.remote.v1`
+command/status/ACK envelope, not an ACK POST, not remote control authorization,
+not a cursor or persistence instruction, not a terminal ACK, not a Nav2 or
+fixed-route trigger, not a hardware action, not HIL, and not delivery success.
+Diagnostics consumers must treat it as fence-only metadata:
+`metadata_only=true`, `alignment_status.verdict=not_proven`,
+`alignment_status.evidence_source=software_proof`, `hardware_material_pending=true`,
+`collect_triggered=false`, `dropoff_triggered=false`, `cancel_triggered=false`,
+`ack_post_allowed=false`, `remote_ack_allowed=false`,
+`cursor_updates_allowed=false`, `persistence_updates_allowed=false`,
+`terminal_ack_allowed=false`, `nav2_triggered=false`, `hil_pass=false`, and
+`production_ready=false` remain required even when a source-alignment artifact
+is present. Raw paths, credentials, serial/UART/baud details, hardware detail,
+raw ACK payloads, raw command/status envelopes, WAVE ROVER details, success
+copy, control copy, field-pass wording, and traceback content must not enter the
+diagnostics summary. Missing, unreadable, bad JSON, unsupported-schema,
+boundary-mismatch, `delivery_success=true`, `primary_actions_enabled=true`,
+hardware/control/HIL/field-pass claims, or success wording sources remain
+blocked/not_proven. The field does not change `/api/collect`,
+`POST /api/dropoff/confirm`, `POST /api/cancel`, command, ACK, remote control,
+cursor updates, persistence updates, terminal ACK, Nav2 trigger, HIL, hardware
+action, or delivery-success behavior, and it 不证明真实硬件材料来源、真实传感器、
+真实接线/供电、真实 Nav2/fixed-route、真实 HIL 或 delivery success。
+
 Operator diagnostics may also expose `hardware_sensor_procurement_intake` and
 the alias `hardware_sensor_procurement_intake_summary` from an explicit
 `hardware_sensor_procurement_intake_ref`,

@@ -8,6 +8,18 @@
 
 ## 2026-05-16 系列
 
+更新时间：2026-05-16 17:25 Asia/Shanghai。
+
+### 2026-05-16 17-18｜hardware-baseline-source-alignment｜O1 硬件基线来源对齐 software proof，硬件协议可信底盘由约 73% 上调到约 74%，手机体验由约 86% 上调到约 87%
+
+`sprints/2026.05.16_17-18_hardware-baseline-source-alignment/` 完成 `software_proof_docker_hardware_baseline_source_alignment_gate`：Hardware worker 新增 `pc-tools/evidence/hardware_baseline_source_alignment_gate.py` 与 `pc-tools/evidence/test_hardware_baseline_source_alignment_gate.py`，更新 `pc-tools/README.md` 与 `docs/product/production_hardware_boundary.md`。gate 读取 `docs/product/production_hardware_boundary.md` 与 `docs/vendor/VENDOR_INDEX.md`，输出 `trashbot.hardware_baseline_source_alignment.v1` / `trashbot.hardware_baseline_source_alignment_summary.v1`，分离 default hardware set、target sensor baseline、vendor source boundary 和 missing alignment items；保留 `hardware_material_pending`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。Hardware worker 已读 `AGENTS.md`、`docs/vendor/VENDOR_INDEX.md`、WAVE ROVER `json_cmd.h` 与 `ugv_rpi/config.yaml`，结论是 local vendor coverage 不证明项目 2D LiDAR / ToF 已采购、安装、接线、标定、HIL 或 field pass。Task A 验证输出 py_compile passed、unittest `Ran 5 tests in 0.005s OK`、CLI `--help` passed、required `rg` passed、scoped `git diff --check` passed；额外 `--once-json` live docs 输出 `overall_status=hardware_baseline_source_aligned_not_proven`、`missing_alignment_items=[]`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+Robot worker 更新 `operator_gateway_diagnostics.py`、`test_operator_gateway_diagnostics.py` 与 `docs/interfaces/ros_contracts.md`，新增 `hardware_baseline_source_alignment` / `_summary` diagnostics metadata-only consumer，支持 explicit ref、env、latest_status、diagnostics nested、direct artifact 和 summary output，并透传 `default_hardware_set_summary`、`target_sensor_baseline_summary`、`vendor_source_boundary`、`missing_alignment_items`。Task B 验证输出 py_compile passed、diagnostics unittest `Ran 106 tests in 0.117s OK`、required `rg` passed、scoped `git diff --check` passed；中间一次 unittest 因旧断言全局禁止 WAVE ROVER，已改为只在 unsafe blocked summary 限制 raw hardware detail。
+
+Full-stack worker 更新 `mobile/web/app.js`、`styles.css`、`fixtures/status.json`、`test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增“硬件基线来源对齐”只读 panel，copy/export whitelist-only，Start / Confirm Dropoff / Cancel gating 不变。Task C 验证输出 mobile unittest `Ran 8 tests ... OK`、`node --check mobile/web/app.js` passed、required `rg` passed、scoped `git diff --check` passed。Product closeout 更新 sprint 留档、`OKR.md` 和本日志，required `rg` 与 closeout scoped `git diff --check` 均通过。
+
+该证据只支持 Objective 1 从约 73% 保守上调到约 74%，Objective 4 从约 86% 保守上调到约 87%。Objective 1 的理由是 PR #5 review 的默认硬件集 / mandatory sensor baseline 矛盾风险与传感器 source attribution 风险已被转成可重复 gate、Robot metadata-only consumer 和 phone-safe summary，能防止未证实硬件假设进入 bringup/HIL 计划。Objective 4 的理由是 mobile/web 现在能给普通用户和现场支持展示同一硬件基线缺口解释，但仍是只读 software proof。Objective 5 保持约 66%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；not real Objective 5 external proof。本轮不证明真实 WAVE ROVER/UART/Orange Pi 串口、`T=1001` feedback、真实 2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、真实手机设备/browser、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、delivery success、HIL 或 Objective 5 external proof。
+
 更新时间：2026-05-16 16:19 Asia/Shanghai。
 
 ### 2026-05-16 16-17｜route-task-terminal-completion-rehearsal｜O2/O3 任务终态复账 software proof，任务闭环与固定路线均由约 78% 上调到约 79%，手机体验由约 85% 上调到约 86%

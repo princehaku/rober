@@ -234,6 +234,26 @@ python3 pc-tools/evidence/hardware_baseline_review_gate.py --once-json
 
 该 gate 明确责任边界：`2D LiDAR` 是 SLAM/Nav2 主链 product baseline / pending material；`monocular` 只承接电梯门/目标楼层语义证据；`ToF` 是 near-field safety gate，不是主建图输入。缺 production boundary、缺任一责任短语、`delivery_success=true`、`primary_actions_enabled=true`、`LiDAR field pass`、`ToF field pass` 或 HIL 成功断言都会 fail closed。该结果只证明 PC/local/Docker 能把产品硬件基线转成 autonomy responsibility summary，不证明真实 LiDAR/ToF field pass、真实 monocular 语义通过、真实 SLAM/Nav2 field run、HIL 或 delivery_success。
 
+## hardware_baseline_source_alignment
+
+`pc-tools/evidence/hardware_baseline_source_alignment_gate.py` 只读 `docs/product/production_hardware_boundary.md` 和 `docs/vendor/VENDOR_INDEX.md`，把默认硬件集、Navigation/Sensing target baseline、vendor/source coverage 和 LiDAR/ToF 缺口转成可重复 PC evidence gate：
+
+```bash
+python3 pc-tools/evidence/hardware_baseline_source_alignment_gate.py \
+  --output /tmp/hardware_baseline_source_alignment.json \
+  --summary-output /tmp/hardware_baseline_source_alignment_summary.json
+```
+
+需要直接给 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/hardware_baseline_source_alignment_gate.py --once-json
+```
+
+输出 artifact 使用 `schema=trashbot.hardware_baseline_source_alignment.v1`，summary 使用 `schema=trashbot.hardware_baseline_source_alignment_summary.v1`，证据边界固定为 `software_proof_docker_hardware_baseline_source_alignment_gate`。核心字段包括 `default_hardware_set_summary`、`target_sensor_baseline_summary`、`vendor_source_boundary`、`missing_alignment_items`、`hardware_material_pending`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+该 gate 明确采用 `docs/vendor/VENDOR_INDEX.md` 及其本地 vendor coverage：Orange Pi Zero 3、WAVE ROVER、UART newline-delimited JSON、WAVE ROVER ESP32 firmware/vendor app，以及 camera/tutorial material。这个 coverage 只说明当前资料边界，不证明项目 2D LiDAR 或 ToF SKU/source、采购、安装、接线、标定、HIL entry、Nav2/SLAM field pass、near-field safety pass 或 delivery success。缺 product boundary、缺 vendor index、缺关键 source alignment 语义、`delivery_success=true`、`primary_actions_enabled=true`、HIL 成功断言或 field-pass 成功断言都会 fail closed。
+
 ## hardware_sensor_procurement_intake
 
 `pc-tools/evidence/hardware_sensor_procurement_intake_gate.py` 是硬件采购/安装/标定材料进入 Autonomy 主链前的只读 intake gate。它接收 Hardware worker 维护的 sensor procurement artifact，并生成 Autonomy、Robot diagnostics 和 sprint 复核可消费的 summary：

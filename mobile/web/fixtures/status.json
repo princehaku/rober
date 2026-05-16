@@ -6,6 +6,47 @@
   "can_collect": false,
   "can_confirm_dropoff": false,
   "can_cancel": false,
+  "hardware_baseline_source_alignment": {
+    "schema": "trashbot.hardware_baseline_source_alignment.v1",
+    "summary_schema": "trashbot.hardware_baseline_source_alignment_summary.v1",
+    "schema_version": 1,
+    "alignment_status": "hardware_baseline_source_alignment_not_proven",
+    "default_hardware_set_summary": [
+      "default hardware set=mobile base + upper board + pocket WiFi + camera + microphone + speaker",
+      "2D LiDAR and ToF remain target sensor baseline material, not installed proof"
+    ],
+    "target_sensor_baseline_summary": [
+      "target sensor baseline=monocular camera + 2D LiDAR + ToF safety ring",
+      "baseline source material=not_proven"
+    ],
+    "vendor_source_boundary": "source boundary=docs/vendor/VENDOR_INDEX.md and local vendor references; phone copy never exports raw vendor material",
+    "missing_alignment_items": [
+      "2D LiDAR source / SKU / receipt material=not_proven",
+      "ToF source / SKU / receipt material=not_proven",
+      "installation / wiring / calibration / HIL entry material=not_proven"
+    ],
+    "safe_evidence_ref": "hardware_baseline_source_alignment_fixture_20260516_0001",
+    "safe_phone_copy": "硬件基线来源对齐只读展示默认硬件集、目标传感器基线、vendor/source 边界和缺失对齐项；这是 software proof only。",
+    "recovery_hint": "按 docs/vendor/VENDOR_INDEX.md 和 production hardware boundary 补齐 2D LiDAR / ToF 来源、收货、安装、接线、标定和 HIL entry 的脱敏材料。",
+    "evidence_boundary": "software_proof_docker_hardware_baseline_source_alignment_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 2D LiDAR SKU/source/receipt",
+      "真实 ToF SKU/source/receipt",
+      "真实 vendor/source material review",
+      "真实 installation material",
+      "真实 wiring material",
+      "真实 calibration material",
+      "真实 HIL entry evidence",
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field pass",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success",
+      "Objective 5 external proof"
+    ]
+  },
   "hardware_sensor_procurement_execution_pack": {
     "schema": "trashbot.hardware_sensor_procurement_execution_pack.v1",
     "summary_schema": "trashbot.hardware_sensor_procurement_execution_pack_summary.v1",

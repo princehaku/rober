@@ -78,6 +78,37 @@ unless the intake links a concrete source document; when no source exists it
 must be explicitly marked as product target pending validation rather than
 vendor-proven hardware.
 
+## Hardware Baseline Source Alignment Gate
+
+`hardware_baseline_source_alignment` is the fail-closed PC gate for the product
+hardware boundary itself. It reads this document together with
+`docs/vendor/VENDOR_INDEX.md`, then emits
+`schema=trashbot.hardware_baseline_source_alignment.v1` and
+`schema=trashbot.hardware_baseline_source_alignment_summary.v1` under
+`software_proof_docker_hardware_baseline_source_alignment_gate`.
+
+The gate records the current default hardware set separately from the target
+Navigation/Sensing baseline. The default set remains WAVE ROVER, Orange Pi
+Zero 3, network access, monocular camera, microphone, and speaker/buzzer. The
+target baseline remains monocular camera + one 2D LiDAR + ToF safety ring, but
+the 2D LiDAR and ToF entries are `hardware_material_pending`, `not_proven`
+product targets until real source, procurement, mounting, wiring, calibration,
+and HIL-entry materials exist.
+
+The vendor/source boundary is intentionally narrow: `docs/vendor/VENDOR_INDEX.md`
+and the local files it references cover Orange Pi Zero 3, WAVE ROVER, UART
+newline-delimited JSON control, WAVE ROVER ESP32 firmware/vendor app material,
+mechanical references, and camera/tutorial material. That local vendor coverage
+does not prove a project 2D LiDAR or ToF SKU/source, purchase, installation,
+wiring, calibration, HIL entry, Nav2/SLAM field pass, near-field safety pass,
+or delivery result.
+
+The source-alignment summary must keep `hardware_material_pending`,
+`not_proven`, `delivery_success=false`, and `primary_actions_enabled=false`.
+Missing boundary/vendor files, missing source-alignment semantics, control
+release claims, HIL success claims, field-pass success claims, or delivery
+success claims must fail closed.
+
 ## Hardware Sensor Procurement Review Decision Gate
 
 `hardware_sensor_procurement_review_decision` is the follow-up fail-closed PC

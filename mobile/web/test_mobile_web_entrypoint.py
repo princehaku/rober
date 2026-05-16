@@ -14,6 +14,87 @@ class HardwareSensorProcurementExecutionPackMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")
 
+    def test_hardware_baseline_source_alignment_panel_is_read_only_and_exportable(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 来源对齐 panel 由 JS 放在 hardware baseline review 后，避免本轮越权改静态 index。
+        self.assertIn("hardwareBaselineSourceAlignmentTitle", app)
+        self.assertIn("硬件基线来源对齐", app)
+        self.assertIn("hardwareBaselineReviewTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("hardware-baseline-source-alignment-panel", styles)
+        self.assertIn("hardware-baseline-source-alignment-grid", styles)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 nested diagnostics summary。
+        self.assertIn("HARDWARE_BASELINE_SOURCE_ALIGNMENT_BOUNDARY", app)
+        self.assertIn("UNSAFE_HARDWARE_BASELINE_SOURCE_ALIGNMENT_TEXT", app)
+        self.assertIn("safeHardwareBaselineSourceAlignmentText", app)
+        self.assertIn("hardwareBaselineSourceAlignmentCandidate", app)
+        self.assertIn("hardwareBaselineSourceAlignmentFromStatus", app)
+        self.assertIn("hardware_baseline_source_alignment", app)
+        self.assertIn("hardware_baseline_source_alignment_summary", app)
+        self.assertIn("diagnosticsSummary.hardware_baseline_source_alignment", app)
+        self.assertIn("statusDiagnosticsSummary.hardware_baseline_source_alignment", app)
+        self.assertIn("alignment_status", app)
+        self.assertIn("default_hardware_set_summary", app)
+        self.assertIn("target_sensor_baseline_summary", app)
+        self.assertIn("vendor_source_boundary", app)
+        self.assertIn("missing_alignment_items", app)
+        self.assertIn("safe_evidence_ref", app)
+
+        # copy/export 只输出白名单字段，不能新增主操作请求或控制授权。
+        self.assertIn("hardwareBaselineSourceAlignmentCopyPayload", app)
+        self.assertIn("trashbot.hardware_baseline_source_alignment_copy.v1", app)
+        self.assertIn("copyHardwareBaselineSourceAlignmentButton", app)
+        self.assertIn("downloadHardwareBaselineSourceAlignmentButton", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"hardwareBaselineSourceAlignment.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须明确 software proof / not_proven 边界。
+        alignment = fixture["hardware_baseline_source_alignment"]
+        self.assertEqual(alignment["alignment_status"], "hardware_baseline_source_alignment_not_proven")
+        self.assertEqual(alignment["delivery_success"], False)
+        self.assertEqual(alignment["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_hardware_baseline_source_alignment_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("hardware_baseline_source_alignment", doc)
+        self.assertIn("硬件基线来源对齐", doc)
+
+    def test_hardware_baseline_source_alignment_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        alignment_text = json.dumps(
+            fixture["hardware_baseline_source_alignment"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 来源对齐 fixture 只允许脱敏 metadata，不允许 raw vendor、路径、串口或控制成功语义外流。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "serial/uart",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw vendor document",
+            "control grant",
+            "hil passed",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, alignment_text)
+
     def test_execution_pack_panel_is_read_only_and_exportable(self):
         app = self.read_web("app.js")
         styles = self.read_web("styles.css")

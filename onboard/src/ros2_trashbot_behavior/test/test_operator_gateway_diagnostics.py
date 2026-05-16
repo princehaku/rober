@@ -40,6 +40,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_mobile_field_material_review_decision,
     summarize_mobile_field_material_retest_request,
     summarize_hardware_baseline_review,
+    summarize_hardware_baseline_source_alignment,
     summarize_hardware_sensor_procurement_intake,
     summarize_hardware_sensor_procurement_review_decision,
     summarize_hardware_sensor_procurement_execution_pack,
@@ -5410,7 +5411,6 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                 ],
                 ensure_ascii=False,
             )
-
         self.assertEqual(env_summary["review_status"]["status"], "not_proven")
         self.assertEqual(diagnostics_summary["review_decision"], "ready_for_owner_handoff_not_proven")
         self.assertEqual(missing_summary["review_status"]["status"], "missing")
@@ -5992,6 +5992,352 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(summary["delivery_success"])
         self.assertFalse(summary["primary_actions_enabled"])
         self.assertIn("delivery_success", summary["not_proven"])
+
+    def test_diagnostics_payload_includes_hardware_baseline_source_alignment_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            alignment_path = Path(td) / "hardware_baseline_source_alignment.json"
+            alignment_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.hardware_baseline_source_alignment.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": "software_proof_docker_hardware_baseline_source_alignment_gate",
+                        "evidence_ref": "evidence://hardware-baseline-source-alignment-1",
+                        "overall_status": "hardware_baseline_source_aligned_not_proven",
+                        "hardware_baseline_source_alignment": "hardware_baseline_source_aligned_not_proven",
+                        "blockers": ["hardware_material_pending"],
+                        "baseline_source_summary": {
+                            "status": "hardware_material_pending",
+                            "owner": "Hardware",
+                        },
+                        "default_hardware_set_summary": {
+                            "source_section": "Default Hardware Set",
+                            "items": ["WAVE ROVER mobile chassis.", "Orange Pi Zero 3 upper computer."],
+                            "default_lidar_or_tof_included": False,
+                            "status": "loaded_not_proven",
+                        },
+                        "target_sensor_baseline_summary": {
+                            "target_combo": "monocular camera + one 2D LiDAR + ToF safety ring",
+                            "hardware_material_status": "hardware_material_pending",
+                            "evidence_status": "not_proven",
+                            "status": "loaded_not_proven",
+                        },
+                        "vendor_source_boundary": {
+                            "source_docs": {
+                                "boundary_doc": "docs/product/production_hardware_boundary.md",
+                                "vendor_index": "docs/vendor/VENDOR_INDEX.md",
+                            },
+                            "lidar_tof_source_boundary": "hardware_material_pending_not_proven",
+                        },
+                        "missing_alignment_items": [],
+                        "source_inventory_summary": [
+                            {"source": "vendor_index", "status": "aligned"}
+                        ],
+                        "unresolved_sources": ["real wiring proof"],
+                        "owner_handoff": ["Hardware owns source and baseline verification."],
+                        "next_required_evidence": ["real hardware baseline proof"],
+                        "operator_next_steps": ["Keep robot actions disabled until Hardware review."],
+                        "review_summary": {
+                            "schema": "trashbot.hardware_baseline_source_alignment_summary.v1",
+                            "source_schema": "trashbot.hardware_baseline_source_alignment.v1",
+                            "evidence_boundary": "software_proof_docker_hardware_baseline_source_alignment_gate",
+                            "status": "hardware_baseline_source_aligned_not_proven",
+                            "hardware_baseline_source_alignment": "hardware_baseline_source_aligned_not_proven",
+                            "safe_copy": (
+                                "Hardware baseline source alignment is metadata-only; software_proof only, "
+                                "delivery_success=false and primary_actions_enabled=false."
+                            ),
+                            "missing_alignment_items": [],
+                        },
+                        "not_proven": ["hardware_material_pending", "vendor_source_alignment_review"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "hardware_baseline_source_alignment": {"delivery_success": True},
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                hardware_baseline_source_alignment_ref=str(alignment_path),
+            )
+            summary = payload["hardware_baseline_source_alignment"]
+            summary_alias = payload["hardware_baseline_source_alignment_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertNotIn("hardware_baseline_source_alignment", payload["latest_status"])
+        self.assertEqual(summary["schema"], "trashbot.hardware_baseline_source_alignment_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_hardware_baseline_source_alignment_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.hardware_baseline_source_alignment.v1")
+        self.assertEqual(summary["source_schema_version"], 1)
+        self.assertEqual(
+            summary["source_contract"]["evidence_boundary"],
+            "software_proof_docker_hardware_baseline_source_alignment_gate",
+        )
+        self.assertEqual(
+            summary["alignment_status"]["status"],
+            "hardware_baseline_source_aligned_not_proven",
+        )
+        self.assertEqual(summary["alignment_status"]["verdict"], "not_proven")
+        self.assertEqual(summary["alignment_status"]["evidence_source"], "software_proof")
+        self.assertEqual(
+            summary["source_alignment_status"],
+            "hardware_baseline_source_aligned_not_proven",
+        )
+        self.assertEqual(summary["baseline_source_summary"]["owner"], "Hardware")
+        self.assertEqual(
+            summary["default_hardware_set_summary"]["status"],
+            "loaded_not_proven",
+        )
+        self.assertFalse(
+            summary["default_hardware_set_summary"]["default_lidar_or_tof_included"]
+        )
+        self.assertEqual(
+            summary["target_sensor_baseline_summary"]["target_combo"],
+            "monocular camera + one 2D LiDAR + ToF safety ring",
+        )
+        self.assertEqual(
+            summary["vendor_source_boundary"]["lidar_tof_source_boundary"],
+            "hardware_material_pending_not_proven",
+        )
+        self.assertEqual(summary["missing_alignment_items"], [])
+        self.assertEqual(summary["source_inventory_summary"][0]["source"], "vendor_index")
+        self.assertIn("real wiring proof", summary["unresolved_sources"])
+        self.assertIn("Hardware owns source and baseline verification.", summary["owner_handoff"])
+        self.assertIn("real hardware baseline proof", summary["next_required_evidence"])
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://hardware-baseline-source-alignment-1")
+        self.assertIn("software_proof", summary["not_proven"])
+        self.assertIn("vendor_source_alignment_review", summary["not_proven"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertTrue(summary["hardware_material_pending"])
+        self.assertFalse(summary["source_alignment_reviewed"])
+        self.assertFalse(summary["sensor_procurement_completed"])
+        self.assertFalse(summary["sensor_installed_on_robot"])
+        self.assertFalse(summary["sensor_wiring_verified"])
+        self.assertFalse(summary["sensor_power_budget_verified"])
+        self.assertFalse(summary["route_elevator_field_pass"])
+        self.assertFalse(summary["nav2_fixed_route_run"])
+        self.assertFalse(summary["dropoff_completion"])
+        self.assertFalse(summary["cancel_completion"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        # source alignment 是 metadata-only consumer，不能触发控制、ACK、cursor、Nav2、硬件或 HIL。
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["persistence_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["production_ready"])
+        self.assertIn("delivery_success=false", summary["robot_diagnostics_summary"]["safe_phone_copy"])
+        self.assertNotIn(str(alignment_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_hardware_baseline_source_alignment_env_nested_bad_json_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "hardware_baseline_source_alignment_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.hardware_baseline_source_alignment_summary.v1",
+                        "source_schema": "trashbot.hardware_baseline_source_alignment.v1",
+                        "evidence_boundary": "software_proof_docker_hardware_baseline_source_alignment_gate",
+                        "status": "hardware_baseline_source_aligned_not_proven",
+                        "hardware_baseline_source_alignment": "hardware_baseline_source_aligned_not_proven",
+                        "default_hardware_set_summary": {
+                            "status": "loaded_not_proven",
+                            "items": ["WAVE ROVER mobile chassis."],
+                            "default_lidar_or_tof_included": False,
+                        },
+                        "target_sensor_baseline_summary": {
+                            "status": "loaded_not_proven",
+                            "target_combo": "monocular camera + one 2D LiDAR + ToF safety ring",
+                        },
+                        "vendor_source_boundary": {
+                            "lidar_tof_source_boundary": "hardware_material_pending_not_proven",
+                            "source_docs": {"vendor_index": "docs/vendor/VENDOR_INDEX.md"},
+                        },
+                        "missing_alignment_items": [],
+                        "alignment_status": {
+                            "verdict": "not_proven",
+                            "evidence_source": "software_proof",
+                        },
+                        "robot_diagnostics_summary": {
+                            "safe_copy": "Hardware baseline source alignment is metadata-only; delivery_success=false.",
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_artifact = os.environ.get("TRASHBOT_HARDWARE_BASELINE_SOURCE_ALIGNMENT")
+            previous_summary = os.environ.get("TRASHBOT_HARDWARE_BASELINE_SOURCE_ALIGNMENT_SUMMARY")
+            os.environ.pop("TRASHBOT_HARDWARE_BASELINE_SOURCE_ALIGNMENT", None)
+            os.environ["TRASHBOT_HARDWARE_BASELINE_SOURCE_ALIGNMENT_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "hardware_baseline_source_alignment"
+                ]
+            finally:
+                if previous_artifact is None:
+                    os.environ.pop("TRASHBOT_HARDWARE_BASELINE_SOURCE_ALIGNMENT", None)
+                else:
+                    os.environ["TRASHBOT_HARDWARE_BASELINE_SOURCE_ALIGNMENT"] = previous_artifact
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_HARDWARE_BASELINE_SOURCE_ALIGNMENT_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_HARDWARE_BASELINE_SOURCE_ALIGNMENT_SUMMARY"] = previous_summary
+
+            diagnostics_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "hardware_baseline_source_alignment_summary": {
+                            "schema": "trashbot.hardware_baseline_source_alignment_summary.v1",
+                            "source_schema": "trashbot.hardware_baseline_source_alignment.v1",
+                            "evidence_boundary": "software_proof_docker_hardware_baseline_source_alignment_gate",
+                            "status": "hardware_baseline_source_aligned_not_proven",
+                            "hardware_baseline_source_alignment": "hardware_baseline_source_aligned_not_proven",
+                            "default_hardware_set_summary": {
+                                "status": "loaded_not_proven",
+                                "items": ["WAVE ROVER mobile chassis."],
+                                "default_lidar_or_tof_included": False,
+                            },
+                            "target_sensor_baseline_summary": {
+                                "status": "loaded_not_proven",
+                                "target_combo": "monocular camera + one 2D LiDAR + ToF safety ring",
+                            },
+                            "vendor_source_boundary": {
+                                "lidar_tof_source_boundary": "hardware_material_pending_not_proven",
+                                "source_docs": {"vendor_index": "docs/vendor/VENDOR_INDEX.md"},
+                            },
+                            "missing_alignment_items": [],
+                            "alignment_status": {
+                                "verdict": "not_proven",
+                                "evidence_source": "software_proof",
+                            },
+                            "robot_diagnostics_summary": {
+                                "safe_copy": "Hardware baseline source alignment is metadata-only; delivery_success=false.",
+                            },
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["hardware_baseline_source_alignment"]
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_hardware_baseline_source_alignment.json"
+            missing_summary = summarize_hardware_baseline_source_alignment(str(missing_path))
+
+            bad_json_path = Path(td) / "bad_hardware_baseline_source_alignment.json"
+            bad_json_path.write_text("{bad-json", encoding="utf-8")
+            bad_json_summary = summarize_hardware_baseline_source_alignment(str(bad_json_path))
+
+            unsupported_summary = summarize_hardware_baseline_source_alignment(
+                {
+                    "schema": "trashbot.hardware_baseline_review_gate.v1",
+                    "evidence_boundary": "software_proof_docker_hardware_baseline_review_gate",
+                    "safe_copy": "Unsupported source alignment is metadata-only; delivery_success=false.",
+                }
+            )
+            unsafe_summary = summarize_hardware_baseline_source_alignment(
+                {
+                    "schema": "trashbot.hardware_baseline_source_alignment.v1",
+                    "evidence_boundary": "software_proof_docker_hardware_baseline_source_alignment_gate",
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "raw_ack_payload": {"ack": "posted"},
+                    "serial_device": "/dev/ttyUSB0",
+                    "hardware_detail": "WAVE ROVER UART raw wiring",
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Hardware baseline source alignment confirms delivery success and ACK posted.",
+                    },
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    diagnostics_summary,
+                    missing_summary,
+                    bad_json_summary,
+                    unsupported_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+            unsafe_encoded = json.dumps(unsafe_summary, ensure_ascii=False)
+
+        self.assertEqual(
+            env_summary["alignment_status"]["status"],
+            "hardware_baseline_source_aligned_not_proven",
+        )
+        self.assertEqual(
+            diagnostics_summary["alignment_status"]["status"],
+            "hardware_baseline_source_aligned_not_proven",
+        )
+        self.assertEqual(env_summary["source_schema"], "trashbot.hardware_baseline_source_alignment.v1")
+        self.assertEqual(
+            env_summary["source_evidence_boundary"],
+            "software_proof_docker_hardware_baseline_source_alignment_gate",
+        )
+        self.assertEqual(
+            env_summary["vendor_source_boundary"]["lidar_tof_source_boundary"],
+            "hardware_material_pending_not_proven",
+        )
+        self.assertEqual(env_summary["missing_alignment_items"], [])
+        self.assertEqual(
+            missing_summary["alignment_status"]["status"],
+            "blocked_missing_hardware_baseline_source_alignment",
+        )
+        self.assertEqual(
+            bad_json_summary["alignment_status"]["status"],
+            "blocked_missing_hardware_baseline_source_alignment",
+        )
+        self.assertEqual(
+            unsupported_summary["alignment_status"]["status"],
+            "blocked_missing_hardware_baseline_source_alignment",
+        )
+        self.assertEqual(
+            unsafe_summary["alignment_status"]["status"],
+            "blocked_missing_hardware_baseline_source_alignment",
+        )
+        self.assertEqual(env_summary["alignment_status"]["evidence_source"], "software_proof")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertFalse(diagnostics_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["primary_actions_enabled"])
+        self.assertIn("blocked_missing_hardware_baseline_source_alignment", encoded)
+        self.assertIn("software_proof_docker_hardware_baseline_source_alignment_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("hardware_material_pending", encoded)
+        self.assertIn("metadata-only", encoded)
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("raw_ack_payload", encoded)
+        self.assertNotIn("WAVE ROVER", unsafe_encoded)
 
     def test_diagnostics_payload_includes_hardware_sensor_procurement_intake_summary(self):
         with tempfile.TemporaryDirectory() as td:

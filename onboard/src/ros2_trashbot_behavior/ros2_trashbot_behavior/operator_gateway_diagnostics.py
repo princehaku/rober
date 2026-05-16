@@ -234,6 +234,13 @@ MOBILE_FIELD_MATERIAL_RETEST_REQUEST_GATE = (
 HARDWARE_BASELINE_REVIEW_SCHEMA = "trashbot.hardware_baseline_review_gate.v1"
 HARDWARE_BASELINE_REVIEW_SUMMARY_SCHEMA = "trashbot.hardware_baseline_review_summary.v1"
 HARDWARE_BASELINE_REVIEW_GATE = "software_proof_docker_hardware_baseline_review_gate"
+HARDWARE_BASELINE_SOURCE_ALIGNMENT_SCHEMA = "trashbot.hardware_baseline_source_alignment.v1"
+HARDWARE_BASELINE_SOURCE_ALIGNMENT_SUMMARY_SCHEMA = (
+    "trashbot.hardware_baseline_source_alignment_summary.v1"
+)
+HARDWARE_BASELINE_SOURCE_ALIGNMENT_GATE = (
+    "software_proof_docker_hardware_baseline_source_alignment_gate"
+)
 HARDWARE_SENSOR_PROCUREMENT_INTAKE_SCHEMA = "trashbot.hardware_sensor_procurement_intake_gate.v1"
 HARDWARE_SENSOR_PROCUREMENT_INTAKE_LEGACY_SCHEMA = "trashbot.hardware_sensor_procurement_intake.v1"
 HARDWARE_SENSOR_PROCUREMENT_INTAKE_SUMMARY_SCHEMA = (
@@ -1066,6 +1073,42 @@ def _hardware_baseline_review_not_proven(review=None, summary_fragment=None):
         "wave_rover_motion",
         "real_serial_or_uart_feedback",
         "real_hil_pass",
+        "delivery_success",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _hardware_baseline_source_alignment_not_proven(alignment=None, summary_fragment=None):
+    # source alignment 只证明 Hardware 基线材料来源已被软件门禁整理；不能证明真实器件、接线或 HIL。
+    alignment = alignment if isinstance(alignment, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(alignment.get("not_proven"), list):
+        source_values.extend(alignment.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "not_proven",
+        "software_proof",
+        "hardware_baseline_source_alignment",
+        "vendor_source_alignment_review",
+        "hardware_material_pending",
+        "real_sensor_device_proof",
+        "sensor_procurement_completed",
+        "sensor_installed_on_robot",
+        "sensor_wiring_verified",
+        "sensor_power_budget_verified",
+        "real_nav2_fixed_route_run",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "dropoff_completion",
+        "cancel_completion",
         "delivery_success",
     )
     for item in list(source_values) + list(required):
@@ -2356,6 +2399,87 @@ def _default_hardware_baseline_review_summary(path, status="not_configured", rea
     }
 
 
+def _default_hardware_baseline_source_alignment_summary(
+    path,
+    status="blocked_missing_hardware_baseline_source_alignment",
+    read_error="",
+):
+    # 缺少 source alignment 时必须保持 blocked；Robot diagnostics 只显示材料边界，不放开动作链路。
+    return {
+        "schema": HARDWARE_BASELINE_SOURCE_ALIGNMENT_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": HARDWARE_BASELINE_SOURCE_ALIGNMENT_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source_contract": {
+            "schema": "",
+            "evidence_boundary": "",
+            "metadata_only": True,
+        },
+        "alignment_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": read_error or "hardware baseline source alignment is not configured",
+        },
+        "hardware_material_status": "hardware_material_pending",
+        "source_alignment_status": "blocked_missing_hardware_baseline_source_alignment",
+        "blockers": ["blocked_missing_hardware_baseline_source_alignment"],
+        "baseline_source_summary": {
+            "status": "blocked_missing_hardware_baseline_source_alignment",
+            "reason": "hardware baseline source alignment is not configured",
+        },
+        "default_hardware_set_summary": {},
+        "target_sensor_baseline_summary": {},
+        "vendor_source_boundary": {},
+        "missing_alignment_items": [],
+        "source_inventory_summary": [],
+        "unresolved_sources": [],
+        "owner_handoff": [],
+        "next_required_evidence": [],
+        "safe_evidence_ref": "",
+        "operator_next_steps": [],
+        "robot_diagnostics_summary": {
+            "safe_copy": (
+                "Hardware baseline source alignment is metadata-only; "
+                "software_proof only, delivery_success=false."
+            ),
+            "safe_phone_copy": (
+                "Hardware baseline source alignment is metadata-only; "
+                "software_proof only, delivery_success=false."
+            ),
+        },
+        "not_proven": _hardware_baseline_source_alignment_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "real_hardware_observed": False,
+        "hardware_material_pending": True,
+        "source_alignment_reviewed": False,
+        "sensor_procurement_completed": False,
+        "sensor_installed_on_robot": False,
+        "sensor_wiring_verified": False,
+        "sensor_power_budget_verified": False,
+        "route_elevator_field_pass": False,
+        "nav2_fixed_route_run": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _default_hardware_sensor_procurement_intake_summary(
     path,
     status="not_configured",
@@ -3101,6 +3225,38 @@ def _mobile_field_material_intake_has_unsafe_fields(value, key_path=""):
     return False
 
 
+def _hardware_baseline_source_alignment_has_unsafe_fields(value, key_path=""):
+    # 复用现场材料的防泄漏规则，并额外拦截硬件细节字段，防止 vendor/raw source 泄进 diagnostics。
+    if _mobile_field_material_intake_has_unsafe_fields(value, key_path):
+        return True
+    extra_key_fragments = (
+        "hardware_detail",
+        "hardware_details",
+        "raw_source",
+        "raw_vendor",
+        "private_source",
+        "field_pass",
+        "hil",
+        "control",
+        "ack_payload",
+    )
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            current_path = f"{key_path}.{key_text}" if key_path else key_text
+            if any(fragment in key_text for fragment in extra_key_fragments):
+                return True
+            if _hardware_baseline_source_alignment_has_unsafe_fields(item, current_path):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _hardware_baseline_source_alignment_has_unsafe_fields(item, key_path)
+            for item in value
+        )
+    return False
+
+
 def _route_task_field_run_evidence_kit_source_contract(value):
     # 支持直接消费 evidence kit，也支持消费 diagnostics/mobile 传来的 summary wrapper，但 wrapper 仍必须指向 kit schema。
     source_schema = str(value.get("schema") or "")
@@ -3229,6 +3385,42 @@ def _hardware_baseline_review_source_contract(value):
         source_schema = str(value.get("source_schema") or source_schema)
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
+
+
+def _hardware_baseline_source_alignment_source_contract(value):
+    # 支持直接 artifact 或已消毒 summary；summary wrapper 必须回指同一 source-alignment gate。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == HARDWARE_BASELINE_SOURCE_ALIGNMENT_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or HARDWARE_BASELINE_SOURCE_ALIGNMENT_SCHEMA)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _hardware_baseline_source_alignment_field(alignment, summary_fragment, key, default):
+    # Hardware gate 的 direct artifact 和 summary-output 都可作为来源；Robot 只复制白名单字段。
+    if key in alignment:
+        return alignment.get(key)
+    if key in summary_fragment:
+        return summary_fragment.get(key)
+    return default
+
+
+def _hardware_baseline_source_alignment_status(alignment, summary_fragment, status_source):
+    # direct artifact 要优先保留 gate 产出的对齐状态，避免被默认 pending 文案降级。
+    for value in (
+        status_source.get("status"),
+        alignment.get("status"),
+        alignment.get("overall_status"),
+        alignment.get("hardware_baseline_source_alignment"),
+        summary_fragment.get("status"),
+        summary_fragment.get("overall_status"),
+        summary_fragment.get("hardware_baseline_source_alignment"),
+    ):
+        text = str(value or "").strip()
+        if text:
+            return _redact_route_task_rehearsal_text(text)
+    return "hardware_material_pending"
 
 
 def _hardware_sensor_procurement_intake_source_contract(value):
@@ -8891,6 +9083,303 @@ def summarize_hardware_baseline_review(source):
     return summary
 
 
+def summarize_hardware_baseline_source_alignment(source):
+    """构建 hardware baseline source alignment 的 metadata-only diagnostics 摘要。"""
+    # Hardware PC gate 可能给 artifact、summary 或 diagnostics nested dict；Robot 侧只抽取白名单摘要。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_hardware_baseline_source_alignment_summary(
+        source_path,
+        read_error="hardware baseline source alignment is not configured",
+    )
+    if isinstance(source, dict):
+        alignment = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "alignment_status": {
+                        "status": "blocked_missing_hardware_baseline_source_alignment",
+                        "verdict": "not_proven",
+                        "evidence_source": "software_proof",
+                        "reason": "hardware baseline source alignment artifact missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Hardware baseline source alignment is missing; hardware_material_pending remains true.",
+                        "safe_phone_copy": "Hardware baseline source alignment is missing; hardware_material_pending remains true.",
+                    },
+                }
+            )
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                alignment = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading hardware baseline source alignment: {exc}"
+            )
+            summary.update(
+                {
+                    "alignment_status": {
+                        "status": "blocked_missing_hardware_baseline_source_alignment",
+                        "verdict": "not_proven",
+                        "evidence_source": "software_proof",
+                        "reason": safe_error,
+                    },
+                    "read_error": safe_error,
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Hardware baseline source alignment could not be read; hardware_material_pending remains true.",
+                        "safe_phone_copy": "Hardware baseline source alignment could not be read; hardware_material_pending remains true.",
+                    },
+                }
+            )
+            return summary
+
+    if not isinstance(alignment, dict):
+        summary.update(
+            {
+                "alignment_status": {
+                    "status": "blocked_missing_hardware_baseline_source_alignment",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware baseline source alignment JSON must be an object",
+                },
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Hardware baseline source alignment shape is invalid; hardware_material_pending remains true.",
+                    "safe_phone_copy": "Hardware baseline source alignment shape is invalid; hardware_material_pending remains true.",
+                },
+            }
+        )
+        return summary
+
+    # summary wrapper 和直接 artifact 都允许；所有可见字段都经过脱敏并强制保持 not_proven。
+    summary_fragment = {}
+    for candidate in (
+        alignment.get("hardware_baseline_source_alignment_summary"),
+        alignment.get("review_summary"),
+        alignment.get("robot_diagnostics_summary"),
+        alignment.get("diagnostics_summary"),
+        alignment.get("phone_safe_summary"),
+        alignment.get("mobile_readonly_summary"),
+        alignment.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+    source_schema, source_boundary = _hardware_baseline_source_alignment_source_contract(alignment)
+    status_source = (
+        alignment.get("alignment_status")
+        if isinstance(alignment.get("alignment_status"), dict)
+        else summary_fragment.get("alignment_status")
+        if isinstance(summary_fragment.get("alignment_status"), dict)
+        else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or alignment.get("safe_copy")
+        or alignment.get("safe_phone_copy")
+        or "Hardware baseline source alignment is metadata-only; software_proof only, delivery_success=false."
+    )
+    robot_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(summary_fragment.get(key) or "").strip():
+            robot_summary[key] = _redact_route_task_rehearsal_text(summary_fragment.get(key))
+    robot_summary["safe_copy"] = safe_copy
+    robot_summary["safe_phone_copy"] = safe_copy
+    baseline_source_summary = (
+        alignment.get("baseline_source_summary")
+        if isinstance(alignment.get("baseline_source_summary"), dict)
+        else summary_fragment.get("baseline_source_summary")
+        if isinstance(summary_fragment.get("baseline_source_summary"), dict)
+        else {"status": alignment.get("status") or summary_fragment.get("status") or "hardware_material_pending"}
+    )
+    source_alignment_status = _hardware_baseline_source_alignment_status(
+        alignment, summary_fragment, status_source
+    )
+    default_hardware_set_summary = _hardware_baseline_source_alignment_field(
+        alignment, summary_fragment, "default_hardware_set_summary", {}
+    )
+    target_sensor_baseline_summary = _hardware_baseline_source_alignment_field(
+        alignment, summary_fragment, "target_sensor_baseline_summary", {}
+    )
+    vendor_source_boundary = _hardware_baseline_source_alignment_field(
+        alignment, summary_fragment, "vendor_source_boundary", {}
+    )
+    missing_alignment_items = _hardware_baseline_source_alignment_field(
+        alignment, summary_fragment, "missing_alignment_items", []
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": alignment.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "source_contract": {
+                "schema": _redact_route_task_rehearsal_text(source_schema),
+                "evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "metadata_only": True,
+            },
+            "alignment_status": {
+                "status": source_alignment_status,
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or alignment.get("reason")
+                    or "hardware baseline source alignment consumed without real hardware evidence"
+                ),
+            },
+            "hardware_material_status": "hardware_material_pending",
+            "source_alignment_status": source_alignment_status,
+            "blockers": _safe_route_task_rehearsal_list(
+                alignment.get("blockers")
+                if isinstance(alignment.get("blockers"), list)
+                else summary_fragment.get("blockers")
+            )
+            or ["hardware_material_pending"],
+            "baseline_source_summary": _safe_pc_route_debug_value(baseline_source_summary),
+            "default_hardware_set_summary": _safe_pc_route_debug_value(
+                default_hardware_set_summary
+                if isinstance(default_hardware_set_summary, dict)
+                else {}
+            ),
+            "target_sensor_baseline_summary": _safe_pc_route_debug_value(
+                target_sensor_baseline_summary
+                if isinstance(target_sensor_baseline_summary, dict)
+                else {}
+            ),
+            "vendor_source_boundary": _safe_pc_route_debug_value(
+                vendor_source_boundary if isinstance(vendor_source_boundary, dict) else {}
+            ),
+            "missing_alignment_items": _safe_route_task_rehearsal_list(
+                missing_alignment_items if isinstance(missing_alignment_items, list) else []
+            ),
+            "source_inventory_summary": _safe_pc_route_debug_value(
+                alignment.get("source_inventory_summary")
+                if isinstance(alignment.get("source_inventory_summary"), list)
+                else summary_fragment.get("source_inventory_summary", [])
+            ),
+            "unresolved_sources": _safe_route_task_rehearsal_list(
+                alignment.get("unresolved_sources")
+                if isinstance(alignment.get("unresolved_sources"), list)
+                else summary_fragment.get("unresolved_sources")
+            ),
+            "owner_handoff": _safe_route_task_rehearsal_list(
+                alignment.get("owner_handoff")
+                if isinstance(alignment.get("owner_handoff"), list)
+                else summary_fragment.get("owner_handoff")
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                alignment.get("next_required_evidence")
+                if isinstance(alignment.get("next_required_evidence"), list)
+                else summary_fragment.get("next_required_evidence")
+            ),
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("safe_evidence_ref")
+                or summary_fragment.get("evidence_ref")
+                or alignment.get("safe_evidence_ref")
+                or alignment.get("evidence_ref", "")
+            ),
+            "operator_next_steps": _safe_route_task_rehearsal_list(
+                alignment.get("operator_next_steps")
+                if isinstance(alignment.get("operator_next_steps"), list)
+                else summary_fragment.get("operator_next_steps")
+            ),
+            "robot_diagnostics_summary": robot_summary,
+            "not_proven": _hardware_baseline_source_alignment_not_proven(
+                alignment, summary_fragment
+            ),
+            "read_error": "",
+            "metadata_only": True,
+            "real_hardware_observed": False,
+            "hardware_material_pending": True,
+            "source_alignment_reviewed": False,
+            "sensor_procurement_completed": False,
+            "sensor_installed_on_robot": False,
+            "sensor_wiring_verified": False,
+            "sensor_power_budget_verified": False,
+            "route_elevator_field_pass": False,
+            "nav2_fixed_route_run": False,
+            "dropoff_completion": False,
+            "cancel_completion": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    accepted_schemas = {
+        HARDWARE_BASELINE_SOURCE_ALIGNMENT_SCHEMA,
+        HARDWARE_BASELINE_SOURCE_ALIGNMENT_SUMMARY_SCHEMA,
+    }
+    if source_schema not in accepted_schemas or source_boundary != HARDWARE_BASELINE_SOURCE_ALIGNMENT_GATE:
+        summary.update(
+            {
+                "alignment_status": {
+                    "status": "blocked_missing_hardware_baseline_source_alignment",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware baseline source alignment schema or evidence boundary is unsupported",
+                },
+                "source_alignment_status": "blocked_missing_hardware_baseline_source_alignment",
+                "blockers": ["blocked_missing_hardware_baseline_source_alignment"],
+                "baseline_source_summary": {
+                    "status": "blocked_missing_hardware_baseline_source_alignment"
+                },
+                "default_hardware_set_summary": {},
+                "target_sensor_baseline_summary": {},
+                "vendor_source_boundary": {},
+                "missing_alignment_items": [],
+                "source_inventory_summary": [],
+                "unresolved_sources": [],
+                "owner_handoff": [],
+                "next_required_evidence": [],
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Hardware baseline source alignment is not a supported diagnostics source; no hardware or delivery result is proven.",
+                    "safe_phone_copy": "Hardware baseline source alignment is not a supported diagnostics source; no hardware or delivery result is proven.",
+                },
+            }
+        )
+        return summary
+
+    if (
+        _hardware_baseline_source_alignment_has_unsafe_fields(alignment)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "alignment_status": {
+                    "status": "blocked_missing_hardware_baseline_source_alignment",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware baseline source alignment contains unsafe fields or success/control claims",
+                },
+                "source_alignment_status": "blocked_missing_hardware_baseline_source_alignment",
+                "blockers": ["blocked_missing_hardware_baseline_source_alignment"],
+                "baseline_source_summary": {
+                    "status": "blocked_missing_hardware_baseline_source_alignment"
+                },
+                "default_hardware_set_summary": {},
+                "target_sensor_baseline_summary": {},
+                "vendor_source_boundary": {},
+                "missing_alignment_items": [],
+                "source_inventory_summary": [],
+                "unresolved_sources": [],
+                "owner_handoff": [],
+                "next_required_evidence": [],
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Hardware baseline source alignment was blocked because fields could expose control data or imply delivery success.",
+                    "safe_phone_copy": "Hardware baseline source alignment was blocked because fields could expose control data or imply delivery success.",
+                },
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_hardware_sensor_procurement_intake(source):
     """构建 hardware sensor procurement intake 的 metadata-only diagnostics 摘要。"""
     # 这里只消费 Hardware gate 的白名单摘要；采购材料本体、vendor/source doc 和硬件路径不能进入 Robot diagnostics。
@@ -11003,6 +11492,7 @@ def build_diagnostics_payload(
     mobile_field_material_review_decision_ref="",
     mobile_field_material_retest_request_ref="",
     hardware_baseline_review_ref="",
+    hardware_baseline_source_alignment_ref="",
     hardware_sensor_procurement_intake_ref="",
     hardware_sensor_procurement_review_decision_ref="",
     hardware_sensor_procurement_execution_pack_ref="",
@@ -11019,6 +11509,17 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("hardware_baseline_review"), dict)
         else diagnostics_source.get("hardware_baseline_review_summary")
         if isinstance(diagnostics_source.get("hardware_baseline_review_summary"), dict)
+        else {}
+    )
+    hardware_baseline_source_alignment_source = (
+        latest_status.get("hardware_baseline_source_alignment")
+        if isinstance(latest_status.get("hardware_baseline_source_alignment"), dict)
+        else latest_status.get("hardware_baseline_source_alignment_summary")
+        if isinstance(latest_status.get("hardware_baseline_source_alignment_summary"), dict)
+        else diagnostics_source.get("hardware_baseline_source_alignment")
+        if isinstance(diagnostics_source.get("hardware_baseline_source_alignment"), dict)
+        else diagnostics_source.get("hardware_baseline_source_alignment_summary")
+        if isinstance(diagnostics_source.get("hardware_baseline_source_alignment_summary"), dict)
         else {}
     )
     hardware_sensor_procurement_intake_source = (
@@ -11120,6 +11621,9 @@ def build_diagnostics_payload(
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
+    latest_status.pop("hardware_baseline_source_alignment", None)
+    latest_status.pop("hardware_baseline_source_alignment_summary", None)
+    latest_status.pop("hardware_baseline_source_alignment_copy", None)
     latest_status.pop("hardware_sensor_procurement_intake", None)
     latest_status.pop("hardware_sensor_procurement_intake_summary", None)
     latest_status.pop("hardware_sensor_procurement_intake_copy", None)
@@ -11299,6 +11803,17 @@ def build_diagnostics_payload(
     hardware_baseline_review_summary = summarize_hardware_baseline_review(
         hardware_baseline_review_source
     )
+    hardware_baseline_source_alignment_source = (
+        hardware_baseline_source_alignment_ref
+        or os.environ.get("TRASHBOT_HARDWARE_BASELINE_SOURCE_ALIGNMENT", "")
+        or os.environ.get("TRASHBOT_HARDWARE_BASELINE_SOURCE_ALIGNMENT_SUMMARY", "")
+        or hardware_baseline_source_alignment_source
+    )
+    hardware_baseline_source_alignment_summary = (
+        summarize_hardware_baseline_source_alignment(
+            hardware_baseline_source_alignment_source
+        )
+    )
     hardware_sensor_procurement_intake_source = (
         hardware_sensor_procurement_intake_ref
         or os.environ.get("TRASHBOT_HARDWARE_SENSOR_PROCUREMENT_INTAKE", "")
@@ -11425,6 +11940,8 @@ def build_diagnostics_payload(
         mobile_field_material_retest_request_summary=mobile_field_material_retest_request_summary,
         hardware_baseline_review=hardware_baseline_review_summary,
         hardware_baseline_review_summary=hardware_baseline_review_summary,
+        hardware_baseline_source_alignment=hardware_baseline_source_alignment_summary,
+        hardware_baseline_source_alignment_summary=hardware_baseline_source_alignment_summary,
         hardware_sensor_procurement_intake=hardware_sensor_procurement_intake_summary,
         hardware_sensor_procurement_intake_summary=hardware_sensor_procurement_intake_summary,
         hardware_sensor_procurement_review_decision=hardware_sensor_procurement_review_decision_summary,
