@@ -244,6 +244,13 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("downloadMobileFieldMaterialReviewDecisionButton", index)
         self.assertIn("software_proof_docker_mobile_field_material_review_decision_gate", app)
         self.assertIn("trashbot.mobile_field_material_review_decision_copy.v1", app)
+        self.assertIn("mobile_field_material_retest_request", app)
+        self.assertIn("mobile_field_material_retest_request_summary", app)
+        self.assertIn("mobileFieldMaterialRetestRequestTitle", index)
+        self.assertIn("copyMobileFieldMaterialRetestRequestButton", index)
+        self.assertIn("downloadMobileFieldMaterialRetestRequestButton", index)
+        self.assertIn("software_proof_docker_mobile_field_material_retest_request_gate", app)
+        self.assertIn("trashbot.mobile_field_material_retest_request_copy.v1", app)
         self.assertIn("mobile_browser_acceptance_bundle", app)
         self.assertIn("phone_browser_acceptance_bundle", app)
         self.assertIn("mobile_acceptance_evidence_bundle", app)
@@ -257,6 +264,7 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("mobile_recovery_decision_gate", json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8"))))
         self.assertIn("mobile_field_material_intake", json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8"))))
         self.assertIn("mobile_field_material_review_decision", json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8"))))
+        self.assertIn("mobile_field_material_retest_request", json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8"))))
         self.assertIn("primaryJourneyTitle", index)
         self.assertEqual(manifest["evidence_boundary"], "software_proof_docker_mobile_web_entrypoint_gate")
         self.assertEqual(
@@ -304,6 +312,84 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("software_proof_docker_mobile_field_material_review_decision_gate", fixture_text)
         self.assertNotRegex(app, r"mobileFieldMaterialReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
         self.assertNotRegex(app, r"mobileFieldMaterialReviewDecision.*fetchJson\(ENDPOINTS\.diagnostics")
+
+    def test_mobile_field_material_retest_request_panel_is_read_only_and_copyable(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # retest request 只把评审决策转成下一轮现场复测交接，不改变控制按钮 gate。
+        self.assertIn("mobileFieldMaterialRetestRequestTitle", index)
+        self.assertIn("现场材料复测请求", index)
+        self.assertIn("mobileFieldMaterialRetestRequestSourceDecision", index)
+        self.assertIn("mobileFieldMaterialRetestRequestBlockers", index)
+        self.assertIn("mobileFieldMaterialRetestRequestNextEvidence", index)
+        self.assertIn("mobileFieldMaterialRetestRequestRequest", index)
+        self.assertIn("mobileFieldMaterialRetestRequestChecklist", index)
+        self.assertIn("mobileFieldMaterialRetestRequestOwnerHandoff", index)
+        self.assertIn("mobileFieldMaterialRetestRequestEvidenceRef", index)
+        self.assertIn("mobileFieldMaterialRetestRequestSameRef", index)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", index)
+        self.assertIn("software_proof_docker_mobile_field_material_retest_request_gate", index)
+        self.assertIn("mobileFieldMaterialRetestRequestCandidate", app)
+        self.assertIn("mobileFieldMaterialRetestRequestFromStatus", app)
+        self.assertIn("mobile_field_material_retest_request", app)
+        self.assertIn("mobile_field_material_retest_request_summary", app)
+        self.assertIn("diagnosticsSummary.mobile_field_material_retest_request", app)
+        self.assertIn("nestedDiagnosticsSummary.mobile_field_material_retest_request", app)
+        self.assertIn("statusDiagnosticsSummary.mobile_field_material_retest_request", app)
+        self.assertIn("source_review_decision", app)
+        self.assertIn("blockers_summary", app)
+        self.assertIn("next_required_evidence_summary", app)
+        self.assertIn("retest_request_summary", app)
+        self.assertIn("route_elevator_material_checklist_summary", app)
+        self.assertIn("owner_handoff_summary", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("UNSAFE_MOBILE_FIELD_MATERIAL_RETEST_REQUEST_TEXT", app)
+        self.assertIn("trashbot.mobile_field_material_retest_request_copy.v1", app)
+        self.assertIn("copyMobileFieldMaterialRetestRequestButton", app)
+        self.assertIn("downloadMobileFieldMaterialRetestRequestButton", app)
+
+        retest = fixture["mobile_field_material_retest_request"]
+        self.assertEqual(
+            retest["evidence_boundary"],
+            "software_proof_docker_mobile_field_material_retest_request_gate",
+        )
+        self.assertEqual(retest["delivery_success"], False)
+        self.assertEqual(retest["primary_actions_enabled"], False)
+        self.assertIn("retest request", fixture_text)
+        self.assertIn("owner handoff", fixture_text)
+        self.assertIn("next-required-evidence", fixture_text)
+        self.assertIn("route/elevator material checklist", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("software_proof_docker_mobile_field_material_retest_request_gate", fixture_text)
+        self.assertNotRegex(app, r"mobileFieldMaterialRetestRequest.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"mobileFieldMaterialRetestRequest.*fetchJson\(ENDPOINTS\.diagnostics")
+
+        retest_fixture_text = json.dumps(retest, ensure_ascii=False).lower()
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "baudrate",
+            "authorization",
+            "token",
+            "raw artifact",
+            "checksum",
+            "traceback",
+            "database url",
+            "queue url",
+            "oss ak",
+            "oss sk",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, retest_fixture_text)
 
     def test_cloud_hosted_pwa_installability_gate_uses_relay_and_browser(self):
         script = CLOUD_PWA_GATE.read_text(encoding="utf-8")

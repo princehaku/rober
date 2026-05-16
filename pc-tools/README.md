@@ -168,6 +168,29 @@ python3 pc-tools/evidence/mobile_field_material_review_decision.py \
 
 输出 artifact 使用 `schema=trashbot.mobile_field_material_review_decision.v1`，summary 使用 `schema=trashbot.mobile_field_material_review_decision_summary.v1`，证据边界固定为 `software_proof_docker_mobile_field_material_review_decision_gate`。核心字段包括 `review_decision`、`owner handoff`、`owner_handoff`、`next-required-evidence`、`next_required_evidence`、`blocked_materials`、`same_evidence_ref_required=true`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
 
+## mobile_field_material_retest_request
+
+`pc-tools/evidence/mobile_field_material_retest_request.py` 只读上一轮 `mobile_field_material_review_decision` artifact 或 summary，把 Product/owner handoff 和 `next_required_evidence` 转成下一次 route/elevator field retest request：
+
+```bash
+python3 pc-tools/evidence/mobile_field_material_retest_request.py \
+  --review-json /tmp/mobile_field_material_review_decision.json \
+  --output /tmp/mobile_field_material_retest_request.json \
+  --summary-output /tmp/mobile_field_material_retest_request_summary.json
+```
+
+需要直接给 Robot diagnostics、mobile fixture 或 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/mobile_field_material_retest_request.py \
+  --review-json /tmp/mobile_field_material_review_decision_summary.json \
+  --once-json
+```
+
+输出 artifact 使用 `schema=trashbot.mobile_field_material_retest_request.v1`，summary 使用 `schema=trashbot.mobile_field_material_retest_request_summary.v1`，证据边界固定为 `software_proof_docker_mobile_field_material_retest_request_gate`。核心字段包括 `request_verdict`、`route/elevator material checklist`、`route_elevator_material_checklist`、`next_required_evidence`、`next-required-evidence`、`retest_commands`、`source_review`、`same_evidence_ref_required=true`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+`ready_for_route_elevator_field_retest_request_not_proven` 只表示上一轮 review decision 可转成下一次现场复测材料请求；它不是真实 route/elevator、Nav2/fixed-route、dropoff/cancel、delivery success、HIL、WAVE ROVER/UART 或 Objective 5 external proof。缺 review、坏 JSON、unsupported schema/boundary、弱类型 `same_evidence_ref_required`、unsafe copy、`primary_actions_enabled=true`、`delivery_success=true` 或 success wording 时，CLI 会 fail closed，并继续输出 `not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
 review decision 的枚举至少覆盖 `blocked_missing_real_phone_or_pwa_observation`、`blocked_missing_route_elevator_field_materials`、`blocked_missing_nav2_or_fixed_route_runtime_log`、`blocked_missing_same_evidence_ref_task_record_or_completion_signal`、`blocked_missing_dropoff_or_cancel_completion` 和 `ready_for_owner_handoff_not_proven`；unsupported schema/boundary、missing JSON、placeholder、unsafe copy、same-evidence-ref mismatch 或 success wording 会 fail closed 为 `blocked_invalid_intake`。owner handoff 只映射到 `Full-stack`、`Robot`、`Autonomy` 或 `Product closeout`。
 
 该 review decision 仍只是 `software_proof` / `not_proven`：它不访问 ROS graph、Nav2 runtime、serial/UART、真实手机、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、真实 delivery success、HIL、WAVE ROVER/UART、外部云、OSS/CDN、DB/queue 或 4G；也不证明 Objective 5 external proof。

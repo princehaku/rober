@@ -400,6 +400,28 @@ review artifact 使用 `schema=trashbot.mobile_field_material_review_decision.v1
 
 `ready_for_owner_handoff_not_proven` 只表示 intake 材料形状、same `evidence_ref` 和 safety boundary 已足够交给 owner 复核。它不是真实手机设备验收、真实 route/elevator field pass、真实 Nav2/fixed-route 实跑、真实路线采集、dropoff/cancel completion、delivery success、HIL、WAVE ROVER/UART 或 Objective 5 external proof。缺 intake、坏 JSON、unsupported schema/boundary、缺 `evidence_ref`、same-evidence-ref mismatch、placeholder、unsafe copy、`primary_actions_enabled=true`、`delivery_success=true` 或 success wording 时，都必须保持 blocked review，并继续输出 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
 
+## 4.12 Mobile Field Material Retest Request
+
+`mobile_field_material_review_decision` 输出后，`pc-tools/evidence/mobile_field_material_retest_request.py` 负责把 review artifact/summary 转成下一次 route/elevator field retest request：
+
+```bash
+python3 pc-tools/evidence/mobile_field_material_retest_request.py \
+  --review-json /tmp/mobile_field_material_review_decision.json \
+  --output /tmp/mobile_field_material_retest_request.json \
+  --summary-output /tmp/mobile_field_material_retest_request_summary.json
+```
+
+retest request artifact 使用 `schema=trashbot.mobile_field_material_retest_request.v1`，summary 使用 `schema=trashbot.mobile_field_material_retest_request_summary.v1`，证据边界固定为 `software_proof_docker_mobile_field_material_retest_request_gate`。核心字段包括：
+
+- `request_verdict`: `ready_for_route_elevator_field_retest_request_not_proven`、`blocked_mobile_field_material_review_not_ready`、`blocked_invalid_mobile_field_material_review`、`blocked_unsafe_copy` 或 `blocked_success_or_control_claim`。
+- `route/elevator material checklist` / `route_elevator_material_checklist`: 下一轮复测材料清单，覆盖 device/PWA observation、route/elevator materials、Nav2/fixed-route runtime log、task record、completion signal 和 dropoff/cancel material status。
+- `next_required_evidence` / `next-required-evidence`: 只说明下一步要补哪些同 `evidence_ref` 材料和重跑哪些 PC gate，不给机器人动作命令。
+- `same_evidence_ref_required=true`: review、retest request 和下一轮 material checklist 必须沿用同一条 `evidence_ref`，不能拼接不同 run 的材料。
+- `not_proven`: 继续列出真实手机、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、delivery success、HIL、WAVE ROVER/UART 和 Objective 5 external proof 未证明。
+- `primary_actions_enabled=false` 与 `delivery_success=false`: retest request 不能放行 Start/Confirm Dropoff/Cancel，也不能声明送达成功。
+
+`ready_for_route_elevator_field_retest_request_not_proven` 只表示上一轮 mobile review decision 足够生成 route/elevator material checklist 和复测请求。它不是真实 route/elevator、真实 Nav2/fixed-route、真实路线采集、dropoff/cancel completion、delivery success、HIL、WAVE ROVER/UART 或 Objective 5 external proof。缺 review、坏 JSON、unsupported schema/boundary、弱类型 `same_evidence_ref_required`、unsafe copy、`primary_actions_enabled=true`、`delivery_success=true` 或 success wording 时，都必须保持 blocked request，并继续输出 `not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
 ## 5. 关键缺失与超时复现脚本（离线）
 
 ### 5.1 固定路线关键点缺失

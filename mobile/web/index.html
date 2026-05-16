@@ -249,6 +249,71 @@
         </p>
       </section>
 
+      <section class="mobile-field-material-retest-request-panel" aria-labelledby="mobileFieldMaterialRetestRequestTitle">
+        <div class="section-heading">
+          <h2 id="mobileFieldMaterialRetestRequestTitle">现场材料复测请求</h2>
+          <span id="mobileFieldMaterialRetestRequestBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="mobileFieldMaterialRetestRequestCopy" class="message">
+          mobile_field_material_retest_request 只读展示 source review decision、blockers、next-required-evidence、retest request、route/elevator material checklist 和 owner handoff。
+        </p>
+        <dl class="mobile-field-material-retest-request-grid">
+          <div>
+            <dt>Source Review Decision</dt>
+            <dd id="mobileFieldMaterialRetestRequestSourceDecision">source review decision=not_proven</dd>
+          </div>
+          <div>
+            <dt>Blockers</dt>
+            <dd id="mobileFieldMaterialRetestRequestBlockers">blockers=not_proven</dd>
+          </div>
+          <div>
+            <dt>Next-required-evidence</dt>
+            <dd id="mobileFieldMaterialRetestRequestNextEvidence">next-required-evidence=not_proven</dd>
+          </div>
+          <div>
+            <dt>Retest Request</dt>
+            <dd id="mobileFieldMaterialRetestRequestRequest">retest request=not_proven</dd>
+          </div>
+          <div>
+            <dt>Route / Elevator Material Checklist</dt>
+            <dd id="mobileFieldMaterialRetestRequestChecklist">route/elevator material checklist=not_proven</dd>
+          </div>
+          <div>
+            <dt>Owner Handoff</dt>
+            <dd id="mobileFieldMaterialRetestRequestOwnerHandoff">owner handoff=not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="mobileFieldMaterialRetestRequestEvidenceRef">evidence_ref=not_proven</dd>
+          </div>
+          <div>
+            <dt>Same Evidence Ref</dt>
+            <dd id="mobileFieldMaterialRetestRequestSameRef">same-evidence-ref status=not_proven</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="mobileFieldMaterialRetestRequestControls">delivery_success=false / primary_actions_enabled=false</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="mobileFieldMaterialRetestRequestBoundary">software_proof_docker_mobile_field_material_retest_request_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="mobileFieldMaterialRetestRequestNotProven">真实手机、真实 route/elevator field pass、真实 Nav2/fixed-route、dropoff/cancel completion 和 delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <div class="bundle-copy-row">
+          <button id="copyMobileFieldMaterialRetestRequestButton" type="button">复制 retest request</button>
+          <button id="downloadMobileFieldMaterialRetestRequestButton" type="button">导出 retest request</button>
+          <span id="mobileFieldMaterialRetestRequestCopyStatus" class="hint">whitelist-only phone-safe metadata</span>
+        </div>
+        <pre id="mobileFieldMaterialRetestRequestSafeCopy" class="safe-copy" aria-label="mobile_field_material_retest_request safe_copy">whitelist-only phone-safe metadata</pre>
+        <p id="mobileFieldMaterialRetestRequestHint" class="hint">
+          retest request panel 只读展示并导出白名单 metadata；不证明真实手机或现场通过，也不改变 Start、Confirm Dropoff 或 Cancel gating。
+        </p>
+      </section>
+
       <section class="recovery-decision-panel" aria-labelledby="recoveryDecisionTitle">
         <div class="section-heading">
           <h2 id="recoveryDecisionTitle">恢复决策</h2>

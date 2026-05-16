@@ -1685,6 +1685,91 @@
       "delivery success"
     ]
   },
+  "mobile_field_material_retest_request": {
+    "schema": "trashbot.mobile_field_material_retest_request.v1",
+    "summary_schema": "trashbot.mobile_field_material_retest_request_summary.v1",
+    "schema_version": 1,
+    "source_review_decision": "blocked_missing_route_elevator_field_materials",
+    "blockers": [
+      "blocked_missing_real_phone_or_pwa_observation",
+      "blocked_missing_route_elevator_field_materials",
+      "blocked_missing_nav2_or_fixed_route_runtime_log",
+      "blocked_missing_same_evidence_ref_task_record_or_completion_signal",
+      "blocked_missing_dropoff_or_cancel_completion"
+    ],
+    "next_required_evidence": [
+      "真实 iPhone/Android 或 PWA observation 摘要",
+      "route/elevator field materials safe summary",
+      "Nav2/fixed-route runtime log safe summary",
+      "同一 evidence_ref 的 task record 或 completion signal",
+      "dropoff/cancel completion material status"
+    ],
+    "retest_request": [
+      "retest request: use same safe evidence_ref for the next route/elevator field material collection.",
+      "retest request: keep Start Delivery、Confirm Dropoff、Cancel fail-closed until real materials exist."
+    ],
+    "route_elevator_material_checklist": [
+      "route/elevator material checklist: door state material",
+      "route/elevator material checklist: target floor confirmation",
+      "route/elevator material checklist: human assistance note",
+      "route/elevator material checklist: Nav2/fixed-route runtime log",
+      "route/elevator material checklist: task record",
+      "route/elevator material checklist: completion signal",
+      "route/elevator material checklist: dropoff/cancel completion material",
+      "route/elevator material checklist: mobile/diagnostics safe summary"
+    ],
+    "owner_handoff": [
+      "owner handoff: Autonomy collects route/elevator material checklist on the same evidence_ref.",
+      "owner handoff: Robot exposes metadata-only diagnostics summary.",
+      "owner handoff: Full-stack displays whitelist-only retest request copy/export."
+    ],
+    "safe_evidence_ref": "route_elevator_field_handoff_fixture_20260516_0001",
+    "same_evidence_ref_status": "same_evidence_ref_required_pending_retest_materials",
+    "safe_phone_copy": "mobile_field_material_retest_request retest request blocked：fixture 只展示 phone-safe blockers、next-required-evidence、route/elevator material checklist 和 owner handoff。",
+    "recovery_hint": "按 retest request 用同一 safe evidence_ref 补齐 route/elevator material checklist；Start、Confirm、Cancel 继续 fail closed。",
+    "evidence_boundary": "software_proof_docker_mobile_field_material_retest_request_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实手机",
+      "真实 iPhone/Android device behavior",
+      "production app",
+      "真实 PWA prompt/user choice",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success",
+      "HIL",
+      "Objective 5 external proof"
+    ]
+  },
+  "mobile_field_material_retest_request_summary": {
+    "schema": "trashbot.mobile_field_material_retest_request_summary.v1",
+    "source_schema": "trashbot.mobile_field_material_retest_request.v1",
+    "schema_version": 1,
+    "source_review_decision": "blocked_missing_route_elevator_field_materials",
+    "blockers_summary": "blocked_missing_real_phone_or_pwa_observation；blocked_missing_route_elevator_field_materials；blocked_missing_nav2_or_fixed_route_runtime_log",
+    "next_required_evidence_summary": "next-required-evidence: 真实手机/PWA observation、route/elevator field materials、Nav2/fixed-route runtime log、同一 evidence_ref task record/completion signal、dropoff/cancel material status",
+    "retest_request_summary": "retest request: 同一 safe evidence_ref 补齐复测材料后再人工复核。",
+    "route_elevator_material_checklist_summary": "route/elevator material checklist: door state、target floor、human assistance、Nav2/fixed-route runtime log、task record、completion signal、dropoff/cancel material、mobile/diagnostics safe summary。",
+    "owner_handoff_summary": "owner handoff: Autonomy route/elevator checklist、Robot metadata-only diagnostics、Full-stack whitelist-only copy/export。",
+    "safe_evidence_ref": "route_elevator_field_handoff_fixture_20260516_0001",
+    "same_evidence_ref_status": "same_evidence_ref_required_pending_retest_materials",
+    "safe_phone_copy": "retest request 摘要只说明下一轮现场材料复测请求，不证明真实现场通过。",
+    "recovery_hint": "等待 owner handoff 补齐 next-required-evidence 和 route/elevator material checklist 后再人工复核。",
+    "evidence_boundary": "software_proof_docker_mobile_field_material_retest_request_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实手机",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success"
+    ]
+  },
   "route_task_field_run_readiness": {
     "schema": "trashbot.route_task_field_run_readiness.v1",
     "schema_version": 1,

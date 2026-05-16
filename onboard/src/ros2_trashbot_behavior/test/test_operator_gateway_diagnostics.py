@@ -37,6 +37,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_elevator_route_evidence_reconciliation,
     summarize_mobile_field_material_intake,
     summarize_mobile_field_material_review_decision,
+    summarize_mobile_field_material_retest_request,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
     summarize_vision_manifest,
@@ -5247,6 +5248,297 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(unsafe_summary["delivery_success"])
         self.assertFalse(unsafe_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_mobile_field_material_review_decision_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("metadata-only", encoded)
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_mobile_field_material_retest_request_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            request_path = Path(td) / "mobile_field_material_retest_request.json"
+            request_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.mobile_field_material_retest_request.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_mobile_field_material_retest_request_gate"
+                        ),
+                        "evidence_ref": "evidence://mobile-field-material-retest-1",
+                        "same_evidence_ref_required": True,
+                        "retest_request_status": {
+                            "status": "blocked_not_proven",
+                            "verdict": "not_proven",
+                            "reason": "waiting for same-evidence-ref retest materials",
+                        },
+                        "source_review_decision": "blocked_missing_route_elevator_field_materials",
+                        "blockers": ["blocked_missing_route_elevator_field_materials"],
+                        "next_required_evidence": [
+                            "real phone/PWA observation",
+                            "Nav2 or fixed-route runtime log",
+                        ],
+                        "retest_request": {
+                            "status": "requested_not_proven",
+                            "owner": "Autonomy",
+                            "next_action": "Collect route/elevator material checklist.",
+                        },
+                        "route_elevator_material_checklist": [
+                            "door state material",
+                            "target floor confirmation",
+                            "human assistance note",
+                            "Nav2 or fixed-route runtime log",
+                            "task record",
+                            "completion signal",
+                            "dropoff/cancel completion material",
+                            "mobile/diagnostics safe summary",
+                        ],
+                        "owner_handoff": "Autonomy",
+                        "same_evidence_ref_status": "required",
+                        "operator_next_steps": ["Retest only after collecting the same evidence_ref materials."],
+                        "mobile_readonly_summary": {
+                            "safe_copy": (
+                                "Mobile field material retest request is metadata-only; "
+                                "delivery_success=false and not delivery success."
+                            ),
+                        },
+                        "not_proven": ["delivery_success", "real_route_elevator_field_pass"],
+                        "real_device_observed": False,
+                        "route_elevator_field_pass": False,
+                        "nav2_fixed_route_run": False,
+                        "task_record_completion": False,
+                        "completion_signal_received": False,
+                        "dropoff_completion": False,
+                        "cancel_completion": False,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "mobile_field_material_retest_request": {"delivery_success": True},
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                mobile_field_material_retest_request_ref=str(request_path),
+            )
+            summary = payload["mobile_field_material_retest_request"]
+            summary_alias = payload["mobile_field_material_retest_request_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertNotIn("mobile_field_material_retest_request", payload["latest_status"])
+        self.assertEqual(summary["schema"], "trashbot.mobile_field_material_retest_request_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_mobile_field_material_retest_request_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.mobile_field_material_retest_request.v1")
+        self.assertEqual(summary["source_schema_version"], 1)
+        self.assertEqual(summary["retest_request_status"]["status"], "blocked_not_proven")
+        self.assertEqual(summary["source_review_decision"], "blocked_missing_route_elevator_field_materials")
+        self.assertIn("blocked_missing_route_elevator_field_materials", summary["blockers"])
+        self.assertEqual(summary["owner_handoff"], "Autonomy")
+        self.assertEqual(summary["same_evidence_ref_status"], "required")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://mobile-field-material-retest-1")
+        self.assertIn("Nav2 or fixed-route runtime log", summary["next_required_evidence"])
+        self.assertEqual(summary["retest_request"]["status"], "requested_not_proven")
+        self.assertIn("target floor confirmation", summary["route_elevator_material_checklist"])
+        self.assertIn("delivery_success=false", summary["mobile_readonly_summary"]["safe_phone_copy"])
+        self.assertIn("real_route_elevator_field_pass", summary["not_proven"])
+        self.assertIn("real_nav2_fixed_route_run", summary["not_proven"])
+        self.assertIn("dropoff_completion", summary["not_proven"])
+        self.assertIn("cancel_completion", summary["not_proven"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertFalse(summary["real_device_observed"])
+        self.assertFalse(summary["route_elevator_field_pass"])
+        self.assertFalse(summary["nav2_fixed_route_run"])
+        self.assertFalse(summary["task_record_completion"])
+        self.assertFalse(summary["completion_signal_received"])
+        self.assertFalse(summary["dropoff_completion"])
+        self.assertFalse(summary["cancel_completion"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        # retest request metadata 只能进 diagnostics，不能触发 command、ACK、cursor、Nav2、HIL 或完成态。
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["persistence_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["production_ready"])
+        self.assertNotIn(str(request_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_mobile_field_material_retest_request_env_diagnostics_bad_json_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "mobile_field_material_retest_request_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.mobile_field_material_retest_request_summary.v1",
+                        "source_schema": "trashbot.mobile_field_material_retest_request.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_mobile_field_material_retest_request_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_mobile_field_material_retest_request_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://mobile-field-material-retest-2",
+                        "same_evidence_ref_required": True,
+                        "retest_request_status": {
+                            "status": "not_proven",
+                            "verdict": "not_proven",
+                            "reason": "real retest materials are missing",
+                        },
+                        "source_review_decision": "blocked_missing_real_phone_or_pwa_observation",
+                        "blockers": ["blocked_missing_real_phone_or_pwa_observation"],
+                        "next_required_evidence": ["real phone/PWA observation"],
+                        "retest_request": {"status": "requested_not_proven"},
+                        "route_elevator_material_checklist": ["door state material"],
+                        "owner_handoff": "Full-stack",
+                        "mobile_readonly_summary": {
+                            "safe_copy": "Mobile field material retest request is metadata-only; delivery_success=false.",
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_artifact = os.environ.get("TRASHBOT_MOBILE_FIELD_MATERIAL_RETEST_REQUEST")
+            previous_summary = os.environ.get("TRASHBOT_MOBILE_FIELD_MATERIAL_RETEST_REQUEST_SUMMARY")
+            os.environ.pop("TRASHBOT_MOBILE_FIELD_MATERIAL_RETEST_REQUEST", None)
+            os.environ["TRASHBOT_MOBILE_FIELD_MATERIAL_RETEST_REQUEST_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "mobile_field_material_retest_request"
+                ]
+            finally:
+                if previous_artifact is None:
+                    os.environ.pop("TRASHBOT_MOBILE_FIELD_MATERIAL_RETEST_REQUEST", None)
+                else:
+                    os.environ["TRASHBOT_MOBILE_FIELD_MATERIAL_RETEST_REQUEST"] = previous_artifact
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_MOBILE_FIELD_MATERIAL_RETEST_REQUEST_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_MOBILE_FIELD_MATERIAL_RETEST_REQUEST_SUMMARY"] = previous_summary
+
+            diagnostics_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "mobile_field_material_retest_request_summary": {
+                            "schema": "trashbot.mobile_field_material_retest_request_summary.v1",
+                            "source_schema": "trashbot.mobile_field_material_retest_request.v1",
+                            "evidence_boundary": (
+                                "software_proof_docker_mobile_field_material_retest_request_gate"
+                            ),
+                            "source_evidence_boundary": (
+                                "software_proof_docker_mobile_field_material_retest_request_gate"
+                            ),
+                            "same_evidence_ref_required": True,
+                            "source_review_decision": "ready_for_retest_request_not_proven",
+                            "retest_request": {"status": "requested_not_proven"},
+                            "mobile_readonly_summary": {
+                                "safe_copy": (
+                                    "Mobile field material retest request is metadata-only; "
+                                    "delivery_success=false."
+                                ),
+                            },
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["mobile_field_material_retest_request"]
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_retest_request.json"
+            missing_summary = summarize_mobile_field_material_retest_request(str(missing_path))
+
+            bad_json_path = Path(td) / "bad_retest_request.json"
+            bad_json_path.write_text("{bad-json", encoding="utf-8")
+            bad_json_summary = summarize_mobile_field_material_retest_request(str(bad_json_path))
+
+            unsupported_path = Path(td) / "unsupported_retest_request.json"
+            unsupported_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.mobile_field_material_review_decision.v1",
+                        "evidence_boundary": "software_proof_docker_mobile_field_material_review_decision_gate",
+                        "safe_copy": "Unsupported retest request is metadata-only; delivery_success=false.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            unsupported_summary = summarize_mobile_field_material_retest_request(str(unsupported_path))
+
+            weak_ref_summary = summarize_mobile_field_material_retest_request(
+                {
+                    "schema": "trashbot.mobile_field_material_retest_request.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_field_material_retest_request_gate",
+                    "same_evidence_ref_required": "true",
+                    "mobile_readonly_summary": {
+                        "safe_copy": "Mobile field material retest request is metadata-only; delivery_success=false.",
+                    },
+                }
+            )
+
+            unsafe_summary = summarize_mobile_field_material_retest_request(
+                {
+                    "schema": "trashbot.mobile_field_material_retest_request.v1",
+                    "evidence_boundary": "software_proof_docker_mobile_field_material_retest_request_gate",
+                    "same_evidence_ref_required": True,
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "nav2_triggered": True,
+                    "hil_pass": True,
+                    "mobile_readonly_summary": {
+                        "safe_copy": "Mobile retest request confirms delivery success and terminal ACK posted.",
+                    },
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    diagnostics_summary,
+                    missing_summary,
+                    bad_json_summary,
+                    unsupported_summary,
+                    weak_ref_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["retest_request_status"]["status"], "not_proven")
+        self.assertEqual(diagnostics_summary["source_review_decision"], "ready_for_retest_request_not_proven")
+        self.assertEqual(missing_summary["retest_request_status"]["status"], "missing")
+        self.assertEqual(bad_json_summary["retest_request_status"]["status"], "read_error")
+        self.assertEqual(unsupported_summary["retest_request_status"]["status"], "unsupported_schema")
+        self.assertEqual(weak_ref_summary["retest_request_status"]["status"], "unsafe_fields")
+        self.assertEqual(unsafe_summary["retest_request_status"]["status"], "unsafe_fields")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertFalse(diagnostics_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_mobile_field_material_retest_request_gate", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("metadata-only", encoded)
         self.assertNotIn(str(missing_path), encoded)

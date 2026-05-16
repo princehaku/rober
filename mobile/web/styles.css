@@ -131,6 +131,7 @@ h2 {
 .mobile-route-elevator-field-device-precheck-panel,
 .mobile-field-material-intake-panel,
 .mobile-field-material-review-decision-panel,
+.mobile-field-material-retest-request-panel,
 .recovery-decision-panel,
 .route-review-panel,
 .pc-route-debug-panel,
@@ -253,6 +254,7 @@ h2 {
 .mobile-route-elevator-field-device-precheck-grid,
 .mobile-field-material-intake-grid,
 .mobile-field-material-review-decision-grid,
+.mobile-field-material-retest-request-grid,
 .recovery-decision-grid,
 .route-review-grid,
 .pc-route-debug-grid,
@@ -296,6 +298,7 @@ h2 {
 .mobile-route-elevator-field-device-precheck-grid div,
 .mobile-field-material-intake-grid div,
 .mobile-field-material-review-decision-grid div,
+.mobile-field-material-retest-request-grid div,
 .recovery-decision-grid div,
 .route-review-grid div,
 .pc-route-debug-grid div,
@@ -399,6 +402,10 @@ dd {
 }
 
 .route-field-run-intake-grid {
+  grid-template-columns: 1fr;
+}
+
+.mobile-field-material-retest-request-grid {
   grid-template-columns: 1fr;
 }
 
