@@ -138,6 +138,7 @@ h2 {
 .hardware-sensor-procurement-review-panel,
 .hardware-sensor-procurement-execution-pack-panel,
 .hardware-sensor-procurement-receipt-intake-panel,
+.hardware-sensor-hil-entry-config-precheck-panel,
 .recovery-decision-panel,
 .route-review-panel,
 .pc-route-debug-panel,
@@ -267,6 +268,7 @@ h2 {
 .hardware-sensor-procurement-review-grid,
 .hardware-sensor-procurement-execution-pack-grid,
 .hardware-sensor-procurement-receipt-intake-grid,
+.hardware-sensor-hil-entry-config-precheck-grid,
 .recovery-decision-grid,
 .route-review-grid,
 .pc-route-debug-grid,
@@ -316,6 +318,7 @@ h2 {
 .hardware-sensor-procurement-review-grid div,
 .hardware-sensor-procurement-execution-pack-grid div,
 .hardware-sensor-procurement-receipt-intake-grid div,
+.hardware-sensor-hil-entry-config-precheck-grid div,
 .recovery-decision-grid div,
 .route-review-grid div,
 .pc-route-debug-grid div,
@@ -440,6 +443,10 @@ dd {
 }
 
 .hardware-sensor-procurement-receipt-intake-grid {
+  grid-template-columns: 1fr;
+}
+
+.hardware-sensor-hil-entry-config-precheck-grid {
   grid-template-columns: 1fr;
 }
 

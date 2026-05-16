@@ -67,6 +67,7 @@ const HARDWARE_SENSOR_PROCUREMENT_INTAKE_BOUNDARY = "software_proof_docker_hardw
 const HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_BOUNDARY = "software_proof_docker_hardware_sensor_procurement_review_decision_gate";
 const HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_BOUNDARY = "software_proof_docker_hardware_sensor_procurement_execution_pack_gate";
 const HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_BOUNDARY = "software_proof_docker_hardware_sensor_procurement_receipt_intake_gate";
+const HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -152,6 +153,7 @@ const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_INTAKE_TEXT = /(authorization|bearer|to
 const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass|已\s*通过|可\s*发车|已\s*采购|已\s*hil|已\s*送达)/i;
 const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw execution pack|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass|已\s*通过|可\s*发车|已\s*采购|已\s*hil|已\s*送达)/i;
 const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw receipt|raw vendor document|vendor document raw|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|hil_pass|已\s*通过|可\s*发车|采购\s*成功|已\s*采购|已\s*收货\s*完成|收货\s*完成|已\s*hil|已\s*送达)/i;
+const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw config|raw sensor config|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|hil_pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 
@@ -175,6 +177,7 @@ let latestHardwareSensorProcurementIntake = null;
 let latestHardwareSensorProcurementReviewDecision = null;
 let latestHardwareSensorProcurementExecutionPack = null;
 let latestHardwareSensorProcurementReceiptIntake = null;
+let latestHardwareSensorHilEntryConfigPrecheck = null;
 let latestRouteTaskTerminalCompletionRehearsal = null;
 let deferredPwaInstallPromptEvent = null;
 let pwaInstallPromptEventState = null;
@@ -496,6 +499,15 @@ function safeHardwareSensorProcurementReceiptIntakeText(value, fallback = "not_p
   // 收货回填来自硬件材料摘要，只允许展示接收/缺失/拒绝结论和下一步证据。
   const text = safeText(value, fallback);
   if (UNSAFE_HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeHardwareSensorHilEntryConfigPrecheckText(value, fallback = "not_proven") {
+  // HIL 入口配置预检只面向手机端说明参数化缺口；任何 raw config、底盘细节或成功暗示都降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -7292,6 +7304,158 @@ function hardwareSensorProcurementReceiptIntakeFromStatus(status, readiness, dia
   };
 }
 
+function hardwareSensorHilEntryConfigPrecheckCandidate(status, readiness, diagnostics) {
+  // Robot 侧可能先发 artifact、summary 或兼容 phone-safe summary；手机端只取对象，不读取 raw 文件。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.hardware_sensor_hil_entry_config_precheck,
+    status?.hardware_sensor_hil_entry_config_precheck_summary,
+    readiness?.hardware_sensor_hil_entry_config_precheck,
+    readiness?.hardware_sensor_hil_entry_config_precheck_summary,
+    diagnostics?.hardware_sensor_hil_entry_config_precheck,
+    diagnostics?.hardware_sensor_hil_entry_config_precheck_summary,
+    diagnosticsReadiness.hardware_sensor_hil_entry_config_precheck,
+    diagnosticsReadiness.hardware_sensor_hil_entry_config_precheck_summary,
+    diagnosticsSummary.hardware_sensor_hil_entry_config_precheck,
+    diagnosticsSummary.hardware_sensor_hil_entry_config_precheck_summary,
+    nestedDiagnosticsSummary.hardware_sensor_hil_entry_config_precheck,
+    nestedDiagnosticsSummary.hardware_sensor_hil_entry_config_precheck_summary,
+    nestedDiagnosticsInnerSummary.hardware_sensor_hil_entry_config_precheck,
+    nestedDiagnosticsInnerSummary.hardware_sensor_hil_entry_config_precheck_summary,
+    statusDiagnosticsSummary.hardware_sensor_hil_entry_config_precheck,
+    statusDiagnosticsSummary.hardware_sensor_hil_entry_config_precheck_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function hardwareSensorHilEntryConfigPrecheckNotProvenList(value) {
+  // not_proven 列表强制补齐真实硬件、真实手机和 O5 外部证明边界，防止 copy 变成通过声明。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实 HIL",
+    "真实 2D LiDAR / ToF",
+    "真实 sensor procurement/install/calibration",
+    "真实手机/browser",
+    "真实 Nav2/fixed-route",
+    "真实 route/elevator field pass",
+    "真实 dropoff completion",
+    "真实 cancel completion",
+    "delivery success",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 18);
+}
+
+function hardwareSensorHilEntryConfigPrecheckSummaryText(value, fallback) {
+  // summary 字段可能来自数组、对象或简单字符串；只拼接安全摘要，不展开原始配置结构。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeHardwareSensorHilEntryConfigPrecheckText(
+        item?.safe_phone_copy || item?.summary || item?.status || item?.state ||
+          item?.reason || item?.category || item?.owner || item?.next_required_evidence ||
+          item?.handoff || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.reason || value.category || value.owner || value.next_action ||
+      value.next_required_evidence || value.handoff;
+    if (direct) {
+      return safeHardwareSensorHilEntryConfigPrecheckText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeHardwareSensorHilEntryConfigPrecheckText(key, "");
+        const copy = hardwareSensorHilEntryConfigPrecheckSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safeHardwareSensorHilEntryConfigPrecheckText(value, fallback);
+}
+
+function hardwareSensorHilEntryConfigPrecheckFromStatus(status, readiness, diagnostics) {
+  const provided = hardwareSensorHilEntryConfigPrecheckCandidate(status, readiness, diagnostics) || {};
+  const missing = provided.missing_config_material_summary || provided.missing_config_summary ||
+    provided.missing_material_summary || provided.missing_materials || provided.missing_items || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.hardware_sensor_hil_entry_config_precheck_summary.v1",
+    source_schema: provided.source_schema || "trashbot.hardware_sensor_hil_entry_config_precheck.v1",
+    schema_version: 1,
+    precheck_status: safeHardwareSensorHilEntryConfigPrecheckText(
+      provided.precheck_status || provided.config_precheck_status ||
+        provided.overall_status || provided.status,
+      "hardware_sensor_hil_entry_config_precheck_not_proven",
+    ),
+    safe_evidence_ref: safeHardwareSensorHilEntryConfigPrecheckText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "evidence_ref=not_proven",
+    ),
+    sensor_count_summary: hardwareSensorHilEntryConfigPrecheckSummaryText(
+      provided.sensor_count_summary || provided.sensor_config_summary || provided.sensor_counts,
+      "sensor_count_summary=not_proven",
+    ),
+    threshold_summary: hardwareSensorHilEntryConfigPrecheckSummaryText(
+      provided.threshold_summary || provided.thresholds_summary || provided.thresholds,
+      "threshold_summary=not_proven",
+    ),
+    frame_ids_summary: hardwareSensorHilEntryConfigPrecheckSummaryText(
+      provided.frame_ids_summary || provided.frame_id_summary || provided.frame_ids,
+      "frame_ids_summary=not_proven",
+    ),
+    safety_policy_summary: hardwareSensorHilEntryConfigPrecheckSummaryText(
+      provided.safety_policy_summary || provided.safety_policy,
+      "safety_policy_summary=not_proven",
+    ),
+    missing_config_material_summary: hardwareSensorHilEntryConfigPrecheckSummaryText(
+      missing,
+      "missing_config_material_summary=source、procurement、install、wiring、power、calibration、HIL entry materials pending.",
+    ),
+    next_required_evidence: hardwareSensorHilEntryConfigPrecheckSummaryText(
+      provided.next_required_evidence || provided.next_evidence || provided.next_steps,
+      "next_required_evidence=真实 source/procurement/install-wiring/power/calibration/HIL-entry phone-safe 摘要。",
+    ),
+    owner_handoff: hardwareSensorHilEntryConfigPrecheckSummaryText(
+      provided.owner_handoff || provided.owner_next_action || provided.owner_next_steps ||
+        provided.operator_next_steps,
+      "owner_handoff=Hardware owner 补齐参数化 sensor config 和 phone-safe HIL-entry 材料。",
+    ),
+    safe_copy: safeHardwareSensorHilEntryConfigPrecheckText(
+      provided.safe_copy || provided.safe_phone_copy || provided.safe_summary,
+      "blocked copy unavailable",
+    ),
+    evidence_boundary: safeHardwareSensorHilEntryConfigPrecheckText(
+      provided.evidence_boundary,
+      HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: hardwareSensorHilEntryConfigPrecheckNotProvenList(provided),
+  };
+}
+
 function elevatorAssistCandidate(status, readiness, diagnostics) {
   // evidence-driven artifact 优先级高于旧 dry-run summary，避免新主链路被旧兼容字段遮住。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -9153,6 +9317,85 @@ function renderHardwareSensorProcurementReceiptIntake(status) {
   $("hardwareSensorProcurementReceiptIntakeHint").textContent = summary.recovery_hint;
 }
 
+function ensureHardwareSensorHilEntryConfigPrecheckPanel() {
+  // HIL-entry 配置预检接在收货回填后，形成 source -> procurement -> receipt -> config precheck 的手机只读链路。
+  let panel = $("hardwareSensorHilEntryConfigPrecheckPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("hardwareSensorProcurementReceiptIntakeTitle")?.closest("section") ||
+    $("hardwareSensorProcurementExecutionPackTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "hardwareSensorHilEntryConfigPrecheckPanel";
+  panel.className = "hardware-sensor-hil-entry-config-precheck-panel";
+  panel.setAttribute("aria-labelledby", "hardwareSensorHilEntryConfigPrecheckTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="hardwareSensorHilEntryConfigPrecheckTitle">传感器 HIL 入口配置预检</h2>
+      <span id="hardwareSensorHilEntryConfigPrecheckBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="hardwareSensorHilEntryConfigPrecheckCopy" class="message">
+      hardware_sensor_hil_entry_config_precheck 只读展示配置预检状态、安全证据 ref、sensor count、threshold、frame IDs、safety policy 和缺失材料摘要。
+    </p>
+    <dl class="hardware-sensor-hil-entry-config-precheck-grid">
+      <div><dt>Precheck Status</dt><dd id="hardwareSensorHilEntryConfigPrecheckStatus">hardware_sensor_hil_entry_config_precheck_not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="hardwareSensorHilEntryConfigPrecheckEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Sensor Count Summary</dt><dd id="hardwareSensorHilEntryConfigPrecheckSensorCount">sensor_count_summary=not_proven</dd></div>
+      <div><dt>Threshold Summary</dt><dd id="hardwareSensorHilEntryConfigPrecheckThresholds">threshold_summary=not_proven</dd></div>
+      <div><dt>Frame IDs Summary</dt><dd id="hardwareSensorHilEntryConfigPrecheckFrameIds">frame_ids_summary=not_proven</dd></div>
+      <div><dt>Safety Policy Summary</dt><dd id="hardwareSensorHilEntryConfigPrecheckSafetyPolicy">safety_policy_summary=not_proven</dd></div>
+      <div><dt>Missing Config / Material</dt><dd id="hardwareSensorHilEntryConfigPrecheckMissing">missing_config_material_summary=not_proven</dd></div>
+      <div><dt>Next Required Evidence</dt><dd id="hardwareSensorHilEntryConfigPrecheckNextEvidence">next_required_evidence=not_proven</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="hardwareSensorHilEntryConfigPrecheckOwnerHandoff">owner_handoff=Hardware owner 补齐 phone-safe HIL-entry 材料。</dd></div>
+      <div><dt>Control Boundary</dt><dd id="hardwareSensorHilEntryConfigPrecheckControls">delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="hardwareSensorHilEntryConfigPrecheckBoundary">software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="hardwareSensorHilEntryConfigPrecheckNotProven">真实 HIL、真实 2D LiDAR / ToF、真实手机/browser 和 Objective 5 external proof 未证明。</dd></div>
+    </dl>
+    <div class="bundle-copy-row">
+      <button id="copyHardwareSensorHilEntryConfigPrecheckButton" type="button">复制 HIL entry precheck</button>
+      <button id="downloadHardwareSensorHilEntryConfigPrecheckButton" type="button">导出 HIL entry precheck</button>
+      <span id="hardwareSensorHilEntryConfigPrecheckCopyStatus" class="hint">whitelist-only phone-safe metadata</span>
+    </div>
+    <pre id="hardwareSensorHilEntryConfigPrecheckSafeCopy" class="safe-copy" aria-label="hardware_sensor_hil_entry_config_precheck safe_copy">blocked copy unavailable</pre>
+    <p id="hardwareSensorHilEntryConfigPrecheckHint" class="hint">
+      precheck panel 只读展示并导出白名单 metadata；这是 software proof only，不是真实 HIL、真实 2D LiDAR / ToF、真实手机/browser 或 Objective 5 external proof，也不改变 Start、Confirm Dropoff 或 Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderHardwareSensorHilEntryConfigPrecheck(status) {
+  const panel = ensureHardwareSensorHilEntryConfigPrecheckPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = hardwareSensorHilEntryConfigPrecheckFromStatus(status, readiness, latestDiagnostics);
+  latestHardwareSensorHilEntryConfigPrecheck = summary;
+  const badge = $("hardwareSensorHilEntryConfigPrecheckBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 config precheck" : "not_proven";
+  $("hardwareSensorHilEntryConfigPrecheckCopy").textContent = summary.safe_copy;
+  $("hardwareSensorHilEntryConfigPrecheckStatus").textContent = summary.precheck_status;
+  $("hardwareSensorHilEntryConfigPrecheckEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("hardwareSensorHilEntryConfigPrecheckSensorCount").textContent = summary.sensor_count_summary;
+  $("hardwareSensorHilEntryConfigPrecheckThresholds").textContent = summary.threshold_summary;
+  $("hardwareSensorHilEntryConfigPrecheckFrameIds").textContent = summary.frame_ids_summary;
+  $("hardwareSensorHilEntryConfigPrecheckSafetyPolicy").textContent = summary.safety_policy_summary;
+  $("hardwareSensorHilEntryConfigPrecheckMissing").textContent = summary.missing_config_material_summary;
+  $("hardwareSensorHilEntryConfigPrecheckNextEvidence").textContent = summary.next_required_evidence;
+  $("hardwareSensorHilEntryConfigPrecheckOwnerHandoff").textContent = summary.owner_handoff;
+  $("hardwareSensorHilEntryConfigPrecheckControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("hardwareSensorHilEntryConfigPrecheckBoundary").textContent = summary.evidence_boundary;
+  $("hardwareSensorHilEntryConfigPrecheckNotProven").textContent = summary.not_proven.join("、");
+}
+
 function ensureElevatorAssistPanel() {
   // 本轮文件范围不改 index.html，因此用 JS 注入只读 panel，保持静态壳兼容旧浏览器测试。
   let panel = $("elevatorAssistPanel");
@@ -9953,6 +10196,38 @@ function hardwareSensorProcurementReceiptIntakeCopyPayload(summary) {
     recovery_hint: source.recovery_hint,
     evidence_boundary: HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_BOUNDARY,
     not_proven: source.not_proven,
+  };
+}
+
+function hardwareSensorHilEntryConfigPrecheckCopyPayload(summary) {
+  // HIL-entry precheck copy/export 只导出白名单字段，避免 raw sensor config 或硬件细节流入支持材料。
+  const source = summary?.schema
+    ? summary
+    : hardwareSensorHilEntryConfigPrecheckFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  return {
+    schema: "trashbot.hardware_sensor_hil_entry_config_precheck_copy.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    hardware_sensor_hil_entry_config_precheck_schema: source.schema,
+    source_schema: source.source_schema,
+    precheck_status: source.precheck_status,
+    safe_evidence_ref: source.safe_evidence_ref,
+    sensor_count_summary: source.sensor_count_summary,
+    threshold_summary: source.threshold_summary,
+    frame_ids_summary: source.frame_ids_summary,
+    safety_policy_summary: source.safety_policy_summary,
+    missing_config_material_summary: source.missing_config_material_summary,
+    next_required_evidence: source.next_required_evidence,
+    owner_handoff: source.owner_handoff,
+    safe_copy: source.safe_copy,
+    evidence_boundary: HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_BOUNDARY,
+    not_proven: source.not_proven,
+    delivery_success: false,
+    primary_actions_enabled: false,
   };
 }
 
@@ -11182,6 +11457,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const hardwareSensorHilEntryConfigPrecheck = hardwareSensorHilEntryConfigPrecheckFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const rows = [
     ["软件版本", payload?.software_version],
     ["地图版本", payload?.map_version],
@@ -11217,6 +11497,7 @@ function renderDiagnosticsSummary(payload) {
     ["hardware_sensor_procurement_review_decision", hardwareSensorProcurementReviewDecision.review_decision],
     ["hardware_sensor_procurement_execution_pack", hardwareSensorProcurementExecutionPack.execution_pack_status],
     ["hardware_sensor_procurement_receipt_intake", hardwareSensorProcurementReceiptIntake.receipt_intake_status],
+    ["hardware_sensor_hil_entry_config_precheck", hardwareSensorHilEntryConfigPrecheck.precheck_status],
   ];
   rows.forEach(([label, value]) => {
     const box = document.createElement("div");
@@ -11294,6 +11575,7 @@ function renderOfflineFailure() {
   renderHardwareSensorProcurementReviewDecision({});
   renderHardwareSensorProcurementExecutionPack({});
   renderHardwareSensorProcurementReceiptIntake({});
+  renderHardwareSensorHilEntryConfigPrecheck({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -11349,6 +11631,7 @@ function renderStatus(status) {
   renderHardwareSensorProcurementReviewDecision(status);
   renderHardwareSensorProcurementExecutionPack(status);
   renderHardwareSensorProcurementReceiptIntake(status);
+  renderHardwareSensorHilEntryConfigPrecheck(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
@@ -11581,6 +11864,7 @@ async function openDiagnostics() {
     renderHardwareSensorProcurementReviewDecision(latestStatus || {});
     renderHardwareSensorProcurementExecutionPack(latestStatus || {});
     renderHardwareSensorProcurementReceiptIntake(latestStatus || {});
+    renderHardwareSensorHilEntryConfigPrecheck(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileDeviceEvidence(latestStatus || {});
     renderMobileDeviceHandoffSession(latestStatus || {});
@@ -11644,6 +11928,7 @@ function wireEvents() {
   ensureHardwareBaselineSourceAlignmentPanel();
   ensureHardwareSensorProcurementExecutionPackPanel();
   ensureHardwareSensorProcurementReceiptIntakePanel();
+  ensureHardwareSensorHilEntryConfigPrecheckPanel();
   ensureRouteTaskTerminalCompletionRehearsalPanel();
   $("copyMobileRouteElevatorFieldDevicePrecheckButton").addEventListener("click", async () => {
     const payload = JSON.stringify(
@@ -11918,6 +12203,34 @@ function wireEvents() {
     downloadJsonPackage("hardware_sensor_procurement_receipt_intake_copy.json", payload);
     $("hardwareSensorProcurementReceiptIntakeCopyStatus").textContent =
       "已导出 procurement receipt intake whitelist-only JSON。";
+  });
+  $("copyHardwareSensorHilEntryConfigPrecheckButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(
+      hardwareSensorHilEntryConfigPrecheckCopyPayload(latestHardwareSensorHilEntryConfigPrecheck || {}),
+      null,
+      2,
+    );
+    $("hardwareSensorHilEntryConfigPrecheckSafeCopy").textContent = payload;
+    // precheck copy 只服务参数化 HIL-entry 配置交接；剪贴板失败时保留手动复制文本。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("hardwareSensorHilEntryConfigPrecheckCopyStatus").textContent =
+        "已复制 HIL entry precheck phone-safe metadata。";
+    } catch (_error) {
+      $("hardwareSensorHilEntryConfigPrecheckCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadHardwareSensorHilEntryConfigPrecheckButton").addEventListener("click", () => {
+    const payload = JSON.stringify(
+      hardwareSensorHilEntryConfigPrecheckCopyPayload(latestHardwareSensorHilEntryConfigPrecheck || {}),
+      null,
+      2,
+    );
+    $("hardwareSensorHilEntryConfigPrecheckSafeCopy").textContent = payload;
+    downloadJsonPackage("hardware_sensor_hil_entry_config_precheck_copy.json", payload);
+    $("hardwareSensorHilEntryConfigPrecheckCopyStatus").textContent =
+      "已导出 HIL entry precheck whitelist-only JSON。";
   });
   $("copyRouteTaskTerminalCompletionRehearsalButton").addEventListener("click", async () => {
     const payload = JSON.stringify(

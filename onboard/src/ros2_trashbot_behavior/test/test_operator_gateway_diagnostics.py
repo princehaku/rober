@@ -45,6 +45,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_hardware_sensor_procurement_review_decision,
     summarize_hardware_sensor_procurement_execution_pack,
     summarize_hardware_sensor_procurement_receipt_intake,
+    summarize_hardware_sensor_hil_entry_config_precheck,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
     summarize_vision_manifest,
@@ -7311,6 +7312,307 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("secret-token", encoded)
         self.assertNotIn("/dev/ttyUSB0", encoded)
         self.assertNotIn("raw_ack_payload", encoded)
+
+    def test_diagnostics_payload_includes_hardware_sensor_hil_entry_config_precheck_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            precheck_path = Path(td) / "hardware_sensor_hil_entry_config_precheck.json"
+            precheck_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.hardware_sensor_hil_entry_config_precheck.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate"
+                        ),
+                        "evidence_ref": "evidence://hardware-sensor-hil-entry-config-precheck-1",
+                        "precheck_status": {
+                            "status": "config_precheck_blocked_missing_materials",
+                            "verdict": "not_proven",
+                            "evidence_source": "software_proof",
+                            "reason": "HIL-entry config shape is staged but field materials are still missing",
+                        },
+                        "blockers": ["missing_sensor_install_materials"],
+                        "sensor_config_summary": {
+                            "sensor_count": "parameterized",
+                            "tof_channel_count": "parameterized",
+                            "thresholds": "parameterized",
+                            "frame_ids": "parameterized",
+                            "safety_policy": "fail_closed",
+                        },
+                        "missing_config_categories": ["calibration_frame"],
+                        "missing_material_categories": ["install_wiring", "power_budget", "hil_entry_log"],
+                        "next_required_evidence": ["real install/wiring/power/calibration/HIL-entry material"],
+                        "owner_handoff": ["Hardware owns physical sensor material collection."],
+                        "robot_diagnostics_summary": {
+                            "safe_copy": (
+                                "Hardware sensor HIL-entry config precheck is metadata-only; "
+                                "software_proof only, delivery_success=false and primary_actions_enabled=false."
+                            ),
+                        },
+                        "not_proven": ["real_sensor_device_proof", "real_hil_pass"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "hardware_sensor_hil_entry_config_precheck": {"delivery_success": True},
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                hardware_sensor_hil_entry_config_precheck_ref=str(precheck_path),
+            )
+            summary = payload["hardware_sensor_hil_entry_config_precheck"]
+            summary_alias = payload["hardware_sensor_hil_entry_config_precheck_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertNotIn("hardware_sensor_hil_entry_config_precheck", payload["latest_status"])
+        self.assertEqual(summary["schema"], "trashbot.hardware_sensor_hil_entry_config_precheck_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.hardware_sensor_hil_entry_config_precheck.v1")
+        self.assertEqual(summary["source_schema_version"], 1)
+        self.assertEqual(
+            summary["source_contract"]["evidence_boundary"],
+            "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate",
+        )
+        self.assertEqual(summary["precheck_status"]["status"], "config_precheck_blocked_missing_materials")
+        self.assertEqual(summary["precheck_status"]["verdict"], "not_proven")
+        self.assertEqual(summary["precheck_status"]["evidence_source"], "software_proof")
+        self.assertEqual(summary["config_precheck_status"], "config_precheck_blocked_missing_materials")
+        self.assertEqual(summary["sensor_config_summary"]["sensor_count"], "parameterized")
+        self.assertEqual(summary["sensor_config_summary"]["tof_channel_count"], "parameterized")
+        self.assertEqual(summary["sensor_config_summary"]["thresholds"], "parameterized")
+        self.assertEqual(summary["sensor_config_summary"]["frame_ids"], "parameterized")
+        self.assertEqual(summary["sensor_config_summary"]["safety_policy"], "fail_closed")
+        self.assertIn("calibration_frame", summary["missing_config_categories"])
+        self.assertIn("install_wiring", summary["missing_material_categories"])
+        self.assertIn("real install/wiring/power/calibration/HIL-entry material", summary["next_required_evidence"])
+        self.assertIn("Hardware owns physical sensor material collection.", summary["owner_handoff"])
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://hardware-sensor-hil-entry-config-precheck-1",
+        )
+        self.assertIn("software_proof", summary["not_proven"])
+        self.assertIn("real_sensor_device_proof", summary["not_proven"])
+        self.assertIn("real_hil_pass", summary["not_proven"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertTrue(summary["sensor_config_precheck_only"])
+        self.assertFalse(summary["sensor_config_validated_for_hil_entry"])
+        self.assertFalse(summary["sensor_procurement_completed"])
+        self.assertFalse(summary["sensor_installed_on_robot"])
+        self.assertFalse(summary["sensor_wiring_verified"])
+        self.assertFalse(summary["sensor_power_budget_verified"])
+        self.assertFalse(summary["sensor_calibrated_on_robot"])
+        self.assertFalse(summary["route_elevator_field_pass"])
+        self.assertFalse(summary["nav2_fixed_route_run"])
+        self.assertFalse(summary["dropoff_completion"])
+        self.assertFalse(summary["cancel_completion"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        # config precheck 是 metadata-only consumer，不能触发 collect/dropoff/cancel、ACK、cursor、Nav2 或 HIL。
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["persistence_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["production_ready"])
+        self.assertIn("metadata-only", summary["safe_copy"])
+        self.assertIn("delivery_success=false", summary["robot_diagnostics_summary"]["safe_phone_copy"])
+        self.assertNotIn(str(precheck_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_hardware_sensor_hil_entry_config_precheck_env_inline_unsupported_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "hardware_sensor_hil_entry_config_precheck_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.hardware_sensor_hil_entry_config_precheck_summary.v1",
+                        "source_schema": "trashbot.hardware_sensor_hil_entry_config_precheck.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate"
+                        ),
+                        "precheck_status": {
+                            "status": "config_precheck_blocked_missing_materials",
+                            "verdict": "not_proven",
+                            "evidence_source": "software_proof",
+                        },
+                        "sensor_config_summary": {"sensor count": "parameterized"},
+                        "robot_diagnostics_summary": {
+                            "safe_copy": (
+                                "Hardware sensor HIL-entry config precheck is metadata-only; "
+                                "delivery_success=false and primary_actions_enabled=false."
+                            ),
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_artifact = os.environ.get("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK")
+            previous_summary = os.environ.get("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_SUMMARY")
+            os.environ.pop("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK", None)
+            os.environ["TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "hardware_sensor_hil_entry_config_precheck"
+                ]
+            finally:
+                if previous_artifact is None:
+                    os.environ.pop("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK", None)
+                else:
+                    os.environ["TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK"] = previous_artifact
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_SUMMARY"] = previous_summary
+
+            diagnostics_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "hardware_sensor_hil_entry_config_precheck_summary": {
+                            "schema": "trashbot.hardware_sensor_hil_entry_config_precheck_summary.v1",
+                            "source_schema": "trashbot.hardware_sensor_hil_entry_config_precheck.v1",
+                            "evidence_boundary": (
+                                "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate"
+                            ),
+                            "source_evidence_boundary": (
+                                "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate"
+                            ),
+                            "precheck_status": {
+                                "status": "config_precheck_blocked_missing_materials",
+                                "verdict": "not_proven",
+                                "evidence_source": "software_proof",
+                            },
+                            "sensor_config_summary": {"sensor count": "parameterized"},
+                            "robot_diagnostics_summary": {
+                                "safe_copy": (
+                                    "Hardware sensor HIL-entry config precheck is metadata-only; "
+                                    "delivery_success=false and primary_actions_enabled=false."
+                                ),
+                            },
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["hardware_sensor_hil_entry_config_precheck"]
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_hardware_sensor_hil_entry_config_precheck.json"
+            missing_summary = summarize_hardware_sensor_hil_entry_config_precheck(str(missing_path))
+
+            bad_json_path = Path(td) / "bad_hardware_sensor_hil_entry_config_precheck.json"
+            bad_json_path.write_text("{bad-json", encoding="utf-8")
+            bad_json_summary = summarize_hardware_sensor_hil_entry_config_precheck(str(bad_json_path))
+
+            unsupported_summary = summarize_hardware_sensor_hil_entry_config_precheck(
+                {
+                    "schema": "trashbot.hardware_sensor_procurement_receipt_intake.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_hardware_sensor_procurement_receipt_intake_gate"
+                    ),
+                    "safe_copy": "Unsupported precheck is metadata-only; delivery_success=false.",
+                }
+            )
+            unsafe_summary = summarize_hardware_sensor_hil_entry_config_precheck(
+                {
+                    "schema": "trashbot.hardware_sensor_hil_entry_config_precheck.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate"
+                    ),
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "raw_artifact": {"serial_device": "/dev/ttyUSB0"},
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Hardware sensor precheck confirms HIL pass and delivery success.",
+                    },
+                }
+            )
+            weak_boundary_summary = summarize_hardware_sensor_hil_entry_config_precheck(
+                {
+                    "schema": "trashbot.hardware_sensor_hil_entry_config_precheck.v1",
+                    "evidence_boundary": "software_proof",
+                    "safe_copy": "Hardware sensor precheck is metadata-only; delivery_success=false.",
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    diagnostics_summary,
+                    missing_summary,
+                    bad_json_summary,
+                    unsupported_summary,
+                    unsafe_summary,
+                    weak_boundary_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["precheck_status"]["status"], "config_precheck_blocked_missing_materials")
+        self.assertEqual(
+            diagnostics_summary["precheck_status"]["status"],
+            "config_precheck_blocked_missing_materials",
+        )
+        self.assertEqual(
+            missing_summary["precheck_status"]["status"],
+            "blocked_missing_hardware_sensor_hil_entry_config_precheck",
+        )
+        self.assertEqual(
+            bad_json_summary["precheck_status"]["status"],
+            "blocked_missing_hardware_sensor_hil_entry_config_precheck",
+        )
+        self.assertEqual(
+            unsupported_summary["precheck_status"]["status"],
+            "blocked_missing_hardware_sensor_hil_entry_config_precheck",
+        )
+        self.assertEqual(
+            unsafe_summary["precheck_status"]["status"],
+            "blocked_missing_hardware_sensor_hil_entry_config_precheck",
+        )
+        self.assertEqual(
+            weak_boundary_summary["precheck_status"]["status"],
+            "blocked_missing_hardware_sensor_hil_entry_config_precheck",
+        )
+        self.assertEqual(env_summary["precheck_status"]["evidence_source"], "software_proof")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertFalse(diagnostics_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["primary_actions_enabled"])
+        self.assertIn("blocked_missing_hardware_sensor_hil_entry_config_precheck", encoded)
+        self.assertIn("software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("hardware_material_pending", encoded)
+        self.assertIn("metadata-only", encoded)
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("raw_artifact", encoded)
 
     def test_diagnostics_payload_includes_phone_safe_oss_cdn_manifest_summary(self):
         with tempfile.TemporaryDirectory() as td:

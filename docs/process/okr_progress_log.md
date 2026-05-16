@@ -8,6 +8,18 @@
 
 ## 2026-05-16 系列
 
+更新时间：2026-05-16 18:17 Asia/Shanghai。
+
+### 2026-05-16 18-19｜hardware-sensor-hil-entry-config-precheck｜O1 HIL-entry 配置预检 software proof，硬件协议可信底盘由约 74% 上调到约 75%，手机体验由约 87% 上调到约 88%
+
+`sprints/2026.05.16_18-19_hardware-sensor-hil-entry-config-precheck/` 完成 `software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate`：Hardware worker 新增 `pc-tools/evidence/hardware_sensor_hil_entry_config_precheck_gate.py` 与 `pc-tools/evidence/test_hardware_sensor_hil_entry_config_precheck_gate.py`，更新 `pc-tools/README.md` 与 `docs/product/production_hardware_boundary.md`。gate 输出 `trashbot.hardware_sensor_hil_entry_config_precheck.v1` / `trashbot.hardware_sensor_hil_entry_config_precheck_summary.v1`，检查 future HIL-entry sensor config 的 sensor count、thresholds、frame IDs、safety policy、evidence refs 与 vendor/source boundary；保留 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。Hardware worker 已读 `docs/vendor/VENDOR_INDEX.md`、WAVE ROVER `config.yaml`、`base_ctrl.py`、`json_cmd.h`，结论是 local vendor coverage 不证明真实 2D LiDAR / ToF 采购、安装、接线、供电、标定或 HIL-entry。Task A 验证输出 py_compile passed、unittest `Ran 9 tests OK`、CLI `--help` passed、required `rg` passed、scoped `git diff --check` passed。
+
+Robot worker 更新 `operator_gateway_diagnostics.py`、`test_operator_gateway_diagnostics.py` 与 `docs/interfaces/ros_contracts.md`，新增 `hardware_sensor_hil_entry_config_precheck` / `_summary` diagnostics metadata-only consumer，支持 explicit ref、env、latest_status 和 diagnostics nested summary；缺失、unsupported、unsafe、success claim、弱 boundary 均 fail closed，不改变 collect/dropoff/cancel 授权。Task B 验证输出 py_compile passed、diagnostics unittest `Ran 108 tests in 0.114s OK`、required `rg` passed、scoped `git diff --check` passed。
+
+Full-stack worker 更新 `mobile/web/app.js`、`styles.css`、`fixtures/status.json`、`test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增“传感器 HIL 入口配置预检”只读 panel，展示 precheck status、safe evidence ref、sensor count summary、threshold summary、frame IDs summary、safety policy summary、missing config/material summary、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`；copy/export whitelist-only；Start / Confirm Dropoff / Cancel gating 不变。Task C 验证输出 mobile unittest `Ran 10 tests in 0.019s OK`、`node --check` passed、required `rg` passed、scoped `git diff --check` passed。Product closeout 更新 sprint 留档、`OKR.md` 和本日志，required `rg` 与 closeout scoped `git diff --check` 均通过。
+
+该证据只支持 Objective 1 从约 74% 保守上调到约 75%，Objective 4 从约 87% 保守上调到约 88%。Objective 1 的理由是 PR #5 review 的 default hardware vs target baseline、`docs/vendor/` source attribution 和参数化 config precheck 风险已被转成可重复 gate、Robot metadata-only consumer 和 phone-safe summary，能防止未证实 sensor count、thresholds、frame IDs、safety policy 进入 future HIL-entry 配置。Objective 4 的理由是 mobile/web 现在能给普通用户和现场支持展示同一 HIL-entry 配置缺口解释，但仍是只读 software proof。Objective 5 保持约 66%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；not real Objective 5 external proof。本轮不证明真实 WAVE ROVER/UART/HIL、真实 2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、真实手机设备/browser、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、delivery success 或 Objective 5 external proof。
+
 更新时间：2026-05-16 17:25 Asia/Shanghai。
 
 ### 2026-05-16 17-18｜hardware-baseline-source-alignment｜O1 硬件基线来源对齐 software proof，硬件协议可信底盘由约 73% 上调到约 74%，手机体验由约 86% 上调到约 87%

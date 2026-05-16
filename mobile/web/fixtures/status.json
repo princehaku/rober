@@ -125,6 +125,56 @@
       "Objective 5 external proof"
     ]
   },
+  "hardware_sensor_hil_entry_config_precheck": {
+    "schema": "trashbot.hardware_sensor_hil_entry_config_precheck.v1",
+    "summary_schema": "trashbot.hardware_sensor_hil_entry_config_precheck_summary.v1",
+    "schema_version": 1,
+    "precheck_status": "hardware_sensor_hil_entry_config_precheck_not_proven",
+    "safe_evidence_ref": "hardware_sensor_hil_entry_config_precheck_fixture_20260516_0001",
+    "sensor_count_summary": [
+      "sensor_count_summary=2D LiDAR count and ToF channel count must stay parameterized",
+      "configured sensor count=not_proven"
+    ],
+    "threshold_summary": [
+      "threshold_summary=near-field safety threshold and validation confidence must be configured",
+      "validated thresholds=not_proven"
+    ],
+    "frame_ids_summary": [
+      "frame_ids_summary=sensor/base/mount calibration frames must be declared in phone-safe summary",
+      "validated frame IDs=not_proven"
+    ],
+    "safety_policy_summary": [
+      "safety_policy_summary=missing config, missing evidence, unsupported schema, unsafe copy, or success claim fails closed",
+      "primary_actions_enabled=false"
+    ],
+    "missing_config_material_summary": [
+      "sensor count config material=not_proven",
+      "threshold config material=not_proven",
+      "frame ID config material=not_proven",
+      "source/procurement/install-wiring/power/calibration/HIL-entry material=not_proven"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=phone-safe source/procurement/install-wiring/power/calibration/HIL-entry summaries",
+      "next_required_evidence=parameterized config precheck artifact"
+    ],
+    "owner_handoff": "owner_handoff=Hardware owner supplies parameterized sensor config summary; Robot owner keeps diagnostics metadata-only; Full-stack keeps panel read-only.",
+    "safe_copy": "传感器 HIL 入口配置预检只读展示 precheck status、sensor count、threshold、frame IDs、safety policy、缺失材料、next evidence 和 owner handoff；这是 software proof only。",
+    "evidence_boundary": "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 HIL",
+      "真实 2D LiDAR / ToF",
+      "真实 sensor procurement/install/calibration",
+      "真实手机/browser",
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field pass",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success",
+      "Objective 5 external proof"
+    ]
+  },
   "route_task_terminal_completion_rehearsal": {
     "schema": "trashbot.route_task_terminal_completion_rehearsal.v1",
     "summary_schema": "trashbot.route_task_terminal_completion_rehearsal_summary.v1",

@@ -210,6 +210,37 @@ vendor/source acceptance, purchase order, mounting/wiring plan, power budget,
 calibration result, HIL entry, Nav2/SLAM field pass, near-field safety pass,
 route/elevator pass, Objective 5 external proof, or delivery result.
 
+## Hardware Sensor HIL-entry Config Precheck Gate
+
+`hardware_sensor_hil_entry_config_precheck` is the fail-closed PC gate for the
+future HIL-entry sensor config shape. It emits
+`schema=trashbot.hardware_sensor_hil_entry_config_precheck.v1` and
+`schema=trashbot.hardware_sensor_hil_entry_config_precheck_summary.v1` under
+`software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate`.
+
+The precheck validates parameterization only. It checks that sensor count and
+ToF channel count are explicit config values, that thresholds include at least a
+near-field safety threshold plus confidence or validation threshold, that frame
+IDs include sensor/base/mount-calibration frame coverage or visible gaps, and
+that safety policy is explicitly fail-closed with `primary_actions_enabled=false`.
+It also checks sanitized evidence refs for source, procurement,
+install-wiring, power, calibration, and HIL-entry material.
+
+The gate does not read real hardware, serial/UART devices, ROS graph, sensor
+drivers, WAVE ROVER runtime state, network services, real phone/browser state,
+or Objective 5 external infrastructure. Missing config, bad JSON, unsupported
+schema, missing sensor count, missing thresholds, missing frame IDs, missing
+safety policy, missing evidence refs, unsafe copy, HIL success claims, field
+success claims, `delivery_success=true`, or `primary_actions_enabled=true` must
+fail closed.
+
+Every output must remain `not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`, and must include `next_required_evidence`,
+`owner_handoff`, and sanitized `safe_copy`. A ready precheck means only that a
+future sensor config is shaped well enough for human material review; it is not
+real procurement, installation, calibration, HIL-entry, Nav2/SLAM field pass,
+near-field safety pass, Objective 5 external proof, or delivery result.
+
 ## Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)
 
 - Target baseline combo: monocular camera + one 2D LiDAR + ToF safety ring.

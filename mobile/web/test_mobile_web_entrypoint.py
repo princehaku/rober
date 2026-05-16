@@ -262,6 +262,97 @@ class HardwareSensorProcurementReceiptIntakeMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, receipt_intake_text)
 
 
+class HardwareSensorHilEntryConfigPrecheckMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_hil_entry_config_precheck_panel_is_read_only_and_exportable(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # HIL-entry config precheck panel 由 JS 放在收货回填后，只展示 phone-safe 配置摘要。
+        self.assertIn("hardwareSensorHilEntryConfigPrecheckTitle", app)
+        self.assertIn("传感器 HIL 入口配置预检", app)
+        self.assertIn("hardwareSensorProcurementReceiptIntakeTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("hardware-sensor-hil-entry-config-precheck-panel", styles)
+        self.assertIn("hardware-sensor-hil-entry-config-precheck-grid", styles)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 nested diagnostics summary。
+        self.assertIn("HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_BOUNDARY", app)
+        self.assertIn("UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_TEXT", app)
+        self.assertIn("safeHardwareSensorHilEntryConfigPrecheckText", app)
+        self.assertIn("hardwareSensorHilEntryConfigPrecheckCandidate", app)
+        self.assertIn("hardwareSensorHilEntryConfigPrecheckFromStatus", app)
+        self.assertIn("hardware_sensor_hil_entry_config_precheck", app)
+        self.assertIn("hardware_sensor_hil_entry_config_precheck_summary", app)
+        self.assertIn("diagnosticsSummary.hardware_sensor_hil_entry_config_precheck", app)
+        self.assertIn("statusDiagnosticsSummary.hardware_sensor_hil_entry_config_precheck", app)
+        self.assertIn("precheck_status", app)
+        self.assertIn("sensor_count_summary", app)
+        self.assertIn("threshold_summary", app)
+        self.assertIn("frame_ids_summary", app)
+        self.assertIn("safety_policy_summary", app)
+        self.assertIn("missing_config_material_summary", app)
+        self.assertIn("blocked copy unavailable", app)
+
+        # copy/export whitelist 不新增任何 Start/Confirm/Cancel 请求或控制授权。
+        self.assertIn("hardwareSensorHilEntryConfigPrecheckCopyPayload", app)
+        self.assertIn("trashbot.hardware_sensor_hil_entry_config_precheck_copy.v1", app)
+        self.assertIn("copyHardwareSensorHilEntryConfigPrecheckButton", app)
+        self.assertIn("downloadHardwareSensorHilEntryConfigPrecheckButton", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"hardwareSensorHilEntryConfigPrecheck.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须明确 software proof / not_proven 边界。
+        precheck = fixture["hardware_sensor_hil_entry_config_precheck"]
+        self.assertEqual(
+            precheck["precheck_status"],
+            "hardware_sensor_hil_entry_config_precheck_not_proven",
+        )
+        self.assertEqual(precheck["delivery_success"], False)
+        self.assertEqual(precheck["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("hardware_sensor_hil_entry_config_precheck", doc)
+        self.assertIn("传感器 HIL 入口配置预检", doc)
+
+    def test_hil_entry_config_precheck_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        precheck_text = json.dumps(
+            fixture["hardware_sensor_hil_entry_config_precheck"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 配置预检 fixture 不能把 raw config、底盘控制、凭证、路径或成功语义带进手机端。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw config",
+            "serial device",
+            "serial/uart",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw sensor config",
+            "control grant",
+            "hil passed",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, precheck_text)
+
+
 class RouteTaskTerminalCompletionRehearsalMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

@@ -274,6 +274,26 @@ Autonomy 责任边界如下：
 
 该 gate 不访问 ROS graph、Nav2 runtime、SLAM map、serial/UART、WAVE ROVER、真实电梯、真实手机、外部云、OSS/CDN、DB/queue 或 4G。缺 procurement artifact、坏 JSON、unsupported schema/boundary、unsafe copy、控制放行字段或成功断言时，都必须保持 blocked/not_proven，并把下一步留给 Hardware procurement、Autonomy 标定计划或 Product closeout 复核。
 
+## hardware_sensor_hil_entry_config_precheck
+
+`pc-tools/evidence/hardware_sensor_hil_entry_config_precheck_gate.py` 是 future HIL-entry sensor config 的 dependency-free PC gate。它只验证 config 是否把 sensor count、ToF channel count、thresholds、frame IDs、safety policy 和 evidence refs 参数化成可审查结构，不读取真实硬件、串口、ROS graph、sensor driver 或网络：
+
+```bash
+python3 pc-tools/evidence/hardware_sensor_hil_entry_config_precheck_gate.py \
+  --config-json /tmp/hardware_sensor_hil_entry_config.json \
+  --summary-output /tmp/hardware_sensor_hil_entry_config_precheck_summary.json
+```
+
+没有 `--config-json` 时，CLI 会使用内置 default sample 证明 gate 可在 Docker-only/PC 环境运行；该 sample 仍是 `not_proven`，不是采购、安装、标定或 HIL 证据。需要把缺 config 作为 blocked case 验证时使用：
+
+```bash
+python3 pc-tools/evidence/hardware_sensor_hil_entry_config_precheck_gate.py --no-default-sample
+```
+
+输出 artifact 使用 `schema=trashbot.hardware_sensor_hil_entry_config_precheck.v1`，summary 使用 `schema=trashbot.hardware_sensor_hil_entry_config_precheck_summary.v1`，证据边界固定为 `software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate`。summary 只暴露 precheck status、safe evidence refs、sensor count summary、thresholds summary、frame IDs summary、safety policy summary、`next_required_evidence`、`owner_handoff`、sanitized `safe_copy`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+该 gate 明确采用 `docs/vendor/VENDOR_INDEX.md` 作为资料边界：Orange Pi Zero 3、WAVE ROVER、UART/JSON、firmware/vendor app 与 camera/tutorial coverage 只说明本地资料存在，不证明项目 2D LiDAR / ToF 已采购、安装、接线、供电、标定或通过 HIL-entry。缺 config、坏 JSON、unsupported schema、缺 sensor count / ToF channel count、缺 thresholds、缺 frame IDs、缺 safety policy、缺 evidence refs、unsafe copy、success claim、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。
+
 ## hardware_sensor_procurement_review_decision
 
 `pc-tools/evidence/hardware_sensor_procurement_review_decision_gate.py` 读取上一轮 `hardware_sensor_procurement_intake` artifact 或 summary，把 2D LiDAR / ToF 的缺 SKU、缺 source、缺采购、缺 mounting/wiring/power/calibration/HIL entry 转成采购评审决策、blocker、`next_required_evidence`、`owner_handoff` 和 `rerun_commands`：
