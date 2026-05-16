@@ -135,6 +135,7 @@ h2 {
 .route-task-field-retest-material-pack-panel,
 .route-task-field-retest-operator-drill-panel,
 .route-task-field-retest-drill-console-panel,
+.route-task-field-retest-acceptance-brief-panel,
 .hardware-baseline-review-panel,
 .hardware-baseline-source-alignment-panel,
 .hardware-sensor-procurement-intake-panel,
@@ -276,6 +277,7 @@ h2 {
 .route-task-field-retest-material-pack-grid,
 .route-task-field-retest-operator-drill-grid,
 .route-task-field-retest-drill-console-grid,
+.route-task-field-retest-acceptance-brief-grid,
 .hardware-baseline-source-alignment-grid,
 .hardware-sensor-procurement-intake-grid,
 .hardware-sensor-procurement-review-grid,
@@ -467,6 +469,10 @@ dd {
 }
 
 .route-task-field-retest-drill-console-grid {
+  grid-template-columns: 1fr;
+}
+
+.route-task-field-retest-acceptance-brief-grid {
   grid-template-columns: 1fr;
 }
 

@@ -207,6 +207,22 @@ python3 pc-tools/evidence/route_task_field_retest_drill_console.py \
 
 该 console 不读取真实材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、operator drill 未 ready、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_drill_console_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_drill_console_gate` 已把 operator drill 的复测演练控制台摘要整理清楚，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
+## route/task field retest acceptance brief
+
+`pc-tools/evidence/route_task_field_retest_acceptance_brief.py` 只读上一节 drill console artifact、summary 或 wrapper/nested JSON，把现场入口前置条件、执行 checklist、pass/fail criteria、必需证据包、owner handoff 和 rerun notes 整理成 PC acceptance brief artifact / summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_acceptance_brief.py \
+  --drill-console-json /tmp/route_task_field_retest_drill_console_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_acceptance_brief.json \
+  --summary-output /tmp/route_task_field_retest_acceptance_brief_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_acceptance_brief.v1`，summary 使用 `schema=trashbot.route_task_field_retest_acceptance_brief_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_acceptance_brief_gate`。核心字段包括 safe `evidence_ref`、`acceptance_status`、`field_entry_prerequisites`、`execution_checklist`、`pass_fail_criteria`、`required_evidence_packet`、`owner_handoff`、`rerun_notes`、`safe_copy`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+必需证据包固定包含 Nav2/fixed-route runtime log、route completion signal、task record、door_state、target_floor_confirmation、human_assistance_note、dropoff_or_cancel_completion 和 delivery_result。该 brief 不读取真实材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、drill console 未 ready、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_acceptance_brief_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_acceptance_brief_gate` 已把现场验收简报整理清楚，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## route/task field retest result intake
 
 `pc-tools/evidence/route_task_field_retest_result_intake.py` 只读现场复测回填后的 result artifact、summary、session handoff artifact/summary 或 wrapper/nested JSON，把同一 `evidence_ref` 下的结果材料元数据整理成 fail-closed result intake artifact / summary：

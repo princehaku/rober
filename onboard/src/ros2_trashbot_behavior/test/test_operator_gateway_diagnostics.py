@@ -29,6 +29,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_material_pack,
     summarize_route_task_field_retest_operator_drill,
     summarize_route_task_field_retest_drill_console,
+    summarize_route_task_field_retest_acceptance_brief,
     summarize_route_task_field_run_intake,
     summarize_route_task_field_run_reconciliation,
     summarize_route_task_field_run_readiness,
@@ -4043,6 +4044,264 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["delivery_success"])
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_route_task_field_retest_drill_console_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_retest_acceptance_brief_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            brief_path = Path(td) / "route_task_field_retest_acceptance_brief.json"
+            brief_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_acceptance_brief.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_brief_gate"
+                        ),
+                        "evidence_ref": "evidence://route-task-field-retest-acceptance-brief-1",
+                        "route_task_field_retest_acceptance_brief_summary": {
+                            "schema": "trashbot.route_task_field_retest_acceptance_brief_summary.v1",
+                            "source_schema": "trashbot.route_task_field_retest_acceptance_brief.v1",
+                            "source_evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_acceptance_brief_gate"
+                            ),
+                            "safe_evidence_ref": "evidence://route-task-field-retest-acceptance-brief-1",
+                            "same_evidence_ref_required": True,
+                            "acceptance_status": {
+                                "status": "ready_for_acceptance_brief_not_proven",
+                                "verdict": "not_proven",
+                                "reason": "safe acceptance criteria are ready",
+                            },
+                            "pass_fail_criteria": [
+                                "Pass only when route completion signal and task record share evidence_ref."
+                            ],
+                            "required_evidence_packet": [
+                                "Nav2/fixed-route runtime log",
+                                "route completion signal",
+                                "task record",
+                                "door_state",
+                                "target_floor_confirmation",
+                                "human_assistance_note",
+                                "dropoff_or_cancel_completion",
+                                "delivery_result",
+                            ],
+                            "owner_handoff": {
+                                "robot": "Robot keeps diagnostics metadata-only.",
+                                "autonomy": "Autonomy owns field evidence packet.",
+                            },
+                            "robot_diagnostics_summary": {
+                                "status": "metadata_only",
+                                "reason": "Robot mirrors safe acceptance brief summary only.",
+                            },
+                            "safe_copy": (
+                                "Route-task field retest acceptance brief is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                            "not_proven": ["delivery_success", "real_hil_pass"],
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_acceptance_brief_ref=str(brief_path),
+            )
+            summary = payload["route_task_field_retest_acceptance_brief"]
+            summary_alias = payload["route_task_field_retest_acceptance_brief_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["schema"], "trashbot.route_task_field_retest_acceptance_brief_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_acceptance_brief_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_field_retest_acceptance_brief.v1")
+        self.assertEqual(summary["acceptance_status"]["status"], "ready_for_acceptance_brief_not_proven")
+        self.assertEqual(summary["acceptance_status"]["verdict"], "not_proven")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://route-task-field-retest-acceptance-brief-1")
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertIn("route completion signal", summary["pass_fail_criteria"][0])
+        self.assertIn("door_state", summary["required_evidence_packet"])
+        self.assertEqual(summary["owner_handoff"]["robot"], "Robot keeps diagnostics metadata-only.")
+        self.assertEqual(summary["robot_diagnostics_summary"]["status"], "metadata_only")
+        self.assertIn("delivery_success=false", summary["safe_summary"]["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        # acceptance brief 是 metadata-only consumer，不能触发 collect/dropoff/cancel、ACK、cursor、Nav2 或 HIL。
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(brief_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_retest_acceptance_brief_env_nested_missing_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "route_task_field_retest_acceptance_brief_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_acceptance_brief_summary.v1",
+                        "source_schema": "trashbot.route_task_field_retest_acceptance_brief.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_brief_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_brief_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://route-task-field-retest-acceptance-brief-2",
+                        "same_evidence_ref_required": True,
+                        "acceptance_status": {
+                            "status": "blocked_missing_required_packet",
+                            "verdict": "not_proven",
+                        },
+                        "pass_fail_criteria": ["Fail if delivery_result is absent."],
+                        "required_evidence_packet": ["delivery_result"],
+                        "owner_handoff": {"product": "review missing packet"},
+                        "safe_copy": (
+                            "Route-task field retest acceptance brief is metadata-only; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_brief = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_BRIEF")
+            previous_summary = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_BRIEF_SUMMARY")
+            os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_BRIEF", None)
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_BRIEF_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_retest_acceptance_brief"
+                ]
+            finally:
+                if previous_brief is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_BRIEF", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_BRIEF"] = previous_brief
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_BRIEF_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_BRIEF_SUMMARY"] = previous_summary
+
+            nested_summary = summarize_route_task_field_retest_acceptance_brief(
+                {
+                    "schema": "trashbot.route_task_field_retest_acceptance_brief.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_brief_gate",
+                    "evidence_ref": "evidence://route-task-field-retest-acceptance-brief-3",
+                    "diagnostics": {
+                        "diagnostics_summary": {
+                            "schema": "trashbot.route_task_field_retest_acceptance_brief_summary.v1",
+                            "source_schema": "trashbot.route_task_field_retest_acceptance_brief.v1",
+                            "source_evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_acceptance_brief_gate"
+                            ),
+                            "safe_evidence_ref": "evidence://route-task-field-retest-acceptance-brief-3",
+                            "same_evidence_ref_required": True,
+                            "acceptance_status": {"status": "nested_ready", "verdict": "not_proven"},
+                            "pass_fail_criteria": ["Keep action isolation."],
+                            "required_evidence_packet": ["task record"],
+                            "owner_handoff": {"robot": "read-only"},
+                            "safe_copy": (
+                                "Nested acceptance brief is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_acceptance_brief.json"
+            missing_summary = summarize_route_task_field_retest_acceptance_brief(str(missing_path))
+            no_summary = summarize_route_task_field_retest_acceptance_brief(
+                {
+                    "schema": "trashbot.route_task_field_retest_acceptance_brief.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_brief_gate",
+                    "evidence_ref": "evidence://route-task-field-retest-acceptance-brief-4",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsupported_summary = summarize_route_task_field_retest_acceptance_brief(
+                {
+                    "schema": "trashbot.route_task_field_retest_drill_console.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_drill_console_gate",
+                    "route_task_field_retest_acceptance_brief_summary": {
+                        "safe_copy": "Unsupported acceptance brief is metadata-only; delivery_success=false.",
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                }
+            )
+            unsafe_summary = summarize_route_task_field_retest_acceptance_brief(
+                {
+                    "schema": "trashbot.route_task_field_retest_acceptance_brief.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_brief_gate",
+                    "evidence_ref": "evidence://route-task-field-retest-acceptance-brief-5",
+                    "route_task_field_retest_acceptance_brief_summary": {
+                        "safe_evidence_ref": "evidence://route-task-field-retest-acceptance-brief-5",
+                        "same_evidence_ref_required": True,
+                        "safe_copy": "Acceptance brief confirms delivery success and ACK posted.",
+                        "delivery_success": False,
+                        "primary_actions_enabled": True,
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    nested_summary,
+                    missing_summary,
+                    no_summary,
+                    unsupported_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["acceptance_status"]["status"], "blocked_missing_required_packet")
+        self.assertIn("delivery_result", env_summary["pass_fail_criteria"][0])
+        self.assertIn("delivery_result", env_summary["required_evidence_packet"])
+        self.assertEqual(env_summary["owner_handoff"]["product"], "review missing packet")
+        self.assertEqual(nested_summary["acceptance_status"]["status"], "nested_ready")
+        self.assertIn("action isolation", nested_summary["pass_fail_criteria"][0])
+        self.assertEqual(missing_summary["acceptance_status"]["status"], "missing")
+        self.assertEqual(no_summary["acceptance_status"]["status"], "missing_summary")
+        self.assertEqual(unsupported_summary["acceptance_status"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["acceptance_status"]["status"], "unsafe_fields")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_route_task_field_retest_acceptance_brief_gate", encoded)
+        self.assertIn("metadata-only", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertNotIn(str(missing_path), encoded)

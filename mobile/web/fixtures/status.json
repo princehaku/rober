@@ -657,5 +657,56 @@
       "真实硬件/HIL",
       "Objective 5 external proof"
     ]
+  },
+  "route_task_field_retest_acceptance_brief": {
+    "schema": "trashbot.route_task_field_retest_acceptance_brief.v1",
+    "summary_schema": "trashbot.route_task_field_retest_acceptance_brief_summary.v1",
+    "schema_version": 1,
+    "source_drill_console_schema": "trashbot.route_task_field_retest_drill_console_summary.v1",
+    "acceptance_status": "blocked_missing_route_task_field_retest_acceptance_brief_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "pass_fail_criteria": [
+      "criteria=same safe evidence_ref must match material pack, result intake and result reconciliation",
+      "criteria=Robot diagnostics compatible summary must remain phone-safe",
+      "criteria=required evidence packet must include runtime log, completion signal, task record and field notes",
+      "criteria=delivery_success=false",
+      "criteria=primary_actions_enabled=false"
+    ],
+    "required_evidence_packet": [
+      "evidence=Nav2/fixed-route runtime log remains not_proven",
+      "evidence=route completion signal remains not_proven",
+      "evidence=task record remains not_proven",
+      "evidence=door_state remains not_proven",
+      "evidence=target_floor_confirmation remains not_proven",
+      "evidence=human_assistance_note remains not_proven",
+      "evidence=dropoff_or_cancel_completion remains not_proven",
+      "evidence=delivery_result remains not_proven"
+    ],
+    "owner_handoff": [
+      "handoff=Autonomy owner supplies field runtime material summary",
+      "handoff=Robot owner supplies diagnostics compatible summary",
+      "handoff=Full-stack keeps Start Delivery, Confirm Dropoff and Cancel gating unchanged"
+    ],
+    "safe_copy_summary": "safe_copy=acceptance brief export allows only acceptance status, safe evidence_ref, criteria, required evidence packet, owner handoff, boundary and not_proven.",
+    "safe_phone_copy": "现场复测验收简报只读展示 acceptance status、safe evidence ref、pass/fail criteria、required evidence packet、owner handoff 和 evidence boundary；这是 software proof only。",
+    "safe_copy": "现场复测验收简报 safe copy：当前 acceptance status blocked_missing_route_task_field_retest_acceptance_brief_not_proven；只允许复制白名单 summary fields。",
+    "recovery_hint": "请按同一 safe evidence_ref 补齐真实现场复测验收材料，并由 Robot diagnostics 发布 compatible acceptance brief summary。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_brief_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 acceptance field review",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实 door_state",
+      "真实 target_floor_confirmation",
+      "真实 human_assistance_note",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机设备/browser",
+      "真实硬件/HIL",
+      "Objective 5 external proof"
+    ]
   }
 }
