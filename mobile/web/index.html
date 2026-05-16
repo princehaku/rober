@@ -314,6 +314,67 @@
         </p>
       </section>
 
+      <section class="hardware-baseline-review-panel" aria-labelledby="hardwareBaselineReviewTitle">
+        <div class="section-heading">
+          <h2 id="hardwareBaselineReviewTitle">硬件基线评审状态</h2>
+          <span id="hardwareBaselineReviewBadge" class="gate-badge gate-blocked">not_proven</span>
+        </div>
+        <p id="hardwareBaselineReviewCopy" class="message">
+          hardware_baseline_review 只读展示 product baseline、vendor coverage、hardware_material_pending、2D LiDAR / ToF responsibility 和 safe evidence_ref。
+        </p>
+        <dl class="hardware-baseline-review-grid">
+          <div>
+            <dt>Review Status</dt>
+            <dd id="hardwareBaselineReviewStatus">hardware baseline review=not_proven</dd>
+          </div>
+          <div>
+            <dt>Product Baseline</dt>
+            <dd id="hardwareBaselineReviewProductBaseline">product baseline=not_proven</dd>
+          </div>
+          <div>
+            <dt>Vendor Coverage</dt>
+            <dd id="hardwareBaselineReviewVendorCoverage">vendor coverage=not_proven</dd>
+          </div>
+          <div>
+            <dt>Pending Material</dt>
+            <dd id="hardwareBaselineReviewPendingMaterial">hardware_material_pending=not_proven</dd>
+          </div>
+          <div>
+            <dt>2D LiDAR Responsibility</dt>
+            <dd id="hardwareBaselineReviewLidarResponsibility">2D LiDAR responsibility=not_proven</dd>
+          </div>
+          <div>
+            <dt>ToF Responsibility</dt>
+            <dd id="hardwareBaselineReviewTofResponsibility">ToF responsibility=not_proven</dd>
+          </div>
+          <div>
+            <dt>Safe Evidence Ref</dt>
+            <dd id="hardwareBaselineReviewEvidenceRef">evidence_ref=not_proven</dd>
+          </div>
+          <div>
+            <dt>Control Boundary</dt>
+            <dd id="hardwareBaselineReviewControls">delivery_success=false / primary_actions_enabled=false</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="hardwareBaselineReviewBoundary">software_proof_docker_hardware_baseline_review_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="hardwareBaselineReviewNotProven">真实硬件基线评审、真实 2D LiDAR / ToF 材料、HIL 和 delivery success 未证明。</dd>
+          </div>
+        </dl>
+        <div class="bundle-copy-row">
+          <button id="copyHardwareBaselineReviewButton" type="button">复制 hardware baseline</button>
+          <button id="downloadHardwareBaselineReviewButton" type="button">导出 hardware baseline</button>
+          <span id="hardwareBaselineReviewCopyStatus" class="hint">whitelist-only phone-safe metadata</span>
+        </div>
+        <pre id="hardwareBaselineReviewSafeCopy" class="safe-copy" aria-label="hardware_baseline_review safe_copy">whitelist-only phone-safe metadata</pre>
+        <p id="hardwareBaselineReviewHint" class="hint">
+          hardware baseline panel 只读展示并导出白名单 metadata；不暴露底层调试字段、内部 payload、硬件路径或成功文案，也不改变 Start、Confirm Dropoff 或 Cancel gating。
+        </p>
+      </section>
+
       <section class="recovery-decision-panel" aria-labelledby="recoveryDecisionTitle">
         <div class="section-heading">
           <h2 id="recoveryDecisionTitle">恢复决策</h2>

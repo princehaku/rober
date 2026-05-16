@@ -1770,6 +1770,70 @@
       "delivery success"
     ]
   },
+  "hardware_baseline_review": {
+    "schema": "trashbot.hardware_baseline_review.v1",
+    "summary_schema": "trashbot.hardware_baseline_review_summary.v1",
+    "schema_version": 1,
+    "review_status": "hardware_material_pending",
+    "product_baseline": [
+      "product baseline: 低成本量产边界保留手机入口、固定路线、电梯 assisted delivery 和支持诊断。",
+      "product baseline: 默认导航/感知责任划分为 2D LiDAR 主链、单目语义证据、ToF 近场安全环。"
+    ],
+    "vendor_coverage": [
+      "vendor coverage: docs/vendor/VENDOR_INDEX.md 已作为硬件事实入口。",
+      "vendor coverage: vendor material 仍需硬件 owner 复核并回填 phone-safe 摘要。"
+    ],
+    "pending_material": [
+      "hardware_material_pending: 真实 2D LiDAR 型号、安装、供电和 ROS2 contract 未完成评审。",
+      "hardware_material_pending: ToF 安全环数量、安装位、阈值和故障策略未完成评审。",
+      "hardware_material_pending: 量产硬件成本、装配和维护材料未完成评审。"
+    ],
+    "sensor_responsibility": {
+      "2d_lidar": "2D LiDAR responsibility: SLAM/Nav2 主链和固定路线定位材料 owner=Hardware+Autonomy。",
+      "tof": "ToF responsibility: 近场防撞安全环材料 owner=Hardware；不作为主建图输入。"
+    },
+    "safe_evidence_ref": "hardware_baseline_review_fixture_20260516_0001",
+    "safe_phone_copy": "hardware_baseline_review fixture 只展示 product baseline、vendor coverage、hardware_material_pending、2D LiDAR / ToF responsibility 和 safe evidence_ref；这是 local static software_proof。",
+    "recovery_hint": "硬件 owner 需补齐 vendor coverage 与 hardware_material_pending 后再进入真实材料评审；手机端 Start、Confirm、Cancel 继续 fail closed。",
+    "evidence_boundary": "software_proof_docker_hardware_baseline_review_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实硬件基线评审",
+      "真实 2D LiDAR 上车材料",
+      "真实 ToF 安全环材料",
+      "真实 vendor coverage 复核",
+      "真实 Nav2/fixed-route",
+      "真实 dropoff completion",
+      "真实 cancel completion",
+      "delivery success",
+      "HIL"
+    ]
+  },
+  "hardware_baseline_review_summary": {
+    "schema": "trashbot.hardware_baseline_review_summary.v1",
+    "source_schema": "trashbot.hardware_baseline_review_gate.v1",
+    "schema_version": 1,
+    "review_status": "hardware_material_pending",
+    "product_baseline_summary": "product baseline: 手机入口、固定路线、电梯 assisted delivery、支持诊断；默认 2D LiDAR 主链、单目语义证据、ToF 近场安全环。",
+    "vendor_coverage_summary": "vendor coverage: docs/vendor/VENDOR_INDEX.md 已作为事实入口；硬件 owner 仍需回填 phone-safe vendor material coverage。",
+    "pending_material_summary": "hardware_material_pending: 2D LiDAR 型号/安装/ROS2 contract、ToF 数量/安装位/阈值/故障策略、量产成本/装配/维护材料待评审。",
+    "lidar_responsibility_summary": "2D LiDAR responsibility: SLAM/Nav2 主链和固定路线定位材料 owner=Hardware+Autonomy。",
+    "tof_responsibility_summary": "ToF responsibility: 近场防撞安全环材料 owner=Hardware；不作为主建图输入。",
+    "safe_evidence_ref": "hardware_baseline_review_fixture_20260516_0001",
+    "safe_phone_copy": "hardware baseline 摘要只说明只读产品基线和待补材料，不证明真实硬件通过。",
+    "recovery_hint": "补齐 hardware_material_pending 和 vendor coverage 后再人工复核；手机端不放行 Start、Confirm 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_hardware_baseline_review_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实硬件基线评审",
+      "真实 2D LiDAR 上车材料",
+      "真实 ToF 安全环材料",
+      "真实 Nav2/fixed-route",
+      "delivery success"
+    ]
+  },
   "route_task_field_run_readiness": {
     "schema": "trashbot.route_task_field_run_readiness.v1",
     "schema_version": 1,

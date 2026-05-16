@@ -38,6 +38,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_mobile_field_material_intake,
     summarize_mobile_field_material_review_decision,
     summarize_mobile_field_material_retest_request,
+    summarize_hardware_baseline_review,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
     summarize_vision_manifest,
@@ -5544,6 +5545,278 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
         self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_hardware_baseline_review_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            review_path = Path(td) / "hardware_baseline_review.json"
+            review_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.hardware_baseline_review_gate.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": "software_proof_docker_hardware_baseline_review_gate",
+                        "evidence_ref": "evidence://hardware-baseline-review-1",
+                        "review_status": {
+                            "status": "hardware_material_pending",
+                            "verdict": "not_proven",
+                            "evidence_source": "software_proof",
+                            "reason": "waiting for reviewed hardware baseline materials",
+                        },
+                        "blockers": ["hardware_material_pending"],
+                        "next_required_evidence": ["vendor-backed hardware baseline packet"],
+                        "review_summary": {
+                            "status": "hardware_material_pending",
+                            "owner": "Hardware",
+                        },
+                        "operator_next_steps": ["Attach reviewed baseline materials before any robot action."],
+                        "robot_diagnostics_summary": {
+                            "safe_copy": (
+                                "Hardware baseline review is metadata-only; software_proof only, "
+                                "delivery_success=false and primary_actions_enabled=false."
+                            ),
+                        },
+                        "not_proven": ["hardware_material_pending", "delivery_success"],
+                        "real_hardware_observed": False,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "hardware_baseline_review": {"delivery_success": True},
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                hardware_baseline_review_ref=str(review_path),
+            )
+            summary = payload["hardware_baseline_review"]
+            summary_alias = payload["hardware_baseline_review_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertNotIn("hardware_baseline_review", payload["latest_status"])
+        self.assertEqual(summary["schema"], "trashbot.hardware_baseline_review_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_hardware_baseline_review_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.hardware_baseline_review_gate.v1")
+        self.assertEqual(summary["source_schema_version"], 1)
+        self.assertEqual(summary["review_status"]["status"], "hardware_material_pending")
+        self.assertEqual(summary["review_status"]["verdict"], "not_proven")
+        self.assertEqual(summary["review_status"]["evidence_source"], "software_proof")
+        self.assertEqual(summary["hardware_material_status"], "hardware_material_pending")
+        self.assertIn("hardware_material_pending", summary["blockers"])
+        self.assertIn("vendor-backed hardware baseline packet", summary["next_required_evidence"])
+        self.assertEqual(summary["review_summary"]["owner"], "Hardware")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://hardware-baseline-review-1")
+        self.assertIn("software_proof", summary["not_proven"])
+        self.assertIn("hardware_material_pending", summary["not_proven"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertTrue(summary["hardware_material_pending"])
+        self.assertFalse(summary["real_hardware_observed"])
+        self.assertFalse(summary["route_elevator_field_pass"])
+        self.assertFalse(summary["nav2_fixed_route_run"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        # baseline review 是 diagnostics consumer，不能触发控制、ACK、Nav2/fixed-route、HIL 或硬件动作。
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["persistence_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["production_ready"])
+        self.assertIn("delivery_success=false", summary["robot_diagnostics_summary"]["safe_phone_copy"])
+        self.assertNotIn(str(review_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_hardware_baseline_review_env_diagnostics_bad_json_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "hardware_baseline_review_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.hardware_baseline_review_summary.v1",
+                        "source_schema": "trashbot.hardware_baseline_review_gate.v1",
+                        "evidence_boundary": "software_proof_docker_hardware_baseline_review_gate",
+                        "source_evidence_boundary": "software_proof_docker_hardware_baseline_review_gate",
+                        "safe_evidence_ref": "evidence://hardware-baseline-review-2",
+                        "review_status": {
+                            "status": "hardware_material_pending",
+                            "verdict": "not_proven",
+                            "evidence_source": "software_proof",
+                            "reason": "real hardware material is pending",
+                        },
+                        "blockers": ["hardware_material_pending"],
+                        "next_required_evidence": ["reviewed vendor-backed hardware packet"],
+                        "review_summary": {"status": "hardware_material_pending"},
+                        "robot_diagnostics_summary": {
+                            "safe_copy": "Hardware baseline review is metadata-only; delivery_success=false.",
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_artifact = os.environ.get("TRASHBOT_HARDWARE_BASELINE_REVIEW")
+            previous_summary = os.environ.get("TRASHBOT_HARDWARE_BASELINE_REVIEW_SUMMARY")
+            os.environ.pop("TRASHBOT_HARDWARE_BASELINE_REVIEW", None)
+            os.environ["TRASHBOT_HARDWARE_BASELINE_REVIEW_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "hardware_baseline_review"
+                ]
+            finally:
+                if previous_artifact is None:
+                    os.environ.pop("TRASHBOT_HARDWARE_BASELINE_REVIEW", None)
+                else:
+                    os.environ["TRASHBOT_HARDWARE_BASELINE_REVIEW"] = previous_artifact
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_HARDWARE_BASELINE_REVIEW_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_HARDWARE_BASELINE_REVIEW_SUMMARY"] = previous_summary
+
+            diagnostics_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "hardware_baseline_review_summary": {
+                            "schema": "trashbot.hardware_baseline_review_summary.v1",
+                            "source_schema": "trashbot.hardware_baseline_review_gate.v1",
+                            "evidence_boundary": "software_proof_docker_hardware_baseline_review_gate",
+                            "source_evidence_boundary": "software_proof_docker_hardware_baseline_review_gate",
+                            "review_status": {
+                                "status": "hardware_material_pending",
+                                "verdict": "not_proven",
+                                "evidence_source": "software_proof",
+                            },
+                            "robot_diagnostics_summary": {
+                                "safe_copy": "Hardware baseline review is metadata-only; delivery_success=false.",
+                            },
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["hardware_baseline_review"]
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_hardware_baseline_review.json"
+            missing_summary = summarize_hardware_baseline_review(str(missing_path))
+
+            bad_json_path = Path(td) / "bad_hardware_baseline_review.json"
+            bad_json_path.write_text("{bad-json", encoding="utf-8")
+            bad_json_summary = summarize_hardware_baseline_review(str(bad_json_path))
+
+            unsupported_summary = summarize_hardware_baseline_review(
+                {
+                    "schema": "trashbot.hardware_diagnostics_proof.v1",
+                    "evidence_boundary": "software_proof_docker_hardware_diagnostics_proof_gate",
+                    "safe_copy": "Unsupported hardware baseline review is metadata-only; delivery_success=false.",
+                }
+            )
+            unsafe_summary = summarize_hardware_baseline_review(
+                {
+                    "schema": "trashbot.hardware_baseline_review_gate.v1",
+                    "evidence_boundary": "software_proof_docker_hardware_baseline_review_gate",
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "nav2_triggered": True,
+                    "hil_pass": True,
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Hardware baseline review confirms delivery success and ACK posted.",
+                    },
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    diagnostics_summary,
+                    missing_summary,
+                    bad_json_summary,
+                    unsupported_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["review_status"]["status"], "hardware_material_pending")
+        self.assertEqual(diagnostics_summary["review_status"]["status"], "hardware_material_pending")
+        self.assertEqual(missing_summary["review_status"]["status"], "missing")
+        self.assertEqual(bad_json_summary["review_status"]["status"], "read_error")
+        self.assertEqual(unsupported_summary["review_status"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["review_status"]["status"], "unsafe_fields")
+        self.assertEqual(env_summary["review_status"]["evidence_source"], "software_proof")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertFalse(diagnostics_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_hardware_baseline_review_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("hardware_material_pending", encoded)
+        self.assertIn("metadata-only", encoded)
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_hardware_baseline_review_accepts_pc_summary_output_schema(self):
+        # PC --summary-output 直接交接 summary，不再额外包 source_schema/source_evidence_boundary。
+        pc_summary = {
+            "schema": "trashbot.hardware_baseline_review_summary.v1",
+            "schema_version": 1,
+            "source": "software_proof",
+            "evidence_boundary": "software_proof_docker_hardware_baseline_review_gate",
+            "status": "hardware_baseline_review_not_proven",
+            "hardware_material_status": "hardware_material_pending",
+            "source_boundary_doc": "docs/product/production_hardware_boundary.md",
+            "sensor_responsibility_summary": [
+                {
+                    "sensor": "2D LiDAR",
+                    "material_status": "hardware_material_pending",
+                    "field_status": "not_proven",
+                    "evidence_boundary": "software_proof_docker_hardware_baseline_review_gate",
+                }
+            ],
+            "missing_required_phrases": [],
+            "not_proven": ["real_lidar_field_pass", "delivery_success"],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+
+        summary = summarize_hardware_baseline_review(pc_summary)
+
+        # Robot diagnostics 必须接收该 summary schema，同时保持软件证明和 not_proven 边界。
+        self.assertEqual(summary["schema"], "trashbot.hardware_baseline_review_summary.v1")
+        self.assertEqual(summary["source_schema"], "trashbot.hardware_baseline_review_summary.v1")
+        self.assertEqual(
+            summary["source_evidence_boundary"],
+            "software_proof_docker_hardware_baseline_review_gate",
+        )
+        self.assertEqual(
+            summary["review_status"]["status"],
+            "hardware_baseline_review_not_proven",
+        )
+        self.assertNotEqual(summary["review_status"]["status"], "unsupported_schema")
+        self.assertEqual(summary["review_status"]["evidence_source"], "software_proof")
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertIn("delivery_success", summary["not_proven"])
 
     def test_diagnostics_payload_includes_phone_safe_oss_cdn_manifest_summary(self):
         with tempfile.TemporaryDirectory() as td:

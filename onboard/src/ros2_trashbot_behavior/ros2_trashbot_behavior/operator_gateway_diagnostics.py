@@ -222,6 +222,9 @@ MOBILE_FIELD_MATERIAL_RETEST_REQUEST_SUMMARY_SCHEMA = (
 MOBILE_FIELD_MATERIAL_RETEST_REQUEST_GATE = (
     "software_proof_docker_mobile_field_material_retest_request_gate"
 )
+HARDWARE_BASELINE_REVIEW_SCHEMA = "trashbot.hardware_baseline_review_gate.v1"
+HARDWARE_BASELINE_REVIEW_SUMMARY_SCHEMA = "trashbot.hardware_baseline_review_summary.v1"
+HARDWARE_BASELINE_REVIEW_GATE = "software_proof_docker_hardware_baseline_review_gate"
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -958,6 +961,34 @@ def _mobile_field_material_retest_request_not_proven(request=None, summary_fragm
         "real_serial_or_uart_feedback",
         "real_hil_pass",
         "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _hardware_baseline_review_not_proven(review=None, summary_fragment=None):
+    # hardware baseline review 只消费 Autonomy/Hardware 的材料结论；真实传感器、控制和 HIL 必须另有证据。
+    review = review if isinstance(review, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(review.get("not_proven"), list):
+        source_values.extend(review.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "not_proven",
+        "software_proof",
+        "hardware_material_pending",
+        "real_sensor_device_proof",
+        "real_nav2_fixed_route_run",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "delivery_success",
     )
     for item in list(source_values) + list(required):
         text = str(item or "").strip()
@@ -2015,6 +2046,63 @@ def _default_mobile_field_material_retest_request_summary(
     }
 
 
+def _default_hardware_baseline_review_summary(path, status="not_configured", read_error=""):
+    # 缺少硬件 baseline review 时也必须显式 fail-closed，避免 diagnostics 被误当成硬件准入通过。
+    return {
+        "schema": HARDWARE_BASELINE_REVIEW_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": HARDWARE_BASELINE_REVIEW_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "review_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": read_error or "hardware baseline review is not configured",
+        },
+        "hardware_material_status": "hardware_material_pending",
+        "blockers": ["hardware_material_pending"],
+        "next_required_evidence": [],
+        "review_summary": {
+            "status": "hardware_material_pending",
+            "reason": "hardware baseline review is not configured",
+        },
+        "safe_evidence_ref": "",
+        "operator_next_steps": [],
+        "robot_diagnostics_summary": {
+            "safe_copy": (
+                "Hardware baseline review is metadata-only; "
+                "software_proof only, delivery_success=false."
+            ),
+            "safe_phone_copy": (
+                "Hardware baseline review is metadata-only; "
+                "software_proof only, delivery_success=false."
+            ),
+        },
+        "not_proven": _hardware_baseline_review_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "real_hardware_observed": False,
+        "hardware_material_pending": True,
+        "route_elevator_field_pass": False,
+        "nav2_fixed_route_run": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -2602,6 +2690,16 @@ def _mobile_field_material_retest_request_source_contract(value):
     source_schema = str(value.get("schema") or "")
     source_boundary = str(value.get("evidence_boundary") or "")
     if source_schema == MOBILE_FIELD_MATERIAL_RETEST_REQUEST_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or source_schema)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _hardware_baseline_review_source_contract(value):
+    # 允许直接 artifact 或已生成 summary；summary 仍必须回指 baseline review schema 和同一软件证据边界。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == HARDWARE_BASELINE_REVIEW_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or source_schema)
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
@@ -7801,6 +7899,219 @@ def summarize_mobile_field_material_retest_request(source):
     return summary
 
 
+def summarize_hardware_baseline_review(source):
+    """构建 hardware baseline review 的 metadata-only diagnostics 摘要。"""
+    # 支持 explicit ref、env path 和 latest_status/diagnostics dict；所有来源都只能进入白名单摘要字段。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_hardware_baseline_review_summary(
+        source_path,
+        read_error="hardware baseline review is not configured",
+    )
+    if isinstance(source, dict):
+        review = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "review_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "evidence_source": "software_proof",
+                        "reason": "hardware baseline review artifact missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Hardware baseline review is missing; hardware_material_pending remains true.",
+                        "safe_phone_copy": "Hardware baseline review is missing; hardware_material_pending remains true.",
+                    },
+                }
+            )
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                review = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading hardware baseline review: {exc}"
+            )
+            summary.update(
+                {
+                    "review_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "evidence_source": "software_proof",
+                        "reason": safe_error,
+                    },
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Hardware baseline review could not be read; hardware_material_pending remains true.",
+                        "safe_phone_copy": "Hardware baseline review could not be read; hardware_material_pending remains true.",
+                    },
+                }
+            )
+            return summary
+
+    if not isinstance(review, dict):
+        summary.update(
+            {
+                "review_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware baseline review JSON must be an object",
+                },
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Hardware baseline review shape is invalid; hardware_material_pending remains true.",
+                    "safe_phone_copy": "Hardware baseline review shape is invalid; hardware_material_pending remains true.",
+                },
+            }
+        )
+        return summary
+
+    # Autonomy/Hardware 可以给完整 artifact 或 summary wrapper；diagnostics 只读取可展示给操作员的摘要。
+    summary_fragment = {}
+    for candidate in (
+        review.get("hardware_baseline_review_summary"),
+        review.get("robot_diagnostics_summary"),
+        review.get("diagnostics_summary"),
+        review.get("mobile_readonly_summary"),
+        review.get("phone_safe_summary"),
+        review.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+    source_schema, source_boundary = _hardware_baseline_review_source_contract(review)
+    status_source = (
+        review.get("review_status")
+        if isinstance(review.get("review_status"), dict)
+        else summary_fragment.get("review_status")
+        if isinstance(summary_fragment.get("review_status"), dict)
+        else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or review.get("safe_copy")
+        or review.get("safe_phone_copy")
+        or "Hardware baseline review is metadata-only; software_proof only, delivery_success=false."
+    )
+    robot_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(summary_fragment.get(key) or "").strip():
+            robot_summary[key] = _redact_route_task_rehearsal_text(summary_fragment.get(key))
+    robot_summary["safe_copy"] = safe_copy
+    robot_summary["safe_phone_copy"] = safe_copy
+    review_summary = (
+        review.get("review_summary")
+        if isinstance(review.get("review_summary"), dict)
+        else summary_fragment.get("review_summary")
+        if isinstance(summary_fragment.get("review_summary"), dict)
+        else {"status": review.get("status") or summary_fragment.get("status") or "hardware_material_pending"}
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": review.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "review_status": {
+                "status": _redact_route_task_rehearsal_text(
+                    status_source.get("status")
+                    or summary_fragment.get("status")
+                    or review.get("status")
+                    or "hardware_material_pending"
+                ),
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or review.get("reason")
+                    or "hardware baseline review consumed without real hardware evidence"
+                ),
+            },
+            "hardware_material_status": "hardware_material_pending",
+            "blockers": _safe_route_task_rehearsal_list(
+                review.get("blockers")
+                if isinstance(review.get("blockers"), list)
+                else summary_fragment.get("blockers")
+            )
+            or ["hardware_material_pending"],
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                review.get("next_required_evidence")
+                if isinstance(review.get("next_required_evidence"), list)
+                else summary_fragment.get("next_required_evidence")
+            ),
+            "review_summary": _safe_pc_route_debug_value(review_summary),
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("safe_evidence_ref")
+                or summary_fragment.get("evidence_ref")
+                or review.get("safe_evidence_ref")
+                or review.get("evidence_ref", "")
+            ),
+            "operator_next_steps": _safe_route_task_rehearsal_list(
+                review.get("operator_next_steps")
+                if isinstance(review.get("operator_next_steps"), list)
+                else summary_fragment.get("operator_next_steps")
+            ),
+            "robot_diagnostics_summary": robot_summary,
+            "not_proven": _hardware_baseline_review_not_proven(review, summary_fragment),
+            "read_error": "",
+            "metadata_only": True,
+            "real_hardware_observed": False,
+            "hardware_material_pending": True,
+            "route_elevator_field_pass": False,
+            "nav2_fixed_route_run": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    accepted_schemas = {HARDWARE_BASELINE_REVIEW_SCHEMA, HARDWARE_BASELINE_REVIEW_SUMMARY_SCHEMA}
+    if source_schema not in accepted_schemas or source_boundary != HARDWARE_BASELINE_REVIEW_GATE:
+        summary.update(
+            {
+                "review_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware baseline review schema or evidence boundary is unsupported",
+                },
+                "blockers": ["hardware_material_pending"],
+                "next_required_evidence": [],
+                "review_summary": {"status": "hardware_material_pending"},
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Hardware baseline review is not a supported diagnostics source; no hardware or delivery result is proven.",
+                    "safe_phone_copy": "Hardware baseline review is not a supported diagnostics source; no hardware or delivery result is proven.",
+                },
+            }
+        )
+        return summary
+
+    if _mobile_field_material_intake_has_unsafe_fields(review) or _route_task_field_run_readiness_copy_is_unsafe(safe_copy):
+        summary.update(
+            {
+                "review_status": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware baseline review contains unsafe fields or success/control claims",
+                },
+                "blockers": ["hardware_material_pending"],
+                "next_required_evidence": [],
+                "review_summary": {"status": "hardware_material_pending"},
+                "operator_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Hardware baseline review was blocked because fields could expose control data or imply delivery success.",
+                    "safe_phone_copy": "Hardware baseline review was blocked because fields could expose control data or imply delivery success.",
+                },
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -8931,9 +9242,21 @@ def build_diagnostics_payload(
     mobile_field_material_intake_ref="",
     mobile_field_material_review_decision_ref="",
     mobile_field_material_retest_request_ref="",
+    hardware_baseline_review_ref="",
 ):
     latest_status = dict(latest_status or {})
     diagnostics_source = latest_status.get("diagnostics") if isinstance(latest_status.get("diagnostics"), dict) else {}
+    hardware_baseline_review_source = (
+        latest_status.get("hardware_baseline_review")
+        if isinstance(latest_status.get("hardware_baseline_review"), dict)
+        else latest_status.get("hardware_baseline_review_summary")
+        if isinstance(latest_status.get("hardware_baseline_review_summary"), dict)
+        else diagnostics_source.get("hardware_baseline_review")
+        if isinstance(diagnostics_source.get("hardware_baseline_review"), dict)
+        else diagnostics_source.get("hardware_baseline_review_summary")
+        if isinstance(diagnostics_source.get("hardware_baseline_review_summary"), dict)
+        else {}
+    )
     mobile_field_material_review_decision_source = (
         latest_status.get("mobile_field_material_review_decision")
         if isinstance(latest_status.get("mobile_field_material_review_decision"), dict)
@@ -8972,6 +9295,9 @@ def build_diagnostics_payload(
     latest_status.pop("mobile_field_material_retest_request", None)
     latest_status.pop("mobile_field_material_retest_request_summary", None)
     latest_status.pop("mobile_field_material_retest_request_copy", None)
+    latest_status.pop("hardware_baseline_review", None)
+    latest_status.pop("hardware_baseline_review_summary", None)
+    latest_status.pop("hardware_baseline_review_copy", None)
     last_task = dict(latest_status.get("last_task") or {})
     task_record_path = str(
         latest_status.get("task_record_path")
@@ -9122,6 +9448,15 @@ def build_diagnostics_payload(
     mobile_field_material_retest_request_summary = summarize_mobile_field_material_retest_request(
         mobile_field_material_retest_request_source
     )
+    hardware_baseline_review_source = (
+        hardware_baseline_review_ref
+        or os.environ.get("TRASHBOT_HARDWARE_BASELINE_REVIEW", "")
+        or os.environ.get("TRASHBOT_HARDWARE_BASELINE_REVIEW_SUMMARY", "")
+        or hardware_baseline_review_source
+    )
+    hardware_baseline_review_summary = summarize_hardware_baseline_review(
+        hardware_baseline_review_source
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -9202,6 +9537,8 @@ def build_diagnostics_payload(
         mobile_field_material_review_decision_summary=mobile_field_material_review_decision_summary,
         mobile_field_material_retest_request=mobile_field_material_retest_request_summary,
         mobile_field_material_retest_request_summary=mobile_field_material_retest_request_summary,
+        hardware_baseline_review=hardware_baseline_review_summary,
+        hardware_baseline_review_summary=hardware_baseline_review_summary,
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),

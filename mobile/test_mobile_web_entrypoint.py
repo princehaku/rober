@@ -251,6 +251,13 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("downloadMobileFieldMaterialRetestRequestButton", index)
         self.assertIn("software_proof_docker_mobile_field_material_retest_request_gate", app)
         self.assertIn("trashbot.mobile_field_material_retest_request_copy.v1", app)
+        self.assertIn("hardware_baseline_review", app)
+        self.assertIn("hardware_baseline_review_summary", app)
+        self.assertIn("hardwareBaselineReviewTitle", index)
+        self.assertIn("copyHardwareBaselineReviewButton", index)
+        self.assertIn("downloadHardwareBaselineReviewButton", index)
+        self.assertIn("software_proof_docker_hardware_baseline_review_gate", app)
+        self.assertIn("trashbot.hardware_baseline_review_copy.v1", app)
         self.assertIn("mobile_browser_acceptance_bundle", app)
         self.assertIn("phone_browser_acceptance_bundle", app)
         self.assertIn("mobile_acceptance_evidence_bundle", app)
@@ -265,6 +272,7 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("mobile_field_material_intake", json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8"))))
         self.assertIn("mobile_field_material_review_decision", json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8"))))
         self.assertIn("mobile_field_material_retest_request", json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8"))))
+        self.assertIn("hardware_baseline_review", json.dumps(json.loads(FIXTURE.read_text(encoding="utf-8"))))
         self.assertIn("primaryJourneyTitle", index)
         self.assertEqual(manifest["evidence_boundary"], "software_proof_docker_mobile_web_entrypoint_gate")
         self.assertEqual(
@@ -390,6 +398,88 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "primary_actions_enabled\": true",
         ):
             self.assertNotIn(forbidden, retest_fixture_text)
+
+    def test_hardware_baseline_review_panel_is_read_only_and_whitelist_exportable(self):
+        app = self.read("app.js")
+        index = self.read("index.html")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # hardware baseline panel 只展示产品/责任边界，不读取 raw 材料，也不改变主操作 gate。
+        self.assertIn("hardwareBaselineReviewTitle", index)
+        self.assertIn("硬件基线评审状态", index)
+        self.assertIn("hardwareBaselineReviewProductBaseline", index)
+        self.assertIn("hardwareBaselineReviewVendorCoverage", index)
+        self.assertIn("hardwareBaselineReviewPendingMaterial", index)
+        self.assertIn("hardwareBaselineReviewLidarResponsibility", index)
+        self.assertIn("hardwareBaselineReviewTofResponsibility", index)
+        self.assertIn("hardwareBaselineReviewEvidenceRef", index)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", index)
+        self.assertIn("software_proof_docker_hardware_baseline_review_gate", index)
+        self.assertIn("HARDWARE_BASELINE_REVIEW_BOUNDARY", app)
+        self.assertIn("UNSAFE_HARDWARE_BASELINE_REVIEW_TEXT", app)
+        self.assertIn("safeHardwareBaselineReviewText", app)
+        self.assertIn("hardwareBaselineReviewCandidate", app)
+        self.assertIn("hardwareBaselineReviewFromStatus", app)
+        self.assertIn("hardwareBaselineReviewCopyPayload", app)
+        self.assertIn("hardware_baseline_review", app)
+        self.assertIn("hardware_baseline_review_summary", app)
+        self.assertIn("diagnosticsSummary.hardware_baseline_review", app)
+        self.assertIn("nestedDiagnosticsSummary.hardware_baseline_review", app)
+        self.assertIn("statusDiagnosticsSummary.hardware_baseline_review", app)
+        self.assertIn("product_baseline_summary", app)
+        self.assertIn("vendor_coverage_summary", app)
+        self.assertIn("pending_material_summary", app)
+        self.assertIn("lidar_responsibility_summary", app)
+        self.assertIn("tof_responsibility_summary", app)
+        self.assertIn("hardware_material_pending", app)
+        self.assertIn("2D LiDAR responsibility", app)
+        self.assertIn("ToF responsibility", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("trashbot.hardware_baseline_review_copy.v1", app)
+        self.assertIn("copyHardwareBaselineReviewButton", app)
+        self.assertIn("downloadHardwareBaselineReviewButton", app)
+
+        baseline = fixture["hardware_baseline_review"]
+        self.assertEqual(
+            baseline["evidence_boundary"],
+            "software_proof_docker_hardware_baseline_review_gate",
+        )
+        self.assertEqual(baseline["review_status"], "hardware_material_pending")
+        self.assertEqual(baseline["delivery_success"], False)
+        self.assertEqual(baseline["primary_actions_enabled"], False)
+        self.assertIn("hardware_baseline_review_summary", fixture_text)
+        self.assertIn("product baseline", fixture_text)
+        self.assertIn("vendor coverage", fixture_text)
+        self.assertIn("hardware_material_pending", fixture_text)
+        self.assertIn("2D LiDAR", fixture_text)
+        self.assertIn("ToF", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("software_proof_docker_hardware_baseline_review_gate", fixture_text)
+        self.assertNotRegex(app, r"hardwareBaselineReview.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"hardwareBaselineReview.*fetchJson\(ENDPOINTS\.diagnostics")
+
+        baseline_fixture_text = json.dumps(baseline, ensure_ascii=False).lower()
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "baudrate",
+            "authorization",
+            "token",
+            "raw artifact",
+            "checksum",
+            "traceback",
+            "database url",
+            "queue url",
+            "oss ak",
+            "oss sk",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, baseline_fixture_text)
 
     def test_cloud_hosted_pwa_installability_gate_uses_relay_and_browser(self):
         script = CLOUD_PWA_GATE.read_text(encoding="utf-8")

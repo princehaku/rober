@@ -195,6 +195,26 @@ review decision 的枚举至少覆盖 `blocked_missing_real_phone_or_pwa_observa
 
 该 review decision 仍只是 `software_proof` / `not_proven`：它不访问 ROS graph、Nav2 runtime、serial/UART、真实手机、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、真实 delivery success、HIL、WAVE ROVER/UART、外部云、OSS/CDN、DB/queue 或 4G；也不证明 Objective 5 external proof。
 
+## hardware_baseline_review
+
+`pc-tools/evidence/hardware_baseline_review_gate.py` 只读 `docs/product/production_hardware_boundary.md`，把 Navigation/Sensing Baseline 转成 Autonomy 可消费的 sensor responsibility summary：
+
+```bash
+python3 pc-tools/evidence/hardware_baseline_review_gate.py \
+  --output /tmp/hardware_baseline_review.json \
+  --summary-output /tmp/hardware_baseline_review_summary.json
+```
+
+需要直接给 sprint 验收读取时，可使用：
+
+```bash
+python3 pc-tools/evidence/hardware_baseline_review_gate.py --once-json
+```
+
+输出 artifact 使用 `schema=trashbot.hardware_baseline_review_gate.v1`，summary 使用 Robot diagnostics 可直接接收的 `schema=trashbot.hardware_baseline_review_summary.v1`，证据边界固定为 `software_proof_docker_hardware_baseline_review_gate`。核心字段包括 `hardware_baseline_review`、`sensor_responsibility_summary`、`2D LiDAR`、`monocular`、`ToF`、`hardware_material_pending`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+该 gate 明确责任边界：`2D LiDAR` 是 SLAM/Nav2 主链 product baseline / pending material；`monocular` 只承接电梯门/目标楼层语义证据；`ToF` 是 near-field safety gate，不是主建图输入。缺 production boundary、缺任一责任短语、`delivery_success=true`、`primary_actions_enabled=true`、`LiDAR field pass`、`ToF field pass` 或 HIL 成功断言都会 fail closed。该结果只证明 PC/local/Docker 能把产品硬件基线转成 autonomy responsibility summary，不证明真实 LiDAR/ToF field pass、真实 monocular 语义通过、真实 SLAM/Nav2 field run、HIL 或 delivery_success。
+
 ## route/task rehearsal artifact
 
 `pc-tools/evidence/evidence_crosscheck.py` 可在原有只读复账基础上额外写出 route/task rehearsal artifact：

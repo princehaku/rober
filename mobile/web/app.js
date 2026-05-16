@@ -60,6 +60,7 @@ const MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_BOUNDARY = "software_proof_doc
 const MOBILE_FIELD_MATERIAL_INTAKE_BOUNDARY = "software_proof_docker_mobile_field_material_intake_gate";
 const MOBILE_FIELD_MATERIAL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_mobile_field_material_review_decision_gate";
 const MOBILE_FIELD_MATERIAL_RETEST_REQUEST_BOUNDARY = "software_proof_docker_mobile_field_material_retest_request_gate";
+const HARDWARE_BASELINE_REVIEW_BOUNDARY = "software_proof_docker_hardware_baseline_review_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -138,6 +139,7 @@ const UNSAFE_MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_TEXT = /(authorization|
 const UNSAFE_MOBILE_FIELD_MATERIAL_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw browser event|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_MOBILE_FIELD_MATERIAL_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_MOBILE_FIELD_MATERIAL_RETEST_REQUEST_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw retest|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
+const UNSAFE_HARDWARE_BASELINE_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw baseline|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 
@@ -155,6 +157,7 @@ let latestMobileRouteElevatorFieldDevicePrecheck = null;
 let latestMobileFieldMaterialIntake = null;
 let latestMobileFieldMaterialReviewDecision = null;
 let latestMobileFieldMaterialRetestRequest = null;
+let latestHardwareBaselineReview = null;
 let deferredPwaInstallPromptEvent = null;
 let pwaInstallPromptEventState = null;
 let latestRealDeviceEvidencePackage = null;
@@ -412,6 +415,15 @@ function safeMobileFieldMaterialRetestRequestText(value, fallback = "not_proven"
   // retest request 面向下一次现场复测交接，只能展示白名单请求、清单和 owner handoff。
   const text = safeText(value, fallback);
   if (UNSAFE_MOBILE_FIELD_MATERIAL_RETEST_REQUEST_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeHardwareBaselineReviewText(value, fallback = "not_proven") {
+  // 硬件基线评审给手机端只读查看，必须过滤 raw ROS、raw JSON、路径、凭证和成功暗示。
+  const text = safeText(value, fallback);
+  if (UNSAFE_HARDWARE_BASELINE_REVIEW_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -6107,6 +6119,159 @@ function mobileFieldMaterialRetestRequestFromStatus(status, readiness, diagnosti
   };
 }
 
+function hardwareBaselineReviewCandidate(status, readiness, diagnostics) {
+  // baseline review 只消费后端/diagnostics 已脱敏摘要，手机端不追 raw 硬件材料。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.hardware_baseline_review,
+    status?.hardware_baseline_review_summary,
+    readiness?.hardware_baseline_review,
+    readiness?.hardware_baseline_review_summary,
+    diagnostics?.hardware_baseline_review,
+    diagnostics?.hardware_baseline_review_summary,
+    diagnosticsReadiness.hardware_baseline_review,
+    diagnosticsReadiness.hardware_baseline_review_summary,
+    diagnosticsSummary.hardware_baseline_review,
+    diagnosticsSummary.hardware_baseline_review_summary,
+    nestedDiagnosticsSummary.hardware_baseline_review,
+    nestedDiagnosticsSummary.hardware_baseline_review_summary,
+    nestedDiagnosticsInnerSummary.hardware_baseline_review,
+    nestedDiagnosticsInnerSummary.hardware_baseline_review_summary,
+    statusDiagnosticsSummary.hardware_baseline_review,
+    statusDiagnosticsSummary.hardware_baseline_review_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function hardwareBaselineReviewNotProvenList(value) {
+  // 静态 fixture 只能证明手机端能展示评审状态，不能替代真实硬件或 vendor 材料复核。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实硬件基线评审",
+    "真实 2D LiDAR 上车材料",
+    "真实 ToF 安全环材料",
+    "真实 vendor coverage 复核",
+    "真实 Nav2/fixed-route",
+    "真实 dropoff completion",
+    "真实 cancel completion",
+    "delivery success",
+    "HIL",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 18);
+}
+
+function hardwareBaselineReviewSummaryText(value, fallback) {
+  // product baseline、vendor coverage 和 pending material 支持数组/对象，但只输出短白名单摘要。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeHardwareBaselineReviewText(
+        item?.safe_phone_copy || item?.summary || item?.name || item?.owner ||
+          item?.material || item?.responsibility || item?.status || item?.state || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.reason || value.owner || value.material || value.responsibility || value.step;
+    if (direct) {
+      return safeHardwareBaselineReviewText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeHardwareBaselineReviewText(key, "");
+        const copy = hardwareBaselineReviewSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safeHardwareBaselineReviewText(value, fallback);
+}
+
+function hardwareBaselineReviewFromStatus(status, readiness, diagnostics) {
+  const provided = hardwareBaselineReviewCandidate(status, readiness, diagnostics) || {};
+  const productBaseline = provided.product_baseline_summary || provided.product_baseline ||
+    provided.baseline_summary || provided.baseline;
+  const vendorCoverage = provided.vendor_coverage_summary || provided.vendor_coverage ||
+    provided.vendor_material_coverage || provided.coverage_summary;
+  const pendingMaterial = provided.pending_material_summary || provided.pending_material ||
+    provided.hardware_material_pending || provided.pending_materials;
+  const lidarResponsibility = provided.lidar_responsibility_summary ||
+    provided["2d_lidar_responsibility"] || provided.lidar_responsibility ||
+    provided.sensor_responsibility?.["2d_lidar"];
+  const tofResponsibility = provided.tof_responsibility_summary ||
+    provided.tof_responsibility || provided.sensor_responsibility?.tof;
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.hardware_baseline_review_summary.v1",
+    source_schema: "trashbot.hardware_baseline_review_gate.v1",
+    schema_version: 1,
+    review_status: safeHardwareBaselineReviewText(
+      provided.review_status || provided.overall_status || provided.status,
+      "hardware baseline review=not_proven",
+    ),
+    product_baseline_summary: hardwareBaselineReviewSummaryText(
+      productBaseline,
+      "product baseline=not_proven",
+    ),
+    vendor_coverage_summary: hardwareBaselineReviewSummaryText(
+      vendorCoverage,
+      "vendor coverage=not_proven",
+    ),
+    pending_material_summary: hardwareBaselineReviewSummaryText(
+      pendingMaterial,
+      "hardware_material_pending=not_proven",
+    ),
+    lidar_responsibility_summary: hardwareBaselineReviewSummaryText(
+      lidarResponsibility,
+      "2D LiDAR responsibility=not_proven",
+    ),
+    tof_responsibility_summary: hardwareBaselineReviewSummaryText(
+      tofResponsibility,
+      "ToF responsibility=not_proven",
+    ),
+    safe_evidence_ref: safeHardwareBaselineReviewText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "evidence_ref=not_proven",
+    ),
+    safe_phone_copy: safeHardwareBaselineReviewText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "hardware_baseline_review 只读基线评审摘要缺失；手机端保持 not_proven 和主操作关闭。",
+    ),
+    recovery_hint: safeHardwareBaselineReviewText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由硬件 owner 补齐 vendor coverage 与 hardware_material_pending；Start、Confirm、Cancel 继续 fail closed。",
+    ),
+    evidence_boundary: safeHardwareBaselineReviewText(
+      provided.evidence_boundary,
+      HARDWARE_BASELINE_REVIEW_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: hardwareBaselineReviewNotProvenList(provided),
+  };
+}
+
 function elevatorAssistCandidate(status, readiness, diagnostics) {
   // evidence-driven artifact 优先级高于旧 dry-run summary，避免新主链路被旧兼容字段遮住。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -7600,6 +7765,29 @@ function renderMobileFieldMaterialRetestRequest(status) {
   $("mobileFieldMaterialRetestRequestHint").textContent = summary.recovery_hint;
 }
 
+function renderHardwareBaselineReview(status) {
+  const readiness = readinessFromStatus(status);
+  const summary = hardwareBaselineReviewFromStatus(status, readiness, latestDiagnostics);
+  latestHardwareBaselineReview = summary;
+  const badge = $("hardwareBaselineReviewBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 hardware baseline" : "baseline not_proven";
+  $("hardwareBaselineReviewCopy").textContent = summary.safe_phone_copy;
+  $("hardwareBaselineReviewStatus").textContent = summary.review_status;
+  $("hardwareBaselineReviewProductBaseline").textContent = summary.product_baseline_summary;
+  $("hardwareBaselineReviewVendorCoverage").textContent = summary.vendor_coverage_summary;
+  $("hardwareBaselineReviewPendingMaterial").textContent = summary.pending_material_summary;
+  $("hardwareBaselineReviewLidarResponsibility").textContent = summary.lidar_responsibility_summary;
+  $("hardwareBaselineReviewTofResponsibility").textContent = summary.tof_responsibility_summary;
+  $("hardwareBaselineReviewEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("hardwareBaselineReviewControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("hardwareBaselineReviewBoundary").textContent = summary.evidence_boundary;
+  $("hardwareBaselineReviewNotProven").textContent = summary.not_proven.join("、");
+  $("hardwareBaselineReviewHint").textContent = summary.recovery_hint;
+}
+
 function ensureElevatorAssistPanel() {
   // 本轮文件范围不改 index.html，因此用 JS 注入只读 panel，保持静态壳兼容旧浏览器测试。
   let panel = $("elevatorAssistPanel");
@@ -8208,6 +8396,37 @@ function mobileFieldMaterialRetestRequestCopyPayload(summary) {
     safe_phone_copy: source.safe_phone_copy,
     recovery_hint: source.recovery_hint,
     evidence_boundary: MOBILE_FIELD_MATERIAL_RETEST_REQUEST_BOUNDARY,
+    not_proven: source.not_proven,
+  };
+}
+
+function hardwareBaselineReviewCopyPayload(summary) {
+  // hardware baseline copy/export 只保留产品基线和责任边界摘要，不复制 raw JSON、路径或硬件底层细节。
+  const source = summary?.schema
+    ? summary
+    : hardwareBaselineReviewFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  return {
+    schema: "trashbot.hardware_baseline_review_copy.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    hardware_baseline_review_schema: source.schema,
+    source_schema: source.source_schema,
+    review_status: source.review_status,
+    product_baseline_summary: source.product_baseline_summary,
+    vendor_coverage_summary: source.vendor_coverage_summary,
+    pending_material_summary: source.pending_material_summary,
+    lidar_responsibility_summary: source.lidar_responsibility_summary,
+    tof_responsibility_summary: source.tof_responsibility_summary,
+    safe_evidence_ref: source.safe_evidence_ref,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    safe_phone_copy: source.safe_phone_copy,
+    recovery_hint: source.recovery_hint,
+    evidence_boundary: HARDWARE_BASELINE_REVIEW_BOUNDARY,
     not_proven: source.not_proven,
   };
 }
@@ -9403,6 +9622,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const hardwareBaselineReview = hardwareBaselineReviewFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const rows = [
     ["软件版本", payload?.software_version],
     ["地图版本", payload?.map_version],
@@ -9431,6 +9655,7 @@ function renderDiagnosticsSummary(payload) {
     ["mobile_field_material_intake", mobileFieldMaterialIntake.intake_status],
     ["mobile_field_material_review_decision", mobileFieldMaterialReviewDecision.review_decision],
     ["mobile_field_material_retest_request", mobileFieldMaterialRetestRequest.source_review_decision],
+    ["hardware_baseline_review", hardwareBaselineReview.review_status],
   ];
   rows.forEach(([label, value]) => {
     const box = document.createElement("div");
@@ -9501,6 +9726,7 @@ function renderOfflineFailure() {
   renderMobileFieldMaterialIntake({});
   renderMobileFieldMaterialReviewDecision({});
   renderMobileFieldMaterialRetestRequest({});
+  renderHardwareBaselineReview({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -9549,6 +9775,7 @@ function renderStatus(status) {
   renderMobileFieldMaterialIntake(status);
   renderMobileFieldMaterialReviewDecision(status);
   renderMobileFieldMaterialRetestRequest(status);
+  renderHardwareBaselineReview(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
@@ -9774,6 +10001,7 @@ async function openDiagnostics() {
     renderMobileFieldMaterialIntake(latestStatus || {});
     renderMobileFieldMaterialReviewDecision(latestStatus || {});
     renderMobileFieldMaterialRetestRequest(latestStatus || {});
+    renderHardwareBaselineReview(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileDeviceEvidence(latestStatus || {});
     renderMobileDeviceHandoffSession(latestStatus || {});
@@ -9939,6 +10167,34 @@ function wireEvents() {
     downloadJsonPackage("mobile_field_material_retest_request_copy.json", payload);
     $("mobileFieldMaterialRetestRequestCopyStatus").textContent =
       "已导出 retest request whitelist-only JSON。";
+  });
+  $("copyHardwareBaselineReviewButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(
+      hardwareBaselineReviewCopyPayload(latestHardwareBaselineReview || {}),
+      null,
+      2,
+    );
+    $("hardwareBaselineReviewSafeCopy").textContent = payload;
+    // hardware baseline copy 只服务基线评审交接；失败时保留页面内手动复制文本。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("hardwareBaselineReviewCopyStatus").textContent =
+        "已复制 hardware baseline phone-safe metadata。";
+    } catch (_error) {
+      $("hardwareBaselineReviewCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadHardwareBaselineReviewButton").addEventListener("click", () => {
+    const payload = JSON.stringify(
+      hardwareBaselineReviewCopyPayload(latestHardwareBaselineReview || {}),
+      null,
+      2,
+    );
+    $("hardwareBaselineReviewSafeCopy").textContent = payload;
+    downloadJsonPackage("hardware_baseline_review_copy.json", payload);
+    $("hardwareBaselineReviewCopyStatus").textContent =
+      "已导出 hardware baseline whitelist-only JSON。";
   });
   $("copyRouteTaskReviewButton").addEventListener("click", async () => {
     // operator review 复制只使用后端提供的 safe_copy 白名单对象，缺失时不生成替代 bundle。

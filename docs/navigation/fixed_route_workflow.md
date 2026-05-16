@@ -1019,6 +1019,16 @@ Switch from `fixed_route_dry_run:=true` to real fixed-route navigation only afte
 - `navigation_timeout_sec` and `navigation_elapsed_sec` 在出现异常时可用于复现与修复。
 - No waypoint patrol node is active at the same time; use `navigation_mode:=fixed_route`.
 
+### 7.1 Autonomy sensor responsibility gate
+
+Before treating a fixed-route or SLAM/Nav2 run as field material, keep the sensor responsibility boundary machine-checkable:
+
+```bash
+python3 pc-tools/evidence/hardware_baseline_review_gate.py --once-json
+```
+
+The `hardware_baseline_review` output is `software_proof` only. It records the product baseline from `docs/product/production_hardware_boundary.md`: `2D LiDAR` is the SLAM/Nav2 primary mapping and localization input, monocular camera is elevator door / target-floor semantic evidence, and `ToF` is a near-field safety gate rather than a primary mapping input. The artifact keeps every sensor at `hardware_material_pending` and `not_proven`, with `delivery_success=false` and `primary_actions_enabled=false`; it does not prove LiDAR field pass, ToF field pass, real monocular semantic pass, real Nav2/fixed-route execution, HIL, or delivery success.
+
 ## 8. Delivery Action Modes
 
 The task orchestrator defaults to safe dry-run delivery:

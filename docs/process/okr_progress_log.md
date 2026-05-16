@@ -8,7 +8,19 @@
 
 ## 2026-05-16 系列
 
-更新时间：2026-05-16 10:12 Asia/Shanghai。
+更新时间：2026-05-16 11:22 Asia/Shanghai。
+
+### 2026-05-16 11-12｜hardware-baseline-review-gate｜O4 硬件基线评审闭环，手机体验与低成本量产边界由约 80% 上调到约 81%
+
+`sprints/2026.05.16_11-12_hardware-baseline-review-gate/` 完成 `software_proof_docker_hardware_baseline_review_gate`：Task A `hardware-engineer` 更新 `docs/product/production_hardware_boundary.md`，修复 PR #5 review 指出的 `Default Hardware Set` 与 `Navigation/Sensing Baseline` 矛盾，把 2D LiDAR / ToF 写为 Product Target / Procurement Validation Pending，保留 `hardware_material_pending`、`not_proven` 和非 Objective 5 external proof 口径。Task A 验证输出关键边界 `rg` 命中，`git diff --check -- docs/product/production_hardware_boundary.md` 通过。
+
+Task C `autonomy-engineer` 新增 `pc-tools/evidence/hardware_baseline_review_gate.py` 与 `pc-tools/evidence/test_hardware_baseline_review_gate.py`，更新 `pc-tools/README.md` 与 `docs/navigation/fixed_route_workflow.md`。pc-tools gate 将 product hardware boundary 转成 `hardware_baseline_review` artifact/summary，输出 `software_proof_docker_hardware_baseline_review_gate`、`hardware_material_pending`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`；传感器职责分层为 2D LiDAR 目标用于 SLAM/Nav2 主链，monocular 用于电梯门/楼层语义证据，ToF 用于近场 safety gate 且不是主建图输入。Task C 验证输出 `py_compile` passed、`test_hardware_baseline_review_gate.py` `Ran 4 tests ... OK`、CLI `--help` passed、required `rg` passed、scoped `git diff --check` passed。
+
+Task B `robot-software-engineer` 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`、`onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py` 与 `docs/interfaces/ros_contracts.md`，新增 `hardware_baseline_review` / `hardware_baseline_review_summary` diagnostics metadata-only consumer。该 consumer 支持 explicit ref、`TRASHBOT_HARDWARE_BASELINE_REVIEW` 和 diagnostics source；schema/boundary enforce；bad/missing/unsafe/success claim fail closed；command、ACK、cursor、persistence、Nav2、HIL、dropoff/cancel、delivery-success flags false。最终审查发现 PC compact summary schema 与 Robot 白名单不一致，已统一为 `trashbot.hardware_baseline_review_summary.v1`，并新增 PC summary handoff 回归，证明不再返回 `unsupported_schema`。Task B 验证输出 diagnostics unittest 修复后 `Ran 94 tests ... OK`、`py_compile` passed、required `rg` passed、scoped `git diff --check` passed。
+
+Task D `full-stack-software-engineer` 更新 `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增 first-screen 只读“硬件基线评审状态”panel，展示 review status、product baseline、vendor coverage、`hardware_material_pending`、2D LiDAR responsibility、ToF responsibility、safe `evidence_ref`、`delivery_success=false`、`primary_actions_enabled=false`、`not_proven` 和 boundary；copy/export whitelist-only；Start / Confirm Dropoff / Cancel gating 未改变。Task D 验证输出 `mobile/test_mobile_web_entrypoint.py` `Ran 52 tests ... OK`、`py_compile` passed、`node --check mobile/web/app.js` passed、required `rg` passed、scoped `git diff --check` passed。
+
+该证据只支持 Objective 4 从约 80% 保守上调到约 81%。理由是 PR #5 暴露的低成本量产硬件边界矛盾已被修复，并由 PC gate、Robot diagnostics metadata-only consumer 和 phone-safe read-only panel 串成闭环，团队可以用同一口径管理 Default Hardware Set、2D LiDAR / ToF Product Target、`hardware_material_pending` 和 `not_proven`。Objective 1 保持约 73%，因为本轮没有真实 WAVE ROVER、UART、Orange Pi、真实串口、`T=1001` feedback 或 HIL；Objective 2 和 Objective 3 保持约 78%，因为本轮只间接支撑传感器责任边界，没有真实 route/elevator field pass、真实 Nav2/fixed-route runtime log、task record、dropoff/cancel completion 或 delivery success。Objective 5 保持约 66%，因为本机只有 Docker，且本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration 或其他真实外部 O5 材料；not real Objective 5 external proof。本轮不证明真实 2D LiDAR、真实 ToF、真实手机/PWA、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、delivery_success=false 之外的 delivery success、真实 WAVE ROVER、真实串口/UART、HIL 或 Objective 5 external proof。
 
 ### 2026-05-16 09-10｜mobile-field-material-retest-request｜O2/O3 retest request 能力模块，任务闭环与固定路线均由约 77% 上调到约 78%，手机体验由约 79% 上调到约 80%
 
