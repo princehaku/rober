@@ -24,6 +24,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_run_execution_pack,
     summarize_route_task_field_retest_execution_pack,
     summarize_route_task_field_retest_session_handoff,
+    summarize_route_task_field_retest_result_intake,
     summarize_route_task_field_run_intake,
     summarize_route_task_field_run_reconciliation,
     summarize_route_task_field_run_readiness,
@@ -2820,6 +2821,284 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(weak_same_ref_summary["handoff_status"]["status"], "unsafe_fields")
         self.assertEqual(unsafe_summary["handoff_status"]["status"], "unsafe_fields")
         self.assertIn("software_proof_docker_route_task_field_retest_session_handoff_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertFalse(env_summary["ack_post_allowed"])
+        self.assertFalse(env_summary["nav2_triggered"])
+        self.assertFalse(env_summary["hil_pass"])
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_retest_result_intake_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            result_path = Path(td) / "route_task_field_retest_result_intake.json"
+            result_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_result_intake.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_result_intake_gate"
+                        ),
+                        "result_status": {
+                            "status": "ready_for_field_retest_result_intake_not_proven",
+                            "verdict": "not_proven",
+                            "reason": "field result metadata is ready for review only",
+                        },
+                        "evidence_ref": "evidence://route-task-field-retest-result-intake-1",
+                        "same_evidence_ref_required": True,
+                        "door_state": "observed_open_not_proven",
+                        "target_floor_confirmation": "operator_confirmed_not_proven",
+                        "human_assistance_note": "Operator observed elevator doorway; result remains not_proven.",
+                        "result_materials": {
+                            "status": "metadata_only",
+                            "items": [
+                                "door_state",
+                                "target_floor_confirmation",
+                                "human_assistance_note",
+                            ],
+                        },
+                        "operator_next_steps": ["Review same evidence_ref field result metadata."],
+                        "robot_diagnostics_summary": {
+                            "status": "metadata_only",
+                            "reason": "Robot diagnostics only mirrors safe result intake metadata.",
+                        },
+                        "mobile_readonly_summary": {
+                            "safe_copy": (
+                                "Route-task field retest result intake is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                        },
+                        "not_proven": ["delivery_success"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_result_intake_ref=str(result_path),
+            )
+            summary = payload["route_task_field_retest_result_intake"]
+            summary_alias = payload["route_task_field_retest_result_intake_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary["schema"], "trashbot.route_task_field_retest_result_intake_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_result_intake_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_field_retest_result_intake.v1")
+        self.assertEqual(
+            summary["result_status"]["status"],
+            "ready_for_field_retest_result_intake_not_proven",
+        )
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://route-task-field-retest-result-intake-1",
+        )
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertEqual(summary["door_state"], "observed_open_not_proven")
+        self.assertEqual(summary["target_floor_confirmation"], "operator_confirmed_not_proven")
+        self.assertIn("not_proven", summary["human_assistance_note"])
+        self.assertIn("door_state", summary["result_materials_summary"]["items"])
+        self.assertEqual(summary["robot_diagnostics_summary"]["status"], "metadata_only")
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("real_elevator_door_state", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["production_ready"])
+        self.assertNotIn(str(result_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_retest_result_intake_env_nested_missing_mismatch_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "route_task_field_retest_result_intake_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_result_intake_summary.v1",
+                        "source_schema": "trashbot.route_task_field_retest_result_intake.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_result_intake_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_result_intake_gate"
+                        ),
+                        "result_status": {
+                            "status": "blocked_missing_field_result_material",
+                            "verdict": "not_proven",
+                            "reason": "field result metadata is incomplete",
+                        },
+                        "safe_evidence_ref": "evidence://route-task-field-retest-result-intake-2",
+                        "same_evidence_ref_required": True,
+                        "door_state": "not_proven",
+                        "target_floor_confirmation": "not_proven",
+                        "human_assistance_note": "Waiting for operator result note; not_proven.",
+                        "result_materials_summary": {"status": "blocked", "items": ["door_state"]},
+                        "operator_next_steps": ["keep metadata-only"],
+                        "safe_phone_copy": "Route-task field retest result intake is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_result = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE")
+            previous_summary = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_SUMMARY")
+            os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE", None)
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_retest_result_intake"
+                ]
+            finally:
+                if previous_result is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE"] = previous_result
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_SUMMARY"] = previous_summary
+
+            nested_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "diagnostics_summary": {
+                            "schema": "trashbot.route_task_field_retest_result_intake.v1",
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_result_intake_gate"
+                            ),
+                            "result_status": "ready_nested_not_proven",
+                            "evidence_ref": "evidence://route-task-field-retest-result-intake-3",
+                            "same_evidence_ref_required": True,
+                            "door_state": "observed_closed_not_proven",
+                            "target_floor_confirmation": "operator_pending_not_proven",
+                            "human_assistance_note": "Operator note remains metadata-only.",
+                            "result_materials_summary": {"status": "ready", "items": ["human_assistance_note"]},
+                            "operator_next_steps": ["review field note"],
+                            "safe_copy": "Route-task field retest result intake is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["route_task_field_retest_result_intake"]
+            missing_summary = summarize_route_task_field_retest_result_intake(
+                Path(td) / "Bearer-secret-token" / "missing_result_intake.json"
+            )
+            unsupported_summary = summarize_route_task_field_retest_result_intake(
+                {
+                    "schema": "trashbot.route_task_field_retest_session_handoff.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_session_handoff_gate"
+                    ),
+                    "evidence_ref": "evidence://unsupported",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Unsupported route-task field retest result intake is metadata-only; delivery_success=false.",
+                }
+            )
+            missing_ref_summary = summarize_route_task_field_retest_result_intake(
+                {
+                    "schema": "trashbot.route_task_field_retest_result_intake.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_result_intake_gate"
+                    ),
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Route-task field retest result intake is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                }
+            )
+            mismatch_summary = summarize_route_task_field_retest_result_intake(
+                {
+                    "schema": "trashbot.route_task_field_retest_result_intake.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_result_intake_gate"
+                    ),
+                    "evidence_ref": "evidence://source-ref",
+                    "route_task_field_retest_result_intake_summary": {
+                        "safe_evidence_ref": "evidence://summary-ref",
+                    },
+                    "same_evidence_ref_required": True,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Route-task field retest result intake is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                }
+            )
+            weak_same_ref_summary = summarize_route_task_field_retest_result_intake(
+                {
+                    "schema": "trashbot.route_task_field_retest_result_intake.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_result_intake_gate"
+                    ),
+                    "evidence_ref": "evidence://weak-same-ref",
+                    "same_evidence_ref_required": "true",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Route-task field retest result intake is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                }
+            )
+            unsafe_summary = summarize_route_task_field_retest_result_intake(
+                {
+                    "schema": "trashbot.route_task_field_retest_result_intake.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_result_intake_gate"
+                    ),
+                    "evidence_ref": "evidence://unsafe",
+                    "same_evidence_ref_required": True,
+                    "delivery_success": True,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Route-task field retest result intake confirms delivery success and ACK posted.",
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    nested_summary,
+                    missing_summary,
+                    unsupported_summary,
+                    missing_ref_summary,
+                    mismatch_summary,
+                    weak_same_ref_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["result_status"]["status"], "blocked_missing_field_result_material")
+        self.assertEqual(nested_summary["result_status"]["status"], "ready_nested_not_proven")
+        self.assertEqual(missing_summary["result_status"]["status"], "missing")
+        self.assertEqual(unsupported_summary["result_status"]["status"], "unsupported_schema")
+        self.assertEqual(missing_ref_summary["result_status"]["status"], "missing_evidence_ref")
+        self.assertEqual(mismatch_summary["result_status"]["status"], "evidence_ref_mismatch")
+        self.assertEqual(weak_same_ref_summary["result_status"]["status"], "unsafe_fields")
+        self.assertEqual(unsafe_summary["result_status"]["status"], "unsafe_fields")
+        self.assertIn("software_proof_docker_route_task_field_retest_result_intake_gate", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertFalse(env_summary["delivery_success"])

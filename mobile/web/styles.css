@@ -156,6 +156,7 @@ h2 {
 .route-task-terminal-review-decision-panel,
 .route-task-field-retest-execution-pack-panel,
 .route-task-field-retest-session-handoff-panel,
+.route-task-field-retest-result-intake-panel,
 .cloud-panel,
 .mobile-device-panel,
 .device-evidence-panel,
@@ -289,6 +290,7 @@ h2 {
 .route-task-terminal-review-decision-grid,
 .route-task-field-retest-execution-pack-grid,
 .route-task-field-retest-session-handoff-grid,
+.route-task-field-retest-result-intake-grid,
 .mobile-device-grid,
 .device-evidence-grid,
 .handoff-session-grid,
@@ -342,6 +344,7 @@ h2 {
 .route-task-terminal-review-decision-grid div,
 .route-task-field-retest-execution-pack-grid div,
 .route-task-field-retest-session-handoff-grid div,
+.route-task-field-retest-result-intake-grid div,
 .mobile-device-grid div,
 .device-evidence-grid div,
 .handoff-session-grid div,
@@ -492,6 +495,10 @@ dd {
 }
 
 .route-task-field-retest-session-handoff-grid {
+  grid-template-columns: 1fr;
+}
+
+.route-task-field-retest-result-intake-grid {
   grid-template-columns: 1fr;
 }
 
@@ -816,6 +823,10 @@ dd {
   }
 
   .route-task-field-retest-session-handoff-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .route-task-field-retest-result-intake-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

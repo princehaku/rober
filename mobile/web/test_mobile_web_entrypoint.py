@@ -686,5 +686,94 @@ class RouteTaskFieldRetestSessionHandoffMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, handoff_text)
 
 
+class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_field_retest_result_intake_panel_is_read_only_and_copy_gated(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # result intake 跟在 session handoff 后，只读解释现场结果材料缺口。
+        self.assertIn("routeTaskFieldRetestResultIntakeTitle", app)
+        self.assertIn("路线任务现场复测结果入口", app)
+        self.assertIn("routeTaskFieldRetestSessionHandoffTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("route-task-field-retest-result-intake-panel", styles)
+        self.assertIn("route-task-field-retest-result-intake-grid", styles)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 Robot diagnostics compatible summary。
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestResultIntakeText", app)
+        self.assertIn("routeTaskFieldRetestResultIntakeCandidate", app)
+        self.assertIn("routeTaskFieldRetestResultIntakeFromStatus", app)
+        self.assertIn("route_task_field_retest_result_intake", app)
+        self.assertIn("route_task_field_retest_result_intake_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_result_intake", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_result_intake", app)
+        self.assertIn("intake_status", app)
+        self.assertIn("material_completeness", app)
+        self.assertIn("result_materials_summary", app)
+        self.assertIn("missing_material_list", app)
+        self.assertIn("operator_next_steps_summary", app)
+
+        # copy/export 必须由 safe_copy 驱动；缺失时显示 blocked copy unavailable，不合成 raw result 包。
+        self.assertIn("routeTaskFieldRetestResultIntakeCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_result_intake_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestResultIntakeButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestResultIntakeButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"routeTaskFieldRetestResultIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须固定 result intake 的 software proof / not_proven 边界。
+        result_intake = fixture["route_task_field_retest_result_intake"]
+        self.assertEqual(
+            result_intake["intake_status"],
+            "blocked_missing_route_task_field_retest_result_materials_not_proven",
+        )
+        self.assertEqual(result_intake["delivery_success"], False)
+        self.assertEqual(result_intake["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_route_task_field_retest_result_intake_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("route_task_field_retest_result_intake", doc)
+        self.assertIn("路线任务现场复测结果入口", doc)
+
+    def test_field_retest_result_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        result_intake_text = json.dumps(
+            fixture["route_task_field_retest_result_intake"],
+            ensure_ascii=False,
+        ).lower()
+
+        # result intake fixture 只能携带白名单摘要，不能带 raw result、底层控制、凭证或成功状态。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw result",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, result_intake_text)
+
+
 if __name__ == "__main__":
     unittest.main()
