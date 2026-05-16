@@ -410,6 +410,32 @@ result intake 必须看到八类现场复测结果材料摘要：Nav2/fixed-rout
 
 `robot_diagnostics_summary` 和 `mobile_readonly_summary` 只能消费白名单 summary、safe copy 和 fail-closed flags，不展示 raw artifact、本机路径、checksum、traceback、凭证、DB/queue URL、OSS AK/SK、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 参数。`ready_for_field_retest_result_intake_not_proven` 只表示 Docker/local software proof 足以接收同一 `evidence_ref` 的八类复测结果材料摘要，不是真实 fixed-route/Nav2、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
+## 4.9.7 Route Task Field Retest Result Reconciliation
+
+result intake 之后，可以运行 PC-side reconciliation gate，把上一轮 `route_task_field_retest_result_intake`、`route_task_field_retest_session_handoff`、`route_task_field_retest_execution_pack` 或现场 result wrapper/nested JSON 复账成 artifact / summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_result_reconciliation.py \
+  --result-json /tmp/route_task_field_retest_result_intake.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_result_reconciliation.json \
+  --summary-output /tmp/route_task_field_retest_result_reconciliation_summary.json
+```
+
+artifact 使用 `schema=trashbot.route_task_field_retest_result_reconciliation.v1`，summary 使用 `schema=trashbot.route_task_field_retest_result_reconciliation_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_result_reconciliation_gate`。顶层固定包含 `same_evidence_ref_required=true`、`same_evidence_ref_status`、`source_result`、`result_materials`、`missing_materials`、`mismatch_reasons`、`operator_next_steps`、`rerun_summary`、`field_callback_checklist`、`fail_closed_phone_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+reconciliation 必须看到八类现场复测结果材料摘要：Nav2/fixed-route runtime log、route completion signal、task record、door state、target floor confirmation、human assistance note、dropoff/cancel completion 和 delivery result。输入可以是 artifact、summary、wrapper 或 nested JSON；如果只拿到 execution pack / session handoff placeholder，gate 会保留 missing / placeholder-only 状态，不把准备包冒充为现场结果。
+
+保守阻断规则：
+
+- 输入缺失、JSON 不可读或不是 JSON object：输出 blocked，不把异常当结果材料。
+- 输入 schema 或 evidence boundary 不支持：输出 blocked。
+- 缺 safe `evidence_ref`、与 `--evidence-ref` 不一致或 `same_evidence_ref_required` 不是严格 true：输出 blocked。
+- 任一结果材料缺失、仍是 placeholder/TBD/sample/not_collected，或材料自身 `evidence_ref` 与同一证据号不一致：输出 blocked。
+- 输入含 unsafe copy、raw path、credential、ROS topic、serial/UART、WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true`：输出 blocked。
+
+`robot_diagnostics_summary` 和 `mobile_readonly_summary` 只能消费白名单 summary 和 fail-closed flags，不展示 raw artifact、本机路径、checksum、traceback、凭证、DB/queue URL、OSS AK/SK、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 参数。`ready_for_field_retest_result_reconciliation_not_proven` 只表示 Docker/local software proof 足以复账同一 `evidence_ref` 的八类结果材料摘要，不是真实 fixed-route/Nav2、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## 4.10 Mobile Field Material Intake
 
 现场前检查完成后，`pc-tools/evidence/mobile_field_material_intake.py` 负责把手机设备观察、route/elevator 材料、Nav2/fixed-route runtime log、task record、completion signal、dropoff/cancel material status 收到同一条 `evidence_ref` 证据链里：

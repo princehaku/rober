@@ -368,5 +368,60 @@
       "真实硬件/HIL",
       "Objective 5 external proof"
     ]
+  },
+  "route_task_field_retest_result_reconciliation": {
+    "schema": "trashbot.route_task_field_retest_result_reconciliation.v1",
+    "summary_schema": "trashbot.route_task_field_retest_result_reconciliation_summary.v1",
+    "schema_version": 1,
+    "source_result_intake_schema": "trashbot.route_task_field_retest_result_intake_summary.v1",
+    "reconciliation_verdict": "blocked_missing_route_task_field_retest_result_reconciliation_materials_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=blocked_missing_robot_diagnostics_compatible_summary",
+    "result_materials_status": [
+      "nav2_or_fixed_route_runtime_log=summary_pending",
+      "route_completion_signal=summary_pending",
+      "task_record=summary_pending",
+      "door_state=missing",
+      "target_floor_confirmation=missing",
+      "human_assistance_note=missing",
+      "dropoff_or_cancel_completion=summary_pending",
+      "delivery_result=not_proven"
+    ],
+    "missing_material_list": [
+      "missing_material=door_state",
+      "missing_material=target_floor_confirmation",
+      "missing_material=human_assistance_note",
+      "missing_material=delivery_result",
+      "missing_material=Robot diagnostics compatible summary"
+    ],
+    "mismatch_reasons": [
+      "mismatch_reason=Robot diagnostics compatible summary not published under same safe evidence_ref",
+      "mismatch_reason=eight result material summaries incomplete",
+      "mismatch_reason=delivery_result remains not_proven"
+    ],
+    "operator_next_steps": [
+      "operator_next_step=publish route_task_field_retest_result_reconciliation_summary through Robot diagnostics",
+      "operator_next_step=keep all eight result materials under the same safe evidence_ref",
+      "operator_next_step=leave Start, Confirm Dropoff and Cancel gating unchanged"
+    ],
+    "safe_phone_copy": "路线任务现场结果复账只读展示 reconciliation verdict、same evidence ref status、八类结果材料状态、missing material list、mismatch reasons、operator next steps 和 evidence boundary；这是 software proof only。",
+    "safe_copy": "路线任务现场结果复账 safe_copy：当前 verdict blocked_missing_route_task_field_retest_result_reconciliation_materials_not_proven；Robot diagnostics compatible summary 和 delivery_result 仍未证明；delivery_success=false；primary_actions_enabled=false。",
+    "recovery_hint": "请按同一 safe evidence_ref 补齐八类结果材料，并由 Robot diagnostics 发布 compatible reconciliation summary 后再交接。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_result_reconciliation_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实 door_state",
+      "真实 target_floor_confirmation",
+      "真实 human_assistance_note",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机设备/browser",
+      "真实硬件/HIL",
+      "Objective 5 external proof"
+    ]
   }
 }

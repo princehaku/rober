@@ -25,6 +25,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_execution_pack,
     summarize_route_task_field_retest_session_handoff,
     summarize_route_task_field_retest_result_intake,
+    summarize_route_task_field_retest_result_reconciliation,
     summarize_route_task_field_run_intake,
     summarize_route_task_field_run_reconciliation,
     summarize_route_task_field_run_readiness,
@@ -3099,6 +3100,281 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(weak_same_ref_summary["result_status"]["status"], "unsafe_fields")
         self.assertEqual(unsafe_summary["result_status"]["status"], "unsafe_fields")
         self.assertIn("software_proof_docker_route_task_field_retest_result_intake_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertFalse(env_summary["ack_post_allowed"])
+        self.assertFalse(env_summary["nav2_triggered"])
+        self.assertFalse(env_summary["hil_pass"])
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_retest_result_reconciliation_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            reconciliation_path = Path(td) / "route_task_field_retest_result_reconciliation.json"
+            reconciliation_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_result_reconciliation.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_result_reconciliation_gate"
+                        ),
+                        "reconciliation_status": {
+                            "status": "ready_for_field_retest_result_reconciliation_not_proven",
+                            "verdict": "not_proven",
+                            "reason": "result intake metadata reconciles with same evidence_ref only",
+                        },
+                        "evidence_ref": "evidence://route-task-field-retest-result-reconciliation-1",
+                        "same_evidence_ref_required": True,
+                        "result_intake_summary": {
+                            "status": "metadata_only",
+                            "safe_evidence_ref": "evidence://route-task-field-retest-result-reconciliation-1",
+                        },
+                        "result_reconciliation_summary": {
+                            "status": "metadata_only",
+                            "checked": ["result_intake_summary", "same_evidence_ref_required"],
+                        },
+                        "operator_next_steps": ["Review same evidence_ref retest result metadata."],
+                        "robot_diagnostics_summary": {
+                            "status": "metadata_only",
+                            "reason": "Robot diagnostics only mirrors safe result reconciliation metadata.",
+                        },
+                        "mobile_readonly_summary": {
+                            "safe_copy": (
+                                "Route-task field retest result reconciliation is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                        },
+                        "not_proven": ["delivery_success"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_result_reconciliation_ref=str(reconciliation_path),
+            )
+            summary = payload["route_task_field_retest_result_reconciliation"]
+            summary_alias = payload["route_task_field_retest_result_reconciliation_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.route_task_field_retest_result_reconciliation_summary.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_result_reconciliation_gate",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.route_task_field_retest_result_reconciliation.v1",
+        )
+        self.assertEqual(
+            summary["reconciliation_status"]["status"],
+            "ready_for_field_retest_result_reconciliation_not_proven",
+        )
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://route-task-field-retest-result-reconciliation-1",
+        )
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertEqual(summary["result_intake_summary"]["status"], "metadata_only")
+        self.assertIn("same_evidence_ref_required", summary["result_reconciliation_summary"]["checked"])
+        self.assertEqual(summary["robot_diagnostics_summary"]["status"], "metadata_only")
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("real_nav2_fixed_route_run", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["production_ready"])
+        self.assertNotIn(str(reconciliation_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_retest_result_reconciliation_env_nested_missing_mismatch_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "route_task_field_retest_result_reconciliation_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_result_reconciliation_summary.v1",
+                        "source_schema": "trashbot.route_task_field_retest_result_reconciliation.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_result_reconciliation_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_result_reconciliation_gate"
+                        ),
+                        "reconciliation_status": {
+                            "status": "blocked_missing_retest_result_material",
+                            "verdict": "not_proven",
+                            "reason": "result reconciliation metadata is incomplete",
+                        },
+                        "safe_evidence_ref": "evidence://route-task-field-retest-result-reconciliation-2",
+                        "same_evidence_ref_required": True,
+                        "result_intake_summary": {"status": "blocked"},
+                        "result_reconciliation_summary": {"status": "blocked"},
+                        "operator_next_steps": ["keep metadata-only"],
+                        "safe_phone_copy": "Route-task field retest result reconciliation is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_result = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION")
+            previous_summary = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION_SUMMARY")
+            os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION", None)
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_retest_result_reconciliation"
+                ]
+            finally:
+                if previous_result is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION"] = previous_result
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION_SUMMARY"] = previous_summary
+
+            nested_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "route_task_field_retest_result_reconciliation_summary": {
+                            "schema": "trashbot.route_task_field_retest_result_reconciliation.v1",
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_result_reconciliation_gate"
+                            ),
+                            "reconciliation_status": "ready_nested_not_proven",
+                            "evidence_ref": "evidence://route-task-field-retest-result-reconciliation-3",
+                            "same_evidence_ref_required": True,
+                            "result_intake_summary": {"status": "ready"},
+                            "result_reconciliation_summary": {"status": "ready"},
+                            "operator_next_steps": ["review result reconciliation"],
+                            "safe_copy": "Route-task field retest result reconciliation is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["route_task_field_retest_result_reconciliation"]
+            missing_summary = summarize_route_task_field_retest_result_reconciliation(
+                Path(td) / "Bearer-secret-token" / "missing_result_reconciliation.json"
+            )
+            unsupported_summary = summarize_route_task_field_retest_result_reconciliation(
+                {
+                    "schema": "trashbot.route_task_field_retest_result_intake.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_result_intake_gate"
+                    ),
+                    "evidence_ref": "evidence://unsupported",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Unsupported route-task field retest result reconciliation is metadata-only; delivery_success=false.",
+                }
+            )
+            missing_ref_summary = summarize_route_task_field_retest_result_reconciliation(
+                {
+                    "schema": "trashbot.route_task_field_retest_result_reconciliation.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_result_reconciliation_gate"
+                    ),
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Route-task field retest result reconciliation is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                }
+            )
+            mismatch_summary = summarize_route_task_field_retest_result_reconciliation(
+                {
+                    "schema": "trashbot.route_task_field_retest_result_reconciliation.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_result_reconciliation_gate"
+                    ),
+                    "evidence_ref": "evidence://source-ref",
+                    "route_task_field_retest_result_reconciliation_summary": {
+                        "safe_evidence_ref": "evidence://summary-ref",
+                    },
+                    "same_evidence_ref_required": True,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Route-task field retest result reconciliation is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                }
+            )
+            weak_same_ref_summary = summarize_route_task_field_retest_result_reconciliation(
+                {
+                    "schema": "trashbot.route_task_field_retest_result_reconciliation.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_result_reconciliation_gate"
+                    ),
+                    "evidence_ref": "evidence://weak-same-ref",
+                    "same_evidence_ref_required": "true",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Route-task field retest result reconciliation is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                }
+            )
+            unsafe_summary = summarize_route_task_field_retest_result_reconciliation(
+                {
+                    "schema": "trashbot.route_task_field_retest_result_reconciliation.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_result_reconciliation_gate"
+                    ),
+                    "evidence_ref": "evidence://unsafe",
+                    "same_evidence_ref_required": True,
+                    "delivery_success": True,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Route-task field retest result reconciliation confirms delivery success and ACK posted.",
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    nested_summary,
+                    missing_summary,
+                    unsupported_summary,
+                    missing_ref_summary,
+                    mismatch_summary,
+                    weak_same_ref_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["reconciliation_status"]["status"], "blocked_missing_retest_result_material")
+        self.assertEqual(nested_summary["reconciliation_status"]["status"], "ready_nested_not_proven")
+        self.assertEqual(missing_summary["reconciliation_status"]["status"], "missing")
+        self.assertEqual(unsupported_summary["reconciliation_status"]["status"], "unsupported_schema")
+        self.assertEqual(missing_ref_summary["reconciliation_status"]["status"], "missing_evidence_ref")
+        self.assertEqual(mismatch_summary["reconciliation_status"]["status"], "evidence_ref_mismatch")
+        self.assertEqual(weak_same_ref_summary["reconciliation_status"]["status"], "unsafe_fields")
+        self.assertEqual(unsafe_summary["reconciliation_status"]["status"], "unsafe_fields")
+        self.assertIn("software_proof_docker_route_task_field_retest_result_reconciliation_gate", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertFalse(env_summary["delivery_success"])
