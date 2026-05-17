@@ -1,0 +1,53 @@
+{
+  "accepted_required_materials": [
+    "software-proof feedback_T1001.log",
+    "software-proof odom_once.jsonl",
+    "software-proof imu_once.jsonl",
+    "software-proof battery_once.jsonl",
+    "software-proof operator_hil_report"
+  ],
+  "delivery_success": false,
+  "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_review_decision_gate",
+  "evidence_ref": "hil-packet-execution-fixture",
+  "missing_required_materials": [
+    "real feedback_T1001.log",
+    "real odom_once.jsonl",
+    "real imu_once.jsonl",
+    "real battery_once.jsonl",
+    "operator_hil_report"
+  ],
+  "next_required_evidence": [
+    "real WAVE ROVER HIL run",
+    "same evidence_ref HIL packet",
+    "real feedback_T1001.log",
+    "real odom_once.jsonl",
+    "real imu_once.jsonl",
+    "real battery_once.jsonl",
+    "operator_hil_report"
+  ],
+  "not_proven": [
+    "real_wave_rover",
+    "real_uart",
+    "hil_pass",
+    "real_odom",
+    "real_imu",
+    "real_battery",
+    "delivery_success"
+  ],
+  "overall_status": "not_proven",
+  "owner_handoff": {
+    "full-stack-software-engineer": "keep mobile panel read-only and actions disabled",
+    "hardware-engineer": "collect real HIL packet on a host with WAVE ROVER UART access",
+    "robot-software-engineer": "keep diagnostics read-only until review_decision changes with real evidence"
+  },
+  "primary_actions_enabled": false,
+  "rerun_commands": [
+    "python3 pc-tools/evidence/wave_rover_hil_packet_intake.py --packet-dir <real_packet_dir>",
+    "python3 pc-tools/evidence/wave_rover_hil_packet_review_decision.py --intake-summary <summary.json>"
+  ],
+  "review_decision": "blocked_pending_real_hil_packet",
+  "same_evidence_ref_required": true,
+  "schema": "trashbot.wave_rover_hil_packet_review_decision.v1",
+  "source": "software_proof",
+  "summary_schema": "trashbot.wave_rover_hil_packet_review_decision_summary.v1"
+}

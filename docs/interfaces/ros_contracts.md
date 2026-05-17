@@ -1534,6 +1534,44 @@ remote control, cursor updates, persistence updates, terminal ACK, Nav2
 trigger, WAVE ROVER feedback flow, WAVE ROVER HIL result, dropoff/cancel
 completion, or delivery-success behavior.
 
+Operator diagnostics may also expose `wave_rover_hil_packet_execution_pack`,
+`wave_rover_hil_packet_execution_pack_summary`, and the Robot-compatible
+`robot_diagnostics_wave_rover_hil_packet_execution_pack_summary` alias from an
+explicit `wave_rover_hil_packet_execution_pack_ref`,
+`TRASHBOT_WAVE_ROVER_HIL_PACKET_EXECUTION_PACK`,
+`TRASHBOT_WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_SUMMARY`, `latest_status`, or
+an already sanitized diagnostics source. The source JSON must use
+`schema=trashbot.wave_rover_hil_packet_execution_pack.v1` or
+`schema=trashbot.wave_rover_hil_packet_execution_pack_summary.v1` with
+`evidence_boundary=software_proof_docker_wave_rover_hil_packet_execution_pack_gate`.
+If the source is already a Robot diagnostics summary wrapper, it must still
+point to the same source schema/evidence boundary. This field is metadata-only
+Robot diagnostics support for the Hardware worker's sanitized WAVE ROVER HIL
+packet execution-pack handoff. It does not open serial, read raw packet files,
+subscribe to `/odom`, `/imu/data`, or `/battery`, publish control topics, claim
+WAVE ROVER pass, or claim HIL. It may expose only summary schema/evidence
+boundary, source schema/evidence boundary, `overall_status`,
+`execution_pack_status`, safe `evidence_ref`, `required_material_templates`,
+`collection_sequence`, `owner_handoff`, `rerun_commands`, `boundary_flags`,
+`not_proven`, and conservative boundary flags: `metadata_only=true`,
+`real_hardware_observed=false`, `real_wave_rover=false`, `real_uart=false`,
+`real_feedback_T1001=false`, `real_odom=false`, `real_imu=false`,
+`real_battery=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`. It must also keep
+`collect_triggered=false`, `dropoff_triggered=false`, `cancel_triggered=false`,
+`ack_post_allowed=false`, `remote_ack_allowed=false`,
+`cursor_updates_allowed=false`, `persistence_updates_allowed=false`,
+`terminal_ack_allowed=false`, `nav2_triggered=false`, `hil_pass=false`, and
+`production_ready=false`. Missing, unreadable, bad JSON, unsupported schema or
+boundary, raw artifact/local paths, raw serial/UART path, baudrate, checksum,
+credentials, traceback, raw packet/feedback payloads, success copy,
+`delivery_success=true`, or `primary_actions_enabled=true` sources fail closed
+as blocked/not_proven. The field does not change `/api/collect`,
+`POST /api/dropoff/confirm`, `POST /api/cancel`, command, ACK, remote control,
+cursor updates, persistence updates, terminal ACK, Nav2 trigger, WAVE ROVER
+feedback flow, WAVE ROVER HIL result, dropoff/cancel completion, or
+delivery-success behavior.
+
 Operator diagnostics may also expose `hardware_baseline_review` and the alias
 `hardware_baseline_review_summary` from an explicit
 `hardware_baseline_review_ref`, `TRASHBOT_HARDWARE_BASELINE_REVIEW`,

@@ -182,6 +182,76 @@
       "delivery_success"
     ]
   },
+  "wave_rover_hil_packet_execution_pack": {
+    "schema": "trashbot.wave_rover_hil_packet_execution_pack.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.wave_rover_hil_packet_execution_pack_summary.v1",
+    "source": "software_proof",
+    "overall_status": "not_proven",
+    "execution_pack_status": "wave_rover_hil_packet_execution_pack_not_proven",
+    "safe_evidence_ref": "wave_rover_hil_packet_intake_fixture_20260517_0001",
+    "required_material_templates": [
+      "required_material_templates=feedback_T1001_log_summary",
+      "required_material_templates=odom_once_summary",
+      "required_material_templates=imu_once_summary",
+      "required_material_templates=battery_once_summary",
+      "required_material_templates=operator_hil_report_summary"
+    ],
+    "collection_sequence": [
+      "collection_sequence=collect real WAVE ROVER packet under one safe evidence_ref",
+      "collection_sequence=redact packet into phone-safe summaries",
+      "collection_sequence=rerun intake gate after summaries exist",
+      "collection_sequence=rerun review decision gate before Robot diagnostics consumption",
+      "collection_sequence=keep mobile panel read-only until real review changes"
+    ],
+    "owner_handoff": {
+      "hardware-engineer": "collect real packet materials and publish sanitized execution-pack summary",
+      "robot-software-engineer": "consume only summary metadata in diagnostics",
+      "full-stack-software-engineer": "display execution-pack handoff without changing primary actions"
+    },
+    "rerun_commands": [
+      "rerun_commands=python3 pc-tools/evidence/wave_rover_hil_packet_intake.py --packet-dir <real_packet_dir>",
+      "rerun_commands=python3 pc-tools/evidence/wave_rover_hil_packet_review_decision.py --intake-summary <summary.json>",
+      "rerun_commands=python3 pc-tools/evidence/wave_rover_hil_packet_execution_pack.py --review-summary <summary.json>"
+    ],
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "WAVE ROVER HIL packet execution pack fixture 只展示 execution-pack status、材料模板、采集顺序、owner handoff 和 rerun commands；这是 Docker/local software proof，不是 HIL pass。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_execution_pack_gate",
+    "not_proven": [
+      "real_wave_rover",
+      "real_uart",
+      "hil_pass",
+      "real_odom",
+      "real_imu",
+      "real_battery",
+      "delivery_success"
+    ]
+  },
+  "wave_rover_hil_packet_execution_pack_summary": {
+    "schema": "trashbot.wave_rover_hil_packet_execution_pack_summary.v1",
+    "schema_version": 1,
+    "source": "software_proof",
+    "overall_status": "not_proven",
+    "execution_pack_status": "wave_rover_hil_packet_execution_pack_not_proven",
+    "safe_evidence_ref": "wave_rover_hil_packet_intake_fixture_20260517_0001",
+    "required_material_templates": "required_material_templates=feedback_T1001_log_summary, odom_once_summary, imu_once_summary, battery_once_summary, operator_hil_report_summary.",
+    "collection_sequence": "collection_sequence=collect safe packet summaries, rerun intake, rerun review decision, publish Robot diagnostics summary.",
+    "owner_handoff": "owner_handoff=Hardware collects real packet; Robot keeps diagnostics metadata-only; Full-stack keeps mobile read-only.",
+    "rerun_commands": "rerun_commands=run intake gate, review decision gate, then execution pack gate after real materials exist.",
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "wave_rover_hil_packet_execution_pack_summary 只用于手机只读执行包，不放行 Start、Confirm 或 Cancel。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_execution_pack_gate",
+    "not_proven": [
+      "real_wave_rover",
+      "real_uart",
+      "hil_pass",
+      "delivery_success"
+    ]
+  },
   "route_task_field_retest_result_backfill_review_decision": {
     "schema": "trashbot.route_task_field_retest_result_backfill_review_decision.v1",
     "schema_version": 1,

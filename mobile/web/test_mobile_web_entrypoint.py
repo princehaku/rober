@@ -830,6 +830,109 @@ class WaveRoverHilPacketReviewDecisionMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, decision_text)
 
 
+class WaveRoverHilPacketExecutionPackMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_wave_rover_hil_packet_execution_pack_panel_is_read_only_and_exportable(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # execution-pack panel 接在 review-decision 后，只展示白名单交接材料，不新增控制入口。
+        self.assertIn("waveRoverHilPacketExecutionPackTitle", app)
+        self.assertIn("WAVE ROVER HIL packet execution pack", app)
+        self.assertIn("waveRoverHilPacketReviewDecisionTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+
+        # 状态来源兼容 artifact、summary 和 Robot diagnostics compatible summary。
+        self.assertIn("WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_BOUNDARY", app)
+        self.assertIn("UNSAFE_WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_TEXT", app)
+        self.assertIn("safeWaveRoverHilPacketExecutionPackText", app)
+        self.assertIn("waveRoverHilPacketExecutionPackCandidate", app)
+        self.assertIn("waveRoverHilPacketExecutionPackFromStatus", app)
+        self.assertIn("wave_rover_hil_packet_execution_pack", app)
+        self.assertIn("wave_rover_hil_packet_execution_pack_summary", app)
+        self.assertIn("robot_diagnostics_wave_rover_hil_packet_execution_pack_summary", app)
+        self.assertIn("diagnosticsSummary.wave_rover_hil_packet_execution_pack", app)
+        self.assertIn("statusDiagnosticsSummary.wave_rover_hil_packet_execution_pack", app)
+        self.assertIn("execution_pack_status", app)
+        self.assertIn("required_material_templates", app)
+        self.assertIn("collection_sequence", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("rerun_commands", app)
+        self.assertIn("same_evidence_ref_required", app)
+
+        # copy/export 必须走 whitelist-only payload，并保持 Start/Confirm/Cancel gating 不变。
+        self.assertIn("waveRoverHilPacketExecutionPackCopyPayload", app)
+        self.assertIn("trashbot.wave_rover_hil_packet_execution_pack_copy.v1", app)
+        self.assertIn("copyWaveRoverHilPacketExecutionPackButton", app)
+        self.assertIn("downloadWaveRoverHilPacketExecutionPackButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("Start Delivery", app)
+        self.assertIn("Confirm Dropoff", app)
+        self.assertIn("Cancel", app)
+        self.assertNotRegex(app, r"waveRoverHilPacketExecutionPack.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+
+        # fixture 和产品文档必须固定 execution-pack 的 software proof / not_proven 边界。
+        execution_pack = fixture["wave_rover_hil_packet_execution_pack"]
+        self.assertEqual(
+            execution_pack["execution_pack_status"],
+            "wave_rover_hil_packet_execution_pack_not_proven",
+        )
+        self.assertEqual(execution_pack["overall_status"], "not_proven")
+        self.assertEqual(execution_pack["delivery_success"], False)
+        self.assertEqual(execution_pack["primary_actions_enabled"], False)
+        self.assertEqual(execution_pack["same_evidence_ref_required"], True)
+        self.assertIn("software_proof_docker_wave_rover_hil_packet_execution_pack_gate", fixture_text)
+        self.assertIn("required_material_templates", fixture_text)
+        self.assertIn("collection_sequence", fixture_text)
+        self.assertIn("owner_handoff", fixture_text)
+        self.assertIn("rerun_commands", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("wave_rover_hil_packet_execution_pack", doc)
+        self.assertIn("WAVE ROVER HIL packet execution pack", doc)
+
+    def test_wave_rover_hil_packet_execution_pack_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        execution_pack_text = json.dumps(
+            fixture["wave_rover_hil_packet_execution_pack"],
+            ensure_ascii=False,
+        ).lower()
+
+        # execution-pack fixture 只能携带白名单摘要，不能带原始包、设备参数、校验和或成功宣称。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw artifact",
+            "raw packet",
+            "raw execution pack",
+            "raw feedback",
+            "full raw feedback",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "traceback",
+            "hil passed",
+            "field pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, execution_pack_text)
+
+
 class RouteTaskTerminalCompletionRehearsalMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

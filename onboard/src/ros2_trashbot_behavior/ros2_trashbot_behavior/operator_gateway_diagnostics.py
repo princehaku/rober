@@ -420,6 +420,15 @@ WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_SUMMARY_SCHEMA = (
 WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_GATE = (
     "software_proof_docker_wave_rover_hil_packet_review_decision_gate"
 )
+WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_SCHEMA = (
+    "trashbot.wave_rover_hil_packet_execution_pack.v1"
+)
+WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_SUMMARY_SCHEMA = (
+    "trashbot.wave_rover_hil_packet_execution_pack_summary.v1"
+)
+WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_GATE = (
+    "software_proof_docker_wave_rover_hil_packet_execution_pack_gate"
+)
 HARDWARE_BASELINE_REVIEW_SCHEMA = "trashbot.hardware_baseline_review_gate.v1"
 HARDWARE_BASELINE_REVIEW_SUMMARY_SCHEMA = "trashbot.hardware_baseline_review_summary.v1"
 HARDWARE_BASELINE_REVIEW_GATE = "software_proof_docker_hardware_baseline_review_gate"
@@ -2300,6 +2309,35 @@ def _wave_rover_hil_packet_review_decision_has_not_proven(decision, summary_frag
         if status == "not_proven":
             return True
     return False
+
+
+def _wave_rover_hil_packet_execution_pack_not_proven(pack=None, summary_fragment=None):
+    # execution pack 只整理现场采集顺序；真实 WAVE ROVER、串口 topic、HIL 和交付成功仍必须另证。
+    pack = pack if isinstance(pack, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(pack.get("not_proven"), list):
+        source_values.extend(pack.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "not_proven",
+        "real_wave_rover",
+        "real_uart",
+        "hil_pass",
+        "real_feedback_T1001",
+        "real_odom",
+        "real_imu",
+        "real_battery",
+        "delivery_success",
+        "primary_actions",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
 
 
 def _hardware_baseline_review_not_proven(review=None, summary_fragment=None):
@@ -5111,6 +5149,66 @@ def _default_wave_rover_hil_packet_review_decision_summary(
     }
 
 
+def _default_wave_rover_hil_packet_execution_pack_summary(
+    path,
+    status="blocked_missing_wave_rover_hil_packet_execution_pack",
+    read_error="",
+):
+    # 缺配置也必须给出完整 false 栅栏，避免 operator diagnostics 被误读为 HIL 可执行或主动作授权。
+    boundary_flags = {
+        "metadata_only": True,
+        "real_hardware_observed": False,
+        "real_wave_rover": False,
+        "real_uart": False,
+        "real_feedback_T1001": False,
+        "real_odom": False,
+        "real_imu": False,
+        "real_battery": False,
+        "hil_pass": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "production_ready": False,
+    }
+    return {
+        "schema": WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "overall_status": "not_proven",
+        "execution_pack_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": read_error or "WAVE ROVER HIL packet execution pack is not configured",
+        },
+        "safe_evidence_ref": "",
+        "required_material_templates": [],
+        "collection_sequence": [],
+        "owner_handoff": {},
+        "rerun_commands": [],
+        "boundary_flags": dict(boundary_flags),
+        "not_proven": _wave_rover_hil_packet_execution_pack_not_proven(),
+        "boundary": WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_GATE,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_robot_copy": (
+            "WAVE ROVER HIL packet execution pack is metadata-only; not real HIL; "
+            "delivery_success=false; primary_actions_enabled=false."
+        ),
+        **boundary_flags,
+    }
+
+
 def _default_hardware_baseline_review_summary(path, status="not_configured", read_error=""):
     # 缺少硬件 baseline review 时也必须显式 fail-closed，避免 diagnostics 被误当成硬件准入通过。
     return {
@@ -6795,6 +6893,16 @@ def _wave_rover_hil_packet_review_decision_source_contract(value):
     return source_schema, source_boundary
 
 
+def _wave_rover_hil_packet_execution_pack_source_contract(value):
+    # 支持 Hardware worker 的 direct artifact 或已消毒 summary；summary 必须回指同一 execution-pack gate。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or source_schema)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _hardware_baseline_review_source_contract(value):
     # 允许直接 artifact 或已生成 summary；summary 仍必须回指 baseline review schema 和同一软件证据边界。
     source_schema = str(value.get("schema") or "")
@@ -7432,6 +7540,23 @@ def _wave_rover_hil_packet_review_decision_same_evidence_ref_ok(decision, summar
         if isinstance(mismatches, list) and mismatches:
             return False
     return True
+
+
+def _wave_rover_hil_packet_execution_pack_has_disabled_actions(pack, summary_fragment):
+    # execution pack source 和 summary 都必须显式关闭动作；缺字段或字符串 false 都不能算 diagnostics-safe。
+    pack = pack if isinstance(pack, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    delivery_success = (
+        summary_fragment.get("delivery_success")
+        if "delivery_success" in summary_fragment
+        else pack.get("delivery_success")
+    )
+    primary_actions_enabled = (
+        summary_fragment.get("primary_actions_enabled")
+        if "primary_actions_enabled" in summary_fragment
+        else pack.get("primary_actions_enabled")
+    )
+    return delivery_success is False and primary_actions_enabled is False
 
 
 def _wave_rover_hil_packet_review_decision_has_unsafe_fields(value, key_path=""):
@@ -20328,6 +20453,286 @@ def summarize_wave_rover_hil_packet_review_decision(source):
     return summary
 
 
+def summarize_wave_rover_hil_packet_execution_pack(source):
+    """构建 WAVE ROVER HIL packet execution pack 的 metadata-only diagnostics 摘要。"""
+    # Robot diagnostics 只展示 Hardware worker 已消毒摘要；不得读取 raw packet、打开 UART 或触发主动作。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_wave_rover_hil_packet_execution_pack_summary(
+        source_path,
+        read_error="WAVE ROVER HIL packet execution pack is not configured",
+    )
+    if isinstance(source, dict):
+        pack = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "execution_pack_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "evidence_source": "software_proof",
+                        "reason": "WAVE ROVER HIL packet execution pack artifact missing",
+                    },
+                    "read_error": "WAVE ROVER HIL packet execution pack artifact missing",
+                }
+            )
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                pack = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading WAVE ROVER HIL packet execution pack: {exc}"
+            )
+            summary.update(
+                {
+                    "execution_pack_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "evidence_source": "software_proof",
+                        "reason": safe_error,
+                    },
+                    "read_error": safe_error,
+                }
+            )
+            return summary
+
+    if not isinstance(pack, dict):
+        summary.update(
+            {
+                "execution_pack_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "WAVE ROVER HIL packet execution pack JSON must be an object",
+                }
+            }
+        )
+        return summary
+
+    diagnostics = pack.get("diagnostics") if isinstance(pack.get("diagnostics"), dict) else {}
+    # Hardware worker 可能给 direct artifact、summary alias 或 nested diagnostics；这里只复制白名单字段。
+    summary_fragment = {}
+    for candidate in (
+        pack.get("wave_rover_hil_packet_execution_pack_summary"),
+        pack.get("wave_rover_hil_packet_execution_pack"),
+        pack.get("robot_diagnostics_summary"),
+        pack.get("robot_diagnostics_wave_rover_hil_packet_execution_pack_summary"),
+        pack.get("diagnostics_summary"),
+        diagnostics.get("summary"),
+        diagnostics.get("diagnostics_summary"),
+        diagnostics.get("wave_rover_hil_packet_execution_pack_summary"),
+        pack.get("phone_safe_summary"),
+        pack.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+
+    source_schema, source_boundary = _wave_rover_hil_packet_execution_pack_source_contract(
+        pack
+    )
+    if not source_schema and summary_fragment:
+        source_schema, source_boundary = _wave_rover_hil_packet_execution_pack_source_contract(
+            summary_fragment
+        )
+    status_source = (
+        pack.get("execution_pack_status")
+        if isinstance(pack.get("execution_pack_status"), dict)
+        else summary_fragment.get("execution_pack_status")
+        if isinstance(summary_fragment.get("execution_pack_status"), dict)
+        else {}
+    )
+    status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or summary_fragment.get("execution_pack_status")
+        or summary_fragment.get("overall_status")
+        or pack.get("overall_status")
+        or "blocked"
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_robot_copy")
+        or summary_fragment.get("safe_copy")
+        or pack.get("safe_robot_copy")
+        or pack.get("safe_copy")
+        or (
+            "WAVE ROVER HIL packet execution pack is metadata-only; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    boundary_flags = _safe_pc_route_debug_dict(summary_fragment.get("boundary_flags"))
+    if not boundary_flags and isinstance(pack.get("boundary_flags"), dict):
+        boundary_flags = _safe_pc_route_debug_dict(pack.get("boundary_flags"))
+    # 即便来源缺少部分 false 字段，Robot 输出也强制补齐完整 fail-closed 栅栏。
+    boundary_flags.update(
+        {
+            "metadata_only": True,
+            "real_hardware_observed": False,
+            "real_wave_rover": False,
+            "real_uart": False,
+            "real_feedback_T1001": False,
+            "real_odom": False,
+            "real_imu": False,
+            "real_battery": False,
+            "hil_pass": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "collect_triggered": False,
+            "dropoff_triggered": False,
+            "cancel_triggered": False,
+            "ack_post_allowed": False,
+            "remote_ack_allowed": False,
+            "cursor_updates_allowed": False,
+            "persistence_updates_allowed": False,
+            "terminal_ack_allowed": False,
+            "nav2_triggered": False,
+            "production_ready": False,
+        }
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": pack.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "overall_status": "not_proven",
+            "execution_pack_status": {
+                "status": status or "blocked",
+                "verdict": _redact_route_task_rehearsal_text(
+                    status_source.get("verdict")
+                    or summary_fragment.get("verdict")
+                    or pack.get("verdict")
+                    or "not_proven"
+                ),
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or pack.get("reason")
+                    or "WAVE ROVER HIL packet execution pack consumed without real HIL evidence"
+                ),
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("safe_evidence_ref")
+                or summary_fragment.get("evidence_ref")
+                or pack.get("safe_evidence_ref")
+                or pack.get("evidence_ref", "")
+            ),
+            "required_material_templates": _safe_pc_route_debug_value(
+                pack.get("required_material_templates")
+                if "required_material_templates" in pack
+                else summary_fragment.get("required_material_templates")
+            )
+            or [],
+            "collection_sequence": _safe_pc_route_debug_value(
+                pack.get("collection_sequence")
+                if "collection_sequence" in pack
+                else summary_fragment.get("collection_sequence")
+            )
+            or [],
+            "owner_handoff": _safe_pc_route_debug_value(
+                pack.get("owner_handoff")
+                if "owner_handoff" in pack
+                else summary_fragment.get("owner_handoff")
+            )
+            or {},
+            "rerun_commands": _safe_route_task_rehearsal_list(
+                pack.get("rerun_commands")
+                if isinstance(pack.get("rerun_commands"), list)
+                else summary_fragment.get("rerun_commands")
+            ),
+            "boundary_flags": boundary_flags,
+            "not_proven": _wave_rover_hil_packet_execution_pack_not_proven(
+                pack,
+                summary_fragment,
+            ),
+            "boundary": WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_GATE,
+            "read_error": "",
+            "safe_robot_copy": safe_copy,
+            "metadata_only": True,
+            "real_hardware_observed": False,
+            "real_wave_rover": False,
+            "real_uart": False,
+            "real_feedback_T1001": False,
+            "real_odom": False,
+            "real_imu": False,
+            "real_battery": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "collect_triggered": False,
+            "dropoff_triggered": False,
+            "cancel_triggered": False,
+            "ack_post_allowed": False,
+            "remote_ack_allowed": False,
+            "cursor_updates_allowed": False,
+            "persistence_updates_allowed": False,
+            "terminal_ack_allowed": False,
+            "nav2_triggered": False,
+            "hil_pass": False,
+            "production_ready": False,
+        }
+    )
+
+    accepted_schemas = {
+        WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_SCHEMA,
+        WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_SUMMARY_SCHEMA,
+    }
+    if source_schema not in accepted_schemas or source_boundary != WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_GATE:
+        summary.update(
+            {
+                "execution_pack_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "WAVE ROVER HIL packet execution pack schema or evidence boundary is unsupported",
+                },
+                "required_material_templates": [],
+                "collection_sequence": [],
+                "owner_handoff": {},
+                "rerun_commands": [],
+                "safe_robot_copy": (
+                    "WAVE ROVER HIL packet execution pack was blocked because the source "
+                    "contained unsafe raw material, enabled actions, or success/HIL claims."
+                ),
+            }
+        )
+        return summary
+
+    if (
+        not _wave_rover_hil_packet_execution_pack_has_disabled_actions(
+            pack,
+            summary_fragment,
+        )
+        or _wave_rover_hil_packet_review_decision_has_unsafe_fields(pack)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "execution_pack_status": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": (
+                        "WAVE ROVER HIL packet execution pack contains unsafe fields, "
+                        "raw material, enabled actions, or success/HIL claims"
+                    ),
+                },
+                "required_material_templates": [],
+                "collection_sequence": [],
+                "owner_handoff": {},
+                "rerun_commands": [],
+                "safe_robot_copy": (
+                    "WAVE ROVER HIL packet execution pack was blocked because the source "
+                    "contained unsafe raw material, enabled actions, or success/HIL claims."
+                ),
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_hardware_baseline_review(source):
     """构建 hardware baseline review 的 metadata-only diagnostics 摘要。"""
     # 支持 explicit ref、env path 和 latest_status/diagnostics dict；所有来源都只能进入白名单摘要字段。
@@ -23772,6 +24177,7 @@ def build_diagnostics_payload(
     wave_rover_feedback_replay_ref="",
     wave_rover_hil_packet_intake_ref="",
     wave_rover_hil_packet_review_decision_ref="",
+    wave_rover_hil_packet_execution_pack_ref="",
     hardware_baseline_review_ref="",
     hardware_baseline_source_alignment_ref="",
     hardware_sensor_procurement_intake_ref="",
@@ -23950,6 +24356,25 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("wave_rover_hil_packet_review_decision_summary"), dict)
         else diagnostics_source.get("robot_diagnostics_wave_rover_hil_packet_review_decision_summary")
         if isinstance(diagnostics_source.get("robot_diagnostics_wave_rover_hil_packet_review_decision_summary"), dict)
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
+        else {}
+    )
+    wave_rover_hil_packet_execution_pack_source = (
+        latest_status.get("wave_rover_hil_packet_execution_pack")
+        if isinstance(latest_status.get("wave_rover_hil_packet_execution_pack"), dict)
+        else latest_status.get("wave_rover_hil_packet_execution_pack_summary")
+        if isinstance(latest_status.get("wave_rover_hil_packet_execution_pack_summary"), dict)
+        else latest_status.get("robot_diagnostics_wave_rover_hil_packet_execution_pack_summary")
+        if isinstance(latest_status.get("robot_diagnostics_wave_rover_hil_packet_execution_pack_summary"), dict)
+        else diagnostics_source.get("wave_rover_hil_packet_execution_pack")
+        if isinstance(diagnostics_source.get("wave_rover_hil_packet_execution_pack"), dict)
+        else diagnostics_source.get("wave_rover_hil_packet_execution_pack_summary")
+        if isinstance(diagnostics_source.get("wave_rover_hil_packet_execution_pack_summary"), dict)
+        else diagnostics_source.get("robot_diagnostics_wave_rover_hil_packet_execution_pack_summary")
+        if isinstance(diagnostics_source.get("robot_diagnostics_wave_rover_hil_packet_execution_pack_summary"), dict)
         else diagnostics_source.get("summary")
         if isinstance(diagnostics_source.get("summary"), dict)
         else diagnostics_source.get("diagnostics_summary")
@@ -24284,6 +24709,10 @@ def build_diagnostics_payload(
     latest_status.pop("wave_rover_hil_packet_review_decision_summary", None)
     latest_status.pop("wave_rover_hil_packet_review_decision_copy", None)
     latest_status.pop("robot_diagnostics_wave_rover_hil_packet_review_decision_summary", None)
+    latest_status.pop("wave_rover_hil_packet_execution_pack", None)
+    latest_status.pop("wave_rover_hil_packet_execution_pack_summary", None)
+    latest_status.pop("wave_rover_hil_packet_execution_pack_copy", None)
+    latest_status.pop("robot_diagnostics_wave_rover_hil_packet_execution_pack_summary", None)
     latest_status.pop("route_task_terminal_completion_rehearsal", None)
     latest_status.pop("route_task_terminal_completion_rehearsal_summary", None)
     latest_status.pop("route_task_terminal_completion_rehearsal_copy", None)
@@ -24760,6 +25189,17 @@ def build_diagnostics_payload(
             wave_rover_hil_packet_review_decision_source
         )
     )
+    wave_rover_hil_packet_execution_pack_source = (
+        wave_rover_hil_packet_execution_pack_ref
+        or os.environ.get("TRASHBOT_WAVE_ROVER_HIL_PACKET_EXECUTION_PACK", "")
+        or os.environ.get("TRASHBOT_WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_SUMMARY", "")
+        or wave_rover_hil_packet_execution_pack_source
+    )
+    wave_rover_hil_packet_execution_pack_summary = (
+        summarize_wave_rover_hil_packet_execution_pack(
+            wave_rover_hil_packet_execution_pack_source
+        )
+    )
     hardware_baseline_review_source = (
         hardware_baseline_review_ref
         or os.environ.get("TRASHBOT_HARDWARE_BASELINE_REVIEW", "")
@@ -24986,6 +25426,11 @@ def build_diagnostics_payload(
         wave_rover_hil_packet_review_decision_summary=wave_rover_hil_packet_review_decision_summary,
         robot_diagnostics_wave_rover_hil_packet_review_decision_summary=(
             wave_rover_hil_packet_review_decision_summary
+        ),
+        wave_rover_hil_packet_execution_pack=wave_rover_hil_packet_execution_pack_summary,
+        wave_rover_hil_packet_execution_pack_summary=wave_rover_hil_packet_execution_pack_summary,
+        robot_diagnostics_wave_rover_hil_packet_execution_pack_summary=(
+            wave_rover_hil_packet_execution_pack_summary
         ),
         hardware_baseline_review=hardware_baseline_review_summary,
         hardware_baseline_review_summary=hardware_baseline_review_summary,
