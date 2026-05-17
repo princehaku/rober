@@ -1167,6 +1167,99 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, packet_text)
 
+    def test_field_retest_result_acceptance_backfill_panel_is_read_only_and_copy_gated(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # acceptance backfill 跟在 acceptance packet 后，只读解释回填状态和同一 evidence_ref 对齐。
+        self.assertIn("routeTaskFieldRetestResultAcceptanceBackfillTitle", app)
+        self.assertIn("路线任务结果回填", app)
+        self.assertIn("routeTaskFieldRetestResultAcceptancePacketTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+
+        # 状态来源兼容 artifact、summary 和 Robot diagnostics compatible summary。
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestResultAcceptanceBackfillText", app)
+        self.assertIn("routeTaskFieldRetestResultAcceptanceBackfillCandidate", app)
+        self.assertIn("routeTaskFieldRetestResultAcceptanceBackfillFromStatus", app)
+        self.assertIn("route_task_field_retest_result_acceptance_backfill", app)
+        self.assertIn("route_task_field_retest_result_acceptance_backfill_summary", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_result_acceptance_backfill_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_result_acceptance_backfill", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_result_acceptance_backfill", app)
+        self.assertIn("backfill_status", app)
+        self.assertIn("source_packet_status", app)
+        self.assertIn("material_completeness", app)
+        self.assertIn("same_evidence_ref_alignment", app)
+        self.assertIn("missing_material_categories", app)
+        self.assertIn("rejected_material_categories", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("rerun_commands", app)
+
+        # copy/export 必须由 safe_copy 驱动，只导出白名单 metadata，不触发主操作。
+        self.assertIn("routeTaskFieldRetestResultAcceptanceBackfillCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_result_acceptance_backfill_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestResultAcceptanceBackfillButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestResultAcceptanceBackfillButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"routeTaskFieldRetestResultAcceptanceBackfill.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须固定 backfill 的 software proof / not_proven 边界。
+        backfill = fixture["route_task_field_retest_result_acceptance_backfill"]
+        self.assertEqual(
+            backfill["backfill_status"],
+            "blocked_missing_route_task_field_retest_result_acceptance_backfill_not_proven",
+        )
+        self.assertEqual(
+            backfill["source_packet_schema"],
+            "trashbot.route_task_field_retest_result_acceptance_packet_summary.v1",
+        )
+        self.assertEqual(backfill["delivery_success"], False)
+        self.assertEqual(backfill["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_route_task_field_retest_result_acceptance_backfill_gate", fixture_text)
+        self.assertIn("material completeness", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("route_task_field_retest_result_acceptance_backfill", doc)
+        self.assertIn("路线任务结果回填", doc)
+
+    def test_field_retest_result_acceptance_backfill_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        backfill_text = json.dumps(
+            fixture["route_task_field_retest_result_acceptance_backfill"],
+            ensure_ascii=False,
+        ).lower()
+
+        # backfill fixture 只能携带白名单 summary，不能带 raw backfill、路径、凭证、底层控制或成功状态。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw backfill",
+            "现场已通过",
+            "真实手机已验收",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, backfill_text)
+
     def test_field_retest_material_pack_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
         styles = self.read_web("styles.css")

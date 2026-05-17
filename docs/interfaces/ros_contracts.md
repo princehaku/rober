@@ -692,6 +692,38 @@ credentials, local paths, checksums, tracebacks, complete artifacts, or
 Objective 5 external proof, and they are not command/status/ACK robot contract
 fields.
 
+Operator diagnostics may also expose
+`route_task_field_retest_result_acceptance_backfill` and the alias
+`route_task_field_retest_result_acceptance_backfill_summary` from an explicit
+`route_task_field_retest_result_acceptance_backfill_ref`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_SUMMARY`,
+top-level status fields, or an already sanitized nested diagnostics summary
+source. The source JSON must use
+`schema=trashbot.route_task_field_retest_result_acceptance_backfill.v1` and
+`evidence_boundary=software_proof_docker_route_task_field_retest_result_acceptance_backfill_gate`.
+If the source is already a summary wrapper, it must still point to
+`source_schema=trashbot.route_task_field_retest_result_acceptance_backfill.v1`
+and the same evidence boundary. This field is metadata-only Robot diagnostics
+support for the acceptance backfill gate: it may expose only backfill status,
+safe `evidence_ref`, material completeness summary, alignment status,
+missing/rejected category summary, owner handoff, rerun command summary, safe
+copy, boundary,
+`software_proof_docker_route_task_field_retest_result_acceptance_backfill_gate`,
+`not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. Missing summary, unreadable input,
+unsupported schema or boundary, unsafe copy, missing `evidence_ref`, same
+`evidence_ref` mismatch, missing required safe summary fields, success/control
+claims, `delivery_success=true`, or `primary_actions_enabled=true` sources
+fail closed as blocked/not_proven. The fields do not trigger `/api/collect`,
+dropoff, cancel, remote ACK, cursor advance/persistence, terminal ACK, Nav2,
+WAVE ROVER, HIL, result intake completion, production readiness,
+dropoff/cancel completion, or delivery success. They must not expose raw
+material files, raw route logs, raw commands, raw ROS topics, `/cmd_vel`,
+serial/UART details, credentials, local paths, checksums, tracebacks, complete
+artifacts, or Objective 5 external proof, and they are not command/status/ACK
+robot contract fields.
+
 Operator diagnostics may also expose `route_task_field_run_reconciliation` and
 the alias `route_task_field_run_reconciliation_summary` from an explicit
 `route_task_field_run_reconciliation_ref` or

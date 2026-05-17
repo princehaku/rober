@@ -8,6 +8,18 @@
 
 ## 2026-05-17 系列
 
+更新时间：2026-05-17 15:18 Asia/Shanghai。
+
+### 2026-05-17 15-16｜route-task-result-acceptance-backfill｜O2/O3 acceptance packet 进入结果回填入口，任务闭环与固定路线均由约 95% 上调到约 96%，O5 保持约 68%
+
+`sprints/2026.05.17_15-16_route-task-result-acceptance-backfill/` 完成 `software_proof_docker_route_task_field_retest_result_acceptance_backfill_gate`。Autonomy worker 新增 PC gate `route_task_field_retest_result_acceptance_backfill`，接在 `route_task_field_retest_result_acceptance_packet` 后，输入 acceptance packet artifact / summary / wrapper 与 `--material-dir`，检查八类材料：`nav2_or_fixed_route_runtime_log`、`route_completion_signal`、`task_record`、`door_state`、`target_floor_confirmation`、`human_assistance_note`、`dropoff_or_cancel_completion`、`delivery_result`。输出 `trashbot.route_task_field_retest_result_acceptance_backfill.v1` / `_summary.v1`，boundary 固定为 `software_proof_docker_route_task_field_retest_result_acceptance_backfill_gate`，保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。Task A 验证输出 py_compile pass、unittest `Ran 5 tests ... OK`、CLI `--help` pass、required `rg` pass、scoped `git diff --check` pass。
+
+Robot worker 更新 `operator_gateway_diagnostics.py`、diagnostics tests 与 `docs/interfaces/ros_contracts.md`，新增 `route_task_field_retest_result_acceptance_backfill` / `_summary` diagnostics metadata-only consumer，支持 file/env/top-level/nested summary，只暴露 safe backfill metadata，fail closed，未改变 task_orchestrator/action/Start/Dropoff/Cancel 控制语义。Task B 验证输出 py_compile pass、diagnostics unittest `Ran 148 tests in 0.226s OK`、required `rg` pass、scoped `git diff --check` pass。
+
+Full-stack worker 更新 `mobile/web/app.js`、fixture、mobile tests 与 `docs/product/mobile_user_flow.md`，新增只读“路线任务结果回填” panel，展示 backfill status、source packet status、material completeness、same-evidence-ref alignment、missing/rejected categories、owner handoff、rerun commands、safe copy 和边界；copy/export 白名单，缺 safe_copy blocked，Start/Confirm Dropoff/Cancel gating 不变。Task C 验证输出 mobile unittest `Ran 44 tests in 0.142s OK`、`node --check mobile/web/app.js` pass、required `rg` pass、scoped `git diff --check` pass。Product closeout 更新 sprint 留档、`OKR.md` 和本日志；required `rg` 与 closeout scoped `git diff --check` 均通过。
+
+该证据只支持 Objective 2 从约 95% 保守上调到约 96%，Objective 3 从约 95% 保守上调到约 96%。Objective 2 的理由是 PR #4 route/elevator acceptance packet 现在进入结果回填入口，真实 door state、target floor confirmation、human assistance note、dropoff/cancel completion 和 delivery result 可以按同一 `evidence_ref` 做材料完整性、缺口、拒收与 owner handoff 复核；仍不是真实 route/elevator field pass。Objective 3 的理由是真实 Nav2/fixed-route runtime log、route completion signal、task record 等 result materials 现在能从 packet checklist 进入 material-dir backfill，并被 PC / Robot / mobile 共同只读核对；仍不是真实 Nav2/fixed-route 实跑。Objective 1 保持约 77%，因为本轮没有真实 WAVE ROVER、UART、HIL、`T=1001` feedback、`/odom`、`/imu/data`、`/battery` 或 PR #5 真实 2D LiDAR / ToF 材料。Objective 4 保持约 99%，因为本轮没有真实手机设备、真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 或真实现场 phone behavior。Objective 5 保持约 68%，因为本机 Docker-only 且本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；Objective 5 仍是数值最低但按 O5 stop rule 不继续堆本地 metadata depth。本轮不证明真实 Nav2/fixed-route、真实 route/elevator field pass、真实 route completion signal、真实 task record、真实 dropoff/cancel completion、delivery success、真实手机/browser、production app、WAVE ROVER、真实串口/UART、HIL 或 Objective 5 external proof；始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
 更新时间：2026-05-17 14:20 Asia/Shanghai。
 
 ### 2026-05-17 14-15｜route-task-result-acceptance-packet｜O2/O3 result reconciliation 转成结果验收包，任务闭环与固定路线均由约 94% 上调到约 95%，O5 保持约 68%

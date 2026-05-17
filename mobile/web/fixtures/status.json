@@ -570,6 +570,58 @@
       "Objective 5 external proof"
     ]
   },
+  "route_task_field_retest_result_acceptance_backfill": {
+    "schema": "trashbot.route_task_field_retest_result_acceptance_backfill.v1",
+    "summary_schema": "trashbot.route_task_field_retest_result_acceptance_backfill_summary.v1",
+    "schema_version": 1,
+    "source_packet_schema": "trashbot.route_task_field_retest_result_acceptance_packet_summary.v1",
+    "source_packet_status": "blocked_missing_route_task_field_retest_result_acceptance_packet_not_proven",
+    "backfill_status": "blocked_missing_route_task_field_retest_result_acceptance_backfill_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "material_completeness": "material completeness=3/8 phone-safe summaries available; 5/8 missing or rejected; Robot diagnostics compatible summary not aligned",
+    "same_evidence_ref_alignment": "same evidence_ref alignment=blocked_missing_same_evidence_ref_acceptance_backfill",
+    "missing_material_categories": [
+      "missing material category=door_state",
+      "missing material category=target_floor_confirmation",
+      "missing material category=human_assistance_operator_note",
+      "missing material category=delivery_result",
+      "missing material category=Robot diagnostics compatible summary"
+    ],
+    "rejected_material_categories": [
+      "rejected material category=dropoff_or_cancel_completion summary is not field proof",
+      "rejected material category=delivery_result claim without same evidence_ref alignment"
+    ],
+    "owner_handoff": [
+      "owner_handoff=Autonomy owner backfills route/elevator result summaries under the same safe evidence_ref",
+      "owner_handoff=Robot owner republishes diagnostics compatible summary",
+      "owner_handoff=Full-stack owner keeps mobile/web read-only and whitelist-only"
+    ],
+    "rerun_commands": [
+      "rerun commands=run route_task_field_retest_result_acceptance_backfill gate with same safe evidence_ref",
+      "rerun commands=refresh Robot diagnostics compatible summary",
+      "rerun commands=leave Start Delivery, Confirm Dropoff and Cancel gating unchanged"
+    ],
+    "safe_phone_copy": "路线任务结果回填只读展示 backfill status、source packet status、material completeness、same evidence_ref alignment、missing/rejected material categories、owner handoff、rerun commands 和 evidence boundary；这是 software proof only。",
+    "safe_copy": "路线任务结果回填 safe_copy：source packet status blocked_missing_route_task_field_retest_result_acceptance_packet_not_proven；backfill_status blocked_missing_route_task_field_retest_result_acceptance_backfill_not_proven；material completeness 未对齐；delivery_success=false；primary_actions_enabled=false。",
+    "recovery_hint": "请按同一 safe evidence_ref 补齐缺失材料，重跑 acceptance backfill gate，并由 Robot diagnostics 发布 compatible summary。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_result_acceptance_backfill_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实 door_state",
+      "真实 target_floor_confirmation",
+      "真实 human_assistance_operator_note",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实 route/elevator field pass",
+      "真实手机设备/browser",
+      "真实硬件/HIL",
+      "Objective 5 external proof"
+    ]
+  },
   "route_task_field_retest_material_pack": {
     "schema": "trashbot.route_task_field_retest_material_pack.v1",
     "summary_schema": "trashbot.route_task_field_retest_material_pack_summary.v1",

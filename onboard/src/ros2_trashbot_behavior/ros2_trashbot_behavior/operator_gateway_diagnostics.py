@@ -232,6 +232,15 @@ ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_PACKET_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_PACKET_GATE = (
     "software_proof_docker_route_task_field_retest_result_acceptance_packet_gate"
 )
+ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_SCHEMA = (
+    "trashbot.route_task_field_retest_result_acceptance_backfill.v1"
+)
+ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_retest_result_acceptance_backfill_summary.v1"
+)
+ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_GATE = (
+    "software_proof_docker_route_task_field_retest_result_acceptance_backfill_gate"
+)
 ROUTE_TASK_FIELD_RUN_RECONCILIATION_SCHEMA = "trashbot.route_task_field_run_reconciliation.v1"
 ROUTE_TASK_FIELD_RUN_RECONCILIATION_SUMMARY_SCHEMA = (
     "trashbot.route_task_field_run_reconciliation_summary.v1"
@@ -1273,6 +1282,55 @@ def _route_task_field_retest_result_acceptance_packet_not_proven(packet=None, su
         "field_retest_pass",
         "acceptance_packet_pass",
         "pass_fail_criteria_result",
+        "rerun_command_executed",
+        "owner_handoff_completed",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "real_phone_device_or_browser_proof",
+        "production_readiness",
+        "real_dropoff_completion",
+        "real_cancel_completion",
+        "dropoff_or_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_retest_result_acceptance_backfill_not_proven(
+    backfill=None,
+    summary_fragment=None,
+):
+    # backfill 只是把现场材料缺口回填到同一 evidence_ref 摘要；真实现场、动作和送达仍必须外部证明。
+    backfill = backfill if isinstance(backfill, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(backfill.get("not_proven"), list):
+        source_values.extend(backfill.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_elevator_operation",
+        "real_elevator_door_state",
+        "real_floor_confirmation",
+        "human_assistance_outcome",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "route_task_completion_real_world",
+        "field_retest_pass",
+        "acceptance_packet_pass",
+        "acceptance_backfill_pass",
+        "material_backfill_completed",
         "rerun_command_executed",
         "owner_handoff_completed",
         "wave_rover_motion",
@@ -3334,6 +3392,70 @@ def _default_route_task_field_retest_result_acceptance_packet_summary(
         "read_error": _redact_route_task_rehearsal_text(read_error),
         "safe_copy": "Route-task field retest result acceptance packet is metadata-only; delivery_success=false; primary_actions_enabled=false.",
         "safe_phone_copy": "Route-task field retest result acceptance packet is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
+def _default_route_task_field_retest_result_acceptance_backfill_summary(
+    path,
+    backfill_status="blocked_missing_route_task_field_retest_result_acceptance_backfill",
+    read_error="",
+):
+    # backfill 默认 fail closed；缺 artifact/summary 时只能暴露 blocked/not_proven 诊断元数据。
+    return {
+        "schema": ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "backfill_status": {
+            "status": backfill_status,
+            "verdict": "not_proven",
+            "reason": read_error or "route-task field retest result acceptance backfill is not configured",
+        },
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "material_completeness_summary": {
+            "status": "blocked",
+            "reason": "route-task field retest result acceptance backfill is not configured",
+        },
+        "alignment_status": {
+            "status": "blocked",
+            "reason": "route-task field retest result acceptance backfill is not configured",
+        },
+        "missing_rejected_category_summary": {
+            "missing": [],
+            "rejected": [],
+            "reason": "route-task field retest result acceptance backfill is not configured",
+        },
+        "owner_handoff": {},
+        "rerun_command_summary": [],
+        "robot_diagnostics_summary": {
+            "status": "blocked",
+            "reason": "route-task field retest result acceptance backfill is not configured",
+        },
+        "boundary": ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_GATE,
+        "not_proven": _route_task_field_retest_result_acceptance_backfill_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": "Route-task field retest result acceptance backfill is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+        "safe_phone_copy": "Route-task field retest result acceptance backfill is metadata-only; delivery_success=false; primary_actions_enabled=false.",
         "metadata_only": True,
         "delivery_success": False,
         "primary_actions_enabled": False,
@@ -5747,6 +5869,16 @@ def _route_task_field_retest_result_acceptance_packet_source_contract(value):
     return source_schema, source_boundary
 
 
+def _route_task_field_retest_result_acceptance_backfill_source_contract(value):
+    # backfill 支持 artifact、summary wrapper 和 nested diagnostics；summary 必须回指 backfill gate，避免误接 packet。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or "")
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _elevator_route_evidence_reconciliation_source_contract(value):
     # 允许直接 artifact 或 summary wrapper；wrapper 必须保留原始 schema/boundary，防止把别的 gate 混入。
     source_schema = str(value.get("schema") or "")
@@ -6245,6 +6377,26 @@ def _route_task_field_retest_result_acceptance_packet_has_disabled_actions(
         summary_fragment.get("primary_actions_enabled")
         if "primary_actions_enabled" in summary_fragment
         else packet.get("primary_actions_enabled")
+    )
+    return delivery_success is False and primary_actions_enabled is False
+
+
+def _route_task_field_retest_result_acceptance_backfill_has_disabled_actions(
+    backfill,
+    summary_fragment,
+):
+    # backfill 只是诊断元数据；source 或 summary 缺少显式 false 时必须 blocked，不能默认安全。
+    backfill = backfill if isinstance(backfill, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    delivery_success = (
+        summary_fragment.get("delivery_success")
+        if "delivery_success" in summary_fragment
+        else backfill.get("delivery_success")
+    )
+    primary_actions_enabled = (
+        summary_fragment.get("primary_actions_enabled")
+        if "primary_actions_enabled" in summary_fragment
+        else backfill.get("primary_actions_enabled")
     )
     return delivery_success is False and primary_actions_enabled is False
 
@@ -12341,6 +12493,363 @@ def summarize_route_task_field_retest_result_acceptance_packet(source):
                 },
                 "safe_copy": "Route-task field retest result acceptance packet was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
                 "safe_phone_copy": "Route-task field retest result acceptance packet was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+            }
+        )
+    return summary
+
+
+def summarize_route_task_field_retest_result_acceptance_backfill(source):
+    """构建 route-task field retest result acceptance backfill 的 metadata-only diagnostics 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        backfill = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_route_task_field_retest_result_acceptance_backfill_summary(
+            source_path,
+            read_error="route-task field retest result acceptance backfill is not configured",
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "backfill_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": "route-task field retest result acceptance backfill artifact missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "acceptance backfill artifact missing",
+                    },
+                    "safe_copy": "Route-task field retest result acceptance backfill is missing; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field retest result acceptance backfill is missing; metadata remains blocked/not_proven.",
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                backfill = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "backfill_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            f"failed reading route-task field retest result acceptance backfill: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "acceptance backfill JSON read error",
+                    },
+                    "safe_copy": "Route-task field retest result acceptance backfill could not be read; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field retest result acceptance backfill could not be read; metadata remains blocked/not_proven.",
+                }
+            )
+            return summary
+    summary = _default_route_task_field_retest_result_acceptance_backfill_summary(
+        source_path,
+        read_error="route-task field retest result acceptance backfill is not configured",
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(backfill, dict):
+        summary.update(
+            {
+                "backfill_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result acceptance backfill JSON must be an object",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "acceptance backfill JSON shape is invalid",
+                },
+                "safe_copy": "Route-task field retest result acceptance backfill shape is invalid; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field retest result acceptance backfill shape is invalid; metadata remains blocked/not_proven.",
+            }
+        )
+        return summary
+
+    diagnostics = backfill.get("diagnostics") if isinstance(backfill.get("diagnostics"), dict) else {}
+    # Robot 只读 backfill 的安全摘要；raw material、路径、checksum、topic 和控制字段都不能穿透。
+    summary_fragment = (
+        backfill
+        if str(backfill.get("schema") or "") == ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_SUMMARY_SCHEMA
+        or (
+            str(backfill.get("schema") or "") == ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_SCHEMA
+            and any(
+                key in backfill
+                for key in (
+                    "backfill_status",
+                    "material_completeness_summary",
+                    "alignment_status",
+                    "missing_rejected_category_summary",
+                    "owner_handoff",
+                    "rerun_command_summary",
+                )
+            )
+        )
+        else {}
+    )
+    for candidate in (
+        backfill.get("route_task_field_retest_result_acceptance_backfill_summary"),
+        backfill.get("route_task_field_retest_result_acceptance_backfill"),
+        backfill.get("robot_diagnostics_summary"),
+        backfill.get("robot_compatible_summary"),
+        backfill.get("mobile_readonly_summary"),
+        backfill.get("phone_safe_summary"),
+        diagnostics.get("summary"),
+        diagnostics.get("diagnostics_summary"),
+        diagnostics.get("route_task_field_retest_result_acceptance_backfill_summary"),
+        diagnostics.get("route_task_field_retest_result_acceptance_backfill"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+
+    source_schema, source_boundary = _route_task_field_retest_result_acceptance_backfill_source_contract(
+        backfill
+    )
+    if not summary_fragment:
+        summary.update(
+            {
+                "source_schema": _redact_route_task_rehearsal_text(source_schema),
+                "source_schema_version": backfill.get("schema_version"),
+                "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "backfill_status": {
+                    "status": "missing_summary",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result acceptance backfill lacks a safe diagnostics summary",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing safe acceptance backfill summary",
+                },
+                "safe_copy": "Route-task field retest result acceptance backfill is blocked because no safe summary was provided.",
+                "safe_phone_copy": "Route-task field retest result acceptance backfill is blocked because no safe summary was provided.",
+            }
+        )
+        return summary
+
+    status_source = summary_fragment.get("backfill_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("acceptance_backfill_status")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    backfill_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or status_source.get("verdict")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or "blocked"
+    )
+    backfill_verdict = _redact_route_task_rehearsal_text(
+        status_source.get("verdict")
+        or status_source.get("decision")
+        or summary_fragment.get("verdict")
+        or "not_proven"
+    )
+    backfill_reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or status_source.get("summary")
+        or summary_fragment.get("reason")
+        or "route-task field retest result acceptance backfill consumed without explicit reason"
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or "Route-task field retest result acceptance backfill is metadata-only; delivery_success=false; primary_actions_enabled=false."
+    )
+    source_ref = str(backfill.get("evidence_ref") or "").strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref") or summary_fragment.get("evidence_ref") or ""
+    ).strip()
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else diagnostics.get("robot_diagnostics_summary")
+        if isinstance(diagnostics.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    material_summary = _safe_pc_route_debug_value(
+        summary_fragment.get("material_completeness_summary")
+        if "material_completeness_summary" in summary_fragment
+        else summary_fragment.get("material_completeness")
+        if "material_completeness" in summary_fragment
+        else summary_fragment.get("materials_completeness")
+    )
+    alignment_status = _safe_pc_route_debug_value(
+        summary_fragment.get("alignment_status")
+        if "alignment_status" in summary_fragment
+        else summary_fragment.get("same_evidence_ref_alignment")
+        if "same_evidence_ref_alignment" in summary_fragment
+        else summary_fragment.get("evidence_ref_alignment")
+    )
+    missing_rejected_summary = _safe_pc_route_debug_value(
+        summary_fragment.get("missing_rejected_category_summary")
+        if "missing_rejected_category_summary" in summary_fragment
+        else summary_fragment.get("missing_rejected_categories")
+        if "missing_rejected_categories" in summary_fragment
+        else summary_fragment.get("missing_or_rejected_materials")
+    )
+    owner_handoff = _safe_pc_route_debug_value(summary_fragment.get("owner_handoff"))
+    rerun_summary = _safe_pc_route_debug_value(
+        summary_fragment.get("rerun_command_summary")
+        if "rerun_command_summary" in summary_fragment
+        else summary_fragment.get("rerun_commands_summary")
+        if "rerun_commands_summary" in summary_fragment
+        else summary_fragment.get("rerun_commands")
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": backfill.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "backfill_status": {
+                "status": backfill_status or "blocked",
+                "verdict": backfill_verdict or "not_proven",
+                "reason": backfill_reason,
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(summary_ref or source_ref),
+            "material_completeness_summary": material_summary,
+            "alignment_status": alignment_status,
+            "missing_rejected_category_summary": missing_rejected_summary,
+            "owner_handoff": owner_handoff,
+            "rerun_command_summary": rerun_summary,
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": backfill_status or "blocked",
+                "reason": "acceptance backfill consumed without explicit robot diagnostics summary",
+            },
+            "boundary": ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_GATE,
+            "not_proven": _route_task_field_retest_result_acceptance_backfill_not_proven(
+                backfill,
+                summary_fragment,
+            ),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "read_error": "",
+        }
+    )
+
+    required_summary_fields = (
+        summary["material_completeness_summary"],
+        summary["alignment_status"],
+        summary["missing_rejected_category_summary"],
+        summary["owner_handoff"],
+        summary["rerun_command_summary"],
+    )
+    if (
+        source_schema != ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_SCHEMA
+        or source_boundary != ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_GATE
+    ):
+        summary.update(
+            {
+                "backfill_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result acceptance backfill schema or evidence boundary is unsupported",
+                },
+                "material_completeness_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "alignment_status": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "missing_rejected_category_summary": {"missing": [], "rejected": []},
+                "owner_handoff": {},
+                "rerun_command_summary": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+            }
+        )
+        return summary
+    if not summary["safe_evidence_ref"]:
+        summary.update(
+            {
+                "backfill_status": {
+                    "status": "missing_evidence_ref",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result acceptance backfill is missing evidence_ref",
+                },
+                "robot_diagnostics_summary": {"status": "blocked", "reason": "missing evidence_ref"},
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary.update(
+            {
+                "backfill_status": {
+                    "status": "evidence_ref_mismatch",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result acceptance backfill summary evidence_ref does not match source evidence_ref",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "same evidence_ref mismatch",
+                },
+            }
+        )
+        return summary
+    if not all(required_summary_fields):
+        summary.update(
+            {
+                "backfill_status": {
+                    "status": "missing_required_summary_fields",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result acceptance backfill is missing required safe summary fields",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing required acceptance backfill summary fields",
+                },
+            }
+        )
+        return summary
+    if (
+        not _route_task_field_retest_result_acceptance_backfill_has_disabled_actions(
+            backfill,
+            summary_fragment,
+        )
+        or _route_task_field_run_console_has_unsafe_fields(backfill)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+        or _route_task_field_retest_execution_pack_has_success_wording(summary_fragment)
+        or _route_task_field_retest_execution_pack_has_success_wording(backfill)
+    ):
+        summary.update(
+            {
+                "backfill_status": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result acceptance backfill contains unsafe fields, enabled actions, raw details, or success wording",
+                },
+                "material_completeness_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe acceptance backfill summary fields",
+                },
+                "alignment_status": {
+                    "status": "blocked",
+                    "reason": "unsafe acceptance backfill summary fields",
+                },
+                "missing_rejected_category_summary": {"missing": [], "rejected": []},
+                "owner_handoff": {},
+                "rerun_command_summary": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe acceptance backfill summary fields",
+                },
+                "safe_copy": "Route-task field retest result acceptance backfill was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+                "safe_phone_copy": "Route-task field retest result acceptance backfill was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
             }
         )
     return summary
@@ -19954,6 +20463,7 @@ def build_diagnostics_payload(
     route_task_field_retest_callback_review_decision_ref="",
     route_task_field_retest_review_result_handoff_ref="",
     route_task_field_retest_result_acceptance_packet_ref="",
+    route_task_field_retest_result_acceptance_backfill_ref="",
     route_task_field_run_reconciliation_ref="",
     route_task_completion_signal_ref="",
     route_task_terminal_completion_rehearsal_ref="",
@@ -20323,6 +20833,21 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
         else {}
     )
+    route_task_field_retest_result_acceptance_backfill_source = (
+        latest_status.get("route_task_field_retest_result_acceptance_backfill")
+        if isinstance(latest_status.get("route_task_field_retest_result_acceptance_backfill"), dict)
+        else latest_status.get("route_task_field_retest_result_acceptance_backfill_summary")
+        if isinstance(latest_status.get("route_task_field_retest_result_acceptance_backfill_summary"), dict)
+        else diagnostics_source.get("route_task_field_retest_result_acceptance_backfill")
+        if isinstance(diagnostics_source.get("route_task_field_retest_result_acceptance_backfill"), dict)
+        else diagnostics_source.get("route_task_field_retest_result_acceptance_backfill_summary")
+        if isinstance(diagnostics_source.get("route_task_field_retest_result_acceptance_backfill_summary"), dict)
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
+        else {}
+    )
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
     latest_status.pop("phone_support_bundle", None)
     latest_status.pop("voice_prompt_readiness", None)
@@ -20384,6 +20909,9 @@ def build_diagnostics_payload(
     latest_status.pop("route_task_field_retest_result_acceptance_packet", None)
     latest_status.pop("route_task_field_retest_result_acceptance_packet_summary", None)
     latest_status.pop("route_task_field_retest_result_acceptance_packet_copy", None)
+    latest_status.pop("route_task_field_retest_result_acceptance_backfill", None)
+    latest_status.pop("route_task_field_retest_result_acceptance_backfill_summary", None)
+    latest_status.pop("route_task_field_retest_result_acceptance_backfill_copy", None)
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -20606,6 +21134,17 @@ def build_diagnostics_payload(
     route_task_field_retest_result_acceptance_packet_summary = (
         summarize_route_task_field_retest_result_acceptance_packet(
             route_task_field_retest_result_acceptance_packet_source
+        )
+    )
+    route_task_field_retest_result_acceptance_backfill_source = (
+        route_task_field_retest_result_acceptance_backfill_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL", "")
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_BACKFILL_SUMMARY", "")
+        or route_task_field_retest_result_acceptance_backfill_source
+    )
+    route_task_field_retest_result_acceptance_backfill_summary = (
+        summarize_route_task_field_retest_result_acceptance_backfill(
+            route_task_field_retest_result_acceptance_backfill_source
         )
     )
     route_task_field_run_reconciliation_summary = summarize_route_task_field_run_reconciliation(
@@ -20879,6 +21418,8 @@ def build_diagnostics_payload(
         route_task_field_retest_review_result_handoff_summary=route_task_field_retest_review_result_handoff_summary,
         route_task_field_retest_result_acceptance_packet=route_task_field_retest_result_acceptance_packet_summary,
         route_task_field_retest_result_acceptance_packet_summary=route_task_field_retest_result_acceptance_packet_summary,
+        route_task_field_retest_result_acceptance_backfill=route_task_field_retest_result_acceptance_backfill_summary,
+        route_task_field_retest_result_acceptance_backfill_summary=route_task_field_retest_result_acceptance_backfill_summary,
         route_task_field_run_reconciliation=route_task_field_run_reconciliation_summary,
         route_task_field_run_reconciliation_summary=route_task_field_run_reconciliation_summary,
         route_task_completion_signal=route_task_completion_signal_summary,
