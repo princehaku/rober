@@ -8,6 +8,18 @@
 
 ## 2026-05-17 系列
 
+更新时间：2026-05-17 18:47 Asia/Shanghai。
+
+### 2026-05-17 18-19｜route-task-result-callback-intake｜O2/O3 现场派发进入回调摄取，任务闭环与固定路线均由约 98% 上调到约 99%，O5 保持约 68%
+
+`sprints/2026.05.17_18-19_route-task-result-callback-intake/` 完成 `software_proof_docker_route_task_field_retest_result_callback_intake_gate`。Autonomy worker 新增 PC gate `route_task_field_retest_result_callback_intake`，支持上一轮 `route_task_field_retest_result_review_dispatch` artifact / summary 和 callback packet safe sample，输出 `trashbot.route_task_field_retest_result_callback_intake.v1` / `_summary.v1`，按同一 `safe_evidence_ref` 校验 owner work orders fulfilment、callback packet requirements、accepted/missing/rejected updates、owner follow-up 和后续 review decision handoff，并保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。Task A 验证输出 py_compile pass、focused unittest `Ran 5 tests in 0.141s OK`、CLI `--help` pass、required `rg` pass、scoped `git diff --check` pass。
+
+Robot worker 更新 diagnostics metadata-only consumer，支持 `route_task_field_retest_result_callback_intake` / `_summary` file/env/top-level/nested summary，unsupported schema/boundary、unsafe copy、success/control claim、`delivery_success=true`、`primary_actions_enabled=true`、missing/weak safe evidence ref 和不安全字段 fail closed，并保持 task_orchestrator/action/Start/Dropoff/Cancel/ACK/cursor/Nav2/HIL 控制语义不变。Task B 验证输出 py_compile pass、diagnostics unittest `Ran 154 tests in 0.239s OK`、required `rg` pass、scoped `git diff --check` pass。
+
+Full-stack worker 新增 mobile/web 只读“路线任务回调入口” panel，展示 callback intake status、accepted/missing/rejected updates、owner follow-up、safe evidence ref、boundary flags、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`；copy/export 只使用 `safe_copy` 白名单字段，缺失显示 `blocked copy unavailable`；Start/Confirm/Cancel gating 不变。Task C 验证输出 mobile unittest `Ran 50 tests ... OK`、`node --check mobile/web/app.js` pass、required `rg` pass、scoped `git diff --check` pass。Product closeout 更新 sprint 留档、`OKR.md` 和本日志；required `rg`、closeout scoped `git diff --check` 与 closeout file existence check 均通过。
+
+该证据只支持 Objective 2 从约 98% 保守上调到约 99%，Objective 3 从约 98% 保守上调到约 99%。Objective 2 的理由是 PR #4 route/elevator 现场派发现在进入 callback packet 摄取，真实 door state、target floor confirmation、human assistance note、dropoff/cancel completion 和 delivery result 可按同一 `evidence_ref` 做 accepted/missing/rejected 更新和 owner follow-up；仍不是真实 route/elevator field pass。Objective 3 的理由是真实 Nav2/fixed-route runtime log、route completion signal、task record 等 result materials 的回调摄取状态、缺口和复跑路径已被 PC / Robot / mobile 共同只读核对；仍不是真实 Nav2/fixed-route 实跑。Objective 1 保持约 77%，因为本轮没有真实 WAVE ROVER、UART、HIL、`T=1001` feedback、`/odom`、`/imu/data`、`/battery` 或 PR #5 真实 2D LiDAR / ToF 材料。Objective 4 保持约 99%，因为本轮没有真实手机设备、真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 或真实现场 phone behavior。Objective 5 保持约 68%，因为本机 Docker-only 且本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；Objective 5 仍是数值最低但按 O5 stop rule 不继续堆本地 metadata depth。PR #5 hardware materials 仍缺真实 2D LiDAR / ToF source、receipt、采购、安装、接线、电源、标定与 HIL-entry。本轮不证明真实 Nav2/fixed-route、真实 route/elevator field pass、真实 route completion signal、真实 task record、真实 dropoff/cancel completion、delivery success、真实手机/browser、production app、WAVE ROVER、真实串口/UART、HIL 或 Objective 5 external proof；始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
 更新时间：2026-05-17 17:20 Asia/Shanghai。
 
 ### 2026-05-17 17-18｜route-task-result-review-dispatch｜O2/O3 review decision 进入现场派发，任务闭环与固定路线均由约 97% 上调到约 98%，O5 保持约 68%

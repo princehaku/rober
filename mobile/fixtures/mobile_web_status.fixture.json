@@ -159,6 +159,79 @@
       "delivery success"
     ]
   },
+  "route_task_field_retest_result_callback_intake": {
+    "schema": "trashbot.route_task_field_retest_result_callback_intake.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.route_task_field_retest_result_callback_intake_summary.v1",
+    "intake_status": "blocked_missing_route_task_field_retest_result_callback_intake_not_proven",
+    "accepted_updates": [
+      "accepted_updates=phone_safe_review_dispatch_schema",
+      "accepted_updates=safe_evidence_ref_alignment_summary"
+    ],
+    "missing_updates": [
+      "missing_updates=door_state_callback",
+      "missing_updates=target_floor_confirmation_callback",
+      "missing_updates=human_assistance_note_callback",
+      "missing_updates=delivery_result_callback"
+    ],
+    "rejected_updates": [
+      "rejected_updates=unsafe material reference",
+      "rejected_updates=control claim material"
+    ],
+    "owner_follow_up": [
+      "owner_follow_up=Autonomy owner refreshes route completion signal update under the same safe evidence_ref.",
+      "owner_follow_up=Robot owner refreshes diagnostics metadata-only summary after callback packet intake.",
+      "owner_follow_up=Field owner resubmits missing door, floor, assistance, and terminal callback summaries."
+    ],
+    "review_decision_handoff": "review_decision_handoff=handoff phone-safe callback intake summary to route_task_field_retest_result_callback_review_decision.",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "路线任务回调入口 fixture 只展示 intake status、accepted/missing/rejected updates、owner follow-up 和 review decision handoff；这是 Docker/local software proof，不是真实现场结论。",
+    "recovery_hint": "按同一 safe evidence_ref 补齐 missing updates 后重跑 software_proof_docker_route_task_field_retest_result_callback_intake_gate。",
+    "safe_copy": {
+      "safe_phone_copy": "路线任务回调入口 copy 只包含 whitelist-only phone-safe metadata；不得当成真实现场结论或交付完成。"
+    },
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_result_callback_intake_gate",
+    "not_proven": [
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field pass",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
+  "route_task_field_retest_result_callback_intake_summary": {
+    "schema": "trashbot.route_task_field_retest_result_callback_intake_summary.v1",
+    "schema_version": 1,
+    "intake_status": "blocked_missing_route_task_field_retest_result_callback_intake_not_proven",
+    "accepted_updates": [
+      "accepted_updates=phone_safe_review_dispatch_schema"
+    ],
+    "missing_updates": [
+      "missing_updates=door_state_callback",
+      "missing_updates=target_floor_confirmation_callback"
+    ],
+    "rejected_updates": [
+      "rejected_updates=unsafe or control-claim material"
+    ],
+    "owner_follow_up": "owner_follow_up=refresh same safe evidence_ref callback updates before review decision.",
+    "review_decision_handoff": "review_decision_handoff=handoff to callback review decision gate.",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "route_task_field_retest_result_callback_intake_summary 只用于手机只读回调入口，不放行 Start、Confirm 或 Cancel。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_result_callback_intake_gate",
+    "not_proven": [
+      "真实 route/elevator field pass",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "elevator_assist": {
     "schema": "trashbot.elevator_assist_summary.v1",
     "schema_version": 1,

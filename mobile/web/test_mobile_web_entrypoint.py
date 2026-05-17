@@ -1453,6 +1453,102 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, dispatch_text)
 
+    def test_field_retest_result_callback_intake_panel_is_read_only_and_copy_gated(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 回调入口必须紧跟现场派发，只读展示回调更新，不新增控制按钮语义。
+        self.assertIn("routeTaskFieldRetestResultCallbackIntakeTitle", app)
+        self.assertIn("路线任务回调入口", app)
+        self.assertIn("routeTaskFieldRetestResultReviewDispatchTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+
+        # 状态来源兼容 artifact、summary 和 Robot diagnostics compatible summary。
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_INTAKE_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestResultCallbackIntakeText", app)
+        self.assertIn("routeTaskFieldRetestResultCallbackIntakeCandidate", app)
+        self.assertIn("routeTaskFieldRetestResultCallbackIntakeFromStatus", app)
+        self.assertIn("route_task_field_retest_result_callback_intake", app)
+        self.assertIn("route_task_field_retest_result_callback_intake_summary", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_result_callback_intake_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_result_callback_intake", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_result_callback_intake", app)
+        self.assertIn("intake_status", app)
+        self.assertIn("accepted_updates", app)
+        self.assertIn("missing_updates", app)
+        self.assertIn("rejected_updates", app)
+        self.assertIn("owner_follow_up", app)
+        self.assertIn("review_decision_handoff", app)
+        self.assertIn("same_evidence_ref_required=true", app)
+
+        # copy/export 只能由 safe_copy 驱动，并且不触发 Start/Confirm/Cancel 或 diagnostics fetch。
+        self.assertIn("routeTaskFieldRetestResultCallbackIntakeCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_result_callback_intake_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestResultCallbackIntakeButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestResultCallbackIntakeButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"routeTaskFieldRetestResultCallbackIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+        self.assertNotRegex(app, r"copyRouteTaskFieldRetestResultCallbackIntakeButton.*fetchJson")
+
+        # fixture 和产品文档必须固定 software proof / not_proven 边界。
+        intake = fixture["route_task_field_retest_result_callback_intake"]
+        self.assertEqual(
+            intake["intake_status"],
+            "blocked_missing_route_task_field_retest_result_callback_intake_not_proven",
+        )
+        self.assertEqual(intake["same_evidence_ref_required"], True)
+        self.assertEqual(intake["delivery_success"], False)
+        self.assertEqual(intake["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_route_task_field_retest_result_callback_intake_gate", fixture_text)
+        self.assertIn("accepted_updates", fixture_text)
+        self.assertIn("missing_updates", fixture_text)
+        self.assertIn("rejected_updates", fixture_text)
+        self.assertIn("owner_follow_up", fixture_text)
+        self.assertIn("review_decision_handoff", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("route_task_field_retest_result_callback_intake", doc)
+        self.assertIn("路线任务回调入口", doc)
+
+    def test_field_retest_result_callback_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        intake_text = json.dumps(
+            fixture["route_task_field_retest_result_callback_intake"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 回调入口 fixture 不得包含 raw 回调、底层控制、硬件细节或成功宣称。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw update",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "现场已通过",
+            "真实手机已验收",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "same_evidence_ref_required\": false",
+        ):
+            self.assertNotIn(forbidden, intake_text)
+
     def test_field_retest_material_pack_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
         styles = self.read_web("styles.css")
