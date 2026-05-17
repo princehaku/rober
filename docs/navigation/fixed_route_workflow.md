@@ -280,6 +280,24 @@ required evidence packet 固定覆盖 Nav2/fixed-route runtime log、route compl
 
 `ready_for_operator_review` 只表示 Docker/local software proof 的 intake 材料足够进入人工复核；它不是实机 fixed-route/Nav2、真实路线采集、WAVE ROVER/HIL、真实投放、真实取消完成或 delivery success。任何缺 intake、坏 JSON、unsupported schema、unsafe support copy、缺材料或同一 `evidence_ref` 不一致，都必须保持 blocked review report，再按 `operator_next_steps` 补采和重跑。
 
+## 4.6.1 Route/Task Field-Retest Review Result Handoff
+
+callback review decision 之后，可以运行 PC 侧 review result handoff gate，把上一轮 `route_task_field_retest_callback_review_decision` 的 artifact、summary 或 wrapper/nested JSON 转成 result-intake 前交接摘要：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_review_result_handoff.py \
+  --callback-review-json /tmp/route_task_field_retest_callback_review_decision_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_review_result_handoff.json \
+  --summary-output /tmp/route_task_field_retest_review_result_handoff_summary.json
+```
+
+artifact 使用 `schema=trashbot.route_task_field_retest_review_result_handoff.v1`，summary 使用 `schema=trashbot.route_task_field_retest_review_result_handoff_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_review_result_handoff_gate`。顶层固定包含 `same_evidence_ref_required=true`、safe `evidence_ref`、`handoff_status`、`source_review_decision`、`result_intake_readiness`、`owner_handoff`、`rerun_commands`、`safe_copy`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+Decision mapping 固定为：`ready_for_result_intake` -> `ready_for_result_intake_handoff` / `ready_for_result_material_intake`；`needs_material_backfill` -> `blocked_until_material_backfill` / `not_ready`；`evidence_ref_mismatch_rerun` -> `blocked_until_same_evidence_ref_rerun` / `not_ready`；`unsupported_callback_schema` -> `blocked_unsupported_source_schema` / `not_ready`；`blocked_unsafe_callback` 或 `blocked_success_claim` -> `blocked_unsafe_source_review` / `not_ready`。
+
+`route_task_field_retest_review_result_handoff` 仍是 software proof。它不读取真实材料目录、不触发 result intake、不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。`ready_for_result_intake_handoff` 只表示 Docker/local `software_proof_docker_route_task_field_retest_review_result_handoff_gate` 已把 review decision 交接给 result-intake 前置面；它不是真实 field pass、真实 fixed-route/Nav2、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## 4.6 Field-Run Execution Pack
 
 review console 完成后，现场联跑还需要一份“照着跑”的执行包。`pc-tools/evidence/route_task_field_run_execution_pack.py` 只读 review console JSON，输出现场 manifest、材料模板、first-run/rerun 命令清单和 phone-safe summary：

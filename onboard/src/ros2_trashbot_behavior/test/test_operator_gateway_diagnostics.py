@@ -33,6 +33,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
+    summarize_route_task_field_retest_review_result_handoff,
     summarize_route_task_field_run_intake,
     summarize_route_task_field_run_reconciliation,
     summarize_route_task_field_run_readiness,
@@ -5157,6 +5158,345 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn(
             "software_proof_docker_route_task_field_retest_callback_review_decision_gate",
+            encoded,
+        )
+        self.assertIn("metadata-only", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_retest_review_result_handoff_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            handoff_path = Path(td) / "route_task_field_retest_review_result_handoff.json"
+            handoff_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_review_result_handoff.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_review_result_handoff_gate"
+                        ),
+                        "evidence_ref": "evidence://route-task-field-retest-review-result-handoff-1",
+                        "route_task_field_retest_review_result_handoff_summary": {
+                            "schema": "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
+                            "source_schema": "trashbot.route_task_field_retest_review_result_handoff.v1",
+                            "source_evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_review_result_handoff_gate"
+                            ),
+                            "safe_evidence_ref": (
+                                "evidence://route-task-field-retest-review-result-handoff-1"
+                            ),
+                            "same_evidence_ref_required": True,
+                            "handoff_status": {
+                                "status": "ready_for_result_intake_handoff_not_proven",
+                                "verdict": "not_proven",
+                                "reason": "sanitized review result handoff is ready",
+                            },
+                            "same_evidence_ref_match": {"status": "matched", "verdict": "not_proven"},
+                            "source_review_decision": "ready_for_result_intake",
+                            "result_intake_readiness": {
+                                "status": "ready_for_result_intake",
+                                "reason": "handoff metadata can move to result intake",
+                            },
+                            "required_materials": ["delivery_result", "operator_callback"],
+                            "owner_handoff": {"owner": "Robot", "next": "result_intake"},
+                            "blocked_reasons": [],
+                            "control_boundary": {
+                                "metadata_only": True,
+                                "delivery_success": False,
+                                "primary_actions_enabled": False,
+                            },
+                            "robot_compatible_summary": {
+                                "status": "metadata_only",
+                                "reason": "Robot mirrors safe review-result handoff only.",
+                            },
+                            "safe_copy": (
+                                "Route-task field retest review result handoff is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                            "not_proven": ["delivery_success", "real_hil_pass"],
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_review_result_handoff_ref=str(handoff_path),
+            )
+            summary = payload["route_task_field_retest_review_result_handoff"]
+            summary_alias = payload["route_task_field_retest_review_result_handoff_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_review_result_handoff_gate",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.route_task_field_retest_review_result_handoff.v1",
+        )
+        self.assertEqual(summary["handoff_status"]["status"], "ready_for_result_intake_handoff_not_proven")
+        self.assertEqual(summary["source_review_decision"], "ready_for_result_intake")
+        self.assertEqual(summary["result_intake_readiness"]["status"], "ready_for_result_intake")
+        self.assertIn("delivery_result", summary["required_materials"])
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://route-task-field-retest-review-result-handoff-1",
+        )
+        self.assertEqual(summary["robot_compatible_summary"]["status"], "metadata_only")
+        self.assertEqual(summary["robot_diagnostics_summary"]["status"], "metadata_only")
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertIn("delivery_success=false", summary["safe_summary"]["safe_phone_copy"])
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        # review-result handoff 只是 metadata-only 交接；不能触发控制、ACK、cursor、Nav2 或 HIL。
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(handoff_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_retest_review_result_handoff_env_nested_missing_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "route_task_field_retest_review_result_handoff_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
+                        "source_schema": "trashbot.route_task_field_retest_review_result_handoff.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_review_result_handoff_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_review_result_handoff_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://route-task-field-retest-review-result-handoff-2",
+                        "same_evidence_ref_required": True,
+                        "handoff_status": {"status": "needs_result_material_backfill", "verdict": "not_proven"},
+                        "source_review_decision": "needs_material_backfill",
+                        "result_intake_readiness": {"status": "blocked"},
+                        "required_materials": ["delivery_result"],
+                        "owner_handoff": "Autonomy",
+                        "blocked_reasons": ["missing_delivery_result"],
+                        "robot_compatible_summary": {"status": "metadata_only"},
+                        "safe_copy": (
+                            "Route-task field retest review result handoff is metadata-only; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_handoff = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_REVIEW_RESULT_HANDOFF")
+            previous_summary = os.environ.get(
+                "TRASHBOT_ROUTE_TASK_FIELD_RETEST_REVIEW_RESULT_HANDOFF_SUMMARY"
+            )
+            os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_REVIEW_RESULT_HANDOFF", None)
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_REVIEW_RESULT_HANDOFF_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_retest_review_result_handoff"
+                ]
+            finally:
+                if previous_handoff is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_REVIEW_RESULT_HANDOFF", None)
+                else:
+                    os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_REVIEW_RESULT_HANDOFF"] = previous_handoff
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_REVIEW_RESULT_HANDOFF_SUMMARY", None)
+                else:
+                    os.environ[
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_REVIEW_RESULT_HANDOFF_SUMMARY"
+                    ] = previous_summary
+
+            nested_summary = summarize_route_task_field_retest_review_result_handoff(
+                {
+                    "schema": "trashbot.route_task_field_retest_review_result_handoff.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_review_result_handoff_gate"
+                    ),
+                    "evidence_ref": "evidence://route-task-field-retest-review-result-handoff-3",
+                    "diagnostics": {
+                        "diagnostics_summary": {
+                            "schema": "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
+                            "source_schema": "trashbot.route_task_field_retest_review_result_handoff.v1",
+                            "source_evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_review_result_handoff_gate"
+                            ),
+                            "safe_evidence_ref": (
+                                "evidence://route-task-field-retest-review-result-handoff-3"
+                            ),
+                            "same_evidence_ref_required": True,
+                            "handoff_status": {"status": "nested_ready", "verdict": "not_proven"},
+                            "source_review_decision": "ready_for_result_intake",
+                            "result_intake_readiness": {"status": "ready_for_result_intake"},
+                            "required_materials": ["operator_callback"],
+                            "owner_handoff": "Robot",
+                            "blocked_reasons": [],
+                            "robot_compatible_summary": {"status": "metadata_only", "reason": "read-only"},
+                            "safe_copy": (
+                                "Nested review result handoff is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_review_result_handoff.json"
+            missing_summary = summarize_route_task_field_retest_review_result_handoff(str(missing_path))
+            no_summary = summarize_route_task_field_retest_review_result_handoff(
+                {
+                    "schema": "trashbot.route_task_field_retest_review_result_handoff.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_review_result_handoff_gate"
+                    ),
+                    "evidence_ref": "evidence://route-task-field-retest-review-result-handoff-4",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsupported_summary = summarize_route_task_field_retest_review_result_handoff(
+                {
+                    "schema": "trashbot.route_task_field_retest_callback_review_decision.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_callback_review_decision_gate"
+                    ),
+                    "route_task_field_retest_review_result_handoff_summary": {
+                        "safe_copy": "Unsupported review result handoff is metadata-only; delivery_success=false.",
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                }
+            )
+            mismatch_summary = summarize_route_task_field_retest_review_result_handoff(
+                {
+                    "schema": "trashbot.route_task_field_retest_review_result_handoff.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_review_result_handoff_gate"
+                    ),
+                    "evidence_ref": "evidence://source-ref",
+                    "route_task_field_retest_review_result_handoff_summary": {
+                        "safe_evidence_ref": "evidence://summary-ref",
+                        "same_evidence_ref_required": True,
+                        "source_review_decision": "ready_for_result_intake",
+                        "safe_copy": (
+                            "Review result handoff is metadata-only; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            weak_ref_summary = summarize_route_task_field_retest_review_result_handoff(
+                {
+                    "schema": "trashbot.route_task_field_retest_review_result_handoff.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_review_result_handoff_gate"
+                    ),
+                    "evidence_ref": "evidence://route-task-field-retest-review-result-handoff-weak-ref",
+                    "route_task_field_retest_review_result_handoff_summary": {
+                        "safe_evidence_ref": (
+                            "evidence://route-task-field-retest-review-result-handoff-weak-ref"
+                        ),
+                        "same_evidence_ref_required": "true",
+                        "safe_copy": (
+                            "Review result handoff is metadata-only; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsafe_summary = summarize_route_task_field_retest_review_result_handoff(
+                {
+                    "schema": "trashbot.route_task_field_retest_review_result_handoff.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_review_result_handoff_gate"
+                    ),
+                    "evidence_ref": "evidence://route-task-field-retest-review-result-handoff-5",
+                    "route_task_field_retest_review_result_handoff_summary": {
+                        "safe_evidence_ref": (
+                            "evidence://route-task-field-retest-review-result-handoff-5"
+                        ),
+                        "same_evidence_ref_required": True,
+                        "source_review_decision": "ready_for_result_intake",
+                        "safe_copy": "Review result handoff confirms delivery success and ACK posted.",
+                        "delivery_success": False,
+                        "primary_actions_enabled": True,
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    nested_summary,
+                    missing_summary,
+                    no_summary,
+                    unsupported_summary,
+                    mismatch_summary,
+                    weak_ref_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["handoff_status"]["status"], "needs_result_material_backfill")
+        self.assertEqual(env_summary["source_review_decision"], "needs_material_backfill")
+        self.assertIn("delivery_result", env_summary["required_materials"])
+        self.assertEqual(nested_summary["handoff_status"]["status"], "nested_ready")
+        self.assertEqual(nested_summary["source_review_decision"], "ready_for_result_intake")
+        self.assertEqual(missing_summary["handoff_status"]["status"], "missing")
+        self.assertEqual(no_summary["handoff_status"]["status"], "missing_summary")
+        self.assertEqual(unsupported_summary["handoff_status"]["status"], "unsupported_schema")
+        self.assertEqual(mismatch_summary["handoff_status"]["status"], "evidence_ref_mismatch")
+        self.assertEqual(weak_ref_summary["handoff_status"]["status"], "blocked_unsafe_review_result_handoff")
+        self.assertEqual(unsafe_summary["handoff_status"]["status"], "blocked_unsafe_review_result_handoff")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn(
+            "software_proof_docker_route_task_field_retest_review_result_handoff_gate",
             encoded,
         )
         self.assertIn("metadata-only", encoded)

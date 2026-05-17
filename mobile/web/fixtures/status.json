@@ -880,5 +880,56 @@
       "真实硬件/HIL",
       "Objective 5 external proof"
     ]
+  },
+  "route_task_field_retest_review_result_handoff": {
+    "schema": "trashbot.route_task_field_retest_review_result_handoff.v1",
+    "summary_schema": "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
+    "schema_version": 1,
+    "source_review_decision_schema": "trashbot.route_task_field_retest_callback_review_decision_summary.v1",
+    "handoff_status": "blocked_waiting_result_intake_materials",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "source_review_decision": "needs_material_backfill",
+    "result_intake_readiness": "ready_for_result_intake=false; result-intake only after required materials arrive under the same safe evidence_ref",
+    "required_materials": [
+      "required_material=nav2_runtime_log.redacted.txt",
+      "required_material=route_completion_signal.summary.json",
+      "required_material=task_record.summary.json",
+      "required_material=door_state.summary.json",
+      "required_material=target_floor_confirmation.summary.json",
+      "required_material=human_assistance_note.summary.md",
+      "required_material=dropoff_or_cancel_completion.summary.json",
+      "required_material=delivery_result.summary.json"
+    ],
+    "owner_handoff": [
+      "Autonomy owner backfills route/elevator result summaries",
+      "Robot owner publishes metadata-only diagnostics summary",
+      "Full-stack owner keeps mobile/web read-only and whitelist-only"
+    ],
+    "blocked_reasons": [
+      "blocked_reason=source review decision still needs material backfill",
+      "blocked_reason=delivery_success=false",
+      "blocked_reason=primary_actions_enabled=false"
+    ],
+    "safe_phone_copy": "现场复测结果交接只读展示 safe evidence ref、handoff status、source review decision、result-intake readiness、required materials、owner handoff、blocked reasons 和 evidence boundary；这是 software proof only。",
+    "safe_copy": "现场复测结果交接 safe copy：handoff_status=blocked_waiting_result_intake_materials；source_review_decision=needs_material_backfill；ready_for_result_intake=false；delivery_success=false；primary_actions_enabled=false。",
+    "recovery_hint": "请现场 owner 按同一 safe evidence_ref 补齐复测结果材料，并由 Robot diagnostics 发布 route_task_field_retest_review_result_handoff_summary。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_review_result_handoff_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 result-intake material",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实 door_state",
+      "真实 target_floor_confirmation",
+      "真实 human_assistance_note",
+      "真实 dropoff_or_cancel_completion",
+      "真实 delivery_result",
+      "真实 route/elevator field pass",
+      "真实手机设备/browser",
+      "真实硬件/HIL",
+      "Objective 5 external proof"
+    ]
   }
 }

@@ -257,6 +257,24 @@ Decision mapping 固定包含 `ready_for_result_intake`、`needs_material_backfi
 
 该 review decision gate 不读取真实材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。缺输入、坏 JSON、unsupported schema/boundary、same `evidence_ref` mismatch、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_result_intake` 只表示 Docker/local software proof 足以把 sanitized callback metadata 交给后续 result intake 复账，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
+## route/task field retest review result handoff
+
+`pc-tools/evidence/route_task_field_retest_review_result_handoff.py` 只读上一节 `route_task_field_retest_callback_review_decision` artifact、summary 或 wrapper/nested JSON，把 review decision 转成 result-intake 前的 metadata-only handoff artifact / summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_review_result_handoff.py \
+  --callback-review-json /tmp/route_task_field_retest_callback_review_decision_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_review_result_handoff.json \
+  --summary-output /tmp/route_task_field_retest_review_result_handoff_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_review_result_handoff.v1`，summary 使用 `schema=trashbot.route_task_field_retest_review_result_handoff_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_review_result_handoff_gate`。核心字段包括 safe `evidence_ref`、`same_evidence_ref_required=true`、`handoff_status`、`source_review_decision`、`result_intake_readiness`、`owner_handoff`、`rerun_commands`、`safe_copy`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+Decision mapping 固定为：`ready_for_result_intake` -> `ready_for_result_intake_handoff` / `ready_for_result_material_intake`；`needs_material_backfill` -> `blocked_until_material_backfill` / `not_ready`；`evidence_ref_mismatch_rerun` -> `blocked_until_same_evidence_ref_rerun` / `not_ready`；`unsupported_callback_schema` -> `blocked_unsupported_source_schema` / `not_ready`；`blocked_unsafe_callback` 或 `blocked_success_claim` -> `blocked_unsafe_source_review` / `not_ready`。
+
+该 handoff gate 不读取真实材料目录、不触发 result intake、不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺输入、坏 JSON、unsupported schema/boundary、same `evidence_ref` mismatch、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_result_intake_handoff` 只表示 Docker/local `software_proof_docker_route_task_field_retest_review_result_handoff_gate` 已把上一轮 review decision 交接给 result-intake 前置面，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## route/task field retest callback intake
 
 `pc-tools/evidence/route_task_field_retest_callback_intake.py` 只读上一节 evidence dispatch artifact、summary 或 wrapper/nested JSON，以及现场同学回传的 sanitized callback JSON，把推荐文件名收到状态、缺项、same-`evidence_ref` 对齐结果和下一步回填动作整理成 metadata-only callback intake artifact / summary：

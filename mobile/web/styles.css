@@ -139,6 +139,7 @@ h2 {
 .route-task-field-retest-evidence-dispatch-panel,
 .route-task-field-retest-callback-intake-panel,
 .route-task-field-retest-callback-review-decision-panel,
+.route-task-field-retest-review-result-handoff-panel,
 .hardware-baseline-review-panel,
 .hardware-baseline-source-alignment-panel,
 .hardware-sensor-procurement-intake-panel,
@@ -284,6 +285,7 @@ h2 {
 .route-task-field-retest-evidence-dispatch-grid,
 .route-task-field-retest-callback-intake-grid,
 .route-task-field-retest-callback-review-decision-grid,
+.route-task-field-retest-review-result-handoff-grid,
 .hardware-baseline-source-alignment-grid,
 .hardware-sensor-procurement-intake-grid,
 .hardware-sensor-procurement-review-grid,
@@ -345,6 +347,7 @@ h2 {
 .route-task-field-retest-material-pack-grid div,
 .route-task-field-retest-callback-intake-grid div,
 .route-task-field-retest-callback-review-decision-grid div,
+.route-task-field-retest-review-result-handoff-grid div,
 .hardware-baseline-source-alignment-grid div,
 .hardware-sensor-procurement-review-grid div,
 .hardware-sensor-procurement-execution-pack-grid div,
@@ -493,6 +496,10 @@ dd {
 }
 
 .route-task-field-retest-callback-review-decision-grid {
+  grid-template-columns: 1fr;
+}
+
+.route-task-field-retest-review-result-handoff-grid {
   grid-template-columns: 1fr;
 }
 
@@ -905,6 +912,10 @@ dd {
   }
 
   .route-task-field-retest-callback-review-decision-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .route-task-field-retest-review-result-handoff-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
