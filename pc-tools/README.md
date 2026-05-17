@@ -239,6 +239,24 @@ python3 pc-tools/evidence/route_task_field_retest_evidence_dispatch.py \
 
 required evidence packet 固定包含 Nav2/fixed-route runtime log、route completion signal、task record、door_state、target_floor_confirmation、human_assistance_note、dropoff_or_cancel_completion 和 delivery_result。该 dispatch gate 不读取真实材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、acceptance brief 未 ready、必需证据包漏项、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_evidence_dispatch_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_evidence_dispatch_gate` 已把现场证据包派发口径整理清楚，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
+## route/task field retest callback review decision
+
+`pc-tools/evidence/route_task_field_retest_callback_review_decision.py` 只读上一轮 `route_task_field_retest_callback_intake` artifact、summary 或 wrapper/nested JSON，把 received/missing/same-evidence-ref/next-backfill 状态转成 metadata-only review decision：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_callback_review_decision.py \
+  --callback-intake-json /tmp/route_task_field_retest_callback_intake_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_callback_review_decision.json \
+  --summary-output /tmp/route_task_field_retest_callback_review_decision_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_callback_review_decision.v1`，summary 使用 `schema=trashbot.route_task_field_retest_callback_review_decision_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_callback_review_decision_gate`。核心字段包括 `review_decision`、safe `evidence_ref`、source intake status、received filenames summary、missing materials、same-evidence-ref verdict、next required evidence、result-intake readiness、owner handoff、rerun commands、fail-closed notes、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+Decision mapping 固定包含 `ready_for_result_intake`、`needs_material_backfill`、`evidence_ref_mismatch_rerun`、`unsupported_callback_schema`、`blocked_unsafe_callback` 和 `blocked_success_claim`。required evidence packet 固定覆盖 Nav2/fixed-route runtime log、route completion signal、task record、door_state、target_floor_confirmation、human_assistance_note、dropoff_or_cancel_completion 和 delivery_result。
+
+该 review decision gate 不读取真实材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。缺输入、坏 JSON、unsupported schema/boundary、same `evidence_ref` mismatch、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_result_intake` 只表示 Docker/local software proof 足以把 sanitized callback metadata 交给后续 result intake 复账，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## route/task field retest callback intake
 
 `pc-tools/evidence/route_task_field_retest_callback_intake.py` 只读上一节 evidence dispatch artifact、summary 或 wrapper/nested JSON，以及现场同学回传的 sanitized callback JSON，把推荐文件名收到状态、缺项、same-`evidence_ref` 对齐结果和下一步回填动作整理成 metadata-only callback intake artifact / summary：

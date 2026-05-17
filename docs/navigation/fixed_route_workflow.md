@@ -258,6 +258,21 @@ review report 使用 `schema=trashbot.route_task_field_run_review_console.v1`，
 
 - `review_decision`: 把 missing、mismatch、unsafe summary 或 unsupported schema 转成下一步操作分支。
 - `operator_next_steps`: 给现场人员的补采、统一 `evidence_ref`、重跑 intake/review 或进入人工复核步骤。
+
+## 4.6 Route/Task Field-Retest Callback Review Decision
+
+现场复测 callback 链路在 `route_task_field_retest_callback_intake` 后新增一层 review decision：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_callback_review_decision.py \
+  --callback-intake-json /tmp/route_task_field_retest_callback_intake_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --once-json
+```
+
+该 gate 使用 `schema=trashbot.route_task_field_retest_callback_review_decision.v1`，summary 使用 `schema=trashbot.route_task_field_retest_callback_review_decision_summary.v1`，证据边界为 `software_proof_docker_route_task_field_retest_callback_review_decision_gate`。它只读 callback intake artifact / summary / wrapper / nested JSON，把 received filenames summary、missing materials、same-evidence-ref verdict 和 next-backfill 状态整理成 `ready_for_result_intake`、`needs_material_backfill`、`evidence_ref_mismatch_rerun`、`unsupported_callback_schema`、`blocked_unsafe_callback` 或 `blocked_success_claim`。
+
+required evidence packet 固定覆盖 Nav2/fixed-route runtime log、route completion signal、task record、door_state、target_floor_confirmation、human_assistance_note、dropoff_or_cancel_completion 和 delivery_result。该层不读取真实材料目录、不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser；所有输出都保持 `not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。因此即使 decision 为 `ready_for_result_intake`，也只表示 sanitized callback metadata 可进入后续 result intake 复账，不是真实 field pass、真实投放、HIL、手机/browser 或 Objective 5 external proof。
 - `commands_to_rerun`: review 层整理后的重跑顺序，不是原样复制 intake 字段。
 - `phone_safe_summary`: support/mobile 可展示的白名单摘要。
 - `not_proven`: 继续列出真实 Nav2/fixed-route、真实路线采集、真实硬件反馈、HIL、dropoff/cancel completion、delivery_success 和 O5 external proof 未证明。
