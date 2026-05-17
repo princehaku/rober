@@ -513,7 +513,35 @@ required evidence packet 固定列出 Nav2/fixed-route runtime log、route compl
 
 `route_task_field_retest_evidence_dispatch` 仍是 software proof。`ready_for_field_retest_evidence_dispatch_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_evidence_dispatch_gate` 已把现场证据包派发口径复账清楚；它不是真实 field pass、真实 fixed-route/Nav2、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
-## 4.9.11 Route Task Field Retest Result Intake
+## 4.9.11 Route Task Field Retest Callback Intake
+
+evidence dispatch 派发推荐文件名后，可以运行 PC 侧 callback intake gate，把现场同学回传的 sanitized callback JSON 转成 Robot diagnostics 和 mobile/web 可只读展示的 fail-closed 回执入口摘要：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_callback_intake.py \
+  --dispatch-json /tmp/route_task_field_retest_evidence_dispatch_summary.json \
+  --callback-json /tmp/route_task_field_retest_sanitized_callback.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_callback_intake.json \
+  --summary-output /tmp/route_task_field_retest_callback_intake_summary.json
+```
+
+artifact 使用 `schema=trashbot.route_task_field_retest_callback_intake.v1`，summary 使用 `schema=trashbot.route_task_field_retest_callback_intake_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_callback_intake_gate`。顶层固定包含 `same_evidence_ref_required=true`、safe `evidence_ref`、intake status、received filenames summary、missing materials、same-evidence-ref match result、next backfill action、callback checklist result、owner handoff、fail-closed rerun notes、required evidence packet、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
+
+callback JSON 只允许 metadata 字段：recommended filename received status、safe `evidence_ref`、missing material ids、next backfill action、owner callback note 和 callback checklist result。该设计故意不读取真实材料目录，也不打开 dispatch 推荐的文件名，因为 callback intake 只能证明“现场回执元数据已按同一证据号复账”，不能证明材料内容真实、路线真的跑过、投放完成或 field pass。它也不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。
+
+保守阻断规则：
+
+- dispatch 或 callback 输入缺失、JSON 不可读或不是 JSON object：输出 blocked，不猜测现场回执已经存在。
+- dispatch schema / boundary 不支持，或 callback schema / boundary / 字段不在白名单：输出 blocked。
+- 缺 safe `evidence_ref`、与 `--evidence-ref` 不一致或 `same_evidence_ref_required` 不是严格 true：输出 blocked。
+- callback received status、missing material ids、next backfill action、owner note 或 checklist result 不是严格类型：输出 blocked。
+- callback 缺项引用不属于八类 required evidence packet：输出 blocked。
+- 输入含 unsafe copy、raw path、credential、ROS topic、serial/UART、WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true`：输出 blocked。
+
+`robot_diagnostics_summary` 和 `mobile_readonly_summary` 只能消费白名单 summary、safe copy 和 fail-closed flags，不展示 raw artifact、本机路径、checksum、traceback、凭证、DB/queue URL、OSS AK/SK、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 参数。`ready_for_field_retest_callback_intake_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_callback_intake_gate` 已把现场回执元数据复账清楚，不是真实 fixed-route/Nav2、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
+## 4.9.12 Route Task Field Retest Result Intake
 
 现场复测 session handoff 被现场同学回填 summary 后，可以运行 result intake gate，把同一 `evidence_ref` 下的八类结果材料摘要转成 Robot diagnostics 和 mobile/web 可只读展示的 fail-closed result intake：
 
@@ -539,7 +567,7 @@ result intake 必须看到八类现场复测结果材料摘要：Nav2/fixed-rout
 
 `robot_diagnostics_summary` 和 `mobile_readonly_summary` 只能消费白名单 summary、safe copy 和 fail-closed flags，不展示 raw artifact、本机路径、checksum、traceback、凭证、DB/queue URL、OSS AK/SK、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 参数。`ready_for_field_retest_result_intake_not_proven` 只表示 Docker/local software proof 足以接收同一 `evidence_ref` 的八类复测结果材料摘要，不是真实 fixed-route/Nav2、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
-## 4.9.12 Route Task Field Retest Result Reconciliation
+## 4.9.13 Route Task Field Retest Result Reconciliation
 
 result intake 之后，可以运行 PC-side reconciliation gate，把上一轮 `route_task_field_retest_result_intake`、`route_task_field_retest_session_handoff`、`route_task_field_retest_execution_pack` 或现场 result wrapper/nested JSON 复账成 artifact / summary：
 

@@ -137,6 +137,7 @@ h2 {
 .route-task-field-retest-drill-console-panel,
 .route-task-field-retest-acceptance-brief-panel,
 .route-task-field-retest-evidence-dispatch-panel,
+.route-task-field-retest-callback-intake-panel,
 .hardware-baseline-review-panel,
 .hardware-baseline-source-alignment-panel,
 .hardware-sensor-procurement-intake-panel,
@@ -280,6 +281,7 @@ h2 {
 .route-task-field-retest-drill-console-grid,
 .route-task-field-retest-acceptance-brief-grid,
 .route-task-field-retest-evidence-dispatch-grid,
+.route-task-field-retest-callback-intake-grid,
 .hardware-baseline-source-alignment-grid,
 .hardware-sensor-procurement-intake-grid,
 .hardware-sensor-procurement-review-grid,
@@ -339,6 +341,7 @@ h2 {
 .mobile-field-material-review-decision-grid div,
 .mobile-field-material-retest-request-grid div,
 .route-task-field-retest-material-pack-grid div,
+.route-task-field-retest-callback-intake-grid div,
 .hardware-baseline-source-alignment-grid div,
 .hardware-sensor-procurement-review-grid div,
 .hardware-sensor-procurement-execution-pack-grid div,
@@ -479,6 +482,10 @@ dd {
 }
 
 .route-task-field-retest-evidence-dispatch-grid {
+  grid-template-columns: 1fr;
+}
+
+.route-task-field-retest-callback-intake-grid {
   grid-template-columns: 1fr;
 }
 
@@ -883,6 +890,10 @@ dd {
   }
 
   .route-task-field-retest-result-intake-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .route-task-field-retest-callback-intake-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

@@ -776,5 +776,56 @@
       "真实硬件/HIL",
       "Objective 5 external proof"
     ]
+  },
+  "route_task_field_retest_callback_intake": {
+    "schema": "trashbot.route_task_field_retest_callback_intake.v1",
+    "summary_schema": "trashbot.route_task_field_retest_callback_intake_summary.v1",
+    "schema_version": 1,
+    "source_dispatch_schema": "trashbot.route_task_field_retest_evidence_dispatch_summary.v1",
+    "intake_status": "blocked_missing_route_task_field_retest_callback_intake_materials_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "received_filenames_summary": [
+      "received=field_callback_checklist.summary.md pending same evidence_ref confirmation",
+      "received=robot_diagnostics_route_task_field_retest_evidence_dispatch_summary.json pending callback intake review"
+    ],
+    "missing_materials": [
+      "missing=nav2_runtime_log.redacted.txt",
+      "missing=route_completion_signal.summary.json",
+      "missing=task_record.summary.json",
+      "missing=door_state.summary.json",
+      "missing=target_floor_confirmation.summary.json",
+      "missing=human_assistance_note.summary.md",
+      "missing=dropoff_or_cancel_completion.summary.json",
+      "missing=delivery_result.summary.json"
+    ],
+    "same_evidence_ref_match": "same_evidence_ref_match=blocked_pending_missing_materials",
+    "next_backfill_action": "next_backfill_action=ask field owner to backfill missing sanitized materials with the same safe evidence_ref, then rerun callback intake gate",
+    "callback_checklist_result": [
+      "callback_check=received filenames are summarized only",
+      "callback_check=safe evidence_ref must match dispatch summary",
+      "callback_check=missing materials remain not_proven",
+      "callback_check=delivery_success=false",
+      "callback_check=primary_actions_enabled=false"
+    ],
+    "safe_phone_copy": "现场回执入口只读展示 intake status、safe evidence ref、received filenames summary、missing materials、same-evidence-ref match、next backfill action、callback checklist result 和 evidence boundary；这是 software proof only。",
+    "safe_copy": "现场回执入口 safe copy：当前 intake status blocked_missing_route_task_field_retest_callback_intake_materials_not_proven；只允许复制白名单 summary fields；delivery_success=false；primary_actions_enabled=false。",
+    "recovery_hint": "请现场 owner 按同一 safe evidence_ref 补齐缺失的脱敏回执材料，并由 Robot diagnostics 发布 compatible callback intake summary。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_callback_intake_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实 door_state",
+      "真实 target_floor_confirmation",
+      "真实 human_assistance_note",
+      "真实 dropoff_or_cancel_completion",
+      "真实 delivery_result",
+      "真实 route/elevator field pass",
+      "真实手机设备/browser",
+      "真实硬件/HIL",
+      "Objective 5 external proof"
+    ]
   }
 }

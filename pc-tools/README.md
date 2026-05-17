@@ -239,6 +239,23 @@ python3 pc-tools/evidence/route_task_field_retest_evidence_dispatch.py \
 
 required evidence packet 固定包含 Nav2/fixed-route runtime log、route completion signal、task record、door_state、target_floor_confirmation、human_assistance_note、dropoff_or_cancel_completion 和 delivery_result。该 dispatch gate 不读取真实材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、acceptance brief 未 ready、必需证据包漏项、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_evidence_dispatch_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_evidence_dispatch_gate` 已把现场证据包派发口径整理清楚，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
+## route/task field retest callback intake
+
+`pc-tools/evidence/route_task_field_retest_callback_intake.py` 只读上一节 evidence dispatch artifact、summary 或 wrapper/nested JSON，以及现场同学回传的 sanitized callback JSON，把推荐文件名收到状态、缺项、same-`evidence_ref` 对齐结果和下一步回填动作整理成 metadata-only callback intake artifact / summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_callback_intake.py \
+  --dispatch-json /tmp/route_task_field_retest_evidence_dispatch_summary.json \
+  --callback-json /tmp/route_task_field_retest_sanitized_callback.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_callback_intake.json \
+  --summary-output /tmp/route_task_field_retest_callback_intake_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_callback_intake.v1`，summary 使用 `schema=trashbot.route_task_field_retest_callback_intake_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_callback_intake_gate`。核心字段包括 intake status、safe `evidence_ref`、received filenames summary、missing materials、same-evidence-ref match result、next backfill action、callback checklist result、owner handoff、fail-closed rerun notes、required evidence packet、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+callback JSON 只允许现场同学已经脱敏的元数据字段：recommended filename received status、safe `evidence_ref`、missing material ids、next backfill action、owner callback note 和 callback checklist result。该 gate 故意不读取真实材料目录、不打开推荐文件名、不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，因为它的职责只是确认回执元数据是否可继续交给 result intake。缺输入、坏 JSON、unsupported schema/boundary、证据号不一致、弱类型 callback 字段、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_callback_intake_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_callback_intake_gate` 已把现场回执元数据复账清楚，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## route/task field retest result intake
 
 `pc-tools/evidence/route_task_field_retest_result_intake.py` 只读现场复测回填后的 result artifact、summary、session handoff artifact/summary 或 wrapper/nested JSON，把同一 `evidence_ref` 下的结果材料元数据整理成 fail-closed result intake artifact / summary：
