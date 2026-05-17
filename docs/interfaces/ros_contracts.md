@@ -861,6 +861,45 @@ topics, `/cmd_vel`, serial/UART details, credentials, local paths, checksums,
 tracebacks, complete artifacts, or Objective 5 external proof, and they are
 not command/status/ACK robot contract fields.
 
+Operator diagnostics may also expose
+`route_task_field_retest_result_callback_review_handoff`, the alias
+`route_task_field_retest_result_callback_review_handoff_summary`, and the
+Robot alias
+`robot_diagnostics_route_task_field_retest_result_callback_review_handoff_summary`
+from an explicit
+`route_task_field_retest_result_callback_review_handoff_ref`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_SUMMARY`,
+top-level status fields, or an already sanitized nested diagnostics summary
+source. The source JSON must use
+`schema=trashbot.route_task_field_retest_result_callback_review_handoff.v1`
+or
+`schema=trashbot.route_task_field_retest_result_callback_review_handoff_summary.v1`
+and
+`evidence_boundary=software_proof_docker_route_task_field_retest_result_callback_review_handoff_gate`.
+This field is metadata-only Robot diagnostics support for the result callback
+review handoff gate: it may expose only handoff status, source review decision,
+owner follow-up, review-ready package, rerun package, next required evidence,
+safe `evidence_ref`, `same_evidence_ref_required=true`, safe copy, boundary,
+`software_proof_docker_route_task_field_retest_result_callback_review_handoff_gate`,
+`not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. Expected handoff status values include
+`ready_for_result_review_handoff`, `needs_owner_follow_up`,
+`needs_callback_rerun`, `evidence_ref_mismatch_rerun`, and
+`blocked_unsafe_review_handoff`. Missing summary, unreadable input,
+unsupported schema or boundary, unsafe copy, missing `evidence_ref`, same
+`evidence_ref` mismatch, missing required safe summary fields, weak or false
+`same_evidence_ref_required`, success/control claims, `delivery_success=true`,
+or `primary_actions_enabled=true` sources fail closed as blocked/not_proven.
+The fields do not trigger `/api/collect`, dropoff, cancel, remote ACK, cursor
+advance/persistence, terminal ACK, Nav2, WAVE ROVER, HIL, result review
+completion, owner follow-up completion, production readiness, dropoff/cancel
+completion, or delivery success. They must not expose raw material files, raw
+route logs, raw callback packets, raw commands, raw ROS topics, `/cmd_vel`,
+serial/UART details, credentials, local paths, checksums, tracebacks, complete
+artifacts, or Objective 5 external proof, and they are not
+command/status/ACK robot contract fields.
+
 Operator diagnostics may also expose `route_task_field_run_reconciliation` and
 the alias `route_task_field_run_reconciliation_summary` from an explicit
 `route_task_field_run_reconciliation_ref` or

@@ -274,6 +274,15 @@ ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_DECISION_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_DECISION_GATE = (
     "software_proof_docker_route_task_field_retest_result_callback_review_decision_gate"
 )
+ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_SCHEMA = (
+    "trashbot.route_task_field_retest_result_callback_review_handoff.v1"
+)
+ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_retest_result_callback_review_handoff_summary.v1"
+)
+ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_GATE = (
+    "software_proof_docker_route_task_field_retest_result_callback_review_handoff_gate"
+)
 ROUTE_TASK_FIELD_RUN_RECONCILIATION_SCHEMA = "trashbot.route_task_field_run_reconciliation.v1"
 ROUTE_TASK_FIELD_RUN_RECONCILIATION_SUMMARY_SCHEMA = (
     "trashbot.route_task_field_run_reconciliation_summary.v1"
@@ -1575,6 +1584,54 @@ def _route_task_field_retest_result_callback_review_decision_not_proven(
         "result_review_completion",
         "owner_handoff_completed",
         "rerun_command_executed",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "real_phone_device_or_browser_proof",
+        "production_readiness",
+        "real_dropoff_completion",
+        "real_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_retest_result_callback_review_handoff_not_proven(
+    handoff=None,
+    summary_fragment=None,
+):
+    # handoff 只把 result callback review decision 交给后续 owner；不能证明现场、ACK、控制或交付完成。
+    handoff = handoff if isinstance(handoff, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(handoff.get("not_proven"), list):
+        source_values.extend(handoff.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_elevator_operation",
+        "real_elevator_door_state",
+        "real_floor_confirmation",
+        "human_assistance_outcome",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "route_task_completion_real_world",
+        "field_retest_pass",
+        "result_callback_review_handoff_only",
+        "result_review_completion",
+        "owner_follow_up_completed",
+        "review_ready_package_executed",
+        "rerun_package_executed",
         "wave_rover_motion",
         "real_serial_or_uart_feedback",
         "real_hil_pass",
@@ -4115,6 +4172,72 @@ def _default_route_task_field_retest_result_callback_review_decision_summary(
         ),
         "safe_phone_copy": (
             "Route-task field retest result callback review decision is metadata-only; "
+            "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
+        ),
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
+def _default_route_task_field_retest_result_callback_review_handoff_summary(
+    path,
+    handoff_status="blocked_missing_route_task_field_retest_result_callback_review_handoff",
+    read_error="",
+):
+    # handoff 默认缺源时必须 blocked；Robot diagnostics 只展示安全元数据，不推动 result review 或控制链路。
+    return {
+        "schema": ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "handoff_status": {
+            "status": handoff_status,
+            "verdict": "not_proven",
+            "reason": read_error
+            or "route-task field retest result callback review handoff is not configured",
+        },
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "source_review_decision": "needs_callback_rerun",
+        "owner_follow_up": [],
+        "review_ready_package": {},
+        "rerun_package": {},
+        "next_required_evidence": [],
+        "same_evidence_ref_required": True,
+        "robot_diagnostics_summary": {
+            "status": "blocked",
+            "reason": "route-task field retest result callback review handoff is not configured",
+        },
+        "robot_compatible_summary": {
+            "status": "blocked",
+            "reason": "route-task field retest result callback review handoff is not configured",
+        },
+        "boundary": ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_GATE,
+        "not_proven": _route_task_field_retest_result_callback_review_handoff_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": (
+            "Route-task field retest result callback review handoff is metadata-only; "
+            "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
+        ),
+        "safe_phone_copy": (
+            "Route-task field retest result callback review handoff is metadata-only; "
             "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
         ),
         "metadata_only": True,
@@ -6803,6 +6926,19 @@ def _route_task_field_retest_result_callback_review_decision_source_contract(val
     return source_schema, source_boundary
 
 
+def _route_task_field_retest_result_callback_review_handoff_source_contract(value):
+    # result callback review handoff 可直接消费 artifact 或 summary；summary 缺 source 时仍回指本轮 handoff artifact。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema")
+            or ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _elevator_route_evidence_reconciliation_source_contract(value):
     # 允许直接 artifact 或 summary wrapper；wrapper 必须保留原始 schema/boundary，防止把别的 gate 混入。
     source_schema = str(value.get("schema") or "")
@@ -7170,6 +7306,15 @@ def _route_task_field_retest_result_callback_review_decision_requires_same_evide
     return summary_fragment.get("same_evidence_ref_required") is True
 
 
+def _route_task_field_retest_result_callback_review_handoff_requires_same_evidence_ref(
+    summary_fragment,
+):
+    # result callback review handoff 延续同 evidence_ref 的交接链；只接受 JSON boolean true。
+    if not isinstance(summary_fragment, dict):
+        return False
+    return summary_fragment.get("same_evidence_ref_required") is True
+
+
 def _route_task_field_retest_execution_pack_has_disabled_actions(pack):
     # source 必须显式保留 fail-closed 布尔值；缺失或字符串 false 都不能被手机端当作控制授权。
     if not isinstance(pack, dict):
@@ -7434,6 +7579,17 @@ def _route_task_field_retest_result_callback_review_decision_has_disabled_action
     summary_fragment,
 ):
     # review decision 仍然只读；缺少显式 false 时必须 blocked，避免被解释成 result review 或机器人动作授权。
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    return (
+        summary_fragment.get("delivery_success") is False
+        and summary_fragment.get("primary_actions_enabled") is False
+    )
+
+
+def _route_task_field_retest_result_callback_review_handoff_has_disabled_actions(
+    summary_fragment,
+):
+    # handoff 只是 diagnostics 元数据；显式 false 是隔离 Start/Confirm/Cancel/ACK/Nav2/HIL 的硬边界。
     summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
     return (
         summary_fragment.get("delivery_success") is False
@@ -15657,6 +15813,403 @@ def summarize_route_task_field_retest_result_callback_review_decision(source):
                 },
                 "safe_copy": "Route-task field retest result callback review decision was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
                 "safe_phone_copy": "Route-task field retest result callback review decision was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+            }
+        )
+    return summary
+
+
+def summarize_route_task_field_retest_result_callback_review_handoff(source):
+    """构建 route-task field retest result callback review handoff 的 metadata-only diagnostics 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        handoff = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_route_task_field_retest_result_callback_review_handoff_summary(
+            source_path,
+            read_error=(
+                "route-task field retest result callback review handoff is not configured"
+            ),
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "handoff_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": (
+                            "route-task field retest result callback review handoff summary missing"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "result callback review handoff summary missing",
+                    },
+                    "safe_copy": "Route-task field retest result callback review handoff is missing; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field retest result callback review handoff is missing; metadata remains blocked/not_proven.",
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                handoff = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "handoff_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            "failed reading route-task field retest result callback "
+                            f"review handoff: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "result callback review handoff JSON read error",
+                    },
+                    "safe_copy": "Route-task field retest result callback review handoff could not be read; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field retest result callback review handoff could not be read; metadata remains blocked/not_proven.",
+                }
+            )
+            return summary
+    summary = _default_route_task_field_retest_result_callback_review_handoff_summary(
+        source_path,
+        read_error="route-task field retest result callback review handoff is not configured",
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(handoff, dict):
+        summary.update(
+            {
+                "handoff_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest result callback review handoff JSON must be an object"
+                    ),
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "result callback review handoff JSON shape is invalid",
+                },
+                "safe_copy": "Route-task field retest result callback review handoff shape is invalid; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field retest result callback review handoff shape is invalid; metadata remains blocked/not_proven.",
+            }
+        )
+        return summary
+
+    diagnostics = handoff.get("diagnostics") if isinstance(handoff.get("diagnostics"), dict) else {}
+    # 只消费 handoff 自己的 summary/robot alias，避免串到旧 review-result-handoff 或 review-decision gate。
+    summary_fragment = (
+        handoff
+        if str(handoff.get("schema") or "")
+        == ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_SUMMARY_SCHEMA
+        else {}
+    )
+    if not summary_fragment:
+        for candidate in (
+            handoff.get("route_task_field_retest_result_callback_review_handoff_summary"),
+            handoff.get("route_task_field_retest_result_callback_review_handoff"),
+            handoff.get("robot_diagnostics_route_task_field_retest_result_callback_review_handoff_summary"),
+            handoff.get("robot_compatible_summary"),
+            handoff.get("robot_diagnostics_summary"),
+            handoff.get("mobile_readonly_summary"),
+            handoff.get("phone_safe_summary"),
+            diagnostics.get("summary"),
+            diagnostics.get("diagnostics_summary"),
+            diagnostics.get("route_task_field_retest_result_callback_review_handoff_summary"),
+            diagnostics.get("route_task_field_retest_result_callback_review_handoff"),
+            diagnostics.get("robot_diagnostics_route_task_field_retest_result_callback_review_handoff_summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+
+    contract_source = summary_fragment if summary_fragment else handoff
+    source_schema, source_boundary = (
+        _route_task_field_retest_result_callback_review_handoff_source_contract(
+            contract_source
+        )
+    )
+    if not summary_fragment:
+        summary.update(
+            {
+                "source_schema": _redact_route_task_rehearsal_text(source_schema),
+                "source_schema_version": handoff.get("schema_version"),
+                "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "handoff_status": {
+                    "status": "missing_summary",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest result callback review handoff lacks a safe diagnostics summary"
+                    ),
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing safe result callback review handoff summary",
+                },
+                "safe_copy": "Route-task field retest result callback review handoff is blocked because no safe summary was provided.",
+                "safe_phone_copy": "Route-task field retest result callback review handoff is blocked because no safe summary was provided.",
+            }
+        )
+        return summary
+
+    status_source = summary_fragment.get("handoff_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("status_summary")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    handoff_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or status_source.get("verdict")
+        or summary_fragment.get("handoff_status")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or "blocked"
+    )
+    handoff_verdict = _redact_route_task_rehearsal_text(
+        status_source.get("verdict")
+        or status_source.get("decision")
+        or summary_fragment.get("verdict")
+        or "not_proven"
+    )
+    handoff_reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or status_source.get("summary")
+        or summary_fragment.get("reason")
+        or "route-task field retest result callback review handoff consumed without explicit reason"
+    )
+    safe_copy_source = summary_fragment.get("safe_copy") or summary_fragment.get("safe_phone_copy")
+    safe_copy = _safe_pc_route_debug_value(
+        safe_copy_source
+        or (
+            "Route-task field retest result callback review handoff is metadata-only; "
+            "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    safe_copy_text = (
+        json.dumps(safe_copy, ensure_ascii=False, sort_keys=True)
+        if isinstance(safe_copy, (dict, list))
+        else str(safe_copy or "")
+    )
+    if "delivery_success=false" not in safe_copy_text:
+        # safe_phone_copy 保留 literal false，便于 ROS/mobile grep 围栏确认没有控制或交付成功语义。
+        safe_copy_text = (
+            f"{safe_copy_text}; same_evidence_ref_required=true; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+    source_ref = str(handoff.get("safe_evidence_ref") or handoff.get("evidence_ref") or "").strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref") or summary_fragment.get("evidence_ref") or ""
+    ).strip()
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else diagnostics.get("robot_diagnostics_summary")
+        if isinstance(diagnostics.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    owner_follow_up = _safe_pc_route_debug_value(summary_fragment.get("owner_follow_up"))
+    review_ready_package = _safe_pc_route_debug_value(
+        summary_fragment.get("review_ready_package")
+    )
+    rerun_package = _safe_pc_route_debug_value(summary_fragment.get("rerun_package"))
+    next_required_evidence = _safe_pc_route_debug_value(
+        summary_fragment.get("next_required_evidence")
+    )
+    source_review_decision = _redact_route_task_rehearsal_text(
+        summary_fragment.get("source_review_decision")
+        or summary_fragment.get("review_decision")
+        or handoff.get("source_review_decision")
+        or handoff.get("review_decision")
+        or "needs_callback_rerun"
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": contract_source.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "handoff_status": {
+                "status": handoff_status or "blocked",
+                "verdict": handoff_verdict or "not_proven",
+                "reason": handoff_reason,
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(summary_ref or source_ref),
+            "source_review_decision": source_review_decision or "needs_callback_rerun",
+            "owner_follow_up": owner_follow_up,
+            "review_ready_package": review_ready_package,
+            "rerun_package": rerun_package,
+            "next_required_evidence": next_required_evidence,
+            "same_evidence_ref_required": (
+                summary_fragment.get("same_evidence_ref_required") is True
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": handoff_status or "blocked",
+                "reason": "result callback review handoff consumed without explicit robot diagnostics summary",
+            },
+            "robot_compatible_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": handoff_status or "blocked",
+                "reason": "result callback review handoff consumed without explicit robot diagnostics summary",
+            },
+            "boundary": ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_GATE,
+            "not_proven": _route_task_field_retest_result_callback_review_handoff_not_proven(
+                handoff,
+                summary_fragment,
+            ),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy_text,
+            "read_error": "",
+        }
+    )
+
+    required_summary_fields = (
+        bool(summary["source_review_decision"]),
+        isinstance(summary["owner_follow_up"], (dict, list, str)),
+        isinstance(summary["review_ready_package"], (dict, list, str)),
+        isinstance(summary["rerun_package"], (dict, list, str)),
+        isinstance(summary["next_required_evidence"], list),
+        bool(summary["safe_copy"]),
+    )
+    if (
+        source_schema != ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_SCHEMA
+        or source_boundary != ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_GATE
+    ):
+        summary.update(
+            {
+                "handoff_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result callback review handoff schema or evidence boundary is unsupported",
+                },
+                "source_review_decision": "needs_callback_rerun",
+                "owner_follow_up": [],
+                "review_ready_package": {},
+                "rerun_package": {},
+                "next_required_evidence": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+                "robot_compatible_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+            }
+        )
+        return summary
+    if not summary["safe_evidence_ref"]:
+        summary.update(
+            {
+                "handoff_status": {
+                    "status": "missing_evidence_ref",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result callback review handoff is missing evidence_ref",
+                },
+                "source_review_decision": "needs_callback_rerun",
+                "robot_diagnostics_summary": {"status": "blocked", "reason": "missing evidence_ref"},
+                "robot_compatible_summary": {"status": "blocked", "reason": "missing evidence_ref"},
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary.update(
+            {
+                "handoff_status": {
+                    "status": "evidence_ref_mismatch_rerun",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result callback review handoff summary evidence_ref does not match source evidence_ref",
+                },
+                "source_review_decision": "evidence_ref_mismatch_rerun",
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "same evidence_ref mismatch",
+                },
+                "robot_compatible_summary": {
+                    "status": "blocked",
+                    "reason": "same evidence_ref mismatch",
+                },
+            }
+        )
+        return summary
+    if not _route_task_field_retest_result_callback_review_handoff_requires_same_evidence_ref(
+        summary_fragment
+    ):
+        summary.update(
+            {
+                "handoff_status": {
+                    "status": "same_evidence_ref_required_false",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result callback review handoff must require the same evidence_ref",
+                },
+                "same_evidence_ref_required": False,
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "same_evidence_ref_required must be JSON true",
+                },
+                "robot_compatible_summary": {
+                    "status": "blocked",
+                    "reason": "same_evidence_ref_required must be JSON true",
+                },
+            }
+        )
+        return summary
+    if not all(required_summary_fields):
+        summary.update(
+            {
+                "handoff_status": {
+                    "status": "missing_required_summary_fields",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result callback review handoff is missing required safe summary fields",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing required result callback review handoff summary fields",
+                },
+                "robot_compatible_summary": {
+                    "status": "blocked",
+                    "reason": "missing required result callback review handoff summary fields",
+                },
+            }
+        )
+        return summary
+    if (
+        not _route_task_field_retest_result_callback_review_handoff_has_disabled_actions(
+            summary_fragment
+        )
+        or _route_task_field_run_console_has_unsafe_fields(summary_fragment)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy_text)
+        or _route_task_field_retest_execution_pack_has_success_wording(summary_fragment)
+    ):
+        summary.update(
+            {
+                "handoff_status": {
+                    "status": "blocked_unsafe_review_handoff",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result callback review handoff contains unsafe fields, enabled actions, raw details, or success wording",
+                },
+                "source_review_decision": "blocked_unsafe_review_handoff",
+                "owner_follow_up": [],
+                "review_ready_package": {},
+                "rerun_package": {},
+                "next_required_evidence": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe result callback review handoff summary fields",
+                },
+                "robot_compatible_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe result callback review handoff summary fields",
+                },
+                "safe_copy": "Route-task field retest result callback review handoff was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+                "safe_phone_copy": "Route-task field retest result callback review handoff was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
             }
         )
     return summary
@@ -24157,6 +24710,7 @@ def build_diagnostics_payload(
     route_task_field_retest_result_review_dispatch_ref="",
     route_task_field_retest_result_callback_intake_ref="",
     route_task_field_retest_result_callback_review_decision_ref="",
+    route_task_field_retest_result_callback_review_handoff_ref="",
     route_task_field_run_reconciliation_ref="",
     route_task_completion_signal_ref="",
     route_task_terminal_completion_rehearsal_ref="",
@@ -24683,6 +25237,25 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
         else {}
     )
+    route_task_field_retest_result_callback_review_handoff_source = (
+        latest_status.get("route_task_field_retest_result_callback_review_handoff")
+        if isinstance(latest_status.get("route_task_field_retest_result_callback_review_handoff"), dict)
+        else latest_status.get("route_task_field_retest_result_callback_review_handoff_summary")
+        if isinstance(latest_status.get("route_task_field_retest_result_callback_review_handoff_summary"), dict)
+        else latest_status.get("robot_diagnostics_route_task_field_retest_result_callback_review_handoff_summary")
+        if isinstance(latest_status.get("robot_diagnostics_route_task_field_retest_result_callback_review_handoff_summary"), dict)
+        else diagnostics_source.get("route_task_field_retest_result_callback_review_handoff")
+        if isinstance(diagnostics_source.get("route_task_field_retest_result_callback_review_handoff"), dict)
+        else diagnostics_source.get("route_task_field_retest_result_callback_review_handoff_summary")
+        if isinstance(diagnostics_source.get("route_task_field_retest_result_callback_review_handoff_summary"), dict)
+        else diagnostics_source.get("robot_diagnostics_route_task_field_retest_result_callback_review_handoff_summary")
+        if isinstance(diagnostics_source.get("robot_diagnostics_route_task_field_retest_result_callback_review_handoff_summary"), dict)
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
+        else {}
+    )
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
     latest_status.pop("phone_support_bundle", None)
     latest_status.pop("voice_prompt_readiness", None)
@@ -24778,6 +25351,13 @@ def build_diagnostics_payload(
         None,
     )
     latest_status.pop("route_task_field_retest_result_callback_review_decision_copy", None)
+    latest_status.pop("route_task_field_retest_result_callback_review_handoff", None)
+    latest_status.pop("route_task_field_retest_result_callback_review_handoff_summary", None)
+    latest_status.pop(
+        "robot_diagnostics_route_task_field_retest_result_callback_review_handoff_summary",
+        None,
+    )
+    latest_status.pop("route_task_field_retest_result_callback_review_handoff_copy", None)
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -25058,6 +25638,20 @@ def build_diagnostics_payload(
     route_task_field_retest_result_callback_review_decision_summary = (
         summarize_route_task_field_retest_result_callback_review_decision(
             route_task_field_retest_result_callback_review_decision_source
+        )
+    )
+    route_task_field_retest_result_callback_review_handoff_source = (
+        route_task_field_retest_result_callback_review_handoff_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF", "")
+        or os.environ.get(
+            "TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_CALLBACK_REVIEW_HANDOFF_SUMMARY",
+            "",
+        )
+        or route_task_field_retest_result_callback_review_handoff_source
+    )
+    route_task_field_retest_result_callback_review_handoff_summary = (
+        summarize_route_task_field_retest_result_callback_review_handoff(
+            route_task_field_retest_result_callback_review_handoff_source
         )
     )
     route_task_field_run_reconciliation_summary = summarize_route_task_field_run_reconciliation(
@@ -25383,6 +25977,9 @@ def build_diagnostics_payload(
         route_task_field_retest_result_callback_review_decision=route_task_field_retest_result_callback_review_decision_summary,
         route_task_field_retest_result_callback_review_decision_summary=route_task_field_retest_result_callback_review_decision_summary,
         robot_diagnostics_route_task_field_retest_result_callback_review_decision_summary=route_task_field_retest_result_callback_review_decision_summary,
+        route_task_field_retest_result_callback_review_handoff=route_task_field_retest_result_callback_review_handoff_summary,
+        route_task_field_retest_result_callback_review_handoff_summary=route_task_field_retest_result_callback_review_handoff_summary,
+        robot_diagnostics_route_task_field_retest_result_callback_review_handoff_summary=route_task_field_retest_result_callback_review_handoff_summary,
         route_task_field_run_reconciliation=route_task_field_run_reconciliation_summary,
         route_task_field_run_reconciliation_summary=route_task_field_run_reconciliation_summary,
         route_task_completion_signal=route_task_completion_signal_summary,
