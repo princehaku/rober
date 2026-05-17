@@ -47,6 +47,64 @@
       "delivery success"
     ]
   },
+  "wave_rover_hil_packet_intake": {
+    "schema": "trashbot.wave_rover_hil_packet_intake.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.wave_rover_hil_packet_intake_summary.v1",
+    "packet_status": "wave_rover_hil_packet_intake_not_proven",
+    "safe_evidence_ref": "wave_rover_hil_packet_intake_fixture_20260517_0001",
+    "required_files_summary": [
+      "required_files=feedback_T1001.log",
+      "required_files=odom_once.jsonl",
+      "required_files=imu_once.jsonl",
+      "required_files=battery_once.jsonl",
+      "required_files=operator_hil_report"
+    ],
+    "missing_files_summary": [
+      "missing_files=real feedback_T1001.log",
+      "missing_files=real odom_once.jsonl",
+      "missing_files=real imu_once.jsonl",
+      "missing_files=real battery_once.jsonl",
+      "missing_files=operator_hil_report"
+    ],
+    "operator_report_status": "operator_report_status=not_proven_missing_real_operator_report",
+    "next_required_evidence": "next_required_evidence=real HIL packet with one safe evidence_ref and all required file summaries.",
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "WAVE ROVER HIL packet intake fixture 只展示 packet status、required/missing file summary、operator report status 和 boundary flags；这是 Docker/local software proof，不是 HIL pass。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_intake_gate",
+    "not_proven": [
+      "real_wave_rover",
+      "real_uart",
+      "hil_pass",
+      "real_odom",
+      "real_imu",
+      "real_battery",
+      "delivery_success"
+    ]
+  },
+  "wave_rover_hil_packet_intake_summary": {
+    "schema": "trashbot.wave_rover_hil_packet_intake_summary.v1",
+    "schema_version": 1,
+    "packet_status": "wave_rover_hil_packet_intake_not_proven",
+    "safe_evidence_ref": "wave_rover_hil_packet_intake_fixture_20260517_0001",
+    "required_files_summary": "required_files=feedback_T1001.log, odom_once.jsonl, imu_once.jsonl, battery_once.jsonl, operator_hil_report.",
+    "missing_files_summary": "missing_files=real packet materials pending.",
+    "operator_report_status": "operator_report_status=not_proven",
+    "next_required_evidence": "next_required_evidence=real HIL packet file summaries under the same safe evidence_ref.",
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "wave_rover_hil_packet_intake_summary 只用于手机只读 HIL packet intake，不放行 Start、Confirm 或 Cancel。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_intake_gate",
+    "not_proven": [
+      "real_wave_rover",
+      "real_uart",
+      "hil_pass",
+      "delivery_success"
+    ]
+  },
   "route_task_field_retest_result_backfill_review_decision": {
     "schema": "trashbot.route_task_field_retest_result_backfill_review_decision.v1",
     "schema_version": 1,

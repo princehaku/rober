@@ -1,0 +1,2 @@
+{"timestamp":1.0,"evidence_ref":"hil-packet-fixture-pass","T":1001,"L":0.1,"R":0.1,"r":0.0,"p":0.0,"y":0.01,"v":12.2}
+{"timestamp":1.1,"evidence_ref":"hil-packet-fixture-pass","feedback":{"T":1001,"L":0.0,"R":0.0,"r":0.0,"p":0.0,"y":0.02,"v":12.2}}

@@ -59,6 +59,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_mobile_field_material_review_decision,
     summarize_mobile_field_material_retest_request,
     summarize_wave_rover_feedback_replay,
+    summarize_wave_rover_hil_packet_intake,
     summarize_hardware_baseline_review,
     summarize_hardware_baseline_source_alignment,
     summarize_hardware_sensor_procurement_intake,
@@ -11527,6 +11528,270 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("secret-token", encoded)
         self.assertNotIn("/dev/ttyUSB0", encoded)
         self.assertNotIn("115200", encoded)
+
+    def test_diagnostics_payload_includes_wave_rover_hil_packet_intake_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            packet_path = Path(td) / "wave_rover_hil_packet_intake.json"
+            packet_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.wave_rover_hil_packet_intake.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_intake_gate",
+                        "evidence_ref": "evidence://wave-rover-hil-packet-1",
+                        "overall_status": "not_proven",
+                        "packet_status": {
+                            "status": "blocked_missing_real_hil_packet",
+                            "verdict": "not_proven",
+                            "reason": "synthetic packet intake only",
+                        },
+                        "same_evidence_ref_required": True,
+                        "evidence_ref_match": True,
+                        "required_files": [
+                            "feedback_T1001.log",
+                            "odom_once.jsonl",
+                            "imu_once.jsonl",
+                            "battery_once.jsonl",
+                            "operator_hil_report",
+                        ],
+                        "missing_files": ["feedback_T1001.log"],
+                        "operator_report_status": "present_not_hil",
+                        "next_required_evidence": [
+                            "real WAVE ROVER HIL run",
+                            "same evidence_ref HIL packet",
+                        ],
+                        "not_proven": [
+                            "real_wave_rover",
+                            "real_uart",
+                            "hil_pass",
+                            "real_odom",
+                            "real_imu",
+                            "real_battery",
+                            "delivery_success",
+                        ],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "wave_rover_hil_packet_intake": {"delivery_success": True},
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                wave_rover_hil_packet_intake_ref=str(packet_path),
+            )
+            summary = payload["wave_rover_hil_packet_intake"]
+            summary_alias = payload["wave_rover_hil_packet_intake_summary"]
+            robot_alias = payload["robot_diagnostics_wave_rover_hil_packet_intake_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
+        self.assertNotIn("wave_rover_hil_packet_intake", payload["latest_status"])
+        self.assertEqual(summary["schema"], "trashbot.wave_rover_hil_packet_intake_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_wave_rover_hil_packet_intake_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.wave_rover_hil_packet_intake.v1")
+        self.assertEqual(summary["source_schema_version"], 1)
+        self.assertEqual(summary["overall_status"], "not_proven")
+        self.assertEqual(summary["packet_status"]["status"], "blocked_missing_real_hil_packet")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://wave-rover-hil-packet-1")
+        self.assertIn("feedback_T1001.log", summary["required_files"])
+        self.assertIn("feedback_T1001.log", summary["missing_files"])
+        self.assertEqual(summary["operator_report_status"], "present_not_hil")
+        self.assertIn("same evidence_ref HIL packet", summary["next_required_evidence"])
+        self.assertIn("real_wave_rover", summary["not_proven"])
+        self.assertEqual(summary["boundary"], "software_proof_docker_wave_rover_hil_packet_intake_gate")
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["real_hardware_observed"])
+        self.assertFalse(summary["real_wave_rover"])
+        self.assertFalse(summary["real_uart"])
+        self.assertFalse(summary["real_odom"])
+        self.assertFalse(summary["real_imu"])
+        self.assertFalse(summary["real_battery"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        # 资料包 intake 摘要只能进 diagnostics，不能触发 collect/dropoff/cancel/ACK/cursor/Nav2/HIL。
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["persistence_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["production_ready"])
+        self.assertNotIn(str(packet_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_wave_rover_hil_packet_intake_env_diagnostics_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "wave_rover_hil_packet_intake_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.wave_rover_hil_packet_intake_summary.v1",
+                        "source_schema": "trashbot.wave_rover_hil_packet_intake.v1",
+                        "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_intake_gate",
+                        "source_evidence_boundary": "software_proof_docker_wave_rover_hil_packet_intake_gate",
+                        "safe_evidence_ref": "evidence://wave-rover-hil-packet-2",
+                        "overall_status": "not_proven",
+                        "packet_status": {"status": "not_proven", "verdict": "not_proven"},
+                        "same_evidence_ref_required": True,
+                        "evidence_ref_match": True,
+                        "required_files": ["feedback_T1001.log", "operator_hil_report"],
+                        "operator_report_status": "present_not_hil",
+                        "next_required_evidence": ["real WAVE ROVER HIL packet"],
+                        "not_proven": ["real_wave_rover", "hil_pass", "delivery_success"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_artifact = os.environ.get("TRASHBOT_WAVE_ROVER_HIL_PACKET_INTAKE")
+            previous_summary = os.environ.get("TRASHBOT_WAVE_ROVER_HIL_PACKET_INTAKE_SUMMARY")
+            os.environ.pop("TRASHBOT_WAVE_ROVER_HIL_PACKET_INTAKE", None)
+            os.environ["TRASHBOT_WAVE_ROVER_HIL_PACKET_INTAKE_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "wave_rover_hil_packet_intake"
+                ]
+            finally:
+                if previous_artifact is None:
+                    os.environ.pop("TRASHBOT_WAVE_ROVER_HIL_PACKET_INTAKE", None)
+                else:
+                    os.environ["TRASHBOT_WAVE_ROVER_HIL_PACKET_INTAKE"] = previous_artifact
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_WAVE_ROVER_HIL_PACKET_INTAKE_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_WAVE_ROVER_HIL_PACKET_INTAKE_SUMMARY"] = previous_summary
+
+            diagnostics_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "wave_rover_hil_packet_intake_summary": {
+                            "schema": "trashbot.wave_rover_hil_packet_intake_summary.v1",
+                            "source_schema": "trashbot.wave_rover_hil_packet_intake.v1",
+                            "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_intake_gate",
+                            "source_evidence_boundary": (
+                                "software_proof_docker_wave_rover_hil_packet_intake_gate"
+                            ),
+                            "overall_status": "not_proven",
+                            "packet_status": {"status": "not_proven", "verdict": "not_proven"},
+                            "same_evidence_ref_required": True,
+                            "evidence_ref_match": True,
+                            "not_proven": ["real_wave_rover"],
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["wave_rover_hil_packet_intake"]
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_packet.json"
+            missing_summary = summarize_wave_rover_hil_packet_intake(str(missing_path))
+            unsupported_summary = summarize_wave_rover_hil_packet_intake(
+                {
+                    "schema": "trashbot.wave_rover_feedback_replay.v1",
+                    "evidence_boundary": "software_proof_docker_wave_rover_feedback_replay_gate",
+                    "overall_status": "not_proven",
+                    "same_evidence_ref_required": True,
+                    "evidence_ref_match": True,
+                    "not_proven": ["real_wave_rover"],
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            missing_not_proven_summary = summarize_wave_rover_hil_packet_intake(
+                {
+                    "schema": "trashbot.wave_rover_hil_packet_intake.v1",
+                    "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_intake_gate",
+                    "overall_status": "not_proven",
+                    "same_evidence_ref_required": True,
+                    "evidence_ref_match": True,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            mismatch_summary = summarize_wave_rover_hil_packet_intake(
+                {
+                    "schema": "trashbot.wave_rover_hil_packet_intake.v1",
+                    "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_intake_gate",
+                    "overall_status": "not_proven",
+                    "same_evidence_ref_required": True,
+                    "evidence_ref_match": False,
+                    "not_proven": ["real_wave_rover"],
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsafe_summary = summarize_wave_rover_hil_packet_intake(
+                {
+                    "schema": "trashbot.wave_rover_hil_packet_intake.v1",
+                    "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_intake_gate",
+                    "overall_status": "not_proven",
+                    "same_evidence_ref_required": True,
+                    "evidence_ref_match": True,
+                    "not_proven": ["real_wave_rover"],
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "raw_artifact_path": "/tmp/raw_packet.json",
+                    "serial_path": "/dev/ttyUSB0",
+                    "baudrate": 115200,
+                    "checksum": "abc123",
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    diagnostics_summary,
+                    missing_summary,
+                    unsupported_summary,
+                    missing_not_proven_summary,
+                    mismatch_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["packet_status"]["status"], "not_proven")
+        self.assertEqual(diagnostics_summary["packet_status"]["status"], "not_proven")
+        self.assertEqual(missing_summary["packet_status"]["status"], "missing")
+        self.assertEqual(unsupported_summary["packet_status"]["status"], "unsupported_schema")
+        self.assertEqual(missing_not_proven_summary["packet_status"]["status"], "unsafe_fields")
+        self.assertEqual(mismatch_summary["packet_status"]["status"], "unsafe_fields")
+        self.assertEqual(unsafe_summary["packet_status"]["status"], "unsafe_fields")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertFalse(diagnostics_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_wave_rover_hil_packet_intake_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("115200", encoded)
+        self.assertNotIn("abc123", encoded)
 
     def test_diagnostics_payload_includes_hardware_baseline_review_summary(self):
         with tempfile.TemporaryDirectory() as td:

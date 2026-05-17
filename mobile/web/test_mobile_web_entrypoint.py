@@ -635,6 +635,102 @@ class WaveRoverFeedbackReplayMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, replay_text)
 
 
+class WaveRoverHilPacketIntakeMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_wave_rover_hil_packet_intake_panel_is_read_only_and_exportable(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # HIL packet intake panel 复用 feedback replay 后的安全摘要链路，不新增控制入口。
+        self.assertIn("waveRoverHilPacketIntakeTitle", app)
+        self.assertIn("WAVE ROVER HIL packet intake", app)
+        self.assertIn("waveRoverFeedbackReplayTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+
+        # 状态来源兼容 artifact、summary 和 Robot diagnostics compatible summary。
+        self.assertIn("WAVE_ROVER_HIL_PACKET_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_WAVE_ROVER_HIL_PACKET_INTAKE_TEXT", app)
+        self.assertIn("safeWaveRoverHilPacketIntakeText", app)
+        self.assertIn("waveRoverHilPacketIntakeCandidate", app)
+        self.assertIn("waveRoverHilPacketIntakeFromStatus", app)
+        self.assertIn("wave_rover_hil_packet_intake", app)
+        self.assertIn("wave_rover_hil_packet_intake_summary", app)
+        self.assertIn("robot_diagnostics_wave_rover_hil_packet_intake_summary", app)
+        self.assertIn("diagnosticsSummary.wave_rover_hil_packet_intake", app)
+        self.assertIn("statusDiagnosticsSummary.wave_rover_hil_packet_intake", app)
+        self.assertIn("packet_status", app)
+        self.assertIn("required_files_summary", app)
+        self.assertIn("missing_files_summary", app)
+        self.assertIn("operator_report_status", app)
+        self.assertIn("same_evidence_ref_required", app)
+
+        # copy/export 必须走 whitelist-only payload，并保持 Start/Confirm/Cancel gating 不变。
+        self.assertIn("waveRoverHilPacketIntakeCopyPayload", app)
+        self.assertIn("trashbot.wave_rover_hil_packet_intake_copy.v1", app)
+        self.assertIn("copyWaveRoverHilPacketIntakeButton", app)
+        self.assertIn("downloadWaveRoverHilPacketIntakeButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("Start Delivery", app)
+        self.assertIn("Confirm Dropoff", app)
+        self.assertIn("Cancel", app)
+        self.assertNotRegex(app, r"waveRoverHilPacketIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+
+        # fixture 和产品文档必须固定 HIL packet intake 的 software proof / not_proven 边界。
+        intake = fixture["wave_rover_hil_packet_intake"]
+        self.assertEqual(intake["packet_status"], "wave_rover_hil_packet_intake_not_proven")
+        self.assertEqual(intake["delivery_success"], False)
+        self.assertEqual(intake["primary_actions_enabled"], False)
+        self.assertEqual(intake["same_evidence_ref_required"], True)
+        self.assertIn("software_proof_docker_wave_rover_hil_packet_intake_gate", fixture_text)
+        self.assertIn("required_files_summary", fixture_text)
+        self.assertIn("missing_files_summary", fixture_text)
+        self.assertIn("operator_report_status", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("wave_rover_hil_packet_intake", doc)
+        self.assertIn("WAVE ROVER HIL packet intake", doc)
+
+    def test_wave_rover_hil_packet_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        intake_text = json.dumps(
+            fixture["wave_rover_hil_packet_intake"],
+            ensure_ascii=False,
+        ).lower()
+
+        # intake fixture 只能携带白名单摘要，不能带原始 packet、路径、串口设备、校验和或成功宣称。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw artifact",
+            "raw packet",
+            "raw feedback",
+            "full feedback",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "traceback",
+            "hil passed",
+            "field pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, intake_text)
+
+
 class RouteTaskTerminalCompletionRehearsalMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

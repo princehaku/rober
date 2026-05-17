@@ -8,6 +8,18 @@
 
 ## 2026-05-17 系列
 
+更新时间：2026-05-17 21:22 Asia/Shanghai。
+
+### 2026-05-17 21-22｜wave-rover-hil-packet-intake｜O1 HIL packet intake software proof，硬件协议可信底盘由约 78% 保守上调到约 79%，O5 保持约 68%
+
+`sprints/2026.05.17_21-22_wave-rover-hil-packet-intake/` 完成 `software_proof_docker_wave_rover_hil_packet_intake_gate`。Hardware worker 新增 dependency-free PC gate `pc-tools/evidence/wave_rover_hil_packet_intake.py`、fixtures、tests 与 `docs/hardware/wave_rover_hil_packet_intake.md`，基于 `docs/vendor/VENDOR_INDEX.md`、WAVE ROVER `json_cmd.h`、`uart_ctrl.h`、`ugv_rpi/base_ctrl.py` 和 `ugv_rpi/config.yaml` 的本地资料边界，摄取 future HIL packet contract：`feedback_T1001.log`、`odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl`、`operator_hil_report` 和同一 safe `evidence_ref`。Task A worker reported `Ran 9 tests OK`，py_compile、CLI `--help`、required `rg` 与 scoped `git diff --check` 均通过；本轮只用 synthetic pass / fail_mismatch fixture，不打开串口，不调用 ROS graph。
+
+Robot worker 更新 `operator_gateway_diagnostics.py`、diagnostics tests 与 `docs/interfaces/ros_contracts.md`，新增 `wave_rover_hil_packet_intake` / `_summary` diagnostics metadata-only consumer，支持 PC gate artifact、summary wrapper、Robot-compatible summary 和 nested diagnostics summary，只暴露 packet status、safe `evidence_ref`、required/missing files、operator report status、next required evidence、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`；unsupported schema/boundary、evidence mismatch、raw path/serial/packet、缺失 `not_proven`、`delivery_success=true` 或 `primary_actions_enabled=true` fail closed。Task B worker reported diagnostics unittest `Ran 160 tests OK`，py_compile、required `rg` 与 scoped `git diff --check` 均通过。
+
+Full-stack worker 更新 `mobile/web/app.js`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/web/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增 WAVE ROVER HIL packet intake 只读 panel，展示 packet status、safe `evidence_ref`、required/missing file summary、operator report status、next required evidence、same-evidence-ref requirement、boundary flags、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`；Start Delivery、Confirm Dropoff、Cancel gating 不变。Task C worker reported mobile unittest `Ran 56 tests OK`，`node --check mobile/web/app.js`、required `rg` 与 scoped `git diff --check` 均通过。Product closeout 更新 sprint 留档、`OKR.md` 和本日志；file existence check、required `rg`、py_compile、combined unittest、CLI help、node check 与 scoped `git diff --check` 均通过。
+
+该证据只支持 Objective 1 从约 78% 保守上调到约 79%。理由是 WAVE ROVER HIL packet intake contract 已形成 PC / Robot diagnostics / mobile / Product closeout 软件证明链路，未来真实 HIL packet 可按同一工具和同一 `evidence_ref` 摄取、复核和分发；但本轮没有真实 WAVE ROVER、真实 UART、真实串口日志、真实 `feedback_T1001.log`、真实 `/odom`、真实 `/imu/data`、真实 `/battery`、真实 operator HIL report 或 `hil_pass`。Objective 2、Objective 3 和 Objective 4 保持约 99%，因为本轮没有真实 route/elevator field pass、真实 Nav2/fixed-route、真实 task record、真实 dropoff/cancel completion、真实 delivery result、真实手机设备、production app 或真实 PWA prompt/user choice。Objective 5 保持约 68%，因为本机 Docker-only 且本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；O5 stop rule 仍成立，不应继续堆本地 metadata depth 或把本轮 HIL packet intake gate 写成 Objective 5 production proof。PR #4 route/elevator field materials 仍缺真实门状态、楼层确认、人工协助、Nav2/fixed-route runtime log、task record、completion signal、dropoff/cancel completion 和 delivery result；PR #5 2D LiDAR / ToF hardware materials 仍缺真实 source、receipt、采购、安装、接线、电源、标定和 HIL-entry。本轮始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
 更新时间：2026-05-17 20:19 Asia/Shanghai。
 
 ### 2026-05-17 20-21｜wave-rover-feedback-replay-gate｜O1 HIL 前 replay gate software proof，硬件协议可信底盘由约 77% 保守上调到约 78%，O5 保持约 68%
