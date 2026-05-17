@@ -346,6 +346,64 @@ pass, real Nav2/fixed-route execution, real task record, real dropoff/cancel
 completion, real delivery success, real phone/browser validation, O5 external
 cloud proof, or any primary robot action being enabled.
 
+## route_task_field_retest_material_callback_packet
+
+`pc-tools/evidence/route_task_field_retest_material_callback_packet.py`
+generates the PC-only field material callback packet gate after
+`route_task_field_retest_material_pack.py`. It converts the material pack
+callback skeleton into a fillable, returnable, and reviewable metadata packet.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_material_callback_packet.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_material_callback_packet_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_material_callback_packet_gate`
+- Allowed inputs:
+  `trashbot.route_task_field_retest_material_pack.v1` and
+  `trashbot.route_task_field_retest_material_pack_summary.v1` only. Wrapper,
+  summary, artifact, robot diagnostics, mobile read-only, payload, and nested
+  diagnostics JSON are allowed only through known safe wrapper keys.
+- Disallowed inputs:
+  unsupported schemas, wrong boundaries, weak or path-like evidence refs,
+  mismatched evidence refs, weak `same_evidence_ref_required`, raw local paths,
+  credentials, OSS/DB/queue/token material, ROS topics, serial/UART/WAVE ROVER
+  text, success/control claims, `delivery_success=true`, or
+  `primary_actions_enabled=true`.
+
+The artifact always includes `callback_packet_status`, `safe_evidence_ref`,
+`field_callback_items`, `accepted_materials`, `missing_materials`,
+`rejected_materials`, `owner_acknowledgement`, `next_required_evidence`,
+`rerun_commands`, `safe_copy`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_route_task_field_retest_material_callback_packet_gate`.
+The summary mirrors the same status and evidence ref, sets
+`source_schema=trashbot.route_task_field_retest_material_callback_packet.v1`,
+and exposes `material_callback_summary` plus `owner_next_steps` for read-only
+Robot diagnostics and mobile/web consumers.
+
+Callback packet status values include
+`ready_for_field_material_callback_not_proven`,
+`needs_material_pack_not_proven`,
+`evidence_ref_mismatch_rerun_not_proven`,
+`blocked_missing_callback_materials_not_proven`,
+`unsupported_material_pack_schema_not_proven`, and
+`unsafe_success_claim_rejected_not_proven`. A supported material pack with
+matched safe evidence_ref, fixed
+`evidence_boundary=software_proof_docker_route_task_field_retest_material_pack_gate`,
+strict `same_evidence_ref_required=true`, and disabled action flags maps to
+`ready_for_field_material_callback_not_proven`. Missing or not-ready material
+pack input maps to `needs_material_pack_not_proven`. Mismatched or weak
+evidence refs map to `evidence_ref_mismatch_rerun_not_proven`. Unsafe copy,
+wrong schema, or wrong boundary maps fail-closed and must be regenerated before
+Robot or mobile display.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, Nav2 or fixed-route execution, task record or completion signal,
+dropoff/cancel completion, delivery success, HIL, WAVE ROVER/UART feedback,
+real phone/browser validation, Objective 5 external cloud/4G/OSS/CDN/DB/queue
+proof, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_review_dispatch
 
 `pc-tools/evidence/route_task_field_retest_result_review_dispatch.py`

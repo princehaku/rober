@@ -8,7 +8,19 @@
 
 ## 2026-05-18 系列
 
-更新时间：2026-05-18 04:20 Asia/Shanghai。
+更新时间：2026-05-18 05:20 Asia/Shanghai。
+
+### 2026-05-18 05-06｜route-task-material-callback-packet｜O2/O3 callback packet software proof，任务闭环、固定路线和手机体验均保持约 99%，O5 保持约 68%
+
+`sprints/2026.05.18_05-06_route-task-material-callback-packet/` 完成 `software_proof_docker_route_task_field_retest_material_callback_packet_gate`。Autonomy worker 新增 dependency-free PC gate `pc-tools/evidence/route_task_field_retest_material_callback_packet.py` 与 focused unittest，把上一轮 `route_task_field_retest_material_pack` 的 callback skeleton 推进为可填写、可回传、可复核的 packet artifact / summary；schema 固定为 `trashbot.route_task_field_retest_material_callback_packet.v1` 与 `trashbot.route_task_field_retest_material_callback_packet_summary.v1`。Task A worker 报告 py_compile 通过、focused unittest `Ran 5 tests OK`、required `rg` 通过、scoped diff check 通过，并保持 unsupported schema、bad boundary、weak evidence ref、mismatch、unsafe raw field、credential/token/OSS/DB/queue material、success claim 和 action enablement fail closed。
+
+Robot worker 更新 `operator_gateway_diagnostics.py`、diagnostics tests 与 `docs/interfaces/ros_contracts.md`，新增 `route_task_field_retest_material_callback_packet`、`route_task_field_retest_material_callback_packet_summary` 与 `robot_diagnostics_route_task_field_retest_material_callback_packet_summary` metadata-only consumer。该 consumer 只暴露 safe summary、safe `evidence_ref`、callback packet status、accepted/missing/rejected materials、owner acknowledgement、next required evidence、rerun commands、boundary、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`；不触发 task_orchestrator、Start、Confirm Dropoff、Cancel、ACK、Nav2、HIL 或 primary actions。Task B worker 报告 py_compile 通过、diagnostics unittest `Ran 173 tests OK`、required `rg` 通过、scoped diff check 通过。
+
+Full-stack worker 更新 `mobile/web/app.js`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/web/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增只读“路线/电梯现场材料回执”panel，消费 status/readiness/diagnostics 多入口和 Robot diagnostics alias；copy/export whitelist-only，不放宽 Start Delivery、Confirm Dropoff、Cancel、dispatch、callback 或 robot command gating。Task C worker 报告 `node --check mobile/web/app.js` 通过、mobile unittest `Ran 70 tests OK`、required `rg` 通过、scoped diff check 通过。
+
+Product closeout 更新 sprint 留档、`OKR.md` 和本日志；required closeout `rg` 匹配 `route_task_field_retest_material_callback_packet`、`software_proof_docker_route_task_field_retest_material_callback_packet_gate`、`Objective 5`、`Objective 1`、`PR #4`、`PR #5`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，closeout scoped `git diff --check` exit 0。
+
+该证据只支持 Objective 2、Objective 3 和 Objective 4 继续保持约 99%，不继续上调到 100。理由是本轮把 PR #4 route/elevator field materials 从材料包 skeleton 推进到可回填 packet，能减少真实现场回传时的漏项、同一 `evidence_ref` 漂移、unsafe material 和“回执即通过”的误读；但没有真实 route/elevator field pass、真实 Nav2/fixed-route runtime log、真实 route completion signal、真实 task record、真实门状态、真实目标楼层确认、真实人工协助记录、真实 dropoff/cancel completion、真实 delivery result、真实手机/browser、production app 或真实 PWA prompt/user choice。Objective 1 保持约 81%，因为本轮没有新增 WAVE ROVER、UART、HIL packet、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、operator HIL report、2D LiDAR / ToF SKU/source、串口、波特率或硬件假设；PR #5 相关真实硬件材料仍缺。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；O5 stop rule 仍成立。本轮始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
 
 ### 2026-05-18 04-05｜route-task-field-retest-material-pack｜O2/O3 material pack software proof，任务闭环、固定路线和手机体验均保持约 99%，O5 保持约 68%
 

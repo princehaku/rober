@@ -915,6 +915,84 @@
       "delivery success"
     ]
   },
+  "route_task_field_retest_material_callback_packet": {
+    "schema": "trashbot.route_task_field_retest_material_callback_packet.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.route_task_field_retest_material_callback_packet_summary.v1",
+    "callback_packet_status": "blocked_missing_route_task_field_retest_material_callback_packet_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "accepted_materials": [
+      "accepted_materials=none accepted as field proof",
+      "accepted_materials=metadata-only callback envelope is safe to review"
+    ],
+    "missing_materials": [
+      "missing_materials=real door_state callback",
+      "missing_materials=real target_floor_confirmation callback",
+      "missing_materials=real route completion signal callback",
+      "missing_materials=real task record callback",
+      "missing_materials=real dropoff/cancel completion callback",
+      "missing_materials=real delivery result callback"
+    ],
+    "rejected_materials": [
+      "rejected_materials=placeholder callback packet",
+      "rejected_materials=evidence_ref mismatch",
+      "rejected_materials=unsafe success claim"
+    ],
+    "owner_acknowledgement": [
+      "owner_acknowledgement=Autonomy owner acknowledges route runtime and completion callbacks remain not_proven.",
+      "owner_acknowledgement=Robot owner mirrors metadata-only callback packet diagnostics summary.",
+      "owner_acknowledgement=Field owner must provide redacted callback summaries under the same safe evidence_ref."
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same safe_evidence_ref field callback summaries",
+      "next_required_evidence=Robot diagnostics route_task_field_retest_material_callback_packet_summary",
+      "next_required_evidence=rerun result intake only after missing callbacks are backfilled"
+    ],
+    "rerun_commands": [
+      "rerun_commands=python3 pc-tools/evidence/route_task_field_retest_material_callback_packet.py --material-pack-summary <safe_summary>",
+      "rerun_commands=refresh Robot diagnostics route_task_field_retest_material_callback_packet_summary before mobile review"
+    ],
+    "safe_phone_copy": "路线/电梯现场材料回执 fixture 只展示 callback packet status、safe evidence ref、accepted/missing/rejected materials、owner acknowledgement、next required evidence、rerun commands 和 boundary flags；这是 Docker/local software proof，不是真实现场结论。",
+    "recovery_hint": "按同一 safe_evidence_ref 补齐现场 callback summary 后重跑 software_proof_docker_route_task_field_retest_material_callback_packet_gate。",
+    "safe_copy": {
+      "safe_phone_copy": "路线/电梯现场材料回执 copy 只包含 whitelist-only phone-safe metadata；不得当成真实现场结论、交付完成或控制授权。"
+    },
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_material_callback_packet_gate",
+    "not_proven": [
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field pass",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
+  "route_task_field_retest_material_callback_packet_summary": {
+    "schema": "trashbot.route_task_field_retest_material_callback_packet_summary.v1",
+    "schema_version": 1,
+    "source_schema": "trashbot.route_task_field_retest_material_callback_packet.v1",
+    "callback_packet_status": "blocked_missing_route_task_field_retest_material_callback_packet_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "accepted_materials": "accepted_materials=none accepted as field proof; metadata-only envelope accepted for review.",
+    "missing_materials": "missing_materials=door_state、target_floor_confirmation、route completion signal、task record、dropoff/cancel completion、delivery result.",
+    "rejected_materials": "rejected_materials=placeholder callback、evidence_ref mismatch、unsafe success claim.",
+    "owner_acknowledgement": "owner_acknowledgement=Autonomy/Robot/Field owners must backfill same safe_evidence_ref callback summaries.",
+    "next_required_evidence": "next_required_evidence=redacted field callback summaries plus Robot diagnostics compatible summary before result-intake rerun.",
+    "rerun_commands": "rerun_commands=run software_proof_docker_route_task_field_retest_material_callback_packet_gate after field callback backfill.",
+    "safe_phone_copy": "route_task_field_retest_material_callback_packet_summary 只用于手机只读路线/电梯现场材料回执，不放行 Start、Confirm、Cancel、dispatch、callback 或 robot command。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_material_callback_packet_gate",
+    "not_proven": [
+      "真实 route/elevator field pass",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "elevator_assist": {
     "schema": "trashbot.elevator_assist_summary.v1",
     "schema_version": 1,

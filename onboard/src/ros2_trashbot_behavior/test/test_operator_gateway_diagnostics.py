@@ -27,6 +27,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_result_intake,
     summarize_route_task_field_retest_result_reconciliation,
     summarize_route_task_field_retest_material_pack,
+    summarize_route_task_field_retest_material_callback_packet,
     summarize_route_task_field_retest_operator_drill,
     summarize_route_task_field_retest_drill_console,
     summarize_route_task_field_retest_acceptance_brief,
@@ -3718,6 +3719,395 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("software_proof_docker_route_task_field_retest_material_pack_gate", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_retest_material_callback_packet_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            packet_path = Path(td) / "route_task_field_retest_material_callback_packet.json"
+            packet_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_material_callback_packet.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_material_callback_packet_gate"
+                        ),
+                        "evidence_ref": (
+                            "evidence://route-task-field-retest-material-callback-packet-1"
+                        ),
+                        "route_task_field_retest_material_callback_packet_summary": {
+                            "schema": (
+                                "trashbot.route_task_field_retest_material_callback_packet_summary.v1"
+                            ),
+                            "source_schema": (
+                                "trashbot.route_task_field_retest_material_callback_packet.v1"
+                            ),
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_material_callback_packet_gate"
+                            ),
+                            "source_evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_material_callback_packet_gate"
+                            ),
+                            "safe_evidence_ref": (
+                                "evidence://route-task-field-retest-material-callback-packet-1"
+                            ),
+                            "same_evidence_ref_required": True,
+                            "packet_status": {
+                                "status": "ready_for_review_not_proven",
+                                "verdict": "not_proven",
+                                "reason": "callback packet summary is metadata-only",
+                            },
+                            "accepted_materials": [{"kind": "photo", "key": "door_state"}],
+                            "missing_materials": [{"kind": "note", "key": "operator_comment"}],
+                            "rejected_materials": [],
+                            "owner_follow_up": [{"owner": "Autonomy Algorithm Engineer"}],
+                            "review_decision_handoff": {
+                                "decision": "needs_material_callback_review_not_proven"
+                            },
+                            "robot_diagnostics_summary": {
+                                "status": "metadata_only",
+                                "reason": "Robot consumes sanitized callback packet only",
+                            },
+                            "safe_copy": (
+                                "Material callback packet is metadata-only; "
+                                "same_evidence_ref_required=true; delivery_success=false; "
+                                "primary_actions_enabled=false."
+                            ),
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_packet = os.environ.get(
+                "TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_PACKET"
+            )
+            previous_summary = os.environ.get(
+                "TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_PACKET_SUMMARY"
+            )
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_PACKET"] = str(
+                packet_path
+            )
+            os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_PACKET_SUMMARY", None)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_retest_material_callback_packet"
+                ]
+            finally:
+                if previous_packet is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_PACKET", None)
+                else:
+                    os.environ[
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_PACKET"
+                    ] = previous_packet
+                if previous_summary is None:
+                    os.environ.pop(
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_PACKET_SUMMARY",
+                        None,
+                    )
+                else:
+                    os.environ[
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_PACKET_SUMMARY"
+                    ] = previous_summary
+
+            direct_summary = summarize_route_task_field_retest_material_callback_packet(
+                {
+                    "schema": "trashbot.route_task_field_retest_material_callback_packet_summary.v1",
+                    "source_schema": "trashbot.route_task_field_retest_material_callback_packet.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_material_callback_packet_gate"
+                    ),
+                    "safe_evidence_ref": (
+                        "evidence://route-task-field-retest-material-callback-packet-2"
+                    ),
+                    "same_evidence_ref_required": True,
+                    "packet_status": {"status": "direct_ready", "verdict": "not_proven"},
+                    "accepted_materials": [],
+                    "missing_materials": [],
+                    "rejected_materials": [],
+                    "owner_follow_up": [],
+                    "review_decision_handoff": {"decision": "review_pending_not_proven"},
+                    "safe_copy": (
+                        "Direct callback packet summary is metadata-only; "
+                        "delivery_success=false; primary_actions_enabled=false."
+                    ),
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            nested_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "robot_diagnostics_route_task_field_retest_material_callback_packet_summary": {
+                            "schema": (
+                                "trashbot.route_task_field_retest_material_callback_packet_summary.v1"
+                            ),
+                            "source_schema": (
+                                "trashbot.route_task_field_retest_material_callback_packet.v1"
+                            ),
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_material_callback_packet_gate"
+                            ),
+                            "safe_evidence_ref": (
+                                "evidence://route-task-field-retest-material-callback-packet-3"
+                            ),
+                            "same_evidence_ref_required": True,
+                            "packet_status": {"status": "nested_ready", "verdict": "not_proven"},
+                            "accepted_materials": [],
+                            "missing_materials": [],
+                            "rejected_materials": [],
+                            "owner_follow_up": [],
+                            "review_decision_handoff": {"decision": "nested_review_not_proven"},
+                            "safe_copy": (
+                                "Nested callback packet is metadata-only; "
+                                "same_evidence_ref_required=true; delivery_success=false; "
+                                "primary_actions_enabled=false."
+                            ),
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["robot_diagnostics_route_task_field_retest_material_callback_packet_summary"]
+            wrapper_summary = summarize_route_task_field_retest_material_callback_packet(
+                {
+                    "route_task_field_retest_material_callback_packet_summary": {
+                        "schema": (
+                            "trashbot.route_task_field_retest_material_callback_packet_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.route_task_field_retest_material_callback_packet.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_material_callback_packet_gate"
+                        ),
+                        "safe_evidence_ref": (
+                            "evidence://route-task-field-retest-material-callback-packet-4"
+                        ),
+                        "same_evidence_ref_required": True,
+                        "packet_status": {"status": "wrapper_ready", "verdict": "not_proven"},
+                        "accepted_materials": [],
+                        "missing_materials": [],
+                        "rejected_materials": [],
+                        "owner_follow_up": [],
+                        "review_decision_handoff": {"decision": "wrapper_review_not_proven"},
+                        "safe_copy": (
+                            "Wrapper callback packet is metadata-only; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                }
+            )
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_callback_packet.json"
+            missing_summary = summarize_route_task_field_retest_material_callback_packet(
+                str(missing_path)
+            )
+            no_summary = summarize_route_task_field_retest_material_callback_packet(
+                {
+                    "schema": "trashbot.route_task_field_retest_material_callback_packet.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_material_callback_packet_gate"
+                    ),
+                    "evidence_ref": (
+                        "evidence://route-task-field-retest-material-callback-packet-5"
+                    ),
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsupported_summary = summarize_route_task_field_retest_material_callback_packet(
+                {
+                    "schema": "trashbot.route_task_field_retest_material_callback_packet_summary.v1",
+                    "source_schema": "trashbot.route_task_field_retest_material_callback_packet.v1",
+                    "evidence_boundary": "wrong_boundary",
+                    "safe_evidence_ref": (
+                        "evidence://route-task-field-retest-material-callback-packet-6"
+                    ),
+                    "same_evidence_ref_required": True,
+                    "accepted_materials": [],
+                    "missing_materials": [],
+                    "rejected_materials": [],
+                    "owner_follow_up": [],
+                    "review_decision_handoff": {},
+                    "safe_copy": "Unsupported packet is metadata-only; delivery_success=false.",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            missing_ref_summary = summarize_route_task_field_retest_material_callback_packet(
+                {
+                    "schema": "trashbot.route_task_field_retest_material_callback_packet_summary.v1",
+                    "source_schema": "trashbot.route_task_field_retest_material_callback_packet.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_material_callback_packet_gate"
+                    ),
+                    "same_evidence_ref_required": True,
+                    "accepted_materials": [],
+                    "missing_materials": [],
+                    "rejected_materials": [],
+                    "owner_follow_up": [],
+                    "review_decision_handoff": {},
+                    "safe_copy": "Missing ref packet is metadata-only; delivery_success=false.",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            weak_ref_summary = summarize_route_task_field_retest_material_callback_packet(
+                {
+                    "schema": "trashbot.route_task_field_retest_material_callback_packet_summary.v1",
+                    "source_schema": "trashbot.route_task_field_retest_material_callback_packet.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_material_callback_packet_gate"
+                    ),
+                    "safe_evidence_ref": (
+                        "evidence://route-task-field-retest-material-callback-packet-7"
+                    ),
+                    "same_evidence_ref_required": False,
+                    "accepted_materials": [],
+                    "missing_materials": [],
+                    "rejected_materials": [],
+                    "owner_follow_up": [],
+                    "review_decision_handoff": {},
+                    "safe_copy": "Weak ref packet is metadata-only; delivery_success=false.",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            raw_unsafe_summary = summarize_route_task_field_retest_material_callback_packet(
+                {
+                    "schema": "trashbot.route_task_field_retest_material_callback_packet.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_material_callback_packet_gate"
+                    ),
+                    "evidence_ref": (
+                        "evidence://route-task-field-retest-material-callback-packet-8"
+                    ),
+                    "raw_payload": {"token": "secret"},
+                    "route_task_field_retest_material_callback_packet_summary": {
+                        "schema": (
+                            "trashbot.route_task_field_retest_material_callback_packet_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.route_task_field_retest_material_callback_packet.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_material_callback_packet_gate"
+                        ),
+                        "safe_evidence_ref": (
+                            "evidence://route-task-field-retest-material-callback-packet-8"
+                        ),
+                        "same_evidence_ref_required": True,
+                        "accepted_materials": [],
+                        "missing_materials": [],
+                        "rejected_materials": [],
+                        "owner_follow_up": [],
+                        "review_decision_handoff": {},
+                        "safe_copy": "Raw unsafe packet is metadata-only; delivery_success=false.",
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            success_summary = summarize_route_task_field_retest_material_callback_packet(
+                {
+                    "schema": "trashbot.route_task_field_retest_material_callback_packet_summary.v1",
+                    "source_schema": "trashbot.route_task_field_retest_material_callback_packet.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_material_callback_packet_gate"
+                    ),
+                    "safe_evidence_ref": (
+                        "evidence://route-task-field-retest-material-callback-packet-9"
+                    ),
+                    "same_evidence_ref_required": True,
+                    "accepted_materials": [],
+                    "missing_materials": [],
+                    "rejected_materials": [],
+                    "owner_follow_up": [],
+                    "review_decision_handoff": {},
+                    "safe_copy": "Material callback packet confirms delivery success.",
+                    "delivery_success": True,
+                    "primary_actions_enabled": False,
+                }
+            )
+            enabled_summary = summarize_route_task_field_retest_material_callback_packet(
+                {
+                    "schema": "trashbot.route_task_field_retest_material_callback_packet_summary.v1",
+                    "source_schema": "trashbot.route_task_field_retest_material_callback_packet.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_material_callback_packet_gate"
+                    ),
+                    "safe_evidence_ref": (
+                        "evidence://route-task-field-retest-material-callback-packet-10"
+                    ),
+                    "same_evidence_ref_required": True,
+                    "accepted_materials": [],
+                    "missing_materials": [],
+                    "rejected_materials": [],
+                    "owner_follow_up": [],
+                    "review_decision_handoff": {},
+                    "safe_copy": "Enabled packet is metadata-only; delivery_success=false.",
+                    "delivery_success": False,
+                    "primary_actions_enabled": True,
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    direct_summary,
+                    nested_summary,
+                    wrapper_summary,
+                    missing_summary,
+                    no_summary,
+                    unsupported_summary,
+                    missing_ref_summary,
+                    weak_ref_summary,
+                    raw_unsafe_summary,
+                    success_summary,
+                    enabled_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["packet_status"]["status"], "ready_for_review_not_proven")
+        self.assertEqual(direct_summary["packet_status"]["status"], "direct_ready")
+        self.assertEqual(nested_summary["packet_status"]["status"], "nested_ready")
+        self.assertEqual(wrapper_summary["packet_status"]["status"], "wrapper_ready")
+        self.assertEqual(missing_summary["packet_status"]["status"], "missing")
+        self.assertEqual(no_summary["packet_status"]["status"], "missing_summary")
+        self.assertEqual(unsupported_summary["packet_status"]["status"], "unsupported_schema")
+        self.assertEqual(missing_ref_summary["packet_status"]["status"], "missing_evidence_ref")
+        self.assertEqual(weak_ref_summary["packet_status"]["status"], "unsafe_fields")
+        self.assertEqual(raw_unsafe_summary["packet_status"]["status"], "unsafe_fields")
+        self.assertEqual(success_summary["packet_status"]["status"], "unsafe_fields")
+        self.assertEqual(enabled_summary["packet_status"]["status"], "unsafe_fields")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn(
+            "software_proof_docker_route_task_field_retest_material_callback_packet_gate",
+            encoded,
+        )
+        self.assertIn("trashbot.route_task_field_retest_material_callback_packet_summary.v1", encoded)
+        self.assertIn("same_evidence_ref_required", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn("ACK", encoded)
+        self.assertNotIn("cursor", encoded)
+        self.assertNotIn("Nav2", encoded)
+        self.assertNotIn("HIL", encoded)
+        self.assertNotIn("field pass", encoded.lower())
+        self.assertNotIn("Start enablement", encoded)
+        self.assertNotIn("Confirm enablement", encoded)
+        self.assertNotIn("Cancel enablement", encoded)
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
         self.assertNotIn("secret-token", encoded)

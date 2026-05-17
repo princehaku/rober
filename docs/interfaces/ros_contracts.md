@@ -447,6 +447,41 @@ serial/UART details, credentials, local paths, checksums, tracebacks, complete
 artifacts, or Objective 5 external proof, and they are not command/status/ACK
 robot contract fields.
 
+Operator diagnostics may also expose
+`route_task_field_retest_material_callback_packet`, the alias
+`route_task_field_retest_material_callback_packet_summary`, and the Robot alias
+`robot_diagnostics_route_task_field_retest_material_callback_packet_summary`
+from an explicit `route_task_field_retest_material_callback_packet_ref`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_PACKET`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_PACKET_SUMMARY`, top-level
+status fields, a wrapper field, or an already sanitized nested diagnostics
+summary source. The source JSON must use
+`schema=trashbot.route_task_field_retest_material_callback_packet.v1` and
+`evidence_boundary=software_proof_docker_route_task_field_retest_material_callback_packet_gate`.
+If the source is already a summary wrapper, it must still point to
+`source_schema=trashbot.route_task_field_retest_material_callback_packet.v1`
+and the same evidence boundary. This field is metadata-only Robot diagnostics
+support for the route-task field retest material callback packet: it may expose
+only summary schema, packet status, safe `evidence_ref`,
+`same_evidence_ref_required=true`, accepted/missing/rejected material names,
+owner follow-up, review-decision handoff, Robot diagnostics summary,
+mobile-readonly copy, boundary,
+`software_proof_docker_route_task_field_retest_material_callback_packet_gate`,
+`not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. Missing summary, unreadable input,
+unsupported schema or boundary, unsafe raw fields, unsafe copy, missing
+`evidence_ref`, same-`evidence_ref` mismatch, weak or non-boolean
+`same_evidence_ref_required`, success wording, `delivery_success=true`, or
+`primary_actions_enabled=true` sources fail closed and remain
+blocked/not_proven. The fields do not trigger `/api/collect`, dropoff, cancel,
+remote ACK, cursor advance/persistence, terminal ACK, Nav2, WAVE ROVER, HIL,
+field pass, production readiness, Start enablement, Confirm enablement, Cancel
+enablement, dropoff/cancel completion, or delivery success. They must not
+expose raw material files, raw route logs, raw artifacts, raw commands, raw ROS
+topics, `/cmd_vel`, serial/UART details, credentials, local paths, checksums,
+tracebacks, complete artifacts, or Objective 5 external proof, and they are not
+command/status/ACK robot contract fields.
+
 Operator diagnostics may also expose `route_task_field_retest_operator_drill`
 and the alias `route_task_field_retest_operator_drill_summary` from an explicit
 `route_task_field_retest_operator_drill_ref`,

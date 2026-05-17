@@ -2224,6 +2224,100 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, material_pack_text)
 
+    def test_field_retest_material_callback_packet_panel_is_read_only_and_copy_gated(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # material callback packet 跟在 material pack 后，只读解释现场回执，不新增任何控制入口。
+        self.assertIn("routeTaskFieldRetestMaterialCallbackPacketTitle", app)
+        self.assertIn("路线/电梯现场材料回执", app)
+        self.assertIn("routeTaskFieldRetestMaterialPackTitle", app)
+        self.assertIn("routeTaskFieldRetestOperatorDrillTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 Robot diagnostics compatible summary。
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_PACKET_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_PACKET_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestMaterialCallbackPacketText", app)
+        self.assertIn("routeTaskFieldRetestMaterialCallbackPacketCandidate", app)
+        self.assertIn("routeTaskFieldRetestMaterialCallbackPacketFromStatus", app)
+        self.assertIn("route_task_field_retest_material_callback_packet", app)
+        self.assertIn("route_task_field_retest_material_callback_packet_summary", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_material_callback_packet_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_material_callback_packet", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_material_callback_packet", app)
+        self.assertIn("callback_packet_status", app)
+        self.assertIn("accepted_materials", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("rejected_materials", app)
+        self.assertIn("owner_acknowledgement", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("rerun_commands", app)
+
+        # copy/export 只能由 safe_copy 驱动；缺失时显示 blocked copy unavailable，不合成 raw callback packet。
+        self.assertIn("routeTaskFieldRetestMaterialCallbackPacketCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_material_callback_packet_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestMaterialCallbackPacketButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestMaterialCallbackPacketButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"routeTaskFieldRetestMaterialCallbackPacket.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+        self.assertNotRegex(app, r"copyRouteTaskFieldRetestMaterialCallbackPacketButton.*fetchJson")
+
+        # fixture 和产品文档必须固定 callback packet 的 software proof / not_proven 边界。
+        packet = fixture["route_task_field_retest_material_callback_packet"]
+        self.assertEqual(
+            packet["callback_packet_status"],
+            "blocked_missing_route_task_field_retest_material_callback_packet_not_proven",
+        )
+        self.assertEqual(packet["delivery_success"], False)
+        self.assertEqual(packet["primary_actions_enabled"], False)
+        self.assertIn("accepted_materials", packet)
+        self.assertIn("missing_materials", packet)
+        self.assertIn("rejected_materials", packet)
+        self.assertIn("owner_acknowledgement", packet)
+        self.assertIn("next_required_evidence", packet)
+        self.assertIn("rerun_commands", packet)
+        self.assertIn("software_proof_docker_route_task_field_retest_material_callback_packet_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("route_task_field_retest_material_callback_packet", doc)
+        self.assertIn("路线/电梯现场材料回执", doc)
+
+    def test_field_retest_material_callback_packet_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        packet_text = json.dumps(
+            fixture["route_task_field_retest_material_callback_packet"],
+            ensure_ascii=False,
+        ).lower()
+
+        # callback packet fixture 只能携带白名单摘要，不能带 raw 回执、底层控制、凭证或成功状态。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw callback packet",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, packet_text)
+
     def test_field_retest_operator_drill_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
         styles = self.read_web("styles.css")
