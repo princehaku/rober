@@ -2965,5 +2965,107 @@ class RouteTaskFieldRetestResultReviewIntakeMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, intake_text)
 
 
+class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_field_retest_result_review_decision_panel_is_read_only_and_copy_gated(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 结果复核决策跟在 intake 后，只读解释 decision，不改变 Start/Confirm/Cancel gating。
+        self.assertIn("routeTaskFieldRetestResultReviewDecisionTitle", app)
+        self.assertIn("路线/电梯结果复核决策", app)
+        self.assertIn("routeTaskFieldRetestResultReviewIntakeTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("route-task-field-retest-result-review-decision-panel", app)
+        self.assertIn("route-task-field-retest-result-review-decision-grid", app)
+
+        # 状态来源兼容 artifact、summary 和 Robot diagnostics aliases。
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestResultReviewDecisionText", app)
+        self.assertIn("routeTaskFieldRetestResultReviewDecisionCandidate", app)
+        self.assertIn("routeTaskFieldRetestResultReviewDecisionFromStatus", app)
+        self.assertIn("route_task_field_retest_result_review_decision", app)
+        self.assertIn("route_task_field_retest_result_review_decision_summary", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_result_review_decision_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_result_review_decision", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_result_review_decision", app)
+        self.assertIn("decision_status", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("rerun_commands", app)
+
+        # copy/export 必须由 safe_copy 驱动，只导出白名单字段，且不触发主操作、ACK、cursor、diagnostics fetch 或 robot command。
+        self.assertIn("routeTaskFieldRetestResultReviewDecisionCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_result_review_decision_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestResultReviewDecisionButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestResultReviewDecisionButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("Start Delivery", app)
+        self.assertIn("Confirm Dropoff", app)
+        self.assertIn("Cancel", app)
+        self.assertNotRegex(app, r"routeTaskFieldRetestResultReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须固定 result review decision 的 software proof / not_proven 边界。
+        decision = fixture["route_task_field_retest_result_review_decision"]
+        self.assertEqual(
+            decision["decision_status"],
+            "needs_route_elevator_material_backfill_not_proven",
+        )
+        self.assertEqual(decision["delivery_success"], False)
+        self.assertEqual(decision["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_route_task_field_retest_result_review_decision_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("route_task_field_retest_result_review_decision", doc)
+        self.assertIn("路线/电梯结果复核决策", doc)
+
+    def test_field_retest_result_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        decision_text = json.dumps(
+            fixture["route_task_field_retest_result_review_decision"],
+            ensure_ascii=False,
+        ).lower()
+
+        # result review decision fixture 只能携带白名单 summary，不能带 raw decision、路径、凭证、底层控制或成功状态。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw decision",
+            "raw diagnostics",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "robot command",
+            "diagnostics fetch",
+            "result route",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, decision_text)
+
+
 if __name__ == "__main__":
     unittest.main()
