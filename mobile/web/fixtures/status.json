@@ -405,6 +405,7 @@
     "summary_schema": "trashbot.route_task_field_retest_result_intake_summary.v1",
     "schema_version": 1,
     "source_session_handoff_schema": "trashbot.route_task_field_retest_session_handoff_summary.v1",
+    "source_review_result_handoff_schema": "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
     "intake_status": "blocked_missing_route_task_field_retest_result_materials_not_proven",
     "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
     "material_completeness": "material_completeness=3/8 phone-safe summaries present; door_state, target_floor_confirmation and human_assistance_note still missing.",

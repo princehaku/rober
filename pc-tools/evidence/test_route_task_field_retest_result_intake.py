@@ -49,6 +49,31 @@ class RouteTaskFieldRetestResultIntakeTest(unittest.TestCase):
             payload["returned_materials"] = [self.material(name, evidence_ref) for name in intake.REQUIRED_RESULT_MATERIALS]
         return payload
 
+    def review_result_handoff(self, evidence_ref: str, *, summary: bool = False, with_materials: bool = True) -> dict:
+        # review-result handoff 是 result-intake 前置面；材料仍必须显式回填八类。
+        payload = {
+            "schema": (
+                "trashbot.route_task_field_retest_review_result_handoff_summary.v1"
+                if summary
+                else "trashbot.route_task_field_retest_review_result_handoff.v1"
+            ),
+            "schema_version": 1,
+            "evidence_boundary": "software_proof_docker_route_task_field_retest_review_result_handoff_gate",
+            "status": "ready_for_result_intake_handoff",
+            "handoff_status": "ready_for_result_intake_handoff",
+            "result_intake_readiness": "ready_for_result_material_intake",
+            "evidence_ref": evidence_ref,
+            "same_evidence_ref_required": True,
+            "required_evidence_packet": list(intake.REQUIRED_RESULT_MATERIALS),
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+        if with_materials:
+            payload["result_materials"] = {
+                name: self.material(name, evidence_ref) for name in intake.REQUIRED_RESULT_MATERIALS
+            }
+        return payload
+
     def build(self, root: Path, payload: dict, evidence_ref: str = "run-001") -> tuple[dict, dict]:
         # 公共 helper 让 case 聚焦 schema、boundary 和 fail-closed 规则。
         path = self.write_json(root, "result.json", payload)
@@ -102,6 +127,87 @@ class RouteTaskFieldRetestResultIntakeTest(unittest.TestCase):
         self.assertEqual(artifact["source_result"]["schema_status"], "supported")
         self.assertEqual(artifact["status"], "ready_for_field_retest_result_intake_not_proven")
         self.assertTrue(artifact["material_completeness"]["is_complete"])
+
+    def test_review_result_handoff_artifact_is_supported(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            artifact, summary = self.build(root, self.review_result_handoff("run-010"), "run-010")
+
+        self.assertEqual(artifact["source_result"]["schema_status"], "supported")
+        self.assertEqual(
+            artifact["source_result"]["schema"],
+            "trashbot.route_task_field_retest_review_result_handoff.v1",
+        )
+        self.assertEqual(artifact["status"], "ready_for_field_retest_result_intake_not_proven")
+        self.assertEqual(summary["schema"], "trashbot.route_task_field_retest_result_intake_summary.v1")
+        self.assertEqual(summary["required_result_materials"], list(intake.REQUIRED_RESULT_MATERIALS))
+        self.assertTrue(artifact["material_completeness"]["is_complete"])
+        self.assertFalse(artifact["delivery_success"])
+        self.assertFalse(artifact["primary_actions_enabled"])
+
+    def test_review_result_handoff_summary_is_supported_without_cropping_required_materials(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            payload = self.review_result_handoff("run-011", summary=True)
+            payload["result_materials"].pop("delivery_result")
+            artifact, summary = self.build(root, payload, "run-011")
+
+        self.assertEqual(artifact["source_result"]["schema_status"], "supported")
+        self.assertEqual(
+            artifact["source_result"]["schema"],
+            "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
+        )
+        self.assertEqual(artifact["status"], "blocked_missing_result_materials")
+        self.assertEqual(summary["required_result_materials"], list(intake.REQUIRED_RESULT_MATERIALS))
+        self.assertIn("delivery_result", artifact["missing_materials"])
+        self.assertEqual(summary["material_completeness"]["required_count"], len(intake.REQUIRED_RESULT_MATERIALS))
+
+    def test_review_result_handoff_wrapper_key_is_supported(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            payload = {"review_result_handoff": self.review_result_handoff("run-012")}
+            artifact, _summary = self.build(root, payload, "run-012")
+
+        self.assertEqual(artifact["source_result"]["schema_status"], "supported")
+        self.assertEqual(artifact["status"], "ready_for_field_retest_result_intake_not_proven")
+
+    def test_review_result_handoff_nested_json_key_is_supported(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            payload = {
+                "payload": {
+                    "route_task_field_retest_review_result_handoff_summary": self.review_result_handoff(
+                        "run-013",
+                        summary=True,
+                    )
+                }
+            }
+            artifact, _summary = self.build(root, payload, "run-013")
+
+        self.assertEqual(artifact["source_result"]["schema_status"], "supported")
+        self.assertEqual(artifact["status"], "ready_for_field_retest_result_intake_not_proven")
+
+    def test_review_result_handoff_unsupported_boundary_fails_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            payload = self.review_result_handoff("run-014")
+            payload["evidence_boundary"] = "software_proof_docker_wrong_gate"
+            artifact, _summary = self.build(root, payload, "run-014")
+
+        self.assertEqual(artifact["status"], "blocked_unsupported_schema")
+        self.assertEqual(artifact["source_result"]["schema_status"], "unsupported")
+
+    def test_review_result_handoff_success_claim_fails_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            payload = self.review_result_handoff("run-015")
+            payload["owner_handoff"] = {"note": "delivery success after fixed-route run"}
+            artifact, summary = self.build(root, payload, "run-015")
+
+        self.assertEqual(artifact["status"], "blocked_success_or_control_claim")
+        self.assertTrue(artifact["source_result"]["success_or_control_claim"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
 
     def test_missing_materials_fail_closed(self):
         with tempfile.TemporaryDirectory() as td:

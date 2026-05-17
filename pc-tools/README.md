@@ -294,7 +294,7 @@ callback JSON 只允许现场同学已经脱敏的元数据字段：recommended 
 
 ## route/task field retest result intake
 
-`pc-tools/evidence/route_task_field_retest_result_intake.py` 只读现场复测回填后的 result artifact、summary、session handoff artifact/summary 或 wrapper/nested JSON，把同一 `evidence_ref` 下的结果材料元数据整理成 fail-closed result intake artifact / summary：
+`pc-tools/evidence/route_task_field_retest_result_intake.py` 只读现场复测回填后的 result artifact、summary、session handoff artifact/summary、review-result handoff artifact/summary 或 wrapper/nested JSON，把同一 `evidence_ref` 下的结果材料元数据整理成 fail-closed result intake artifact / summary：
 
 ```bash
 python3 pc-tools/evidence/route_task_field_retest_result_intake.py \
@@ -306,7 +306,7 @@ python3 pc-tools/evidence/route_task_field_retest_result_intake.py \
 
 输出 artifact 使用 `schema=trashbot.route_task_field_retest_result_intake.v1`，summary 使用 `schema=trashbot.route_task_field_retest_result_intake_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_result_intake_gate`。核心字段包括 safe `evidence_ref`、`same_evidence_ref_required=true`、`result_materials`、`material_completeness`、`missing_materials`、`operator_next_steps`、`field_callback_checklist`、`rerun_summary`、`safe_copy`、`fail_closed_phone_safe_summary`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
 
-该 intake 检查八类结果材料摘要：`nav2_or_fixed_route_runtime_log`、`route_completion_signal`、`task_record`、`door_state`、`target_floor_confirmation`、`human_assistance_note`、`dropoff_or_cancel_completion` 和 `delivery_result`。它只处理 JSON 元数据，不读取 ROS graph、Nav2 runtime、真实日志文件内容、硬件、真实手机/browser、外部云、OSS/CDN、DB/queue 或 4G。
+该 intake 检查八类结果材料摘要：`nav2_or_fixed_route_runtime_log`、`route_completion_signal`、`task_record`、`door_state`、`target_floor_confirmation`、`human_assistance_note`、`dropoff_or_cancel_completion` 和 `delivery_result`。review-result handoff 只把上游 review decision 交给 result-intake 前置面，不能裁剪这八类固定 result materials；任何缺项仍按 `blocked_missing_result_materials` 处理。它只处理 JSON 元数据，不读取 ROS graph、Nav2 runtime、真实日志文件内容、硬件、真实手机/browser、外部云、OSS/CDN、DB/queue 或 4G。
 
 缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、缺任一结果材料、placeholder-only materials、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_result_intake_not_proven` 只表示 Docker/local software proof 足以接收同一证据号下的八类现场复测结果材料摘要，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 

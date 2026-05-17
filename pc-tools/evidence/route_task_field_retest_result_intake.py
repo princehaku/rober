@@ -22,17 +22,20 @@ INTAKE_SUMMARY_SCHEMA = "trashbot.route_task_field_retest_result_intake_summary.
 SCHEMA_VERSION = 1
 INTAKE_BOUNDARY = "software_proof_docker_route_task_field_retest_result_intake_gate"
 
-# 输入优先支持 session handoff，也允许已经聚合好的 result artifact / summary。
+# 输入优先支持 session/review handoff，也允许已经聚合好的 result artifact / summary。
 SOURCE_SCHEMAS = {
     "trashbot.route_task_field_retest_session_handoff.v1",
     "trashbot.route_task_field_retest_session_handoff_summary.v1",
+    "trashbot.route_task_field_retest_review_result_handoff.v1",
+    "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
     "trashbot.route_task_field_retest_result.v1",
     "trashbot.route_task_field_retest_result_summary.v1",
     INTAKE_SCHEMA,
     INTAKE_SUMMARY_SCHEMA,
 }
 HANDOFF_BOUNDARY = "software_proof_docker_route_task_field_retest_session_handoff_gate"
-SOURCE_BOUNDARIES = {HANDOFF_BOUNDARY, INTAKE_BOUNDARY, ""}
+REVIEW_RESULT_HANDOFF_BOUNDARY = "software_proof_docker_route_task_field_retest_review_result_handoff_gate"
+SOURCE_BOUNDARIES = {HANDOFF_BOUNDARY, REVIEW_RESULT_HANDOFF_BOUNDARY, INTAKE_BOUNDARY, ""}
 
 # 八类现场复测结果材料是本 gate 的固定验收清单，不能由输入裁剪。
 REQUIRED_RESULT_MATERIALS = (
@@ -255,10 +258,14 @@ def _source_candidates(payload: dict[str, Any]) -> list[dict[str, Any]]:
     for key in (
         "route_task_field_retest_result_intake",
         "route_task_field_retest_result_intake_summary",
+        "route_task_field_retest_review_result_handoff",
+        "route_task_field_retest_review_result_handoff_summary",
         "route_task_field_retest_result",
         "route_task_field_retest_result_summary",
         "route_task_field_retest_session_handoff",
         "route_task_field_retest_session_handoff_summary",
+        "review_result_handoff",
+        "review_result_handoff_summary",
         "result_artifact",
         "result_summary",
         "field_result",
@@ -762,7 +769,11 @@ def write_json(payload: dict[str, Any], output: str) -> None:
 def main() -> int:
     # CLI dependency-free，便于 PC、Docker、unittest 和后续 diagnostics fixture 复用。
     parser = argparse.ArgumentParser(description="Generate a route/task field retest result intake artifact")
-    parser.add_argument("--result-json", required=True, help="result artifact, summary, session handoff, or wrapper JSON")
+    parser.add_argument(
+        "--result-json",
+        required=True,
+        help="result artifact, summary, session/review-result handoff, or wrapper JSON",
+    )
     parser.add_argument("--evidence-ref", default="", help="expected safe evidence_ref for this result intake")
     parser.add_argument("--output", default="", help="optional result intake artifact JSON output path")
     parser.add_argument("--summary-output", default="", help="optional result intake summary JSON output path")

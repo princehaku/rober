@@ -931,6 +931,10 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         )
         self.assertEqual(result_intake["delivery_success"], False)
         self.assertEqual(result_intake["primary_actions_enabled"], False)
+        self.assertEqual(
+            result_intake["source_review_result_handoff_schema"],
+            "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
+        )
         self.assertIn("software_proof_docker_route_task_field_retest_result_intake_gate", fixture_text)
         self.assertIn("not_proven", fixture_text)
         self.assertIn("route_task_field_retest_result_intake", doc)
