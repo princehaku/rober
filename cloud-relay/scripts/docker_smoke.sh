@@ -597,6 +597,129 @@ curl -fsS \
   "${BASE_URL}/robots/trashbot-001/status"
 echo
 
+echo "== enqueue pending command for cloud worker cutover drain =="
+curl -fsS \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"protocol_version":"trashbot.remote.v1","id":"cmd-docker-smoke-cutover-drain","type":"collect","expires_at":2778256300.0,"payload":{"target":"cutover_drain_station","trash_type":0}}' \
+  "${BASE_URL}/robots/trashbot-001/commands"
+echo
+
+echo "== cloud worker cutover drain artifact drains pending relay state =="
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  rm -f /tmp/trashbot_cloud_worker_cutover_drain.json /tmp/trashbot_cloud_worker_cutover_drain_rerun.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+    --state-backend sqlite \
+    --state-path "${TRASHBOT_REMOTE_CLOUD_STATE}" \
+    --cloud-worker-cutover-drain-robot-id trashbot-001 \
+    --write-cloud-worker-cutover-drain-artifact /tmp/trashbot_cloud_worker_cutover_drain.json \
+    >/tmp/trashbot_cloud_worker_cutover_drain_result.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  cat /tmp/trashbot_cloud_worker_cutover_drain.json \
+    >/tmp/trashbot_cloud_worker_cutover_drain.json
+cat /tmp/trashbot_cloud_worker_cutover_drain.json
+echo
+python3 - /tmp/trashbot_cloud_worker_cutover_drain.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+encoded = json.dumps(payload, ensure_ascii=False)
+if payload.get("schema") != "trashbot.cloud_worker_cutover_drain.v1":
+    raise SystemExit("wrong cloud worker cutover drain schema")
+if payload.get("summary_schema") != "trashbot.cloud_worker_cutover_drain_summary.v1":
+    raise SystemExit("wrong cloud worker cutover drain summary schema")
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_worker_cutover_drain_gate":
+    raise SystemExit("wrong cloud worker cutover drain evidence boundary")
+if payload.get("production_ready") or payload.get("delivery_success") or payload.get("primary_actions_enabled"):
+    raise SystemExit("cloud worker cutover drain must remain blocked and action-disabled")
+drain = payload.get("cutover_drain", {})
+terminal = payload.get("terminal_ack_summary", {})
+if drain.get("pending_count_before") != 1 or drain.get("drained_count") != 1:
+    raise SystemExit("cutover drain did not drain the expected pending command")
+if drain.get("pending_count_after") != 0 or drain.get("cursor_after") != "none":
+    raise SystemExit("cutover drain cursor did not close")
+if drain.get("idempotent_rerun_status") != "passed" or drain.get("robot_action_triggered"):
+    raise SystemExit("cutover drain idempotency or robot-action invariant failed")
+if terminal.get("terminal_ack_count") != 1 or terminal.get("terminal_ack_is_delivery_success"):
+    raise SystemExit("terminal ACK summary is unsafe")
+for marker in (
+    "real_production_worker_cutover",
+    "production_worker_drain",
+    "production_db_or_queue",
+    "delivery_success",
+):
+    if marker not in encoded:
+        raise SystemExit(f"missing cutover drain boundary marker: {marker}")
+for forbidden in ("Authorization", "Bearer", "postgres://", "redis://", "queue URL", "database URL", "root password", "raw local path", "/tmp/", "/dev/", "UART", "WAVE ROVER", "ROS topic", "/cmd_vel"):
+    if forbidden in encoded:
+        raise SystemExit(f"cloud worker cutover drain leaked forbidden marker: {forbidden}")
+PY
+
+echo "== production preflight CLI consumes cloud worker cutover drain without production ready =="
+set +e
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T \
+  -e TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT=/tmp/trashbot_cloud_worker_cutover_drain.json \
+  remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight \
+  >/tmp/remote_cloud_relay_preflight_worker_cutover_drain.json
+PREFLIGHT_WORKER_CUTOVER_STATUS="$?"
+set -e
+cat /tmp/remote_cloud_relay_preflight_worker_cutover_drain.json
+echo
+if [ "${PREFLIGHT_WORKER_CUTOVER_STATUS}" != "0" ]; then
+  echo "worker cutover drain preflight CLI unexpectedly returned ${PREFLIGHT_WORKER_CUTOVER_STATUS}" >&2
+  exit 1
+fi
+python3 - /tmp/remote_cloud_relay_preflight_worker_cutover_drain.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+checks = {check["name"]: check for check in payload.get("checks", [])}
+encoded = json.dumps(payload, ensure_ascii=False)
+if payload.get("production_ready") or payload.get("overall_status") != "blocked":
+    raise SystemExit("worker cutover drain preflight must remain blocked")
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_worker_cutover_drain_gate":
+    raise SystemExit("preflight did not report worker cutover drain boundary")
+if checks.get("cloud_worker_cutover_drain", {}).get("status") != "pass":
+    raise SystemExit("preflight did not recognize worker cutover drain artifact")
+details = checks["cloud_worker_cutover_drain"].get("details", {})
+if details.get("delivery_success") or details.get("primary_actions_enabled"):
+    raise SystemExit("worker cutover drain preflight must not enable delivery actions")
+if details.get("terminal_ack_is_delivery_success") or details.get("pending_count_after") != 0:
+    raise SystemExit("worker cutover drain terminal/cursor details are unsafe")
+for forbidden in ("Authorization", "Bearer", "postgres://", "redis://", "queue URL", "database URL", "root password", "raw local path", "/tmp/", "/dev/", "UART", "WAVE ROVER", "ROS topic", "/cmd_vel"):
+    if forbidden in encoded:
+        raise SystemExit(f"worker cutover drain preflight leaked forbidden marker: {forbidden}")
+PY
+
+echo "== cloud worker cutover drain rerun is idempotent =="
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  python -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+    --state-backend sqlite \
+    --state-path "${TRASHBOT_REMOTE_CLOUD_STATE}" \
+    --cloud-worker-cutover-drain-robot-id trashbot-001 \
+    --write-cloud-worker-cutover-drain-artifact /tmp/trashbot_cloud_worker_cutover_drain_rerun.json \
+    >/tmp/trashbot_cloud_worker_cutover_drain_rerun_result.json
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  cat /tmp/trashbot_cloud_worker_cutover_drain_rerun.json \
+    >/tmp/trashbot_cloud_worker_cutover_drain_rerun.json
+python3 - /tmp/trashbot_cloud_worker_cutover_drain_rerun.json <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+drain = payload.get("cutover_drain", {})
+if drain.get("pending_count_before") != 0 or drain.get("drained_count") != 0:
+    raise SystemExit("cutover drain rerun was not idempotent")
+if drain.get("cursor_after") != "none" or drain.get("idempotent_rerun_status") != "passed":
+    raise SystemExit("cutover drain rerun cursor/idempotency failed")
+if payload.get("delivery_success") or payload.get("primary_actions_enabled"):
+    raise SystemExit("cutover drain rerun must not enable delivery actions")
+PY
+
 echo "== enqueue pending command for backup restore drill =="
 curl -fsS \
   -H "Authorization: Bearer ${TOKEN}" \

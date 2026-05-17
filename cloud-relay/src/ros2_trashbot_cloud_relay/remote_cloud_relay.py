@@ -9,6 +9,12 @@
 `trashbot.cloud_worker_migration_rehearsal_summary.v1`，证据边界固定为
 `software_proof_docker_cloud_worker_migration_rehearsal_gate`，并保持
 `production_ready=false`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+本入口也暴露 `cloud_worker_cutover_drain` CLI：
+`trashbot.cloud_worker_cutover_drain.v1` /
+`trashbot.cloud_worker_cutover_drain_summary.v1`，证据边界固定为
+`software_proof_docker_cloud_worker_cutover_drain_gate`，terminal ACK 只代表
+Docker/local relay envelope 收口，不代表真实送达或 production worker cutover。
 """
 
 # 复用原模块的全部公共符号，测试和后续工具仍可按需从这个入口导入 helper。

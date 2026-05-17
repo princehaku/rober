@@ -3373,6 +3373,51 @@ class RemoteBridgeProtocolTest(unittest.TestCase):
         self.assertNotIn("postgres://", encoded_command)
         self.assertNotIn("/cmd_vel", encoded_command)
 
+    def test_validate_command_ignores_cloud_worker_cutover_drain_metadata_outside_envelope(self):
+        command = validate_command({
+            "id": "cmd-cloud-worker-cutover-drain-metadata",
+            "type": "confirm_dropoff",
+            "payload": {"accepted": True},
+            "cloud_worker_cutover_drain": {
+                "schema": "trashbot.cloud_worker_cutover_drain.v1",
+                "evidence_boundary": (
+                    "software_proof_docker_cloud_worker_cutover_drain_gate"
+                ),
+                "drain_status": "ready",
+                "cursor_summary": "must_not_override_command_cursor",
+                "terminal_ack_summary": "ack_processing_not_delivery",
+                "trigger_robot_action": "cancel",
+                "cursor_override": "cmd-future",
+                "delivery_success": True,
+                "production_ready": True,
+                "primary_actions_enabled": True,
+                "Authorization": "Bearer must-not-leak",
+                "raw_ros_topic": "/cmd_vel",
+            },
+            "cloud_worker_cutover_drain_summary": {
+                "schema": "trashbot.cloud_worker_cutover_drain_summary.v1",
+                "ack_semantics": "delivery_success",
+                "next_action": "collect",
+                "db_url": "postgres://robot:secret@example.invalid/db",
+            },
+        })
+
+        self.assertEqual(command["id"], "cmd-cloud-worker-cutover-drain-metadata")
+        self.assertEqual(command["type"], "confirm_dropoff")
+        self.assertEqual(command["payload"], {"accepted": True})
+        encoded_command = json.dumps(command, ensure_ascii=False)
+        # cutover drain 是 metadata-only 诊断摘要，normalization 不能让它扩展 robot command envelope。
+        self.assertNotIn("cloud_worker_cutover_drain", encoded_command)
+        self.assertNotIn("trigger_robot_action", encoded_command)
+        self.assertNotIn("cursor_override", encoded_command)
+        self.assertNotIn("terminal_ack_summary", encoded_command)
+        self.assertNotIn("delivery_success", encoded_command)
+        self.assertNotIn("production_ready", encoded_command)
+        self.assertNotIn("primary_actions_enabled", encoded_command)
+        self.assertNotIn("Authorization", encoded_command)
+        self.assertNotIn("postgres://", encoded_command)
+        self.assertNotIn("/cmd_vel", encoded_command)
+
     def test_validate_command_keeps_command_id_order_as_supplied(self):
         command = validate_command({
             "id": "cmd-10",

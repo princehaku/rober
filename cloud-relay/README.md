@@ -25,6 +25,7 @@
   - `trashbot.cloud_db_queue_config_gate` artifact，区分完全缺生产 DB/queue 配置包与配置包存在但缺真实连接、多实例、一致性、备份和灾备实证；证据边界固定为 `software_proof_docker_cloud_db_queue_config_gate`，`production_ready=false` 和 `overall_status=blocked` 必须保持
   - `trashbot.cloud_db_queue_external_probe_bundle` artifact，记录 DB/queue connectivity、migration、worker、多实例、ordering、transaction isolation、backup/recovery 外部探测入口的枚举状态；证据边界固定为 `software_proof_docker_cloud_db_queue_external_probe_gate`，只证明 schema/checksum/redaction/preflight consumption
   - `trashbot.cloud_worker_migration_rehearsal.v1` artifact，在本地 SQLite relay state 上演练 migration schema 标记、幂等重跑、command enqueue、status write、ACK accepted/processing 和 terminal ACK cursor 语义；summary schema 固定为 `trashbot.cloud_worker_migration_rehearsal_summary.v1`，证据边界固定为 `software_proof_docker_cloud_worker_migration_rehearsal_gate`，`production_ready=false`、`delivery_success=false`、`primary_actions_enabled=false` 必须保持
+  - `trashbot.cloud_worker_cutover_drain.v1` artifact，在 Docker/local File 或 SQLite relay state 上 drain pending command 并记录 cursor、terminal ACK summary、幂等重跑和 fail-closed 状态；summary schema 固定为 `trashbot.cloud_worker_cutover_drain_summary.v1`，证据边界固定为 `software_proof_docker_cloud_worker_cutover_drain_gate`，`production_ready=false`、`delivery_success=false`、`primary_actions_enabled=false` 必须保持
   - `trashbot.oss_cdn_live_probe` artifact，复用 OSS/CDN manifest 输入，只记录 endpoint path、object key hash、HTTP 状态和脱敏摘要；证据边界固定为 `software_proof_docker_oss_cdn_live_probe_gate`，`production_ready=false`、`overall_status=blocked`、`live_probe_complete=false` 必须保持
   - `trashbot.external_evidence_intake` artifact，为未来公网入口/TLS、OSS/CDN、production DB/queue、4G/SIM 真实外部材料提供安全收件 gate；证据边界固定为 `software_proof_docker_external_evidence_intake_gate`，只证明 schema/checksum/redaction/preflight consumption，`production_ready=false`、`overall_status=blocked`、`external_evidence_complete=false` 必须保持
 
@@ -210,6 +211,25 @@ python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 
 该 artifact 的 `schema=trashbot.cloud_worker_migration_rehearsal.v1`、`summary_schema=trashbot.cloud_worker_migration_rehearsal_summary.v1`、`evidence_boundary=software_proof_docker_cloud_worker_migration_rehearsal_gate`。它只在 Docker/local SQLite relay state 上演练 state 初始化、`user_version` schema 标记、重复运行幂等、坏 schema/checksum/stale artifact fail closed、command enqueue、status write、ACK accepted/processing、terminal ACK 与 cursor 语义。有效 artifact 会新增 `cloud_worker_migration_rehearsal` preflight check，但仍必须保持 `production_ready=false`、`overall_status=blocked`、`delivery_success=false`、`primary_actions_enabled=false`；ACK 只表示 command envelope 已处理，不代表真实 worker、真实 migration、真实 DB/queue、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 
+生成 cloud worker cutover/drain artifact：
+
+```bash
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay \
+  --state-backend sqlite \
+  --state-path /tmp/trashbot_worker_cutover_drain.sqlite \
+  --write-cloud-worker-cutover-drain-artifact /tmp/trashbot_cloud_worker_cutover_drain.json
+```
+
+Preflight 消费该 artifact：
+
+```bash
+TRASHBOT_REMOTE_CLOUD_STATE_BACKEND=sqlite \
+TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT=/tmp/trashbot_cloud_worker_cutover_drain.json \
+python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
+```
+
+该 artifact 的 `schema=trashbot.cloud_worker_cutover_drain.v1`、`summary_schema=trashbot.cloud_worker_cutover_drain_summary.v1`、`evidence_boundary=software_proof_docker_cloud_worker_cutover_drain_gate`。它只在 Docker/local relay state 上 drain pending command，记录 pending count、drained count、cursor before/after、terminal ACK summary、幂等重跑、partial drain fail closed、stale/unsupported schema/unsupported boundary/unsafe copy/credential leak fail closed 和 redaction self-check。有效 artifact 会新增 `cloud_worker_cutover_drain` preflight check，但仍必须保持 `production_ready=false`、`overall_status=blocked`、`delivery_success=false`、`primary_actions_enabled=false`；terminal ACK 只表示云端 envelope 已收口，不代表真实 production worker cutover/drain、真实 DB/queue、Nav2/fixed-route、WAVE ROVER、HIL、真实送达或 real external proof。
+
 生成 OSS/CDN live probe artifact：
 
 ```bash
@@ -279,6 +299,7 @@ python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 - Cloud DB/queue config gate 不得写入 DB/queue endpoint、credential-bearing endpoint、Authorization header、Bearer token、root password、本地 state path、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；只允许枚举化配置状态和外部实证缺口进入 artifact。
 - Cloud DB/queue external probe bundle 不得写入 DB/queue endpoint、credential-bearing endpoint、Authorization header、Bearer token、root password、本地 state path、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；当前只允许枚举化 probe 状态、脱敏状态、not_proven 和恢复建议进入 artifact。
 - Cloud worker/migration rehearsal artifact 不得写入 DB/queue URL、credential-bearing URL、Authorization header、Bearer token、root password、raw local path、串口、UART、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；当前只允许本地 SQLite rehearsal 的枚举状态、布尔 invariant、not_proven 和恢复建议进入 artifact。
+- Cloud worker cutover/drain artifact 不得写入 DB/queue URL、credential-bearing URL、Authorization header、Bearer token、root password、raw local path、串口、UART、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；当前只允许 Docker/local drain 的 pending/drained count、cursor 摘要、terminal ACK summary、幂等状态、not_proven 和恢复建议进入 artifact。
 - OSS/CDN live probe artifact 不得写入完整 CDN URL、完整 object key、Authorization header、Bearer token、OSS secret、AK/SK、credential-bearing URL、本地路径、响应体、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；当前只允许 endpoint path、object key hash、HTTP 状态、脱敏状态和恢复建议进入 artifact。
 - External evidence intake artifact 不得写入 URL、credential-bearing endpoint、Authorization header、Bearer token、OSS AK/SK、DB/queue URL、本地路径、响应体、traceback、串口、baudrate、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`；当前只允许四类外部材料的枚举状态、固定脱敏摘要、not_proven 和恢复建议进入 artifact。
 - 修改 Docker / compose / scripts / Dockerfile 时必须更新本 README 的"标准入口"段落。

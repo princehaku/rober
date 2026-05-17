@@ -54,6 +54,9 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     CLOUD_WORKER_MIGRATION_REHEARSAL_EVIDENCE_BOUNDARY,
     CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA,
     CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA,
+    CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY,
+    CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA,
+    CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA,
     CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY,
     CLOUD_PUBLIC_INGRESS_TLS_SCHEMA,
     CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY,
@@ -113,6 +116,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     build_cloud_public_ingress_tls_artifact_payload,
     build_external_evidence_intake_artifact_payload,
     build_cloud_worker_migration_rehearsal_artifact_payload,
+    build_cloud_worker_cutover_drain_artifact_payload,
     cloud_deployment_readiness_artifact_summary,
     cloud_db_queue_config_artifact_summary,
     cloud_db_queue_external_probe_bundle_summary,
@@ -142,8 +146,10 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     create_cloud_public_ingress_tls_artifact,
     create_external_evidence_intake_artifact,
     create_cloud_worker_migration_rehearsal_artifact,
+    create_cloud_worker_cutover_drain_artifact,
     external_evidence_intake_artifact_summary,
     cloud_worker_migration_rehearsal_artifact_summary,
+    cloud_worker_cutover_drain_artifact_summary,
     network_recovery_artifact_summary,
     network_recovery_drill_payload,
     oss_cdn_live_probe_summary,
@@ -3629,6 +3635,275 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
                 str(bad_schema_path),
                 str(bad_checksum_path),
                 str(stale_path),
+                str(state_path),
+                str(root / "preflight_state.sqlite"),
+                "Authorization",
+                "Bearer",
+                "token",
+                "postgres://",
+                "redis://",
+                "queue URL",
+                "raw local path",
+                "/tmp/",
+                "/dev/ttyUSB0",
+                "UART",
+                "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_worker_cutover_drain_artifact_preflight_and_rerun_are_blocked_by_design(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            state_path = root / "worker_cutover_drain.sqlite"
+            artifact_path = root / "cloud_worker_cutover_drain.json"
+            rerun_artifact_path = root / "cloud_worker_cutover_drain_rerun.json"
+            robot_id = "robot-local-proof"
+            store = SQLiteRelayStore(state_path)
+            now = time.time()
+            for index in range(2):
+                status_code, submitted = store.submit_command(
+                    robot_id,
+                    {
+                        "protocol_version": PROTOCOL_VERSION,
+                        "id": f"cmd-cutover-drain-{index + 1}",
+                        "type": "collect",
+                        "expires_at": now + 300.0,
+                        "payload": {"target": f"cutover_drain_station_{index + 1}", "trash_type": index},
+                    },
+                )
+                self.assertEqual(status_code, 201)
+                self.assertFalse(submitted["duplicate"])
+
+            result = create_cloud_worker_cutover_drain_artifact(
+                artifact_path,
+                state_path,
+                state_backend="sqlite",
+                robot_id=robot_id,
+            )
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            summary = cloud_worker_cutover_drain_artifact_summary(artifact_path)
+            rerun_result = create_cloud_worker_cutover_drain_artifact(
+                rerun_artifact_path,
+                state_path,
+                state_backend="sqlite",
+                robot_id=robot_id,
+            )
+            rerun_artifact = json.loads(rerun_artifact_path.read_text(encoding="utf-8"))
+            preflight_env = {
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "preflight_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                "TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT": str(artifact_path),
+            }
+            payload = production_preflight_payload(preflight_env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps(
+                {
+                    "result": result,
+                    "artifact": artifact,
+                    "summary": summary,
+                    "rerun_result": rerun_result,
+                    "rerun_artifact": rerun_artifact,
+                    "preflight": payload,
+                },
+                ensure_ascii=False,
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(summary["ok"])
+            self.assertTrue(rerun_result["ok"])
+            self.assertEqual(artifact["schema"], CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA)
+            self.assertEqual(artifact["summary_schema"], CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA)
+            self.assertEqual(artifact["evidence_boundary"], CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY)
+            self.assertFalse(artifact["production_ready"])
+            self.assertFalse(artifact["delivery_success"])
+            self.assertFalse(artifact["primary_actions_enabled"])
+            self.assertEqual(artifact["overall_status"], "blocked")
+            self.assertEqual(artifact["cutover_drain"]["pending_count_before"], 2)
+            self.assertEqual(artifact["cutover_drain"]["drained_count"], 2)
+            self.assertEqual(artifact["cutover_drain"]["pending_count_after"], 0)
+            self.assertEqual(artifact["cutover_drain"]["cursor_after"], "none")
+            self.assertEqual(artifact["cutover_drain"]["partial_drain_status"], "passed")
+            self.assertEqual(artifact["cutover_drain"]["idempotent_rerun_status"], "passed")
+            self.assertFalse(artifact["cutover_drain"]["robot_action_triggered"])
+            self.assertEqual(artifact["terminal_ack_summary"]["terminal_ack_count"], 2)
+            self.assertFalse(artifact["terminal_ack_summary"]["terminal_ack_is_delivery_success"])
+            self.assertEqual(rerun_artifact["cutover_drain"]["pending_count_before"], 0)
+            self.assertEqual(rerun_artifact["cutover_drain"]["drained_count"], 0)
+            self.assertFalse(payload["production_ready"])
+            self.assertTrue(payload["software_proof_ready"])
+            self.assertEqual(payload["overall_status"], "blocked")
+            self.assertEqual(payload["evidence_boundary"], CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY)
+            self.assertEqual(checks["cloud_worker_cutover_drain"]["status"], "pass")
+            self.assertFalse(checks["cloud_worker_cutover_drain"]["details"]["production_ready"])
+            self.assertFalse(checks["cloud_worker_cutover_drain"]["details"]["delivery_success"])
+            self.assertFalse(checks["cloud_worker_cutover_drain"]["details"]["primary_actions_enabled"])
+            self.assertEqual(checks["cloud_worker_cutover_drain"]["details"]["terminal_ack_count"], 2)
+            self.assertEqual(
+                checks["cloud_worker_cutover_drain"]["details"]["redaction_status"]["status"],
+                "pass",
+            )
+            for marker in (
+                "software_proof_docker_cloud_worker_cutover_drain_gate",
+                "trashbot.cloud_worker_cutover_drain.v1",
+                "trashbot.cloud_worker_cutover_drain_summary.v1",
+                "real_production_worker_cutover",
+                "production_worker_drain",
+                "delivery_success",
+            ):
+                self.assertIn(marker, encoded)
+            for forbidden in (
+                str(artifact_path),
+                str(rerun_artifact_path),
+                str(state_path),
+                str(root / "preflight_state.sqlite"),
+                "Authorization",
+                "Bearer",
+                "token",
+                "postgres://",
+                "mysql://",
+                "redis://",
+                "amqp://",
+                "database URL",
+                "queue URL",
+                "credential-bearing endpoint",
+                "root password",
+                "raw local path",
+                "/tmp/",
+                "/dev/ttyUSB0",
+                "UART",
+                "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_worker_cutover_drain_fails_closed_for_partial_stale_schema_and_leaks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            state_path = root / "worker_cutover_drain.sqlite"
+            robot_id = "robot-local-proof"
+            base_env = {
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "preflight_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+            missing_payload = production_preflight_payload(base_env)
+            missing_checks = {check["name"]: check for check in missing_payload["checks"]}
+            self.assertEqual(missing_checks["cloud_worker_cutover_drain"]["status"], "warning")
+            self.assertEqual(
+                missing_checks["cloud_worker_cutover_drain"]["code"],
+                "cloud_worker_cutover_drain_artifact_missing",
+            )
+
+            partial_store = SQLiteRelayStore(state_path)
+            now = time.time()
+            for index in range(2):
+                partial_store.submit_command(
+                    robot_id,
+                    {
+                        "protocol_version": PROTOCOL_VERSION,
+                        "id": f"cmd-partial-cutover-{index + 1}",
+                        "type": "collect",
+                        "expires_at": now + 300.0,
+                        "payload": {"target": f"partial_cutover_{index + 1}", "trash_type": index},
+                    },
+                )
+            partial_path = root / "partial_cloud_worker_cutover_drain.json"
+            partial = build_cloud_worker_cutover_drain_artifact_payload(
+                state_path,
+                state_backend="sqlite",
+                robot_id=robot_id,
+                max_drain_count=1,
+                generated_at="2026-05-17T00:00:00Z",
+            )
+            partial_path.write_text(json.dumps(partial, ensure_ascii=False), encoding="utf-8")
+            partial_env = dict(base_env)
+            partial_env["TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT"] = str(partial_path)
+            partial_payload = production_preflight_payload(partial_env)
+            partial_checks = {check["name"]: check for check in partial_payload["checks"]}
+            self.assertFalse(cloud_worker_cutover_drain_artifact_summary(partial_path)["ok"])
+            self.assertEqual(partial_checks["cloud_worker_cutover_drain"]["status"], "blocked")
+
+            bad_schema_path = root / "bad_schema_cloud_worker_cutover_drain.json"
+            bad_schema = build_cloud_worker_cutover_drain_artifact_payload(
+                root / "bad_schema_state.sqlite",
+                state_backend="sqlite",
+                generated_at="2026-05-17T00:00:00Z",
+            )
+            bad_schema["schema"] = "trashbot.unsupported"
+            bad_schema_path.write_text(json.dumps(bad_schema, ensure_ascii=False), encoding="utf-8")
+            bad_schema_env = dict(base_env)
+            bad_schema_env["TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT"] = str(bad_schema_path)
+            bad_schema_payload = production_preflight_payload(bad_schema_env)
+            bad_schema_checks = {check["name"]: check for check in bad_schema_payload["checks"]}
+            self.assertFalse(cloud_worker_cutover_drain_artifact_summary(bad_schema_path)["ok"])
+            self.assertEqual(bad_schema_checks["cloud_worker_cutover_drain"]["status"], "blocked")
+
+            bad_boundary_path = root / "bad_boundary_cloud_worker_cutover_drain.json"
+            bad_boundary = build_cloud_worker_cutover_drain_artifact_payload(
+                root / "bad_boundary_state.sqlite",
+                state_backend="sqlite",
+                generated_at="2026-05-17T00:00:00Z",
+            )
+            bad_boundary["evidence_boundary"] = "software_proof_docker_unsupported_boundary"
+            bad_boundary["checksum"] = _sha256_checksum({k: v for k, v in bad_boundary.items() if k != "checksum"})
+            bad_boundary_path.write_text(json.dumps(bad_boundary, ensure_ascii=False), encoding="utf-8")
+            bad_boundary_env = dict(base_env)
+            bad_boundary_env["TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT"] = str(bad_boundary_path)
+            bad_boundary_payload = production_preflight_payload(bad_boundary_env)
+            bad_boundary_checks = {check["name"]: check for check in bad_boundary_payload["checks"]}
+            self.assertFalse(cloud_worker_cutover_drain_artifact_summary(bad_boundary_path)["ok"])
+            self.assertEqual(bad_boundary_checks["cloud_worker_cutover_drain"]["status"], "blocked")
+
+            stale_path = root / "stale_cloud_worker_cutover_drain.json"
+            stale = build_cloud_worker_cutover_drain_artifact_payload(
+                root / "stale_state.sqlite",
+                state_backend="sqlite",
+                generated_at="2020-01-01T00:00:00Z",
+            )
+            stale["checksum"] = _sha256_checksum({k: v for k, v in stale.items() if k != "checksum"})
+            stale_path.write_text(json.dumps(stale, ensure_ascii=False), encoding="utf-8")
+            stale_env = dict(base_env)
+            stale_env["TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT"] = str(stale_path)
+            stale_payload = production_preflight_payload(stale_env)
+            stale_checks = {check["name"]: check for check in stale_payload["checks"]}
+            self.assertFalse(cloud_worker_cutover_drain_artifact_summary(stale_path)["ok"])
+            self.assertEqual(stale_checks["cloud_worker_cutover_drain"]["status"], "blocked")
+
+            unsafe_path = root / "unsafe_cloud_worker_cutover_drain.json"
+            unsafe = build_cloud_worker_cutover_drain_artifact_payload(
+                root / "unsafe_state.sqlite",
+                state_backend="sqlite",
+                generated_at="2026-05-17T00:00:00Z",
+            )
+            unsafe["safe_summary"] = "raw local path should fail closed"
+            unsafe["retry_hint"] = "Bearer token should fail closed"
+            unsafe["checksum"] = _sha256_checksum({k: v for k, v in unsafe.items() if k != "checksum"})
+            unsafe_path.write_text(json.dumps(unsafe, ensure_ascii=False), encoding="utf-8")
+            unsafe_env = dict(base_env)
+            unsafe_env["TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT"] = str(unsafe_path)
+            unsafe_payload = production_preflight_payload(unsafe_env)
+            unsafe_checks = {check["name"]: check for check in unsafe_payload["checks"]}
+            encoded = json.dumps(
+                {
+                    "partial": partial_payload,
+                    "bad_schema": bad_schema_payload,
+                    "bad_boundary": bad_boundary_payload,
+                    "stale": stale_payload,
+                    "unsafe": unsafe_payload,
+                },
+                ensure_ascii=False,
+            )
+
+            self.assertFalse(cloud_worker_cutover_drain_artifact_summary(unsafe_path)["ok"])
+            self.assertEqual(unsafe_checks["cloud_worker_cutover_drain"]["status"], "blocked")
+            for forbidden in (
+                str(partial_path),
+                str(bad_schema_path),
+                str(bad_boundary_path),
+                str(stale_path),
+                str(unsafe_path),
                 str(state_path),
                 str(root / "preflight_state.sqlite"),
                 "Authorization",

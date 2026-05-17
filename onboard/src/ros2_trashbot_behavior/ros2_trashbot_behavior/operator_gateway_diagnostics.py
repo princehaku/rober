@@ -400,6 +400,13 @@ CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA = (
 CLOUD_WORKER_MIGRATION_REHEARSAL_GATE = (
     "software_proof_docker_cloud_worker_migration_rehearsal_gate"
 )
+CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA = "trashbot.cloud_worker_cutover_drain.v1"
+CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA = (
+    "trashbot.cloud_worker_cutover_drain_summary.v1"
+)
+CLOUD_WORKER_CUTOVER_DRAIN_GATE = (
+    "software_proof_docker_cloud_worker_cutover_drain_gate"
+)
 ROUTE_TASK_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "real_nav2_fixed_route_run",
     "wave_rover_motion",
@@ -414,6 +421,18 @@ CLOUD_WORKER_MIGRATION_REHEARSAL_REQUIRED_NOT_PROVEN = (
     "external_cloud_probe",
     "real_4g_or_sim",
     "real_hil_pass",
+    "delivery_success",
+)
+CLOUD_WORKER_CUTOVER_DRAIN_REQUIRED_NOT_PROVEN = (
+    "real_production_db_queue",
+    "real_cloud_worker_cutover",
+    "real_cloud_drain",
+    "external_cloud_probe",
+    "real_4g_or_sim",
+    "real_hil_pass",
+    "robot_command",
+    "ack_completion",
+    "cursor_advance_or_persistence",
     "delivery_success",
 )
 ROUTE_TASK_REHEARSAL_TEXT_REDACTIONS = (
@@ -489,6 +508,35 @@ def _cloud_worker_migration_rehearsal_status(source, *keys):
         value = source.get(key)
         if isinstance(value, dict):
             for nested_key in ("status", "state", "overall_status"):
+                nested = str(value.get(nested_key) or "").strip()
+                if nested:
+                    return _redact_route_task_rehearsal_text(nested)
+        text = str(value or "").strip()
+        if text:
+            return _redact_route_task_rehearsal_text(text)
+    return "not_proven"
+
+
+def _cloud_worker_cutover_drain_not_proven(source=None):
+    # cutover drain 只证明本地 Docker 侧 drain 摘要，真实 worker/cursor/ACK 结论必须继续外部证明。
+    source = source if isinstance(source, dict) else {}
+    values = []
+    source_values = source.get("not_proven") if isinstance(source.get("not_proven"), list) else []
+    for item in list(source_values) + list(CLOUD_WORKER_CUTOVER_DRAIN_REQUIRED_NOT_PROVEN):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _cloud_worker_cutover_drain_status(source, *keys):
+    # 这里只提取安全状态词，不把 command、ACK、cursor 或原始 drain artifact 带进 Robot diagnostics。
+    if not isinstance(source, dict):
+        return "not_proven"
+    for key in keys:
+        value = source.get(key)
+        if isinstance(value, dict):
+            for nested_key in ("status", "state", "overall_status", "summary"):
                 nested = str(value.get(nested_key) or "").strip()
                 if nested:
                     return _redact_route_task_rehearsal_text(nested)
@@ -1993,6 +2041,33 @@ def _default_cloud_worker_migration_rehearsal_summary(path, status="not_configur
         "read_error": _redact_route_task_rehearsal_text(read_error),
         "safe_summary": "Cloud worker migration rehearsal is not configured; metadata-only diagnostics keep robot actions disabled.",
         "safe_phone_copy": "Cloud worker migration rehearsal is not configured; production_ready=false, delivery_success=false, primary_actions_enabled=false.",
+        "production_ready": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+
+
+def _default_cloud_worker_cutover_drain_summary(path, status="not_configured", read_error=""):
+    # Robot diagnostics 对 cutover drain 只读消费；默认值必须先阻断动作、ACK 和 cursor 推进。
+    return {
+        "schema": CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": CLOUD_WORKER_CUTOVER_DRAIN_GATE,
+        "status": status,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "artifact_ref": _safe_route_task_rehearsal_ref(path),
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "drain_status": "not_proven",
+        "cursor_summary": "not_proven",
+        "terminal_ack_summary": "not_proven",
+        "retry_hint": "attach_cloud_worker_cutover_drain_artifact",
+        "not_proven": _cloud_worker_cutover_drain_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_summary": "Cloud worker cutover drain is not configured; metadata-only diagnostics keep robot actions disabled.",
+        "safe_phone_copy": "Cloud worker cutover drain is not configured; production_ready=false, delivery_success=false, primary_actions_enabled=false.",
         "production_ready": False,
         "delivery_success": False,
         "primary_actions_enabled": False,
@@ -5856,6 +5931,164 @@ def summarize_cloud_worker_migration_rehearsal(path):
             ),
             "safe_summary": "Cloud worker migration rehearsal is metadata-only software proof; it cannot create robot commands, ACKs, cursor updates, or delivery success.",
             "safe_phone_copy": "Cloud worker migration rehearsal is metadata-only; production_ready=false, delivery_success=false, primary_actions_enabled=false.",
+            "production_ready": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    return summary
+
+
+def summarize_cloud_worker_cutover_drain(path):
+    """构建只读、metadata-only 的 cloud worker cutover drain summary。"""
+    artifact_path = os.path.expanduser(str(path or ""))
+    summary = _default_cloud_worker_cutover_drain_summary(
+        artifact_path,
+        read_error="cloud worker cutover drain artifact is not configured",
+    )
+    if not artifact_path:
+        return summary
+    if not os.path.exists(artifact_path):
+        summary.update(
+            {
+                "status": "missing",
+                "read_error": "cloud worker cutover drain artifact not found",
+                "safe_summary": "Cloud worker cutover drain artifact is missing; robot command safety remains fail-closed.",
+                "safe_phone_copy": "Cloud worker cutover drain artifact is missing; production_ready=false, delivery_success=false, primary_actions_enabled=false.",
+                "retry_hint": "regenerate_cloud_worker_cutover_drain_artifact",
+            }
+        )
+        return summary
+
+    summary["exists"] = True
+    try:
+        with open(artifact_path, "r", encoding="utf-8") as f:
+            artifact = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        summary.update(
+            {
+                "status": "read_error",
+                "read_error": _redact_route_task_rehearsal_text(
+                    f"failed reading cloud worker cutover drain artifact: {exc}"
+                ),
+                "safe_summary": "Cloud worker cutover drain artifact could not be read; robot actions remain disabled.",
+                "safe_phone_copy": "Cloud worker cutover drain artifact could not be read; production_ready=false, delivery_success=false, primary_actions_enabled=false.",
+                "retry_hint": "fix_cloud_worker_cutover_drain_json",
+            }
+        )
+        return summary
+    if not isinstance(artifact, dict):
+        summary.update(
+            {
+                "status": "read_error",
+                "read_error": "cloud worker cutover drain artifact JSON must be an object",
+                "safe_summary": "Cloud worker cutover drain artifact shape is invalid; robot actions remain disabled.",
+                "safe_phone_copy": "Cloud worker cutover drain artifact shape is invalid; production_ready=false, delivery_success=false, primary_actions_enabled=false.",
+                "retry_hint": "regenerate_cloud_worker_cutover_drain_artifact",
+            }
+        )
+        return summary
+
+    source_schema = str(artifact.get("schema") or "")
+    source_boundary = str(artifact.get("evidence_boundary") or artifact.get("boundary") or "")
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": artifact.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "not_proven": _cloud_worker_cutover_drain_not_proven(artifact),
+            "read_error": "",
+        }
+    )
+    if source_schema not in (CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA, CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA):
+        summary.update(
+            {
+                "status": "unsupported_schema",
+                "read_error": "cloud worker cutover drain schema is unsupported",
+                "safe_summary": "Cloud worker cutover drain source schema is unsupported; robot command safety remains fail-closed.",
+                "safe_phone_copy": "Cloud worker cutover drain source is unsupported; production_ready=false, delivery_success=false, primary_actions_enabled=false.",
+                "retry_hint": "regenerate_with_supported_cloud_worker_cutover_drain_schema",
+            }
+        )
+        return summary
+    if source_boundary != CLOUD_WORKER_CUTOVER_DRAIN_GATE:
+        summary.update(
+            {
+                "status": "unsupported_boundary",
+                "read_error": "cloud worker cutover drain evidence boundary is unsupported",
+                "safe_summary": "Cloud worker cutover drain source boundary is unsupported; robot command safety remains fail-closed.",
+                "safe_phone_copy": "Cloud worker cutover drain boundary is unsupported; production_ready=false, delivery_success=false, primary_actions_enabled=false.",
+                "retry_hint": "regenerate_with_supported_cloud_worker_cutover_drain_boundary",
+            }
+        )
+        return summary
+
+    encoded_artifact = json.dumps(artifact, ensure_ascii=False)
+    encoded_artifact_lower = encoded_artifact.lower()
+    unsafe_patterns = (
+        "authorization",
+        "bearer ",
+        "credential_url",
+        "db_url",
+        "database_url",
+        "queue_url",
+        "postgres://",
+        "redis://",
+        "/cmd_vel",
+        "/dev/tty",
+        "wave rover",
+    )
+    success_patterns = (
+        "delivery success",
+        "delivery_success\": true",
+        "production_ready\": true",
+        "primary_actions_enabled\": true",
+        "ack_semantics\": \"delivery_success",
+    )
+    if any(pattern in encoded_artifact_lower for pattern in unsafe_patterns + success_patterns):
+        summary.update(
+            {
+                "status": "unsafe_copy",
+                "read_error": "cloud worker cutover drain contains unsafe copy, credentials, success wording, or enabled action flags",
+                "safe_summary": "Cloud worker cutover drain source was rejected by Robot diagnostics redaction checks.",
+                "safe_phone_copy": "Cloud worker cutover drain source was rejected; production_ready=false, delivery_success=false, primary_actions_enabled=false.",
+                "retry_hint": "regenerate_redacted_metadata_only_cutover_drain_artifact",
+            }
+        )
+        return summary
+
+    summary.update(
+        {
+            "status": _cloud_worker_cutover_drain_status(
+                artifact,
+                "status",
+                "overall_status",
+                "drain_status",
+                "cutover_drain",
+            ),
+            "drain_status": _cloud_worker_cutover_drain_status(
+                artifact,
+                "drain_status",
+                "cutover_drain",
+                "drain",
+            ),
+            "cursor_summary": _cloud_worker_cutover_drain_status(
+                artifact,
+                "cursor_summary",
+                "cursor",
+                "cursor_status",
+            ),
+            "terminal_ack_summary": _cloud_worker_cutover_drain_status(
+                artifact,
+                "terminal_ack_summary",
+                "terminal_ack",
+                "ack_summary",
+            ),
+            "retry_hint": _redact_route_task_rehearsal_text(
+                artifact.get("retry_hint") or "keep_metadata_only_until_external_cutover_drain_evidence_exists"
+            ),
+            "safe_summary": "Cloud worker cutover drain is metadata-only software proof; it cannot create robot commands, ACKs, cursor updates, or delivery success.",
+            "safe_phone_copy": "Cloud worker cutover drain is metadata-only; production_ready=false, delivery_success=false, primary_actions_enabled=false.",
             "production_ready": False,
             "delivery_success": False,
             "primary_actions_enabled": False,
@@ -17422,6 +17655,7 @@ def build_diagnostics_payload(
     transaction_isolation_artifact_ref="",
     production_recovery_artifact_ref="",
     cloud_worker_migration_rehearsal_artifact_ref="",
+    cloud_worker_cutover_drain_artifact_ref="",
     route_task_rehearsal_artifact_ref="",
     route_task_rehearsal_bundle_ref="",
     route_task_rehearsal_operator_review_ref="",
@@ -18328,6 +18562,11 @@ def build_diagnostics_payload(
             cloud_worker_migration_rehearsal_artifact_ref
             or os.environ.get("TRASHBOT_CLOUD_WORKER_MIGRATION_REHEARSAL", "")
             or os.environ.get("TRASHBOT_CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY", "")
+        ),
+        cloud_worker_cutover_drain=summarize_cloud_worker_cutover_drain(
+            cloud_worker_cutover_drain_artifact_ref
+            or os.environ.get("TRASHBOT_CLOUD_WORKER_CUTOVER_DRAIN", "")
+            or os.environ.get("TRASHBOT_CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY", "")
         ),
         operator_status_file=str(operator_status_file or ""),
     )

@@ -44,6 +44,8 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 
 本轮 `2026.05.17_07-08_cloud-worker-migration-rehearsal` 新增 cloud worker/migration rehearsal gate，证据边界是 `software_proof_docker_cloud_worker_migration_rehearsal_gate`。Artifact schema 为 `trashbot.cloud_worker_migration_rehearsal.v1`，summary schema 为 `trashbot.cloud_worker_migration_rehearsal_summary.v1`，在本地 SQLite relay state 上演练 state 初始化、schema version 标记、重复运行幂等、坏 schema/checksum/stale artifact fail closed、command enqueue、status write、ACK accepted/processing 和 terminal ACK cursor 语义。有效 artifact 与 preflight check 仍必须保持 `production_ready=false`、`overall_status=blocked`、`delivery_success=false`、`primary_actions_enabled=false`。该 gate 只证明 Docker/local SQLite rehearsal 可执行，不得声明真实 production worker、真实 migration、真实 production DB/queue、多实例一致性、真实云、真实 4G/SIM、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。
 
+本轮 `2026.05.17_08-09_cloud-worker-cutover-drain-gate` 新增 cloud worker cutover/drain gate，证据边界是 `software_proof_docker_cloud_worker_cutover_drain_gate`。Artifact schema 为 `trashbot.cloud_worker_cutover_drain.v1`，summary schema 为 `trashbot.cloud_worker_cutover_drain_summary.v1`，在 Docker/local File 或 SQLite relay state 上 drain pending command，记录 pending count、drained count、cursor before/after、terminal ACK summary、幂等重跑、partial drain fail closed、stale/unsupported schema/unsupported boundary/unsafe copy/credential leak fail closed 和 redaction self-check。有效 artifact 与 preflight check 仍必须保持 `production_ready=false`、`overall_status=blocked`、`delivery_success=false`、`primary_actions_enabled=false`。terminal ACK 只代表云端 envelope 已收口，不代表真实送达、真实 production worker cutover/drain、真实 production DB/queue、多实例一致性、真实云、真实 4G/SIM、Nav2/fixed-route、WAVE ROVER、HIL 或 real external proof。
+
 ## 云端基线规格
 
 目标服务端基线：

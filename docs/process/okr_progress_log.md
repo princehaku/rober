@@ -8,6 +8,18 @@
 
 ## 2026-05-17 系列
 
+更新时间：2026-05-17 08:59 Asia/Shanghai。
+
+### 2026-05-17 08-09｜cloud-worker-cutover-drain-gate｜O5 worker cutover drain Docker-only software proof，云中转由约 67% 上调到约 68%
+
+`sprints/2026.05.17_08-09_cloud-worker-cutover-drain-gate/` 完成 `software_proof_docker_cloud_worker_cutover_drain_gate`：Full-stack worker 更新 `.env.example`、`cloud-relay/README.md`、`cloud-relay/scripts/docker_smoke.sh`、`cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py`、`docs/product/cloud_4g_infrastructure.md`、`onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py` 与 `onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py`。本轮新增 `cloud_worker_cutover_drain` CLI/env artifact generation and consumption、preflight check `cloud_worker_cutover_drain`、artifact schema `trashbot.cloud_worker_cutover_drain.v1` 与 summary schema `trashbot.cloud_worker_cutover_drain_summary.v1`；drain summary 记录 pending/drained count、cursor before/after、terminal ACK summary、idempotent rerun、partial-drain fail-closed、stale/schema/boundary/leak fail-closed 和 redaction self-check。Task A 验证输出 `test_remote_cloud_relay.py` `Ran 76 tests in 10.399s OK`、py_compile passed、`cd cloud-relay && TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-smoke-token bash scripts/docker_smoke.sh` passed，覆盖 build/start、artifact generation、preflight consumption、status/command/ACK、cutover drain rerun、backup/restore 和 restart recovery；required `rg` 与 scoped `git diff --check` passed。
+
+Robot worker 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`、`onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_bridge_protocol.py` 与 `docs/interfaces/ros_contracts.md`；新增 `cloud_worker_cutover_drain` metadata-only diagnostics fence，支持 safe summary builder、env/path consumption、diagnostics exposure 和 fail-closed guardrails。Robot tests 证明 summary 不触发 backend actions、ACKs 或 cursor persistence，且 sidecar metadata 会从 normalized command payload 中剥离。Task B 验证输出 unittest `Ran 335 tests in 101.917s OK`、py_compile passed、required `rg` passed、scoped `git diff --check` passed。
+
+Product closeout 更新 sprint 留档、`OKR.md` 和本日志；required `rg` 与 closeout scoped `git diff --check` 均通过。该证据只支持 Objective 5 从约 67% 保守上调到约 68%。理由是 Objective 5 已从 Docker/local worker migration rehearsal 前进到 cutover drain gate，并有 full Docker smoke、preflight consumption、Robot metadata-only isolation、unittest、py_compile、required `rg` 和 scoped `git diff --check` 证据闭环。边界固定为 `Docker-only`、`software_proof_docker_cloud_worker_cutover_drain_gate`、`production_ready=false`、`delivery_success=false`、`primary_actions_enabled=false`、not real external proof。
+
+Objective 1/2/3/4 不调整，因为本轮不包含真实 WAVE ROVER、UART、HIL、2D LiDAR / ToF 材料、真实 route/elevator field pass、Nav2/fixed-route、真实 task record、真实手机/browser、production app、PWA prompt/user choice 或 delivery success。PR #4 route/elevator field materials 仍独立存在，仍缺真实门状态、目标楼层确认、人工协助记录、Nav2/fixed-route runtime log、route completion signal、task record、dropoff/cancel completion 和 delivery result。PR #5 2D LiDAR / ToF hardware materials 仍独立存在，仍缺真实 SKU/source、receipt、采购、安装、接线、电源、标定、HIL-entry 和 field evidence。本轮不证明真实 production worker/migration/cutover、真实 production DB/queue、真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、真实手机/browser、Nav2/fixed-route、route/elevator field pass、WAVE ROVER、HIL 或真实送达。
+
 更新时间：2026-05-17 07:22 Asia/Shanghai。
 
 ### 2026-05-17 07-08｜cloud-worker-migration-rehearsal｜O5 worker/migration Docker-only rehearsal software proof，云中转由约 66% 上调到约 67%

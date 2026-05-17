@@ -51,6 +51,9 @@ EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY = "software_proof_docker_external_evi
 CLOUD_WORKER_MIGRATION_REHEARSAL_EVIDENCE_BOUNDARY = (
     "software_proof_docker_cloud_worker_migration_rehearsal_gate"
 )
+CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_worker_cutover_drain_gate"
+)
 CLOUD_HOSTED_MOBILE_WEB_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_hosted_mobile_web_gate"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -61,6 +64,7 @@ QUEUE_ORDERING_DRILL_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 TRANSACTION_ISOLATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 PRODUCTION_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
+CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 DEPLOY_EVIDENCE_BOUNDARY = "software_proof_docker_deploy"
 BACKUP_ARTIFACT_SCHEMA = "trashbot.remote_cloud_relay_backup.v1"
 BACKUP_ARTIFACT_VERSION = 1
@@ -98,6 +102,10 @@ CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA = "trashbot.cloud_worker_migration_rehea
 CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA_VERSION = 1
 CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA = "trashbot.cloud_worker_migration_rehearsal_summary.v1"
 CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA_VERSION = 1
+CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA = "trashbot.cloud_worker_cutover_drain.v1"
+CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA_VERSION = 1
+CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA = "trashbot.cloud_worker_cutover_drain_summary.v1"
+CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA_VERSION = 1
 CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA = "trashbot.cloud_hosted_mobile_web_gate"
 CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA_VERSION = 1
 OSS_CDN_BUCKET = "bytegallop"
@@ -350,6 +358,28 @@ CLOUD_WORKER_MIGRATION_REHEARSAL_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+CLOUD_WORKER_CUTOVER_DRAIN_NOT_PROVEN = [
+    "real_production_worker_cutover",
+    "real_production_db_connectivity",
+    "real_production_queue_connectivity",
+    "production_worker_drain",
+    "production_migration_run",
+    "production_queue_worker_run",
+    "production_db_or_queue",
+    "multi_instance_consistency",
+    "production_queue_ordering",
+    "production_transaction_isolation",
+    "production_backup_policy",
+    "real_disaster_recovery",
+    "real_cloud",
+    "real_4g_sim",
+    "https_tls_public_ingress",
+    "real_oss_upload",
+    "cdn_origin_fetch",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+]
 
 # 这些文案直接给手机 UI 使用，不能夹带 HTTP 栈、ROS 话题、串口或凭证细节。
 PHONE_COPY = {
@@ -378,6 +408,7 @@ PHONE_COPY = {
     "oss_cdn_live_probe_blocked": "OSS/CDN live probe gate 未通过校验，请重新生成后再试。",
     "external_evidence_intake_blocked": "外部证据 intake artifact 未通过校验，请重新生成脱敏材料后再试。",
     "cloud_worker_migration_rehearsal_blocked": "Cloud worker/migration 本地演练未通过，请重新生成 artifact 后再试。",
+    "cloud_worker_cutover_drain_blocked": "Cloud worker cutover/drain 本地 gate 未通过，请重新生成 artifact 后再试。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -3367,6 +3398,409 @@ def cloud_worker_migration_rehearsal_artifact_summary(artifact_path):
         }
 
 
+def _cloud_worker_cutover_drain_forbidden_markers(payload):
+    # Cutover/drain artifact 会被 preflight 和手机摘要消费，必须拒绝连接串、凭证、路径和底层控制词。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token",
+        "secret",
+        "password",
+        "root password",
+        "postgres://",
+        "mysql://",
+        "redis://",
+        "amqp://",
+        "kafka://",
+        "database url",
+        "database_url",
+        "db url",
+        "db_url",
+        "queue url",
+        "queue_url",
+        "credential-bearing",
+        "raw local path",
+        "raw state path",
+        "state path",
+        "/tmp/",
+        "/var/",
+        "/etc/",
+        "/dev/",
+        "serial",
+        "uart",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/trashbot/",
+        "/odom",
+        "/imu",
+        "/battery",
+        "traceback",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def _cutover_cursor_marker(command_id):
+    # cursor 只用于证明 drain 前后队列位置变化；用摘要避免把业务 command id 原文写进 artifact。
+    command_key = str(command_id or "").strip()
+    if not command_key:
+        return "none"
+    return "sha256:" + hashlib.sha256(command_key.encode("utf-8")).hexdigest()[:16]
+
+
+def _cutover_state_backend(state_backend):
+    # 该 gate 只覆盖 Docker/local file 或 SQLite relay state；其他 backend 必须 fail closed。
+    backend = str(state_backend or "sqlite").strip()
+    if backend not in {"file", "sqlite"}:
+        raise ValueError("unsupported cloud worker cutover drain state backend")
+    return backend
+
+
+def _cutover_command_history_count(store, robot_id):
+    # 幂等重跑依赖历史判断：已 ACK 的本地 proof state 不能再次自动注入 command。
+    robot_key = _robot_key(robot_id)
+    if isinstance(store, SQLiteRelayStore):
+        with store._lock:
+            store._ensure_ready()
+            with store._session() as connection:
+                command_count = connection.execute(
+                    "SELECT COUNT(*) AS count FROM commands WHERE robot_id = ?",
+                    (robot_key,),
+                ).fetchone()["count"]
+                ack_count = connection.execute(
+                    "SELECT COUNT(*) AS count FROM acks WHERE robot_id = ?",
+                    (robot_key,),
+                ).fetchone()["count"]
+        return int(command_count or 0) + int(ack_count or 0)
+    if isinstance(store, FileBackedRelayStore):
+        with store._lock:
+            robot = store._robot_locked(robot_key)
+            return len(robot.get("commands") or []) + len(robot.get("acks") or {})
+    raise ValueError("unsupported relay store for cutover drain")
+
+
+def _cutover_pending_command_ids(store, robot_id):
+    # drain 只读取 relay queue 中未被 terminal ACK 收口的 command，不调用 next_command 触发 robot polling。
+    robot_key = _robot_key(robot_id)
+    now_value = _now()
+    if isinstance(store, SQLiteRelayStore):
+        with store._lock:
+            store._ensure_ready()
+            with store._session() as connection:
+                rows = connection.execute(
+                    """
+                    SELECT command_id, expires_at
+                    FROM commands
+                    WHERE robot_id = ?
+                    ORDER BY created_at ASC, command_id ASC
+                    """,
+                    (robot_key,),
+                ).fetchall()
+                ack_rows = connection.execute(
+                    "SELECT command_id FROM acks WHERE robot_id = ?",
+                    (robot_key,),
+                ).fetchall()
+        acked = {str(row["command_id"]) for row in ack_rows}
+        return [
+            str(row["command_id"])
+            for row in rows
+            if str(row["command_id"]) not in acked and float(row["expires_at"] or 0.0) >= now_value
+        ]
+    if isinstance(store, FileBackedRelayStore):
+        with store._lock:
+            robot = store._robot_locked(robot_key)
+            acked = set(robot.get("acks") or {})
+            commands = list(robot.get("commands") or [])
+        return [
+            str(command.get("id"))
+            for command in commands
+            if str(command.get("id") or "") not in acked and float(command.get("expires_at") or 0.0) >= now_value
+        ]
+    raise ValueError("unsupported relay store for cutover drain")
+
+
+def _seed_cutover_drain_commands_if_empty(store, robot_id):
+    # 空 state 首次生成 artifact 时注入本地 proof command；已有历史时不再注入，保证重跑幂等。
+    if _cutover_command_history_count(store, robot_id) != 0:
+        return False
+    now_value = _now()
+    for index, command_type in enumerate(("collect", "confirm_dropoff"), start=1):
+        payload = {
+            "protocol_version": PROTOCOL_VERSION,
+            "id": f"cmd-cloud-worker-cutover-drain-{index}",
+            "type": command_type,
+            "expires_at": now_value + 300.0,
+            "payload": {"target": "cutover_drain_station", "trash_type": 0},
+        }
+        if command_type == "confirm_dropoff":
+            payload["payload"] = {"target": "cutover_drain_bin"}
+        store.submit_command(robot_id, payload)
+    return True
+
+
+def _drain_cutover_pending_commands(store, robot_id, *, max_drain_count=None):
+    # drain 通过写 terminal ACK 收口 relay envelope；它不调用底盘、Nav2 或真实 robot action。
+    pending_before = _cutover_pending_command_ids(store, robot_id)
+    if max_drain_count is None:
+        selected = list(pending_before)
+    else:
+        selected = list(pending_before[: max(0, int(max_drain_count))])
+    terminal_states = []
+    now_value = _now()
+    for command_id in selected:
+        # terminal ACK 只是 worker 已处理云端 envelope；delivery_success 必须继续保持 false。
+        ack_result = store.post_ack(
+            robot_id,
+            command_id,
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "acked",
+                "message": "cloud worker cutover drain terminal ack",
+                "updated_at": now_value,
+                "result": {"cutover_drain": "terminal_ack_recorded"},
+            },
+        )
+        terminal_states.append(str(ack_result.get("ack", {}).get("state") or ""))
+    pending_after = _cutover_pending_command_ids(store, robot_id)
+    return {
+        "pending_count_before": len(pending_before),
+        "drained_count": len(selected),
+        "pending_count_after": len(pending_after),
+        "cursor_before": _cutover_cursor_marker(pending_before[0] if pending_before else ""),
+        "cursor_after": _cutover_cursor_marker(pending_after[0] if pending_after else ""),
+        "terminal_states": terminal_states,
+        "partial_drain_status": "passed" if not pending_after else "failed",
+    }
+
+
+def build_cloud_worker_cutover_drain_artifact_payload(
+    state_path,
+    *,
+    state_backend="sqlite",
+    generated_at=None,
+    robot_id="robot-local-proof",
+    max_drain_count=None,
+):
+    """Drain Docker/local relay state pending commands and return a phone-safe artifact."""
+    backend = _cutover_state_backend(state_backend)
+    generated_value = str(generated_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())).strip()
+    store = build_relay_store(state_path, backend)
+    if not store.state_store_writable():
+        raise ValueError("cloud worker cutover drain state store unavailable")
+    seeded = _seed_cutover_drain_commands_if_empty(store, robot_id)
+    drain = _drain_cutover_pending_commands(store, robot_id, max_drain_count=max_drain_count)
+    rerun = _drain_cutover_pending_commands(store, robot_id, max_drain_count=None)
+    idempotent = rerun["pending_count_before"] == 0 and rerun["drained_count"] == 0
+    terminal_ack_count = len([state for state in drain["terminal_states"] if state in TERMINAL_ACK_STATES])
+    terminal_ack_summary = {
+        "terminal_ack_count": terminal_ack_count,
+        "terminal_ack_states": sorted(set(drain["terminal_states"])),
+        "terminal_ack_is_delivery_success": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+    body = {
+        "schema": CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA,
+        "schema_version": CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA_VERSION,
+        "summary_schema": CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA,
+        "summary_schema_version": CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY,
+        "generated_at": generated_value,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "software_proof_ready": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "cutover_drain": {
+            "state_backend": backend,
+            "seeded_local_proof_commands": seeded,
+            "pending_count_before": drain["pending_count_before"],
+            "drained_count": drain["drained_count"],
+            "pending_count_after": drain["pending_count_after"],
+            "cursor_before": drain["cursor_before"],
+            "cursor_after": drain["cursor_after"],
+            "partial_drain_status": drain["partial_drain_status"],
+            "idempotent_rerun_status": "passed" if idempotent else "failed",
+            "robot_action_triggered": False,
+        },
+        "terminal_ack_summary": terminal_ack_summary,
+        "not_proven": list(CLOUD_WORKER_CUTOVER_DRAIN_NOT_PROVEN),
+        "safe_summary": (
+            "Cloud worker cutover/drain 已在 Docker/local relay state 上完成；"
+            "terminal ACK 只证明云端 envelope 已收口，不代表真实送达。"
+        ),
+        "retry_hint": "run_real_production_worker_cutover_drain_with_redacted_external_evidence",
+        "redaction_status": {
+            "status": "pass",
+            "db_queue_locations_recorded": False,
+            "credential_headers_recorded": False,
+            "opaque_auth_values_recorded": False,
+            "raw_local_paths_recorded": False,
+            "robot_control_details_recorded": False,
+        },
+    }
+    forbidden = _cloud_worker_cutover_drain_forbidden_markers(body)
+    if forbidden:
+        raise ValueError("cloud worker cutover drain artifact contains forbidden phone-unsafe markers")
+    artifact = dict(body)
+    artifact["checksum"] = _sha256_checksum(body)
+    return artifact
+
+
+def validate_cloud_worker_cutover_drain_artifact_payload(artifact, *, now=None, stale_after_sec=None):
+    # 校验只返回 summary，避免把完整 drain artifact、cursor 原文或本机 state 信息扩散到 preflight。
+    if not isinstance(artifact, dict):
+        raise ValueError("cloud worker cutover drain artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA:
+        raise ValueError("cloud worker cutover drain schema mismatch")
+    if artifact.get("schema_version") != CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA_VERSION:
+        raise ValueError("cloud worker cutover drain schema version mismatch")
+    if artifact.get("summary_schema") != CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA:
+        raise ValueError("cloud worker cutover drain summary schema mismatch")
+    if artifact.get("evidence_boundary") != CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY:
+        raise ValueError("cloud worker cutover drain evidence boundary mismatch")
+    if checksum != _sha256_checksum(body):
+        raise ValueError("cloud worker cutover drain checksum mismatch")
+    if artifact.get("production_ready") is not False or artifact.get("overall_status") != "blocked":
+        raise ValueError("cloud worker cutover drain must stay production blocked")
+    if artifact.get("delivery_success") is not False or artifact.get("primary_actions_enabled") is not False:
+        raise ValueError("cloud worker cutover drain must not enable delivery actions")
+    generated_at = str(artifact.get("generated_at") or "")
+    timestamp = _parse_manifest_time(generated_at)
+    stale_window = (
+        CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT_STALE_AFTER_SEC
+        if stale_after_sec is None
+        else float(stale_after_sec)
+    )
+    now_value = _now() if now is None else float(now)
+    if timestamp is None or now_value - timestamp > stale_window:
+        raise ValueError("cloud worker cutover drain artifact stale")
+    drain = artifact.get("cutover_drain")
+    terminal = artifact.get("terminal_ack_summary")
+    if not isinstance(drain, dict) or not isinstance(terminal, dict):
+        raise ValueError("cloud worker cutover drain sections missing")
+    if drain.get("state_backend") not in {"file", "sqlite"}:
+        raise ValueError("cloud worker cutover drain backend mismatch")
+    if int(drain.get("pending_count_before", -1)) < 0:
+        raise ValueError("cloud worker cutover drain pending count missing")
+    if int(drain.get("drained_count", -1)) < 0 or int(drain.get("pending_count_after", -1)) != 0:
+        raise ValueError("cloud worker cutover drain did not drain pending commands")
+    if drain.get("partial_drain_status") != "passed":
+        raise ValueError("cloud worker cutover drain partial drain must fail closed")
+    if drain.get("idempotent_rerun_status") != "passed" or drain.get("robot_action_triggered") is not False:
+        raise ValueError("cloud worker cutover drain idempotency mismatch")
+    if not str(drain.get("cursor_before") or "").startswith(("sha256:", "none")):
+        raise ValueError("cloud worker cutover drain cursor before mismatch")
+    if str(drain.get("cursor_after") or "") != "none":
+        raise ValueError("cloud worker cutover drain cursor after mismatch")
+    if terminal.get("terminal_ack_is_delivery_success") is not False:
+        raise ValueError("cloud worker cutover drain ACK must not claim delivery")
+    if terminal.get("delivery_success") is not False or terminal.get("primary_actions_enabled") is not False:
+        raise ValueError("cloud worker cutover drain terminal ACK summary is unsafe")
+    terminal_ack_count = int(terminal.get("terminal_ack_count", 0) or 0)
+    if terminal_ack_count != int(drain.get("drained_count", 0) or 0):
+        raise ValueError("cloud worker cutover drain ACK count mismatch")
+    states = terminal.get("terminal_ack_states") if isinstance(terminal.get("terminal_ack_states"), list) else []
+    if terminal_ack_count and not set(states).issubset(TERMINAL_ACK_STATES):
+        raise ValueError("cloud worker cutover drain ACK states mismatch")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    missing_not_proven = [item for item in CLOUD_WORKER_CUTOVER_DRAIN_NOT_PROVEN if item not in not_proven]
+    if missing_not_proven:
+        raise ValueError("cloud worker cutover drain not_proven list is incomplete")
+    redaction = artifact.get("redaction_status")
+    if not isinstance(redaction, dict) or redaction.get("status") != "pass":
+        raise ValueError("cloud worker cutover drain redaction status missing")
+    safe_summary = str(artifact.get("safe_summary") or "")
+    retry_hint = str(artifact.get("retry_hint") or "")
+    if not safe_summary or not retry_hint:
+        raise ValueError("cloud worker cutover drain summary missing")
+    forbidden = _cloud_worker_cutover_drain_forbidden_markers(artifact)
+    if forbidden:
+        raise ValueError("cloud worker cutover drain artifact contains forbidden phone-unsafe markers")
+    return {
+        "ok": True,
+        "schema": CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA,
+        "schema_version": CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA_VERSION,
+        "artifact_schema": CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA,
+        "artifact_schema_version": CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "software_proof_ready": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "cutover_drain_status": "passed",
+        "state_backend": drain.get("state_backend"),
+        "pending_count_before": int(drain.get("pending_count_before", 0) or 0),
+        "drained_count": int(drain.get("drained_count", 0) or 0),
+        "pending_count_after": int(drain.get("pending_count_after", 0) or 0),
+        "cursor_before": str(drain.get("cursor_before") or ""),
+        "cursor_after": str(drain.get("cursor_after") or ""),
+        "terminal_ack_count": terminal_ack_count,
+        "terminal_ack_is_delivery_success": False,
+        "idempotent_rerun_status": drain.get("idempotent_rerun_status"),
+        "robot_action_triggered": False,
+        "generated_at": generated_at,
+        "staleness": "fresh",
+        "redaction_status": safe_value(redaction),
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "not_proven": list(CLOUD_WORKER_CUTOVER_DRAIN_NOT_PROVEN),
+    }
+
+
+def create_cloud_worker_cutover_drain_artifact(
+    artifact_path,
+    state_path,
+    *,
+    state_backend="sqlite",
+    robot_id="robot-local-proof",
+    max_drain_count=None,
+):
+    # CLI 写入的是 Docker-only drain gate：它只 ACK relay envelope，不触发 robot action 或真实 worker cutover。
+    artifact = build_cloud_worker_cutover_drain_artifact_payload(
+        state_path,
+        state_backend=state_backend,
+        robot_id=robot_id,
+        max_drain_count=max_drain_count,
+    )
+    _write_json_artifact(artifact_path, artifact)
+    summary = validate_cloud_worker_cutover_drain_artifact_payload(artifact)
+    return {
+        "ok": True,
+        "cloud_worker_cutover_drain_status": "blocked",
+        "evidence_boundary": CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_summary": artifact.get("safe_summary"),
+        "retry_hint": artifact.get("retry_hint"),
+        "artifact": summary,
+        "not_proven": list(CLOUD_WORKER_CUTOVER_DRAIN_NOT_PROVEN),
+    }
+
+
+def cloud_worker_cutover_drain_artifact_summary(artifact_path):
+    # 失败摘要固定为 phone-safe 文案，不回显 artifact 路径、SQLite 路径、cursor 或底层异常。
+    try:
+        artifact = _load_json_file(artifact_path, "cloud worker cutover drain artifact")
+        return validate_cloud_worker_cutover_drain_artifact_payload(artifact)
+    except ValueError:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "cloud_worker_cutover_drain_invalid",
+            "safe_summary": "Cloud worker cutover/drain artifact 不可用。",
+            "retry_hint": "重新生成 cloud worker cutover drain artifact 后重跑 preflight。",
+            "not_proven": list(CLOUD_WORKER_CUTOVER_DRAIN_NOT_PROVEN),
+        }
+
+
 def _production_store_queue_forbidden_markers(payload):
     # 该 artifact 会进入手机和 preflight，必须拒绝真实连接串、队列地址、路径和底层控制词。
     encoded = json.dumps(payload, ensure_ascii=False).lower()
@@ -5043,6 +5477,10 @@ def production_preflight_payload(env=None):
         env,
         "TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT",
     )
+    cloud_worker_cutover_drain_artifact_path = _env_value(
+        env,
+        "TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT",
+    )
     external_evidence_intake_artifact_path = _env_value(
         env,
         "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT",
@@ -5433,6 +5871,77 @@ def production_preflight_payload(env=None):
                 "cloud_worker_migration_rehearsal_artifact_missing",
                 "尚未提供 cloud worker/migration rehearsal artifact，不能声明 migration/worker 本地演练软件证明。",
                 "生成 cloud worker migration rehearsal artifact，并用 TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT 传给 preflight。",
+                {"artifact_present": False, "software_proof_only": True},
+            )
+        )
+
+    if cloud_worker_cutover_drain_artifact_path:
+        # cutover/drain 只消费 Docker/local relay state artifact；terminal ACK 仍不能代表真实送达。
+        cutover_summary = cloud_worker_cutover_drain_artifact_summary(
+            cloud_worker_cutover_drain_artifact_path
+        )
+        if cutover_summary.get("ok"):
+            checks.append(
+                _check(
+                    "cloud_worker_cutover_drain",
+                    "pass",
+                    "local_cloud_worker_cutover_drain_artifact_valid",
+                    str(
+                        cutover_summary.get("safe_summary")
+                        or "Cloud worker cutover/drain artifact 已通过 schema、checksum 和脱敏校验。"
+                    ),
+                    str(
+                        cutover_summary.get("retry_hint")
+                        or "继续补真实 production worker cutover/drain 和外部 DB/queue 证据。"
+                    ),
+                    {
+                        "artifact_schema": CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA,
+                        "schema_version": CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA_VERSION,
+                        "summary_schema": CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA,
+                        "summary_schema_version": CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA_VERSION,
+                        "evidence_boundary": CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY,
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "software_proof_ready": True,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                        "cutover_drain_status": cutover_summary.get("cutover_drain_status"),
+                        "state_backend": cutover_summary.get("state_backend"),
+                        "pending_count_before": cutover_summary.get("pending_count_before"),
+                        "drained_count": cutover_summary.get("drained_count"),
+                        "pending_count_after": cutover_summary.get("pending_count_after"),
+                        "cursor_before": cutover_summary.get("cursor_before"),
+                        "cursor_after": cutover_summary.get("cursor_after"),
+                        "terminal_ack_count": cutover_summary.get("terminal_ack_count"),
+                        "terminal_ack_is_delivery_success": False,
+                        "idempotent_rerun_status": cutover_summary.get("idempotent_rerun_status"),
+                        "robot_action_triggered": False,
+                        "redaction_status": cutover_summary.get("redaction_status"),
+                    },
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "cloud_worker_cutover_drain",
+                    "blocked",
+                    "cloud_worker_cutover_drain_artifact_invalid",
+                    str(cutover_summary.get("safe_summary") or "Cloud worker cutover/drain artifact 不可用。"),
+                    str(
+                        cutover_summary.get("retry_hint")
+                        or "重新生成 cloud worker cutover drain artifact 后重跑 preflight。"
+                    ),
+                    {"artifact_present": True, "software_proof_only": True},
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "cloud_worker_cutover_drain",
+                "warning",
+                "cloud_worker_cutover_drain_artifact_missing",
+                "尚未提供 cloud worker cutover/drain artifact，不能声明本地 worker drain 软件证明。",
+                "生成 cloud worker cutover drain artifact，并用 TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT 传给 preflight。",
                 {"artifact_present": False, "software_proof_only": True},
             )
         )
@@ -6288,6 +6797,10 @@ def production_preflight_payload(env=None):
         check["name"] == "cloud_worker_migration_rehearsal" and check["status"] == "pass"
         for check in checks
     )
+    local_cloud_worker_cutover_drain_ok = any(
+        check["name"] == "cloud_worker_cutover_drain" and check["status"] == "pass"
+        for check in checks
+    )
     local_external_evidence_intake_ok = any(
         check["name"] == "external_evidence_intake" and check["status"] == "pass"
         for check in checks
@@ -6345,6 +6858,8 @@ def production_preflight_payload(env=None):
         not_proven.insert(16, "cloud_db_queue_external_probe_bundle")
     if not local_cloud_worker_migration_rehearsal_ok:
         not_proven.insert(16, "cloud_worker_migration_rehearsal")
+    if not local_cloud_worker_cutover_drain_ok:
+        not_proven.insert(16, "cloud_worker_cutover_drain")
     if not local_oss_cdn_live_probe_ok:
         not_proven.insert(16, "oss_cdn_live_probe_gate")
     if not local_external_evidence_intake_ok:
@@ -6366,6 +6881,7 @@ def production_preflight_payload(env=None):
             or local_cloud_db_queue_config_seen
             or local_cloud_db_queue_external_probe_ok
             or local_cloud_worker_migration_rehearsal_ok
+            or local_cloud_worker_cutover_drain_ok
         ),
         "production_ready": production_ready,
         "service": "remote_cloud_relay",
@@ -6373,6 +6889,8 @@ def production_preflight_payload(env=None):
         "evidence_boundary": (
             EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY
             if local_external_evidence_intake_ok
+            else CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY
+            if local_cloud_worker_cutover_drain_ok
             else CLOUD_WORKER_MIGRATION_REHEARSAL_EVIDENCE_BOUNDARY
             if local_cloud_worker_migration_rehearsal_ok
             else OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY
@@ -7861,6 +8379,11 @@ def main(argv=None):
         help="phone-safe cloud worker/migration rehearsal artifact consumed by preflight",
     )
     parser.add_argument(
+        "--cloud-worker-cutover-drain-artifact",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT", ""),
+        help="phone-safe cloud worker cutover/drain artifact consumed by preflight",
+    )
+    parser.add_argument(
         "--write-oss-cdn-manifest",
         default="",
         help="write a phone-safe OSS/CDN object reference manifest artifact JSON and exit",
@@ -7936,6 +8459,11 @@ def main(argv=None):
         help="run a Docker/local SQLite worker/migration rehearsal and write a phone-safe artifact",
     )
     parser.add_argument(
+        "--write-cloud-worker-cutover-drain-artifact",
+        default="",
+        help="drain Docker/local relay pending commands and write a phone-safe cutover/drain artifact",
+    )
+    parser.add_argument(
         "--cloud-external-probe-base-url",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_BASE_URL", ""),
         help="base URL used only for live endpoint probing; it is not written into the artifact",
@@ -7986,6 +8514,17 @@ def main(argv=None):
         "--cloud-worker-migration-rehearsal-robot-id",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ROBOT_ID", "robot-local-proof"),
         help="robot id embedded in generated cloud worker/migration rehearsal proof",
+    )
+    parser.add_argument(
+        "--cloud-worker-cutover-drain-robot-id",
+        default=os.environ.get("TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ROBOT_ID", "robot-local-proof"),
+        help="robot id used to drain local cloud worker relay state",
+    )
+    parser.add_argument(
+        "--cloud-worker-cutover-drain-max-commands",
+        type=int,
+        default=int(os.environ.get("TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_MAX_COMMANDS", "-1")),
+        help="test-only drain limit; -1 drains all pending commands for a valid artifact",
     )
     parser.add_argument(
         "--queue-ordering-drill-status",
@@ -8118,6 +8657,10 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT"] = (
                 args.cloud_worker_migration_rehearsal_artifact
             )
+        if args.cloud_worker_cutover_drain_artifact:
+            preflight_env["TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT"] = (
+                args.cloud_worker_cutover_drain_artifact
+            )
         payload = production_preflight_payload(preflight_env)
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
@@ -8130,6 +8673,24 @@ def main(argv=None):
             )
         except (ValueError, OSError, sqlite3.Error) as exc:
             payload = phone_error("cloud_worker_migration_rehearsal_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
+    if args.write_cloud_worker_cutover_drain_artifact:
+        try:
+            drain_limit = (
+                None
+                if int(args.cloud_worker_cutover_drain_max_commands) < 0
+                else int(args.cloud_worker_cutover_drain_max_commands)
+            )
+            payload = create_cloud_worker_cutover_drain_artifact(
+                args.write_cloud_worker_cutover_drain_artifact,
+                args.state_path,
+                state_backend=args.state_backend,
+                robot_id=args.cloud_worker_cutover_drain_robot_id,
+                max_drain_count=drain_limit,
+            )
+        except (ValueError, OSError, sqlite3.Error) as exc:
+            payload = phone_error("cloud_worker_cutover_drain_blocked", _safe_error_reason(exc))
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("ok") else 2
     if args.write_external_evidence_intake_artifact:
