@@ -38,6 +38,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_result_acceptance_backfill,
     summarize_route_task_field_retest_result_backfill_review_decision,
     summarize_route_task_field_retest_result_review_dispatch,
+    summarize_route_task_field_retest_result_review_intake,
     summarize_route_task_field_retest_result_callback_intake,
     summarize_route_task_field_retest_result_callback_review_decision,
     summarize_route_task_field_retest_result_callback_review_handoff,
@@ -6823,6 +6824,305 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         )
         self.assertIn("same_evidence_ref_required", encoded)
         self.assertIn("safe_copy", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", missing_summary["not_proven"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_route_task_field_retest_result_review_intake_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            intake_path = Path(td) / "route_task_field_retest_result_review_intake.json"
+            intake_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_result_review_intake.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_result_review_intake_gate"
+                        ),
+                        "evidence_ref": "evidence://route-task-field-retest-result-review-intake-1",
+                        "robot_diagnostics_summary": {
+                            "schema": (
+                                "trashbot.route_task_field_retest_result_review_intake_summary.v1"
+                            ),
+                            "source_schema": (
+                                "trashbot.route_task_field_retest_result_review_intake.v1"
+                            ),
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_result_review_intake_gate"
+                            ),
+                            "source_evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_result_review_intake_gate"
+                            ),
+                            "safe_evidence_ref": (
+                                "evidence://route-task-field-retest-result-review-intake-1"
+                            ),
+                            "intake_status": {
+                                "status": "ready_for_result_review_intake",
+                                "verdict": "not_proven",
+                                "reason": "sanitized review package is ready for Robot diagnostics",
+                            },
+                            "missing_materials": ["field_operator_callback"],
+                            "owner_follow_up": [
+                                {"owner": "Autonomy Algorithm Engineer", "action": "provide callback"}
+                            ],
+                            "review_ready_package": {"materials": ["review_packet"]},
+                            "rerun_package": {"commands": ["Run sanitized review intake gate again."]},
+                            "next_required_evidence": ["field_operator_callback"],
+                            "safe_copy": (
+                                "Route-task result review intake is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                            "not_proven": ["delivery_success", "real_hil_pass"],
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        },
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_result_review_intake_ref=str(intake_path),
+            )
+            summary = payload["route_task_field_retest_result_review_intake"]
+            summary_alias = payload["route_task_field_retest_result_review_intake_summary"]
+            robot_alias = payload[
+                "robot_diagnostics_route_task_field_retest_result_review_intake_summary"
+            ]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.route_task_field_retest_result_review_intake_summary.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_result_review_intake_gate",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.route_task_field_retest_result_review_intake.v1",
+        )
+        self.assertEqual(summary["intake_status"]["status"], "ready_for_result_review_intake")
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://route-task-field-retest-result-review-intake-1",
+        )
+        self.assertIn("field_operator_callback", summary["missing_materials"])
+        self.assertIn("Autonomy Algorithm Engineer", summary["owner_follow_up"][0]["owner"])
+        self.assertIn("review_packet", summary["review_ready_package"]["materials"])
+        self.assertIn("field_operator_callback", summary["next_required_evidence"])
+        self.assertIn("delivery_success=false", summary["safe_phone_copy"])
+        self.assertIn("primary_actions_enabled=false", summary["safe_phone_copy"])
+        self.assertIn("safe_evidence_ref", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        # result review intake 只能进入 diagnostics，不能触发控制、ACK、cursor、Nav2 或 HIL。
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(intake_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_retest_result_review_intake_env_nested_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "result_review_intake_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": (
+                            "trashbot.route_task_field_retest_result_review_intake_summary.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_result_review_intake_gate"
+                        ),
+                        "source_schema": "trashbot.route_task_field_retest_result_review_intake.v1",
+                        "safe_evidence_ref": (
+                            "evidence://route-task-field-retest-result-review-intake-2"
+                        ),
+                        "intake_status": {"status": "blocked_missing_materials", "verdict": "not_proven"},
+                        "missing_materials": ["review_packet"],
+                        "owner_follow_up": [{"owner": "Product Manager / OKR Owner"}],
+                        "review_ready_package": {"status": "blocked_missing_materials"},
+                        "rerun_package": {"status": "available"},
+                        "next_required_evidence": ["review_packet"],
+                        "safe_copy": (
+                            "Result review intake is metadata-only; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_intake = os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_INTAKE")
+            previous_summary = os.environ.get(
+                "TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_INTAKE_SUMMARY"
+            )
+            os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_INTAKE", None)
+            os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_INTAKE_SUMMARY"] = str(
+                summary_path
+            )
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_retest_result_review_intake"
+                ]
+            finally:
+                if previous_intake is None:
+                    os.environ.pop("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_INTAKE", None)
+                else:
+                    os.environ[
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_INTAKE"
+                    ] = previous_intake
+                if previous_summary is None:
+                    os.environ.pop(
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_INTAKE_SUMMARY",
+                        None,
+                    )
+                else:
+                    os.environ[
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_INTAKE_SUMMARY"
+                    ] = previous_summary
+
+            nested_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "robot_diagnostics_route_task_field_retest_result_review_intake_summary": {
+                            "schema": (
+                                "trashbot.route_task_field_retest_result_review_intake_summary.v1"
+                            ),
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_result_review_intake_gate"
+                            ),
+                            "source_schema": (
+                                "trashbot.route_task_field_retest_result_review_intake.v1"
+                            ),
+                            "safe_evidence_ref": (
+                                "evidence://route-task-field-retest-result-review-intake-3"
+                            ),
+                            "intake_status": {"status": "needs_owner_follow_up"},
+                            "missing_materials": ["callback_packet"],
+                            "owner_follow_up": [{"owner": "Robot Platform Engineer"}],
+                            "review_ready_package": {"status": "blocked_owner_follow_up"},
+                            "rerun_package": {"status": "ready"},
+                            "next_required_evidence": ["callback_packet"],
+                            "safe_copy": (
+                                "Nested result review intake is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["route_task_field_retest_result_review_intake"]
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_result_review_intake.json"
+            missing_summary = summarize_route_task_field_retest_result_review_intake(
+                str(missing_path)
+            )
+            unsupported_summary = summarize_route_task_field_retest_result_review_intake(
+                {
+                    "schema": "trashbot.route_task_field_retest_result_review_intake_summary.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_result_review_dispatch_gate"
+                    ),
+                    "source_schema": "trashbot.route_task_field_retest_result_review_dispatch.v1",
+                    "safe_evidence_ref": (
+                        "evidence://route-task-field-retest-result-review-intake-4"
+                    ),
+                    "missing_materials": [],
+                    "owner_follow_up": [{"owner": "Autonomy Algorithm Engineer"}],
+                    "review_ready_package": {},
+                    "rerun_package": {},
+                    "next_required_evidence": [],
+                    "safe_copy": (
+                        "Unsupported review intake is metadata-only; "
+                        "delivery_success=false; primary_actions_enabled=false."
+                    ),
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            no_summary = summarize_route_task_field_retest_result_review_intake(
+                {
+                    "schema": "trashbot.route_task_field_retest_result_review_intake.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_result_review_intake_gate"
+                    ),
+                    "evidence_ref": "evidence://route-task-field-retest-result-review-intake-5",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsafe_summary = summarize_route_task_field_retest_result_review_intake(
+                {
+                    "schema": "trashbot.route_task_field_retest_result_review_intake_summary.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_result_review_intake_gate"
+                    ),
+                    "source_schema": "trashbot.route_task_field_retest_result_review_intake.v1",
+                    "safe_evidence_ref": (
+                        "evidence://route-task-field-retest-result-review-intake-6"
+                    ),
+                    "intake_status": {"status": "ready_for_result_review_intake"},
+                    "missing_materials": [],
+                    "owner_follow_up": [{"owner": "Autonomy Algorithm Engineer"}],
+                    "review_ready_package": {"status": "ready"},
+                    "rerun_package": {"status": "available"},
+                    "next_required_evidence": [],
+                    "safe_copy": "Result review intake confirms delivery success and ACK posted.",
+                    "delivery_success": True,
+                    "primary_actions_enabled": False,
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    nested_summary,
+                    missing_summary,
+                    unsupported_summary,
+                    no_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["intake_status"]["status"], "blocked_missing_materials")
+        self.assertEqual(nested_summary["intake_status"]["status"], "needs_owner_follow_up")
+        self.assertEqual(missing_summary["intake_status"]["status"], "missing")
+        self.assertEqual(unsupported_summary["intake_status"]["status"], "unsupported_schema")
+        self.assertEqual(no_summary["intake_status"]["status"], "missing_summary")
+        self.assertEqual(unsafe_summary["intake_status"]["status"], "blocked_unsafe_review_intake")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertIn(
+            "software_proof_docker_route_task_field_retest_result_review_intake_gate",
+            encoded,
+        )
+        self.assertIn("safe_evidence_ref", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])
         self.assertNotIn(str(missing_path), encoded)

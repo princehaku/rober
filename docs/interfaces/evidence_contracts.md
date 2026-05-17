@@ -126,6 +126,51 @@ field pass, HIL pass, real Nav2/fixed-route execution, real delivery success,
 real phone/browser validation, O5 external cloud proof, or any primary robot
 action being enabled.
 
+## route_task_field_retest_result_review_intake
+
+`pc-tools/evidence/route_task_field_retest_result_review_intake.py`
+generates the PC-only result review intake gate after
+`route_task_field_retest_result_callback_review_handoff.py`.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_result_review_intake.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_result_review_intake_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_result_review_intake_gate`
+- Allowed inputs:
+  `trashbot.route_task_field_retest_result_callback_review_handoff.v1` and
+  `trashbot.route_task_field_retest_result_callback_review_handoff_summary.v1`
+  only. Wrapper or nested JSON is allowed only through known safe wrapper keys.
+- Intake status values:
+  `ready_for_result_review_intake`, `needs_owner_follow_up`,
+  `needs_handoff_rerun`, `evidence_ref_mismatch_rerun`, and
+  `blocked_unsafe_review_intake`.
+
+The output always includes `safe_evidence_ref`,
+`same_evidence_ref_required=true`, `owner_follow_up`,
+`result_review_intake_package`, `rerun_package`, `next_required_evidence`,
+`safe_copy`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_route_task_field_retest_result_review_intake_gate`.
+
+Intake mapping is fail-closed. `ready_for_result_review_handoff` maps to
+`ready_for_result_review_intake`. `needs_owner_follow_up` stays
+`needs_owner_follow_up`. `needs_callback_rerun` maps to
+`needs_handoff_rerun`. Evidence-ref mismatch or weak
+`same_evidence_ref_required` maps to `evidence_ref_mismatch_rerun`.
+Missing JSON, bad JSON, unsupported schema or boundary, missing handoff status,
+or an unknown handoff status maps to `needs_handoff_rerun`. Unsafe source
+handoff, unsafe copy, raw paths, checksum text, credentials, ROS topics,
+serial/UART/WAVE ROVER text, raw artifact text, success/control claims,
+`delivery_success=true`, or `primary_actions_enabled=true` maps to
+`blocked_unsafe_review_intake`.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, HIL pass, real Nav2/fixed-route execution, real delivery success,
+real phone/browser validation, O5 external cloud proof, or any primary robot
+action being enabled.
+
 ## route_task_field_retest_result_review_dispatch
 
 `pc-tools/evidence/route_task_field_retest_result_review_dispatch.py`

@@ -602,6 +602,79 @@
       "delivery success"
     ]
   },
+  "route_task_field_retest_result_review_intake": {
+    "schema": "trashbot.route_task_field_retest_result_review_intake.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.route_task_field_retest_result_review_intake_summary.v1",
+    "intake_status": "blocked_missing_route_task_field_retest_result_review_intake_not_proven",
+    "missing_materials": [
+      "missing_materials=door_state_review_intake",
+      "missing_materials=target_floor_confirmation_review_intake",
+      "missing_materials=human_assistance_note_review_intake",
+      "missing_materials=dropoff_or_cancel_completion_review_intake",
+      "missing_materials=delivery_result_review_intake"
+    ],
+    "owner_follow_up": [
+      "owner_follow_up=Autonomy owner supplies same safe_evidence_ref route/elevator result materials.",
+      "owner_follow_up=Robot owner mirrors metadata-only diagnostics summary.",
+      "owner_follow_up=Field owner reruns review intake after materials are backfilled."
+    ],
+    "review_ready_package": [
+      "review_ready_package=result review handoff accepted as input",
+      "review_ready_package=field result materials remain not_proven"
+    ],
+    "rerun_package": [
+      "rerun_package=rerun software_proof_docker_route_task_field_retest_result_review_intake_gate after result material backfill",
+      "rerun_package=keep delivery_success=false and primary_actions_enabled=false"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=door_state_review_intake",
+      "next_required_evidence=target_floor_confirmation_review_intake",
+      "next_required_evidence=human_assistance_note_review_intake",
+      "next_required_evidence=dropoff_or_cancel_completion_review_intake",
+      "next_required_evidence=delivery_result_review_intake"
+    ],
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "路线/电梯结果复核入口 fixture 只展示 intake status、safe evidence ref、missing materials、owner follow-up、review-ready package、rerun package、next required evidence 和 boundary flags；这是 Docker/local software proof，不是真实现场结论。",
+    "recovery_hint": "按同一 safe_evidence_ref 补齐结果材料后重跑 software_proof_docker_route_task_field_retest_result_review_intake_gate。",
+    "safe_copy": {
+      "safe_phone_copy": "路线/电梯结果复核入口 copy 只包含 whitelist-only phone-safe metadata；不得当成真实现场结论或交付完成。"
+    },
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_result_review_intake_gate",
+    "not_proven": [
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field pass",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
+  "route_task_field_retest_result_review_intake_summary": {
+    "schema": "trashbot.route_task_field_retest_result_review_intake_summary.v1",
+    "schema_version": 1,
+    "intake_status": "blocked_missing_route_task_field_retest_result_review_intake_not_proven",
+    "missing_materials": "missing_materials=door_state、target_floor_confirmation、human_assistance_note、dropoff_or_cancel_completion、delivery_result review intake.",
+    "owner_follow_up": "owner_follow_up=refresh same safe_evidence_ref result materials before final result review.",
+    "review_ready_package": "review_ready_package=result handoff accepted as review input but field materials remain not_proven.",
+    "rerun_package": "rerun_package=software_proof_docker_route_task_field_retest_result_review_intake_gate after evidence backfill.",
+    "next_required_evidence": "next_required_evidence=door_state、target_floor_confirmation、human_assistance_note、delivery_result result review intake.",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "route_task_field_retest_result_review_intake_summary 只用于手机只读路线/电梯结果复核入口，不放行 Start、Confirm 或 Cancel。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_result_review_intake_gate",
+    "not_proven": [
+      "真实 route/elevator field pass",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "elevator_assist": {
     "schema": "trashbot.elevator_assist_summary.v1",
     "schema_version": 1,
