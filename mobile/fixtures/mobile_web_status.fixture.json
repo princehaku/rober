@@ -1076,6 +1076,73 @@
       "delivery success"
     ]
   },
+  "route_task_field_retest_operator_drill": {
+    "schema": "trashbot.route_task_field_retest_operator_drill.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.route_task_field_retest_operator_drill_summary.v1",
+    "source_schema": "trashbot.route_task_field_retest_material_callback_review_decision_summary.v1",
+    "source_boundary": "software_proof_docker_route_task_field_retest_material_callback_review_decision_gate",
+    "operator_drill_status": "needs_material_callback_backfill_before_operator_drill_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "same_evidence_ref_required": true,
+    "next_operator_commands": [
+      "next_operator_commands=review same safe_evidence_ref material callback decision",
+      "next_operator_commands=collect missing door_state and target_floor callback summaries",
+      "next_operator_commands=publish Robot diagnostics compatible operator drill summary"
+    ],
+    "callback_checklist": [
+      "callback_checklist=field operator records same safe_evidence_ref",
+      "callback_checklist=callback packet includes accepted/missing/rejected material summary",
+      "callback_checklist=owner acknowledgement remains not_proven until real field evidence exists"
+    ],
+    "required_outputs": [
+      "required_outputs=route_task_field_retest_operator_drill_summary",
+      "required_outputs=Robot diagnostics route_task_field_retest_operator_drill_summary",
+      "required_outputs=phone-safe callback checklist for downstream review"
+    ],
+    "rerun_commands": [
+      "rerun_commands=python3 pc-tools/evidence/route_task_field_retest_operator_drill.py --review-decision-summary <safe_summary>",
+      "rerun_commands=refresh Robot diagnostics route_task_field_retest_operator_drill_summary before mobile handoff"
+    ],
+    "safe_phone_copy": "现场操作演练 fixture 承接 route_task_field_retest_material_callback_review_decision，只展示 operator drill status、safe evidence ref、next operator commands、callback checklist、required outputs、rerun commands 和 boundary flags；这是 Docker/local software proof，不是真实现场执行。",
+    "recovery_hint": "按同一 safe_evidence_ref 补齐 material callback review decision 后重跑 software_proof_docker_route_task_field_retest_operator_drill_gate。",
+    "safe_copy": {
+      "safe_phone_copy": "现场操作演练 copy 只包含 whitelist-only phone-safe metadata；不得当成真实现场执行、交付完成或控制授权。"
+    },
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_operator_drill_gate",
+    "not_proven": [
+      "真实 route/elevator field pass",
+      "真实 operator callback",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
+  "route_task_field_retest_operator_drill_summary": {
+    "schema": "trashbot.route_task_field_retest_operator_drill_summary.v1",
+    "schema_version": 1,
+    "source_schema": "trashbot.route_task_field_retest_material_callback_review_decision_summary.v1",
+    "operator_drill_status": "needs_material_callback_backfill_before_operator_drill_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "next_operator_commands": "next_operator_commands=continue from material callback review decision; do not return to material pack-only drill.",
+    "callback_checklist": "callback_checklist=field operator records same safe_evidence_ref, callback summary, owner acknowledgement.",
+    "required_outputs": "required_outputs=operator drill summary, Robot diagnostics compatible summary, phone-safe callback checklist.",
+    "rerun_commands": "rerun_commands=run software_proof_docker_route_task_field_retest_operator_drill_gate after material callback review decision backfill.",
+    "safe_phone_copy": "route_task_field_retest_operator_drill_summary 只用于手机只读现场操作演练，不放行 Start、Confirm、Cancel、dispatch、callback、ACK、cursor 或 robot command。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_operator_drill_gate",
+    "not_proven": [
+      "真实 route/elevator field pass",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "elevator_assist": {
     "schema": "trashbot.elevator_assist_summary.v1",
     "schema_version": 1,

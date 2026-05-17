@@ -2421,7 +2421,7 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
     def test_field_retest_operator_drill_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
         styles = self.read_web("styles.css")
-        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
         fixture_text = json.dumps(fixture, ensure_ascii=False)
         doc = DOC.read_text(encoding="utf-8")
 
@@ -2446,9 +2446,12 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         self.assertIn("diagnosticsSummary.route_task_field_retest_operator_drill", app)
         self.assertIn("statusDiagnosticsSummary.route_task_field_retest_operator_drill", app)
         self.assertIn("drill_status", app)
-        self.assertIn("next_command_labels", app)
-        self.assertIn("missing_material_prompts", app)
+        self.assertIn("source_schema", app)
+        self.assertIn("next_operator_commands", app)
+        self.assertIn("required_outputs", app)
+        self.assertIn("rerun_commands", app)
         self.assertIn("operator_callback_checklist", app)
+        self.assertIn("Callback Checklist", app)
 
         # copy/export 必须由 safe_copy 驱动；缺失时不合成 raw drill 或真实命令。
         self.assertIn("routeTaskFieldRetestOperatorDrillCopyPayload", app)
@@ -2463,18 +2466,26 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         # fixture 和产品文档必须固定 operator drill 的 software proof / not_proven 边界。
         operator_drill = fixture["route_task_field_retest_operator_drill"]
         self.assertEqual(
-            operator_drill["drill_status"],
-            "blocked_missing_route_task_field_retest_operator_drill_not_proven",
+            operator_drill["operator_drill_status"],
+            "needs_material_callback_backfill_before_operator_drill_not_proven",
+        )
+        self.assertEqual(
+            operator_drill["source_schema"],
+            "trashbot.route_task_field_retest_material_callback_review_decision_summary.v1",
         )
         self.assertEqual(operator_drill["delivery_success"], False)
         self.assertEqual(operator_drill["primary_actions_enabled"], False)
+        self.assertIn("next_operator_commands", operator_drill)
+        self.assertIn("callback_checklist", operator_drill)
+        self.assertIn("required_outputs", operator_drill)
+        self.assertIn("rerun_commands", operator_drill)
         self.assertIn("software_proof_docker_route_task_field_retest_operator_drill_gate", fixture_text)
         self.assertIn("not_proven", fixture_text)
         self.assertIn("route_task_field_retest_operator_drill", doc)
         self.assertIn("现场操作演练", doc)
 
     def test_field_retest_operator_drill_fixture_stays_phone_safe(self):
-        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
         operator_drill_text = json.dumps(
             fixture["route_task_field_retest_operator_drill"],
             ensure_ascii=False,

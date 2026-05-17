@@ -8491,11 +8491,16 @@ function routeTaskFieldRetestOperatorDrillSafeCopy(value) {
 function routeTaskFieldRetestOperatorDrillFromStatus(status, readiness, diagnostics) {
   const provided = routeTaskFieldRetestOperatorDrillCandidate(status, readiness, diagnostics) || {};
   const safeCopyPayload = routeTaskFieldRetestOperatorDrillSafeCopy(provided);
+  const sourceSchema = safeRouteTaskFieldRetestOperatorDrillText(
+    provided.source_schema || provided.source_summary_schema || provided.review_decision_schema,
+    "trashbot.route_task_field_retest_material_callback_review_decision_summary.v1",
+  );
   return {
     missing: !Object.keys(provided).length,
     schema: "trashbot.route_task_field_retest_operator_drill.v1",
     summary_schema: "trashbot.route_task_field_retest_operator_drill_summary.v1",
     schema_version: 1,
+    source_schema: sourceSchema,
     drill_status: safeRouteTaskFieldRetestOperatorDrillText(
       provided.drill_status || provided.operator_drill_status || provided.status || provided.overall_status,
       "blocked_missing_route_task_field_retest_operator_drill",
@@ -8505,18 +8510,22 @@ function routeTaskFieldRetestOperatorDrillFromStatus(status, readiness, diagnost
       "not_provided",
     ),
     next_command_labels: routeTaskFieldRetestOperatorDrillSummaryText(
-      provided.next_command_labels || provided.command_labels || provided.safe_command_labels ||
-        provided.commands_to_run || provided.next_commands,
-      "next_command_labels=material pack、result intake、result reconciliation 待由 summary 提供",
+      provided.next_operator_commands || provided.next_command_labels || provided.command_labels ||
+        provided.safe_command_labels || provided.commands_to_run || provided.next_commands,
+      "next_operator_commands=material callback review decision 待由 summary 提供",
     ),
     missing_material_prompts: routeTaskFieldRetestOperatorDrillSummaryText(
-      provided.missing_material_prompts || provided.missing_prompts || provided.missing_materials ||
-        provided.required_material_prompts,
-      "missing_material_prompts=door_state、target_floor_confirmation、human_assistance_note 等提示待补齐",
+      provided.required_outputs || provided.missing_material_prompts || provided.missing_prompts ||
+        provided.missing_materials || provided.required_material_prompts,
+      "required_outputs=door_state、target_floor_confirmation、human_assistance_note 等提示待补齐",
     ),
     operator_callback_checklist: routeTaskFieldRetestOperatorDrillSummaryText(
       provided.operator_callback_checklist || provided.callback_checklist || provided.operator_checklist,
       "operator_callback_checklist=现场人员回填同一 evidence_ref、结果材料和 diagnostics compatible summary。",
+    ),
+    rerun_commands: routeTaskFieldRetestOperatorDrillSummaryText(
+      provided.rerun_commands || provided.safe_rerun_commands || provided.rerun_command_summary,
+      "rerun_commands=重跑 material callback review decision 后再重跑 operator drill gate。",
     ),
     safe_phone_copy: safeRouteTaskFieldRetestOperatorDrillText(
       provided.safe_phone_copy || provided.safe_summary,
@@ -8539,7 +8548,7 @@ function routeTaskFieldRetestOperatorDrillFromStatus(status, readiness, diagnost
 }
 
 function routeTaskFieldRetestOperatorDrillCopyPayload(summary) {
-  // 白名单导出只保留演练状态、命令标签和 callback checklist，不导出 raw command/path/artifact。
+  // 白名单导出只保留演练状态、来源决策、命令摘要和 callback checklist，不导出 raw command/path/artifact。
   const source = summary?.schema
     ? summary
     : routeTaskFieldRetestOperatorDrillFromStatus(
@@ -8556,11 +8565,13 @@ function routeTaskFieldRetestOperatorDrillCopyPayload(summary) {
     source: "mobile_web",
     route_task_field_retest_operator_drill_schema: source.schema,
     summary_schema: source.summary_schema,
+    source_schema: source.source_schema,
     drill_status: source.drill_status,
     safe_evidence_ref: source.safe_evidence_ref,
-    next_command_labels: source.next_command_labels,
-    missing_material_prompts: source.missing_material_prompts,
+    next_operator_commands: source.next_command_labels,
+    required_outputs: source.missing_material_prompts,
     operator_callback_checklist: source.operator_callback_checklist,
+    rerun_commands: source.rerun_commands,
     safe_phone_copy: source.safe_copy_payload.safe_phone_copy,
     evidence_boundary: ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_BOUNDARY,
     not_proven: source.not_proven,
@@ -16631,7 +16642,7 @@ function renderRouteTaskFieldRetestMaterialCallbackReviewDecision(status) {
 }
 
 function ensureRouteTaskFieldRetestOperatorDrillPanel() {
-  // 现场操作演练跟在材料包后，只读解释下一步命令标签和 callback checklist，不新增控制入口。
+  // 现场操作演练优先跟在材料回执复核决策后，避免用户回退到 material pack-only drill。
   let panel = $("routeTaskFieldRetestOperatorDrillPanel");
   if (panel) {
     return panel;
@@ -16658,14 +16669,16 @@ function ensureRouteTaskFieldRetestOperatorDrillPanel() {
       <span id="routeTaskFieldRetestOperatorDrillBadge" class="gate-badge gate-blocked">not_proven</span>
     </div>
     <p id="routeTaskFieldRetestOperatorDrillCopy" class="message">
-      route_task_field_retest_operator_drill 只读展示 drill status、safe evidence ref、next command labels、missing material prompts、operator callback checklist 和 boundary。
+      route_task_field_retest_operator_drill 只读展示 drill status、safe evidence ref、next operator commands、callback checklist、required outputs、rerun commands 和 boundary。
     </p>
     <dl class="route-task-field-retest-operator-drill-grid">
       <div><dt>Drill Status</dt><dd id="routeTaskFieldRetestOperatorDrillStatus">blocked_missing_route_task_field_retest_operator_drill</dd></div>
+      <div><dt>Source Decision</dt><dd id="routeTaskFieldRetestOperatorDrillSource">trashbot.route_task_field_retest_material_callback_review_decision_summary.v1</dd></div>
       <div><dt>Safe Evidence Ref</dt><dd id="routeTaskFieldRetestOperatorDrillEvidenceRef">not_provided</dd></div>
-      <div><dt>Next Command Labels</dt><dd id="routeTaskFieldRetestOperatorDrillCommandLabels">next_command_labels=not_proven</dd></div>
-      <div><dt>Missing Material Prompts</dt><dd id="routeTaskFieldRetestOperatorDrillMissingPrompts">missing_material_prompts=not_proven</dd></div>
-      <div><dt>Operator Callback Checklist</dt><dd id="routeTaskFieldRetestOperatorDrillChecklist">operator_callback_checklist=not_proven</dd></div>
+      <div><dt>Next Operator Commands</dt><dd id="routeTaskFieldRetestOperatorDrillCommandLabels">next_operator_commands=not_proven</dd></div>
+      <div><dt>Callback Checklist</dt><dd id="routeTaskFieldRetestOperatorDrillChecklist">callback_checklist=not_proven</dd></div>
+      <div><dt>Required Outputs</dt><dd id="routeTaskFieldRetestOperatorDrillMissingPrompts">required_outputs=not_proven</dd></div>
+      <div><dt>Rerun Commands</dt><dd id="routeTaskFieldRetestOperatorDrillRerunCommands">rerun_commands=not_proven</dd></div>
       <div><dt>Safe Copy Status</dt><dd id="routeTaskFieldRetestOperatorDrillSafeCopyStatus">blocked copy unavailable</dd></div>
       <div><dt>Control Boundary</dt><dd id="routeTaskFieldRetestOperatorDrillControls">delivery_success=false / primary_actions_enabled=false</dd></div>
       <div><dt>Evidence Boundary</dt><dd id="routeTaskFieldRetestOperatorDrillBoundary">software_proof_docker_route_task_field_retest_operator_drill_gate</dd></div>
@@ -16699,10 +16712,12 @@ function renderRouteTaskFieldRetestOperatorDrill(status) {
   badge.textContent = summary.missing ? "等待 operator drill" : "read-only operator drill";
   $("routeTaskFieldRetestOperatorDrillCopy").textContent = summary.safe_phone_copy;
   $("routeTaskFieldRetestOperatorDrillStatus").textContent = summary.drill_status;
+  $("routeTaskFieldRetestOperatorDrillSource").textContent = summary.source_schema;
   $("routeTaskFieldRetestOperatorDrillEvidenceRef").textContent = summary.safe_evidence_ref;
   $("routeTaskFieldRetestOperatorDrillCommandLabels").textContent = summary.next_command_labels;
   $("routeTaskFieldRetestOperatorDrillMissingPrompts").textContent = summary.missing_material_prompts;
   $("routeTaskFieldRetestOperatorDrillChecklist").textContent = summary.operator_callback_checklist;
+  $("routeTaskFieldRetestOperatorDrillRerunCommands").textContent = summary.rerun_commands;
   $("routeTaskFieldRetestOperatorDrillSafeCopyStatus").textContent = summary.safe_copy_status;
   $("routeTaskFieldRetestOperatorDrillControls").textContent =
     `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;

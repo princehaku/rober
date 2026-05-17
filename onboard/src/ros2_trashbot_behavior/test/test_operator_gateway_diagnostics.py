@@ -4659,9 +4659,13 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             )
             summary = payload["route_task_field_retest_operator_drill"]
             summary_alias = payload["route_task_field_retest_operator_drill_summary"]
+            robot_alias = payload[
+                "robot_diagnostics_route_task_field_retest_operator_drill_summary"
+            ]
             encoded = json.dumps(summary, ensure_ascii=False)
 
         self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
         self.assertEqual(summary["schema"], "trashbot.route_task_field_retest_operator_drill_summary.v1")
         self.assertEqual(
             summary["evidence_boundary"],
@@ -4776,8 +4780,69 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                     "primary_actions_enabled": False,
                 }
             )
+            raw_review_decision_summary = summarize_route_task_field_retest_operator_drill(
+                {
+                    "schema": "trashbot.route_task_field_retest_operator_drill.v1",
+                    "evidence_boundary": "software_proof_docker_route_task_field_retest_operator_drill_gate",
+                    "evidence_ref": "evidence://route-task-field-retest-operator-drill-5",
+                    "raw_command": "POST /api/collect",
+                    "review_decision_derived": {
+                        "ros_topic": "/cmd_vel",
+                        "local_path": str(Path(td) / "raw.json"),
+                    },
+                    "route_task_field_retest_operator_drill_summary": {
+                        "safe_evidence_ref": "evidence://route-task-field-retest-operator-drill-5",
+                        "same_evidence_ref_required": True,
+                        "safe_copy": (
+                            "Route-task field retest operator drill is metadata-only; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            nested_robot_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "robot_diagnostics_route_task_field_retest_operator_drill_summary": {
+                            "schema": "trashbot.route_task_field_retest_operator_drill_summary.v1",
+                            "source_schema": "trashbot.route_task_field_retest_operator_drill.v1",
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_operator_drill_gate"
+                            ),
+                            "source_evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_operator_drill_gate"
+                            ),
+                            "safe_evidence_ref": "evidence://route-task-field-retest-operator-drill-6",
+                            "same_evidence_ref_required": True,
+                            "drill_status": {
+                                "status": "nested_robot_alias_not_proven",
+                                "verdict": "not_proven",
+                            },
+                            "safe_copy": (
+                                "Route-task field retest operator drill is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["robot_diagnostics_route_task_field_retest_operator_drill_summary"]
             encoded = json.dumps(
-                [env_summary, missing_summary, no_summary, unsupported_summary, unsafe_summary],
+                [
+                    env_summary,
+                    missing_summary,
+                    no_summary,
+                    unsupported_summary,
+                    unsafe_summary,
+                    raw_review_decision_summary,
+                    nested_robot_summary,
+                ],
                 ensure_ascii=False,
             )
 
@@ -4789,6 +4854,8 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(no_summary["drill_status"]["status"], "missing_summary")
         self.assertEqual(unsupported_summary["drill_status"]["status"], "unsupported_schema")
         self.assertEqual(unsafe_summary["drill_status"]["status"], "unsafe_fields")
+        self.assertEqual(raw_review_decision_summary["drill_status"]["status"], "unsafe_fields")
+        self.assertEqual(nested_robot_summary["drill_status"]["status"], "nested_robot_alias_not_proven")
         self.assertFalse(env_summary["delivery_success"])
         self.assertFalse(env_summary["primary_actions_enabled"])
         self.assertIn("software_proof_docker_route_task_field_retest_operator_drill_gate", encoded)

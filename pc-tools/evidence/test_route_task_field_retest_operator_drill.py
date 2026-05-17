@@ -95,6 +95,70 @@ class RouteTaskFieldRetestOperatorDrillTest(unittest.TestCase):
         self.assertIn("Collect door_state metadata", summary_out["missing_material_prompts"][0])
         self.assertFalse(summary_out["safe_copy"]["material_complete"])
 
+    def test_review_decision_source_takes_priority_over_nested_material_pack(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wrapper_path = root / "review_decision_wrapper.json"
+            material_pack = {
+                "schema": "trashbot.route_task_field_retest_material_pack.v1",
+                "evidence_boundary": "software_proof_docker_route_task_field_retest_material_pack_gate",
+                "evidence_ref": "stale-material-pack-ref",
+                "same_evidence_ref_required": True,
+                "material_pack_verdict": "ready_for_field_retest_material_pack_not_proven",
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            }
+            review_decision = {
+                "schema": "trashbot.route_task_field_retest_material_callback_review_decision.v1",
+                "evidence_boundary": "software_proof_docker_route_task_field_retest_material_callback_review_decision_gate",
+                "safe_evidence_ref": "ev-review-decision-001",
+                "same_evidence_ref_required": True,
+                "review_decision": "ready_for_controlled_field_rerun_not_proven",
+                "material_callback_review_summary": {
+                    "accepted_count": 9,
+                    "missing_count": 0,
+                    "rejected_count": 0,
+                    "owner_acknowledgement_ok": True,
+                },
+                "accepted_materials": ["elevator_door_state", "target_floor_confirmation"],
+                "missing_materials": [],
+                "rejected_materials": [],
+                "safe_copy": {
+                    "safe_evidence_ref": "ev-review-decision-001",
+                    "same_evidence_ref_required": True,
+                    "review_decision": "ready_for_controlled_field_rerun_not_proven",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                },
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            }
+            wrapper_path.write_text(
+                json.dumps(
+                    {
+                        "payload": {
+                            "material_pack": material_pack,
+                            "nested_diagnostics": {
+                                "route_task_field_retest_material_callback_review_decision": review_decision,
+                            },
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            artifact, summary, exit_code = drill.build_route_task_field_retest_operator_drill(str(wrapper_path), "")
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(artifact["operator_drill_verdict"], "ready_for_operator_drill_not_proven")
+        self.assertEqual(summary["source_family"], "material_callback_review_decision")
+        self.assertEqual(summary["source_schema"], "trashbot.route_task_field_retest_material_callback_review_decision.v1")
+        self.assertEqual(summary["evidence_ref"], "ev-review-decision-001")
+        self.assertEqual(summary["source_review_decision"], "ready_for_controlled_field_rerun_not_proven")
+        self.assertEqual(summary["command_chain"][0]["label"], "material_callback_review_decision")
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+
     def test_unsupported_schema_boundary_and_weak_same_ref_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

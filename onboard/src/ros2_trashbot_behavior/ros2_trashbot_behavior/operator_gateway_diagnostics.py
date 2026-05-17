@@ -6869,6 +6869,108 @@ def _route_task_field_run_console_has_unsafe_fields(value):
     return False
 
 
+def _route_task_field_retest_operator_drill_has_unsafe_fields(value):
+    # operator drill 只能进入 Robot diagnostics 白名单摘要；review-decision 派生 raw 字段一律不透传。
+    unsafe_key_fragments = (
+        "authorization",
+        "token",
+        "secret",
+        "access_key",
+        "password",
+        "credential",
+        "checksum",
+        "traceback",
+        "raw_artifact",
+        "raw_json",
+        "raw_payload",
+        "raw_response",
+        "raw_robot",
+        "raw_command",
+        "raw_ack",
+        "raw_route_log",
+        "raw_nav2_log",
+        "local_path",
+        "file_path",
+        "artifact_path",
+        "ros_topic",
+        "topic_name",
+        "cmd_vel",
+        "serial",
+        "uart",
+        "baud",
+        "wave_rover",
+        "command_envelope",
+        "status_envelope",
+    )
+    unsafe_true_keys = {
+        "delivery_success",
+        "primary_actions_enabled",
+        "ack_post_allowed",
+        "remote_ack_allowed",
+        "cursor_updates_allowed",
+        "persistence_updates_allowed",
+        "terminal_ack_allowed",
+        "nav2_triggered",
+        "hil_pass",
+        "production_ready",
+        "collect_triggered",
+        "dropoff_triggered",
+        "cancel_triggered",
+        "dropoff_completion",
+        "cancel_completion",
+        "remote_ack_posted",
+        "terminal_ack_posted",
+        "start_enabled",
+        "confirm_enabled",
+        "cancel_enabled",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text == "not_proven":
+                # not_proven 允许列出 real_serial_or_uart_feedback 等未证明项；它本身不是 raw 设备泄漏。
+                continue
+            if key_text in unsafe_true_keys and bool(item):
+                return True
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if _route_task_field_retest_operator_drill_has_unsafe_fields(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_route_task_field_retest_operator_drill_has_unsafe_fields(item) for item in value)
+    if isinstance(value, str):
+        redacted = _redact_route_task_rehearsal_text(value)
+        lowered = redacted.lower()
+        return (
+            "/api/collect" in lowered
+            or "/api/dropoff" in lowered
+            or "/api/cancel" in lowered
+            or "ack posted" in lowered
+            or "remote ack" in lowered
+            or "terminal ack" in lowered
+            or "cursor advanced" in lowered
+            or "raw artifact" in lowered
+            or "raw command" in lowered
+            or "ros topic" in lowered
+            or "/cmd_vel" in lowered
+            or "credential" in lowered
+            or "serial" in lowered
+            or "uart" in lowered
+            or "nav2 started" in lowered
+            or any(marker in redacted for marker in (
+                "[REDACTED_AUTH_HEADER]",
+                "Bearer [REDACTED]",
+                "[REDACTED_URL]",
+                "/dev/[REDACTED_SERIAL]",
+                "[REDACTED_BAUD]",
+                "[REDACTED_TRACEBACK]",
+                "[REDACTED_LOCAL_PATH]",
+            ))
+        )
+    return False
+
+
 def _mobile_route_elevator_field_device_precheck_has_unsafe_fields(value, key_path=""):
     # 预检 source 可能来自手机/人工材料；控制、ACK、持久化或成功布尔为真时必须整体降级。
     unsafe_key_fragments = (
@@ -12966,12 +13068,14 @@ def summarize_route_task_field_retest_operator_drill(source):
         drill.get("route_task_field_retest_operator_drill_summary"),
         drill.get("route_task_field_retest_operator_drill"),
         drill.get("robot_diagnostics_summary"),
+        drill.get("robot_diagnostics_route_task_field_retest_operator_drill_summary"),
         drill.get("mobile_readonly_summary"),
         drill.get("phone_safe_summary"),
         diagnostics.get("summary"),
         diagnostics.get("diagnostics_summary"),
         diagnostics.get("route_task_field_retest_operator_drill_summary"),
         diagnostics.get("route_task_field_retest_operator_drill"),
+        diagnostics.get("robot_diagnostics_route_task_field_retest_operator_drill_summary"),
     ):
         if isinstance(candidate, dict):
             summary_fragment = candidate
@@ -13149,7 +13253,7 @@ def summarize_route_task_field_retest_operator_drill(source):
     if (
         not summary["same_evidence_ref_required"]
         or not _route_task_field_retest_operator_drill_has_disabled_actions(drill, summary_fragment)
-        or _route_task_field_run_console_has_unsafe_fields(drill)
+        or _route_task_field_retest_operator_drill_has_unsafe_fields(drill)
         or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
         or _route_task_field_retest_execution_pack_has_success_wording(summary_fragment)
         or _route_task_field_retest_execution_pack_has_success_wording(drill)
@@ -27874,10 +27978,20 @@ def build_diagnostics_payload(
         if isinstance(latest_status.get("route_task_field_retest_operator_drill"), dict)
         else latest_status.get("route_task_field_retest_operator_drill_summary")
         if isinstance(latest_status.get("route_task_field_retest_operator_drill_summary"), dict)
+        else latest_status.get("robot_diagnostics_route_task_field_retest_operator_drill_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_route_task_field_retest_operator_drill_summary"),
+            dict,
+        )
         else diagnostics_source.get("route_task_field_retest_operator_drill")
         if isinstance(diagnostics_source.get("route_task_field_retest_operator_drill"), dict)
         else diagnostics_source.get("route_task_field_retest_operator_drill_summary")
         if isinstance(diagnostics_source.get("route_task_field_retest_operator_drill_summary"), dict)
+        else diagnostics_source.get("robot_diagnostics_route_task_field_retest_operator_drill_summary")
+        if isinstance(
+            diagnostics_source.get("robot_diagnostics_route_task_field_retest_operator_drill_summary"),
+            dict,
+        )
         else diagnostics_source.get("summary")
         if isinstance(diagnostics_source.get("summary"), dict)
         else diagnostics_source.get("diagnostics_summary")
@@ -28966,6 +29080,9 @@ def build_diagnostics_payload(
         ),
         route_task_field_retest_operator_drill=route_task_field_retest_operator_drill_summary,
         route_task_field_retest_operator_drill_summary=route_task_field_retest_operator_drill_summary,
+        robot_diagnostics_route_task_field_retest_operator_drill_summary=(
+            route_task_field_retest_operator_drill_summary
+        ),
         route_task_field_retest_drill_console=route_task_field_retest_drill_console_summary,
         route_task_field_retest_drill_console_summary=route_task_field_retest_drill_console_summary,
         route_task_field_retest_acceptance_brief=route_task_field_retest_acceptance_brief_summary,

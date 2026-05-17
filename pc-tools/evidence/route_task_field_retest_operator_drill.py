@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import route_task_field_retest_material_pack as pack
+import route_task_field_retest_material_callback_review_decision as review
 
 
 # operator drill 是 material pack 之后的 PC 侧演练契约。
@@ -25,13 +26,18 @@ DRILL_SUMMARY_SCHEMA = "trashbot.route_task_field_retest_operator_drill_summary.
 SCHEMA_VERSION = 1
 DRILL_BOUNDARY = "software_proof_docker_route_task_field_retest_operator_drill_gate"
 
-# 只允许 material pack 产物作为输入，避免其它 gate 的状态被误解为 drill。
-SOURCE_SCHEMAS = {pack.PACK_SCHEMA, pack.PACK_SUMMARY_SCHEMA}
-SOURCE_BOUNDARIES = {pack.PACK_BOUNDARY, ""}
+# review decision 是 material callback 复核后的最新上游；material pack 只保留兼容。
+SOURCE_DECISION_SCHEMAS = {review.DECISION_SCHEMA, review.DECISION_SUMMARY_SCHEMA}
+SOURCE_MATERIAL_PACK_SCHEMAS = {pack.PACK_SCHEMA, pack.PACK_SUMMARY_SCHEMA}
+SOURCE_SCHEMAS = SOURCE_DECISION_SCHEMAS | SOURCE_MATERIAL_PACK_SCHEMAS
+SOURCE_BOUNDARIES = {review.DECISION_BOUNDARY, pack.PACK_BOUNDARY, ""}
 
 # rg 验收会检查这些 literal；也给人工复盘一个短边界。
 BOUNDARY_NOTE = (
+    "route_task_field_retest_material_callback_review_decision; "
     "software_proof_docker_route_task_field_retest_operator_drill_gate; "
+    "trashbot.route_task_field_retest_operator_drill.v1; "
+    "trashbot.route_task_field_retest_operator_drill_summary.v1; "
     "not_proven; delivery_success=false; primary_actions_enabled=false"
 )
 
@@ -112,9 +118,18 @@ def _first_text(*values: Any, default: str = "") -> str:
 
 
 def _source_candidates(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    # 只递归白名单 key，避免把 raw artifact 或任意 payload 当成 material pack。
+    # 只递归白名单 key，避免把 raw artifact 或任意 payload 当成可信上游。
     candidates = [payload]
     for key in (
+        "route_task_field_retest_material_callback_review_decision",
+        "route_task_field_retest_material_callback_review_decision_summary",
+        "material_callback_review_decision",
+        "material_callback_review_decision_summary",
+        "material_callback_review_summary",
+        "robot_diagnostics_summary",
+        "mobile_readonly_summary",
+        "diagnostics",
+        "nested_diagnostics",
         "route_task_field_retest_material_pack",
         "route_task_field_retest_material_pack_summary",
         "material_pack",
@@ -131,11 +146,25 @@ def _source_candidates(payload: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _find_source(payload: dict[str, Any]) -> dict[str, Any]:
-    # 优先选择 schema 命中的嵌套对象；没有命中时保留顶层解释 unsupported。
-    for candidate in _source_candidates(payload):
-        if str(candidate.get("schema", "")).strip() in SOURCE_SCHEMAS:
+    # 同一 wrapper 同时含 review decision 与 material pack 时，必须优先新复核源。
+    candidates = _source_candidates(payload)
+    for candidate in candidates:
+        if str(candidate.get("schema", "")).strip() in SOURCE_DECISION_SCHEMAS:
+            return candidate
+    for candidate in candidates:
+        if str(candidate.get("schema", "")).strip() in SOURCE_MATERIAL_PACK_SCHEMAS:
             return candidate
     return payload
+
+
+def _source_family(source: dict[str, Any]) -> str:
+    # source_family 明确下游解释路径，避免把 review decision 当 material pack。
+    schema = pack._safe_text(source.get("schema", "")).strip()
+    if schema in SOURCE_DECISION_SCHEMAS:
+        return "material_callback_review_decision"
+    if schema in SOURCE_MATERIAL_PACK_SCHEMAS:
+        return "material_pack"
+    return "unsupported"
 
 
 def _source_status(load_issue: str, source: dict[str, Any]) -> dict[str, Any]:
@@ -150,12 +179,20 @@ def _source_status(load_issue: str, source: dict[str, Any]) -> dict[str, Any]:
 
 
 def _source_evidence_ref(source: dict[str, Any]) -> str:
-    # same evidence_ref 是 material pack、intake、reconciliation 串联主键。
+    # same evidence_ref 是 review decision、material pack、intake、reconciliation 串联主键。
     safe_copy = _dict(source, "safe_copy")
     material_summary = _dict(source, "material_pack_summary")
+    robot = _dict(source, "robot_diagnostics_summary")
+    mobile = _dict(source, "mobile_readonly_summary")
     return pack._safe_ref(
         _first_text(
+            source.get("safe_evidence_ref"),
             source.get("evidence_ref"),
+            robot.get("safe_evidence_ref"),
+            robot.get("evidence_ref"),
+            mobile.get("safe_evidence_ref"),
+            mobile.get("evidence_ref"),
+            safe_copy.get("safe_evidence_ref"),
             safe_copy.get("evidence_ref"),
             material_summary.get("evidence_ref"),
             default="",
@@ -167,30 +204,71 @@ def _same_ref_required(source: dict[str, Any]) -> Any:
     # 弱类型字符串必须 fail closed；这里要求 JSON boolean true。
     safe_copy = _dict(source, "safe_copy")
     material_summary = _dict(source, "material_pack_summary")
+    robot = _dict(source, "robot_diagnostics_summary")
+    mobile = _dict(source, "mobile_readonly_summary")
     return source.get(
         "same_evidence_ref_required",
-        material_summary.get("same_evidence_ref_required", safe_copy.get("same_evidence_ref_required", True)),
+        material_summary.get(
+            "same_evidence_ref_required",
+            safe_copy.get(
+                "same_evidence_ref_required",
+                robot.get("same_evidence_ref_required", mobile.get("same_evidence_ref_required", True)),
+            ),
+        ),
     )
 
 
 def _missing_materials(source: dict[str, Any]) -> list[str]:
-    # material pack 可能在 summary 或 completeness 中表达缺失项，统一取白名单。
+    # review decision 保留回执材料名；material pack 继续收敛到旧八类白名单。
     completeness = _dict(source, "material_completeness")
     material_summary = _dict(source, "material_pack_summary")
     summary_completeness = _dict(material_summary, "material_completeness")
-    raw = source.get("missing_materials") or completeness.get("missing_materials") or material_summary.get("missing_materials")
+    safe_copy = _dict(source, "safe_copy")
+    raw = (
+        source.get("missing_materials")
+        or safe_copy.get("missing_materials")
+        or completeness.get("missing_materials")
+        or material_summary.get("missing_materials")
+    )
     if raw in (None, ""):
         raw = summary_completeness.get("missing_materials")
     names = []
-    for item in _safe_list(raw, limit=len(pack.REQUIRED_MATERIALS)):
+    limit = 32 if _source_family(source) == "material_callback_review_decision" else len(pack.REQUIRED_MATERIALS)
+    for item in _safe_list(raw, limit=limit):
         name = pack._safe_text(item).strip()
-        if name in pack.REQUIRED_MATERIALS and name not in names:
+        if not name or name in names:
+            continue
+        if _source_family(source) == "material_callback_review_decision" or name in pack.REQUIRED_MATERIALS:
             names.append(name)
     return names
 
 
 def _material_count(source: dict[str, Any], missing: list[str]) -> dict[str, Any]:
     # completeness 只是输入材料状态，不代表现场复测成功。
+    if _source_family(source) == "material_callback_review_decision":
+        review_summary = _dict(source, "material_callback_review_summary")
+        accepted = _safe_list(source.get("accepted_materials") or _dict(source, "safe_copy").get("accepted_materials"), limit=32)
+        rejected = _safe_list(source.get("rejected_materials") or _dict(source, "safe_copy").get("rejected_materials"), limit=32)
+        def count_value(key: str, fallback: int) -> int:
+            # 上游 summary 若给弱类型值，按列表推导结果保守回退。
+            try:
+                return int(review_summary.get(key, fallback) or fallback)
+            except (TypeError, ValueError):
+                return fallback
+
+        accepted_count = count_value("accepted_count", len(accepted))
+        missing_count = count_value("missing_count", len(missing))
+        rejected_count = count_value("rejected_count", len(rejected))
+        required_count = max(
+            accepted_count + missing_count + rejected_count,
+            len(accepted) + len(missing) + len(rejected),
+        )
+        return {
+            "required_count": required_count,
+            "accepted_count": accepted_count,
+            "missing_count": len(missing),
+            "is_complete": len(missing) == 0 and not rejected,
+        }
     completeness = _dict(source, "material_completeness")
     material_summary = _dict(source, "material_pack_summary")
     summary_completeness = _dict(material_summary, "material_completeness")
@@ -227,8 +305,10 @@ def _source_verdict(source: dict[str, Any]) -> str:
     material_summary = _dict(source, "material_pack_summary")
     return pack._safe_text(
         _first_text(
+            source.get("review_decision"),
             source.get("material_pack_verdict"),
             source.get("status"),
+            safe_copy.get("review_decision"),
             material_summary.get("material_pack_verdict"),
             material_summary.get("status"),
             safe_copy.get("status"),
@@ -261,6 +341,17 @@ def _drill_status(
     if unsafe_copy:
         return "blocked_unsafe_material_pack_copy"
     return "ready_for_operator_drill_not_proven"
+
+
+def _review_decision_command(evidence_ref: str) -> str:
+    # review decision 是最新上游入口；命令仍用占位文件，避免泄漏本机路径。
+    ref = evidence_ref or "<same_evidence_ref>"
+    return (
+        "python3 pc-tools/evidence/route_task_field_retest_material_callback_review_decision.py "
+        f"--material-callback-packet-json <material_callback_packet.json> --evidence-ref {ref} "
+        "--output <material_callback_review_decision.json> "
+        "--summary-output <material_callback_review_decision_summary.json>"
+    )
 
 
 def _material_pack_command(evidence_ref: str) -> str:
@@ -296,6 +387,8 @@ def _result_reconciliation_command(evidence_ref: str) -> str:
 def _required_outputs() -> list[dict[str, str]]:
     # 输出清单只列相对占位文件名，不复制任何真实绝对路径。
     return [
+        {"label": "material_callback_review_decision_artifact", "file": "<material_callback_review_decision.json>"},
+        {"label": "material_callback_review_decision_summary", "file": "<material_callback_review_decision_summary.json>"},
         {"label": "material_pack_artifact", "file": "<material_pack.json>"},
         {"label": "material_pack_summary", "file": "<material_pack_summary.json>"},
         {"label": "result_intake_artifact", "file": "<result_intake.json>"},
@@ -329,7 +422,7 @@ def _operator_callback_checklist(evidence_ref: str) -> list[str]:
 def _rerun_notes(status: str, evidence_ref: str, missing: list[str], source_verdict: str) -> list[str]:
     # rerun notes 把 blocked 原因转成下一步，不放现场通过措辞。
     ref = evidence_ref or "<same_evidence_ref>"
-    notes = [f"Keep evidence_ref={ref} unchanged across material pack, result intake, and result reconciliation."]
+    notes = [f"Keep evidence_ref={ref} unchanged across review decision, material pack, result intake, and result reconciliation."]
     if missing:
         notes.append("Repair missing materials before rerun: " + ", ".join(missing))
     if source_verdict and source_verdict != "ready_for_field_retest_material_pack_not_proven":
@@ -358,6 +451,9 @@ def _safe_copy(status: str, evidence_ref: str, material_count: dict[str, Any], m
 def _summary_payload(
     status: str,
     evidence_ref: str,
+    source_family: str,
+    source_schema: str,
+    source_boundary: str,
     source_verdict: str,
     material_count: dict[str, Any],
     missing: list[str],
@@ -376,7 +472,11 @@ def _summary_payload(
         "boundary": DRILL_BOUNDARY,
         "status": status,
         "operator_drill_verdict": status,
+        "source_family": source_family,
+        "source_schema": source_schema,
+        "source_boundary": source_boundary,
         "source_material_pack_verdict": source_verdict,
+        "source_review_decision": source_verdict if source_family == "material_callback_review_decision" else "",
         "evidence_ref": evidence_ref,
         "same_evidence_ref_required": True,
         "material_count": material_count,
@@ -408,13 +508,21 @@ def build_route_task_field_retest_operator_drill(
     missing = _missing_materials(source)
     material_count = _material_count(source, missing)
     source_verdict = _source_verdict(source)
+    source_family = _source_family(source)
+    source_schema = pack._safe_text(source.get("schema", ""))
+    source_boundary = pack._safe_text(_first_text(source.get("evidence_boundary"), source.get("boundary"), default=""))
     unsafe = _unsafe_copy(source)
     status = _drill_status(load_issue, source_status, source_ref, requested_ref, same_ref_required, unsafe)
-    command_chain = [
-        {"label": "material_pack", "command": _material_pack_command(resolved_ref)},
-        {"label": "result_intake", "command": _result_intake_command(resolved_ref)},
-        {"label": "result_reconciliation", "command": _result_reconciliation_command(resolved_ref)},
-    ]
+    command_chain = []
+    if source_family == "material_callback_review_decision":
+        command_chain.append({"label": "material_callback_review_decision", "command": _review_decision_command(resolved_ref)})
+    command_chain.extend(
+        [
+            {"label": "material_pack", "command": _material_pack_command(resolved_ref)},
+            {"label": "result_intake", "command": _result_intake_command(resolved_ref)},
+            {"label": "result_reconciliation", "command": _result_reconciliation_command(resolved_ref)},
+        ]
+    )
     outputs = _required_outputs()
     prompts = _missing_material_prompts(missing, resolved_ref)
     checklist = _operator_callback_checklist(resolved_ref)
@@ -423,6 +531,9 @@ def build_route_task_field_retest_operator_drill(
     summary = _summary_payload(
         status,
         resolved_ref,
+        source_family,
+        source_schema,
+        source_boundary,
         source_verdict,
         material_count,
         missing,
@@ -440,9 +551,19 @@ def build_route_task_field_retest_operator_drill(
         "evidence_boundary": DRILL_BOUNDARY,
         "boundary": DRILL_BOUNDARY,
         "operator_drill_verdict": status,
+        "source_family": source_family,
+        "source_schema": source_schema,
+        "source_boundary": source_boundary,
+        "source_review_decision": {
+            "schema": source_schema if source_family == "material_callback_review_decision" else "",
+            "evidence_boundary": source_boundary if source_family == "material_callback_review_decision" else "",
+            "load_status": source_status["load_status"],
+            "schema_status": source_status["schema_status"],
+            "review_decision": source_verdict if source_family == "material_callback_review_decision" else "",
+        },
         "source_material_pack": {
-            "schema": pack._safe_text(source.get("schema", "")),
-            "evidence_boundary": pack._safe_text(_first_text(source.get("evidence_boundary"), source.get("boundary"), default="")),
+            "schema": source_schema,
+            "evidence_boundary": source_boundary,
             "load_status": source_status["load_status"],
             "schema_status": source_status["schema_status"],
             "material_pack_verdict": source_verdict,

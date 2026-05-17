@@ -529,8 +529,9 @@ credentials, local paths, checksums, tracebacks, complete artifacts, or
 Objective 5 external proof, and they are not command/status/ACK robot contract
 fields.
 
-Operator diagnostics may also expose `route_task_field_retest_operator_drill`
-and the alias `route_task_field_retest_operator_drill_summary` from an explicit
+Operator diagnostics may also expose `route_task_field_retest_operator_drill`,
+the alias `route_task_field_retest_operator_drill_summary`, and the Robot alias
+`robot_diagnostics_route_task_field_retest_operator_drill_summary` from an explicit
 `route_task_field_retest_operator_drill_ref`,
 `TRASHBOT_ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL`,
 `TRASHBOT_ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_SUMMARY`, top-level status
@@ -555,8 +556,9 @@ dropoff, cancel, remote ACK, cursor advance/persistence, terminal ACK, Nav2,
 WAVE ROVER, HIL, production readiness, dropoff/cancel completion, or delivery
 success. They must not expose raw route logs, raw commands, raw ROS topics,
 `/cmd_vel`, serial/UART details, credentials, local paths, checksums,
-tracebacks, complete artifacts, or Objective 5 external proof, and they are
-not command/status/ACK robot contract fields.
+tracebacks, complete artifacts, review-decision-derived raw command/artifact
+fields, Start/Confirm/Cancel enablement, field-pass wording, or Objective 5
+external proof, and they are not command/status/ACK robot contract fields.
 
 Operator diagnostics may also expose `route_task_field_retest_drill_console`
 and the alias `route_task_field_retest_drill_console_summary` from an explicit

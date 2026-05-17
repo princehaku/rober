@@ -470,6 +470,59 @@ feedback, not real phone/browser validation, not Objective 5 external
 cloud/4G/OSS/CDN/DB/queue proof, and not any primary robot action being
 enabled.
 
+## route_task_field_retest_operator_drill
+
+`pc-tools/evidence/route_task_field_retest_operator_drill.py`
+generates the PC-only operator drill after the material callback review
+decision or the legacy material pack. It keeps the historical material-pack
+input path for compatibility, but when a wrapper, summary, artifact, robot
+diagnostics, mobile read-only payload, or nested diagnostics object contains
+both families, it prioritizes
+`route_task_field_retest_material_callback_review_decision` over material pack.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_operator_drill.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_operator_drill_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_operator_drill_gate`
+- Preferred inputs:
+  `trashbot.route_task_field_retest_material_callback_review_decision.v1` and
+  `trashbot.route_task_field_retest_material_callback_review_decision_summary.v1`
+  with
+  `evidence_boundary=software_proof_docker_route_task_field_retest_material_callback_review_decision_gate`.
+- Legacy compatible inputs:
+  `trashbot.route_task_field_retest_material_pack.v1` and
+  `trashbot.route_task_field_retest_material_pack_summary.v1` with
+  `evidence_boundary=software_proof_docker_route_task_field_retest_material_pack_gate`.
+
+The output schema stays unchanged and always includes `source_family`,
+`source_schema`, `source_boundary`, `command_chain`, `required_outputs`,
+`missing_material_prompts`, `operator_callback_checklist`, `rerun_notes`,
+`safe_copy`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_route_task_field_retest_operator_drill_gate`.
+For review-decision inputs it also mirrors `source_review_decision` so
+Robot/mobile readers can show that the operator drill is based on the reviewed
+callback source rather than a material pack-only drill.
+
+Operator drill status values include `ready_for_operator_drill_not_proven`,
+`blocked_missing_material_pack`, `blocked_bad_json`,
+`blocked_unsupported_schema`, `blocked_missing_evidence_ref`,
+`blocked_same_evidence_ref_mismatch`,
+`blocked_same_evidence_ref_not_required`, and
+`blocked_unsafe_material_pack_copy`. The gate fails closed on missing or bad
+JSON, unsupported schema or boundary, weak or mismatched evidence refs, weak
+`same_evidence_ref_required`, unsafe copy, raw paths, credentials, ROS topics,
+serial/UART/WAVE ROVER text, success/control claims, `delivery_success=true`,
+or `primary_actions_enabled=true`.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, Nav2 or fixed-route execution, task record or completion signal,
+dropoff/cancel completion, delivery success, HIL, WAVE ROVER/UART feedback,
+real phone/browser validation, Objective 5 external cloud/4G/OSS/CDN/DB/queue
+proof, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_review_dispatch
 
 `pc-tools/evidence/route_task_field_retest_result_review_dispatch.py`

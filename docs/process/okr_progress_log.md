@@ -8,7 +8,19 @@
 
 ## 2026-05-18 系列
 
-更新时间：2026-05-18 06:16 Asia/Shanghai。
+更新时间：2026-05-18 07:16 Asia/Shanghai。
+
+### 2026-05-18 07-08｜route-task-material-review-operator-drill｜O2/O3/O4 operator drill review-decision input upgrade software proof，均保守保持约 99%，O5 保持约 68%
+
+`sprints/2026.05.18_07-08_route-task-material-review-operator-drill/` 完成 `software_proof_docker_route_task_field_retest_operator_drill_gate` 的 review-decision input upgrade。Autonomy worker 修改 `pc-tools/evidence/route_task_field_retest_operator_drill.py`、focused unittest 与 `docs/interfaces/evidence_contracts.md`，让 `route_task_field_retest_operator_drill` 优先消费 `route_task_field_retest_material_callback_review_decision` artifact / summary / wrapper / nested diagnostics，保留 material pack 兼容，并在 mixed wrapper 中优先 review decision。Task A worker 报告 py_compile pass、focused unittest `Ran 6 tests in 0.024s OK`、required rg pass、scoped diff check pass。
+
+Robot worker 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`、diagnostics tests 与 `docs/interfaces/ros_contracts.md`，新增 `robot_diagnostics_route_task_field_retest_operator_drill_summary` output alias，支持 nested/top-level discovery，并对 review-decision-derived raw fields 做 fail-closed whitelist filtering。该 consumer 只暴露 safe summary、source decision、safe `evidence_ref`、operator drill status、commands/checklist/outputs/rerun、boundary、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`；不触发 task_orchestrator、Start、Confirm Dropoff、Cancel、ACK、Nav2、HIL 或 primary actions。Task B worker 报告 py_compile pass、diagnostics unittest `Ran 175 tests OK`、required rg pass、scoped diff check pass。
+
+Full-stack worker 更新 `mobile/web/app.js`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/web/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，让手机首屏“现场操作演练”承接 material callback review decision，展示 source decision、operator drill status、safe `evidence_ref`、commands、checklist、outputs、rerun 和 evidence boundary；copy/export whitelist-only，不放宽 Start Delivery、Confirm Dropoff、Cancel、dispatch、callback、ACK、cursor 或 robot command gating。Task C worker 报告 `node --check mobile/web/app.js` pass、mobile unittest `Ran 72 tests OK`、required rg pass、scoped diff check pass。
+
+Product closeout 更新 sprint 留档、`OKR.md` 和本日志；required closeout `rg` 匹配 `route_task_field_retest_material_callback_review_decision`、`route_task_field_retest_operator_drill`、`software_proof_docker_route_task_field_retest_operator_drill_gate`、`Objective 5`、`Objective 1`、`PR #4`、`PR #5`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，closeout scoped `git diff --check` exit 0。
+
+该证据只支持 Objective 2、Objective 3 和 Objective 4 继续保守保持约 99%，不继续上调到 100。理由是本轮把 PR #4 route/elevator material callback review decision 接成可执行 operator drill，能减少现场执行回退到旧 material pack-only checklist、减少同一 `evidence_ref` 漂移、减少“review decision / operator drill 即现场通过”的误读，并给出 operator commands、callback checklist、required outputs 和 rerun path；但没有真实 route/elevator field pass、真实 Nav2/fixed-route runtime log、真实 route completion signal、真实 task record、真实门状态、真实目标楼层确认、真实人工协助记录、真实 dropoff/cancel completion、真实 delivery result、真实手机/browser、production app 或真实 PWA prompt/user choice。Objective 1 保持约 81%，因为本轮没有新增 WAVE ROVER、UART、HIL packet、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、operator HIL report、2D LiDAR / ToF SKU/source、串口、波特率或硬件假设；PR #5 相关真实硬件材料仍缺。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；O5 stop rule 仍成立。本轮始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
 
 ### 2026-05-18 06-07｜route-task-material-callback-review-decision｜O2/O3/O4 material callback review decision software proof，均保守保持约 99%，O5 保持约 68%
 
