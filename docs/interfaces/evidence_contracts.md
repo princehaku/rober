@@ -37,6 +37,50 @@ field pass, HIL pass, real Nav2/fixed-route execution, real delivery success,
 real phone/browser validation, O5 external cloud proof, or any primary robot
 action being enabled.
 
+## route_task_field_retest_result_callback_review_decision
+
+`pc-tools/evidence/route_task_field_retest_result_callback_review_decision.py`
+generates the PC-only review-decision gate after
+`route_task_field_retest_result_callback_intake.py`.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_result_callback_review_decision.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_result_callback_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_result_callback_review_decision_gate`
+- Allowed inputs:
+  `trashbot.route_task_field_retest_result_callback_intake.v1` and
+  `trashbot.route_task_field_retest_result_callback_intake_summary.v1`
+  only. Wrapper or nested JSON is allowed only through known safe wrapper keys.
+- Decision values:
+  `ready_for_result_review`, `needs_material_backfill`,
+  `needs_callback_rerun`, `evidence_ref_mismatch_rerun`, and
+  `rejected_unsafe_callback`.
+
+The output always includes `safe_evidence_ref`, `source_callback_intake`,
+`accepted_updates`, `missing_updates`, `rejected_updates`,
+`result_review_readiness`, `next_required_evidence`, `owner_handoff`,
+`rerun_commands`, `safe_copy`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, `same_evidence_ref_required=true`, and
+`evidence_boundary=software_proof_docker_route_task_field_retest_result_callback_review_decision_gate`.
+
+Decision mapping is fail-closed. A source with accepted updates, no missing or
+rejected updates, ready source status, and matched evidence_ref maps to
+`ready_for_result_review`. Missing updates map to `needs_material_backfill`.
+Rejected updates, unsupported source schema or boundary, bad JSON, missing JSON,
+not-ready source status, or an empty accepted update set map to
+`needs_callback_rerun`. Mismatched or missing same-evidence-ref state maps to
+`evidence_ref_mismatch_rerun`. Unsafe copy, raw paths, checksum text,
+credentials, ROS topics, serial/UART/WAVE ROVER text, success/control claims,
+`delivery_success=true`, or `primary_actions_enabled=true` map to
+`rejected_unsafe_callback`.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, HIL pass, real Nav2/fixed-route execution, real delivery success,
+real phone/browser validation, O5 external cloud proof, or any primary robot
+action being enabled.
+
 ## route_task_field_retest_result_review_dispatch
 
 `pc-tools/evidence/route_task_field_retest_result_review_dispatch.py`
