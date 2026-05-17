@@ -8,6 +8,18 @@
 
 ## 2026-05-17 系列
 
+更新时间：2026-05-17 14:20 Asia/Shanghai。
+
+### 2026-05-17 14-15｜route-task-result-acceptance-packet｜O2/O3 result reconciliation 转成结果验收包，任务闭环与固定路线均由约 94% 上调到约 95%，O5 保持约 68%
+
+`sprints/2026.05.17_14-15_route-task-result-acceptance-packet/` 完成 `software_proof_docker_route_task_field_retest_result_acceptance_packet_gate`。Autonomy worker 新增 PC gate `route_task_field_retest_result_acceptance_packet`，把 `route_task_field_retest_result_reconciliation` 的 safe lineage、八类 required result materials、缺口、owner handoff、rerun commands 和 pass/fail criteria 汇总为 acceptance packet artifact / summary；输出保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，不读取 raw handoff artifact。Task A 验证输出 py_compile pass、unittest `Ran 5 tests in 0.052s OK`、CLI `--help` pass、required `rg` pass、scoped `git diff --check` pass；首轮 unsafe hardware wording 被安全扫描拦截后已修复并复验。
+
+Robot worker 新增 diagnostics metadata-only consumer，支持 `route_task_field_retest_result_acceptance_packet` file/env/top-level/nested diagnostics summary，只读输出 packet status、safe `evidence_ref`、missing material summary、owner handoff、rerun command summary、pass/fail criteria summary、safe copy、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`；不改变 task_orchestrator/action/Start/Dropoff/Cancel/ACK/cursor/Nav2。Task B 验证输出 py_compile pass、diagnostics unittest `Ran 146 tests in 0.219s OK`、required `rg` pass、scoped `git diff --check` pass；首轮 nested source 误判 `missing_summary` 后已修复并复验。
+
+Full-stack worker 新增只读“路线任务结果验收包” panel，展示 acceptance packet safe lineage、八类 result materials summary、缺口、owner handoff、rerun commands、pass/fail criteria、safe copy 与证据边界；copy/export 仅白名单字段；Start Delivery / Confirm Dropoff / Cancel gating 不变。Task C 验证输出 mobile unittest `Ran 42 tests OK`、`node --check mobile/web/app.js` pass、required `rg` pass、scoped `git diff --check` pass。Product closeout 更新 sprint 留档、`OKR.md` 和本日志；required `rg` 与 closeout scoped `git diff --check` 均通过。
+
+该证据只支持 Objective 2 从约 94% 保守上调到约 95%，Objective 3 从约 94% 保守上调到约 95%。Objective 2 的理由是 PR #4 route/elevator result materials 现在从 result reconciliation 进一步转成现场复测 acceptance packet，后续真实 door state、target floor confirmation、human assistance note、dropoff/cancel completion 和 delivery result 可按同一 `evidence_ref` 执行验收；仍不是真实 route/elevator field pass。Objective 3 的理由是真实 Nav2/fixed-route runtime log、route completion signal、task record 等 result materials 现在有可执行 packet、rerun commands 和 pass/fail criteria，并能被 PC / Robot / mobile 共同只读核对；仍不是真实 Nav2/fixed-route 实跑。Objective 1 保持约 77%，因为本轮没有真实 WAVE ROVER、UART、HIL、`T=1001` feedback、`/odom`、`/imu/data`、`/battery` 或 PR #5 真实 2D LiDAR / ToF 材料。Objective 4 保持约 99%，因为本轮没有真实手机设备、真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 或真实现场 phone behavior。Objective 5 保持约 68%，因为本机 Docker-only 且本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；Objective 5 仍是数值最低但按 O5 stop rule 不继续堆本地 metadata depth。本轮不证明真实 Nav2/fixed-route、真实 route/elevator field pass、真实 route completion signal、真实 task record、真实 dropoff/cancel completion、delivery success、真实手机/browser、production app、WAVE ROVER、真实串口/UART、HIL 或 Objective 5 external proof；始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
 更新时间：2026-05-17 13:13 Asia/Shanghai。
 
 ### 2026-05-17 13-14｜route-task-handoff-result-reconciliation-bridge｜O2/O3 result-intake 来源谱系进入 result-reconciliation，任务闭环与固定路线均由约 93% 上调到约 94%，O5 保持约 68%

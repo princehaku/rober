@@ -509,6 +509,67 @@
       "Objective 5 external proof"
     ]
   },
+  "route_task_field_retest_result_acceptance_packet": {
+    "schema": "trashbot.route_task_field_retest_result_acceptance_packet.v1",
+    "summary_schema": "trashbot.route_task_field_retest_result_acceptance_packet_summary.v1",
+    "schema_version": 1,
+    "source_reconciliation_schema": "trashbot.route_task_field_retest_result_reconciliation_summary.v1",
+    "packet_status": "blocked_missing_route_task_field_retest_result_acceptance_packet_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "safe_lineage": "source_review_result_handoff -> source_result_intake -> route_task_field_retest_result_reconciliation -> route_task_field_retest_result_acceptance_packet",
+    "result_materials_summary": [
+      "nav2_or_fixed_route_runtime_log=summary_pending",
+      "route_completion_signal=summary_pending",
+      "task_record=summary_pending",
+      "door_state=missing",
+      "target_floor_confirmation=missing",
+      "human_assistance_operator_note=missing",
+      "dropoff_or_cancel_completion=summary_pending",
+      "delivery_result=not_proven"
+    ],
+    "missing_items": [
+      "missing_item=door_state",
+      "missing_item=target_floor_confirmation",
+      "missing_item=human_assistance_operator_note",
+      "missing_item=delivery_result",
+      "missing_item=Robot diagnostics compatible summary"
+    ],
+    "owner_handoff": [
+      "owner_handoff=Autonomy owner reruns result reconciliation and packet gate with same safe evidence_ref",
+      "owner_handoff=Robot owner republishes diagnostics compatible summary",
+      "owner_handoff=Field owner backfills eight phone-safe result material summaries"
+    ],
+    "rerun_commands": [
+      "rerun commands=run route_task_field_retest_result_reconciliation gate with redacted summary",
+      "rerun commands=run route_task_field_retest_result_acceptance_packet gate with same safe evidence_ref",
+      "rerun commands=refresh Robot diagnostics compatible summary"
+    ],
+    "pass_fail_criteria": [
+      "pass/fail criteria=all eight result materials are present under the same safe evidence_ref",
+      "pass/fail criteria=Robot diagnostics compatible summary matches packet status",
+      "pass/fail criteria=delivery_success=false and primary_actions_enabled=false until real field proof exists"
+    ],
+    "safe_phone_copy": "路线任务结果验收包只读展示 packet status、safe lineage、八类 result materials summary、missing items、owner handoff、rerun commands、pass/fail criteria 和 evidence boundary；这是 software proof only。",
+    "safe_copy": "路线任务结果验收包 safe_copy：route_task_field_retest_result_reconciliation -> route_task_field_retest_result_acceptance_packet；当前 packet_status blocked_missing_route_task_field_retest_result_acceptance_packet_not_proven；八类 result materials 和 Robot diagnostics compatible summary 仍未证明；delivery_success=false；primary_actions_enabled=false。",
+    "recovery_hint": "请按同一 safe evidence_ref 补齐八类结果材料，重跑 result reconciliation / acceptance packet gate，并由 Robot diagnostics 发布 compatible summary。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_result_acceptance_packet_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实 door_state",
+      "真实 target_floor_confirmation",
+      "真实 human_assistance_operator_note",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实 route/elevator field pass",
+      "真实手机设备/browser",
+      "真实硬件/HIL",
+      "Objective 5 external proof"
+    ]
+  },
   "route_task_field_retest_material_pack": {
     "schema": "trashbot.route_task_field_retest_material_pack.v1",
     "summary_schema": "trashbot.route_task_field_retest_material_pack_summary.v1",

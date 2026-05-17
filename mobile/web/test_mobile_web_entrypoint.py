@@ -1074,6 +1074,99 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, reconciliation_text)
 
+    def test_field_retest_result_acceptance_packet_panel_is_read_only_and_copy_gated(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # acceptance packet 跟在 result reconciliation 后，只读解释验收准备材料和后续重跑口径。
+        self.assertIn("routeTaskFieldRetestResultAcceptancePacketTitle", app)
+        self.assertIn("路线任务结果验收包", app)
+        self.assertIn("routeTaskFieldRetestResultReconciliationTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 Robot diagnostics compatible summary。
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_PACKET_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_ACCEPTANCE_PACKET_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestResultAcceptancePacketText", app)
+        self.assertIn("routeTaskFieldRetestResultAcceptancePacketCandidate", app)
+        self.assertIn("routeTaskFieldRetestResultAcceptancePacketFromStatus", app)
+        self.assertIn("route_task_field_retest_result_acceptance_packet", app)
+        self.assertIn("route_task_field_retest_result_acceptance_packet_summary", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_result_acceptance_packet_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_result_acceptance_packet", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_result_acceptance_packet", app)
+        self.assertIn("packet_status", app)
+        self.assertIn("safe_lineage", app)
+        self.assertIn("result_materials_summary", app)
+        self.assertIn("missing_items_summary", app)
+        self.assertIn("owner_handoff_summary", app)
+        self.assertIn("rerun_commands_summary", app)
+        self.assertIn("pass_fail_criteria_summary", app)
+
+        # copy/export 必须由 safe_copy 驱动；缺失时显示 blocked copy unavailable，不合成验收包。
+        self.assertIn("routeTaskFieldRetestResultAcceptancePacketCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_result_acceptance_packet_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestResultAcceptancePacketButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestResultAcceptancePacketButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"routeTaskFieldRetestResultAcceptancePacket.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须固定 acceptance packet 的 software proof / not_proven 边界。
+        packet = fixture["route_task_field_retest_result_acceptance_packet"]
+        self.assertEqual(
+            packet["packet_status"],
+            "blocked_missing_route_task_field_retest_result_acceptance_packet_not_proven",
+        )
+        self.assertEqual(
+            packet["source_reconciliation_schema"],
+            "trashbot.route_task_field_retest_result_reconciliation_summary.v1",
+        )
+        self.assertIn("route_task_field_retest_result_reconciliation -> route_task_field_retest_result_acceptance_packet", packet["safe_lineage"])
+        self.assertEqual(packet["delivery_success"], False)
+        self.assertEqual(packet["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_route_task_field_retest_result_acceptance_packet_gate", fixture_text)
+        self.assertIn("pass/fail criteria", fixture_text)
+        self.assertIn("rerun commands", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("route_task_field_retest_result_acceptance_packet", doc)
+        self.assertIn("路线任务结果验收包", doc)
+
+    def test_field_retest_result_acceptance_packet_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        packet_text = json.dumps(
+            fixture["route_task_field_retest_result_acceptance_packet"],
+            ensure_ascii=False,
+        ).lower()
+
+        # acceptance packet fixture 只能携带白名单摘要，不能带底层控制、凭证、原始材料或成功状态。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw acceptance packet",
+            "现场已通过",
+            "真实手机已验收",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, packet_text)
+
     def test_field_retest_material_pack_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
         styles = self.read_web("styles.css")

@@ -328,6 +328,24 @@ reconciliation 固定复账八类结果材料：`nav2_or_fixed_route_runtime_log
 
 缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、缺任一结果材料、placeholder-only materials、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_result_reconciliation_not_proven` 只表示 Docker/local software proof 足以复账八类结果材料摘要，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
+## route/task field retest result acceptance packet
+
+`pc-tools/evidence/route_task_field_retest_result_acceptance_packet.py` 只读上一轮 `route_task_field_retest_result_reconciliation` artifact、summary 或 wrapper/nested JSON，把 safe lineage、八类 required result materials、缺口、owner handoff、rerun commands 和 pass/fail criteria 汇总成 PC acceptance packet artifact / summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_result_acceptance_packet.py \
+  --reconciliation-json /tmp/route_task_field_retest_result_reconciliation.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_result_acceptance_packet.json \
+  --summary-output /tmp/route_task_field_retest_result_acceptance_packet_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_result_acceptance_packet.v1`，summary 使用 `schema=trashbot.route_task_field_retest_result_acceptance_packet_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_result_acceptance_packet_gate`。核心字段包括 safe `evidence_ref`、`same_evidence_ref_required=true`、safe lineage、`required_result_materials`、`result_material_statuses`、`missing_materials`、`mismatch_reasons`、`acceptance_gap_summary`、`owner_handoff`、`rerun_commands`、`pass_fail_criteria`、`safe_copy`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+acceptance packet 固定汇总八类结果材料：`nav2_or_fixed_route_runtime_log`、`route_completion_signal`、`task_record`、`door_state`、`target_floor_confirmation`、`human_assistance_note`、`dropoff_or_cancel_completion` 和 `delivery_result`。它只消费 reconciliation 已白名单化的 material status、safe lineage 和 summary 字段，不读取 raw handoff artifact、ROS graph、Nav2 runtime、真实日志内容、serial/UART、WAVE ROVER、真实手机/browser、外部云、OSS/CDN、DB/queue 或 4G。
+
+缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、reconciliation 未 ready、缺任一 result material、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_result_acceptance_packet_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_result_acceptance_packet_gate` 已把结果验收包整理清楚；pass/fail criteria 是下一次现场复测的判断口径，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## mobile route/elevator field-device precheck
 
 `pc-tools/evidence/mobile_route_elevator_field_device_precheck.py` 只读 route/elevator field-session handoff，生成或校验真实设备/现场前检查 summary：
