@@ -250,6 +250,12 @@ ROUTE_TASK_FIELD_RETEST_RESULT_BACKFILL_REVIEW_DECISION_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RETEST_RESULT_BACKFILL_REVIEW_DECISION_GATE = (
     "software_proof_docker_route_task_field_retest_result_backfill_review_decision_gate"
 )
+ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_retest_result_review_dispatch_summary.v1"
+)
+ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH_GATE = (
+    "software_proof_docker_route_task_field_retest_result_review_dispatch_gate"
+)
 ROUTE_TASK_FIELD_RUN_RECONCILIATION_SCHEMA = "trashbot.route_task_field_run_reconciliation.v1"
 ROUTE_TASK_FIELD_RUN_RECONCILIATION_SUMMARY_SCHEMA = (
     "trashbot.route_task_field_run_reconciliation_summary.v1"
@@ -1388,6 +1394,48 @@ def _route_task_field_retest_result_backfill_review_decision_not_proven(
         "field_retest_pass",
         "review_decision_execution",
         "owner_handoff_completed",
+        "rerun_command_executed",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "real_phone_device_or_browser_proof",
+        "production_readiness",
+        "real_dropoff_completion",
+        "real_cancel_completion",
+        "dropoff_or_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_retest_result_review_dispatch_not_proven(summary_fragment=None):
+    # result review dispatch 只读分发复核材料和回调要求；真实动作、ACK、HIL 和送达仍必须由外部证据证明。
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_elevator_operation",
+        "real_elevator_door_state",
+        "real_floor_confirmation",
+        "human_assistance_outcome",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "route_task_completion_real_world",
+        "field_retest_pass",
+        "result_review_dispatch_pass",
+        "callback_packet_completed",
+        "owner_work_order_completed",
         "rerun_command_executed",
         "wave_rover_motion",
         "real_serial_or_uart_feedback",
@@ -3576,6 +3624,68 @@ def _default_route_task_field_retest_result_backfill_review_decision_summary(
         "safe_phone_copy": (
             "Route-task field retest result backfill review decision is metadata-only; "
             "delivery_success=false; primary_actions_enabled=false."
+        ),
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
+def _default_route_task_field_retest_result_review_dispatch_summary(
+    path,
+    dispatch_status="blocked_missing_route_task_field_retest_result_review_dispatch",
+    read_error="",
+):
+    # dispatch 默认 fail closed；没有 Autonomy 安全 summary 时只能提供 blocked/not_proven 元数据。
+    return {
+        "schema": ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "dispatch_status": {
+            "status": dispatch_status,
+            "verdict": "not_proven",
+            "reason": read_error or "route-task field retest result review dispatch is not configured",
+        },
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "accepted_materials": [],
+        "missing_materials": [],
+        "rejected_materials": [],
+        "owner_work_orders": {},
+        "callback_packet_requirements": {},
+        "rerun_commands": [],
+        "same_evidence_ref_required": True,
+        "robot_diagnostics_summary": {
+            "status": "blocked",
+            "reason": "route-task field retest result review dispatch is not configured",
+        },
+        "boundary": ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH_GATE,
+        "not_proven": _route_task_field_retest_result_review_dispatch_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": (
+            "Route-task field retest result review dispatch is metadata-only; "
+            "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
+        ),
+        "safe_phone_copy": (
+            "Route-task field retest result review dispatch is metadata-only; "
+            "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
         ),
         "metadata_only": True,
         "delivery_success": False,
@@ -6010,6 +6120,16 @@ def _route_task_field_retest_result_backfill_review_decision_source_contract(val
     return source_schema, source_boundary
 
 
+def _route_task_field_retest_result_review_dispatch_source_contract(value):
+    # 本轮 Autonomy 产物就是 summary；只接受该 summary schema 和同一软件证据边界，防止串接旧 gate。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or source_schema)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _elevator_route_evidence_reconciliation_source_contract(value):
     # 允许直接 artifact 或 summary wrapper；wrapper 必须保留原始 schema/boundary，防止把别的 gate 混入。
     source_schema = str(value.get("schema") or "")
@@ -6310,6 +6430,15 @@ def _route_task_field_retest_review_result_handoff_requires_same_evidence_ref(
     return value is True
 
 
+def _route_task_field_retest_result_review_dispatch_requires_same_evidence_ref(
+    summary_fragment,
+):
+    # result review dispatch 必须声明同一 evidence_ref；字符串 true/false 都不能当成安全 JSON boolean。
+    if not isinstance(summary_fragment, dict):
+        return False
+    return summary_fragment.get("same_evidence_ref_required") is True
+
+
 def _route_task_field_retest_execution_pack_has_disabled_actions(pack):
     # source 必须显式保留 fail-closed 布尔值；缺失或字符串 false 都不能被手机端当作控制授权。
     if not isinstance(pack, dict):
@@ -6550,6 +6679,15 @@ def _route_task_field_retest_result_backfill_review_decision_has_disabled_action
         else decision.get("primary_actions_enabled")
     )
     return delivery_success is False and primary_actions_enabled is False
+
+
+def _route_task_field_retest_result_review_dispatch_has_disabled_actions(summary_fragment):
+    # dispatch 是纯 diagnostics 元数据；summary 缺少显式 false 时必须 blocked，不能默认安全。
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    return (
+        summary_fragment.get("delivery_success") is False
+        and summary_fragment.get("primary_actions_enabled") is False
+    )
 
 
 def _route_elevator_field_session_handoff_has_disabled_actions(handoff):
@@ -13351,6 +13489,342 @@ def summarize_route_task_field_retest_result_backfill_review_decision(source):
                 },
                 "safe_copy": "Route-task field retest result backfill review decision was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
                 "safe_phone_copy": "Route-task field retest result backfill review decision was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+            }
+        )
+    return summary
+
+
+def summarize_route_task_field_retest_result_review_dispatch(source):
+    """构建 route-task field retest result review dispatch 的 metadata-only diagnostics 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        dispatch = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_route_task_field_retest_result_review_dispatch_summary(
+            source_path,
+            read_error="route-task field retest result review dispatch is not configured",
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "dispatch_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": "route-task field retest result review dispatch summary missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "result review dispatch summary missing",
+                    },
+                    "safe_copy": "Route-task field retest result review dispatch is missing; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field retest result review dispatch is missing; metadata remains blocked/not_proven.",
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                dispatch = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "dispatch_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            f"failed reading route-task field retest result review dispatch: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "result review dispatch JSON read error",
+                    },
+                    "safe_copy": "Route-task field retest result review dispatch could not be read; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Route-task field retest result review dispatch could not be read; metadata remains blocked/not_proven.",
+                }
+            )
+            return summary
+    summary = _default_route_task_field_retest_result_review_dispatch_summary(
+        source_path,
+        read_error="route-task field retest result review dispatch is not configured",
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(dispatch, dict):
+        summary.update(
+            {
+                "dispatch_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result review dispatch JSON must be an object",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "result review dispatch JSON shape is invalid",
+                },
+                "safe_copy": "Route-task field retest result review dispatch shape is invalid; metadata remains blocked/not_proven.",
+                "safe_phone_copy": "Route-task field retest result review dispatch shape is invalid; metadata remains blocked/not_proven.",
+            }
+        )
+        return summary
+
+    diagnostics = dispatch.get("diagnostics") if isinstance(dispatch.get("diagnostics"), dict) else {}
+    # Robot 只消费 Autonomy 产出的安全 summary；raw result、命令输出、路径、topic 和控制字段都不能穿透。
+    summary_fragment = (
+        dispatch
+        if str(dispatch.get("schema") or "")
+        == ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH_SUMMARY_SCHEMA
+        else {}
+    )
+    if not summary_fragment:
+        for candidate in (
+            dispatch.get("route_task_field_retest_result_review_dispatch_summary"),
+            dispatch.get("route_task_field_retest_result_review_dispatch"),
+            dispatch.get("robot_compatible_summary"),
+            dispatch.get("mobile_readonly_summary"),
+            dispatch.get("phone_safe_summary"),
+            diagnostics.get("summary"),
+            diagnostics.get("diagnostics_summary"),
+            diagnostics.get("route_task_field_retest_result_review_dispatch_summary"),
+            diagnostics.get("route_task_field_retest_result_review_dispatch"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+
+    source_schema, source_boundary = _route_task_field_retest_result_review_dispatch_source_contract(
+        dispatch
+    )
+    if not summary_fragment:
+        summary.update(
+            {
+                "source_schema": _redact_route_task_rehearsal_text(source_schema),
+                "source_schema_version": dispatch.get("schema_version"),
+                "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "dispatch_status": {
+                    "status": "missing_summary",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result review dispatch lacks a safe diagnostics summary",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing safe result review dispatch summary",
+                },
+                "safe_copy": "Route-task field retest result review dispatch is blocked because no safe summary was provided.",
+                "safe_phone_copy": "Route-task field retest result review dispatch is blocked because no safe summary was provided.",
+            }
+        )
+        return summary
+
+    status_source = summary_fragment.get("dispatch_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("review_dispatch_status")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    dispatch_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or status_source.get("verdict")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or "blocked"
+    )
+    dispatch_verdict = _redact_route_task_rehearsal_text(
+        status_source.get("verdict")
+        or status_source.get("decision")
+        or summary_fragment.get("verdict")
+        or "not_proven"
+    )
+    dispatch_reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or status_source.get("summary")
+        or summary_fragment.get("reason")
+        or "route-task field retest result review dispatch consumed without explicit reason"
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or (
+            "Route-task field retest result review dispatch is metadata-only; "
+            "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    source_ref = str(dispatch.get("evidence_ref") or "").strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref") or summary_fragment.get("evidence_ref") or ""
+    ).strip()
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else diagnostics.get("robot_diagnostics_summary")
+        if isinstance(diagnostics.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    accepted_materials = _safe_pc_route_debug_value(summary_fragment.get("accepted_materials"))
+    missing_materials = _safe_pc_route_debug_value(summary_fragment.get("missing_materials"))
+    rejected_materials = _safe_pc_route_debug_value(summary_fragment.get("rejected_materials"))
+    owner_work_orders = _safe_pc_route_debug_value(summary_fragment.get("owner_work_orders"))
+    callback_packet_requirements = _safe_pc_route_debug_value(
+        summary_fragment.get("callback_packet_requirements")
+    )
+    rerun_commands = _safe_pc_route_debug_value(summary_fragment.get("rerun_commands"))
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": dispatch.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "dispatch_status": {
+                "status": dispatch_status or "blocked",
+                "verdict": dispatch_verdict or "not_proven",
+                "reason": dispatch_reason,
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(summary_ref or source_ref),
+            "accepted_materials": accepted_materials,
+            "missing_materials": missing_materials,
+            "rejected_materials": rejected_materials,
+            "owner_work_orders": owner_work_orders,
+            "callback_packet_requirements": callback_packet_requirements,
+            "rerun_commands": rerun_commands,
+            "same_evidence_ref_required": (
+                summary_fragment.get("same_evidence_ref_required") is True
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": dispatch_status or "blocked",
+                "reason": "result review dispatch consumed without explicit robot diagnostics summary",
+            },
+            "boundary": ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH_GATE,
+            "not_proven": _route_task_field_retest_result_review_dispatch_not_proven(
+                summary_fragment
+            ),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "read_error": "",
+        }
+    )
+
+    required_summary_fields = (
+        isinstance(summary["accepted_materials"], list),
+        isinstance(summary["missing_materials"], list),
+        isinstance(summary["rejected_materials"], list),
+        bool(summary["owner_work_orders"]),
+        bool(summary["callback_packet_requirements"]),
+        isinstance(summary["rerun_commands"], list),
+    )
+    if (
+        source_schema != ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH_SUMMARY_SCHEMA
+        or source_boundary != ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH_GATE
+    ):
+        summary.update(
+            {
+                "dispatch_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result review dispatch schema or evidence boundary is unsupported",
+                },
+                "accepted_materials": [],
+                "missing_materials": [],
+                "rejected_materials": [],
+                "owner_work_orders": {},
+                "callback_packet_requirements": {},
+                "rerun_commands": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+            }
+        )
+        return summary
+    if not summary["safe_evidence_ref"]:
+        summary.update(
+            {
+                "dispatch_status": {
+                    "status": "missing_evidence_ref",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result review dispatch is missing evidence_ref",
+                },
+                "robot_diagnostics_summary": {"status": "blocked", "reason": "missing evidence_ref"},
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary.update(
+            {
+                "dispatch_status": {
+                    "status": "evidence_ref_mismatch",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result review dispatch summary evidence_ref does not match source evidence_ref",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "same evidence_ref mismatch",
+                },
+            }
+        )
+        return summary
+    if not _route_task_field_retest_result_review_dispatch_requires_same_evidence_ref(
+        summary_fragment
+    ):
+        summary.update(
+            {
+                "dispatch_status": {
+                    "status": "same_evidence_ref_required_false",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result review dispatch must require the same evidence_ref",
+                },
+                "same_evidence_ref_required": False,
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "same_evidence_ref_required must be JSON true",
+                },
+            }
+        )
+        return summary
+    if not all(required_summary_fields):
+        summary.update(
+            {
+                "dispatch_status": {
+                    "status": "missing_required_summary_fields",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result review dispatch is missing required safe summary fields",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing required result review dispatch summary fields",
+                },
+            }
+        )
+        return summary
+    if (
+        not _route_task_field_retest_result_review_dispatch_has_disabled_actions(
+            summary_fragment
+        )
+        or _route_task_field_run_console_has_unsafe_fields(summary_fragment)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+        or _route_task_field_retest_execution_pack_has_success_wording(summary_fragment)
+    ):
+        summary.update(
+            {
+                "dispatch_status": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest result review dispatch contains unsafe fields, enabled actions, raw details, or success wording",
+                },
+                "accepted_materials": [],
+                "missing_materials": [],
+                "rejected_materials": [],
+                "owner_work_orders": {},
+                "callback_packet_requirements": {},
+                "rerun_commands": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe result review dispatch summary fields",
+                },
+                "safe_copy": "Route-task field retest result review dispatch was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+                "safe_phone_copy": "Route-task field retest result review dispatch was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
             }
         )
     return summary
@@ -20966,6 +21440,7 @@ def build_diagnostics_payload(
     route_task_field_retest_result_acceptance_packet_ref="",
     route_task_field_retest_result_acceptance_backfill_ref="",
     route_task_field_retest_result_backfill_review_decision_ref="",
+    route_task_field_retest_result_review_dispatch_ref="",
     route_task_field_run_reconciliation_ref="",
     route_task_completion_signal_ref="",
     route_task_terminal_completion_rehearsal_ref="",
@@ -21365,6 +21840,21 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
         else {}
     )
+    route_task_field_retest_result_review_dispatch_source = (
+        latest_status.get("route_task_field_retest_result_review_dispatch")
+        if isinstance(latest_status.get("route_task_field_retest_result_review_dispatch"), dict)
+        else latest_status.get("route_task_field_retest_result_review_dispatch_summary")
+        if isinstance(latest_status.get("route_task_field_retest_result_review_dispatch_summary"), dict)
+        else diagnostics_source.get("route_task_field_retest_result_review_dispatch")
+        if isinstance(diagnostics_source.get("route_task_field_retest_result_review_dispatch"), dict)
+        else diagnostics_source.get("route_task_field_retest_result_review_dispatch_summary")
+        if isinstance(diagnostics_source.get("route_task_field_retest_result_review_dispatch_summary"), dict)
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
+        else {}
+    )
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
     latest_status.pop("phone_support_bundle", None)
     latest_status.pop("voice_prompt_readiness", None)
@@ -21432,6 +21922,9 @@ def build_diagnostics_payload(
     latest_status.pop("route_task_field_retest_result_backfill_review_decision", None)
     latest_status.pop("route_task_field_retest_result_backfill_review_decision_summary", None)
     latest_status.pop("route_task_field_retest_result_backfill_review_decision_copy", None)
+    latest_status.pop("route_task_field_retest_result_review_dispatch", None)
+    latest_status.pop("route_task_field_retest_result_review_dispatch_summary", None)
+    latest_status.pop("route_task_field_retest_result_review_dispatch_copy", None)
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -21676,6 +22169,17 @@ def build_diagnostics_payload(
     route_task_field_retest_result_backfill_review_decision_summary = (
         summarize_route_task_field_retest_result_backfill_review_decision(
             route_task_field_retest_result_backfill_review_decision_source
+        )
+    )
+    route_task_field_retest_result_review_dispatch_source = (
+        route_task_field_retest_result_review_dispatch_ref
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH", "")
+        or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH_SUMMARY", "")
+        or route_task_field_retest_result_review_dispatch_source
+    )
+    route_task_field_retest_result_review_dispatch_summary = (
+        summarize_route_task_field_retest_result_review_dispatch(
+            route_task_field_retest_result_review_dispatch_source
         )
     )
     route_task_field_run_reconciliation_summary = summarize_route_task_field_run_reconciliation(
@@ -21953,6 +22457,8 @@ def build_diagnostics_payload(
         route_task_field_retest_result_acceptance_backfill_summary=route_task_field_retest_result_acceptance_backfill_summary,
         route_task_field_retest_result_backfill_review_decision=route_task_field_retest_result_backfill_review_decision_summary,
         route_task_field_retest_result_backfill_review_decision_summary=route_task_field_retest_result_backfill_review_decision_summary,
+        route_task_field_retest_result_review_dispatch=route_task_field_retest_result_review_dispatch_summary,
+        route_task_field_retest_result_review_dispatch_summary=route_task_field_retest_result_review_dispatch_summary,
         route_task_field_run_reconciliation=route_task_field_run_reconciliation_summary,
         route_task_field_run_reconciliation_summary=route_task_field_run_reconciliation_summary,
         route_task_completion_signal=route_task_completion_signal_summary,

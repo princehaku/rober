@@ -76,6 +76,89 @@
       "delivery success"
     ]
   },
+  "route_task_field_retest_result_review_dispatch": {
+    "schema": "trashbot.route_task_field_retest_result_review_dispatch.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.route_task_field_retest_result_review_dispatch_summary.v1",
+    "dispatch_status": "blocked_missing_route_task_field_retest_result_review_dispatch_not_proven",
+    "accepted_materials": [
+      "accepted_materials=phone_safe_backfill_review_decision_schema",
+      "accepted_materials=safe_evidence_ref_alignment_summary"
+    ],
+    "missing_materials": [
+      "missing_materials=door_state",
+      "missing_materials=target_floor_confirmation",
+      "missing_materials=human_assistance_note",
+      "missing_materials=delivery_result"
+    ],
+    "rejected_materials": [
+      "rejected_materials=unsafe material reference",
+      "rejected_materials=success-claim material"
+    ],
+    "owner_work_orders": [
+      "owner_work_orders=Autonomy owner reruns Nav2/fixed-route runtime log and route completion signal with same safe evidence_ref.",
+      "owner_work_orders=Robot owner refreshes task record and diagnostics metadata-only summary.",
+      "owner_work_orders=Field owner captures door state, target floor confirmation, human assistance note, dropoff/cancel completion, and delivery result callback packet."
+    ],
+    "callback_packet_requirements": [
+      "callback_packet_requirements=safe_evidence_ref",
+      "callback_packet_requirements=accepted_materials/missing_materials/rejected_materials",
+      "callback_packet_requirements=owner_work_orders result summary",
+      "callback_packet_requirements=not_proven plus delivery_success=false plus primary_actions_enabled=false"
+    ],
+    "rerun_commands": [
+      "rerun_commands=run route_task_field_retest_result_review_dispatch gate after missing phone-safe callback packet is added.",
+      "rerun_commands=refresh Robot diagnostics compatible summary before mobile review."
+    ],
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "路线任务现场派发 fixture 只展示 dispatch status、owner work orders、callback packet requirements 和 rerun commands；这是 Docker/local software proof，不是真实现场结论。",
+    "recovery_hint": "按同一 safe evidence_ref 补齐 callback packet requirements 后重跑 software_proof_docker_route_task_field_retest_result_review_dispatch_gate。",
+    "safe_copy": {
+      "safe_phone_copy": "路线任务现场派发 copy 只包含 whitelist-only phone-safe metadata；不得当成真实现场结论或交付完成。"
+    },
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_result_review_dispatch_gate",
+    "not_proven": [
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field pass",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
+  "route_task_field_retest_result_review_dispatch_summary": {
+    "schema": "trashbot.route_task_field_retest_result_review_dispatch_summary.v1",
+    "schema_version": 1,
+    "dispatch_status": "blocked_missing_route_task_field_retest_result_review_dispatch_not_proven",
+    "accepted_materials": [
+      "accepted_materials=phone_safe_backfill_review_decision_schema"
+    ],
+    "missing_materials": [
+      "missing_materials=door_state",
+      "missing_materials=target_floor_confirmation"
+    ],
+    "rejected_materials": [
+      "rejected_materials=raw or success-claim material"
+    ],
+    "owner_work_orders": "owner_work_orders=refresh same safe evidence_ref result materials before callback review.",
+    "callback_packet_requirements": "callback_packet_requirements=safe evidence ref, categories, owner work order result, boundary flags.",
+    "rerun_commands": "rerun_commands=rerun software_proof_docker_route_task_field_retest_result_review_dispatch_gate.",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "route_task_field_retest_result_review_dispatch_summary 只用于手机只读现场派发，不放行 Start、Confirm 或 Cancel。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_result_review_dispatch_gate",
+    "not_proven": [
+      "真实 route/elevator field pass",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "elevator_assist": {
     "schema": "trashbot.elevator_assist_summary.v1",
     "schema_version": 1,

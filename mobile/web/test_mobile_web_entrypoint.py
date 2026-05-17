@@ -1356,6 +1356,103 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, decision_text)
 
+    def test_field_retest_result_review_dispatch_panel_is_read_only_and_copy_gated(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 现场派发必须跟在回填复核决策后，只读展示 owner 工单和 callback 要求。
+        self.assertIn("routeTaskFieldRetestResultReviewDispatchTitle", app)
+        self.assertIn("路线任务现场派发", app)
+        self.assertIn("routeTaskFieldRetestResultBackfillReviewDecisionTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+
+        # 状态来源兼容 artifact、summary 和 Robot diagnostics compatible summary。
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_DISPATCH_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestResultReviewDispatchText", app)
+        self.assertIn("routeTaskFieldRetestResultReviewDispatchCandidate", app)
+        self.assertIn("routeTaskFieldRetestResultReviewDispatchFromStatus", app)
+        self.assertIn("route_task_field_retest_result_review_dispatch", app)
+        self.assertIn("route_task_field_retest_result_review_dispatch_summary", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_result_review_dispatch_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_result_review_dispatch", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_result_review_dispatch", app)
+        self.assertIn("dispatch_status", app)
+        self.assertIn("accepted_materials", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("rejected_materials", app)
+        self.assertIn("owner_work_orders", app)
+        self.assertIn("callback_packet_requirements", app)
+        self.assertIn("rerun_commands", app)
+        self.assertIn("same_evidence_ref_required=true", app)
+
+        # copy/export 只能由 safe_copy 驱动，并且导出白名单字段。
+        self.assertIn("routeTaskFieldRetestResultReviewDispatchCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_result_review_dispatch_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestResultReviewDispatchButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestResultReviewDispatchButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"routeTaskFieldRetestResultReviewDispatch.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        self.assertNotRegex(app, r"copyRouteTaskFieldRetestResultReviewDispatchButton.*fetchJson")
+
+        # fixture 和产品文档必须固定 software proof / not_proven 边界。
+        dispatch = fixture["route_task_field_retest_result_review_dispatch"]
+        self.assertEqual(
+            dispatch["dispatch_status"],
+            "blocked_missing_route_task_field_retest_result_review_dispatch_not_proven",
+        )
+        self.assertEqual(dispatch["same_evidence_ref_required"], True)
+        self.assertEqual(dispatch["delivery_success"], False)
+        self.assertEqual(dispatch["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_route_task_field_retest_result_review_dispatch_gate", fixture_text)
+        self.assertIn("accepted_materials", fixture_text)
+        self.assertIn("missing_materials", fixture_text)
+        self.assertIn("rejected_materials", fixture_text)
+        self.assertIn("owner_work_orders", fixture_text)
+        self.assertIn("callback_packet_requirements", fixture_text)
+        self.assertIn("rerun_commands", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("route_task_field_retest_result_review_dispatch", doc)
+        self.assertIn("路线任务现场派发", doc)
+
+    def test_field_retest_result_review_dispatch_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        dispatch_text = json.dumps(
+            fixture["route_task_field_retest_result_review_dispatch"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 现场派发 fixture 不得包含 raw 工单、底层控制、硬件细节或成功宣称。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw work order",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "现场已通过",
+            "真实手机已验收",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "same_evidence_ref_required\": false",
+        ):
+            self.assertNotIn(forbidden, dispatch_text)
+
     def test_field_retest_material_pack_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
         styles = self.read_web("styles.css")
