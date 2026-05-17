@@ -7,6 +7,75 @@
   "can_collect": true,
   "can_confirm_dropoff": false,
   "can_cancel": false,
+  "route_task_field_retest_result_backfill_review_decision": {
+    "schema": "trashbot.route_task_field_retest_result_backfill_review_decision.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.route_task_field_retest_result_backfill_review_decision_summary.v1",
+    "review_decision": "blocked_missing_route_task_field_retest_result_backfill_review_decision_not_proven",
+    "material_status": "material_status=blocked_missing_same_evidence_ref_result_materials",
+    "accepted_materials": [
+      "accepted_materials=phone_safe_backfill_schema_only"
+    ],
+    "missing_materials": [
+      "missing_materials=door_state",
+      "missing_materials=target_floor_confirmation",
+      "missing_materials=human_assistance_note",
+      "missing_materials=delivery_result"
+    ],
+    "rejected_materials": [
+      "rejected_materials=non phone-safe material or success-claim material"
+    ],
+    "owner_handoff": "owner_handoff=Autonomy/Robot/Field owner must provide same safe evidence_ref summaries; Full-stack keeps mobile read-only.",
+    "next_required_evidence": "next_required_evidence=same safe evidence_ref route/task/elevator result backfill summary before any review can advance.",
+    "rerun_commands": "rerun_commands=run route_task_field_retest_result_backfill_review_decision gate after missing phone-safe materials are added.",
+    "safe_evidence_ref": "route_task_field_retest_result_backfill_review_decision_fixture_20260517_0001",
+    "safe_phone_copy": "路线任务回填复核决策 fixture 只展示 review decision 和材料分类；这是 Docker/local software proof，不是真实路线、HIL 或 delivery success。",
+    "recovery_hint": "补齐同一 safe evidence_ref 的 accepted/missing/rejected categories、owner handoff 和 next required evidence 后重跑复核决策 gate。",
+    "safe_copy": {
+      "safe_phone_copy": "路线任务回填复核决策 copy 只包含 whitelist-only phone-safe metadata；不得当成现场通过。"
+    },
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_result_backfill_review_decision_gate",
+    "not_proven": [
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field pass",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
+  "route_task_field_retest_result_backfill_review_decision_summary": {
+    "schema": "trashbot.route_task_field_retest_result_backfill_review_decision_summary.v1",
+    "schema_version": 1,
+    "review_decision": "blocked_missing_route_task_field_retest_result_backfill_review_decision_not_proven",
+    "material_status": "material_status=blocked_missing_same_evidence_ref_result_materials",
+    "accepted_materials": [
+      "accepted_materials=phone_safe_backfill_schema_only"
+    ],
+    "missing_materials": [
+      "missing_materials=door_state",
+      "missing_materials=target_floor_confirmation"
+    ],
+    "rejected_materials": [
+      "rejected_materials=raw or success-claim material"
+    ],
+    "owner_handoff": "owner_handoff=refresh Robot diagnostics compatible summary before review.",
+    "next_required_evidence": "next_required_evidence=same safe evidence_ref field result summary.",
+    "rerun_commands": "rerun_commands=rerun software_proof_docker_route_task_field_retest_result_backfill_review_decision_gate.",
+    "safe_evidence_ref": "route_task_field_retest_result_backfill_review_decision_fixture_20260517_0001",
+    "safe_phone_copy": "route_task_field_retest_result_backfill_review_decision_summary 只用于手机只读复核决策，不放行 Start、Confirm 或 Cancel。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_result_backfill_review_decision_gate",
+    "not_proven": [
+      "真实 route/elevator field pass",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "elevator_assist": {
     "schema": "trashbot.elevator_assist_summary.v1",
     "schema_version": 1,
