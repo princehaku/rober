@@ -399,6 +399,11 @@ MOBILE_FIELD_MATERIAL_RETEST_REQUEST_SUMMARY_SCHEMA = (
 MOBILE_FIELD_MATERIAL_RETEST_REQUEST_GATE = (
     "software_proof_docker_mobile_field_material_retest_request_gate"
 )
+WAVE_ROVER_FEEDBACK_REPLAY_SCHEMA = "trashbot.wave_rover_feedback_replay.v1"
+WAVE_ROVER_FEEDBACK_REPLAY_SUMMARY_SCHEMA = "trashbot.wave_rover_feedback_replay_summary.v1"
+WAVE_ROVER_FEEDBACK_REPLAY_GATE = (
+    "software_proof_docker_wave_rover_feedback_replay_gate"
+)
 HARDWARE_BASELINE_REVIEW_SCHEMA = "trashbot.hardware_baseline_review_gate.v1"
 HARDWARE_BASELINE_REVIEW_SUMMARY_SCHEMA = "trashbot.hardware_baseline_review_summary.v1"
 HARDWARE_BASELINE_REVIEW_GATE = "software_proof_docker_hardware_baseline_review_gate"
@@ -2153,6 +2158,39 @@ def _mobile_field_material_retest_request_not_proven(request=None, summary_fragm
         if text and text not in values:
             values.append(text)
     return values
+
+
+def _wave_rover_feedback_replay_not_proven(replay=None, summary_fragment=None):
+    # replay gate 只证明离线解析/对齐逻辑；真实串口、底盘反馈和 HIL 仍必须独立补证。
+    replay = replay if isinstance(replay, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(replay.get("not_proven"), list):
+        source_values.extend(replay.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "real_wave_rover_feedback",
+        "real_serial_or_uart_feedback",
+        "real_chassis_motion",
+        "real_hil_pass",
+        "delivery_success",
+        "primary_actions",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _wave_rover_feedback_replay_has_not_proven(replay, summary_fragment):
+    # 缺 not_proven 时不能默认安全；Hardware gate 必须显式保留未证明清单。
+    for candidate in (summary_fragment, replay):
+        if isinstance(candidate, dict) and isinstance(candidate.get("not_proven"), list):
+            return bool(candidate.get("not_proven"))
+    return False
 
 
 def _hardware_baseline_review_not_proven(review=None, summary_fragment=None):
@@ -4806,6 +4844,52 @@ def _default_mobile_field_material_retest_request_summary(
     }
 
 
+def _default_wave_rover_feedback_replay_summary(
+    path,
+    status="not_configured",
+    read_error="",
+):
+    # 缺少 replay artifact 时仍输出完整 false 栅栏，防止 diagnostics 被误解成硬件反馈或远控入口。
+    return {
+        "schema": WAVE_ROVER_FEEDBACK_REPLAY_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": WAVE_ROVER_FEEDBACK_REPLAY_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "feedback_replay_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "reason": read_error or "WAVE ROVER feedback replay summary is not configured",
+        },
+        "safe_evidence_ref": "",
+        "feedback_alignment": {"verdict": "not_proven"},
+        "interval_alignment": {"verdict": "not_proven"},
+        "topic_alignment": {"verdict": "not_proven"},
+        "next_required_evidence": [],
+        "not_proven": _wave_rover_feedback_replay_not_proven(),
+        "boundary": WAVE_ROVER_FEEDBACK_REPLAY_GATE,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "real_hardware_observed": False,
+        "real_wave_rover_feedback": False,
+        "real_serial_or_uart_feedback": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _default_hardware_baseline_review_summary(path, status="not_configured", read_error=""):
     # 缺少硬件 baseline review 时也必须显式 fail-closed，避免 diagnostics 被误当成硬件准入通过。
     return {
@@ -6460,6 +6544,16 @@ def _mobile_field_material_retest_request_source_contract(value):
     return source_schema, source_boundary
 
 
+def _wave_rover_feedback_replay_source_contract(value):
+    # 支持直接 artifact、summary wrapper 和嵌套 diagnostics；summary 仍必须回指本 gate。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == WAVE_ROVER_FEEDBACK_REPLAY_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or source_schema)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _hardware_baseline_review_source_contract(value):
     # 允许直接 artifact 或已生成 summary；summary 仍必须回指 baseline review schema 和同一软件证据边界。
     source_schema = str(value.get("schema") or "")
@@ -7006,6 +7100,112 @@ def _route_elevator_field_session_handoff_has_disabled_actions(handoff):
         handoff.get("delivery_success") is False
         and handoff.get("primary_actions_enabled") is False
     )
+
+
+def _wave_rover_feedback_replay_has_disabled_actions(replay, summary_fragment):
+    # replay source 和 summary 都必须显式关闭主动作；缺字段或字符串 false 都不能算安全。
+    replay = replay if isinstance(replay, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    delivery_success = (
+        summary_fragment.get("delivery_success")
+        if "delivery_success" in summary_fragment
+        else replay.get("delivery_success")
+    )
+    primary_actions_enabled = (
+        summary_fragment.get("primary_actions_enabled")
+        if "primary_actions_enabled" in summary_fragment
+        else replay.get("primary_actions_enabled")
+    )
+    return delivery_success is False and primary_actions_enabled is False
+
+
+def _wave_rover_feedback_replay_has_unsafe_fields(value, key_path=""):
+    # 允许 feedback/interval/topic verdict 字段，但拒绝 raw 串口、原始反馈、控制动作和成功 claim。
+    unsafe_key_fragments = (
+        "authorization",
+        "token",
+        "secret",
+        "access_key",
+        "password",
+        "credential",
+        "checksum",
+        "traceback",
+        "raw_path",
+        "raw_file",
+        "raw_feedback",
+        "raw_serial",
+        "raw_uart",
+        "serial_path",
+        "uart_path",
+        "device_path",
+        "baud",
+        "baudrate",
+        "command_envelope",
+        "status_envelope",
+        "ack_payload",
+    )
+    unsafe_true_keys = {
+        "delivery_success",
+        "primary_actions_enabled",
+        "collect_triggered",
+        "dropoff_triggered",
+        "cancel_triggered",
+        "ack_post_allowed",
+        "remote_ack_allowed",
+        "cursor_updates_allowed",
+        "persistence_updates_allowed",
+        "terminal_ack_allowed",
+        "nav2_triggered",
+        "hil_pass",
+        "production_ready",
+        "real_hardware_observed",
+        "real_wave_rover_feedback",
+        "real_serial_or_uart_feedback",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            current_path = f"{key_path}.{key_text}" if key_path else key_text
+            if key_text in unsafe_true_keys and bool(item):
+                return True
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if _wave_rover_feedback_replay_has_unsafe_fields(item, current_path):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_wave_rover_feedback_replay_has_unsafe_fields(item, key_path) for item in value)
+    if isinstance(value, str):
+        redacted = _redact_route_task_rehearsal_text(value)
+        guarded = redacted.lower()
+        for phrase in (
+            "not delivery success",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "not_proven",
+            "not proven",
+            "metadata-only",
+            "must not",
+            "not real",
+            "不证明",
+        ):
+            guarded = guarded.replace(phrase, "")
+        return (
+            "/dev/" in guarded
+            or "ttyusb" in guarded
+            or "ttyama" in guarded
+            or "serial path" in guarded
+            or "uart path" in guarded
+            or "baudrate" in guarded
+            or "raw feedback" in guarded
+            or "ack posted" in guarded
+            or "remote ack" in guarded
+            or "cursor advanced" in guarded
+            or "nav2 started" in guarded
+            or "hil pass" in guarded
+            or "delivery success" in guarded
+        )
+    return False
 
 
 def _pc_route_debug_safe_copy_is_unsafe(value):
@@ -19102,6 +19302,200 @@ def summarize_mobile_field_material_retest_request(source):
     return summary
 
 
+def summarize_wave_rover_feedback_replay(source):
+    """构建 WAVE ROVER feedback replay 的 metadata-only diagnostics 摘要。"""
+    # 本 consumer 只读 Hardware gate 的安全摘要；不接触真实串口、不请求反馈流、不触发远控。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_wave_rover_feedback_replay_summary(
+        source_path,
+        read_error="WAVE ROVER feedback replay summary is not configured",
+    )
+    if isinstance(source, dict):
+        replay = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "feedback_replay_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": "WAVE ROVER feedback replay artifact missing",
+                    },
+                    "read_error": "WAVE ROVER feedback replay artifact missing",
+                }
+            )
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                replay = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading WAVE ROVER feedback replay summary: {exc}"
+            )
+            summary.update(
+                {
+                    "feedback_replay_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": safe_error,
+                    },
+                    "read_error": safe_error,
+                }
+            )
+            return summary
+
+    if not isinstance(replay, dict):
+        summary.update(
+            {
+                "feedback_replay_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "WAVE ROVER feedback replay JSON must be an object",
+                }
+            }
+        )
+        return summary
+
+    # 兼容 direct artifact、summary wrapper、latest_status 和 diagnostics nested summary。
+    summary_fragment = {}
+    for candidate in (
+        replay.get("wave_rover_feedback_replay_summary"),
+        replay.get("robot_diagnostics_summary"),
+        replay.get("diagnostics_summary"),
+        replay.get("phone_safe_summary"),
+        replay.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+    source_schema, source_boundary = _wave_rover_feedback_replay_source_contract(replay)
+    status_source = (
+        replay.get("feedback_replay_status")
+        if isinstance(replay.get("feedback_replay_status"), dict)
+        else replay.get("replay_status")
+        if isinstance(replay.get("replay_status"), dict)
+        else summary_fragment.get("feedback_replay_status")
+        if isinstance(summary_fragment.get("feedback_replay_status"), dict)
+        else summary_fragment.get("replay_status")
+        if isinstance(summary_fragment.get("replay_status"), dict)
+        else {}
+    )
+    feedback_alignment = (
+        replay.get("feedback_alignment")
+        if isinstance(replay.get("feedback_alignment"), dict)
+        else summary_fragment.get("feedback_alignment")
+        if isinstance(summary_fragment.get("feedback_alignment"), dict)
+        else {"verdict": replay.get("feedback_alignment_verdict") or summary_fragment.get("feedback_alignment_verdict") or "not_proven"}
+    )
+    interval_alignment = (
+        replay.get("interval_alignment")
+        if isinstance(replay.get("interval_alignment"), dict)
+        else summary_fragment.get("interval_alignment")
+        if isinstance(summary_fragment.get("interval_alignment"), dict)
+        else {"verdict": replay.get("interval_alignment_verdict") or summary_fragment.get("interval_alignment_verdict") or "not_proven"}
+    )
+    topic_alignment = (
+        replay.get("topic_alignment")
+        if isinstance(replay.get("topic_alignment"), dict)
+        else summary_fragment.get("topic_alignment")
+        if isinstance(summary_fragment.get("topic_alignment"), dict)
+        else {"verdict": replay.get("topic_alignment_verdict") or summary_fragment.get("topic_alignment_verdict") or "not_proven"}
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": replay.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "feedback_replay_status": {
+                "status": _redact_route_task_rehearsal_text(
+                    status_source.get("status")
+                    or summary_fragment.get("status")
+                    or replay.get("status")
+                    or "blocked"
+                ),
+                "verdict": _redact_route_task_rehearsal_text(
+                    status_source.get("verdict")
+                    or summary_fragment.get("verdict")
+                    or replay.get("verdict")
+                    or "not_proven"
+                ),
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or replay.get("reason")
+                    or "WAVE ROVER feedback replay consumed without real HIL evidence"
+                ),
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("safe_evidence_ref")
+                or summary_fragment.get("evidence_ref")
+                or replay.get("safe_evidence_ref")
+                or replay.get("evidence_ref", "")
+            ),
+            "feedback_alignment": _safe_pc_route_debug_value(feedback_alignment),
+            "interval_alignment": _safe_pc_route_debug_value(interval_alignment),
+            "topic_alignment": _safe_pc_route_debug_value(topic_alignment),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                replay.get("next_required_evidence")
+                if isinstance(replay.get("next_required_evidence"), list)
+                else summary_fragment.get("next_required_evidence")
+            ),
+            "not_proven": _wave_rover_feedback_replay_not_proven(replay, summary_fragment),
+            "boundary": WAVE_ROVER_FEEDBACK_REPLAY_GATE,
+            "read_error": "",
+            "metadata_only": True,
+            "real_hardware_observed": False,
+            "real_wave_rover_feedback": False,
+            "real_serial_or_uart_feedback": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    accepted_schemas = {
+        WAVE_ROVER_FEEDBACK_REPLAY_SCHEMA,
+        WAVE_ROVER_FEEDBACK_REPLAY_SUMMARY_SCHEMA,
+    }
+    if source_schema not in accepted_schemas or source_boundary != WAVE_ROVER_FEEDBACK_REPLAY_GATE:
+        summary.update(
+            {
+                "feedback_replay_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "WAVE ROVER feedback replay schema or evidence boundary is unsupported",
+                },
+                "feedback_alignment": {"verdict": "not_proven"},
+                "interval_alignment": {"verdict": "not_proven"},
+                "topic_alignment": {"verdict": "not_proven"},
+                "next_required_evidence": [],
+            }
+        )
+        return summary
+
+    if (
+        not _wave_rover_feedback_replay_has_not_proven(replay, summary_fragment)
+        or not _wave_rover_feedback_replay_has_disabled_actions(replay, summary_fragment)
+        or _wave_rover_feedback_replay_has_unsafe_fields(replay)
+    ):
+        summary.update(
+            {
+                "feedback_replay_status": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": "WAVE ROVER feedback replay contains unsafe fields, missing not_proven, or success/control claims",
+                },
+                "feedback_alignment": {"verdict": "not_proven"},
+                "interval_alignment": {"verdict": "not_proven"},
+                "topic_alignment": {"verdict": "not_proven"},
+                "next_required_evidence": [],
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_hardware_baseline_review(source):
     """构建 hardware baseline review 的 metadata-only diagnostics 摘要。"""
     # 支持 explicit ref、env path 和 latest_status/diagnostics dict；所有来源都只能进入白名单摘要字段。
@@ -22543,6 +22937,7 @@ def build_diagnostics_payload(
     mobile_field_material_intake_ref="",
     mobile_field_material_review_decision_ref="",
     mobile_field_material_retest_request_ref="",
+    wave_rover_feedback_replay_ref="",
     hardware_baseline_review_ref="",
     hardware_baseline_source_alignment_ref="",
     hardware_sensor_procurement_intake_ref="",
@@ -22674,6 +23069,21 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("mobile_field_material_retest_request"), dict)
         else diagnostics_source.get("mobile_field_material_retest_request_summary")
         if isinstance(diagnostics_source.get("mobile_field_material_retest_request_summary"), dict)
+        else {}
+    )
+    wave_rover_feedback_replay_source = (
+        latest_status.get("wave_rover_feedback_replay")
+        if isinstance(latest_status.get("wave_rover_feedback_replay"), dict)
+        else latest_status.get("wave_rover_feedback_replay_summary")
+        if isinstance(latest_status.get("wave_rover_feedback_replay_summary"), dict)
+        else diagnostics_source.get("wave_rover_feedback_replay")
+        if isinstance(diagnostics_source.get("wave_rover_feedback_replay"), dict)
+        else diagnostics_source.get("wave_rover_feedback_replay_summary")
+        if isinstance(diagnostics_source.get("wave_rover_feedback_replay_summary"), dict)
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
         else {}
     )
     route_task_terminal_completion_rehearsal_source = (
@@ -22994,6 +23404,9 @@ def build_diagnostics_payload(
     latest_status.pop("mobile_field_material_retest_request", None)
     latest_status.pop("mobile_field_material_retest_request_summary", None)
     latest_status.pop("mobile_field_material_retest_request_copy", None)
+    latest_status.pop("wave_rover_feedback_replay", None)
+    latest_status.pop("wave_rover_feedback_replay_summary", None)
+    latest_status.pop("wave_rover_feedback_replay_copy", None)
     latest_status.pop("route_task_terminal_completion_rehearsal", None)
     latest_status.pop("route_task_terminal_completion_rehearsal_summary", None)
     latest_status.pop("route_task_terminal_completion_rehearsal_copy", None)
@@ -23441,6 +23854,15 @@ def build_diagnostics_payload(
     mobile_field_material_retest_request_summary = summarize_mobile_field_material_retest_request(
         mobile_field_material_retest_request_source
     )
+    wave_rover_feedback_replay_source = (
+        wave_rover_feedback_replay_ref
+        or os.environ.get("TRASHBOT_WAVE_ROVER_FEEDBACK_REPLAY", "")
+        or os.environ.get("TRASHBOT_WAVE_ROVER_FEEDBACK_REPLAY_SUMMARY", "")
+        or wave_rover_feedback_replay_source
+    )
+    wave_rover_feedback_replay_summary = summarize_wave_rover_feedback_replay(
+        wave_rover_feedback_replay_source
+    )
     hardware_baseline_review_source = (
         hardware_baseline_review_ref
         or os.environ.get("TRASHBOT_HARDWARE_BASELINE_REVIEW", "")
@@ -23658,6 +24080,8 @@ def build_diagnostics_payload(
         mobile_field_material_review_decision_summary=mobile_field_material_review_decision_summary,
         mobile_field_material_retest_request=mobile_field_material_retest_request_summary,
         mobile_field_material_retest_request_summary=mobile_field_material_retest_request_summary,
+        wave_rover_feedback_replay=wave_rover_feedback_replay_summary,
+        wave_rover_feedback_replay_summary=wave_rover_feedback_replay_summary,
         hardware_baseline_review=hardware_baseline_review_summary,
         hardware_baseline_review_summary=hardware_baseline_review_summary,
         hardware_baseline_source_alignment=hardware_baseline_source_alignment_summary,

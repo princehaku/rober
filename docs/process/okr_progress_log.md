@@ -8,6 +8,18 @@
 
 ## 2026-05-17 系列
 
+更新时间：2026-05-17 20:19 Asia/Shanghai。
+
+### 2026-05-17 20-21｜wave-rover-feedback-replay-gate｜O1 HIL 前 replay gate software proof，硬件协议可信底盘由约 77% 保守上调到约 78%，O5 保持约 68%
+
+`sprints/2026.05.17_20-21_wave-rover-feedback-replay-gate/` 完成 `software_proof_docker_wave_rover_feedback_replay_gate`。Hardware worker 新增 dependency-free PC gate `pc-tools/evidence/wave_rover_feedback_replay_gate.py`、fixtures、tests 与 `docs/hardware/wave_rover_feedback_replay_gate.md`，基于 `docs/vendor/VENDOR_INDEX.md`、WAVE ROVER `json_cmd.h`、`ugv_rpi/base_ctrl.py`、`ugv_rpi/config.yaml` 和 `docs/hardware/wave_rover_json_bridge.md` 的本地资料边界，离线回放 `feedback_T1001.log` / synthetic fixture，计算 feedback interval，并校验 `odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl` 的 same-`evidence_ref` topic alignment。Task A 验证输出 py_compile pass、unittest `Ran 7 tests OK`、CLI `--help` pass、required `rg` pass、scoped `git diff --check` pass；happy fixture `overall_status=ready_for_hil_review_not_proven`，failure fixture 对 evidence_ref mismatch 以 exit 2 blocked。
+
+Robot worker 更新 `operator_gateway_diagnostics.py`、diagnostics tests 与 `docs/interfaces/ros_contracts.md`，新增 `wave_rover_feedback_replay` / `_summary` diagnostics metadata-only consumer，支持 replay summary 只读消费，并对 unsupported boundary/schema、evidence mismatch、缺失 `not_proven`、`delivery_success=true` 或 `primary_actions_enabled=true` fail closed；未改变 task_orchestrator、Start、Confirm Dropoff、Cancel、ACK、Nav2、HIL 或 primary action 语义。Task B 验证输出 py_compile pass、diagnostics unittest `Ran 158 tests OK`、required `rg` pass、scoped `git diff --check` pass。
+
+Full-stack worker 更新 `mobile/web/app.js`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/web/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增 WAVE ROVER feedback replay 只读 panel，展示 replay verdict、interval summary、topic alignment、next required evidence、boundary flags、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`；Start Delivery、Confirm Dropoff、Cancel gating 不变。Task C 验证输出 mobile unittest `Ran 54 tests OK`、`node --check mobile/web/app.js` pass、required `rg` pass、scoped `git diff --check` pass。Product closeout 更新 sprint 留档、`OKR.md` 和本日志；file existence check、required `rg`、py_compile、combined unittest、node check 与 scoped `git diff --check` 均通过。
+
+该证据只支持 Objective 1 从约 77% 保守上调到约 78%。理由是 WAVE ROVER `T=1001` feedback replay / interval / topic-alignment gate 已具备 HIL 前软件围栏，未来真实 HIL packet 可按同一工具复核；但本轮没有真实 WAVE ROVER、真实 UART、真实串口日志、真实 `feedback_T1001.log`、真实 feedback interval、真实 `/odom`、真实 `/imu/data`、真实 `/battery` 或 `hil_pass`。Objective 2、Objective 3 和 Objective 4 保持约 99%，因为本轮没有真实 route/elevator field pass、真实 Nav2/fixed-route、真实手机设备、production app 或真实 PWA prompt/user choice。Objective 5 保持约 68%，因为本机 Docker-only 且本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；O5 stop rule 仍成立，不应继续堆本地 metadata depth 或把本轮 replay gate 写成 Objective 5 production proof。PR #4 route/elevator field materials 仍缺真实门状态、楼层确认、人工协助、Nav2/fixed-route runtime log、task record、completion signal、dropoff/cancel completion 和 delivery result；PR #5 2D LiDAR / ToF hardware materials 仍缺真实 source、receipt、采购、安装、接线、电源、标定和 HIL-entry。本轮始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
 更新时间：2026-05-17 19:17 Asia/Shanghai。
 
 ### 2026-05-17 19-20｜route-task-result-callback-review-decision｜O2/O3 回调摄取进入复核决策，任务闭环与固定路线均保持约 99%，O5 保持约 68%

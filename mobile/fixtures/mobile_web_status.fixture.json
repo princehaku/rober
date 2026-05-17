@@ -7,6 +7,46 @@
   "can_collect": true,
   "can_confirm_dropoff": false,
   "can_cancel": false,
+  "wave_rover_feedback_replay": {
+    "schema": "trashbot.wave_rover_feedback_replay.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.wave_rover_feedback_replay_summary.v1",
+    "replay_status": "wave_rover_feedback_replay_not_proven",
+    "interval_summary": "interval_status=software_replay_summary_only",
+    "topic_alignment_status": "topic_alignment_status=metadata_summary_aligned",
+    "safe_evidence_ref": "wave_rover_feedback_replay_fixture_20260517_0001",
+    "next_required_evidence": "next_required_evidence=real hardware feedback summary under the same safe evidence_ref.",
+    "safe_phone_copy": "WAVE ROVER feedback replay fixture 只展示 replay verdict、interval summary、topic alignment 和 boundary flags；这是 Docker/local software proof，不是真实底盘反馈。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_wave_rover_feedback_replay_gate",
+    "not_proven": [
+      "真实 WAVE ROVER feedback",
+      "真实串口/UART",
+      "真实 HIL",
+      "真实 route/elevator field evidence",
+      "真实手机设备/browser",
+      "delivery success"
+    ]
+  },
+  "wave_rover_feedback_replay_summary": {
+    "schema": "trashbot.wave_rover_feedback_replay_summary.v1",
+    "schema_version": 1,
+    "replay_status": "wave_rover_feedback_replay_not_proven",
+    "interval_summary": "interval_status=software_replay_summary_only",
+    "topic_alignment_status": "topic_alignment_status=metadata_summary_aligned",
+    "safe_evidence_ref": "wave_rover_feedback_replay_fixture_20260517_0001",
+    "next_required_evidence": "next_required_evidence=real hardware feedback summary.",
+    "safe_phone_copy": "wave_rover_feedback_replay_summary 只用于手机只读 feedback replay，不放行 Start、Confirm 或 Cancel。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_wave_rover_feedback_replay_gate",
+    "not_proven": [
+      "真实 WAVE ROVER feedback",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "route_task_field_retest_result_backfill_review_decision": {
     "schema": "trashbot.route_task_field_retest_result_backfill_review_decision.v1",
     "schema_version": 1,

@@ -89,6 +89,7 @@ const HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_BOUNDARY = "software_proof_dock
 const HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate";
 const HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate";
 const HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_execution_pack_gate";
+const WAVE_ROVER_FEEDBACK_REPLAY_BOUNDARY = "software_proof_docker_wave_rover_feedback_replay_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -195,6 +196,7 @@ const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_TEXT = /(authorization|b
 const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw config|raw sensor config|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|hil_pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过)/i;
 const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|raw vendor docs|vendor document raw|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|hil_pass|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|raw vendor docs|vendor document raw|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
+const UNSAFE_WAVE_ROVER_FEEDBACK_REPLAY_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*反馈)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 
@@ -221,6 +223,7 @@ let latestHardwareSensorProcurementReceiptIntake = null;
 let latestHardwareSensorHilEntryConfigPrecheck = null;
 let latestHardwareSensorHilEntryReadinessReview = null;
 let latestHardwareSensorHilEntryExecutionPack = null;
+let latestWaveRoverFeedbackReplay = null;
 let latestRouteTaskTerminalCompletionRehearsal = null;
 let latestRouteTaskTerminalReviewDecision = null;
 let latestRouteTaskFieldRetestExecutionPack = null;
@@ -750,6 +753,15 @@ function safeHardwareSensorHilEntryExecutionPackText(value, fallback = "not_prov
   // HIL-entry 执行包只给现场支持看白名单摘要；命中 raw 材料、底层细节或完成声明时降级。
   const text = safeText(value, fallback);
   if (UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeWaveRoverFeedbackReplayText(value, fallback = "not_proven") {
+  // WAVE ROVER feedback replay 只展示后端脱敏摘要；底层传输、路径、校验和或完整反馈全部降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_WAVE_ROVER_FEEDBACK_REPLAY_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -11934,6 +11946,144 @@ function hardwareSensorHilEntryExecutionPackFromStatus(status, readiness, diagno
   };
 }
 
+function waveRoverFeedbackReplayCandidate(status, readiness, diagnostics) {
+  // 兼容 PC gate、Robot diagnostics 和 status 多层 summary；前端拒绝读取 raw artifact。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.wave_rover_feedback_replay,
+    status?.wave_rover_feedback_replay_summary,
+    status?.robot_diagnostics_wave_rover_feedback_replay_summary,
+    readiness?.wave_rover_feedback_replay,
+    readiness?.wave_rover_feedback_replay_summary,
+    readiness?.robot_diagnostics_wave_rover_feedback_replay_summary,
+    diagnostics?.wave_rover_feedback_replay,
+    diagnostics?.wave_rover_feedback_replay_summary,
+    diagnostics?.robot_diagnostics_wave_rover_feedback_replay_summary,
+    diagnosticsReadiness.wave_rover_feedback_replay,
+    diagnosticsReadiness.wave_rover_feedback_replay_summary,
+    diagnosticsReadiness.robot_diagnostics_wave_rover_feedback_replay_summary,
+    diagnosticsSummary.wave_rover_feedback_replay,
+    diagnosticsSummary.wave_rover_feedback_replay_summary,
+    diagnosticsSummary.robot_diagnostics_wave_rover_feedback_replay_summary,
+    nestedDiagnosticsSummary.wave_rover_feedback_replay,
+    nestedDiagnosticsSummary.wave_rover_feedback_replay_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_wave_rover_feedback_replay_summary,
+    nestedDiagnosticsInnerSummary.wave_rover_feedback_replay,
+    nestedDiagnosticsInnerSummary.wave_rover_feedback_replay_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_wave_rover_feedback_replay_summary,
+    statusDiagnosticsSummary.wave_rover_feedback_replay,
+    statusDiagnosticsSummary.wave_rover_feedback_replay_summary,
+    statusDiagnosticsSummary.robot_diagnostics_wave_rover_feedback_replay_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function waveRoverFeedbackReplayNotProvenList(value) {
+  // replay summary 是软件回放证据，不证明真实串口、真实底盘反馈、HIL 或真实送达。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实 WAVE ROVER feedback",
+    "真实串口/UART",
+    "真实 HIL",
+    "真实 Nav2/fixed-route",
+    "真实 route/elevator field pass",
+    "真实 dropoff/cancel completion",
+    "真实手机/browser",
+    "delivery success",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 16);
+}
+
+function waveRoverFeedbackReplaySummaryText(value, fallback) {
+  // 后端 summary 字段允许数组/对象；这里只压成短文本，避免把完整反馈记录带到手机端。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeWaveRoverFeedbackReplayText(
+        item?.safe_phone_copy || item?.summary || item?.status || item?.state ||
+          item?.reason || item?.category || item?.next_required_evidence || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.reason || value.category || value.next_required_evidence;
+    if (direct) {
+      return safeWaveRoverFeedbackReplayText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeWaveRoverFeedbackReplayText(key, "");
+        const copy = waveRoverFeedbackReplaySummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  return safeWaveRoverFeedbackReplayText(value, fallback);
+}
+
+function waveRoverFeedbackReplayFromStatus(status, readiness, diagnostics) {
+  const provided = waveRoverFeedbackReplayCandidate(status, readiness, diagnostics) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.wave_rover_feedback_replay_summary.v1",
+    source_schema: provided.source_schema || provided.schema || "trashbot.wave_rover_feedback_replay.v1",
+    schema_version: 1,
+    replay_status: safeWaveRoverFeedbackReplayText(
+      provided.replay_status || provided.replay_verdict || provided.verdict ||
+        provided.overall_status || provided.status,
+      "wave_rover_feedback_replay_not_proven",
+    ),
+    interval_status: waveRoverFeedbackReplaySummaryText(
+      provided.interval_status || provided.interval_summary || provided.feedback_interval_summary,
+      "interval_status=not_proven",
+    ),
+    topic_alignment_status: waveRoverFeedbackReplaySummaryText(
+      provided.topic_alignment_status || provided.topic_alignment_summary || provided.alignment_status,
+      "topic_alignment_status=not_proven",
+    ),
+    safe_evidence_ref: safeWaveRoverFeedbackReplayText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "evidence_ref=not_proven",
+    ),
+    next_required_evidence: waveRoverFeedbackReplaySummaryText(
+      provided.next_required_evidence || provided.next_evidence || provided.next_steps,
+      "next_required_evidence=真实硬件反馈摘要、同一 safe evidence_ref 的 diagnostics/status summary。",
+    ),
+    safe_copy: safeWaveRoverFeedbackReplayText(
+      provided.safe_copy || provided.safe_phone_copy || provided.safe_summary,
+      "WAVE ROVER feedback replay 只读展示 replay verdict、interval summary、topic alignment 和边界；这是 software proof only。",
+    ),
+    evidence_boundary: safeWaveRoverFeedbackReplayText(
+      provided.evidence_boundary,
+      WAVE_ROVER_FEEDBACK_REPLAY_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: waveRoverFeedbackReplayNotProvenList(provided),
+  };
+}
+
 function elevatorAssistCandidate(status, readiness, diagnostics) {
   // evidence-driven artifact 优先级高于旧 dry-run summary，避免新主链路被旧兼容字段遮住。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -15724,6 +15874,71 @@ function renderHardwareSensorHilEntryExecutionPack(status) {
   $("hardwareSensorHilEntryExecutionPackHint").textContent = summary.boundary_summary;
 }
 
+function ensureWaveRoverFeedbackReplayPanel() {
+  // feedback replay 是硬件链路的只读摘要，接在 HIL-entry 执行包后，不参与主操作 gating。
+  let panel = $("waveRoverFeedbackReplayPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("hardwareSensorHilEntryExecutionPackTitle")?.closest("section") ||
+    $("hardwareSensorHilEntryReadinessReviewTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "waveRoverFeedbackReplayPanel";
+  panel.className = "wave-rover-feedback-replay-panel";
+  panel.setAttribute("aria-labelledby", "waveRoverFeedbackReplayTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="waveRoverFeedbackReplayTitle">WAVE ROVER feedback replay</h2>
+      <span id="waveRoverFeedbackReplayBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="waveRoverFeedbackReplayCopy" class="message">
+      wave_rover_feedback_replay 只读展示 replay verdict、interval summary、topic alignment、safe evidence ref 和边界。
+    </p>
+    <dl class="wave-rover-feedback-replay-grid">
+      <div><dt>Replay Verdict</dt><dd id="waveRoverFeedbackReplayStatus">wave_rover_feedback_replay_not_proven</dd></div>
+      <div><dt>Interval Summary</dt><dd id="waveRoverFeedbackReplayInterval">interval_status=not_proven</dd></div>
+      <div><dt>Topic Alignment</dt><dd id="waveRoverFeedbackReplayTopicAlignment">topic_alignment_status=not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="waveRoverFeedbackReplayEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Next Required Evidence</dt><dd id="waveRoverFeedbackReplayNextEvidence">next_required_evidence=not_proven</dd></div>
+      <div><dt>Control Boundary</dt><dd id="waveRoverFeedbackReplayControls">delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="waveRoverFeedbackReplayBoundary">software_proof_docker_wave_rover_feedback_replay_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="waveRoverFeedbackReplayNotProven">真实底盘反馈、真实串口、HIL 和 delivery success 未证明。</dd></div>
+    </dl>
+    <p id="waveRoverFeedbackReplayHint" class="hint">
+      本 panel 只消费 wave_rover_feedback_replay / summary / Robot diagnostics compatible summary 的 safe fields；不展示底层控制 topic、设备传输参数、本机路径、校验和、完整反馈或凭证，也不改变 Start Delivery、Confirm Dropoff 或 Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderWaveRoverFeedbackReplay(status) {
+  const panel = ensureWaveRoverFeedbackReplayPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = waveRoverFeedbackReplayFromStatus(status, readiness, latestDiagnostics);
+  latestWaveRoverFeedbackReplay = summary;
+  const badge = $("waveRoverFeedbackReplayBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 feedback replay" : "not_proven";
+  $("waveRoverFeedbackReplayCopy").textContent = summary.safe_copy;
+  $("waveRoverFeedbackReplayStatus").textContent = summary.replay_status;
+  $("waveRoverFeedbackReplayInterval").textContent = summary.interval_status;
+  $("waveRoverFeedbackReplayTopicAlignment").textContent = summary.topic_alignment_status;
+  $("waveRoverFeedbackReplayEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("waveRoverFeedbackReplayNextEvidence").textContent = summary.next_required_evidence;
+  $("waveRoverFeedbackReplayControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("waveRoverFeedbackReplayBoundary").textContent = summary.evidence_boundary;
+  $("waveRoverFeedbackReplayNotProven").textContent = summary.not_proven.join("、");
+}
+
 function ensureElevatorAssistPanel() {
   // 本轮文件范围不改 index.html，因此用 JS 注入只读 panel，保持静态壳兼容旧浏览器测试。
   let panel = $("elevatorAssistPanel");
@@ -17957,6 +18172,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const waveRoverFeedbackReplay = waveRoverFeedbackReplayFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const rows = [
     ["软件版本", payload?.software_version],
     ["地图版本", payload?.map_version],
@@ -18014,6 +18234,7 @@ function renderDiagnosticsSummary(payload) {
     ["hardware_sensor_hil_entry_config_precheck", hardwareSensorHilEntryConfigPrecheck.precheck_status],
     ["hardware_sensor_hil_entry_readiness_review", hardwareSensorHilEntryReadinessReview.readiness_status],
     ["hardware_sensor_hil_entry_execution_pack", hardwareSensorHilEntryExecutionPack.execution_status],
+    ["wave_rover_feedback_replay", waveRoverFeedbackReplay.replay_status],
   ];
   rows.forEach(([label, value]) => {
     const box = document.createElement("div");
@@ -18113,6 +18334,7 @@ function renderOfflineFailure() {
   renderHardwareSensorHilEntryConfigPrecheck({});
   renderHardwareSensorHilEntryReadinessReview({});
   renderHardwareSensorHilEntryExecutionPack({});
+  renderWaveRoverFeedbackReplay({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -18190,6 +18412,7 @@ function renderStatus(status) {
   renderHardwareSensorHilEntryConfigPrecheck(status);
   renderHardwareSensorHilEntryReadinessReview(status);
   renderHardwareSensorHilEntryExecutionPack(status);
+  renderWaveRoverFeedbackReplay(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
@@ -18444,6 +18667,7 @@ async function openDiagnostics() {
     renderHardwareSensorHilEntryConfigPrecheck(latestStatus || {});
     renderHardwareSensorHilEntryReadinessReview(latestStatus || {});
     renderHardwareSensorHilEntryExecutionPack(latestStatus || {});
+    renderWaveRoverFeedbackReplay(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileDeviceEvidence(latestStatus || {});
     renderMobileDeviceHandoffSession(latestStatus || {});
@@ -18510,6 +18734,7 @@ function wireEvents() {
   ensureHardwareSensorHilEntryConfigPrecheckPanel();
   ensureHardwareSensorHilEntryReadinessReviewPanel();
   ensureHardwareSensorHilEntryExecutionPackPanel();
+  ensureWaveRoverFeedbackReplayPanel();
   ensureRouteTaskTerminalCompletionRehearsalPanel();
   ensureRouteTaskTerminalReviewDecisionPanel();
   ensureRouteTaskFieldRetestExecutionPackPanel();

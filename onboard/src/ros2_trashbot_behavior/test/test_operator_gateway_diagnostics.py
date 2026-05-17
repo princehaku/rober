@@ -58,6 +58,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_mobile_field_material_intake,
     summarize_mobile_field_material_review_decision,
     summarize_mobile_field_material_retest_request,
+    summarize_wave_rover_feedback_replay,
     summarize_hardware_baseline_review,
     summarize_hardware_baseline_source_alignment,
     summarize_hardware_sensor_procurement_intake,
@@ -11308,6 +11309,224 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
         self.assertNotIn("secret-token", encoded)
+
+    def test_diagnostics_payload_includes_wave_rover_feedback_replay_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            replay_path = Path(td) / "wave_rover_feedback_replay.json"
+            replay_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.wave_rover_feedback_replay.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": "software_proof_docker_wave_rover_feedback_replay_gate",
+                        "evidence_ref": "evidence://wave-rover-feedback-replay-1",
+                        "feedback_replay_status": {
+                            "status": "not_proven",
+                            "verdict": "not_proven",
+                            "reason": "offline feedback replay only",
+                        },
+                        "feedback_alignment": {"verdict": "aligned_not_proven"},
+                        "interval_alignment": {"verdict": "aligned_not_proven"},
+                        "topic_alignment": {"verdict": "aligned_not_proven"},
+                        "next_required_evidence": [
+                            "real WAVE ROVER UART feedback capture",
+                            "hardware-in-loop motion observation",
+                        ],
+                        "not_proven": [
+                            "real_wave_rover_feedback",
+                            "real_serial_or_uart_feedback",
+                            "real_hil_pass",
+                        ],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "wave_rover_feedback_replay": {"delivery_success": True},
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                wave_rover_feedback_replay_ref=str(replay_path),
+            )
+            summary = payload["wave_rover_feedback_replay"]
+            summary_alias = payload["wave_rover_feedback_replay_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, summary_alias)
+        self.assertNotIn("wave_rover_feedback_replay", payload["latest_status"])
+        self.assertEqual(summary["schema"], "trashbot.wave_rover_feedback_replay_summary.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_wave_rover_feedback_replay_gate",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.wave_rover_feedback_replay.v1")
+        self.assertEqual(summary["source_schema_version"], 1)
+        self.assertEqual(summary["feedback_replay_status"]["status"], "not_proven")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://wave-rover-feedback-replay-1")
+        self.assertEqual(summary["feedback_alignment"]["verdict"], "aligned_not_proven")
+        self.assertEqual(summary["interval_alignment"]["verdict"], "aligned_not_proven")
+        self.assertEqual(summary["topic_alignment"]["verdict"], "aligned_not_proven")
+        self.assertIn("real WAVE ROVER UART feedback capture", summary["next_required_evidence"])
+        self.assertIn("real_wave_rover_feedback", summary["not_proven"])
+        self.assertEqual(summary["boundary"], "software_proof_docker_wave_rover_feedback_replay_gate")
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["real_hardware_observed"])
+        self.assertFalse(summary["real_wave_rover_feedback"])
+        self.assertFalse(summary["real_serial_or_uart_feedback"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        # replay summary 只能进 diagnostics，不能触发 collect/dropoff/cancel/ACK/cursor/Nav2/HIL。
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["persistence_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["production_ready"])
+        self.assertNotIn(str(replay_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_wave_rover_feedback_replay_env_diagnostics_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "wave_rover_feedback_replay_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.wave_rover_feedback_replay_summary.v1",
+                        "source_schema": "trashbot.wave_rover_feedback_replay.v1",
+                        "evidence_boundary": "software_proof_docker_wave_rover_feedback_replay_gate",
+                        "source_evidence_boundary": "software_proof_docker_wave_rover_feedback_replay_gate",
+                        "safe_evidence_ref": "evidence://wave-rover-feedback-replay-2",
+                        "feedback_replay_status": {
+                            "status": "not_proven",
+                            "verdict": "not_proven",
+                            "reason": "docker replay summary only",
+                        },
+                        "feedback_alignment": {"verdict": "aligned_not_proven"},
+                        "interval_alignment": {"verdict": "aligned_not_proven"},
+                        "topic_alignment": {"verdict": "aligned_not_proven"},
+                        "next_required_evidence": ["real WAVE ROVER hardware feedback"],
+                        "not_proven": ["real_wave_rover_feedback", "real_hil_pass"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_artifact = os.environ.get("TRASHBOT_WAVE_ROVER_FEEDBACK_REPLAY")
+            previous_summary = os.environ.get("TRASHBOT_WAVE_ROVER_FEEDBACK_REPLAY_SUMMARY")
+            os.environ.pop("TRASHBOT_WAVE_ROVER_FEEDBACK_REPLAY", None)
+            os.environ["TRASHBOT_WAVE_ROVER_FEEDBACK_REPLAY_SUMMARY"] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "wave_rover_feedback_replay"
+                ]
+            finally:
+                if previous_artifact is None:
+                    os.environ.pop("TRASHBOT_WAVE_ROVER_FEEDBACK_REPLAY", None)
+                else:
+                    os.environ["TRASHBOT_WAVE_ROVER_FEEDBACK_REPLAY"] = previous_artifact
+                if previous_summary is None:
+                    os.environ.pop("TRASHBOT_WAVE_ROVER_FEEDBACK_REPLAY_SUMMARY", None)
+                else:
+                    os.environ["TRASHBOT_WAVE_ROVER_FEEDBACK_REPLAY_SUMMARY"] = previous_summary
+
+            diagnostics_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "wave_rover_feedback_replay_summary": {
+                            "schema": "trashbot.wave_rover_feedback_replay_summary.v1",
+                            "source_schema": "trashbot.wave_rover_feedback_replay.v1",
+                            "evidence_boundary": "software_proof_docker_wave_rover_feedback_replay_gate",
+                            "source_evidence_boundary": "software_proof_docker_wave_rover_feedback_replay_gate",
+                            "feedback_replay_status": {"status": "not_proven", "verdict": "not_proven"},
+                            "feedback_alignment": {"verdict": "aligned_not_proven"},
+                            "interval_alignment": {"verdict": "aligned_not_proven"},
+                            "topic_alignment": {"verdict": "aligned_not_proven"},
+                            "not_proven": ["real_wave_rover_feedback"],
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["wave_rover_feedback_replay"]
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_replay.json"
+            missing_summary = summarize_wave_rover_feedback_replay(str(missing_path))
+            unsupported_summary = summarize_wave_rover_feedback_replay(
+                {
+                    "schema": "trashbot.hardware_sensor_hil_entry_config_precheck.v1",
+                    "evidence_boundary": "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate",
+                    "not_proven": ["real_wave_rover_feedback"],
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            missing_not_proven_summary = summarize_wave_rover_feedback_replay(
+                {
+                    "schema": "trashbot.wave_rover_feedback_replay.v1",
+                    "evidence_boundary": "software_proof_docker_wave_rover_feedback_replay_gate",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsafe_summary = summarize_wave_rover_feedback_replay(
+                {
+                    "schema": "trashbot.wave_rover_feedback_replay.v1",
+                    "evidence_boundary": "software_proof_docker_wave_rover_feedback_replay_gate",
+                    "not_proven": ["real_wave_rover_feedback"],
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "raw_feedback": {"T": 1001},
+                    "serial_path": "/dev/ttyUSB0",
+                    "baudrate": 115200,
+                }
+            )
+            encoded = json.dumps(
+                [
+                    env_summary,
+                    diagnostics_summary,
+                    missing_summary,
+                    unsupported_summary,
+                    missing_not_proven_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(env_summary["feedback_replay_status"]["status"], "not_proven")
+        self.assertEqual(diagnostics_summary["feedback_alignment"]["verdict"], "aligned_not_proven")
+        self.assertEqual(missing_summary["feedback_replay_status"]["status"], "missing")
+        self.assertEqual(unsupported_summary["feedback_replay_status"]["status"], "unsupported_schema")
+        self.assertEqual(missing_not_proven_summary["feedback_replay_status"]["status"], "unsafe_fields")
+        self.assertEqual(unsafe_summary["feedback_replay_status"]["status"], "unsafe_fields")
+        self.assertFalse(env_summary["delivery_success"])
+        self.assertFalse(env_summary["primary_actions_enabled"])
+        self.assertFalse(diagnostics_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["delivery_success"])
+        self.assertFalse(unsafe_summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_wave_rover_feedback_replay_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("115200", encoded)
 
     def test_diagnostics_payload_includes_hardware_baseline_review_summary(self):
         with tempfile.TemporaryDirectory() as td:

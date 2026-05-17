@@ -546,6 +546,95 @@ class HardwareSensorHilEntryExecutionPackMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, execution_pack_text)
 
 
+class WaveRoverFeedbackReplayMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_wave_rover_feedback_replay_panel_is_read_only_and_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # feedback replay panel 接在硬件材料链后，只消费 phone-safe summary，不新增控制入口。
+        self.assertIn("waveRoverFeedbackReplayTitle", app)
+        self.assertIn("WAVE ROVER feedback replay", app)
+        self.assertIn("hardwareSensorHilEntryExecutionPackTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 Robot diagnostics compatible summary。
+        self.assertIn("WAVE_ROVER_FEEDBACK_REPLAY_BOUNDARY", app)
+        self.assertIn("UNSAFE_WAVE_ROVER_FEEDBACK_REPLAY_TEXT", app)
+        self.assertIn("safeWaveRoverFeedbackReplayText", app)
+        self.assertIn("waveRoverFeedbackReplayCandidate", app)
+        self.assertIn("waveRoverFeedbackReplayFromStatus", app)
+        self.assertIn("wave_rover_feedback_replay", app)
+        self.assertIn("wave_rover_feedback_replay_summary", app)
+        self.assertIn("robot_diagnostics_wave_rover_feedback_replay_summary", app)
+        self.assertIn("diagnosticsSummary.wave_rover_feedback_replay", app)
+        self.assertIn("statusDiagnosticsSummary.wave_rover_feedback_replay", app)
+        self.assertIn("replay_status", app)
+        self.assertIn("interval_status", app)
+        self.assertIn("topic_alignment_status", app)
+        self.assertIn("safe_evidence_ref", app)
+        self.assertIn("next_required_evidence", app)
+
+        # 只读 panel 不调用 Start Delivery / Confirm Dropoff / Cancel，也保持 fail-closed flags。
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("Start Delivery", app)
+        self.assertIn("Confirm Dropoff", app)
+        self.assertIn("Cancel", app)
+        self.assertNotRegex(app, r"waveRoverFeedbackReplay.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+
+        # fixture 和产品文档必须固定 software proof / not_proven 边界。
+        replay = fixture["wave_rover_feedback_replay"]
+        self.assertEqual(replay["replay_status"], "wave_rover_feedback_replay_not_proven")
+        self.assertEqual(replay["delivery_success"], False)
+        self.assertEqual(replay["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_wave_rover_feedback_replay_gate", fixture_text)
+        self.assertIn("interval_summary", fixture_text)
+        self.assertIn("topic_alignment_status", fixture_text)
+        self.assertIn("next_required_evidence", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("wave_rover_feedback_replay", doc)
+        self.assertIn("WAVE ROVER feedback replay", doc)
+
+    def test_wave_rover_feedback_replay_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        replay_text = json.dumps(
+            fixture["wave_rover_feedback_replay"],
+            ensure_ascii=False,
+        ).lower()
+
+        # feedback replay fixture 只能携带白名单摘要，不能带原始反馈、路径、串口、校验和或成功宣称。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw feedback",
+            "full feedback",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "traceback",
+            "hil passed",
+            "field pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, replay_text)
+
+
 class RouteTaskTerminalCompletionRehearsalMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")
