@@ -411,6 +411,15 @@ WAVE_ROVER_HIL_PACKET_INTAKE_SUMMARY_SCHEMA = (
 WAVE_ROVER_HIL_PACKET_INTAKE_GATE = (
     "software_proof_docker_wave_rover_hil_packet_intake_gate"
 )
+WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_SCHEMA = (
+    "trashbot.wave_rover_hil_packet_review_decision.v1"
+)
+WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_SUMMARY_SCHEMA = (
+    "trashbot.wave_rover_hil_packet_review_decision_summary.v1"
+)
+WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_GATE = (
+    "software_proof_docker_wave_rover_hil_packet_review_decision_gate"
+)
 HARDWARE_BASELINE_REVIEW_SCHEMA = "trashbot.hardware_baseline_review_gate.v1"
 HARDWARE_BASELINE_REVIEW_SUMMARY_SCHEMA = "trashbot.hardware_baseline_review_summary.v1"
 HARDWARE_BASELINE_REVIEW_GATE = "software_proof_docker_hardware_baseline_review_gate"
@@ -2231,6 +2240,53 @@ def _wave_rover_hil_packet_intake_not_proven(packet=None, summary_fragment=None)
 def _wave_rover_hil_packet_intake_has_not_proven(packet, summary_fragment):
     # PC gate 必须显式给出 not_proven 列表和 overall_status=not_proven，缺任一项都按不安全处理。
     for candidate in (summary_fragment, packet):
+        if not isinstance(candidate, dict):
+            continue
+        if not isinstance(candidate.get("not_proven"), list) or not candidate.get("not_proven"):
+            continue
+        status = str(
+            candidate.get("overall_status")
+            or candidate.get("status")
+            or candidate.get("verdict")
+            or ""
+        ).strip()
+        if status == "not_proven":
+            return True
+    return False
+
+
+def _wave_rover_hil_packet_review_decision_not_proven(decision=None, summary_fragment=None):
+    # review decision 只把 intake 资料分成 accepted/missing/rejected；真实 HIL 与底盘 topic 仍必须另证。
+    decision = decision if isinstance(decision, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(decision.get("not_proven"), list):
+        source_values.extend(decision.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "not_proven",
+        "real_wave_rover",
+        "real_uart",
+        "hil_pass",
+        "real_feedback_T1001",
+        "real_odom",
+        "real_imu",
+        "real_battery",
+        "delivery_success",
+        "primary_actions",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _wave_rover_hil_packet_review_decision_has_not_proven(decision, summary_fragment):
+    # PC review gate 必须显式给出 not_proven 和 overall_status=not_proven，缺字段不能默认安全。
+    for candidate in (summary_fragment, decision):
         if not isinstance(candidate, dict):
             continue
         if not isinstance(candidate.get("not_proven"), list) or not candidate.get("not_proven"):
@@ -4997,6 +5053,64 @@ def _default_wave_rover_hil_packet_intake_summary(
     }
 
 
+def _default_wave_rover_hil_packet_review_decision_summary(
+    path,
+    status="not_configured",
+    read_error="",
+):
+    # 默认 review 摘要必须完整 fail-closed，避免缺配置时被误当作真实 HIL packet 审核通过。
+    return {
+        "schema": WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "overall_status": "not_proven",
+        "review_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "reason": read_error or "WAVE ROVER HIL packet review decision is not configured",
+        },
+        "review_decision": "blocked_not_configured",
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "accepted_required_materials": [],
+        "missing_required_materials": [],
+        "rejected_required_materials": [],
+        "next_required_evidence": [],
+        "owner_handoff": {},
+        "rerun_commands": [],
+        "not_proven": _wave_rover_hil_packet_review_decision_not_proven(),
+        "boundary": WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_GATE,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_robot_copy": (
+            "WAVE ROVER HIL packet review decision is metadata-only; not HIL pass; "
+            "delivery_success=false; primary_actions_enabled=false."
+        ),
+        "metadata_only": True,
+        "real_hardware_observed": False,
+        "real_wave_rover": False,
+        "real_uart": False,
+        "real_odom": False,
+        "real_imu": False,
+        "real_battery": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _default_hardware_baseline_review_summary(path, status="not_configured", read_error=""):
     # 缺少硬件 baseline review 时也必须显式 fail-closed，避免 diagnostics 被误当成硬件准入通过。
     return {
@@ -6671,6 +6785,16 @@ def _wave_rover_hil_packet_intake_source_contract(value):
     return source_schema, source_boundary
 
 
+def _wave_rover_hil_packet_review_decision_source_contract(value):
+    # 支持 direct artifact、summary wrapper 和 Robot-compatible summary；wrapper 必须回指 review-decision gate。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or source_schema)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _hardware_baseline_review_source_contract(value):
     # 允许直接 artifact 或已生成 summary；summary 仍必须回指 baseline review schema 和同一软件证据边界。
     source_schema = str(value.get("schema") or "")
@@ -7271,6 +7395,48 @@ def _wave_rover_hil_packet_intake_same_evidence_ref_ok(packet, summary_fragment)
         if isinstance(mismatches, list) and mismatches:
             return False
     return True
+
+
+def _wave_rover_hil_packet_review_decision_has_disabled_actions(decision, summary_fragment):
+    # review decision source 和 summary 都必须显式关闭动作；缺字段或字符串 false 都不能算 diagnostics-safe。
+    decision = decision if isinstance(decision, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    delivery_success = (
+        summary_fragment.get("delivery_success")
+        if "delivery_success" in summary_fragment
+        else decision.get("delivery_success")
+    )
+    primary_actions_enabled = (
+        summary_fragment.get("primary_actions_enabled")
+        if "primary_actions_enabled" in summary_fragment
+        else decision.get("primary_actions_enabled")
+    )
+    return delivery_success is False and primary_actions_enabled is False
+
+
+def _wave_rover_hil_packet_review_decision_same_evidence_ref_ok(decision, summary_fragment):
+    # review decision 继承 packet chain 的同 evidence_ref 约束；字符串 true/false 不算安全布尔。
+    decision = decision if isinstance(decision, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    same_required = (
+        summary_fragment.get("same_evidence_ref_required")
+        if "same_evidence_ref_required" in summary_fragment
+        else decision.get("same_evidence_ref_required")
+    )
+    if same_required is not True:
+        return False
+    for candidate in (summary_fragment, decision):
+        if candidate.get("evidence_ref_match") is False or candidate.get("same_evidence_ref") is False:
+            return False
+        mismatches = candidate.get("evidence_ref_mismatches")
+        if isinstance(mismatches, list) and mismatches:
+            return False
+    return True
+
+
+def _wave_rover_hil_packet_review_decision_has_unsafe_fields(value, key_path=""):
+    # review decision 的安全边界和 intake 一致：只允许白名单摘要，拒绝 raw/HIL pass/控制成功 claim。
+    return _wave_rover_hil_packet_intake_has_unsafe_fields(value, key_path)
 
 
 def _wave_rover_hil_packet_intake_has_unsafe_fields(value, key_path=""):
@@ -19942,6 +20108,226 @@ def summarize_wave_rover_hil_packet_intake(source):
     return summary
 
 
+def summarize_wave_rover_hil_packet_review_decision(source):
+    """构建 WAVE ROVER HIL packet review decision 的 metadata-only diagnostics 摘要。"""
+    # Robot 只读取 PC gate 的 review 结论；这里不打开 raw packet、不运行串口、不发布任何控制命令。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_wave_rover_hil_packet_review_decision_summary(
+        source_path,
+        read_error="WAVE ROVER HIL packet review decision summary is not configured",
+    )
+    if isinstance(source, dict):
+        decision = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "review_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": "WAVE ROVER HIL packet review decision artifact missing",
+                    },
+                    "read_error": "WAVE ROVER HIL packet review decision artifact missing",
+                }
+            )
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                decision = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading WAVE ROVER HIL packet review decision summary: {exc}"
+            )
+            summary.update(
+                {
+                    "review_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": safe_error,
+                    },
+                    "read_error": safe_error,
+                }
+            )
+            return summary
+
+    if not isinstance(decision, dict):
+        summary.update(
+            {
+                "review_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "WAVE ROVER HIL packet review decision JSON must be an object",
+                }
+            }
+        )
+        return summary
+
+    # 兼容 direct artifact、summary alias、Robot-compatible summary 和 nested diagnostics/summary。
+    summary_fragment = {}
+    for candidate in (
+        decision.get("wave_rover_hil_packet_review_decision_summary"),
+        decision.get("robot_diagnostics_summary"),
+        decision.get("robot_diagnostics_wave_rover_hil_packet_review_decision_summary"),
+        decision.get("diagnostics_summary"),
+        decision.get("phone_safe_summary"),
+        decision.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+    source_schema, source_boundary = _wave_rover_hil_packet_review_decision_source_contract(decision)
+    review_status = (
+        decision.get("review_status")
+        if isinstance(decision.get("review_status"), dict)
+        else summary_fragment.get("review_status")
+        if isinstance(summary_fragment.get("review_status"), dict)
+        else {}
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": decision.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "overall_status": "not_proven",
+            "review_status": {
+                "status": _redact_route_task_rehearsal_text(
+                    review_status.get("status")
+                    or summary_fragment.get("overall_status")
+                    or decision.get("overall_status")
+                    or "blocked"
+                ),
+                "verdict": _redact_route_task_rehearsal_text(
+                    review_status.get("verdict")
+                    or summary_fragment.get("verdict")
+                    or decision.get("verdict")
+                    or "not_proven"
+                ),
+                "reason": _redact_route_task_rehearsal_text(
+                    review_status.get("reason")
+                    or summary_fragment.get("reason")
+                    or decision.get("reason")
+                    or "WAVE ROVER HIL packet review decision consumed without real HIL evidence"
+                ),
+            },
+            "review_decision": _redact_route_task_rehearsal_text(
+                summary_fragment.get("review_decision")
+                or decision.get("review_decision")
+                or "blocked_not_proven"
+            ),
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("safe_evidence_ref")
+                or summary_fragment.get("evidence_ref")
+                or decision.get("safe_evidence_ref")
+                or decision.get("evidence_ref", "")
+            ),
+            "same_evidence_ref_required": True,
+            "accepted_required_materials": _safe_route_task_rehearsal_list(
+                decision.get("accepted_required_materials")
+                if isinstance(decision.get("accepted_required_materials"), list)
+                else summary_fragment.get("accepted_required_materials")
+            ),
+            "missing_required_materials": _safe_route_task_rehearsal_list(
+                decision.get("missing_required_materials")
+                if isinstance(decision.get("missing_required_materials"), list)
+                else summary_fragment.get("missing_required_materials")
+            ),
+            "rejected_required_materials": _safe_route_task_rehearsal_list(
+                decision.get("rejected_required_materials")
+                if isinstance(decision.get("rejected_required_materials"), list)
+                else summary_fragment.get("rejected_required_materials")
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                decision.get("next_required_evidence")
+                if isinstance(decision.get("next_required_evidence"), list)
+                else summary_fragment.get("next_required_evidence")
+            ),
+            "owner_handoff": _safe_pc_route_debug_value(
+                decision.get("owner_handoff")
+                if isinstance(decision.get("owner_handoff"), dict)
+                else summary_fragment.get("owner_handoff")
+                if isinstance(summary_fragment.get("owner_handoff"), dict)
+                else {}
+            ),
+            "rerun_commands": _safe_route_task_rehearsal_list(
+                decision.get("rerun_commands")
+                if isinstance(decision.get("rerun_commands"), list)
+                else summary_fragment.get("rerun_commands")
+            ),
+            "not_proven": _wave_rover_hil_packet_review_decision_not_proven(
+                decision,
+                summary_fragment,
+            ),
+            "boundary": WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_GATE,
+            "read_error": "",
+            "metadata_only": True,
+            "real_hardware_observed": False,
+            "real_wave_rover": False,
+            "real_uart": False,
+            "real_odom": False,
+            "real_imu": False,
+            "real_battery": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    accepted_schemas = {
+        WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_SCHEMA,
+        WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_SUMMARY_SCHEMA,
+    }
+    if source_schema not in accepted_schemas or source_boundary != WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_GATE:
+        summary.update(
+            {
+                "review_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "WAVE ROVER HIL packet review decision schema or evidence boundary is unsupported",
+                },
+                "review_decision": "blocked_unsupported_schema",
+                "accepted_required_materials": [],
+                "missing_required_materials": [],
+                "rejected_required_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": {},
+                "rerun_commands": [],
+            }
+        )
+        return summary
+
+    if (
+        not _wave_rover_hil_packet_review_decision_has_not_proven(decision, summary_fragment)
+        or not _wave_rover_hil_packet_review_decision_has_disabled_actions(decision, summary_fragment)
+        or not _wave_rover_hil_packet_review_decision_same_evidence_ref_ok(
+            decision,
+            summary_fragment,
+        )
+        or _wave_rover_hil_packet_review_decision_has_unsafe_fields(decision)
+    ):
+        summary.update(
+            {
+                "review_status": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "WAVE ROVER HIL packet review decision contains unsafe fields, "
+                        "missing not_proven, evidence_ref mismatch, or success/control claims"
+                    ),
+                },
+                "review_decision": "blocked_unsafe_fields",
+                "accepted_required_materials": [],
+                "missing_required_materials": [],
+                "rejected_required_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": {},
+                "rerun_commands": [],
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_hardware_baseline_review(source):
     """构建 hardware baseline review 的 metadata-only diagnostics 摘要。"""
     # 支持 explicit ref、env path 和 latest_status/diagnostics dict；所有来源都只能进入白名单摘要字段。
@@ -23385,6 +23771,7 @@ def build_diagnostics_payload(
     mobile_field_material_retest_request_ref="",
     wave_rover_feedback_replay_ref="",
     wave_rover_hil_packet_intake_ref="",
+    wave_rover_hil_packet_review_decision_ref="",
     hardware_baseline_review_ref="",
     hardware_baseline_source_alignment_ref="",
     hardware_sensor_procurement_intake_ref="",
@@ -23544,6 +23931,25 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("wave_rover_hil_packet_intake_summary"), dict)
         else diagnostics_source.get("robot_diagnostics_wave_rover_hil_packet_intake_summary")
         if isinstance(diagnostics_source.get("robot_diagnostics_wave_rover_hil_packet_intake_summary"), dict)
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
+        else {}
+    )
+    wave_rover_hil_packet_review_decision_source = (
+        latest_status.get("wave_rover_hil_packet_review_decision")
+        if isinstance(latest_status.get("wave_rover_hil_packet_review_decision"), dict)
+        else latest_status.get("wave_rover_hil_packet_review_decision_summary")
+        if isinstance(latest_status.get("wave_rover_hil_packet_review_decision_summary"), dict)
+        else latest_status.get("robot_diagnostics_wave_rover_hil_packet_review_decision_summary")
+        if isinstance(latest_status.get("robot_diagnostics_wave_rover_hil_packet_review_decision_summary"), dict)
+        else diagnostics_source.get("wave_rover_hil_packet_review_decision")
+        if isinstance(diagnostics_source.get("wave_rover_hil_packet_review_decision"), dict)
+        else diagnostics_source.get("wave_rover_hil_packet_review_decision_summary")
+        if isinstance(diagnostics_source.get("wave_rover_hil_packet_review_decision_summary"), dict)
+        else diagnostics_source.get("robot_diagnostics_wave_rover_hil_packet_review_decision_summary")
+        if isinstance(diagnostics_source.get("robot_diagnostics_wave_rover_hil_packet_review_decision_summary"), dict)
         else diagnostics_source.get("summary")
         if isinstance(diagnostics_source.get("summary"), dict)
         else diagnostics_source.get("diagnostics_summary")
@@ -23874,6 +24280,10 @@ def build_diagnostics_payload(
     latest_status.pop("wave_rover_hil_packet_intake", None)
     latest_status.pop("wave_rover_hil_packet_intake_summary", None)
     latest_status.pop("wave_rover_hil_packet_intake_copy", None)
+    latest_status.pop("wave_rover_hil_packet_review_decision", None)
+    latest_status.pop("wave_rover_hil_packet_review_decision_summary", None)
+    latest_status.pop("wave_rover_hil_packet_review_decision_copy", None)
+    latest_status.pop("robot_diagnostics_wave_rover_hil_packet_review_decision_summary", None)
     latest_status.pop("route_task_terminal_completion_rehearsal", None)
     latest_status.pop("route_task_terminal_completion_rehearsal_summary", None)
     latest_status.pop("route_task_terminal_completion_rehearsal_copy", None)
@@ -24339,6 +24749,17 @@ def build_diagnostics_payload(
     wave_rover_hil_packet_intake_summary = summarize_wave_rover_hil_packet_intake(
         wave_rover_hil_packet_intake_source
     )
+    wave_rover_hil_packet_review_decision_source = (
+        wave_rover_hil_packet_review_decision_ref
+        or os.environ.get("TRASHBOT_WAVE_ROVER_HIL_PACKET_REVIEW_DECISION", "")
+        or os.environ.get("TRASHBOT_WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_SUMMARY", "")
+        or wave_rover_hil_packet_review_decision_source
+    )
+    wave_rover_hil_packet_review_decision_summary = (
+        summarize_wave_rover_hil_packet_review_decision(
+            wave_rover_hil_packet_review_decision_source
+        )
+    )
     hardware_baseline_review_source = (
         hardware_baseline_review_ref
         or os.environ.get("TRASHBOT_HARDWARE_BASELINE_REVIEW", "")
@@ -24561,6 +24982,11 @@ def build_diagnostics_payload(
         wave_rover_hil_packet_intake=wave_rover_hil_packet_intake_summary,
         wave_rover_hil_packet_intake_summary=wave_rover_hil_packet_intake_summary,
         robot_diagnostics_wave_rover_hil_packet_intake_summary=wave_rover_hil_packet_intake_summary,
+        wave_rover_hil_packet_review_decision=wave_rover_hil_packet_review_decision_summary,
+        wave_rover_hil_packet_review_decision_summary=wave_rover_hil_packet_review_decision_summary,
+        robot_diagnostics_wave_rover_hil_packet_review_decision_summary=(
+            wave_rover_hil_packet_review_decision_summary
+        ),
         hardware_baseline_review=hardware_baseline_review_summary,
         hardware_baseline_review_summary=hardware_baseline_review_summary,
         hardware_baseline_source_alignment=hardware_baseline_source_alignment_summary,

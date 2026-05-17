@@ -8,6 +8,20 @@
 
 ## 2026-05-17 系列
 
+更新时间：2026-05-17 22:18 Asia/Shanghai。
+
+### 2026-05-17 22-23｜wave-rover-hil-packet-review-decision｜O1 HIL packet review decision software proof，硬件协议可信底盘由约 79% 保守上调到约 80%，O5 保持约 68%
+
+`sprints/2026.05.17_22-23_wave-rover-hil-packet-review-decision/` 完成 `software_proof_docker_wave_rover_hil_packet_review_decision_gate`。Hardware worker 新增 dependency-free PC gate `pc-tools/evidence/wave_rover_hil_packet_review_decision.py`、fixture、tests 与 `docs/hardware/wave_rover_hil_packet_review_decision.md`，基于 `docs/vendor/VENDOR_INDEX.md`、WAVE ROVER `json_cmd.h`、`uart_ctrl.h`、`ugv_rpi/base_ctrl.py` 和 `ugv_rpi/config.yaml` 的本地资料边界，消费上一轮 `wave_rover_hil_packet_intake` artifact/summary，把 required materials 转成 accepted / missing / rejected、review decision、next required evidence、owner handoff 和 rerun commands。Task A worker reported py_compile passed、unittest `Ran 7 tests OK`、CLI `--help` passed、required `rg` passed、scoped `git diff --check` passed；worker 已修复 unsupported top-level schema 被 valid `summary_schema` 误放行的问题。
+
+Robot worker 更新 `operator_gateway_diagnostics.py`、diagnostics tests 与 `docs/interfaces/ros_contracts.md`，新增 `wave_rover_hil_packet_review_decision` diagnostics metadata-only consumer，支持 review decision summary 只读消费，并保持 unsupported schema/boundary、unsafe copy、success/control claim、`delivery_success=true`、`primary_actions_enabled=true` 和 missing boundary flags fail closed。Task B worker reported py_compile passed、diagnostics unittest `Ran 162 tests in 0.284s OK`、required `rg` passed、scoped `git diff --check` passed。
+
+Full-stack worker 更新 `mobile/web/app.js`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/web/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增 WAVE ROVER HIL packet review decision 只读 panel，展示 review decision、safe `evidence_ref`、accepted/missing/rejected material summary、next required evidence、owner handoff、rerun commands、boundary flags、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`；Start Delivery、Confirm Dropoff、Cancel gating 不变。Task C worker reported mobile unittest `Ran 58 tests OK`、`node --check mobile/web/app.js`、required `rg` 与 scoped `git diff --check` 均通过；第一轮 unittest 抓到 fixture 中 `raw packet` 禁词，已改为 `unsafe packet material` 并通过。
+
+Product closeout 独立运行整体验收：初始 closeout file existence check 在 Task D 文件创建前 exit 1；随后 py_compile combined exit 0，combined unittest `Ran 227 tests in 0.543s OK`，`python3 pc-tools/evidence/wave_rover_hil_packet_review_decision.py --help` exit 0，`node --check mobile/web/app.js` exit 0，implementation scoped `git diff --check` exit 0，closeout 文件、required `rg` 与 closeout scoped `git diff --check` 在 Task D 更新后通过。
+
+该证据只支持 Objective 1 从约 79% 保守上调到约 80%。理由是 WAVE ROVER HIL packet review decision contract 已形成 PC / Robot diagnostics / mobile / Product closeout 软件证明链路，未来真实 HIL packet 可按同一 `evidence_ref` 进入 accepted / missing / rejected 评审和 owner handoff；但本轮没有真实 WAVE ROVER、真实 UART、真实串口日志、真实 `feedback_T1001.log`、真实 `/odom`、真实 `/imu/data`、真实 `/battery`、真实 operator HIL report 或 `hil_pass`。Objective 2、Objective 3 和 Objective 4 保持约 99%，因为本轮没有真实 route/elevator field pass、真实 Nav2/fixed-route、真实 task record、真实 dropoff/cancel completion、真实 delivery result、真实手机设备、production app 或真实 PWA prompt/user choice。Objective 5 保持约 68%，因为本机 Docker-only 且本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；O5 stop rule 仍成立，不应继续堆本地 metadata depth 或把本轮 HIL packet review decision gate 写成 Objective 5 production proof。PR #4 route/elevator field materials 仍缺真实门状态、楼层确认、人工协助、Nav2/fixed-route runtime log、task record、completion signal、dropoff/cancel completion 和 delivery result；PR #5 2D LiDAR / ToF hardware materials 仍缺真实 source、receipt、采购、安装、接线、电源、标定和 HIL-entry。本轮始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
 更新时间：2026-05-17 21:22 Asia/Shanghai。
 
 ### 2026-05-17 21-22｜wave-rover-hil-packet-intake｜O1 HIL packet intake software proof，硬件协议可信底盘由约 78% 保守上调到约 79%，O5 保持约 68%

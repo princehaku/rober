@@ -105,6 +105,83 @@
       "delivery_success"
     ]
   },
+  "wave_rover_hil_packet_review_decision": {
+    "schema": "trashbot.wave_rover_hil_packet_review_decision.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.wave_rover_hil_packet_review_decision_summary.v1",
+    "source": "software_proof",
+    "overall_status": "not_proven",
+    "review_decision": "blocked_pending_real_hil_packet",
+    "safe_evidence_ref": "wave_rover_hil_packet_intake_fixture_20260517_0001",
+    "accepted_required_materials": [
+      "accepted_required_materials=phone_safe_intake_schema",
+      "accepted_required_materials=same_evidence_ref_requirement"
+    ],
+    "missing_required_materials": [
+      "missing_required_materials=real feedback_T1001.log",
+      "missing_required_materials=real odom_once.jsonl",
+      "missing_required_materials=real imu_once.jsonl",
+      "missing_required_materials=real battery_once.jsonl",
+      "missing_required_materials=operator_hil_report"
+    ],
+    "rejected_required_materials": [
+      "rejected_required_materials=unsafe packet material",
+      "rejected_required_materials=success-claim material"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real WAVE ROVER HIL run summary",
+      "next_required_evidence=same evidence_ref HIL packet summary",
+      "next_required_evidence=all required material summaries"
+    ],
+    "owner_handoff": {
+      "hardware-engineer": "collect real HIL packet on a host with physical access and publish sanitized summary",
+      "robot-software-engineer": "keep diagnostics read-only until real review materials change the decision",
+      "full-stack-software-engineer": "keep mobile panel read-only and primary actions unchanged"
+    },
+    "rerun_commands": [
+      "rerun_commands=python3 pc-tools/evidence/wave_rover_hil_packet_intake.py --packet-dir <real_packet_dir>",
+      "rerun_commands=python3 pc-tools/evidence/wave_rover_hil_packet_review_decision.py --intake-summary <summary.json>"
+    ],
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "WAVE ROVER HIL packet review decision fixture 只展示 review_decision、材料分类、owner handoff 和 rerun commands；这是 Docker/local software proof，不是 HIL pass。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_review_decision_gate",
+    "not_proven": [
+      "real_wave_rover",
+      "real_uart",
+      "hil_pass",
+      "real_odom",
+      "real_imu",
+      "real_battery",
+      "delivery_success"
+    ]
+  },
+  "wave_rover_hil_packet_review_decision_summary": {
+    "schema": "trashbot.wave_rover_hil_packet_review_decision_summary.v1",
+    "schema_version": 1,
+    "source": "software_proof",
+    "overall_status": "not_proven",
+    "review_decision": "blocked_pending_real_hil_packet",
+    "safe_evidence_ref": "wave_rover_hil_packet_intake_fixture_20260517_0001",
+    "accepted_required_materials": "accepted_required_materials=phone_safe_intake_schema and same_evidence_ref_requirement.",
+    "missing_required_materials": "missing_required_materials=real feedback_T1001.log, real odom_once.jsonl, real imu_once.jsonl, real battery_once.jsonl, operator_hil_report.",
+    "rejected_required_materials": "rejected_required_materials=unsafe packet or success-claim material.",
+    "next_required_evidence": "next_required_evidence=real HIL packet material summaries under the same safe evidence_ref.",
+    "owner_handoff": "owner_handoff=Hardware collects real packet; Robot and Full-stack keep summaries read-only.",
+    "rerun_commands": "rerun_commands=run intake gate, then review decision gate after real packet summary is available.",
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "wave_rover_hil_packet_review_decision_summary 只用于手机只读评审决策，不放行 Start、Confirm 或 Cancel。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_review_decision_gate",
+    "not_proven": [
+      "real_wave_rover",
+      "real_uart",
+      "hil_pass",
+      "delivery_success"
+    ]
+  },
   "route_task_field_retest_result_backfill_review_decision": {
     "schema": "trashbot.route_task_field_retest_result_backfill_review_decision.v1",
     "schema_version": 1,

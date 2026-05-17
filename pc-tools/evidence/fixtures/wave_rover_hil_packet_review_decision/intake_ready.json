@@ -1,0 +1,35 @@
+{
+  "delivery_success": false,
+  "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_intake_gate",
+  "evidence_ref": "hil-packet-review-fixture",
+  "file_status": {
+    "battery_once.jsonl": "pass",
+    "feedback_T1001.log": "pass",
+    "imu_once.jsonl": "pass",
+    "odom_once.jsonl": "pass",
+    "operator_hil_report": "pass"
+  },
+  "not_proven": [
+    "real_wave_rover",
+    "real_uart",
+    "hil_pass",
+    "real_odom",
+    "real_imu",
+    "real_battery",
+    "delivery_success"
+  ],
+  "overall_status": "ready_for_hil_packet_review_not_proven",
+  "packet_status": "pass",
+  "primary_actions_enabled": false,
+  "required_files": [
+    "feedback_T1001.log",
+    "odom_once.jsonl",
+    "imu_once.jsonl",
+    "battery_once.jsonl",
+    "operator_hil_report"
+  ],
+  "same_evidence_ref_required": true,
+  "schema": "trashbot.wave_rover_hil_packet_intake.v1",
+  "source": "software_proof",
+  "summary_schema": "trashbot.wave_rover_hil_packet_intake_summary.v1"
+}

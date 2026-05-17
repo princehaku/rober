@@ -731,6 +731,105 @@ class WaveRoverHilPacketIntakeMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, intake_text)
 
 
+class WaveRoverHilPacketReviewDecisionMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_wave_rover_hil_packet_review_decision_panel_is_read_only_and_exportable(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # review-decision panel 跟在 intake 后，只展示评审摘要，不新增控制入口。
+        self.assertIn("waveRoverHilPacketReviewDecisionTitle", app)
+        self.assertIn("WAVE ROVER HIL packet review decision", app)
+        self.assertIn("waveRoverHilPacketIntakeTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+
+        # 状态来源兼容 artifact、summary 和 Robot diagnostics compatible summary。
+        self.assertIn("WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeWaveRoverHilPacketReviewDecisionText", app)
+        self.assertIn("waveRoverHilPacketReviewDecisionCandidate", app)
+        self.assertIn("waveRoverHilPacketReviewDecisionFromStatus", app)
+        self.assertIn("wave_rover_hil_packet_review_decision", app)
+        self.assertIn("wave_rover_hil_packet_review_decision_summary", app)
+        self.assertIn("robot_diagnostics_wave_rover_hil_packet_review_decision_summary", app)
+        self.assertIn("diagnosticsSummary.wave_rover_hil_packet_review_decision", app)
+        self.assertIn("statusDiagnosticsSummary.wave_rover_hil_packet_review_decision", app)
+        self.assertIn("accepted_required_materials", app)
+        self.assertIn("missing_required_materials", app)
+        self.assertIn("rejected_required_materials", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("rerun_commands", app)
+        self.assertIn("same_evidence_ref_required", app)
+
+        # copy/export 必须走 whitelist-only payload，并保持 Start/Confirm/Cancel gating 不变。
+        self.assertIn("waveRoverHilPacketReviewDecisionCopyPayload", app)
+        self.assertIn("trashbot.wave_rover_hil_packet_review_decision_copy.v1", app)
+        self.assertIn("copyWaveRoverHilPacketReviewDecisionButton", app)
+        self.assertIn("downloadWaveRoverHilPacketReviewDecisionButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("Start Delivery", app)
+        self.assertIn("Confirm Dropoff", app)
+        self.assertIn("Cancel", app)
+        self.assertNotRegex(app, r"waveRoverHilPacketReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+
+        # fixture 和产品文档必须固定 review-decision 的 software proof / not_proven 边界。
+        decision = fixture["wave_rover_hil_packet_review_decision"]
+        self.assertEqual(decision["review_decision"], "blocked_pending_real_hil_packet")
+        self.assertEqual(decision["overall_status"], "not_proven")
+        self.assertEqual(decision["delivery_success"], False)
+        self.assertEqual(decision["primary_actions_enabled"], False)
+        self.assertEqual(decision["same_evidence_ref_required"], True)
+        self.assertIn("software_proof_docker_wave_rover_hil_packet_review_decision_gate", fixture_text)
+        self.assertIn("accepted_required_materials", fixture_text)
+        self.assertIn("missing_required_materials", fixture_text)
+        self.assertIn("rejected_required_materials", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("wave_rover_hil_packet_review_decision", doc)
+        self.assertIn("WAVE ROVER HIL packet review decision", doc)
+
+    def test_wave_rover_hil_packet_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        decision_text = json.dumps(
+            fixture["wave_rover_hil_packet_review_decision"],
+            ensure_ascii=False,
+        ).lower()
+
+        # review-decision fixture 只能携带白名单摘要，不能带原始评审、底层设备、校验和或成功宣称。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw artifact",
+            "raw packet",
+            "raw review",
+            "raw feedback",
+            "full raw feedback",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "traceback",
+            "hil passed",
+            "field pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, decision_text)
+
+
 class RouteTaskTerminalCompletionRehearsalMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

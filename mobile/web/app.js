@@ -91,6 +91,7 @@ const HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_BOUNDARY = "software_proof_dock
 const HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_execution_pack_gate";
 const WAVE_ROVER_FEEDBACK_REPLAY_BOUNDARY = "software_proof_docker_wave_rover_feedback_replay_gate";
 const WAVE_ROVER_HIL_PACKET_INTAKE_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_intake_gate";
+const WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_review_decision_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -199,6 +200,7 @@ const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_TEXT = /(authorization|b
 const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|raw vendor docs|vendor document raw|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_WAVE_ROVER_FEEDBACK_REPLAY_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*反馈)/i;
 const UNSAFE_WAVE_ROVER_HIL_PACKET_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial device|uart device|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw packet|raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*packet|完整\s*反馈)/i;
+const UNSAFE_WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial device|uart device|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw packet|raw review|raw feedback|full raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_passed|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*packet|完整\s*反馈)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 
@@ -227,6 +229,7 @@ let latestHardwareSensorHilEntryReadinessReview = null;
 let latestHardwareSensorHilEntryExecutionPack = null;
 let latestWaveRoverFeedbackReplay = null;
 let latestWaveRoverHilPacketIntake = null;
+let latestWaveRoverHilPacketReviewDecision = null;
 let latestRouteTaskTerminalCompletionRehearsal = null;
 let latestRouteTaskTerminalReviewDecision = null;
 let latestRouteTaskFieldRetestExecutionPack = null;
@@ -774,6 +777,15 @@ function safeWaveRoverHilPacketIntakeText(value, fallback = "not_proven") {
   // HIL packet intake 只展示 packet contract 的安全摘要；任何原始 packet、设备、路径或成功声明都降级。
   const text = safeText(value, fallback);
   if (UNSAFE_WAVE_ROVER_HIL_PACKET_INTAKE_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeWaveRoverHilPacketReviewDecisionText(value, fallback = "not_proven") {
+  // review-decision 只展示 PC/Robot 提供的脱敏评审摘要；原始 packet、设备细节或成功暗示全部降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -12240,6 +12252,158 @@ function waveRoverHilPacketIntakeFromStatus(status, readiness, diagnostics) {
   };
 }
 
+function waveRoverHilPacketReviewDecisionCandidate(status, readiness, diagnostics) {
+  // review-decision 可来自 PC gate、summary 或 Robot diagnostics compatible summary；前端只读白名单字段。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.wave_rover_hil_packet_review_decision,
+    status?.wave_rover_hil_packet_review_decision_summary,
+    status?.robot_diagnostics_wave_rover_hil_packet_review_decision_summary,
+    readiness?.wave_rover_hil_packet_review_decision,
+    readiness?.wave_rover_hil_packet_review_decision_summary,
+    readiness?.robot_diagnostics_wave_rover_hil_packet_review_decision_summary,
+    diagnostics?.wave_rover_hil_packet_review_decision,
+    diagnostics?.wave_rover_hil_packet_review_decision_summary,
+    diagnostics?.robot_diagnostics_wave_rover_hil_packet_review_decision_summary,
+    diagnosticsReadiness.wave_rover_hil_packet_review_decision,
+    diagnosticsReadiness.wave_rover_hil_packet_review_decision_summary,
+    diagnosticsReadiness.robot_diagnostics_wave_rover_hil_packet_review_decision_summary,
+    diagnosticsSummary.wave_rover_hil_packet_review_decision,
+    diagnosticsSummary.wave_rover_hil_packet_review_decision_summary,
+    diagnosticsSummary.robot_diagnostics_wave_rover_hil_packet_review_decision_summary,
+    nestedDiagnosticsSummary.wave_rover_hil_packet_review_decision,
+    nestedDiagnosticsSummary.wave_rover_hil_packet_review_decision_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_wave_rover_hil_packet_review_decision_summary,
+    nestedDiagnosticsInnerSummary.wave_rover_hil_packet_review_decision,
+    nestedDiagnosticsInnerSummary.wave_rover_hil_packet_review_decision_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_wave_rover_hil_packet_review_decision_summary,
+    statusDiagnosticsSummary.wave_rover_hil_packet_review_decision,
+    statusDiagnosticsSummary.wave_rover_hil_packet_review_decision_summary,
+    statusDiagnosticsSummary.robot_diagnostics_wave_rover_hil_packet_review_decision_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function waveRoverHilPacketReviewDecisionSummaryText(value, fallback) {
+  // 评审材料可能是数组、对象或短字符串；手机端统一压成安全短摘要，避免展示 raw artifact。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeWaveRoverHilPacketReviewDecisionText(
+        item?.safe_phone_copy || item?.summary || item?.status || item?.state ||
+          item?.name || item?.filename || item?.reason || item?.category ||
+          item?.next_required_evidence || item?.owner || item?.command || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.name || value.filename || value.reason || value.category ||
+      value.next_required_evidence || value.owner || value.command;
+    if (direct) {
+      return safeWaveRoverHilPacketReviewDecisionText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeWaveRoverHilPacketReviewDecisionText(key, "");
+        const copy = waveRoverHilPacketReviewDecisionSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safeWaveRoverHilPacketReviewDecisionText(value, fallback);
+}
+
+function waveRoverHilPacketReviewDecisionNotProvenList(value) {
+  // 这个 panel 是 HIL packet 评审决策，不是 HIL pass 或真实底盘控制证明。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "real_wave_rover",
+    "real_uart",
+    "hil_pass",
+    "real_odom",
+    "real_imu",
+    "real_battery",
+    "real_route_elevator_field_pass",
+    "real_phone_browser",
+    "delivery_success",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 16);
+}
+
+function waveRoverHilPacketReviewDecisionFromStatus(status, readiness, diagnostics) {
+  const provided = waveRoverHilPacketReviewDecisionCandidate(status, readiness, diagnostics) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.wave_rover_hil_packet_review_decision_summary.v1",
+    source_schema: provided.source_schema || provided.schema || "trashbot.wave_rover_hil_packet_review_decision.v1",
+    schema_version: 1,
+    review_decision: safeWaveRoverHilPacketReviewDecisionText(
+      provided.review_decision || provided.decision || provided.overall_status || provided.status,
+      "blocked_pending_real_hil_packet",
+    ),
+    safe_evidence_ref: safeWaveRoverHilPacketReviewDecisionText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "evidence_ref=not_proven",
+    ),
+    accepted_required_materials: waveRoverHilPacketReviewDecisionSummaryText(
+      provided.accepted_required_materials || provided.accepted_materials,
+      "accepted_required_materials=none",
+    ),
+    missing_required_materials: waveRoverHilPacketReviewDecisionSummaryText(
+      provided.missing_required_materials || provided.missing_materials,
+      "missing_required_materials=real feedback_T1001.log, real odom_once.jsonl, real imu_once.jsonl, real battery_once.jsonl, operator_hil_report.",
+    ),
+    rejected_required_materials: waveRoverHilPacketReviewDecisionSummaryText(
+      provided.rejected_required_materials || provided.rejected_materials,
+      "rejected_required_materials=none",
+    ),
+    next_required_evidence: waveRoverHilPacketReviewDecisionSummaryText(
+      provided.next_required_evidence || provided.next_evidence || provided.next_steps,
+      "next_required_evidence=real HIL packet review materials under the same safe evidence_ref.",
+    ),
+    owner_handoff: waveRoverHilPacketReviewDecisionSummaryText(
+      provided.owner_handoff || provided.owner_follow_up || provided.handoff,
+      "owner_handoff=Hardware collects real packet; Robot and Full-stack stay read-only.",
+    ),
+    rerun_commands: waveRoverHilPacketReviewDecisionSummaryText(
+      provided.rerun_commands || provided.commands_to_rerun || provided.safe_rerun_commands,
+      "rerun_commands=run intake gate, then review decision gate after real packet summary is available.",
+    ),
+    same_evidence_ref_required: provided.same_evidence_ref_required === false ? false : true,
+    safe_copy: safeWaveRoverHilPacketReviewDecisionText(
+      provided.safe_copy || provided.safe_phone_copy || provided.safe_summary,
+      "WAVE ROVER HIL packet review decision 只读展示评审决策、材料分类、owner handoff 和边界；这是 software proof only，不是 HIL pass。",
+    ),
+    evidence_boundary: safeWaveRoverHilPacketReviewDecisionText(
+      provided.evidence_boundary,
+      WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: waveRoverHilPacketReviewDecisionNotProvenList(provided),
+  };
+}
+
 function elevatorAssistCandidate(status, readiness, diagnostics) {
   // evidence-driven artifact 优先级高于旧 dry-run summary，避免新主链路被旧兼容字段遮住。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -16168,6 +16332,83 @@ function renderWaveRoverHilPacketIntake(status) {
   $("waveRoverHilPacketIntakeNotProven").textContent = summary.not_proven.join("、");
 }
 
+function ensureWaveRoverHilPacketReviewDecisionPanel() {
+  // review-decision 紧跟 packet intake；它只解释评审材料，不成为任何控制放行条件。
+  let panel = $("waveRoverHilPacketReviewDecisionPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("waveRoverHilPacketIntakeTitle")?.closest("section") ||
+    $("waveRoverFeedbackReplayTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "waveRoverHilPacketReviewDecisionPanel";
+  panel.className = "wave-rover-hil-packet-review-decision-panel";
+  panel.setAttribute("aria-labelledby", "waveRoverHilPacketReviewDecisionTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="waveRoverHilPacketReviewDecisionTitle">WAVE ROVER HIL packet review decision</h2>
+      <span id="waveRoverHilPacketReviewDecisionBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="waveRoverHilPacketReviewDecisionCopy" class="message">
+      wave_rover_hil_packet_review_decision 只读展示 review_decision、材料分类、owner handoff、rerun commands 和边界。
+    </p>
+    <dl class="wave-rover-hil-packet-review-decision-grid">
+      <div><dt>Review Decision</dt><dd id="waveRoverHilPacketReviewDecisionStatus">blocked_pending_real_hil_packet</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="waveRoverHilPacketReviewDecisionEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Accepted Required Materials</dt><dd id="waveRoverHilPacketReviewDecisionAccepted">accepted_required_materials=none</dd></div>
+      <div><dt>Missing Required Materials</dt><dd id="waveRoverHilPacketReviewDecisionMissing">missing_required_materials=not_proven</dd></div>
+      <div><dt>Rejected Required Materials</dt><dd id="waveRoverHilPacketReviewDecisionRejected">rejected_required_materials=none</dd></div>
+      <div><dt>Next Required Evidence</dt><dd id="waveRoverHilPacketReviewDecisionNextEvidence">next_required_evidence=not_proven</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="waveRoverHilPacketReviewDecisionOwnerHandoff">owner_handoff=Hardware / Robot / Full-stack keep evidence read-only.</dd></div>
+      <div><dt>Rerun Commands</dt><dd id="waveRoverHilPacketReviewDecisionRerunCommands">rerun_commands=not_proven</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="waveRoverHilPacketReviewDecisionControls">delivery_success=false / primary_actions_enabled=false / same_evidence_ref_required=true</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="waveRoverHilPacketReviewDecisionBoundary">software_proof_docker_wave_rover_hil_packet_review_decision_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="waveRoverHilPacketReviewDecisionNotProven">hil_pass、真实 UART、真实 topic 和 delivery success 未证明。</dd></div>
+    </dl>
+    <div class="copy-actions">
+      <button id="copyWaveRoverHilPacketReviewDecisionButton" type="button">Copy safe summary</button>
+      <button id="downloadWaveRoverHilPacketReviewDecisionButton" type="button">Export safe summary</button>
+    </div>
+    <p id="waveRoverHilPacketReviewDecisionCopyStatus" class="hint">copy/export 只包含 whitelist-only phone-safe metadata。</p>
+    <pre id="waveRoverHilPacketReviewDecisionSafeCopy" class="safe-copy" aria-label="wave_rover_hil_packet_review_decision safe_copy">blocked copy unavailable</pre>
+    <p id="waveRoverHilPacketReviewDecisionHint" class="hint">
+      本 panel 只消费 wave_rover_hil_packet_review_decision / summary / Robot diagnostics compatible summary 的 safe fields；不展示 raw artifact、本机绝对路径、serial device、baudrate、raw ROS topic、traceback、checksum、credentials、/cmd_vel 或 full raw feedback，也不改变 Start Delivery、Confirm Dropoff 或 Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderWaveRoverHilPacketReviewDecision(status) {
+  const panel = ensureWaveRoverHilPacketReviewDecisionPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = waveRoverHilPacketReviewDecisionFromStatus(status, readiness, latestDiagnostics);
+  latestWaveRoverHilPacketReviewDecision = summary;
+  const badge = $("waveRoverHilPacketReviewDecisionBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 review decision" : "not_proven";
+  $("waveRoverHilPacketReviewDecisionCopy").textContent = summary.safe_copy;
+  $("waveRoverHilPacketReviewDecisionStatus").textContent = summary.review_decision;
+  $("waveRoverHilPacketReviewDecisionEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("waveRoverHilPacketReviewDecisionAccepted").textContent = summary.accepted_required_materials;
+  $("waveRoverHilPacketReviewDecisionMissing").textContent = summary.missing_required_materials;
+  $("waveRoverHilPacketReviewDecisionRejected").textContent = summary.rejected_required_materials;
+  $("waveRoverHilPacketReviewDecisionNextEvidence").textContent = summary.next_required_evidence;
+  $("waveRoverHilPacketReviewDecisionOwnerHandoff").textContent = summary.owner_handoff;
+  $("waveRoverHilPacketReviewDecisionRerunCommands").textContent = summary.rerun_commands;
+  $("waveRoverHilPacketReviewDecisionControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled} / same_evidence_ref_required=${summary.same_evidence_ref_required}`;
+  $("waveRoverHilPacketReviewDecisionBoundary").textContent = summary.evidence_boundary;
+  $("waveRoverHilPacketReviewDecisionNotProven").textContent = summary.not_proven.join("、");
+}
+
 function ensureElevatorAssistPanel() {
   // 本轮文件范围不改 index.html，因此用 JS 注入只读 panel，保持静态壳兼容旧浏览器测试。
   let panel = $("elevatorAssistPanel");
@@ -17089,6 +17330,38 @@ function waveRoverHilPacketIntakeCopyPayload(summary) {
     same_evidence_ref_required: source.same_evidence_ref_required,
     safe_copy: source.safe_copy,
     evidence_boundary: WAVE_ROVER_HIL_PACKET_INTAKE_BOUNDARY,
+    not_proven: source.not_proven,
+    delivery_success: false,
+    primary_actions_enabled: false,
+  };
+}
+
+function waveRoverHilPacketReviewDecisionCopyPayload(summary) {
+  // review-decision copy/export 只导出评审白名单字段，不携带 raw review、设备细节或控制授权。
+  const source = summary?.schema
+    ? summary
+    : waveRoverHilPacketReviewDecisionFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  return {
+    schema: "trashbot.wave_rover_hil_packet_review_decision_copy.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    wave_rover_hil_packet_review_decision_schema: source.schema,
+    source_schema: source.source_schema,
+    review_decision: source.review_decision,
+    safe_evidence_ref: source.safe_evidence_ref,
+    accepted_required_materials: source.accepted_required_materials,
+    missing_required_materials: source.missing_required_materials,
+    rejected_required_materials: source.rejected_required_materials,
+    next_required_evidence: source.next_required_evidence,
+    owner_handoff: source.owner_handoff,
+    rerun_commands: source.rerun_commands,
+    same_evidence_ref_required: source.same_evidence_ref_required,
+    safe_copy: source.safe_copy,
+    evidence_boundary: WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_BOUNDARY,
     not_proven: source.not_proven,
     delivery_success: false,
     primary_actions_enabled: false,
@@ -18441,6 +18714,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const waveRoverHilPacketReviewDecision = waveRoverHilPacketReviewDecisionFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const rows = [
     ["软件版本", payload?.software_version],
     ["地图版本", payload?.map_version],
@@ -18500,6 +18778,7 @@ function renderDiagnosticsSummary(payload) {
     ["hardware_sensor_hil_entry_execution_pack", hardwareSensorHilEntryExecutionPack.execution_status],
     ["wave_rover_feedback_replay", waveRoverFeedbackReplay.replay_status],
     ["wave_rover_hil_packet_intake", waveRoverHilPacketIntake.packet_status],
+    ["wave_rover_hil_packet_review_decision", waveRoverHilPacketReviewDecision.review_decision],
   ];
   rows.forEach(([label, value]) => {
     const box = document.createElement("div");
@@ -18601,6 +18880,7 @@ function renderOfflineFailure() {
   renderHardwareSensorHilEntryExecutionPack({});
   renderWaveRoverFeedbackReplay({});
   renderWaveRoverHilPacketIntake({});
+  renderWaveRoverHilPacketReviewDecision({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -18680,6 +18960,7 @@ function renderStatus(status) {
   renderHardwareSensorHilEntryExecutionPack(status);
   renderWaveRoverFeedbackReplay(status);
   renderWaveRoverHilPacketIntake(status);
+  renderWaveRoverHilPacketReviewDecision(status);
   renderCloudReadiness(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
@@ -18936,6 +19217,7 @@ async function openDiagnostics() {
     renderHardwareSensorHilEntryExecutionPack(latestStatus || {});
     renderWaveRoverFeedbackReplay(latestStatus || {});
     renderWaveRoverHilPacketIntake(latestStatus || {});
+    renderWaveRoverHilPacketReviewDecision(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileDeviceEvidence(latestStatus || {});
     renderMobileDeviceHandoffSession(latestStatus || {});
@@ -19004,6 +19286,7 @@ function wireEvents() {
   ensureHardwareSensorHilEntryExecutionPackPanel();
   ensureWaveRoverFeedbackReplayPanel();
   ensureWaveRoverHilPacketIntakePanel();
+  ensureWaveRoverHilPacketReviewDecisionPanel();
   ensureRouteTaskTerminalCompletionRehearsalPanel();
   ensureRouteTaskTerminalReviewDecisionPanel();
   ensureRouteTaskFieldRetestExecutionPackPanel();
@@ -19407,6 +19690,34 @@ function wireEvents() {
     downloadJsonPackage("wave_rover_hil_packet_intake_copy.json", payload);
     $("waveRoverHilPacketIntakeCopyStatus").textContent =
       "已导出 WAVE ROVER HIL packet intake whitelist-only JSON。";
+  });
+  $("copyWaveRoverHilPacketReviewDecisionButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(
+      waveRoverHilPacketReviewDecisionCopyPayload(latestWaveRoverHilPacketReviewDecision || {}),
+      null,
+      2,
+    );
+    $("waveRoverHilPacketReviewDecisionSafeCopy").textContent = payload;
+    // review-decision copy 只用于人工复核交接，剪贴板不可用时仍保留手动复制路径。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("waveRoverHilPacketReviewDecisionCopyStatus").textContent =
+        "已复制 WAVE ROVER HIL packet review decision phone-safe metadata。";
+    } catch (_error) {
+      $("waveRoverHilPacketReviewDecisionCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadWaveRoverHilPacketReviewDecisionButton").addEventListener("click", () => {
+    const payload = JSON.stringify(
+      waveRoverHilPacketReviewDecisionCopyPayload(latestWaveRoverHilPacketReviewDecision || {}),
+      null,
+      2,
+    );
+    $("waveRoverHilPacketReviewDecisionSafeCopy").textContent = payload;
+    downloadJsonPackage("wave_rover_hil_packet_review_decision_copy.json", payload);
+    $("waveRoverHilPacketReviewDecisionCopyStatus").textContent =
+      "已导出 WAVE ROVER HIL packet review decision whitelist-only JSON。";
   });
   $("copyRouteTaskTerminalCompletionRehearsalButton").addEventListener("click", async () => {
     const payload = JSON.stringify(
