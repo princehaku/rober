@@ -744,6 +744,82 @@
       "delivery success"
     ]
   },
+  "route_task_field_retest_result_review_handoff": {
+    "schema": "trashbot.route_task_field_retest_result_review_handoff.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.route_task_field_retest_result_review_handoff_summary.v1",
+    "handoff_status": "needs_result_material_callback_not_proven",
+    "owner_work_orders": [
+      "owner_work_orders=Autonomy owner refreshes same safe_evidence_ref review decision materials.",
+      "owner_work_orders=Robot owner mirrors metadata-only diagnostics handoff summary.",
+      "owner_work_orders=Field owner returns next material callback before rerun."
+    ],
+    "accepted_reasons": [
+      "accepted_reasons=safe_evidence_ref is phone-safe.",
+      "accepted_reasons=decision status is preserved as not_proven."
+    ],
+    "blocked_reasons": [
+      "blocked_reasons=door_state callback still not_proven.",
+      "blocked_reasons=target_floor_confirmation callback still not_proven.",
+      "blocked_reasons=dropoff_or_cancel_completion callback still not_proven.",
+      "blocked_reasons=delivery_result callback still not_proven."
+    ],
+    "rerun_reasons": [
+      "rerun_reasons=result materials need same safe_evidence_ref callback.",
+      "rerun_reasons=keep delivery_success=false and primary_actions_enabled=false."
+    ],
+    "next_material_callback_requirements": [
+      "next_material_callback_requirements=door_state callback summary.",
+      "next_material_callback_requirements=target_floor_confirmation callback summary.",
+      "next_material_callback_requirements=human_assistance_note callback summary.",
+      "next_material_callback_requirements=dropoff_or_cancel_completion callback summary.",
+      "next_material_callback_requirements=delivery_result callback summary."
+    ],
+    "rerun_commands": [
+      "rerun_commands=python3 pc-tools/evidence/route_task_field_retest_result_review_decision.py --review-intake <safe_summary>",
+      "rerun_commands=python3 pc-tools/evidence/route_task_field_retest_result_review_handoff.py --review-decision <safe_summary>"
+    ],
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "safe_phone_copy": "路线/电梯结果复核交接 fixture 只展示 handoff status、safe evidence ref、owner work orders、accepted/blocked/rerun reasons、next material callback requirements、rerun commands 和 boundary flags；这是 Docker/local software proof，不是真实现场结论。",
+    "recovery_hint": "按同一 safe_evidence_ref 补齐结果 callback 材料后重跑 software_proof_docker_route_task_field_retest_result_review_handoff_gate。",
+    "safe_copy": {
+      "safe_phone_copy": "路线/电梯结果复核交接 copy 只包含 whitelist-only phone-safe metadata；不得当成真实现场结论、交付完成或控制授权。"
+    },
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_result_review_handoff_gate",
+    "not_proven": [
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field pass",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
+  "route_task_field_retest_result_review_handoff_summary": {
+    "schema": "trashbot.route_task_field_retest_result_review_handoff_summary.v1",
+    "schema_version": 1,
+    "handoff_status": "needs_result_material_callback_not_proven",
+    "owner_work_orders": "owner_work_orders=Autonomy/Robot/Field owner callback next materials under same safe_evidence_ref.",
+    "accepted_reasons": "accepted_reasons=safe_evidence_ref and not_proven boundary preserved.",
+    "blocked_reasons": "blocked_reasons=door_state、target_floor_confirmation、dropoff_or_cancel_completion、delivery_result callbacks remain not_proven.",
+    "rerun_reasons": "rerun_reasons=material callbacks are required before rerun.",
+    "next_material_callback_requirements": "next_material_callback_requirements=door_state、target_floor_confirmation、human_assistance_note、dropoff_or_cancel_completion、delivery_result callbacks.",
+    "rerun_commands": "rerun_commands=run software_proof_docker_route_task_field_retest_result_review_handoff_gate after callback backfill.",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "safe_phone_copy": "route_task_field_retest_result_review_handoff_summary 只用于手机只读路线/电梯结果复核交接，不放行 Start、Confirm 或 Cancel。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_result_review_handoff_gate",
+    "not_proven": [
+      "真实 route/elevator field pass",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "elevator_assist": {
     "schema": "trashbot.elevator_assist_summary.v1",
     "schema_version": 1,

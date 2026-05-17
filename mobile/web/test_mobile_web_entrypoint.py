@@ -3066,6 +3066,105 @@ class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, decision_text)
 
+    def test_field_retest_result_review_handoff_panel_is_read_only_and_copy_gated(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 结果复核交接跟在 decision 后，只读展示 owner work orders，不改变 Start/Confirm/Cancel gating。
+        self.assertIn("routeTaskFieldRetestResultReviewHandoffTitle", app)
+        self.assertIn("路线/电梯结果复核交接", app)
+        self.assertIn("routeTaskFieldRetestResultReviewDecisionTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("route-task-field-retest-result-review-handoff-panel", app)
+        self.assertIn("route-task-field-retest-result-review-handoff-grid", app)
+
+        # 状态来源兼容 artifact、summary 和 Robot diagnostics aliases。
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_HANDOFF_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_HANDOFF_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestResultReviewHandoffText", app)
+        self.assertIn("routeTaskFieldRetestResultReviewHandoffCandidate", app)
+        self.assertIn("routeTaskFieldRetestResultReviewHandoffFromStatus", app)
+        self.assertIn("route_task_field_retest_result_review_handoff", app)
+        self.assertIn("route_task_field_retest_result_review_handoff_summary", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_result_review_handoff_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_result_review_handoff", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_result_review_handoff", app)
+        self.assertIn("handoff_status", app)
+        self.assertIn("owner_work_orders", app)
+        self.assertIn("accepted_reasons", app)
+        self.assertIn("blocked_reasons", app)
+        self.assertIn("rerun_reasons", app)
+        self.assertIn("next_material_callback_requirements", app)
+        self.assertIn("rerun_commands", app)
+
+        # copy/export 必须由 safe_copy 驱动，只导出白名单字段，且不触发主操作、ACK、cursor、diagnostics fetch 或 robot command。
+        self.assertIn("routeTaskFieldRetestResultReviewHandoffCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_result_review_handoff_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestResultReviewHandoffButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestResultReviewHandoffButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("Start Delivery", app)
+        self.assertIn("Confirm Dropoff", app)
+        self.assertIn("Cancel", app)
+        self.assertNotRegex(app, r"routeTaskFieldRetestResultReviewHandoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须固定 result review handoff 的 software proof / not_proven 边界。
+        handoff = fixture["route_task_field_retest_result_review_handoff"]
+        self.assertEqual(
+            handoff["handoff_status"],
+            "needs_result_material_callback_not_proven",
+        )
+        self.assertEqual(handoff["delivery_success"], False)
+        self.assertEqual(handoff["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_route_task_field_retest_result_review_handoff_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("route_task_field_retest_result_review_handoff", doc)
+        self.assertIn("路线/电梯结果复核交接", doc)
+
+    def test_field_retest_result_review_handoff_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        handoff_text = json.dumps(
+            fixture["route_task_field_retest_result_review_handoff"],
+            ensure_ascii=False,
+        ).lower()
+
+        # result review handoff fixture 只能携带白名单 summary，不能带 raw handoff、路径、凭证、底层控制或成功状态。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw handoff",
+            "raw diagnostics",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "robot command",
+            "diagnostics fetch",
+            "result route",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, handoff_text)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -222,6 +222,59 @@ field pass, HIL pass, real Nav2/fixed-route execution, real task record, real
 dropoff/cancel completion, real delivery success, real phone/browser
 validation, O5 external cloud proof, or any primary robot action being enabled.
 
+## route_task_field_retest_result_review_handoff
+
+`pc-tools/evidence/route_task_field_retest_result_review_handoff.py`
+generates the PC-only owner handoff gate after
+`route_task_field_retest_result_review_decision.py`.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_result_review_handoff.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_result_review_handoff_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_result_review_handoff_gate`
+- Allowed inputs:
+  `trashbot.route_task_field_retest_result_review_decision.v1` and
+  `trashbot.route_task_field_retest_result_review_decision_summary.v1`
+  only. Wrapper or nested JSON is allowed only through known safe wrapper keys.
+- Handoff status values:
+  `ready_for_owner_result_callback_not_proven`,
+  `needs_result_material_callback_not_proven`,
+  `evidence_ref_mismatch_rerun_not_proven`,
+  `blocked_missing_result_review_decision_not_proven`, and
+  `unsupported_result_review_decision_schema_not_proven`.
+
+The output always includes `safe_evidence_ref`,
+`same_evidence_ref_required=true`, `same_evidence_ref_package`,
+`owner_work_orders`, `accepted_reasons`, `blocked_reasons`, `rerun_reasons`,
+`accepted_materials`, `missing_materials`, `rejected_materials`,
+`next_material_callback_requirements`, `rerun_commands`,
+`next_required_evidence`, `safe_copy`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_route_task_field_retest_result_review_handoff_gate`.
+
+Handoff mapping is fail-closed. A supported
+`ready_for_result_acceptance_backfill_not_proven` decision with matched
+evidence_ref, `result_review_decision_package.ready=true`, and all required
+route/elevator result material classes present maps to
+`ready_for_owner_result_callback_not_proven`. Missing result materials,
+rejected materials, or a not-ready decision package maps to
+`needs_result_material_callback_not_proven`. Mismatched evidence_ref, missing
+evidence_ref, weak `same_evidence_ref_required`, or non-matched same-ref status
+maps to `evidence_ref_mismatch_rerun_not_proven`. Missing JSON, bad JSON,
+unreadable JSON, or non-object JSON maps to
+`blocked_missing_result_review_decision_not_proven`. Unsupported schema or
+boundary, unsafe copy, raw paths, checksum text, credentials, ROS topics,
+serial/UART/WAVE ROVER text, raw artifact text, success/control claims,
+`delivery_success=true`, or `primary_actions_enabled=true` maps to
+`unsupported_result_review_decision_schema_not_proven`.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, HIL pass, real Nav2/fixed-route execution, real task record, real
+dropoff/cancel completion, real delivery success, real phone/browser
+validation, O5 external cloud proof, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_review_dispatch
 
 `pc-tools/evidence/route_task_field_retest_result_review_dispatch.py`

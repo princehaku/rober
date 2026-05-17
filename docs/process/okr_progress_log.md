@@ -8,6 +8,20 @@
 
 ## 2026-05-18 系列
 
+更新时间：2026-05-18 03:18 Asia/Shanghai。
+
+### 2026-05-18 03-04｜route-task-result-review-handoff｜O2/O3 review handoff software proof，任务闭环、固定路线和手机体验均保持约 99%，O5 保持约 68%
+
+`sprints/2026.05.18_03-04_route-task-result-review-handoff/` 完成 `software_proof_docker_route_task_field_retest_result_review_handoff_gate`。Autonomy worker 新增 `pc-tools/evidence/route_task_field_retest_result_review_handoff.py` 与 focused unittest，更新 `docs/interfaces/evidence_contracts.md`，承接上一轮 `route_task_field_retest_result_review_decision`，把 decision status、accepted / blocked / rerun reasons、owner handoff、same-evidence-ref package、next material callback requirements 和 rerun commands 转成 owner 可执行 handoff artifact / summary。Task A worker 报告 py_compile pass、focused unittest `Ran 5 tests in 0.072s OK`、required rg pass、scoped diff check pass，并保持 boundary `software_proof_docker_route_task_field_retest_result_review_handoff_gate`。
+
+Robot worker 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`、diagnostics tests 与 `docs/interfaces/ros_contracts.md`，新增 `route_task_field_retest_result_review_handoff` / `_summary` / `robot_diagnostics_route_task_field_retest_result_review_handoff_summary` diagnostics metadata-only consumer，只暴露 phone-safe summary 与明确的 evidence boundary，保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，不触发 task_orchestrator、Start、Confirm Dropoff、Cancel、ACK、Nav2、HIL 或 primary actions。Task B worker 报告 py_compile pass、diagnostics unittest `Ran 172 tests ... OK`、required rg pass、scoped diff check pass。
+
+Full-stack worker 更新 `mobile/web/app.js`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/web/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，新增只读 review handoff panel，展示 handoff status、safe evidence ref、owner work orders、accepted / blocked / rerun reasons、next material callback requirements、rerun commands、boundary flags、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`；Start Delivery、Confirm Dropoff、Cancel gating 不变。Task C worker 报告 `node --check mobile/web/app.js` pass、mobile unittest `Ran 68 tests in 0.301s OK`、required rg pass、scoped diff check pass。
+
+Product closeout 更新 sprint 留档、`OKR.md` 和本日志；组合围栏复跑通过：py_compile combined exit 0，combined unittest `Ran 245 tests OK`，`node --check mobile/web/app.js` exit 0，required `rg` 匹配 required boundary / Objective / fail-closed tokens，closeout scoped `git diff --check` exit 0。
+
+该证据只支持 Objective 2、Objective 3 和 Objective 4 继续保持约 99%，不继续上调到 100。理由是本轮把 PR #4 route/elevator result chain 从 review decision 推进到 review handoff，能减少“复核决策即现场通过”的误读，并给出 owner work orders、accepted / blocked / rerun reasons、same-evidence-ref package、next material callback requirements 和 rerun commands；但没有真实 route/elevator field pass、真实 Nav2/fixed-route runtime log、真实 route completion signal、真实 task record、真实门状态、真实目标楼层确认、真实人工协助记录、真实 dropoff/cancel completion、真实 delivery result、真实手机/browser、production app 或真实 PWA prompt/user choice。Objective 1 保持约 81%，因为本轮没有真实 WAVE ROVER、UART、HIL packet、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery` 或 operator HIL report，且最近 HIL packet blocker 已被连续本地包装，不应再重复消费。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；O5 stop rule 仍成立。PR #5 2D LiDAR / ToF hardware materials 仍缺真实 source、receipt、采购、安装、接线、电源、标定和 HIL-entry。本轮始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
 更新时间：2026-05-18 02:18 Asia/Shanghai。
 
 ### 2026-05-18 02-03｜route-task-result-review-decision｜O2/O3 review decision software proof，任务闭环、固定路线和手机体验均保持约 99%，O5 保持约 68%
