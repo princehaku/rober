@@ -40,6 +40,14 @@ SOURCE_BOUNDARIES = {
     "software_proof_docker_route_task_field_retest_execution_pack_gate",
     "",
 }
+RESULT_INTAKE_SCHEMAS = {
+    "trashbot.route_task_field_retest_result_intake.v1",
+    "trashbot.route_task_field_retest_result_intake_summary.v1",
+}
+REVIEW_RESULT_HANDOFF_SCHEMAS = {
+    "trashbot.route_task_field_retest_review_result_handoff.v1",
+    "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
+}
 
 # 八类现场结果材料是固定复账清单；缺一类也不能进入 ready。
 REQUIRED_RESULT_MATERIALS = intake.REQUIRED_RESULT_MATERIALS
@@ -147,6 +155,22 @@ def _source_status(load_issue: str, source: dict[str, Any]) -> dict[str, Any]:
     if schema in SOURCE_SCHEMAS and boundary in SOURCE_BOUNDARIES:
         return {"load_status": "loaded", "load_issue": "", "schema_status": "supported"}
     return {"load_status": "loaded", "load_issue": "", "schema_status": "unsupported"}
+
+
+def _handoff_lineage(source: dict[str, Any]) -> dict[str, str]:
+    # 只读取 result-intake 输出里的 source_result 摘要，不追读 raw handoff artifact。
+    source_schema = intake._safe_text(source.get("schema", ""))
+    source_result = _dict(source, "source_result")
+    handoff_schema = intake._safe_text(source_result.get("schema", ""))
+    if source_schema not in RESULT_INTAKE_SCHEMAS or handoff_schema not in REVIEW_RESULT_HANDOFF_SCHEMAS:
+        return {}
+    # 四个字段是 Robot/mobile 可直接透传的 phone-safe lineage metadata。
+    return {
+        "source_result_intake_schema": source_schema,
+        "source_result_intake_status": intake._safe_text(source.get("status", "")),
+        "source_review_result_handoff_schema": handoff_schema,
+        "source_review_result_handoff_status": intake._safe_text(source_result.get("status", "")),
+    }
 
 
 def _source_evidence_ref(source: dict[str, Any]) -> str:
@@ -344,6 +368,7 @@ def _summary_payload(
     rerun_summary: dict[str, Any],
     field_callback_checklist: list[str],
     phone_safe_summary: dict[str, Any],
+    lineage: dict[str, str],
 ) -> dict[str, Any]:
     # summary 是 Robot/Full-stack 只读对接面，字段稳定且默认 fail-closed。
     return {
@@ -363,6 +388,7 @@ def _summary_payload(
         "rerun_summary": rerun_summary,
         "field_callback_checklist": field_callback_checklist,
         "fail_closed_phone_safe_summary": phone_safe_summary,
+        **lineage,
         "not_proven": list(NOT_PROVEN),
         "delivery_success": False,
         "primary_actions_enabled": False,
@@ -416,6 +442,10 @@ def build_route_task_field_retest_result_reconciliation(
     rerun_summary = _rerun_summary(requested_ref)
     callback = _field_callback_checklist(requested_ref)
     phone_safe = _phone_safe_summary(status, requested_ref, missing, mismatch_reasons)
+    lineage = _handoff_lineage(source)
+    if lineage:
+        # safe copy 也带 lineage，让手机侧不必读取 artifact 才能显示来源。
+        phone_safe.update(lineage)
     summary = _summary_payload(
         status,
         requested_ref,
@@ -426,6 +456,7 @@ def build_route_task_field_retest_result_reconciliation(
         rerun_summary,
         callback,
         phone_safe,
+        lineage,
     )
 
     artifact = {
@@ -449,6 +480,7 @@ def build_route_task_field_retest_result_reconciliation(
             "unsafe_copy": bool(unsafe_copy),
             "success_or_control_claim": bool(success_or_control_claim),
         },
+        **lineage,
         "result_materials": {
             name: {
                 "status": material["status"],

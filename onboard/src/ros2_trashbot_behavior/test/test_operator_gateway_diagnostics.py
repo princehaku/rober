@@ -3148,6 +3148,24 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                             "status": "metadata_only",
                             "checked": ["result_intake_summary", "same_evidence_ref_required"],
                         },
+                        "source_result_intake": {
+                            "schema": "trashbot.route_task_field_retest_result_intake_summary.v1",
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_result_intake_gate"
+                            ),
+                            "status": "ready_for_field_retest_result_intake_not_proven",
+                            "evidence_ref": "evidence://route-task-field-retest-result-reconciliation-1",
+                            "same_evidence_ref_required": True,
+                        },
+                        "source_review_result_handoff": {
+                            "schema": "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_review_result_handoff_gate"
+                            ),
+                            "status": "ready_for_review_result_handoff_not_proven",
+                            "evidence_ref": "evidence://route-task-field-retest-result-reconciliation-1",
+                            "same_evidence_ref_required": True,
+                        },
                         "operator_next_steps": ["Review same evidence_ref retest result metadata."],
                         "robot_diagnostics_summary": {
                             "status": "metadata_only",
@@ -3207,6 +3225,18 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(summary["result_intake_summary"]["status"], "metadata_only")
         self.assertIn("same_evidence_ref_required", summary["result_reconciliation_summary"]["checked"])
         self.assertEqual(summary["robot_diagnostics_summary"]["status"], "metadata_only")
+        self.assertEqual(summary["lineage_status"]["status"], "metadata_only")
+        self.assertEqual(
+            summary["source_result_intake"]["schema"],
+            "trashbot.route_task_field_retest_result_intake_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_review_result_handoff"]["schema"],
+            "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
+        )
+        self.assertIn("route_task_field_retest_result_intake", summary["lineage_chain"])
+        self.assertFalse(summary["source_result_intake"]["delivery_success"])
+        self.assertFalse(summary["source_review_result_handoff"]["primary_actions_enabled"])
         self.assertIn("delivery_success", summary["not_proven"])
         self.assertIn("real_nav2_fixed_route_run", summary["not_proven"])
         self.assertTrue(summary["metadata_only"])
@@ -3364,6 +3394,28 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                     "safe_copy": "Route-task field retest result reconciliation confirms delivery success and ACK posted.",
                 }
             )
+            unsafe_lineage_summary = summarize_route_task_field_retest_result_reconciliation(
+                {
+                    "schema": "trashbot.route_task_field_retest_result_reconciliation.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_result_reconciliation_gate"
+                    ),
+                    "evidence_ref": "evidence://unsafe-lineage",
+                    "same_evidence_ref_required": True,
+                    "source_result_intake": {
+                        "schema": "trashbot.route_task_field_retest_result_intake_summary.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_result_intake_gate"
+                        ),
+                        "status": "ready_for_field_retest_result_intake_not_proven",
+                        "evidence_ref": "evidence://unsafe-lineage",
+                        "same_evidence_ref_required": True,
+                    },
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "Route-task field retest result reconciliation is metadata-only; delivery_success=false; primary_actions_enabled=false.",
+                }
+            )
             encoded = json.dumps(
                 [
                     env_summary,
@@ -3374,6 +3426,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                     mismatch_summary,
                     weak_same_ref_summary,
                     unsafe_summary,
+                    unsafe_lineage_summary,
                 ],
                 ensure_ascii=False,
             )
@@ -3386,6 +3439,8 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(mismatch_summary["reconciliation_status"]["status"], "evidence_ref_mismatch")
         self.assertEqual(weak_same_ref_summary["reconciliation_status"]["status"], "unsafe_fields")
         self.assertEqual(unsafe_summary["reconciliation_status"]["status"], "unsafe_fields")
+        self.assertEqual(unsafe_lineage_summary["reconciliation_status"]["status"], "unsafe_fields")
+        self.assertIn("source_review_result_handoff schema", unsafe_lineage_summary["lineage_status"]["reason"])
         self.assertIn("software_proof_docker_route_task_field_retest_result_reconciliation_gate", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success", missing_summary["not_proven"])

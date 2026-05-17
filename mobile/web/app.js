@@ -6508,6 +6508,30 @@ function routeTaskFieldRetestResultReconciliationFromStatus(status, readiness, d
       provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
       "not_provided",
     ),
+    // 谱系字段只描述安全来源链路，帮助 support 复账，不授予任何手机端控制能力。
+    source_lineage_chain: routeTaskFieldRetestResultReconciliationSummaryText(
+      provided.source_lineage_chain || provided.safe_lineage_chain || provided.lineage_chain,
+      "source_review_result_handoff -> source_result_intake -> route_task_field_retest_result_reconciliation",
+    ),
+    source_result_intake_schema: safeRouteTaskFieldRetestResultReconciliationText(
+      provided.source_result_intake_schema || provided.source_result_intake_summary_schema ||
+        provided.source_intake_schema,
+      "trashbot.route_task_field_retest_result_intake_summary.v1",
+    ),
+    source_result_intake_status: safeRouteTaskFieldRetestResultReconciliationText(
+      provided.source_result_intake_status || provided.result_intake_status || provided.source_intake_status,
+      "source_result_intake_status=not_proven",
+    ),
+    source_review_result_handoff_schema: safeRouteTaskFieldRetestResultReconciliationText(
+      provided.source_review_result_handoff_schema || provided.source_review_result_handoff_summary_schema ||
+        provided.source_handoff_schema,
+      "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
+    ),
+    source_review_result_handoff_status: safeRouteTaskFieldRetestResultReconciliationText(
+      provided.source_review_result_handoff_status || provided.review_result_handoff_status ||
+        provided.source_handoff_status,
+      "source_review_result_handoff_status=not_proven",
+    ),
     same_evidence_ref_status: safeRouteTaskFieldRetestResultReconciliationText(
       provided.same_evidence_ref_status || provided.same_evidence_ref || provided.evidence_ref_status,
       "same_evidence_ref_status=not_proven",
@@ -6569,6 +6593,12 @@ function routeTaskFieldRetestResultReconciliationCopyPayload(summary) {
     summary_schema: source.summary_schema,
     reconciliation_verdict: source.reconciliation_verdict,
     safe_evidence_ref: source.safe_evidence_ref,
+    // 导出仍是白名单 payload，只增加来源谱系，不携带 raw intake、raw handoff 或机器人内部材料。
+    source_lineage_chain: source.source_lineage_chain,
+    source_result_intake_schema: source.source_result_intake_schema,
+    source_result_intake_status: source.source_result_intake_status,
+    source_review_result_handoff_schema: source.source_review_result_handoff_schema,
+    source_review_result_handoff_status: source.source_review_result_handoff_status,
     same_evidence_ref_status: source.same_evidence_ref_status,
     result_materials_status: source.result_materials_status,
     missing_material_list: source.missing_material_list,
@@ -12207,6 +12237,9 @@ function ensureRouteTaskFieldRetestResultReconciliationPanel() {
     <dl class="route-task-field-retest-result-reconciliation-grid">
       <div><dt>Reconciliation Verdict</dt><dd id="routeTaskFieldRetestResultReconciliationVerdict">blocked_missing_route_task_field_retest_result_reconciliation</dd></div>
       <div><dt>Safe Evidence Ref</dt><dd id="routeTaskFieldRetestResultReconciliationEvidenceRef">not_provided</dd></div>
+      <div><dt>Safe Lineage</dt><dd id="routeTaskFieldRetestResultReconciliationLineage">source_review_result_handoff -> source_result_intake -> route_task_field_retest_result_reconciliation</dd></div>
+      <div><dt>Source Result Intake</dt><dd id="routeTaskFieldRetestResultReconciliationSourceIntake">trashbot.route_task_field_retest_result_intake_summary.v1 / source_result_intake_status=not_proven</dd></div>
+      <div><dt>Source Review Handoff</dt><dd id="routeTaskFieldRetestResultReconciliationSourceHandoff">trashbot.route_task_field_retest_review_result_handoff_summary.v1 / source_review_result_handoff_status=not_proven</dd></div>
       <div><dt>Same Evidence Ref</dt><dd id="routeTaskFieldRetestResultReconciliationSameRef">same_evidence_ref_status=not_proven</dd></div>
       <div><dt>Eight Result Materials</dt><dd id="routeTaskFieldRetestResultReconciliationMaterials">result_materials_status=not_proven</dd></div>
       <div><dt>Missing Material List</dt><dd id="routeTaskFieldRetestResultReconciliationMissing">missing_material_list=not_proven</dd></div>
@@ -12246,6 +12279,11 @@ function renderRouteTaskFieldRetestResultReconciliation(status) {
   $("routeTaskFieldRetestResultReconciliationCopy").textContent = summary.safe_phone_copy;
   $("routeTaskFieldRetestResultReconciliationVerdict").textContent = summary.reconciliation_verdict;
   $("routeTaskFieldRetestResultReconciliationEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("routeTaskFieldRetestResultReconciliationLineage").textContent = summary.source_lineage_chain;
+  $("routeTaskFieldRetestResultReconciliationSourceIntake").textContent =
+    `${summary.source_result_intake_schema} / ${summary.source_result_intake_status}`;
+  $("routeTaskFieldRetestResultReconciliationSourceHandoff").textContent =
+    `${summary.source_review_result_handoff_schema} / ${summary.source_review_result_handoff_status}`;
   $("routeTaskFieldRetestResultReconciliationSameRef").textContent = summary.same_evidence_ref_status;
   $("routeTaskFieldRetestResultReconciliationMaterials").textContent = summary.result_materials_status;
   $("routeTaskFieldRetestResultReconciliationMissing").textContent = summary.missing_material_list;

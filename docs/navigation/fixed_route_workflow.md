@@ -614,6 +614,8 @@ python3 pc-tools/evidence/route_task_field_retest_result_reconciliation.py \
 
 artifact 使用 `schema=trashbot.route_task_field_retest_result_reconciliation.v1`，summary 使用 `schema=trashbot.route_task_field_retest_result_reconciliation_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_result_reconciliation_gate`。顶层固定包含 `same_evidence_ref_required=true`、`same_evidence_ref_status`、`source_result`、`result_materials`、`missing_materials`、`mismatch_reasons`、`operator_next_steps`、`rerun_summary`、`field_callback_checklist`、`fail_closed_phone_safe_summary`、`not_proven`、`primary_actions_enabled=false` 和 `delivery_success=false`。
 
+如果输入是 result-intake artifact / summary，且其 `source_result.schema` 是 `trashbot.route_task_field_retest_review_result_handoff.v1` 或 `trashbot.route_task_field_retest_review_result_handoff_summary.v1`，reconciliation 会在 artifact、summary 和 phone-safe summary 中保留安全 lineage：`source_result_intake_schema`、`source_result_intake_status`、`source_review_result_handoff_schema`、`source_review_result_handoff_status`。这些字段只来自 result-intake 已输出的 `source_result` 摘要，用于说明本轮 result reconciliation 来自 handoff-derived result-intake；gate 不读取 raw handoff artifact、不追读本机文件、不裁剪八类 required result materials，也不改变 schema major version。
+
 reconciliation 必须看到八类现场复测结果材料摘要：Nav2/fixed-route runtime log、route completion signal、task record、door state、target floor confirmation、human assistance note、dropoff/cancel completion 和 delivery result。输入可以是 artifact、summary、wrapper 或 nested JSON；如果只拿到 execution pack / session handoff placeholder，gate 会保留 missing / placeholder-only 状态，不把准备包冒充为现场结果。
 
 保守阻断规则：

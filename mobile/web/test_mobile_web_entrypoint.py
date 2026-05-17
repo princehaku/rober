@@ -997,6 +997,14 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         self.assertIn("diagnosticsSummary.route_task_field_retest_result_reconciliation", app)
         self.assertIn("statusDiagnosticsSummary.route_task_field_retest_result_reconciliation", app)
         self.assertIn("reconciliation_verdict", app)
+        self.assertIn("source_lineage_chain", app)
+        self.assertIn("source_result_intake_schema", app)
+        self.assertIn("source_result_intake_status", app)
+        self.assertIn("source_review_result_handoff_schema", app)
+        self.assertIn("source_review_result_handoff_status", app)
+        self.assertIn("routeTaskFieldRetestResultReconciliationLineage", app)
+        self.assertIn("routeTaskFieldRetestResultReconciliationSourceIntake", app)
+        self.assertIn("routeTaskFieldRetestResultReconciliationSourceHandoff", app)
         self.assertIn("same_evidence_ref_status", app)
         self.assertIn("result_materials_status", app)
         self.assertIn("missing_material_list", app)
@@ -1019,6 +1027,15 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
             reconciliation["reconciliation_verdict"],
             "blocked_missing_route_task_field_retest_result_reconciliation_materials_not_proven",
         )
+        self.assertEqual(
+            reconciliation["source_result_intake_schema"],
+            "trashbot.route_task_field_retest_result_intake_summary.v1",
+        )
+        self.assertEqual(
+            reconciliation["source_review_result_handoff_schema"],
+            "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
+        )
+        self.assertIn("source_review_result_handoff -> source_result_intake", reconciliation["source_lineage_chain"])
         self.assertEqual(reconciliation["delivery_success"], False)
         self.assertEqual(reconciliation["primary_actions_enabled"], False)
         self.assertIn("software_proof_docker_route_task_field_retest_result_reconciliation_gate", fixture_text)

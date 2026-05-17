@@ -8,6 +8,18 @@
 
 ## 2026-05-17 系列
 
+更新时间：2026-05-17 13:13 Asia/Shanghai。
+
+### 2026-05-17 13-14｜route-task-handoff-result-reconciliation-bridge｜O2/O3 result-intake 来源谱系进入 result-reconciliation，任务闭环与固定路线均由约 93% 上调到约 94%，O5 保持约 68%
+
+`sprints/2026.05.17_13-14_route-task-handoff-result-reconciliation-bridge/` 完成 `software_proof_docker_route_task_field_retest_result_reconciliation_gate` 的 safe lineage bridge。Autonomy worker 更新 PC `route_task_field_retest_result_reconciliation`，新增 lineage extraction，只从 result-intake `source_result` 摘要读取，不追 raw handoff artifact；输出显式保留 `source_result_intake`、`source_review_result_handoff` 与 `lineage_chain`，不改变八类 required result materials。Task A 验证输出 focused unittest `Ran 8 OK`。
+
+Robot worker 更新 diagnostics metadata-only consumer，只读透传 `source_result_intake`、`source_review_result_handoff`、`lineage_chain`，并保持缺字段、unsupported schema、unsafe copy、success/control claim fail closed；不新增 ROS action/topic/service、ACK、cursor、Nav2、HIL、dropoff/cancel 或 delivery-control 路径。Task B 验证输出 diagnostics unittest `Ran 144 OK`。
+
+Full-stack worker 更新 mobile result reconciliation panel，展示 safe lineage，copy/export 仅包含白名单字段，Start Delivery / Confirm Dropoff / Cancel gating 不变。Task C 验证输出 mobile unittest `Ran 40 OK`，`node --check mobile/web/app.js` pass。Product closeout 更新 sprint 留档、`OKR.md` 和本日志；required `rg` 与 closeout scoped `git diff --check` 均通过。
+
+该证据只支持 Objective 2 从约 93% 保守上调到约 94%，Objective 3 从约 93% 保守上调到约 94%。Objective 2 的理由是 PR #4 route/elevator review-result handoff 现在能在 result reconciliation 阶段被明确复账，后续真实 door state、target floor confirmation、human assistance note、dropoff/cancel completion 和 delivery result 可沿同一 `evidence_ref` 追溯；仍不是真实 route/elevator field pass。Objective 3 的理由是真实 Nav2/fixed-route runtime log、route completion signal、task record 等 result materials 的来源链从 result-intake 延伸到 result reconciliation，并能被 PC / Robot / mobile 共同只读核对；仍不是真实 Nav2/fixed-route 实跑。Objective 1 保持约 77%，因为本轮没有真实 WAVE ROVER、UART、HIL、`T=1001` feedback、`/odom`、`/imu/data`、`/battery` 或 PR #5 真实 2D LiDAR / ToF 材料。Objective 4 保持约 99%，因为本轮没有真实手机设备、真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 或真实现场 phone behavior。Objective 5 保持约 68%，因为本机 Docker-only 且本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；Objective 5 仍是数值最低但按 O5 stop rule 不继续堆本地 metadata depth。本轮不证明真实 Nav2/fixed-route、真实 route/elevator field pass、真实 route completion signal、真实 task record、真实 dropoff/cancel completion、delivery success、真实手机/browser、production app、WAVE ROVER、真实串口/UART、HIL 或 Objective 5 external proof；始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
 更新时间：2026-05-17 12:13 Asia/Shanghai。
 
 ### 2026-05-17 12-13｜route-task-handoff-result-intake-bridge｜O2/O3 review-result handoff 接入 result-intake，任务闭环与固定路线均由约 92% 上调到约 93%，O5 保持约 68%

@@ -398,14 +398,17 @@ the same evidence boundary. This summary is metadata-only support material for
 reconciling the Task A retest result intake with same-`evidence_ref` field
 materials: it may expose only summary schema, reconciliation status, safe
 `evidence_ref`, `same_evidence_ref_required=true`, result intake summary,
-result reconciliation summary, operator next steps, Robot diagnostics summary,
-mobile-readonly copy, boundary,
+result reconciliation summary, safe lineage metadata (`source_result_intake`,
+`source_review_result_handoff`, and the fixed
+`review_result_handoff -> result_intake -> result_reconciliation` chain),
+operator next steps, Robot diagnostics summary, mobile-readonly copy, boundary,
 `software_proof_docker_route_task_field_retest_result_reconciliation_gate`,
 `not_proven`, `delivery_success=false`, and
 `primary_actions_enabled=false`. Missing, unreadable, unsupported-schema,
 unsafe copy, missing `evidence_ref`, same-`evidence_ref` mismatch, weak or
-non-boolean `same_evidence_ref_required`, success wording,
-`delivery_success=true`, or `primary_actions_enabled=true` sources remain
+non-boolean `same_evidence_ref_required`, missing/unsupported lineage schema,
+lineage `evidence_ref` mismatch, success wording, `delivery_success=true`, or
+`primary_actions_enabled=true` sources remain
 blocked/not_proven. The fields do not trigger `/api/collect`, dropoff, cancel,
 remote ACK, cursor advance/persistence, terminal ACK, Nav2, WAVE ROVER, HIL,
 production readiness, dropoff/cancel completion, or delivery success. They

@@ -5399,6 +5399,154 @@ def _route_task_field_retest_result_reconciliation_source_contract(value):
     return source_schema, source_boundary
 
 
+def _route_task_field_retest_result_reconciliation_flat_lineage(value, prefix):
+    # Task A 可能输出扁平 lineage 字段；这里只把 schema/status/ref 这类安全字段还原成 summary。
+    value = value if isinstance(value, dict) else {}
+    fields = {
+        "schema": value.get(f"{prefix}_schema"),
+        "evidence_boundary": value.get(f"{prefix}_evidence_boundary"),
+        "status": value.get(f"{prefix}_status"),
+        "evidence_ref": value.get(f"{prefix}_evidence_ref"),
+        "same_evidence_ref_required": value.get(f"{prefix}_same_evidence_ref_required"),
+    }
+    return {key: item for key, item in fields.items() if item not in ("", None)}
+
+
+def _route_task_field_retest_result_reconciliation_lineage_item(value):
+    # lineage item 是 Robot diagnostics 的只读视图；强制附带 false flags，避免被 UI 当成授权。
+    value = value if isinstance(value, dict) else {}
+    evidence_ref = _safe_route_task_rehearsal_ref(
+        value.get("safe_evidence_ref") or value.get("evidence_ref") or ""
+    )
+    summary = {
+        "schema": _redact_route_task_rehearsal_text(value.get("schema")),
+        "evidence_boundary": _redact_route_task_rehearsal_text(
+            value.get("evidence_boundary") or value.get("boundary")
+        ),
+        "status": _redact_route_task_rehearsal_text(
+            value.get("status") or value.get("overall_status") or value.get("verdict")
+        ),
+        "safe_evidence_ref": evidence_ref,
+        "same_evidence_ref_required": value.get("same_evidence_ref_required", True) is True,
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+    return {key: item for key, item in summary.items() if item not in ("", None)}
+
+
+def _route_task_field_retest_result_reconciliation_lineage(
+    reconciliation,
+    summary_fragment,
+    result_intake_source,
+    safe_evidence_ref,
+):
+    # 只在 source lineage 明确出现时透传；旧 artifact 没有 lineage 时保持兼容，不额外降级。
+    reconciliation = reconciliation if isinstance(reconciliation, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    result_intake_source = result_intake_source if isinstance(result_intake_source, dict) else {}
+    holders = (summary_fragment, reconciliation)
+    explicit_intake = next(
+        (
+            holder.get("source_result_intake")
+            for holder in holders
+            if isinstance(holder.get("source_result_intake"), dict)
+        ),
+        {},
+    )
+    explicit_handoff = next(
+        (
+            holder.get("source_review_result_handoff")
+            for holder in holders
+            if isinstance(holder.get("source_review_result_handoff"), dict)
+        ),
+        {},
+    )
+    flat_intake = next(
+        (
+            candidate
+            for candidate in (
+                _route_task_field_retest_result_reconciliation_flat_lineage(holder, "source_result_intake")
+                for holder in holders
+            )
+            if candidate
+        ),
+        {},
+    )
+    flat_handoff = next(
+        (
+            candidate
+            for candidate in (
+                _route_task_field_retest_result_reconciliation_flat_lineage(
+                    holder,
+                    "source_review_result_handoff",
+                )
+                for holder in holders
+            )
+            if candidate
+        ),
+        {},
+    )
+    nested_source = (
+        result_intake_source.get("source_result")
+        if isinstance(result_intake_source.get("source_result"), dict)
+        else result_intake_source.get("source_review_result_handoff")
+        if isinstance(result_intake_source.get("source_review_result_handoff"), dict)
+        else {}
+    )
+    if not (explicit_intake or explicit_handoff or flat_intake or flat_handoff or nested_source):
+        return {}, ""
+
+    source_result_intake = _route_task_field_retest_result_reconciliation_lineage_item(
+        explicit_intake or flat_intake or result_intake_source
+    )
+    source_review_result_handoff = _route_task_field_retest_result_reconciliation_lineage_item(
+        explicit_handoff or flat_handoff or nested_source
+    )
+    allowed_intake_schemas = {
+        ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_SCHEMA,
+        ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_SUMMARY_SCHEMA,
+    }
+    allowed_handoff_schemas = {
+        ROUTE_TASK_FIELD_RETEST_REVIEW_RESULT_HANDOFF_SCHEMA,
+        ROUTE_TASK_FIELD_RETEST_REVIEW_RESULT_HANDOFF_SUMMARY_SCHEMA,
+    }
+    intake_ref = source_result_intake.get("safe_evidence_ref", "")
+    handoff_ref = source_review_result_handoff.get("safe_evidence_ref", "")
+    refs = [ref for ref in (safe_evidence_ref, intake_ref, handoff_ref) if ref]
+    if source_result_intake.get("schema") not in allowed_intake_schemas:
+        return {}, "source_result_intake schema is missing or unsupported"
+    if source_review_result_handoff.get("schema") not in allowed_handoff_schemas:
+        return {}, "source_review_result_handoff schema is missing or unsupported"
+    if not intake_ref or not handoff_ref:
+        return {}, "safe lineage metadata is missing evidence_ref"
+    if len(set(refs)) > 1:
+        return {}, "safe lineage metadata evidence_ref does not match result reconciliation evidence_ref"
+    if (
+        not source_result_intake.get("same_evidence_ref_required")
+        or not source_review_result_handoff.get("same_evidence_ref_required")
+    ):
+        return {}, "safe lineage metadata must keep same_evidence_ref_required=true"
+    if (
+        _route_task_field_run_console_has_unsafe_fields(explicit_intake or flat_intake)
+        or _route_task_field_run_console_has_unsafe_fields(explicit_handoff or flat_handoff or nested_source)
+    ):
+        return {}, "safe lineage metadata contains unsafe fields or control claims"
+    return {
+        "lineage_status": {
+            "status": "metadata_only",
+            "reason": "review_result_handoff -> result_intake -> result_reconciliation lineage is safe metadata only",
+        },
+        "source_result_intake": source_result_intake,
+        "source_review_result_handoff": source_review_result_handoff,
+        "lineage_chain": [
+            "route_task_field_retest_review_result_handoff",
+            "route_task_field_retest_result_intake",
+            "route_task_field_retest_result_reconciliation",
+        ],
+    }, ""
+
+
 def _route_task_field_retest_material_pack_source_contract(value):
     # material pack 支持直接 artifact 或 summary wrapper；wrapper 必须回指 material_pack source，不能混入 result gate。
     source_schema = str(value.get("schema") or "")
@@ -8849,6 +8997,12 @@ def summarize_route_task_field_retest_result_reconciliation(source):
         if isinstance(diagnostics.get("robot_diagnostics_summary"), dict)
         else {}
     )
+    lineage_summary, lineage_error = _route_task_field_retest_result_reconciliation_lineage(
+        reconciliation,
+        summary_fragment,
+        result_intake_source,
+        safe_evidence_ref,
+    )
     summary.update(
         {
             "source_schema": _redact_route_task_rehearsal_text(source_schema),
@@ -8893,6 +9047,8 @@ def summarize_route_task_field_retest_result_reconciliation(source):
             "read_error": "",
         }
     )
+    if lineage_summary:
+        summary.update(lineage_summary)
 
     if (
         source_schema != ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION_SCHEMA
@@ -8965,6 +9121,7 @@ def summarize_route_task_field_retest_result_reconciliation(source):
         return summary
     if (
         not summary["same_evidence_ref_required"]
+        or bool(lineage_error)
         or not _route_task_field_retest_result_reconciliation_has_disabled_actions(reconciliation)
         or _route_task_field_run_console_has_unsafe_fields(reconciliation)
         or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
@@ -8989,7 +9146,11 @@ def summarize_route_task_field_retest_result_reconciliation(source):
                 "operator_next_steps": [],
                 "robot_diagnostics_summary": {
                     "status": "blocked",
-                    "reason": "unsafe result reconciliation summary fields",
+                    "reason": lineage_error or "unsafe result reconciliation summary fields",
+                },
+                "lineage_status": {
+                    "status": "blocked",
+                    "reason": lineage_error or "unsafe result reconciliation summary fields",
                 },
                 "mobile_readonly_summary": {
                     "safe_copy": "Route-task field retest result reconciliation was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",

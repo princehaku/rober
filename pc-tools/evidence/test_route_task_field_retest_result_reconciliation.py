@@ -32,7 +32,7 @@ class RouteTaskFieldRetestResultReconciliationTest(unittest.TestCase):
             "review_note": f"{name} metadata attached for reconciliation",
         }
 
-    def intake_artifact(self, evidence_ref: str, with_materials: bool = True) -> dict:
+    def intake_artifact(self, evidence_ref: str, with_materials: bool = True, source_result: dict | None = None) -> dict:
         # 样本沿用上一轮 result intake 的 artifact 形态。
         payload = {
             "schema": "trashbot.route_task_field_retest_result_intake.v1",
@@ -44,11 +44,28 @@ class RouteTaskFieldRetestResultReconciliationTest(unittest.TestCase):
             "delivery_success": False,
             "primary_actions_enabled": False,
         }
+        if source_result is not None:
+            # lineage 只模拟 result-intake 已输出的 source_result 摘要，不读取 handoff 原件。
+            payload["source_result"] = source_result
         if with_materials:
             payload["result_materials"] = {
                 name: self.material(name, evidence_ref) for name in reconciliation.REQUIRED_RESULT_MATERIALS
             }
         return payload
+
+    def review_result_handoff_source(self, summary: bool = False) -> dict:
+        # source_result 是白名单摘要字段，不能包含 raw path、topic、串口或凭证。
+        return {
+            "schema": (
+                "trashbot.route_task_field_retest_review_result_handoff_summary.v1"
+                if summary
+                else "trashbot.route_task_field_retest_review_result_handoff.v1"
+            ),
+            "evidence_boundary": "software_proof_docker_route_task_field_retest_review_result_handoff_gate",
+            "status": "ready_for_result_intake_handoff",
+            "evidence_ref": "run-010",
+            "same_evidence_ref_required": True,
+        }
 
     def build(self, root: Path, payload: dict, evidence_ref: str = "run-001") -> tuple[dict, dict]:
         # 公共 helper 让 case 聚焦 schema、boundary 和 fail-closed 规则。
@@ -95,6 +112,52 @@ class RouteTaskFieldRetestResultReconciliationTest(unittest.TestCase):
         self.assertEqual(artifact["source_result"]["schema_status"], "supported")
         self.assertEqual(artifact["status"], "ready_for_field_retest_result_reconciliation_not_proven")
         self.assertIn("delivery_result", artifact["result_materials"])
+
+    def test_result_intake_from_review_result_handoff_keeps_phone_safe_lineage(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            result_intake = self.intake_artifact(
+                "run-010",
+                source_result=self.review_result_handoff_source(),
+            )
+            artifact, summary = self.build(root, {"payload": {"artifact": result_intake}}, "run-010")
+
+        self.assertEqual(artifact["status"], "ready_for_field_retest_result_reconciliation_not_proven")
+        self.assertEqual(artifact["source_result_intake_schema"], "trashbot.route_task_field_retest_result_intake.v1")
+        self.assertEqual(artifact["source_result_intake_status"], "ready_for_field_retest_result_intake_not_proven")
+        self.assertEqual(
+            artifact["source_review_result_handoff_schema"],
+            "trashbot.route_task_field_retest_review_result_handoff.v1",
+        )
+        self.assertEqual(artifact["source_review_result_handoff_status"], "ready_for_result_intake_handoff")
+        self.assertEqual(summary["source_review_result_handoff_schema"], artifact["source_review_result_handoff_schema"])
+        self.assertEqual(
+            artifact["fail_closed_phone_safe_summary"]["source_result_intake_schema"],
+            "trashbot.route_task_field_retest_result_intake.v1",
+        )
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+
+    def test_result_intake_summary_from_review_handoff_summary_keeps_lineage(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            result_summary = self.intake_artifact(
+                "run-011",
+                source_result=self.review_result_handoff_source(summary=True),
+            )
+            result_summary["schema"] = "trashbot.route_task_field_retest_result_intake_summary.v1"
+            result_summary["status"] = "blocked_missing_result_materials"
+            artifact, summary = self.build(root, {"data": {"result_intake_summary": result_summary}}, "run-011")
+
+        self.assertEqual(artifact["source_result_intake_schema"], "trashbot.route_task_field_retest_result_intake_summary.v1")
+        self.assertEqual(artifact["source_result_intake_status"], "blocked_missing_result_materials")
+        self.assertEqual(
+            summary["source_review_result_handoff_schema"],
+            "trashbot.route_task_field_retest_review_result_handoff_summary.v1",
+        )
+        self.assertEqual(summary["source_review_result_handoff_status"], "ready_for_result_intake_handoff")
+        self.assertIn("source_result_intake_status", artifact["fail_closed_phone_safe_summary"])
+        self.assertEqual(summary["required_result_materials"], list(reconciliation.REQUIRED_RESULT_MATERIALS))
 
     def test_execution_pack_placeholder_input_fails_closed(self):
         with tempfile.TemporaryDirectory() as td:
