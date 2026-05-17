@@ -2318,6 +2318,106 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, packet_text)
 
+    def test_field_retest_material_callback_review_decision_panel_is_read_only_and_copy_gated(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # material callback review decision 跟在材料回执后，只读展示复核决策，不新增控制按钮语义。
+        self.assertIn("routeTaskFieldRetestMaterialCallbackReviewDecisionTitle", app)
+        self.assertIn("现场材料回执复核决策", app)
+        self.assertIn("routeTaskFieldRetestMaterialCallbackPacketTitle", app)
+        self.assertIn("routeTaskFieldRetestOperatorDrillTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 Robot diagnostics compatible summary。
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestMaterialCallbackReviewDecisionText", app)
+        self.assertIn("routeTaskFieldRetestMaterialCallbackReviewDecisionCandidate", app)
+        self.assertIn("routeTaskFieldRetestMaterialCallbackReviewDecisionFromStatus", app)
+        self.assertIn("route_task_field_retest_material_callback_review_decision", app)
+        self.assertIn("route_task_field_retest_material_callback_review_decision_summary", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_material_callback_review_decision_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_material_callback_review_decision", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_material_callback_review_decision", app)
+        self.assertIn("review_decision", app)
+        self.assertIn("material_callback_review_summary", app)
+        self.assertIn("accepted_materials", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("rejected_materials", app)
+        self.assertIn("owner_acknowledgement", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("rerun_commands", app)
+
+        # copy/export 只能由 safe_copy 驱动；缺失时显示 blocked copy unavailable，不合成 raw review。
+        self.assertIn("routeTaskFieldRetestMaterialCallbackReviewDecisionCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_material_callback_review_decision_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestMaterialCallbackReviewDecisionButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestMaterialCallbackReviewDecisionButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"routeTaskFieldRetestMaterialCallbackReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+        self.assertNotRegex(app, r"copyRouteTaskFieldRetestMaterialCallbackReviewDecisionButton.*fetchJson")
+
+        # fixture 和产品文档必须固定 review decision 的 software proof / not_proven 边界。
+        decision = fixture["route_task_field_retest_material_callback_review_decision"]
+        self.assertEqual(
+            decision["review_decision"],
+            "needs_material_callback_backfill_not_proven",
+        )
+        self.assertEqual(decision["same_evidence_ref_required"], True)
+        self.assertEqual(decision["delivery_success"], False)
+        self.assertEqual(decision["primary_actions_enabled"], False)
+        self.assertIn("accepted_materials", decision)
+        self.assertIn("missing_materials", decision)
+        self.assertIn("rejected_materials", decision)
+        self.assertIn("owner_acknowledgement", decision)
+        self.assertIn("next_required_evidence", decision)
+        self.assertIn("rerun_commands", decision)
+        self.assertIn("software_proof_docker_route_task_field_retest_material_callback_review_decision_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("route_task_field_retest_material_callback_review_decision", doc)
+        self.assertIn("现场材料回执复核决策", doc)
+
+    def test_field_retest_material_callback_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        decision_text = json.dumps(
+            fixture["route_task_field_retest_material_callback_review_decision"],
+            ensure_ascii=False,
+        ).lower()
+
+        # material callback review decision fixture 只能携带白名单摘要，不能带 raw 复核、控制授权或成功状态。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw review",
+            "raw decision",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "现场已通过",
+            "真实手机已验收",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "same_evidence_ref_required\": false",
+        ):
+            self.assertNotIn(forbidden, decision_text)
+
     def test_field_retest_operator_drill_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
         styles = self.read_web("styles.css")
@@ -2325,9 +2425,10 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         fixture_text = json.dumps(fixture, ensure_ascii=False)
         doc = DOC.read_text(encoding="utf-8")
 
-        # operator drill 跟在 material pack 后，只读解释下一步命令标签和现场 callback checklist。
+        # operator drill 跟在 material callback review decision 后，只读解释下一步命令标签和现场 callback checklist。
         self.assertIn("routeTaskFieldRetestOperatorDrillTitle", app)
         self.assertIn("现场操作演练", app)
+        self.assertIn("routeTaskFieldRetestMaterialCallbackReviewDecisionTitle", app)
         self.assertIn("routeTaskFieldRetestMaterialPackTitle", app)
         self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
         self.assertIn("route-task-field-retest-operator-drill-panel", styles)

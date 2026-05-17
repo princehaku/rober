@@ -404,6 +404,72 @@ dropoff/cancel completion, delivery success, HIL, WAVE ROVER/UART feedback,
 real phone/browser validation, Objective 5 external cloud/4G/OSS/CDN/DB/queue
 proof, or any primary robot action being enabled.
 
+## route_task_field_retest_material_callback_review_decision
+
+`pc-tools/evidence/route_task_field_retest_material_callback_review_decision.py`
+generates the PC-only review-decision gate after
+`route_task_field_retest_material_callback_packet.py`. It converts a sanitized
+material callback packet into a review decision artifact and summary that can be
+read by Robot diagnostics and mobile/web without opening raw field material.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_material_callback_review_decision.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_material_callback_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_material_callback_review_decision_gate`
+- Allowed inputs:
+  `trashbot.route_task_field_retest_material_callback_packet.v1` and
+  `trashbot.route_task_field_retest_material_callback_packet_summary.v1` only.
+  Wrapper, summary, artifact, robot diagnostics, mobile read-only, payload, and
+  nested diagnostics JSON are allowed only through known safe wrapper keys.
+- Disallowed inputs:
+  unsupported schemas, wrong boundaries, weak or path-like evidence refs,
+  mismatched evidence refs, weak `same_evidence_ref_required`, raw local paths,
+  credentials, OSS/DB/queue/token material, ROS topics, serial/UART/WAVE ROVER
+  text, success/control claims, `delivery_success=true`, or
+  `primary_actions_enabled=true`.
+
+The artifact always includes `review_decision`, `safe_evidence_ref`,
+`same_evidence_ref_required=true`, `accepted_materials`, `missing_materials`,
+`rejected_materials`, `owner_acknowledgement`, `next_required_evidence`,
+`rerun_commands`, `safe_copy`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_route_task_field_retest_material_callback_review_decision_gate`.
+It also records `source_schema=trashbot.route_task_field_retest_material_callback_packet.v1`
+or `trashbot.route_task_field_retest_material_callback_packet_summary.v1` and
+`source_boundary=software_proof_docker_route_task_field_retest_material_callback_packet_gate`.
+The summary mirrors the same decision and evidence ref, sets
+`source_schema=trashbot.route_task_field_retest_material_callback_review_decision.v1`,
+and exposes `material_callback_review_summary`, `owner_next_steps`, and
+`safe_copy` for read-only consumers.
+
+Review decision values include
+`ready_for_controlled_field_rerun_not_proven`,
+`needs_material_callback_backfill_not_proven`,
+`evidence_ref_mismatch_rerun_not_proven`,
+`blocked_material_callback_review_not_proven`,
+`unsupported_material_callback_packet_schema_not_proven`, and
+`unsafe_success_claim_rejected_not_proven`. A supported packet with matched safe
+evidence_ref, fixed
+`evidence_boundary=software_proof_docker_route_task_field_retest_material_callback_packet_gate`,
+strict `same_evidence_ref_required=true`, source status
+`ready_for_field_material_callback_not_proven`, no missing or rejected material
+callbacks, and completed owner acknowledgement maps to
+`ready_for_controlled_field_rerun_not_proven`. Missing/rejected material
+callbacks or pending acknowledgement map to
+`needs_material_callback_backfill_not_proven`. Mismatched or weak evidence refs
+map to `evidence_ref_mismatch_rerun_not_proven`. Missing JSON, bad JSON,
+unsafe copy, unsupported schema, or wrong boundary maps fail-closed and must be
+regenerated before Robot or mobile display.
+
+This contract is software proof only. It is not a real route/elevator field
+pass, not Nav2/fixed-route proof, not a task record or completion signal, not
+dropoff/cancel completion, not delivery success, not HIL, not WAVE ROVER/UART
+feedback, not real phone/browser validation, not Objective 5 external
+cloud/4G/OSS/CDN/DB/queue proof, and not any primary robot action being
+enabled.
+
 ## route_task_field_retest_result_review_dispatch
 
 `pc-tools/evidence/route_task_field_retest_result_review_dispatch.py`

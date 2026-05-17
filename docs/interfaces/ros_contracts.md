@@ -482,6 +482,53 @@ topics, `/cmd_vel`, serial/UART details, credentials, local paths, checksums,
 tracebacks, complete artifacts, or Objective 5 external proof, and they are not
 command/status/ACK robot contract fields.
 
+Operator diagnostics may also expose
+`route_task_field_retest_material_callback_review_decision`, the alias
+`route_task_field_retest_material_callback_review_decision_summary`, and the
+Robot alias
+`robot_diagnostics_route_task_field_retest_material_callback_review_decision_summary`
+from an explicit `route_task_field_retest_material_callback_review_decision_ref`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_REVIEW_DECISION`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_CALLBACK_REVIEW_DECISION_SUMMARY`,
+top-level status fields, a wrapper field, or an already sanitized nested
+diagnostics summary source. The source JSON must use
+`schema=trashbot.route_task_field_retest_material_callback_review_decision.v1`
+or
+`schema=trashbot.route_task_field_retest_material_callback_review_decision_summary.v1`
+and
+`evidence_boundary=software_proof_docker_route_task_field_retest_material_callback_review_decision_gate`.
+If the source is already a summary wrapper, it must still point to
+`source_schema=trashbot.route_task_field_retest_material_callback_review_decision.v1`
+and the same evidence boundary. This field is metadata-only Robot diagnostics
+support for the route-task field retest material callback review decision: it
+may expose only summary schema, review decision, safe `evidence_ref`,
+`same_evidence_ref_required=true`, material callback review summary,
+accepted/missing/rejected material names, owner acknowledgement, owner next
+steps, next required evidence, rerun command labels, Robot diagnostics summary,
+boundary,
+`software_proof_docker_route_task_field_retest_material_callback_review_decision_gate`,
+`not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. Missing summary, unreadable input,
+unsupported schema or boundary, unsafe raw fields, unsafe copy, missing
+`evidence_ref`, same-`evidence_ref` mismatch, weak or non-boolean
+`same_evidence_ref_required`, success wording, `delivery_success=true`, or
+`primary_actions_enabled=true` sources fail closed and remain
+blocked/not_proven. Expected decision values include
+`ready_for_controlled_field_rerun_not_proven`,
+`needs_material_callback_backfill_not_proven`,
+`evidence_ref_mismatch_rerun_not_proven`,
+`blocked_material_callback_review_not_proven`,
+`unsupported_material_callback_packet_schema_not_proven`, and
+`unsafe_success_claim_rejected_not_proven`. The fields do not trigger
+`/api/collect`, dropoff, cancel, Start Delivery, Confirm Dropoff, Cancel
+Delivery, remote ACK, cursor advance/persistence, terminal ACK, Nav2, WAVE
+ROVER, HIL, field pass, production readiness, dropoff/cancel completion, or
+delivery success. They must not expose raw material files, raw route logs, raw
+artifacts, raw commands, raw ROS topics, `/cmd_vel`, serial/UART details,
+credentials, local paths, checksums, tracebacks, complete artifacts, or
+Objective 5 external proof, and they are not command/status/ACK robot contract
+fields.
+
 Operator diagnostics may also expose `route_task_field_retest_operator_drill`
 and the alias `route_task_field_retest_operator_drill_summary` from an explicit
 `route_task_field_retest_operator_drill_ref`,
