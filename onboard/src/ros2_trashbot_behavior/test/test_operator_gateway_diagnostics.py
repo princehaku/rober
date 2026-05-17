@@ -3531,9 +3531,13 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             )
             summary = payload["route_task_field_retest_material_pack"]
             summary_alias = payload["route_task_field_retest_material_pack_summary"]
+            robot_summary_alias = payload[
+                "robot_diagnostics_route_task_field_retest_material_pack_summary"
+            ]
             encoded = json.dumps(summary, ensure_ascii=False)
 
         self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_summary_alias)
         self.assertEqual(summary["schema"], "trashbot.route_task_field_retest_material_pack_summary.v1")
         self.assertEqual(
             summary["evidence_boundary"],
@@ -3617,6 +3621,39 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                 else:
                     os.environ["TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_SUMMARY"] = previous_summary
 
+            nested_robot_alias_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "robot_diagnostics_route_task_field_retest_material_pack_summary": {
+                        "schema": "trashbot.route_task_field_retest_material_pack_summary.v1",
+                        "source_schema": "trashbot.route_task_field_retest_material_pack.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_material_pack_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_material_pack_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://route-task-field-retest-material-pack-robot",
+                        "same_evidence_ref_required": True,
+                        "material_status": {
+                            "status": "ready_for_field_retest_material_collection_not_proven",
+                            "verdict": "not_proven",
+                            "reason": "robot alias summary is metadata-only",
+                        },
+                        "material_completeness": {"status": "complete"},
+                        "missing_materials": [],
+                        "rejected_materials": [],
+                        "operator_next_steps": ["Keep the same evidence_ref before retest."],
+                        "safe_copy": (
+                            "Robot material-pack alias is metadata-only; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                }
+            )["route_task_field_retest_material_pack"]
+
             missing_path = Path(td) / "Bearer-secret-token" / "missing_material_pack.json"
             missing_summary = summarize_route_task_field_retest_material_pack(str(missing_path))
             no_summary = summarize_route_task_field_retest_material_pack(
@@ -3661,6 +3698,14 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             )
 
         self.assertEqual(env_summary["material_status"]["status"], "blocked_missing_material")
+        self.assertEqual(
+            nested_robot_alias_summary["material_status"]["status"],
+            "ready_for_field_retest_material_collection_not_proven",
+        )
+        self.assertEqual(
+            nested_robot_alias_summary["safe_evidence_ref"],
+            "evidence://route-task-field-retest-material-pack-robot",
+        )
         self.assertEqual(env_summary["material_completeness"]["status"], "blocked")
         self.assertIn("door_state", env_summary["missing_materials"])
         self.assertIn("delivery_result", env_summary["rejected_materials"])

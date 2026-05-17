@@ -11510,6 +11510,7 @@ def summarize_route_task_field_retest_material_pack(source):
     for candidate in (
         pack.get("route_task_field_retest_material_pack_summary"),
         pack.get("route_task_field_retest_material_pack"),
+        pack.get("robot_diagnostics_route_task_field_retest_material_pack_summary"),
         pack.get("robot_diagnostics_summary"),
         pack.get("mobile_readonly_summary"),
         pack.get("phone_safe_summary"),
@@ -11517,6 +11518,7 @@ def summarize_route_task_field_retest_material_pack(source):
         diagnostics.get("diagnostics_summary"),
         diagnostics.get("route_task_field_retest_material_pack_summary"),
         diagnostics.get("route_task_field_retest_material_pack"),
+        diagnostics.get("robot_diagnostics_route_task_field_retest_material_pack_summary"),
     ):
         if isinstance(candidate, dict):
             summary_fragment = candidate
@@ -26616,10 +26618,20 @@ def build_diagnostics_payload(
         if isinstance(latest_status.get("route_task_field_retest_material_pack"), dict)
         else latest_status.get("route_task_field_retest_material_pack_summary")
         if isinstance(latest_status.get("route_task_field_retest_material_pack_summary"), dict)
+        else latest_status.get("robot_diagnostics_route_task_field_retest_material_pack_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_route_task_field_retest_material_pack_summary"),
+            dict,
+        )
         else diagnostics_source.get("route_task_field_retest_material_pack")
         if isinstance(diagnostics_source.get("route_task_field_retest_material_pack"), dict)
         else diagnostics_source.get("route_task_field_retest_material_pack_summary")
         if isinstance(diagnostics_source.get("route_task_field_retest_material_pack_summary"), dict)
+        else diagnostics_source.get("robot_diagnostics_route_task_field_retest_material_pack_summary")
+        if isinstance(
+            diagnostics_source.get("robot_diagnostics_route_task_field_retest_material_pack_summary"),
+            dict,
+        )
         else diagnostics_source.get("summary")
         if isinstance(diagnostics_source.get("summary"), dict)
         else diagnostics_source.get("diagnostics_summary")
@@ -27667,6 +27679,7 @@ def build_diagnostics_payload(
         route_task_field_retest_result_reconciliation_summary=route_task_field_retest_result_reconciliation_summary,
         route_task_field_retest_material_pack=route_task_field_retest_material_pack_summary,
         route_task_field_retest_material_pack_summary=route_task_field_retest_material_pack_summary,
+        robot_diagnostics_route_task_field_retest_material_pack_summary=route_task_field_retest_material_pack_summary,
         route_task_field_retest_operator_drill=route_task_field_retest_operator_drill_summary,
         route_task_field_retest_operator_drill_summary=route_task_field_retest_operator_drill_summary,
         route_task_field_retest_drill_console=route_task_field_retest_drill_console_summary,

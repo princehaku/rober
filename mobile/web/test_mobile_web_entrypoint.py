@@ -2131,13 +2131,13 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
     def test_field_retest_material_pack_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
         styles = self.read_web("styles.css")
-        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
         fixture_text = json.dumps(fixture, ensure_ascii=False)
         doc = DOC.read_text(encoding="utf-8")
 
         # material pack 跟在 result reconciliation 后，只读解释现场材料包完整性和同一 evidence_ref。
         self.assertIn("routeTaskFieldRetestMaterialPackTitle", app)
-        self.assertIn("现场材料包", app)
+        self.assertIn("路线/电梯现场材料包", app)
         self.assertIn("routeTaskFieldRetestResultReconciliationTitle", app)
         self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
         self.assertIn("route-task-field-retest-material-pack-panel", styles)
@@ -2159,6 +2159,10 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         self.assertIn("material_status_summary", app)
         self.assertIn("missing_material_list", app)
         self.assertIn("rejected_material_list", app)
+        self.assertIn("field_capture_checklist", app)
+        self.assertIn("callback_payload_skeleton", app)
+        self.assertIn("owner_work_orders", app)
+        self.assertIn("rerun_commands", app)
         self.assertIn("operator_next_steps_summary", app)
 
         # copy/export 必须由 safe_copy 驱动；缺失时显示 blocked copy unavailable，不合成 raw 材料包。
@@ -2174,18 +2178,23 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         # fixture 和产品文档必须固定 material pack 的 software proof / not_proven 边界。
         material_pack = fixture["route_task_field_retest_material_pack"]
         self.assertEqual(
-            material_pack["pack_status"],
+            material_pack["material_pack_status"],
             "blocked_missing_route_task_field_retest_material_pack_not_proven",
         )
+        self.assertEqual(material_pack["pack_status"], material_pack["material_pack_status"])
         self.assertEqual(material_pack["delivery_success"], False)
         self.assertEqual(material_pack["primary_actions_enabled"], False)
+        self.assertIn("field_capture_checklist", material_pack)
+        self.assertIn("callback_payload_skeleton", material_pack)
+        self.assertIn("owner_work_orders", material_pack)
+        self.assertIn("rerun_commands", material_pack)
         self.assertIn("software_proof_docker_route_task_field_retest_material_pack_gate", fixture_text)
         self.assertIn("not_proven", fixture_text)
         self.assertIn("route_task_field_retest_material_pack", doc)
-        self.assertIn("现场材料包", doc)
+        self.assertIn("路线/电梯现场材料包", doc)
 
     def test_field_retest_material_pack_fixture_stays_phone_safe(self):
-        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
         material_pack_text = json.dumps(
             fixture["route_task_field_retest_material_pack"],
             ensure_ascii=False,

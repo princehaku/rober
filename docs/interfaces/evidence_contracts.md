@@ -275,6 +275,77 @@ field pass, HIL pass, real Nav2/fixed-route execution, real task record, real
 dropoff/cancel completion, real delivery success, real phone/browser
 validation, O5 external cloud proof, or any primary robot action being enabled.
 
+## route_task_field_retest_material_pack
+
+`pc-tools/evidence/route_task_field_retest_material_pack.py`
+generates the PC-only field retest material pack gate. It preserves the
+historical `--material-dir` mode used by operator drill and result acceptance
+backfill, and adds an explicit `--result-review-handoff-json` /
+`--review-handoff-summary` compatibility mode after
+`route_task_field_retest_result_review_handoff.py`.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_material_pack.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_material_pack_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_material_pack_gate`
+- Allowed material-dir input:
+  `--material-dir` scans the eight legacy material classes through
+  `MATERIAL_ALIASES`: `nav2_or_fixed_route_runtime_log`,
+  `route_completion_signal`, `task_record`, `door_state`,
+  `target_floor_confirmation`, `human_assistance_note`,
+  `dropoff_or_cancel_completion`, and `delivery_result`.
+- Allowed handoff inputs:
+  `trashbot.route_task_field_retest_result_review_handoff.v1` and
+  `trashbot.route_task_field_retest_result_review_handoff_summary.v1`
+  only. Wrapper or nested JSON is allowed only through known safe wrapper keys.
+- Material-dir verdict values include:
+  `ready_for_field_retest_material_pack_not_proven`,
+  `blocked_missing_material_dir`, `blocked_unsafe_material_copy`,
+  `blocked_success_or_control_claim`, `blocked_same_evidence_ref_mismatch`,
+  `blocked_missing_materials`, `blocked_placeholder_only_materials`, and
+  `blocked_rejected_materials`.
+- Handoff material pack status values:
+  `ready_for_field_retest_material_collection_not_proven`,
+  `needs_result_review_handoff_not_proven`,
+  `evidence_ref_mismatch_rerun_not_proven`,
+  `blocked_missing_result_review_handoff_not_proven`, and
+  `unsupported_result_review_handoff_schema_not_proven`.
+
+Material-dir output keeps the historical downstream fields:
+`material_manifest`, `material_pack_summary`, `material_completeness`,
+`missing_materials`, `rejected_materials`, `operator_next_steps`,
+`safe_copy`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_route_task_field_retest_material_pack_gate`.
+It also mirrors the verdict into `material_pack_status` for read-only
+downstream compatibility. Handoff-mode output additionally includes
+`source_schema`, `source_boundary`, `safe_evidence_ref`,
+`same_evidence_ref_required=true`, `field_capture_checklist`,
+`callback_payload_skeleton`, `owner_work_orders`, and `rerun_commands`.
+
+Material-pack mapping is fail-closed. A supported
+`ready_for_owner_result_callback_not_proven` handoff with matched evidence_ref
+maps to `ready_for_field_retest_material_collection_not_proven`. A supported
+but not-ready handoff such as `needs_result_material_callback_not_proven` maps
+to `needs_result_review_handoff_not_proven`. Mismatched evidence_ref, missing
+evidence_ref, weak `same_evidence_ref_required`, or non-matched same-ref status
+maps to `evidence_ref_mismatch_rerun_not_proven`. Missing JSON, bad JSON,
+unreadable JSON, or non-object JSON maps to
+`blocked_missing_result_review_handoff_not_proven`. Unsupported schema or
+boundary, unsafe copy, raw paths, checksum text, credentials, ROS topics,
+serial/UART/WAVE ROVER text, raw artifact text, success/control claims,
+`delivery_success=true`, or `primary_actions_enabled=true` maps to
+`unsupported_result_review_handoff_schema_not_proven`.
+
+This contract is software proof only. Material-dir mode reads only whitelisted
+local JSON/text material files, and handoff mode reads only the handoff JSON
+artifact/summary. Neither mode proves a real route/elevator field pass, HIL
+pass, real Nav2/fixed-route execution, real task record, real dropoff/cancel
+completion, real delivery success, real phone/browser validation, O5 external
+cloud proof, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_review_dispatch
 
 `pc-tools/evidence/route_task_field_retest_result_review_dispatch.py`

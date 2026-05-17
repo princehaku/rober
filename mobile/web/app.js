@@ -7794,9 +7794,9 @@ function routeTaskFieldRetestMaterialPackFromStatus(status, readiness, diagnosti
     schema: "trashbot.route_task_field_retest_material_pack.v1",
     summary_schema: "trashbot.route_task_field_retest_material_pack_summary.v1",
     schema_version: 1,
-    pack_status: safeRouteTaskFieldRetestMaterialPackText(
+    material_pack_status: safeRouteTaskFieldRetestMaterialPackText(
       provided.pack_status || provided.material_pack_status || provided.status || provided.overall_status,
-      "blocked_missing_route_task_field_retest_material_pack",
+      "blocked_missing_route_task_field_retest_material_pack_not_proven",
     ),
     safe_evidence_ref: safeRouteTaskFieldRetestMaterialPackText(
       provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
@@ -7827,6 +7827,22 @@ function routeTaskFieldRetestMaterialPackFromStatus(status, readiness, diagnosti
       provided.operator_next_steps || provided.next_steps || provided.operator_actions,
       "operator_next_steps=按同一 evidence_ref 补齐八类现场材料，再发布 Robot diagnostics compatible summary。",
     ),
+    field_capture_checklist: routeTaskFieldRetestMaterialPackSummaryText(
+      provided.field_capture_checklist || provided.capture_checklist || provided.required_capture_checklist,
+      "field_capture_checklist=door_state、target_floor_confirmation、human_assistance_note、Nav2/fixed-route runtime log、task record、route completion signal、dropoff/cancel completion、delivery result 均需同一 safe_evidence_ref。",
+    ),
+    callback_payload_skeleton: routeTaskFieldRetestMaterialPackSummaryText(
+      provided.callback_payload_skeleton || provided.callback_skeleton || provided.callback_payload,
+      "callback_payload_skeleton=safe_evidence_ref、material_type、field_capture_summary、redaction_status、not_proven_flags、delivery_success=false、primary_actions_enabled=false。",
+    ),
+    owner_work_orders: routeTaskFieldRetestMaterialPackSummaryText(
+      provided.owner_work_orders || provided.owner_handoff || provided.work_orders,
+      "owner_work_orders=Autonomy 补路线运行材料；Robot 镜像 diagnostics 摘要；Field owner 回填现场 callback。",
+    ),
+    rerun_commands: routeTaskFieldRetestMaterialPackSummaryText(
+      provided.rerun_commands || provided.commands_to_rerun || provided.rerun_package,
+      "rerun_commands=重跑 route_task_field_retest_material_pack gate 并刷新 Robot diagnostics compatible summary。",
+    ),
     safe_phone_copy: safeRouteTaskFieldRetestMaterialPackText(
       provided.safe_phone_copy || provided.safe_summary,
       "route_task_field_retest_material_pack 摘要缺失；手机端只显示 blocked/not_proven，不读取 raw material pack。",
@@ -7844,11 +7860,15 @@ function routeTaskFieldRetestMaterialPackFromStatus(status, readiness, diagnosti
     delivery_success: false,
     primary_actions_enabled: false,
     not_proven: routeTaskFieldRetestMaterialPackNotProvenList(provided),
+    get pack_status() {
+      // 兼容上一轮 mobile summary/tests 仍读取 pack_status 的旧字段名。
+      return this.material_pack_status;
+    },
   };
 }
 
 function routeTaskFieldRetestMaterialPackCopyPayload(summary) {
-  // 白名单导出只保留材料完整性、缺失/拒绝和下一步；不导出 raw paths、完整 artifacts 或控制字段。
+  // 白名单导出只保留材料包现场回填所需摘要；不导出 raw paths、完整 artifacts 或控制字段。
   const source = summary?.schema
     ? summary
     : routeTaskFieldRetestMaterialPackFromStatus(
@@ -7865,13 +7885,18 @@ function routeTaskFieldRetestMaterialPackCopyPayload(summary) {
     source: "mobile_web",
     route_task_field_retest_material_pack_schema: source.schema,
     summary_schema: source.summary_schema,
-    pack_status: source.pack_status,
+    material_pack_status: source.material_pack_status,
+    pack_status: source.material_pack_status,
     safe_evidence_ref: source.safe_evidence_ref,
     same_evidence_ref_status: source.same_evidence_ref_status,
     material_completeness: source.material_completeness,
     material_status_summary: source.material_status_summary,
     missing_material_list: source.missing_material_list,
     rejected_material_list: source.rejected_material_list,
+    field_capture_checklist: source.field_capture_checklist,
+    callback_payload_skeleton: source.callback_payload_skeleton,
+    owner_work_orders: source.owner_work_orders,
+    rerun_commands: source.rerun_commands,
     operator_next_steps_summary: source.operator_next_steps_summary,
     safe_phone_copy: source.safe_copy_payload.safe_phone_copy,
     evidence_boundary: ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_BOUNDARY,
@@ -15879,20 +15904,24 @@ function ensureRouteTaskFieldRetestMaterialPackPanel() {
   panel.setAttribute("aria-labelledby", "routeTaskFieldRetestMaterialPackTitle");
   panel.innerHTML = `
     <div class="section-heading">
-      <h2 id="routeTaskFieldRetestMaterialPackTitle">现场材料包</h2>
+      <h2 id="routeTaskFieldRetestMaterialPackTitle">路线/电梯现场材料包</h2>
       <span id="routeTaskFieldRetestMaterialPackBadge" class="gate-badge gate-blocked">not_proven</span>
     </div>
     <p id="routeTaskFieldRetestMaterialPackCopy" class="message">
-      route_task_field_retest_material_pack 只读展示 material completeness、same evidence ref、八类材料状态、missing/rejected、operator next steps 和 boundary。
+      route_task_field_retest_material_pack 只读展示 material pack status、safe evidence ref、field capture checklist、callback skeleton、owner work orders、rerun commands 和 boundary。
     </p>
     <dl class="route-task-field-retest-material-pack-grid">
-      <div><dt>Pack Status</dt><dd id="routeTaskFieldRetestMaterialPackStatus">blocked_missing_route_task_field_retest_material_pack</dd></div>
+      <div><dt>Material Pack Status</dt><dd id="routeTaskFieldRetestMaterialPackStatus">blocked_missing_route_task_field_retest_material_pack_not_proven</dd></div>
       <div><dt>Safe Evidence Ref</dt><dd id="routeTaskFieldRetestMaterialPackEvidenceRef">not_provided</dd></div>
       <div><dt>Same Evidence Ref</dt><dd id="routeTaskFieldRetestMaterialPackSameRef">same_evidence_ref_status=not_proven</dd></div>
       <div><dt>Material Completeness</dt><dd id="routeTaskFieldRetestMaterialPackCompleteness">material_completeness=not_proven</dd></div>
       <div><dt>Eight Material Status</dt><dd id="routeTaskFieldRetestMaterialPackMaterials">material_status=not_proven</dd></div>
       <div><dt>Missing Materials</dt><dd id="routeTaskFieldRetestMaterialPackMissing">missing_materials=not_proven</dd></div>
       <div><dt>Rejected Materials</dt><dd id="routeTaskFieldRetestMaterialPackRejected">rejected_materials=not_proven</dd></div>
+      <div><dt>Field Capture Checklist</dt><dd id="routeTaskFieldRetestMaterialPackChecklist">field_capture_checklist=not_proven</dd></div>
+      <div><dt>Callback Payload Skeleton</dt><dd id="routeTaskFieldRetestMaterialPackCallbackSkeleton">callback_payload_skeleton=not_proven</dd></div>
+      <div><dt>Owner Work Orders</dt><dd id="routeTaskFieldRetestMaterialPackWorkOrders">owner_work_orders=not_proven</dd></div>
+      <div><dt>Rerun Commands</dt><dd id="routeTaskFieldRetestMaterialPackRerunCommands">rerun_commands=not_proven</dd></div>
       <div><dt>Operator Next Steps</dt><dd id="routeTaskFieldRetestMaterialPackNextSteps">operator_next_steps=not_proven</dd></div>
       <div><dt>Safe Copy Status</dt><dd id="routeTaskFieldRetestMaterialPackSafeCopyStatus">blocked copy unavailable</dd></div>
       <div><dt>Control Boundary</dt><dd id="routeTaskFieldRetestMaterialPackControls">delivery_success=false / primary_actions_enabled=false</dd></div>
@@ -15906,7 +15935,7 @@ function ensureRouteTaskFieldRetestMaterialPackPanel() {
     </div>
     <pre id="routeTaskFieldRetestMaterialPackSafeCopy" class="safe-copy" aria-label="route_task_field_retest_material_pack safe_copy">blocked copy unavailable</pre>
     <p id="routeTaskFieldRetestMaterialPackHint" class="hint">
-      现场材料包只读展示 Robot diagnostics compatible summary，并只导出后端 safe_copy 白名单；不暴露 raw paths、credentials、完整 artifacts、tracebacks、checksums、raw ROS topic、/cmd_vel、串口/UART 或成功控制文案，也不改变 Start Delivery、Confirm Dropoff 或 Cancel gating。
+      路线/电梯现场材料包只读展示 Robot diagnostics compatible summary，并只导出后端 safe_copy 白名单；不暴露 raw paths、credentials、完整 artifacts、tracebacks、checksums、raw ROS topic、/cmd_vel、串口/UART 或成功控制文案，也不改变 Start Delivery、Confirm Dropoff 或 Cancel gating。
     </p>
   `;
   anchor.insertAdjacentElement("afterend", panel);
@@ -15926,13 +15955,17 @@ function renderRouteTaskFieldRetestMaterialPack(status) {
   badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
   badge.textContent = summary.missing ? "等待 material pack" : "read-only material pack";
   $("routeTaskFieldRetestMaterialPackCopy").textContent = summary.safe_phone_copy;
-  $("routeTaskFieldRetestMaterialPackStatus").textContent = summary.pack_status;
+  $("routeTaskFieldRetestMaterialPackStatus").textContent = summary.material_pack_status;
   $("routeTaskFieldRetestMaterialPackEvidenceRef").textContent = summary.safe_evidence_ref;
   $("routeTaskFieldRetestMaterialPackSameRef").textContent = summary.same_evidence_ref_status;
   $("routeTaskFieldRetestMaterialPackCompleteness").textContent = summary.material_completeness;
   $("routeTaskFieldRetestMaterialPackMaterials").textContent = summary.material_status_summary;
   $("routeTaskFieldRetestMaterialPackMissing").textContent = summary.missing_material_list;
   $("routeTaskFieldRetestMaterialPackRejected").textContent = summary.rejected_material_list;
+  $("routeTaskFieldRetestMaterialPackChecklist").textContent = summary.field_capture_checklist;
+  $("routeTaskFieldRetestMaterialPackCallbackSkeleton").textContent = summary.callback_payload_skeleton;
+  $("routeTaskFieldRetestMaterialPackWorkOrders").textContent = summary.owner_work_orders;
+  $("routeTaskFieldRetestMaterialPackRerunCommands").textContent = summary.rerun_commands;
   $("routeTaskFieldRetestMaterialPackNextSteps").textContent = summary.operator_next_steps_summary;
   $("routeTaskFieldRetestMaterialPackSafeCopyStatus").textContent = summary.safe_copy_status;
   $("routeTaskFieldRetestMaterialPackControls").textContent =

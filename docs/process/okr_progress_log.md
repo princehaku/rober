@@ -8,7 +8,19 @@
 
 ## 2026-05-18 系列
 
-更新时间：2026-05-18 03:18 Asia/Shanghai。
+更新时间：2026-05-18 04:20 Asia/Shanghai。
+
+### 2026-05-18 04-05｜route-task-field-retest-material-pack｜O2/O3 material pack software proof，任务闭环、固定路线和手机体验均保持约 99%，O5 保持约 68%
+
+`sprints/2026.05.18_04-05_route-task-field-retest-material-pack/` 完成 `software_proof_docker_route_task_field_retest_material_pack_gate`。Autonomy worker 实现/修复 `pc-tools/evidence/route_task_field_retest_material_pack.py`，保留旧 `--material-dir` 兼容，同时新增 `--result-review-handoff-json` / `--review-handoff-summary` handoff 模式；恢复 `MATERIAL_ALIASES`、`_source_dir_status`、`_scan_material`、`_has_raw_path_copy`、`_has_success_or_control_claim`，把上一轮 `route_task_field_retest_result_review_handoff` 转成 field capture checklist、callback payload skeleton、owner work orders 和 rerun commands。Task A worker 报告 py_compile exit 0、focused unittest `Ran 7 tests OK`、下游 `test_route_task_field_retest_operator_drill.py` / `test_route_task_field_retest_result_acceptance_backfill.py` / `test_route_task_field_retest_result_backfill_review_decision.py` 合计 `Ran 15 tests OK`、CLI `--help` 显示旧/新入口、required `rg` 等价命令通过、scoped diff check exit 0。
+
+Robot worker 新增 `robot_diagnostics_route_task_field_retest_material_pack_summary` alias 和 nested diagnostics 消费，保持 diagnostics metadata-only，只暴露 safe summary、safe `evidence_ref`、material pack status、field checklist、callback skeleton、owner work orders、rerun commands、boundary、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`；不触发 task_orchestrator、Start、Confirm Dropoff、Cancel、ACK、Nav2、HIL 或 primary actions。Task B worker 报告 py_compile exit 0、diagnostics unittest `Ran 172 tests in 0.346s OK`、required `rg` exit 0、scoped diff check exit 0。
+
+Full-stack worker 新增只读“路线/电梯现场材料包”面板，消费 artifact / summary / Robot alias / nested summaries；copy/export whitelist-only，不放宽 Start Delivery、Confirm Dropoff、Cancel。Task C worker 报告 `node --check mobile/web/app.js` exit 0、mobile unittest `Ran 68 tests in 0.305s OK`、required `rg` exit 0、scoped diff check exit 0。
+
+Product closeout 更新 sprint 留档、`OKR.md` 和本日志；required closeout `rg` 匹配 `route_task_field_retest_material_pack`、`software_proof_docker_route_task_field_retest_material_pack_gate`、`Objective 5`、`Objective 1`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，closeout scoped `git diff --check` exit 0。
+
+该证据只支持 Objective 2、Objective 3 和 Objective 4 继续保持约 99%，不继续上调到 100。理由是本轮把 PR #4 要求的 route/elevator field materials 从 result review handoff 推进到可执行材料包，能减少真实 callback 回填时的漏项、同一 `evidence_ref` 漂移和“材料包即现场通过”的误读；但没有真实 route/elevator field pass、真实 Nav2/fixed-route runtime log、真实 route completion signal、真实 task record、真实门状态、真实目标楼层确认、真实人工协助记录、真实 dropoff/cancel completion、真实 delivery result、真实手机/browser、production app 或真实 PWA prompt/user choice。Objective 1 保持约 81%，因为本轮没有新增 WAVE ROVER、UART、HIL packet、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、operator HIL report、2D LiDAR / ToF SKU/source、串口、波特率或硬件假设；PR #5 review 指出的硬件 baseline / vendor source 风险仍需真实材料补齐。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；O5 stop rule 仍成立。本轮始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
 
 ### 2026-05-18 03-04｜route-task-result-review-handoff｜O2/O3 review handoff software proof，任务闭环、固定路线和手机体验均保持约 99%，O5 保持约 68%
 

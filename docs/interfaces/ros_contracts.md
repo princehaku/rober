@@ -418,8 +418,9 @@ or Objective 5 external proof, and they are not command/status/ACK robot
 contract fields.
 
 Operator diagnostics may also expose `route_task_field_retest_material_pack`
-and the alias `route_task_field_retest_material_pack_summary` from an explicit
-`route_task_field_retest_material_pack_ref`,
+the alias `route_task_field_retest_material_pack_summary`, and the Robot alias
+`robot_diagnostics_route_task_field_retest_material_pack_summary` from an
+explicit `route_task_field_retest_material_pack_ref`,
 `TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK`,
 `TRASHBOT_ROUTE_TASK_FIELD_RETEST_MATERIAL_PACK_SUMMARY`, top-level status
 fields, or an already sanitized nested diagnostics summary source. The source
