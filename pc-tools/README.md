@@ -314,6 +314,25 @@ python3 pc-tools/evidence/route_task_field_retest_acceptance_execution_callback_
 
 Handoff mapping 固定包含 `ready_for_acceptance_execution_callback_review_handoff`、`needs_owner_follow_up`、`needs_acceptance_execution_callback_rerun`、`evidence_ref_mismatch_rerun` 和 `blocked_unsafe_review_handoff`。该 handoff gate 不读取真实材料目录、不触发现场复跑、不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、unsupported review decision、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、checksum、完整 raw artifact、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_acceptance_execution_callback_review_handoff` 只表示 Docker/local `software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate` 已把上一轮 review decision 交接成只读 handoff package，不是真实 route/elevator field pass、Nav2/fixed-route proof、task record/completion signal、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 O5 external proof。
 
+## route/task field retest acceptance execution handoff intake
+
+`pc-tools/evidence/route_task_field_retest_acceptance_execution_handoff_intake.py` 只读上一节 `route_task_field_retest_acceptance_execution_callback_review_handoff` artifact、summary 或 wrapper/nested JSON，并可选读取 owner callback/intake JSON，把现场交接回执整理成 metadata-only handoff intake artifact / summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_acceptance_execution_handoff_intake.py \
+  --handoff-json /tmp/route_task_field_retest_acceptance_execution_callback_review_handoff_summary.json \
+  --owner-intake-json /tmp/owner_handoff_intake.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_acceptance_execution_handoff_intake.json \
+  --summary-output /tmp/route_task_field_retest_acceptance_execution_handoff_intake_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_acceptance_execution_handoff_intake.v1`，summary 使用 `schema=trashbot.route_task_field_retest_acceptance_execution_handoff_intake_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_acceptance_execution_handoff_intake_gate`。核心字段包括 `handoff_intake_status`、safe `evidence_ref`、source handoff status、owner acknowledgement state、`owner_handoff`、`next_required_evidence`、`safe_rerun_hint`、`safe_copy`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+顶层 acceptance command 可用 `python3 -m unittest tests.test_route_task_field_retest_acceptance_execution_handoff_intake` 复用 `pc-tools/evidence` 下的离线围栏测试；该入口只证明本地 handoff-intake gate 的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
+
+Handoff intake mapping 固定包含 `ready_for_controlled_field_rerun_queue`、`needs_owner_ack`、`needs_acceptance_execution_handoff_backfill`、`evidence_ref_mismatch_rerun` 和 `blocked_unsafe_handoff_intake`。该 handoff intake gate 不读取真实材料目录、不触发现场复跑、不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、source handoff 未 ready、owner ack 缺失或证据号不一致、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、checksum、完整 raw artifact、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_controlled_field_rerun_queue` 只表示 Docker/local `software_proof_docker_route_task_field_retest_acceptance_execution_handoff_intake_gate` 已把 owner handoff intake 交接成只读排队状态，不是真实 route/elevator field pass、Nav2/fixed-route proof、task record/completion signal、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 O5 external proof。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

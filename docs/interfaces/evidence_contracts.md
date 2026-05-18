@@ -238,6 +238,45 @@ execution, Nav2/fixed-route proof, ACK, cursor persistence, dropoff/cancel
 completion, delivery success, HIL pass, WAVE ROVER feedback, real phone/browser
 validation, O5 external proof, or any primary robot action being enabled.
 
+## route_task_field_retest_acceptance_execution_handoff_intake
+
+`pc-tools/evidence/route_task_field_retest_acceptance_execution_handoff_intake.py`
+generates the PC-only owner handoff intake gate after
+`route_task_field_retest_acceptance_execution_callback_review_handoff.py`.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_acceptance_execution_handoff_intake.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_acceptance_execution_handoff_intake_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_acceptance_execution_handoff_intake_gate`
+- Allowed source inputs:
+  `trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff.v1`
+  and
+  `trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff_summary.v1`
+  under
+  `software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate`
+  only. Wrapper or nested JSON is allowed when it contains one of those schemas.
+- Optional owner intake input:
+  phone-safe owner callback/intake JSON with the same safe `evidence_ref`.
+- Handoff intake values:
+  `ready_for_controlled_field_rerun_queue`, `needs_owner_ack`,
+  `needs_acceptance_execution_handoff_backfill`,
+  `evidence_ref_mismatch_rerun`, and fail-closed unsafe states such as
+  `blocked_unsafe_handoff_intake`.
+
+The Robot diagnostics consumer exposes only phone-safe metadata from the
+artifact, summary, or compatible nested summary: handoff intake status, source
+handoff status, safe `evidence_ref`, owner acknowledgement state, owner
+handoff, next required evidence, safe rerun hint, boundary, `not_proven`,
+`delivery_success=false`, and `primary_actions_enabled=false`.
+
+This contract is software proof only. It does not prove real route/elevator
+execution, Nav2/fixed-route proof, ACK, cursor persistence, dropoff/cancel
+completion, delivery success, HIL pass, WAVE ROVER feedback, real phone/browser
+validation, Objective 5 external proof, or any primary robot action being
+enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

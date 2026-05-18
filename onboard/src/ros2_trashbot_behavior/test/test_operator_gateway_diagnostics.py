@@ -37,6 +37,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_acceptance_execution_callback_intake,
     summarize_route_task_field_retest_acceptance_execution_callback_review_decision,
     summarize_route_task_field_retest_acceptance_execution_callback_review_handoff,
+    summarize_route_task_field_retest_acceptance_execution_handoff_intake,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -8058,6 +8059,186 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
         self.assertNotIn("secret-token", encoded)
+
+    def test_route_task_field_retest_acceptance_execution_handoff_intake_alias_nested_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            intake_path = Path(td) / "acceptance_execution_handoff_intake.json"
+            intake_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.route_task_field_retest_acceptance_execution_handoff_intake.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_handoff_intake_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://acceptance-execution-handoff-intake-1",
+                        "intake_status": {
+                            "status": "ready_for_acceptance_execution_handoff_intake",
+                            "verdict": "not_proven",
+                            "reason": "handoff intake metadata is ready for owner acknowledgement only",
+                        },
+                        "owner_acknowledgement": {
+                            "owner": "Robot Platform Engineer",
+                            "acknowledged": True,
+                        },
+                        "next_evidence_flags": ["real_route_elevator_field_result_required"],
+                        "next_required_evidence": ["same evidence_ref field result packet"],
+                        "safe_rerun_hint": ["Rerun sanitized handoff intake gate with same evidence_ref."],
+                        "safe_copy": (
+                            "Acceptance execution handoff intake is metadata-only; "
+                            "same_evidence_ref_required=true; delivery_success=false; "
+                            "primary_actions_enabled=false."
+                        ),
+                        "same_evidence_ref_required": True,
+                        "not_proven": ["delivery_success", "route_elevator_field_result"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_acceptance_execution_handoff_intake_ref=str(intake_path),
+            )
+            summary = payload["route_task_field_retest_acceptance_execution_handoff_intake"]
+            summary_alias = payload["route_task_field_retest_acceptance_execution_handoff_intake_summary"]
+            robot_alias = payload[
+                "robot_diagnostics_route_task_field_retest_acceptance_execution_handoff_intake_summary"
+            ]
+
+            nested_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "robot_diagnostics_route_task_field_retest_acceptance_execution_handoff_intake_summary": {
+                            "schema": (
+                                "trashbot.route_task_field_retest_acceptance_execution_handoff_intake_summary.v1"
+                            ),
+                            "source_schema": (
+                                "trashbot.route_task_field_retest_acceptance_execution_handoff_intake.v1"
+                            ),
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_acceptance_execution_handoff_intake_gate"
+                            ),
+                            "safe_evidence_ref": "evidence://acceptance-execution-handoff-intake-2",
+                            "intake_status": {"status": "nested_intake_ready", "verdict": "not_proven"},
+                            "owner_acknowledgement": {"owner": "Autonomy Algorithm Engineer"},
+                            "next_evidence_flags": ["field_result_still_required"],
+                            "next_required_evidence": ["operator result callback"],
+                            "safe_rerun_hint": ["Use sanitized handoff intake summary."],
+                            "safe_copy": (
+                                "Nested acceptance execution handoff intake is metadata-only; "
+                                "same_evidence_ref_required=true; delivery_success=false; "
+                                "primary_actions_enabled=false."
+                            ),
+                            "same_evidence_ref_required": True,
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["route_task_field_retest_acceptance_execution_handoff_intake"]
+            unsafe_summary = summarize_route_task_field_retest_acceptance_execution_handoff_intake(
+                {
+                    "schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_handoff_intake_summary.v1"
+                    ),
+                    "source_schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_handoff_intake.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_acceptance_execution_handoff_intake_gate"
+                    ),
+                    "safe_evidence_ref": "evidence://acceptance-execution-handoff-intake-3",
+                    "intake_status": {"status": "ready", "verdict": "not_proven"},
+                    "owner_acknowledgement": {"owner": "Robot Platform Engineer"},
+                    "next_evidence_flags": ["field_result_still_required"],
+                    "next_required_evidence": ["operator result callback"],
+                    "safe_rerun_hint": ["Use sanitized handoff intake summary."],
+                    "raw_payload": {"Authorization": "Bearer secret-token"},
+                    "safe_copy": "Acceptance execution handoff intake confirms delivery success and ACK posted.",
+                    "same_evidence_ref_required": True,
+                    "delivery_success": True,
+                    "primary_actions_enabled": False,
+                }
+            )
+            disabled_summary = summarize_route_task_field_retest_acceptance_execution_handoff_intake(
+                {
+                    "schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_handoff_intake_summary.v1"
+                    ),
+                    "source_schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_handoff_intake.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_acceptance_execution_handoff_intake_gate"
+                    ),
+                    "safe_evidence_ref": "evidence://acceptance-execution-handoff-intake-4",
+                    "intake_status": {"status": "ready", "verdict": "not_proven"},
+                    "owner_acknowledgement": {"owner": "Robot Platform Engineer"},
+                    "next_evidence_flags": ["field_result_still_required"],
+                    "next_required_evidence": ["operator result callback"],
+                    "safe_rerun_hint": ["Use sanitized handoff intake summary."],
+                    "safe_copy": (
+                        "Acceptance execution handoff intake is metadata-only; "
+                        "delivery_success=false; primary_actions_enabled=false."
+                    ),
+                    "same_evidence_ref_required": True,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            encoded = json.dumps(
+                [summary, summary_alias, robot_alias, nested_summary, unsafe_summary, disabled_summary],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.route_task_field_retest_acceptance_execution_handoff_intake_summary.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_acceptance_execution_handoff_intake_gate",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.route_task_field_retest_acceptance_execution_handoff_intake.v1",
+        )
+        self.assertEqual(summary["intake_status"]["status"], "ready_for_acceptance_execution_handoff_intake")
+        self.assertEqual(summary["owner_acknowledgement"]["owner"], "Robot Platform Engineer")
+        self.assertIn("real_route_elevator_field_result_required", summary["next_evidence_flags"])
+        self.assertIn("same evidence_ref field result packet", summary["next_required_evidence"])
+        self.assertEqual(nested_summary["intake_status"]["status"], "nested_intake_ready")
+        self.assertEqual(unsafe_summary["intake_status"]["status"], "blocked_unsafe_handoff_intake")
+        self.assertEqual(disabled_summary["intake_status"]["status"], "ready")
+        self.assertIn(
+            "software_proof_docker_route_task_field_retest_acceptance_execution_handoff_intake_gate",
+            encoded,
+        )
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("primary_actions_enabled=false", summary["safe_phone_copy"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(disabled_summary["delivery_success"])
+        self.assertFalse(disabled_summary["primary_actions_enabled"])
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("raw_payload", encoded)
 
     def test_diagnostics_payload_includes_route_task_field_retest_review_result_handoff_summary(self):
         with tempfile.TemporaryDirectory() as td:

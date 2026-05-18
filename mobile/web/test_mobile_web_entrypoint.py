@@ -3809,6 +3809,129 @@ class RouteTaskFieldRetestAcceptanceExecutionCallbackReviewHandoffMobileTest(uni
             self.assertNotIn(forbidden, alias_text)
 
 
+class RouteTaskFieldRetestAcceptanceExecutionHandoffIntakeMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_field_retest_acceptance_execution_handoff_intake_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # 现场交接回执入口跟在现场复核交接后，只读展示 handoff intake metadata。
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionHandoffIntakeTitle", app)
+        self.assertIn("现场交接回执入口", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionCallbackReviewHandoffTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("route-task-field-retest-acceptance-execution-handoff-intake-panel", app)
+        self.assertIn("route-task-field-retest-acceptance-execution-handoff-intake-grid", app)
+
+        # Robot safe alias、主 summary 和主 artifact 三种来源都被支持，且 alias 优先。
+        alias_index = app.index(
+            "status?.robot_diagnostics_route_task_field_retest_acceptance_execution_handoff_intake_summary"
+        )
+        summary_index = app.index(
+            "status?.route_task_field_retest_acceptance_execution_handoff_intake_summary"
+        )
+        artifact_index = app.index(
+            "status?.route_task_field_retest_acceptance_execution_handoff_intake,"
+        )
+        self.assertLess(alias_index, summary_index)
+        self.assertLess(summary_index, artifact_index)
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_HANDOFF_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_HANDOFF_INTAKE_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestAcceptanceExecutionHandoffIntakeText", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionHandoffIntakeCandidate", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionHandoffIntakeFromStatus", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_acceptance_execution_handoff_intake_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_acceptance_execution_handoff_intake", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_acceptance_execution_handoff_intake", app)
+        self.assertIn("handoff_intake_status", app)
+        self.assertIn("source_handoff_status", app)
+        self.assertIn("owner_acknowledgement_state", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("safe_rerun_hint", app)
+        self.assertIn("boundary_flags", app)
+
+        # 该 panel 不提交 ACK/cursor/diagnostics fetch/robot command，也不改变 Start/Confirm/Cancel gating。
+        intake_block = app[
+            app.index("function ensureRouteTaskFieldRetestAcceptanceExecutionHandoffIntakePanel"):
+            app.index("function ensureRouteTaskFieldRetestEvidenceDispatchPanel")
+        ]
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("Start Delivery", app)
+        self.assertIn("Confirm Dropoff", app)
+        self.assertIn("Cancel", app)
+        self.assertNotRegex(
+            intake_block,
+            r"routeTaskFieldRetestAcceptanceExecutionHandoffIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotIn("copyRouteTaskFieldRetestAcceptanceExecutionHandoffIntakeButton", app)
+        self.assertNotIn("downloadRouteTaskFieldRetestAcceptanceExecutionHandoffIntakeButton", app)
+
+        # fixture 必须固定 software proof / not_proven / 主操作禁用边界。
+        intake = fixture["route_task_field_retest_acceptance_execution_handoff_intake"]
+        self.assertEqual(intake["handoff_intake_status"], "needs_owner_acknowledgement")
+        self.assertEqual(intake["delivery_success"], False)
+        self.assertEqual(intake["primary_actions_enabled"], False)
+        self.assertIn(
+            "robot_diagnostics_route_task_field_retest_acceptance_execution_handoff_intake_summary",
+            fixture,
+        )
+        self.assertIn(
+            "software_proof_docker_route_task_field_retest_acceptance_execution_handoff_intake_gate",
+            fixture_text,
+        )
+        self.assertIn("source_handoff_status", fixture_text)
+        self.assertIn("owner_acknowledgement_state", fixture_text)
+        self.assertIn("safe_rerun_hint", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+
+    def test_field_retest_acceptance_execution_handoff_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        intake_text = json.dumps(
+            fixture["route_task_field_retest_acceptance_execution_handoff_intake"],
+            ensure_ascii=False,
+        ).lower()
+        alias_text = json.dumps(
+            fixture["robot_diagnostics_route_task_field_retest_acceptance_execution_handoff_intake_summary"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 回执入口 fixture 只能携带白名单 metadata，不能泄漏 raw intake、凭证、ACK 或底层链路。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "complete artifacts",
+            "traceback",
+            "ack payload",
+            "cursor",
+            "robot command",
+            "diagnostics fetch",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, intake_text)
+            self.assertNotIn(forbidden, alias_text)
+
+
 class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")
