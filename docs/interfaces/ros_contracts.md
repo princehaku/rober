@@ -3544,6 +3544,33 @@ enablement remains governed by `command_safety` and `action_permissions`. ACK
 remains accepted/processing evidence only and must not be rendered or
 interpreted as field-trial review completion, robot execution, delivery
 success, production readiness, HIL, dropoff success, or cancel completion.
+Mobile real-device field-trial acceptance-review handoff metadata, including
+`mobile_real_device_field_trial_acceptance_review_handoff`,
+`mobile_real_device_field_trial_acceptance_review_handoff_summary`, and the
+Robot diagnostics safe alias
+`robot_diagnostics_mobile_real_device_field_trial_acceptance_review_handoff_summary`,
+follows the same metadata-only rule for the
+`software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate`
+boundary. Robot diagnostics may consume only
+`schema=trashbot.mobile_real_device_field_trial_acceptance_review_handoff.v1`
+or
+`schema=trashbot.mobile_real_device_field_trial_acceptance_review_handoff_summary.v1`
+that resolves to
+`source_schema=trashbot.mobile_real_device_field_trial_acceptance_review_handoff.v1`.
+It may expose only safe `evidence_ref`, handoff status, owner handoff,
+next required evidence, accepted/missing/rejected material summaries, rerun
+command summaries, safe copy, evidence boundary, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`. Missing summary, unsupported schema or
+boundary, unsafe raw fields, success claims, control claims, enabled actions,
+`safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` must fail closed as blocked/not_proven. It must
+not expose raw artifacts, local paths, checksums, tracebacks, credentials,
+raw ROS topics, `/cmd_vel`, serial/UART details, DB/queue URLs, OSS AK/SK, or
+complete artifacts. The alias is not a command, ACK, cursor, ROS runtime,
+motion command, task-orchestrator state transition, Start/Confirm/Cancel
+enablement source, real phone/browser proof, HIL pass, route/elevator field
+pass, dropoff/cancel completion, delivery result, or delivery success.
 Mobile real-device field-trial runbook-execution metadata, including
 `mobile_real_device_field_trial_runbook_execution`,
 `mobile_real_device_field_trial_runbook_execution_summary`, and

@@ -8,7 +8,21 @@
 
 ## 2026-05-18 系列
 
-更新时间：2026-05-18 20:55 Asia/Shanghai。
+更新时间：2026-05-18 22:20 Asia/Shanghai。
+
+### 2026-05-18 22-23｜mobile-real-device-acceptance-review-handoff｜O4 真实手机验收复核交接 software proof
+
+本轮 `sprints/2026.05.18_22-23_mobile-real-device-acceptance-review-handoff/` 继续 Objective 4，把上一轮 `mobile_real_device_field_trial_acceptance_review_decision*` 推进为可交给现场 owner 的 `mobile_real_device_field_trial_acceptance_review_handoff*`。Full-stack 新增 mobile/web 只读“现场验收复核交接” panel、handoff / summary / copy fixture、phone-safe copy 和 fail-closed tests；Robot diagnostics 新增 `robot_diagnostics_mobile_real_device_field_trial_acceptance_review_handoff_summary` safe alias；Product closeout 更新 sprint 留档、`OKR.md` 和本日志。证据边界是 `software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate`，保持 `source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮未新增 WAVE ROVER、UART、HIL packet、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery` 或 operator HIL report；PR #5 2D LiDAR / ToF SKU/source、receipt、采购、安装、接线、电源、标定和 HIL-entry 仍缺真实材料。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不继续 PR #4 route/elevator 本地 wrapper，不证明真实 route/elevator field pass、真实门状态、真实楼层确认、人工协助记录、dropoff/cancel completion、delivery result 或 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮未新增真实路线采集、Nav2/fixed-route 实跑、route completion signal、task record 或同一 `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | Handoff packet 让现场 owner 能看到 owner handoff、next required evidence、accepted/missing/rejected material summaries、rerun commands summary、safe copy 和控制边界；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 与真实现场验收通过。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof。 |
+
+本轮验证：Full-stack worker 报告 `node --check mobile/web/app.js` 通过，`python3 -m unittest mobile.web.test_mobile_web_entrypoint` 输出 `Ran 96 tests ... OK`，required `rg` 与 scoped `git diff --check` 通过；Robot worker 报告 diagnostics unittest `Ran 189 tests in 0.428s OK`，required `rg` 与 scoped `git diff --check` 通过；Product closeout 复跑集成围栏并记录在 sprint `final.md`。本轮不证明真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice、Objective 5 external proof、HIL、WAVE ROVER/UART、PR #4 route/elevator field pass 或 PR #5 2D LiDAR / ToF materials。
 
 ### 2026-05-18 21-22｜mobile-real-device-acceptance-review-decision｜O4 真实手机验收会话复核决策 software proof
 

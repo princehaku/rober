@@ -74,6 +74,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_mobile_field_material_intake,
     summarize_mobile_field_material_review_decision,
     summarize_mobile_field_material_retest_request,
+    summarize_mobile_real_device_field_trial_acceptance_review_handoff,
     summarize_wave_rover_feedback_replay,
     summarize_wave_rover_hil_packet_intake,
     summarize_wave_rover_hil_packet_review_decision,
@@ -16664,6 +16665,266 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn(str(missing_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
         self.assertNotIn("secret-token", encoded)
+
+    def test_mobile_real_device_acceptance_review_handoff_alias_env_nested_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            handoff_path = Path(td) / "mobile_real_device_acceptance_review_handoff.json"
+            handoff_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.mobile_real_device_field_trial_acceptance_review_handoff.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://mobile-real-device-acceptance-review-handoff-1",
+                        "handoff_status": {
+                            "status": "ready_for_owner_handoff_not_proven",
+                            "verdict": "not_proven",
+                            "reason": "handoff is ready for field owner only",
+                        },
+                        "owner_handoff": ["Full-stack owns real phone evidence capture"],
+                        "next_required_evidence": ["real iPhone/Android recording"],
+                        "accepted_materials_summary": ["review decision summary"],
+                        "missing_materials_summary": ["real phone browser evidence"],
+                        "rejected_materials_summary": [],
+                        "rerun_commands_summary": ["run safe mobile acceptance handoff gate"],
+                        "robot_diagnostics_summary": {
+                            "safe_copy": (
+                                "Mobile real-device acceptance review handoff is metadata-only; "
+                                "safe_to_control=false; delivery_success=false; "
+                                "primary_actions_enabled=false; not_proven."
+                            ),
+                        },
+                        "safe_copy": (
+                            "Mobile real-device acceptance review handoff is metadata-only; "
+                            "safe_to_control=false; delivery_success=false; "
+                            "primary_actions_enabled=false; not_proven."
+                        ),
+                        "not_proven": ["delivery_success", "real_phone_device"],
+                        "safe_to_control": False,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                mobile_real_device_field_trial_acceptance_review_handoff_ref=str(handoff_path),
+            )
+            summary = payload["mobile_real_device_field_trial_acceptance_review_handoff"]
+            summary_alias = payload["mobile_real_device_field_trial_acceptance_review_handoff_summary"]
+            robot_alias = payload[
+                "robot_diagnostics_mobile_real_device_field_trial_acceptance_review_handoff_summary"
+            ]
+
+            summary_path = Path(td) / "mobile_real_device_acceptance_review_handoff_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": (
+                            "trashbot.mobile_real_device_field_trial_acceptance_review_handoff_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.mobile_real_device_field_trial_acceptance_review_handoff.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://mobile-real-device-acceptance-review-handoff-2",
+                        "handoff_status": {"status": "env_ready_not_proven", "verdict": "not_proven"},
+                        "owner_handoff": ["Product closes the handoff packet"],
+                        "next_required_evidence": ["real phone screenshot"],
+                        "accepted_materials_summary": ["safe review summary"],
+                        "missing_materials_summary": ["real device proof"],
+                        "rejected_materials_summary": [],
+                        "rerun_commands_summary": ["rerun safe handoff gate"],
+                        "safe_copy": (
+                            "Mobile real-device acceptance review handoff is metadata-only; "
+                            "safe_to_control=false; delivery_success=false; "
+                            "primary_actions_enabled=false; not_proven."
+                        ),
+                        "safe_to_control": False,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_handoff = os.environ.get(
+                "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_REVIEW_HANDOFF"
+            )
+            previous_summary = os.environ.get(
+                "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_REVIEW_HANDOFF_SUMMARY"
+            )
+            os.environ.pop("TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_REVIEW_HANDOFF", None)
+            os.environ[
+                "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_REVIEW_HANDOFF_SUMMARY"
+            ] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "mobile_real_device_field_trial_acceptance_review_handoff"
+                ]
+            finally:
+                if previous_handoff is None:
+                    os.environ.pop("TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_REVIEW_HANDOFF", None)
+                else:
+                    os.environ[
+                        "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_REVIEW_HANDOFF"
+                    ] = previous_handoff
+                if previous_summary is None:
+                    os.environ.pop(
+                        "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_REVIEW_HANDOFF_SUMMARY",
+                        None,
+                    )
+                else:
+                    os.environ[
+                        "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_REVIEW_HANDOFF_SUMMARY"
+                    ] = previous_summary
+
+            nested_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "robot_diagnostics_mobile_real_device_field_trial_acceptance_review_handoff_summary": {
+                            "schema": (
+                                "trashbot.mobile_real_device_field_trial_acceptance_review_handoff_summary.v1"
+                            ),
+                            "source_schema": (
+                                "trashbot.mobile_real_device_field_trial_acceptance_review_handoff.v1"
+                            ),
+                            "evidence_boundary": (
+                                "software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate"
+                            ),
+                            "source_evidence_boundary": (
+                                "software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate"
+                            ),
+                            "safe_evidence_ref": "evidence://mobile-real-device-acceptance-review-handoff-3",
+                            "handoff_status": {"status": "nested_ready_not_proven", "verdict": "not_proven"},
+                            "owner_handoff": ["Robot only mirrors safe diagnostics"],
+                            "next_required_evidence": ["real phone evidence"],
+                            "accepted_materials_summary": [],
+                            "missing_materials_summary": ["real device proof"],
+                            "rejected_materials_summary": [],
+                            "rerun_commands_summary": ["rerun safe gate"],
+                            "safe_copy": (
+                                "Nested mobile real-device handoff is metadata-only; "
+                                "safe_to_control=false; delivery_success=false; "
+                                "primary_actions_enabled=false; not_proven."
+                            ),
+                            "safe_to_control": False,
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["mobile_real_device_field_trial_acceptance_review_handoff"]
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_handoff.json"
+            missing_summary = summarize_mobile_real_device_field_trial_acceptance_review_handoff(
+                str(missing_path)
+            )
+            unsupported_summary = summarize_mobile_real_device_field_trial_acceptance_review_handoff(
+                {
+                    "schema": "trashbot.mobile_real_device_field_trial_acceptance_review_decision.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_mobile_real_device_field_trial_acceptance_review_decision_gate"
+                    ),
+                    "safe_copy": "Unsupported mobile handoff is metadata-only; delivery_success=false.",
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsafe_summary = summarize_mobile_real_device_field_trial_acceptance_review_handoff(
+                {
+                    "schema": (
+                        "trashbot.mobile_real_device_field_trial_acceptance_review_handoff_summary.v1"
+                    ),
+                    "source_schema": (
+                        "trashbot.mobile_real_device_field_trial_acceptance_review_handoff.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate"
+                    ),
+                    "source_evidence_boundary": (
+                        "software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate"
+                    ),
+                    "safe_evidence_ref": "evidence://mobile-real-device-acceptance-review-handoff-4",
+                    "handoff_status": {"status": "unsafe_success_claim"},
+                    "owner_handoff": ["Full-stack"],
+                    "next_required_evidence": [],
+                    "accepted_materials_summary": [],
+                    "missing_materials_summary": [],
+                    "rejected_materials_summary": [],
+                    "rerun_commands_summary": [],
+                    "safe_copy": "Mobile real-device handoff confirms delivery success and ACK posted.",
+                    "safe_to_control": True,
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                }
+            )
+            encoded = json.dumps(
+                [
+                    summary,
+                    summary_alias,
+                    robot_alias,
+                    env_summary,
+                    nested_summary,
+                    missing_summary,
+                    unsupported_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.mobile_real_device_field_trial_acceptance_review_handoff_summary.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.mobile_real_device_field_trial_acceptance_review_handoff.v1",
+        )
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://mobile-real-device-acceptance-review-handoff-1")
+        self.assertEqual(summary["handoff_status"]["status"], "ready_for_owner_handoff_not_proven")
+        self.assertIn("real iPhone/Android recording", summary["next_required_evidence"])
+        self.assertEqual(env_summary["handoff_status"]["status"], "env_ready_not_proven")
+        self.assertEqual(nested_summary["handoff_status"]["status"], "nested_ready_not_proven")
+        self.assertEqual(missing_summary["handoff_status"]["status"], "missing_summary")
+        self.assertEqual(unsupported_summary["handoff_status"]["status"], "unsupported_schema")
+        self.assertEqual(unsafe_summary["handoff_status"]["status"], "unsafe_fields")
+        self.assertIn("safe_to_control=false", summary["safe_phone_copy"])
+        self.assertIn("delivery_success=false", summary["safe_phone_copy"])
+        self.assertIn("primary_actions_enabled=false", summary["safe_phone_copy"])
+        self.assertIn("not_proven", encoded)
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("ACK posted", encoded)
 
     def test_diagnostics_payload_includes_wave_rover_feedback_replay_summary(self):
         with tempfile.TemporaryDirectory() as td:
