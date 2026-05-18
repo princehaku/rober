@@ -3309,6 +3309,117 @@ class RouteTaskFieldRetestAcceptanceReviewDecisionMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, decision_text)
 
 
+class RouteTaskFieldRetestAcceptanceExecutionPackMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_field_retest_acceptance_execution_pack_panel_is_read_only_and_alias_first(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        web_fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 验收执行包跟在 review decision 后，只读消费 Robot safe alias，不改变主操作 gating。
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionPackTitle", app)
+        self.assertIn("现场复测验收执行包", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceReviewDecisionTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("route-task-field-retest-acceptance-execution-pack-panel", app)
+        self.assertIn("route-task-field-retest-acceptance-execution-pack-grid", app)
+
+        # Robot diagnostics safe alias 必须在候选列表里早于 summary/artifact，保持 Robot 摘要优先。
+        alias_index = app.index("status?.robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary")
+        summary_index = app.index("status?.route_task_field_retest_acceptance_execution_pack_summary")
+        artifact_index = app.index("status?.route_task_field_retest_acceptance_execution_pack,")
+        self.assertLess(alias_index, summary_index)
+        self.assertLess(summary_index, artifact_index)
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_PACK_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_PACK_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestAcceptanceExecutionPackText", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionPackCandidate", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionPackFromStatus", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_acceptance_execution_pack", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_acceptance_execution_pack", app)
+        self.assertIn("owner_checklist", app)
+        self.assertIn("rerun_commands", app)
+        self.assertIn("safe_evidence_bundle", app)
+        self.assertIn("required_route_elevator_materials", app)
+        self.assertIn("handoff_owner", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("boundary_flags", app)
+
+        # copy/export 必须由 safe_copy 或 safe_evidence_bundle 驱动，只导出白名单字段且不触发主操作。
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionPackCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_acceptance_execution_pack_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestAcceptanceExecutionPackButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestAcceptanceExecutionPackButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("Start Delivery", app)
+        self.assertIn("Confirm Dropoff", app)
+        self.assertIn("Cancel", app)
+        self.assertNotRegex(app, r"routeTaskFieldRetestAcceptanceExecutionPack.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # 两套 fixture 和产品文档都必须固定 execution-pack software proof / not_proven / safe alias 口径。
+        pack = fixture["route_task_field_retest_acceptance_execution_pack"]
+        self.assertEqual(
+            pack["execution_pack_status"],
+            "blocked_missing_acceptance_execution_pack_materials_not_proven",
+        )
+        self.assertEqual(pack["delivery_success"], False)
+        self.assertEqual(pack["primary_actions_enabled"], False)
+        self.assertIn(
+            "robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary",
+            web_fixture,
+        )
+        self.assertIn("software_proof_docker_route_task_field_retest_acceptance_execution_pack_gate", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("route_task_field_retest_acceptance_execution_pack", doc)
+        self.assertIn("现场复测验收执行包", doc)
+
+    def test_field_retest_acceptance_execution_pack_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        pack_text = json.dumps(
+            fixture["route_task_field_retest_acceptance_execution_pack"],
+            ensure_ascii=False,
+        ).lower()
+
+        # acceptance execution pack fixture 只能携带白名单 metadata，不能泄漏 raw pack、路径、凭证或控制成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw execution pack",
+            "raw diagnostics",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "robot command",
+            "diagnostics fetch",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, pack_text)
+
+
 class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

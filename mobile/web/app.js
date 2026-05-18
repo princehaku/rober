@@ -71,6 +71,7 @@ const ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_BOUNDARY = "software_proof_docker_r
 const ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_BOUNDARY = "software_proof_docker_route_task_field_retest_drill_console_gate";
 const ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_BRIEF_BOUNDARY = "software_proof_docker_route_task_field_retest_acceptance_brief_gate";
 const ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_REVIEW_DECISION_BOUNDARY = "software_proof_docker_route_task_field_retest_acceptance_review_decision_gate";
+const ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_PACK_BOUNDARY = "software_proof_docker_route_task_field_retest_acceptance_execution_pack_gate";
 const ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_BOUNDARY = "software_proof_docker_route_task_field_retest_evidence_dispatch_gate";
 const ROUTE_TASK_FIELD_RETEST_CALLBACK_INTAKE_BOUNDARY = "software_proof_docker_route_task_field_retest_callback_intake_gate";
 const ROUTE_TASK_FIELD_RETEST_CALLBACK_REVIEW_DECISION_BOUNDARY = "software_proof_docker_route_task_field_retest_callback_review_decision_gate";
@@ -186,6 +187,7 @@ const UNSAFE_ROUTE_TASK_FIELD_RETEST_OPERATOR_DRILL_TEXT = /(authorization|beare
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw drill console|raw console|raw command|full drill console|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_BRIEF_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw acceptance|raw brief|raw diagnostics|raw path|full acceptance|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw acceptance|raw review|raw decision|raw diagnostics|raw path|full acceptance|full review|complete artifact|complete artifacts|execution bundle|ack payload|cursor|diagnostics fetch|robot command|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成|现场通过)/i;
+const UNSAFE_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw acceptance|raw review|raw execution pack|raw diagnostics|raw path|full acceptance|full execution pack|complete artifact|complete artifacts|execution bundle|ack payload|cursor|diagnostics fetch|robot command|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成|现场通过)/i;
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw dispatch|raw diagnostics|raw path|full dispatch|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_CALLBACK_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw callback|raw diagnostics|raw path|full callback|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_CALLBACK_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw callback|raw review|raw diagnostics|raw path|full callback|full review|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
@@ -267,6 +269,7 @@ let latestRouteTaskFieldRetestOperatorDrill = null;
 let latestRouteTaskFieldRetestDrillConsole = null;
 let latestRouteTaskFieldRetestAcceptanceBrief = null;
 let latestRouteTaskFieldRetestAcceptanceReviewDecision = null;
+let latestRouteTaskFieldRetestAcceptanceExecutionPack = null;
 let latestRouteTaskFieldRetestEvidenceDispatch = null;
 let latestRouteTaskFieldRetestCallbackIntake = null;
 let latestRouteTaskFieldRetestCallbackReviewDecision = null;
@@ -639,6 +642,15 @@ function safeRouteTaskFieldRetestAcceptanceReviewDecisionText(value, fallback = 
   // 验收复核决策只读展示 safe alias/summary；raw decision、控制路由和成功语义都必须 fail closed。
   const text = safeText(value, fallback);
   if (UNSAFE_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_REVIEW_DECISION_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeRouteTaskFieldRetestAcceptanceExecutionPackText(value, fallback = "not_proven") {
+  // 验收执行包只展示交接清单的脱敏摘要，命中 raw pack、控制路由或成功语义时直接降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_PACK_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -9232,6 +9244,229 @@ function routeTaskFieldRetestAcceptanceReviewDecisionCopyPayload(summary) {
   };
 }
 
+function routeTaskFieldRetestAcceptanceExecutionPackCandidate(status, readiness, diagnostics) {
+  // Robot safe alias 必须优先于普通 summary/artifact，避免手机端绕过 Robot 已脱敏诊断摘要。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary,
+    readiness?.robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary,
+    diagnostics?.robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary,
+    diagnosticsReadiness.robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary,
+    diagnosticsSummary.robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary,
+    statusDiagnosticsSummary.robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary,
+    status?.route_task_field_retest_acceptance_execution_pack_summary,
+    status?.route_task_field_retest_acceptance_execution_pack,
+    readiness?.route_task_field_retest_acceptance_execution_pack_summary,
+    readiness?.route_task_field_retest_acceptance_execution_pack,
+    diagnostics?.route_task_field_retest_acceptance_execution_pack_summary,
+    diagnostics?.route_task_field_retest_acceptance_execution_pack,
+    diagnosticsReadiness.route_task_field_retest_acceptance_execution_pack_summary,
+    diagnosticsReadiness.route_task_field_retest_acceptance_execution_pack,
+    diagnosticsSummary.route_task_field_retest_acceptance_execution_pack_summary,
+    diagnosticsSummary.route_task_field_retest_acceptance_execution_pack,
+    nestedDiagnosticsSummary.route_task_field_retest_acceptance_execution_pack_summary,
+    nestedDiagnosticsSummary.route_task_field_retest_acceptance_execution_pack,
+    nestedDiagnosticsInnerSummary.route_task_field_retest_acceptance_execution_pack_summary,
+    nestedDiagnosticsInnerSummary.route_task_field_retest_acceptance_execution_pack,
+    statusDiagnosticsSummary.route_task_field_retest_acceptance_execution_pack_summary,
+    statusDiagnosticsSummary.route_task_field_retest_acceptance_execution_pack,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function routeTaskFieldRetestAcceptanceExecutionPackNotProvenList(value) {
+  // 执行包只证明现场复跑清单可读，不证明真实路线、电梯、投放、取消、手机或 HIL。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实 acceptance execution pack material",
+    "真实 Nav2/fixed-route runtime log",
+    "真实 route completion signal",
+    "真实 task record",
+    "真实 door_state",
+    "真实 target_floor_confirmation",
+    "真实 human_assistance_note",
+    "真实 dropoff/cancel completion",
+    "真实 delivery_result",
+    "真实 route/elevator field pass",
+    "真实手机设备/browser",
+    "真实硬件/HIL",
+    "Objective 5 external proof",
+    "delivery success",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 18);
+}
+
+function routeTaskFieldRetestAcceptanceExecutionPackSummaryText(value, fallback) {
+  // checklist、commands、bundle 和 material requirements 只压缩为 phone-safe 一行摘要，不展示 raw object。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeRouteTaskFieldRetestAcceptanceExecutionPackText(
+        item?.label || item?.safe_label || item?.safe_phone_copy || item?.summary ||
+          item?.material || item?.owner || item?.handoff || item?.evidence ||
+          item?.command || item?.status || item?.note || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 12).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_label || value.label || value.safe_phone_copy ||
+      value.summary || value.material_summary || value.handoff_summary ||
+      value.command_summary || value.bundle_summary || value.status || value.state || value.result;
+    if (direct) {
+      return safeRouteTaskFieldRetestAcceptanceExecutionPackText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeRouteTaskFieldRetestAcceptanceExecutionPackText(key, "");
+        const copy = routeTaskFieldRetestAcceptanceExecutionPackSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 12).join("；") : fallback;
+  }
+  return safeRouteTaskFieldRetestAcceptanceExecutionPackText(value, fallback);
+}
+
+function routeTaskFieldRetestAcceptanceExecutionPackSafeCopy(value) {
+  // copy/export 只由 safe_copy 解锁；缺失时不从 checklist 或 rerun_commands 合成可复制执行包。
+  const source = value?.safe_copy || value?.safe_evidence_bundle || value?.safe_copy_payload;
+  if (!source) {
+    return null;
+  }
+  const text = typeof source === "object"
+    ? source.safe_phone_copy || source.summary || source.copy || source.bundle_summary
+    : source;
+  const safeCopy = safeRouteTaskFieldRetestAcceptanceExecutionPackText(text, "");
+  if (!safeCopy) {
+    return null;
+  }
+  return {
+    schema: "trashbot.route_task_field_retest_acceptance_execution_pack_copy.v1",
+    schema_version: 1,
+    safe_phone_copy: safeCopy,
+  };
+}
+
+function routeTaskFieldRetestAcceptanceExecutionPackFromStatus(status, readiness, diagnostics) {
+  const provided = routeTaskFieldRetestAcceptanceExecutionPackCandidate(status, readiness, diagnostics) || {};
+  const safeCopyPayload = routeTaskFieldRetestAcceptanceExecutionPackSafeCopy(provided);
+  const sameEvidenceRefRequired = provided.same_evidence_ref_required === true ||
+    provided.same_evidence_ref_required === "true";
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.route_task_field_retest_acceptance_execution_pack.v1",
+    summary_schema: "trashbot.route_task_field_retest_acceptance_execution_pack_summary.v1",
+    schema_version: 1,
+    execution_pack_status: safeRouteTaskFieldRetestAcceptanceExecutionPackText(
+      provided.execution_pack_status || provided.pack_status || provided.status || provided.overall_status,
+      "blocked_missing_acceptance_execution_pack_not_proven",
+    ),
+    safe_evidence_ref: safeRouteTaskFieldRetestAcceptanceExecutionPackText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "not_provided",
+    ),
+    owner_checklist: routeTaskFieldRetestAcceptanceExecutionPackSummaryText(
+      provided.owner_checklist || provided.checklist || provided.field_owner_checklist,
+      "owner_checklist=Autonomy/Robot/Full-stack owner 按同一 safe_evidence_ref 准备现场复跑材料。",
+    ),
+    rerun_commands: routeTaskFieldRetestAcceptanceExecutionPackSummaryText(
+      provided.rerun_commands || provided.commands_to_rerun || provided.rerun_package || provided.rerun_summary,
+      "rerun_commands=run acceptance review decision gate, then software_proof_docker_route_task_field_retest_acceptance_execution_pack_gate.",
+    ),
+    safe_evidence_bundle: routeTaskFieldRetestAcceptanceExecutionPackSummaryText(
+      provided.safe_evidence_bundle || provided.safe_bundle || provided.evidence_bundle,
+      "safe_evidence_bundle=只包含 safe evidence_ref、owner checklist、required materials、handoff owner 和 next evidence。",
+    ),
+    required_route_elevator_materials: routeTaskFieldRetestAcceptanceExecutionPackSummaryText(
+      provided.required_route_elevator_materials || provided.required_materials ||
+        provided.required_field_materials || provided.next_required_evidence,
+      "required_route_elevator_materials=runtime log、completion signal、task record、door/floor/human-assistance、dropoff/cancel 和 delivery result summaries.",
+    ),
+    handoff_owner: routeTaskFieldRetestAcceptanceExecutionPackSummaryText(
+      provided.handoff_owner || provided.owner_handoff || provided.owner_follow_up,
+      "handoff_owner=现场 owner 补齐同一 safe_evidence_ref 的 route/elevator 材料；Full-stack 只读展示。",
+    ),
+    next_required_evidence: routeTaskFieldRetestAcceptanceExecutionPackSummaryText(
+      provided.next_required_evidence || provided.required_next_evidence || provided.next_evidence,
+      "next_required_evidence=真实 door_state、target_floor_confirmation、human_assistance_note、dropoff_or_cancel_completion、delivery_result。",
+    ),
+    same_evidence_ref_required: sameEvidenceRefRequired,
+    boundary_flags: `not_proven / delivery_success=false / primary_actions_enabled=false / same_evidence_ref_required=${sameEvidenceRefRequired ? "true" : "blocked_not_true"}`,
+    safe_phone_copy: safeRouteTaskFieldRetestAcceptanceExecutionPackText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "route_task_field_retest_acceptance_execution_pack 摘要缺失；手机端只显示 blocked/not_proven，不读取 raw execution pack。",
+    ),
+    safe_copy_payload: safeCopyPayload,
+    safe_copy_status: safeCopyPayload ? "safe_copy_available" : "blocked copy unavailable",
+    recovery_hint: safeRouteTaskFieldRetestAcceptanceExecutionPackText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由 Robot diagnostics/status 提供 robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary 和 safe_copy 后，再交接现场 owner。",
+    ),
+    evidence_boundary: safeRouteTaskFieldRetestAcceptanceExecutionPackText(
+      provided.evidence_boundary,
+      ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_PACK_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: routeTaskFieldRetestAcceptanceExecutionPackNotProvenList(provided),
+  };
+}
+
+function routeTaskFieldRetestAcceptanceExecutionPackCopyPayload(summary) {
+  // 导出只保留验收执行包白名单字段；不携带 raw pack、ACK、cursor、diagnostics fetch 或 robot command。
+  const source = summary?.schema
+    ? summary
+    : routeTaskFieldRetestAcceptanceExecutionPackFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  if (!source.safe_copy_payload) {
+    return null;
+  }
+  return {
+    schema: source.safe_copy_payload.schema,
+    schema_version: source.safe_copy_payload.schema_version,
+    source: "mobile_web",
+    route_task_field_retest_acceptance_execution_pack_schema: source.schema,
+    summary_schema: source.summary_schema,
+    execution_pack_status: source.execution_pack_status,
+    safe_evidence_ref: source.safe_evidence_ref,
+    owner_checklist: source.owner_checklist,
+    rerun_commands: source.rerun_commands,
+    safe_evidence_bundle: source.safe_evidence_bundle,
+    required_route_elevator_materials: source.required_route_elevator_materials,
+    handoff_owner: source.handoff_owner,
+    next_required_evidence: source.next_required_evidence,
+    boundary_flags: source.boundary_flags,
+    safe_phone_copy: source.safe_copy_payload.safe_phone_copy,
+    evidence_boundary: ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_PACK_BOUNDARY,
+    not_proven: source.not_proven,
+    delivery_success: false,
+    primary_actions_enabled: false,
+  };
+}
+
 function routeTaskFieldRetestEvidenceDispatchCandidate(status, readiness, diagnostics) {
   // dispatch 可能来自 PC artifact、summary 或 Robot diagnostics compatible summary；手机端不反查 raw artifact。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -17242,6 +17477,99 @@ function renderRouteTaskFieldRetestAcceptanceReviewDecision(status) {
   $("downloadRouteTaskFieldRetestAcceptanceReviewDecisionButton").disabled = !summary.safe_copy_payload;
 }
 
+function ensureRouteTaskFieldRetestAcceptanceExecutionPackPanel() {
+  // 验收执行包跟在 review decision 后，只读展示现场 owner 可执行清单，不改变 Start/Confirm/Cancel gating。
+  let panel = $("routeTaskFieldRetestAcceptanceExecutionPackPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("routeTaskFieldRetestAcceptanceReviewDecisionTitle")?.closest("section") ||
+    $("routeTaskFieldRetestAcceptanceBriefTitle")?.closest("section") ||
+    $("routeTaskFieldRetestDrillConsoleTitle")?.closest("section") ||
+    $("routeTaskFieldRetestOperatorDrillTitle")?.closest("section") ||
+    $("routeTaskFieldRetestMaterialPackTitle")?.closest("section") ||
+    $("routeTaskFieldRetestResultReconciliationTitle")?.closest("section") ||
+    $("routeTaskFieldRetestResultIntakeTitle")?.closest("section") ||
+    $("routeTaskFieldRetestSessionHandoffTitle")?.closest("section") ||
+    $("routeTaskFieldRetestExecutionPackTitle")?.closest("section") ||
+    $("routeTaskTerminalReviewDecisionTitle")?.closest("section") ||
+    $("elevatorAssistPanel");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "routeTaskFieldRetestAcceptanceExecutionPackPanel";
+  panel.className = "route-task-field-retest-acceptance-execution-pack-panel";
+  panel.setAttribute("aria-labelledby", "routeTaskFieldRetestAcceptanceExecutionPackTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="routeTaskFieldRetestAcceptanceExecutionPackTitle">现场复测验收执行包</h2>
+      <span id="routeTaskFieldRetestAcceptanceExecutionPackBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="routeTaskFieldRetestAcceptanceExecutionPackCopy" class="message">
+      route_task_field_retest_acceptance_execution_pack 只读展示 execution pack status、safe evidence ref、owner checklist、rerun commands、safe evidence bundle、required route/elevator materials、handoff owner、next required evidence 和 boundary flags。
+    </p>
+    <dl class="route-task-field-retest-acceptance-execution-pack-grid">
+      <div><dt>Execution Pack Status</dt><dd id="routeTaskFieldRetestAcceptanceExecutionPackStatus">blocked_missing_acceptance_execution_pack_not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="routeTaskFieldRetestAcceptanceExecutionPackEvidenceRef">not_provided</dd></div>
+      <div><dt>Owner Checklist</dt><dd id="routeTaskFieldRetestAcceptanceExecutionPackOwnerChecklist">owner_checklist=not_proven</dd></div>
+      <div><dt>Rerun Commands</dt><dd id="routeTaskFieldRetestAcceptanceExecutionPackRerunCommands">rerun_commands=not_proven</dd></div>
+      <div><dt>Safe Evidence Bundle</dt><dd id="routeTaskFieldRetestAcceptanceExecutionPackBundle">safe_evidence_bundle=not_proven</dd></div>
+      <div><dt>Required Route/Elevator Materials</dt><dd id="routeTaskFieldRetestAcceptanceExecutionPackMaterials">required_route_elevator_materials=not_proven</dd></div>
+      <div><dt>Handoff Owner</dt><dd id="routeTaskFieldRetestAcceptanceExecutionPackHandoffOwner">handoff_owner=not_proven</dd></div>
+      <div><dt>Next Required Evidence</dt><dd id="routeTaskFieldRetestAcceptanceExecutionPackNextEvidence">next_required_evidence=not_proven</dd></div>
+      <div><dt>Copy Status</dt><dd id="routeTaskFieldRetestAcceptanceExecutionPackSafeCopyStatus">blocked copy unavailable</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="routeTaskFieldRetestAcceptanceExecutionPackBoundaryFlags">not_proven / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="routeTaskFieldRetestAcceptanceExecutionPackBoundary">software_proof_docker_route_task_field_retest_acceptance_execution_pack_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="routeTaskFieldRetestAcceptanceExecutionPackNotProven">真实验收执行包、HIL、真机浏览器和 delivery success 未证明。</dd></div>
+    </dl>
+    <div class="bundle-copy-row">
+      <button id="copyRouteTaskFieldRetestAcceptanceExecutionPackButton" type="button" disabled>复制 execution pack</button>
+      <button id="downloadRouteTaskFieldRetestAcceptanceExecutionPackButton" type="button" disabled>导出 execution pack</button>
+      <span id="routeTaskFieldRetestAcceptanceExecutionPackCopyStatus" class="hint">blocked copy unavailable</span>
+    </div>
+    <pre id="routeTaskFieldRetestAcceptanceExecutionPackSafeCopy" class="safe-copy" aria-label="route_task_field_retest_acceptance_execution_pack safe_copy">blocked copy unavailable</pre>
+    <p id="routeTaskFieldRetestAcceptanceExecutionPackHint" class="hint">
+      现场复测验收执行包优先消费 Robot diagnostics safe alias；copy/export 采用 whitelist-only，不暴露 raw artifact、raw JSON、raw path、credential、ROS topic、serial/UART、WAVE ROVER、DB/queue URL、OSS AK/SK、checksums、complete artifact、raw robot response、ACK、cursor、diagnostics fetch 或 robot command，也不新增 Start Delivery、Confirm Dropoff、Cancel 或 execution-pack 请求。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderRouteTaskFieldRetestAcceptanceExecutionPack(status) {
+  const panel = ensureRouteTaskFieldRetestAcceptanceExecutionPackPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = routeTaskFieldRetestAcceptanceExecutionPackFromStatus(status, readiness, latestDiagnostics);
+  latestRouteTaskFieldRetestAcceptanceExecutionPack = summary;
+  const badge = $("routeTaskFieldRetestAcceptanceExecutionPackBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 acceptance execution pack" : "read-only acceptance execution pack";
+  $("routeTaskFieldRetestAcceptanceExecutionPackCopy").textContent = summary.safe_phone_copy;
+  $("routeTaskFieldRetestAcceptanceExecutionPackStatus").textContent = summary.execution_pack_status;
+  $("routeTaskFieldRetestAcceptanceExecutionPackEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("routeTaskFieldRetestAcceptanceExecutionPackOwnerChecklist").textContent = summary.owner_checklist;
+  $("routeTaskFieldRetestAcceptanceExecutionPackRerunCommands").textContent = summary.rerun_commands;
+  $("routeTaskFieldRetestAcceptanceExecutionPackBundle").textContent = summary.safe_evidence_bundle;
+  $("routeTaskFieldRetestAcceptanceExecutionPackMaterials").textContent = summary.required_route_elevator_materials;
+  $("routeTaskFieldRetestAcceptanceExecutionPackHandoffOwner").textContent = summary.handoff_owner;
+  $("routeTaskFieldRetestAcceptanceExecutionPackNextEvidence").textContent = summary.next_required_evidence;
+  $("routeTaskFieldRetestAcceptanceExecutionPackSafeCopyStatus").textContent = summary.safe_copy_status;
+  $("routeTaskFieldRetestAcceptanceExecutionPackBoundaryFlags").textContent = summary.boundary_flags;
+  $("routeTaskFieldRetestAcceptanceExecutionPackBoundary").textContent = summary.evidence_boundary;
+  $("routeTaskFieldRetestAcceptanceExecutionPackNotProven").textContent = summary.not_proven.join("、");
+  $("routeTaskFieldRetestAcceptanceExecutionPackHint").textContent = summary.recovery_hint;
+  $("routeTaskFieldRetestAcceptanceExecutionPackSafeCopy").textContent =
+    summary.safe_copy_payload?.safe_phone_copy || "blocked copy unavailable";
+  $("routeTaskFieldRetestAcceptanceExecutionPackCopyStatus").textContent = summary.safe_copy_status;
+  $("copyRouteTaskFieldRetestAcceptanceExecutionPackButton").disabled = !summary.safe_copy_payload;
+  $("downloadRouteTaskFieldRetestAcceptanceExecutionPackButton").disabled = !summary.safe_copy_payload;
+}
+
 function ensureRouteTaskFieldRetestEvidenceDispatchPanel() {
   // 现场证据包派发跟在 acceptance brief 后，只读展示 owner/file/callback；主操作 gating 不从这里派生。
   let panel = $("routeTaskFieldRetestEvidenceDispatchPanel");
@@ -21457,6 +21785,7 @@ function renderOfflineFailure() {
   renderRouteTaskFieldRetestDrillConsole({});
   renderRouteTaskFieldRetestAcceptanceBrief({});
   renderRouteTaskFieldRetestAcceptanceReviewDecision({});
+  renderRouteTaskFieldRetestAcceptanceExecutionPack({});
   renderRouteTaskFieldRetestEvidenceDispatch({});
   renderRouteTaskFieldRetestCallbackIntake({});
   renderRouteTaskFieldRetestCallbackReviewDecision({});
@@ -21545,6 +21874,7 @@ function renderStatus(status) {
   renderRouteTaskFieldRetestDrillConsole(status);
   renderRouteTaskFieldRetestAcceptanceBrief(status);
   renderRouteTaskFieldRetestAcceptanceReviewDecision(status);
+  renderRouteTaskFieldRetestAcceptanceExecutionPack(status);
   renderRouteTaskFieldRetestEvidenceDispatch(status);
   renderRouteTaskFieldRetestCallbackIntake(status);
   renderRouteTaskFieldRetestCallbackReviewDecision(status);
@@ -21809,6 +22139,7 @@ async function openDiagnostics() {
     renderRouteTaskFieldRetestDrillConsole(latestStatus || {});
     renderRouteTaskFieldRetestAcceptanceBrief(latestStatus || {});
     renderRouteTaskFieldRetestAcceptanceReviewDecision(latestStatus || {});
+    renderRouteTaskFieldRetestAcceptanceExecutionPack(latestStatus || {});
     renderRouteTaskFieldRetestEvidenceDispatch(latestStatus || {});
     renderRouteTaskFieldRetestCallbackIntake(latestStatus || {});
     renderRouteTaskFieldRetestCallbackReviewDecision(latestStatus || {});
@@ -21921,6 +22252,7 @@ function wireEvents() {
   ensureRouteTaskFieldRetestDrillConsolePanel();
   ensureRouteTaskFieldRetestAcceptanceBriefPanel();
   ensureRouteTaskFieldRetestAcceptanceReviewDecisionPanel();
+  ensureRouteTaskFieldRetestAcceptanceExecutionPackPanel();
   ensureRouteTaskFieldRetestEvidenceDispatchPanel();
   ensureRouteTaskFieldRetestCallbackIntakePanel();
   ensureRouteTaskFieldRetestCallbackReviewDecisionPanel();
@@ -23049,6 +23381,42 @@ function wireEvents() {
     downloadJsonPackage("route_task_field_retest_acceptance_review_decision_copy.json", payload);
     $("routeTaskFieldRetestAcceptanceReviewDecisionCopyStatus").textContent =
       "已导出 route retest acceptance review decision whitelist-only JSON。";
+  });
+  $("copyRouteTaskFieldRetestAcceptanceExecutionPackButton").addEventListener("click", async () => {
+    const copyPayload = routeTaskFieldRetestAcceptanceExecutionPackCopyPayload(
+      latestRouteTaskFieldRetestAcceptanceExecutionPack || {},
+    );
+    if (!copyPayload) {
+      $("routeTaskFieldRetestAcceptanceExecutionPackCopyStatus").textContent = "blocked copy unavailable";
+      $("routeTaskFieldRetestAcceptanceExecutionPackSafeCopy").textContent = "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("routeTaskFieldRetestAcceptanceExecutionPackSafeCopy").textContent = payload;
+    // 验收执行包复制只导出白名单 metadata；失败时保留手动复制，不触发诊断拉取或机器人控制。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("routeTaskFieldRetestAcceptanceExecutionPackCopyStatus").textContent =
+        "已复制 route_task_field_retest_acceptance_execution_pack phone-safe metadata。";
+    } catch (_error) {
+      $("routeTaskFieldRetestAcceptanceExecutionPackCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadRouteTaskFieldRetestAcceptanceExecutionPackButton").addEventListener("click", () => {
+    const copyPayload = routeTaskFieldRetestAcceptanceExecutionPackCopyPayload(
+      latestRouteTaskFieldRetestAcceptanceExecutionPack || {},
+    );
+    if (!copyPayload) {
+      $("routeTaskFieldRetestAcceptanceExecutionPackCopyStatus").textContent = "blocked copy unavailable";
+      $("routeTaskFieldRetestAcceptanceExecutionPackSafeCopy").textContent = "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("routeTaskFieldRetestAcceptanceExecutionPackSafeCopy").textContent = payload;
+    downloadJsonPackage("route_task_field_retest_acceptance_execution_pack_copy.json", payload);
+    $("routeTaskFieldRetestAcceptanceExecutionPackCopyStatus").textContent =
+      "已导出 route retest acceptance execution pack whitelist-only JSON。";
   });
   $("copyRouteTaskFieldRetestEvidenceDispatchButton").addEventListener("click", async () => {
     const copyPayload = routeTaskFieldRetestEvidenceDispatchCopyPayload(

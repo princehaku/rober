@@ -46,6 +46,54 @@ field outcome, HIL pass, real Nav2/fixed-route execution, real delivery
 success, real phone/browser validation, O5 external cloud proof, or any primary
 robot action being enabled.
 
+## route_task_field_retest_acceptance_execution_pack
+
+`pc-tools/evidence/route_task_field_retest_acceptance_execution_pack.py`
+generates the PC-only execution pack gate after
+`route_task_field_retest_acceptance_review_decision.py`.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_acceptance_execution_pack.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_acceptance_execution_pack_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_acceptance_execution_pack_gate`
+- Allowed inputs:
+  `trashbot.route_task_field_retest_acceptance_review_decision.v1` and
+  `trashbot.route_task_field_retest_acceptance_review_decision_summary.v1`
+  only. Wrapper or nested JSON is allowed when it contains one of those schemas.
+  CLI sources may also use `file:<path>` or `env:<VAR>` to locate the same JSON.
+- Status values:
+  `ready_for_field_retest_acceptance_execution_pack_not_proven`,
+  `blocked_acceptance_review_decision_not_ready`,
+  `evidence_ref_mismatch_rerun_not_proven`,
+  `unsupported_acceptance_review_decision_schema_not_proven`, and
+  `rejected_unsafe_acceptance_review_decision_claim_not_proven`.
+
+The output always includes `execution_pack_status`,
+`review_decision_source`, `owner_checklist`, `rerun_commands`,
+`safe_evidence_bundle`, `required_route_elevator_materials`,
+`handoff_owner`, `next_required_evidence`, `safe_copy`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`,
+`same_evidence_ref_required=true`, and
+`evidence_boundary=software_proof_docker_route_task_field_retest_acceptance_execution_pack_gate`.
+
+Execution-pack mapping is fail-closed. A supported, safe
+`ready_for_controlled_field_retest_not_proven` review decision with matched
+evidence_ref maps to
+`ready_for_field_retest_acceptance_execution_pack_not_proven`. Non-ready review
+decisions stay `blocked_acceptance_review_decision_not_ready`. Mismatched,
+missing, or weak same-evidence-ref state maps to
+`evidence_ref_mismatch_rerun_not_proven`. Unsupported schema, missing input, bad
+JSON, unsupported boundary, unsafe copy, raw paths, credentials, ROS topics,
+serial/UART/WAVE ROVER text, success/control claims, `delivery_success=true`,
+or `primary_actions_enabled=true` fail closed.
+
+This contract is software proof only. It does not prove a real route/elevator
+field outcome, HIL pass, real Nav2/fixed-route execution, real delivery
+success, real dropoff/cancel completion, real phone/browser validation, O5
+external cloud proof, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

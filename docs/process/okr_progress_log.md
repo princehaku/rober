@@ -8,7 +8,23 @@
 
 ## 2026-05-18 系列
 
-更新时间：2026-05-18 10:15 Asia/Shanghai。
+更新时间：2026-05-18 11:21 Asia/Shanghai。
+
+### 2026-05-18 11-12｜route-task-acceptance-execution-pack｜O2/O3/O4 PR #4 现场验收执行包 software proof
+
+本轮 `sprints/2026.05.18_11-12_route-task-acceptance-execution-pack/` 继续 PR #4 route/elevator 现场验收链，把上一轮 acceptance review decision 转成现场 owner 可执行的 execution pack。Autonomy 新增 `route_task_field_retest_acceptance_execution_pack` PC gate；Robot diagnostics 新增 `robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary` safe alias；mobile/web 新增只读 execution-pack panel。证据边界是 `software_proof_docker_route_task_field_retest_acceptance_execution_pack_gate`，保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮未新增 WAVE ROVER、UART、HIL packet、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery` 或 operator HIL report。O1 真实硬件 blocker 已在近期 WAVE ROVER/HIL packet intake、review、execution-pack 中重复消费，本轮不再包装同一 blocker。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | execution pack 明确 owner checklist、rerun commands、safe evidence bundle、required route/elevator materials、handoff owner 和 next required evidence，承接 PR #4 route/elevator 现场验收链；仍缺真实 route/elevator field pass、真实门状态、真实楼层确认、人工协助记录、dropoff/cancel completion 和 delivery result。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮把 Nav2/fixed-route runtime log、route completion signal、task record 和同一 `evidence_ref` 复账要求写入执行包；仍缺真实路线采集、Nav2/fixed-route 实跑、关键帧实景证据、真实 route completion signal 和真实 task record。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读展示 execution pack 与 safe alias，Start Delivery、Confirm Dropoff、Cancel gating 不变；仍缺真实手机设备、真实 iPhone/Android browser、production app、真实 PWA prompt/user choice 和现场 phone behavior。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | O5 外部实证仍阻塞：没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof，本轮不把 Docker-local route/elevator execution pack 写成 O5 production proof。 |
+
+Rerank 原因：Objective 5 数字最低但外部材料不可用；Objective 1 次低但真实 WAVE ROVER/HIL blocker 已重复消费；因此本轮推进 PR #4 route/elevator 现场验收链。PR #5 2D LiDAR / ToF vendor/source、production hardware boundary 与 `docs/vendor/` source 材料仍是独立缺口，本轮未解决。
+
+本轮验证：Autonomy `py_compile`、`python3 -m unittest tests.test_route_task_field_retest_acceptance_execution_pack`（`Ran 5 tests OK`）、CLI `--help`、`rg`、scoped diff check 通过；Robot `py_compile`、diagnostics unittest（`Ran 180 tests OK`）、`rg`、scoped diff check 通过；Full-stack `node --check mobile/web/app.js`、`python3 -m unittest mobile/web/test_mobile_web_entrypoint.py`（`Ran 76 tests OK`）、`rg`、scoped diff check 通过。Product closeout 另跑集成围栏并记录在 sprint `final.md`。
 
 ### 2026-05-18 10-11｜route-task-acceptance-review-decision｜O2/O3/O4 acceptance review decision software proof，均保守保持约 99%，O5 保持约 68%
 
