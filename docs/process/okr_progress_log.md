@@ -8,7 +8,19 @@
 
 ## 2026-05-18 系列
 
-更新时间：2026-05-18 07:16 Asia/Shanghai。
+更新时间：2026-05-18 08:46 Asia/Shanghai。
+
+### 2026-05-18 08-09｜route-task-field-retest-drill-console｜O2/O3/O4 drill console software proof，均保守保持约 99%，O5 保持约 68%
+
+`sprints/2026.05.18_08-09_route-task-field-retest-drill-console/` 完成 `software_proof_docker_route_task_field_retest_drill_console_gate`。Autonomy worker 补齐顶层验收入口 `tests/test_route_task_field_retest_drill_console.py` 与 `tests/__init__.py`，并在 `pc-tools/evidence/README.md` 记录 `route_task_field_retest_drill_console` 只消费上一轮 `route_task_field_retest_operator_drill` artifact / summary / compatible wrapper，输出 `trashbot.route_task_field_retest_drill_console.v1` 与 `_summary.v1`。Autonomy worker 报告 `python3 -m py_compile pc-tools/evidence/route_task_field_retest_drill_console.py` 通过、focused unittest `Ran 5 tests in 0.021s OK`、required `rg` 通过、scoped diff check 通过。
+
+Robot worker 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`、diagnostics tests 与 `docs/product/mobile_user_flow.md`，让 diagnostics 输出同一 sanitized summary 到 `route_task_field_retest_drill_console`、`route_task_field_retest_drill_console_summary`、`robot_diagnostics_route_task_field_retest_drill_console_summary` 三个 safe alias；不透出 raw artifact、local path、checksum、traceback、ROS topic、serial/UART、credentials、ACK、cursor 或 robot command envelope。Robot worker 首轮发现 nested child summary 覆盖完整 summary 会导致 `safe_evidence_ref` 丢失，已修复为完整 summary schema 优先；复跑 diagnostics unittest `Ran 176 tests in 0.345s OK`，py_compile、required `rg` 和 scoped diff check 均通过。
+
+Full-stack worker 更新 `mobile/web/app.js`、`mobile/fixtures/mobile_web_status.fixture.json`、`mobile/web/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`，让 mobile/web 只读“现场复测演练控制台”展示 console status、safe `evidence_ref`、operator command groups、callback checklist、required outputs、rerun summary、safe copy、`delivery_success=false`、`primary_actions_enabled=false`、`not_proven` 和 evidence boundary。Full-stack worker 首轮测试失败于读取旧 fixture，已切换到 `mobile/fixtures/mobile_web_status.fixture.json` 并复跑通过；`node --check mobile/web/app.js` 通过，mobile unittest `Ran 72 tests OK`，required `rg` 和 scoped diff check 均通过。
+
+Product closeout 更新 sprint 留档、`OKR.md` 和本日志；required closeout `rg` 匹配 `route_task_field_retest_operator_drill`、`route_task_field_retest_drill_console`、`software_proof_docker_route_task_field_retest_drill_console_gate`、`Objective 5`、`Objective 1`、`PR #4`、`PR #5`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，closeout scoped `git diff --check` exit 0。`tech-done.md` 已修复并行写入导致 Autonomy 小节缺失的问题；docs/ 同步包括 `docs/product/mobile_user_flow.md` 和 `pc-tools/evidence/README.md`。
+
+该证据只支持 Objective 2、Objective 3 和 Objective 4 继续保守保持约 99%，不继续上调到 100。理由是本轮把 PR #4 route/elevator operator drill 推进到 support-facing drill console，能减少现场材料演练时的顺序漏项、safe `evidence_ref` 漂移和“drill console 即现场通过”的误读；但没有真实 route/elevator field pass、真实 Nav2/fixed-route runtime log、真实 route completion signal、真实 task record、真实门状态、真实目标楼层确认、真实人工协助记录、真实 dropoff/cancel completion、真实 delivery result、真实手机/browser、production app 或真实 PWA prompt/user choice。Objective 1 保持约 81%，因为本轮没有新增 WAVE ROVER、UART、HIL packet、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、operator HIL report、2D LiDAR / ToF SKU/source、串口、波特率或硬件假设；PR #5 相关真实硬件材料仍缺。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；O5 stop rule 仍成立。本轮始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
 
 ### 2026-05-18 07-08｜route-task-material-review-operator-drill｜O2/O3/O4 operator drill review-decision input upgrade software proof，均保守保持约 99%，O5 保持约 68%
 

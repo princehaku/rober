@@ -1143,6 +1143,70 @@
       "delivery success"
     ]
   },
+  "route_task_field_retest_drill_console": {
+    "schema": "trashbot.route_task_field_retest_drill_console.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.route_task_field_retest_drill_console_summary.v1",
+    "source_schema": "trashbot.route_task_field_retest_operator_drill_summary.v1",
+    "source_boundary": "software_proof_docker_route_task_field_retest_operator_drill_gate",
+    "console_status": "blocked_missing_route_task_field_retest_drill_console_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "operator_command_groups": [
+      "operator_command_groups=material pack review group remains not_proven",
+      "operator_command_groups=result intake review group remains not_proven",
+      "operator_command_groups=result reconciliation review group remains not_proven"
+    ],
+    "callback_checklist": [
+      "callback_checklist=operator records same safe_evidence_ref",
+      "callback_checklist=callback packet includes accepted/missing/rejected summary",
+      "callback_checklist=Robot diagnostics compatible summary remains phone-safe"
+    ],
+    "required_outputs": [
+      "required_outputs=route_task_field_retest_drill_console_summary",
+      "required_outputs=Robot diagnostics route_task_field_retest_drill_console_summary",
+      "required_outputs=phone-safe callback checklist for downstream review"
+    ],
+    "rerun_summary": "rerun_summary=rerun operator drill gate, then refresh software_proof_docker_route_task_field_retest_drill_console_gate output.",
+    "safe_copy_summary": "safe_copy=whitelist-only backend safe_copy available for support handoff.",
+    "safe_phone_copy": "现场复测演练控制台 fixture 只展示 console status、safe evidence ref、operator command groups、callback checklist、required outputs、rerun summary 和 boundary flags；这是 Docker/local software proof，不是真实现场执行。",
+    "recovery_hint": "按同一 safe_evidence_ref 补齐 operator drill summary 后重跑 software_proof_docker_route_task_field_retest_drill_console_gate。",
+    "safe_copy": {
+      "safe_phone_copy": "现场复测演练控制台 copy 只包含 whitelist-only phone-safe metadata；不得当成真实现场执行、交付完成或控制授权。"
+    },
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_drill_console_gate",
+    "not_proven": [
+      "真实 route/elevator field pass",
+      "真实 operator callback",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
+  "route_task_field_retest_drill_console_summary": {
+    "schema": "trashbot.route_task_field_retest_drill_console_summary.v1",
+    "schema_version": 1,
+    "source_schema": "trashbot.route_task_field_retest_operator_drill_summary.v1",
+    "console_status": "blocked_missing_route_task_field_retest_drill_console_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "operator_command_groups": "operator_command_groups=material pack, result intake, and result reconciliation groups remain not_proven.",
+    "callback_checklist": "callback_checklist=operator records same safe_evidence_ref and phone-safe callback summary.",
+    "required_outputs": "required_outputs=drill console summary, Robot diagnostics compatible summary, phone-safe callback checklist.",
+    "rerun_summary": "rerun_summary=run software_proof_docker_route_task_field_retest_drill_console_gate after operator drill summary refresh.",
+    "safe_phone_copy": "route_task_field_retest_drill_console_summary 只用于手机只读现场复测演练控制台，不放行 Start、Confirm、Cancel、dispatch、callback、ACK、cursor 或 robot command。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_drill_console_gate",
+    "not_proven": [
+      "真实 route/elevator field pass",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "elevator_assist": {
     "schema": "trashbot.elevator_assist_summary.v1",
     "schema_version": 1,

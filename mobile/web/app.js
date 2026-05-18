@@ -8727,6 +8727,11 @@ function routeTaskFieldRetestDrillConsoleFromStatus(status, readiness, diagnosti
       provided.command_labels || provided.next_command_labels || provided.safe_command_labels,
       "command_labels=material pack、result intake、result reconciliation 待由 summary 提供",
     ),
+    operator_command_groups: routeTaskFieldRetestDrillConsoleSummaryText(
+      provided.operator_command_groups || provided.command_groups || provided.operator_commands ||
+        provided.next_operator_commands,
+      "operator_command_groups=material pack、result intake、result reconciliation 分组待由 summary 提供",
+    ),
     missing_material_prompts: routeTaskFieldRetestDrillConsoleSummaryText(
       provided.missing_material_prompts || provided.missing_prompts || provided.missing_materials,
       "missing_material_prompts=door_state、target_floor_confirmation、human_assistance_note 等提示待补齐",
@@ -8734,6 +8739,14 @@ function routeTaskFieldRetestDrillConsoleFromStatus(status, readiness, diagnosti
     operator_callback_checklist: routeTaskFieldRetestDrillConsoleSummaryText(
       provided.operator_callback_checklist || provided.callback_checklist || provided.operator_checklist,
       "operator_callback_checklist=现场人员回填同一 evidence_ref、结果材料和 diagnostics compatible summary。",
+    ),
+    required_outputs: routeTaskFieldRetestDrillConsoleSummaryText(
+      provided.required_outputs || provided.required_output_summary || provided.output_requirements,
+      "required_outputs=drill console summary、Robot diagnostics compatible summary 和 phone-safe callback checklist。",
+    ),
+    rerun_summary: routeTaskFieldRetestDrillConsoleSummaryText(
+      provided.rerun_summary || provided.rerun_commands || provided.rerun_notes,
+      "rerun_summary=重跑 operator drill gate 后刷新 drill console summary。",
     ),
     safe_phone_copy: safeRouteTaskFieldRetestDrillConsoleText(
       provided.safe_phone_copy || provided.safe_summary,
@@ -8778,8 +8791,11 @@ function routeTaskFieldRetestDrillConsoleCopyPayload(summary) {
     safe_checklist: source.safe_checklist,
     safe_copy: source.safe_copy,
     command_labels: source.command_labels,
+    operator_command_groups: source.operator_command_groups,
     missing_material_prompts: source.missing_material_prompts,
     operator_callback_checklist: source.operator_callback_checklist,
+    required_outputs: source.required_outputs,
+    rerun_summary: source.rerun_summary,
     safe_phone_copy: source.safe_copy_payload.safe_phone_copy,
     evidence_boundary: ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_BOUNDARY,
     not_proven: source.not_proven,
@@ -16758,7 +16774,7 @@ function ensureRouteTaskFieldRetestDrillConsolePanel() {
       <span id="routeTaskFieldRetestDrillConsoleBadge" class="gate-badge gate-blocked">not_proven</span>
     </div>
     <p id="routeTaskFieldRetestDrillConsoleCopy" class="message">
-      route_task_field_retest_drill_console 只读展示 console status、safe evidence ref、safe checklist/copy、command labels、missing material prompts、operator callback checklist 和 boundary。
+      route_task_field_retest_drill_console 只读展示 console status、safe evidence ref、operator command groups、callback checklist、required outputs、rerun summary、safe copy 和 boundary。
     </p>
     <dl class="route-task-field-retest-drill-console-grid">
       <div><dt>Console Status</dt><dd id="routeTaskFieldRetestDrillConsoleStatus">blocked_missing_route_task_field_retest_drill_console</dd></div>
@@ -16766,8 +16782,11 @@ function ensureRouteTaskFieldRetestDrillConsolePanel() {
       <div><dt>Safe Checklist</dt><dd id="routeTaskFieldRetestDrillConsoleChecklist">safe_checklist=not_proven</dd></div>
       <div><dt>Safe Copy</dt><dd id="routeTaskFieldRetestDrillConsoleSafeCopySummary">safe_copy=blocked copy unavailable</dd></div>
       <div><dt>Command Labels</dt><dd id="routeTaskFieldRetestDrillConsoleCommandLabels">command_labels=not_proven</dd></div>
+      <div><dt>Operator Command Groups</dt><dd id="routeTaskFieldRetestDrillConsoleCommandGroups">operator_command_groups=not_proven</dd></div>
       <div><dt>Missing Material Prompts</dt><dd id="routeTaskFieldRetestDrillConsoleMissingPrompts">missing_material_prompts=not_proven</dd></div>
       <div><dt>Operator Callback Checklist</dt><dd id="routeTaskFieldRetestDrillConsoleCallbackChecklist">operator_callback_checklist=not_proven</dd></div>
+      <div><dt>Required Outputs</dt><dd id="routeTaskFieldRetestDrillConsoleRequiredOutputs">required_outputs=not_proven</dd></div>
+      <div><dt>Rerun Summary</dt><dd id="routeTaskFieldRetestDrillConsoleRerunSummary">rerun_summary=not_proven</dd></div>
       <div><dt>Safe Copy Status</dt><dd id="routeTaskFieldRetestDrillConsoleSafeCopyStatus">blocked copy unavailable</dd></div>
       <div><dt>Control Boundary</dt><dd id="routeTaskFieldRetestDrillConsoleControls">delivery_success=false / primary_actions_enabled=false</dd></div>
       <div><dt>Evidence Boundary</dt><dd id="routeTaskFieldRetestDrillConsoleBoundary">software_proof_docker_route_task_field_retest_drill_console_gate</dd></div>
@@ -16805,8 +16824,11 @@ function renderRouteTaskFieldRetestDrillConsole(status) {
   $("routeTaskFieldRetestDrillConsoleChecklist").textContent = summary.safe_checklist;
   $("routeTaskFieldRetestDrillConsoleSafeCopySummary").textContent = summary.safe_copy;
   $("routeTaskFieldRetestDrillConsoleCommandLabels").textContent = summary.command_labels;
+  $("routeTaskFieldRetestDrillConsoleCommandGroups").textContent = summary.operator_command_groups;
   $("routeTaskFieldRetestDrillConsoleMissingPrompts").textContent = summary.missing_material_prompts;
   $("routeTaskFieldRetestDrillConsoleCallbackChecklist").textContent = summary.operator_callback_checklist;
+  $("routeTaskFieldRetestDrillConsoleRequiredOutputs").textContent = summary.required_outputs;
+  $("routeTaskFieldRetestDrillConsoleRerunSummary").textContent = summary.rerun_summary;
   $("routeTaskFieldRetestDrillConsoleSafeCopyStatus").textContent = summary.safe_copy_status;
   $("routeTaskFieldRetestDrillConsoleControls").textContent =
     `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;

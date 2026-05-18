@@ -13366,21 +13366,25 @@ def summarize_route_task_field_retest_drill_console(source):
         if str(console.get("schema") or "") == ROUTE_TASK_FIELD_RETEST_DRILL_CONSOLE_SUMMARY_SCHEMA
         else {}
     )
-    for candidate in (
-        console.get("route_task_field_retest_drill_console_summary"),
-        console.get("route_task_field_retest_drill_console"),
-        console.get("robot_compatible_summary"),
-        console.get("robot_diagnostics_summary"),
-        console.get("mobile_readonly_summary"),
-        console.get("phone_safe_summary"),
-        diagnostics.get("summary"),
-        diagnostics.get("diagnostics_summary"),
-        diagnostics.get("route_task_field_retest_drill_console_summary"),
-        diagnostics.get("route_task_field_retest_drill_console"),
-    ):
-        if isinstance(candidate, dict):
-            summary_fragment = candidate
-            break
+    # 完整 summary schema 已经是安全消费对象；不能再被内部 robot_diagnostics_summary 子对象覆盖。
+    if not summary_fragment:
+        for candidate in (
+            console.get("route_task_field_retest_drill_console_summary"),
+            console.get("route_task_field_retest_drill_console"),
+            console.get("robot_diagnostics_route_task_field_retest_drill_console_summary"),
+            console.get("robot_compatible_summary"),
+            console.get("robot_diagnostics_summary"),
+            console.get("mobile_readonly_summary"),
+            console.get("phone_safe_summary"),
+            diagnostics.get("summary"),
+            diagnostics.get("diagnostics_summary"),
+            diagnostics.get("route_task_field_retest_drill_console_summary"),
+            diagnostics.get("route_task_field_retest_drill_console"),
+            diagnostics.get("robot_diagnostics_route_task_field_retest_drill_console_summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
 
     source_schema, source_boundary = _route_task_field_retest_drill_console_source_contract(console)
     if not summary_fragment:
@@ -28003,10 +28007,22 @@ def build_diagnostics_payload(
         if isinstance(latest_status.get("route_task_field_retest_drill_console"), dict)
         else latest_status.get("route_task_field_retest_drill_console_summary")
         if isinstance(latest_status.get("route_task_field_retest_drill_console_summary"), dict)
+        else latest_status.get("robot_diagnostics_route_task_field_retest_drill_console_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_route_task_field_retest_drill_console_summary"),
+            dict,
+        )
         else diagnostics_source.get("route_task_field_retest_drill_console")
         if isinstance(diagnostics_source.get("route_task_field_retest_drill_console"), dict)
         else diagnostics_source.get("route_task_field_retest_drill_console_summary")
         if isinstance(diagnostics_source.get("route_task_field_retest_drill_console_summary"), dict)
+        else diagnostics_source.get("robot_diagnostics_route_task_field_retest_drill_console_summary")
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_route_task_field_retest_drill_console_summary"
+            ),
+            dict,
+        )
         else diagnostics_source.get("summary")
         if isinstance(diagnostics_source.get("summary"), dict)
         else diagnostics_source.get("diagnostics_summary")
@@ -28331,6 +28347,7 @@ def build_diagnostics_payload(
     latest_status.pop("route_task_field_retest_operator_drill_copy", None)
     latest_status.pop("route_task_field_retest_drill_console", None)
     latest_status.pop("route_task_field_retest_drill_console_summary", None)
+    latest_status.pop("robot_diagnostics_route_task_field_retest_drill_console_summary", None)
     latest_status.pop("route_task_field_retest_drill_console_copy", None)
     latest_status.pop("route_task_field_retest_acceptance_brief", None)
     latest_status.pop("route_task_field_retest_acceptance_brief_summary", None)
@@ -29085,6 +29102,9 @@ def build_diagnostics_payload(
         ),
         route_task_field_retest_drill_console=route_task_field_retest_drill_console_summary,
         route_task_field_retest_drill_console_summary=route_task_field_retest_drill_console_summary,
+        robot_diagnostics_route_task_field_retest_drill_console_summary=(
+            route_task_field_retest_drill_console_summary
+        ),
         route_task_field_retest_acceptance_brief=route_task_field_retest_acceptance_brief_summary,
         route_task_field_retest_acceptance_brief_summary=route_task_field_retest_acceptance_brief_summary,
         route_task_field_retest_evidence_dispatch=route_task_field_retest_evidence_dispatch_summary,

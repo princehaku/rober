@@ -2519,7 +2519,7 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
     def test_field_retest_drill_console_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
         styles = self.read_web("styles.css")
-        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
         fixture_text = json.dumps(fixture, ensure_ascii=False)
         doc = DOC.read_text(encoding="utf-8")
 
@@ -2545,8 +2545,11 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         self.assertIn("console_status", app)
         self.assertIn("safe_checklist", app)
         self.assertIn("command_labels", app)
+        self.assertIn("operator_command_groups", app)
         self.assertIn("missing_material_prompts", app)
         self.assertIn("operator_callback_checklist", app)
+        self.assertIn("required_outputs", app)
+        self.assertIn("rerun_summary", app)
 
         # copy/export 必须由 safe_copy 驱动，只导出白名单字段，且不触发主操作 endpoint。
         self.assertIn("routeTaskFieldRetestDrillConsoleCopyPayload", app)
@@ -2566,13 +2569,16 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         )
         self.assertEqual(drill_console["delivery_success"], False)
         self.assertEqual(drill_console["primary_actions_enabled"], False)
+        self.assertIn("operator_command_groups", drill_console)
+        self.assertIn("required_outputs", drill_console)
+        self.assertIn("rerun_summary", drill_console)
         self.assertIn("software_proof_docker_route_task_field_retest_drill_console_gate", fixture_text)
         self.assertIn("not_proven", fixture_text)
         self.assertIn("route_task_field_retest_drill_console", doc)
         self.assertIn("现场复测演练控制台", doc)
 
     def test_field_retest_drill_console_fixture_stays_phone_safe(self):
-        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
         drill_console_text = json.dumps(
             fixture["route_task_field_retest_drill_console"],
             ensure_ascii=False,

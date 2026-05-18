@@ -4926,9 +4926,13 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             )
             summary = payload["route_task_field_retest_drill_console"]
             summary_alias = payload["route_task_field_retest_drill_console_summary"]
+            robot_alias = payload[
+                "robot_diagnostics_route_task_field_retest_drill_console_summary"
+            ]
             encoded = json.dumps(summary, ensure_ascii=False)
 
         self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
         self.assertEqual(summary["schema"], "trashbot.route_task_field_retest_drill_console_summary.v1")
         self.assertEqual(
             summary["evidence_boundary"],
@@ -4957,6 +4961,76 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(summary["hil_pass"])
         self.assertNotIn(str(console_path), encoded)
         self.assertNotIn(str(Path(td)), encoded)
+
+    def test_route_task_field_retest_drill_console_robot_alias_sources_are_safe(self):
+        safe_summary = {
+            "schema": "trashbot.route_task_field_retest_drill_console_summary.v1",
+            "source_schema": "trashbot.route_task_field_retest_drill_console.v1",
+            "evidence_boundary": "software_proof_docker_route_task_field_retest_drill_console_gate",
+            "source_evidence_boundary": "software_proof_docker_route_task_field_retest_drill_console_gate",
+            "safe_evidence_ref": "evidence://route-task-field-retest-drill-console-alias",
+            "same_evidence_ref_required": True,
+            "console_status": {
+                "status": "robot_alias_ready_not_proven",
+                "verdict": "not_proven",
+                "reason": "Robot diagnostics consumes the read-only alias only.",
+            },
+            "command_labels": ["Review field retest drill console"],
+            "safe_checklist": ["Keep Start, Confirm Dropoff, Cancel and ACK unchanged."],
+            "operator_callback_checklist": ["Ask operator to upload real field materials."],
+            "robot_diagnostics_summary": {
+                "status": "metadata_only",
+                "reason": "Read-only Robot diagnostics summary.",
+            },
+            "safe_copy": (
+                "Route-task field retest drill console alias is metadata-only; "
+                "delivery_success=false; primary_actions_enabled=false."
+            ),
+            "not_proven": ["delivery_success", "hil_pass", "real_route_elevator_field_pass"],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+
+        top_level_payload = self._base_build_payload(
+            {
+                "state": "waiting_for_trash",
+                "robot_diagnostics_route_task_field_retest_drill_console_summary": safe_summary,
+            }
+        )
+        nested_payload = self._base_build_payload(
+            {
+                "state": "waiting_for_trash",
+                "diagnostics": {
+                    "robot_diagnostics_route_task_field_retest_drill_console_summary": safe_summary,
+                },
+            }
+        )
+
+        top_level_summary = top_level_payload["route_task_field_retest_drill_console"]
+        nested_summary = nested_payload["route_task_field_retest_drill_console"]
+        encoded = json.dumps([top_level_summary, nested_summary], ensure_ascii=False)
+
+        self.assertEqual(
+            top_level_summary,
+            top_level_payload["route_task_field_retest_drill_console_summary"],
+        )
+        self.assertEqual(
+            top_level_summary,
+            top_level_payload[
+                "robot_diagnostics_route_task_field_retest_drill_console_summary"
+            ],
+        )
+        self.assertEqual(nested_summary["console_status"]["status"], "robot_alias_ready_not_proven")
+        self.assertEqual(nested_summary["robot_diagnostics_summary"]["status"], "metadata_only")
+        self.assertFalse(nested_summary["delivery_success"])
+        self.assertFalse(nested_summary["primary_actions_enabled"])
+        self.assertIn("delivery_success", nested_summary["not_proven"])
+        self.assertNotIn("/tmp/secret", encoded)
+        self.assertNotIn("abc123", encoded)
+        self.assertNotIn("Traceback secret", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("Bearer secret", encoded)
 
     def test_route_task_field_retest_drill_console_env_nested_missing_and_unsafe_block(self):
         with tempfile.TemporaryDirectory() as td:
