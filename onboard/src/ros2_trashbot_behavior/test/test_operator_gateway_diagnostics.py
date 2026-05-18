@@ -72,6 +72,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_elevator_field_evidence_trace_callback_intake,
     summarize_elevator_field_evidence_trace_callback_review_decision,
     summarize_elevator_field_evidence_trace_callback_review_handoff,
+    summarize_elevator_field_evidence_trace_material_backfill_intake,
     summarize_elevator_field_run_review,
     summarize_elevator_field_run_execution_pack,
     summarize_elevator_route_evidence_reconciliation,
@@ -1112,6 +1113,347 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn(str(Path(td)), blocked_encoded)
         self.assertNotIn("secret-token", blocked_encoded)
         self.assertNotIn("/dev/ttyUSB0", blocked_encoded)
+        self.assertNotIn("must not be consumed", encoded)
+
+    def test_elevator_field_evidence_trace_material_backfill_intake_safe_alias_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = (
+                Path(td)
+                / "elevator_field_evidence_trace_material_backfill_intake_summary.json"
+            )
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": (
+                            "trashbot.elevator_field_evidence_trace_material_backfill_intake_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.elevator_field_evidence_trace_material_backfill_intake.v1"
+                        ),
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                        ),
+                        "source": "software_proof",
+                        "overall_status": "not_proven",
+                        "intake_status": "ready_for_material_review_not_proven",
+                        "safe_evidence_ref": "evidence://elevator-field-material-backfill-1",
+                        "same_evidence_ref_required": True,
+                        "source_callback_review_handoff": {
+                            "schema": (
+                                "trashbot.elevator_field_evidence_trace_callback_review_handoff_summary.v1"
+                            ),
+                            "handoff_status": "owner_follow_up_handoff_not_proven",
+                        },
+                        "accepted_backfill_materials": [
+                            "redacted_material_manifest_metadata",
+                        ],
+                        "missing_required_materials": ["real_route_elevator_field_pass"],
+                        "rejected_backfill_materials": [],
+                        "next_required_evidence": ["real material review packet"],
+                        "owner_handoff": [
+                            "Robot owner keeps backfill intake read-only under same evidence_ref."
+                        ],
+                        "robot_diagnostics_summary": {
+                            "status": "metadata_only",
+                            "safe_copy": (
+                                "Elevator field evidence trace material backfill intake "
+                                "is metadata-only; software_proof; not_proven; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                        },
+                        "safe_copy": (
+                            "Elevator field evidence trace material backfill intake "
+                            "is metadata-only; software_proof; not_proven; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "not_proven": ["real_route_elevator_field_pass", "delivery_success"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "elevator_field_evidence_trace_material_backfill_intake": {
+                        "delivery_success": True,
+                        "raw_material_body": "must not be consumed",
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                elevator_field_evidence_trace_material_backfill_intake_ref=str(
+                    summary_path
+                ),
+            )
+            summary = payload[
+                "robot_diagnostics_elevator_field_evidence_trace_material_backfill_intake_summary"
+            ]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+            artifact_summary = summarize_elevator_field_evidence_trace_material_backfill_intake(
+                {
+                    "schema": (
+                        "trashbot.elevator_field_evidence_trace_material_backfill_intake.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                    ),
+                    "evidence_ref": "evidence://elevator-field-material-backfill-2",
+                    "elevator_field_evidence_trace_material_backfill_intake_summary": {
+                        "schema": (
+                            "trashbot.elevator_field_evidence_trace_material_backfill_intake_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.elevator_field_evidence_trace_material_backfill_intake.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                        ),
+                        "source": "software_proof",
+                        "overall_status": "not_proven",
+                        "safe_evidence_ref": (
+                            "evidence://elevator-field-material-backfill-2"
+                        ),
+                        "same_evidence_ref_required": True,
+                        "intake_status": "needs_required_material_backfill_not_proven",
+                        "safe_copy": (
+                            "Elevator field evidence trace material backfill intake "
+                            "is metadata-only; delivery_success=false; "
+                            "primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                }
+            )
+            missing = summarize_elevator_field_evidence_trace_material_backfill_intake(
+                Path(td) / "Bearer-secret-token" / "missing_backfill.json"
+            )
+            unsupported = summarize_elevator_field_evidence_trace_material_backfill_intake(
+                {
+                    "schema": (
+                        "trashbot.elevator_field_evidence_trace_material_backfill_intake_summary.v1"
+                    ),
+                    "source_schema": (
+                        "trashbot.elevator_field_evidence_trace_callback_review_handoff.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                    ),
+                    "source_evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate"
+                    ),
+                    "source": "software_proof",
+                    "overall_status": "not_proven",
+                    "safe_evidence_ref": "evidence://unsupported-backfill",
+                    "same_evidence_ref_required": True,
+                    "intake_status": "ready_for_material_review_not_proven",
+                    "safe_copy": (
+                        "Backfill intake is metadata-only; delivery_success=false; "
+                        "primary_actions_enabled=false."
+                    ),
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            bad_source = summarize_elevator_field_evidence_trace_material_backfill_intake(
+                {
+                    "schema": (
+                        "trashbot.elevator_field_evidence_trace_material_backfill_intake_summary.v1"
+                    ),
+                    "source_schema": (
+                        "trashbot.elevator_field_evidence_trace_material_backfill_intake.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                    ),
+                    "source_evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                    ),
+                    "source": "hil_pass",
+                    "overall_status": "not_proven",
+                    "safe_evidence_ref": "evidence://bad-source-backfill",
+                    "same_evidence_ref_required": True,
+                    "intake_status": "ready_for_material_review_not_proven",
+                    "safe_copy": (
+                        "Backfill intake is metadata-only; delivery_success=false; "
+                        "primary_actions_enabled=false."
+                    ),
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            mismatch = summarize_elevator_field_evidence_trace_material_backfill_intake(
+                {
+                    "schema": (
+                        "trashbot.elevator_field_evidence_trace_material_backfill_intake.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                    ),
+                    "evidence_ref": "evidence://source-ref",
+                    "elevator_field_evidence_trace_material_backfill_intake_summary": {
+                        "schema": (
+                            "trashbot.elevator_field_evidence_trace_material_backfill_intake_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.elevator_field_evidence_trace_material_backfill_intake.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                        ),
+                        "source": "software_proof",
+                        "overall_status": "not_proven",
+                        "safe_evidence_ref": "evidence://summary-ref",
+                        "same_evidence_ref_required": True,
+                        "intake_status": "ready_for_material_review_not_proven",
+                        "safe_copy": (
+                            "Backfill intake is metadata-only; delivery_success=false; "
+                            "primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                }
+            )
+            unsafe = summarize_elevator_field_evidence_trace_material_backfill_intake(
+                {
+                    "schema": (
+                        "trashbot.elevator_field_evidence_trace_material_backfill_intake_summary.v1"
+                    ),
+                    "source_schema": (
+                        "trashbot.elevator_field_evidence_trace_material_backfill_intake.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                    ),
+                    "source_evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                    ),
+                    "source": "software_proof",
+                    "overall_status": "not_proven",
+                    "safe_evidence_ref": "evidence://unsafe-backfill",
+                    "same_evidence_ref_required": True,
+                    "raw_material_body": "token secret /dev/ttyUSB0",
+                    "safe_copy": "Backfill intake confirms delivery success and control ready.",
+                    "delivery_success": True,
+                    "primary_actions_enabled": False,
+                }
+            )
+            enabled = summarize_elevator_field_evidence_trace_material_backfill_intake(
+                {
+                    "schema": (
+                        "trashbot.elevator_field_evidence_trace_material_backfill_intake_summary.v1"
+                    ),
+                    "source_schema": (
+                        "trashbot.elevator_field_evidence_trace_material_backfill_intake.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                    ),
+                    "source_evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate"
+                    ),
+                    "source": "software_proof",
+                    "overall_status": "not_proven",
+                    "safe_evidence_ref": "evidence://enabled-backfill",
+                    "same_evidence_ref_required": True,
+                    "intake_status": "ready_for_material_review_not_proven",
+                    "safe_copy": (
+                        "Backfill intake is metadata-only; delivery_success=false; "
+                        "primary_actions_enabled=false."
+                    ),
+                    "delivery_success": False,
+                    "primary_actions_enabled": True,
+                }
+            )
+            blocked_encoded = json.dumps(
+                [missing, unsupported, bad_source, mismatch, unsafe, enabled],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(
+            summary,
+            payload["elevator_field_evidence_trace_material_backfill_intake"],
+        )
+        self.assertEqual(
+            summary,
+            payload["elevator_field_evidence_trace_material_backfill_intake_summary"],
+        )
+        self.assertNotIn(
+            "elevator_field_evidence_trace_material_backfill_intake",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_elevator_field_evidence_trace_material_backfill_intake_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.elevator_field_evidence_trace_material_backfill_intake.v1",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["overall_status"], "not_proven")
+        self.assertEqual(summary["intake_status"], "ready_for_material_review_not_proven")
+        self.assertEqual(
+            artifact_summary["intake_status"],
+            "needs_required_material_backfill_not_proven",
+        )
+        self.assertEqual(
+            missing["intake_status"],
+            "blocked_missing_elevator_field_evidence_trace_material_backfill_intake_summary",
+        )
+        self.assertEqual(unsupported["intake_status"], "unsupported_schema")
+        self.assertEqual(
+            bad_source["intake_status"],
+            "blocked_unsupported_elevator_field_evidence_trace_material_backfill_intake_summary",
+        )
+        self.assertEqual(
+            mismatch["intake_status"],
+            "blocked_evidence_ref_mismatch_not_proven",
+        )
+        self.assertEqual(
+            unsafe["intake_status"],
+            "blocked_unsafe_elevator_field_evidence_trace_material_backfill_intake_summary",
+        )
+        self.assertEqual(
+            enabled["intake_status"],
+            "blocked_unsafe_elevator_field_evidence_trace_material_backfill_intake_summary",
+        )
+        self.assertIn("real_route_elevator_field_pass", summary["not_proven"])
+        self.assertIn("software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(summary_path), encoded)
+        self.assertNotIn(str(Path(td)), blocked_encoded)
+        self.assertNotIn("secret-token", blocked_encoded)
+        self.assertNotIn("/dev/ttyUSB0", blocked_encoded)
+        self.assertNotIn("raw_material_body", blocked_encoded)
         self.assertNotIn("must not be consumed", encoded)
 
     def test_route_proof_summary_missing_fields_downgrades_to_unknown(self):
