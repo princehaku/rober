@@ -8,7 +8,23 @@
 
 ## 2026-05-18 系列
 
-更新时间：2026-05-18 17:23 Asia/Shanghai。
+更新时间：2026-05-18 18:25 Asia/Shanghai。
+
+### 2026-05-18 18-19｜route-task-acceptance-execution-rerun-result-review-decision｜O2/O3/O4 PR #4 受控复跑结果复核决策 software proof
+
+本轮 `sprints/2026.05.18_18-19_route-task-acceptance-execution-rerun-result-review-decision/` 继续 PR #4 route/elevator 现场验收链，把上一轮 acceptance execution rerun result intake 推进为 metadata-only 受控复跑结果复核决策。Autonomy 新增 `route_task_field_retest_acceptance_execution_rerun_result_review_decision` PC gate；Robot diagnostics 新增 `robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary` safe alias；mobile/web 新增只读“受控复跑结果复核决策” panel。证据边界是 `software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate`，保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮未新增 WAVE ROVER、UART、HIL packet、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery` 或 operator HIL report。PR #5 2D LiDAR / ToF vendor/source、production hardware boundary 与 `docs/vendor/` source 材料仍是独立缺口。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | review decision 能承接受控复跑结果回执入口，把现场复跑材料转成 `ready_for_acceptance_execution_rerun_result_handoff`、`needs_acceptance_execution_rerun_result_backfill`、`evidence_ref_mismatch_rerun_result`、`blocked_unsafe_rerun_result` 或 `blocked_unsupported_rerun_result_intake`；仍缺真实 route/elevator field pass、真实门状态、真实楼层确认、人工协助记录、dropoff/cancel completion、delivery result 和 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮把 Nav2/fixed-route runtime log、route completion signal、task record、dropoff/cancel completion 与 delivery result 的下一步要求接成同一 safe `evidence_ref` 的复核决策、owner handoff、backfill、mismatch、unsafe 或 unsupported 分支；仍缺真实路线采集、Nav2/fixed-route 实跑、关键帧实景证据、真实 route completion signal 和真实 task record。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读展示 decision status、safe `evidence_ref`、owner handoff、next required evidence 和 safe boundary flags，Start Delivery、Confirm Dropoff、Cancel gating 不变；仍缺真实手机设备、真实 iPhone/Android browser、production app、真实 PWA prompt/user choice 和现场 phone behavior。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | O5 外部实证仍阻塞：没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof，本轮不把 Docker-local route/elevator rerun result review decision 写成 O5 production proof。 |
+
+Rerank 原因：Objective 5 数字最低但外部材料不可用；Objective 1 次低但真实 WAVE ROVER/HIL blocker 已重复消费；因此本轮继续推进 PR #4 route/elevator 现场验收链。PR #5 2D LiDAR / ToF vendor/source、production hardware boundary 与 `docs/vendor/` source 材料仍是独立缺口，本轮未解决。
+
+本轮验证：Autonomy worker 报告 `py_compile` exit 0、`python3 -m unittest tests.test_route_task_field_retest_acceptance_execution_rerun_result_review_decision` 输出 `Ran 6 tests in 0.034s OK`、required `rg` exit 0、scoped diff check exit 0；Robot worker 报告 `py_compile` exit 0、diagnostics unittest `Ran 187 tests in 0.417s OK`、required `rg` exit 0、scoped diff check exit 0；Full-stack worker 报告 `node --check mobile/web/app.js` pass、`py_compile` pass、mobile unittest `Ran 90 tests in 0.558s OK`、required `rg` exit 0、scoped diff check exit 0。Product closeout 复跑集成围栏并记录在 sprint `final.md`。
 
 ### 2026-05-18 17-18｜route-task-acceptance-execution-rerun-result-intake｜O2/O3/O4 PR #4 受控复跑结果回执入口 software proof
 

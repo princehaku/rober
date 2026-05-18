@@ -366,6 +366,62 @@ persistence, dropoff/cancel completion, delivery success, HIL pass, WAVE ROVER
 feedback, real phone/browser validation, Objective 5 external proof, or any
 primary robot action being enabled.
 
+## route_task_field_retest_acceptance_execution_rerun_result_review_decision
+
+`pc-tools/evidence/route_task_field_retest_acceptance_execution_rerun_result_review_decision.py`
+generates the PC-only review decision gate after
+`route_task_field_retest_acceptance_execution_rerun_result_intake.py`.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate`
+- Allowed source inputs:
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_result_intake.v1`
+  and
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_result_intake_summary.v1`
+  under
+  `software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_intake_gate`
+  only. Wrapper or nested JSON is allowed when it contains one of those schemas.
+- Decision status values:
+  `ready_for_acceptance_execution_rerun_result_handoff`,
+  `needs_acceptance_execution_rerun_result_backfill`,
+  `evidence_ref_mismatch_rerun_result`,
+  `blocked_unsafe_rerun_result`, and
+  `blocked_unsupported_rerun_result_intake`.
+
+The output always includes `source=software_proof`, `safe_evidence_ref`,
+`same_evidence_ref_required=true`, source rerun result intake metadata,
+provided and missing rerun result material categories,
+`review_decision_package`, `owner_handoff`, `next_required_evidence`,
+`rerun_commands`, `safe_copy`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate`.
+
+Decision mapping is fail-closed. A supported ready intake with matching safe
+evidence_ref and all required material categories maps to
+`ready_for_acceptance_execution_rerun_result_handoff`. Missing route completion
+signal, task record, Nav2/fixed-route runtime log, dropoff/cancel completion,
+delivery result, elevator door state, target floor confirmation, or human
+assistance record maps to
+`needs_acceptance_execution_rerun_result_backfill`. Mismatched evidence_ref,
+missing evidence_ref, or weak `same_evidence_ref_required` maps to
+`evidence_ref_mismatch_rerun_result`. Missing JSON, bad JSON, unreadable JSON,
+non-object JSON, unsupported schema, or unsupported boundary maps to
+`blocked_unsupported_rerun_result_intake`. Unsafe copy, raw paths, checksum
+text, credentials, DB/queue URLs, ROS topic names, `/cmd_vel`,
+serial/UART/WAVE ROVER text, raw artifact text, success/control claims,
+`delivery_success=true`, or `primary_actions_enabled=true` maps to
+`blocked_unsafe_rerun_result`.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, real controlled rerun execution, Nav2/fixed-route proof, task
+record/completion signal, dropoff/cancel completion, delivery success, HIL
+pass, real phone/browser validation, Objective 5 external proof, or any
+primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

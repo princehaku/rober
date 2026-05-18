@@ -40,6 +40,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_acceptance_execution_handoff_intake,
     summarize_route_task_field_retest_acceptance_execution_rerun_queue,
     summarize_route_task_field_retest_acceptance_execution_rerun_result_intake,
+    summarize_route_task_field_retest_acceptance_execution_rerun_result_review_decision,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -8620,6 +8621,270 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("same evidence_ref route completion signal", summary["next_required_evidence"])
         self.assertIn(
             "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_intake_gate",
+            encoded,
+        )
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("primary_actions_enabled=false", summary["safe_phone_copy"])
+        self.assertTrue(summary["boundary_flags"]["metadata_only"])
+        self.assertFalse(summary["boundary_flags"]["delivery_success"])
+        self.assertFalse(summary["boundary_flags"]["primary_actions_enabled"])
+        self.assertFalse(summary["boundary_flags"]["raw_artifact_consumed"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("WAVE ROVER serial material", encoded)
+
+    def test_route_task_field_retest_acceptance_execution_rerun_result_review_decision_alias_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            decision_path = Path(td) / "acceptance_execution_rerun_result_review_decision_summary.json"
+            decision_path.write_text(
+                json.dumps(
+                    {
+                        "schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary.v1"
+                        ),
+                        "schema_version": 1,
+                        "source_schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate"
+                        ),
+                        "safe_evidence_ref": (
+                            "evidence://acceptance-execution-rerun-result-review-decision-1"
+                        ),
+                        "decision_status": {
+                            "status": "needs_acceptance_execution_rerun_result_backfill",
+                            "verdict": "not_proven",
+                            "reason": "sanitized Autonomy decision summary was received",
+                        },
+                        "review_decision": "needs_acceptance_execution_rerun_result_backfill",
+                        "owner_handoff": {"owner": "Autonomy Algorithm Engineer"},
+                        "next_required_evidence": [
+                            "same evidence_ref route completion signal",
+                            "dropoff_or_cancel_completion proof",
+                        ],
+                        "boundary_flags": {
+                            "metadata_only": True,
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                            "raw_artifact_consumed": False,
+                            "control_entrypoint_enabled": False,
+                        },
+                        "safe_copy": (
+                            "Acceptance execution rerun result review decision is metadata-only; "
+                            "same_evidence_ref_required=true; delivery_success=false; "
+                            "primary_actions_enabled=false."
+                        ),
+                        "same_evidence_ref_required": True,
+                        "not_proven": ["delivery_success", "real_hil_pass"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_acceptance_execution_rerun_result_review_decision_ref=str(
+                    decision_path
+                ),
+            )
+            summary = payload[
+                "route_task_field_retest_acceptance_execution_rerun_result_review_decision"
+            ]
+            summary_alias = payload[
+                "route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary"
+            ]
+            robot_alias = payload[
+                "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary"
+            ]
+
+            nested_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary": {
+                            "schema": (
+                                "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary.v1"
+                            ),
+                            "source_schema": (
+                                "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision.v1"
+                            ),
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate"
+                            ),
+                            "safe_evidence_ref": (
+                                "evidence://acceptance-execution-rerun-result-review-decision-2"
+                            ),
+                            "decision_status": {"status": "needs_owner_handoff"},
+                            "review_decision": "needs_owner_handoff",
+                            "owner_handoff": {"owner": "Robot Platform Engineer"},
+                            "next_required_evidence": ["owner handoff with same evidence_ref"],
+                            "boundary_flags": {"metadata_only": True},
+                            "safe_copy": (
+                                "Nested rerun result review decision is metadata-only; "
+                                "same_evidence_ref_required=true; delivery_success=false; "
+                                "primary_actions_enabled=false."
+                            ),
+                            "same_evidence_ref_required": True,
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["route_task_field_retest_acceptance_execution_rerun_result_review_decision"]
+            unsafe_summary = (
+                summarize_route_task_field_retest_acceptance_execution_rerun_result_review_decision(
+                    {
+                        "schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate"
+                        ),
+                        "safe_evidence_ref": (
+                            "evidence://acceptance-execution-rerun-result-review-decision-3"
+                        ),
+                        "decision_status": {"status": "received_with_raw_material"},
+                        "review_decision": "ready_for_acceptance_execution_rerun_result_handoff",
+                        "owner_handoff": {"owner": "Autonomy Algorithm Engineer"},
+                        "next_required_evidence": ["WAVE ROVER serial material and /cmd_vel topic"],
+                        "boundary_flags": {"raw_artifact_consumed": True},
+                        "safe_copy": "Rerun result review decision confirms delivery success and ACK posted.",
+                        "same_evidence_ref_required": True,
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                    }
+                )
+            )
+            raw_artifact_summary = (
+                summarize_route_task_field_retest_acceptance_execution_rerun_result_review_decision(
+                    {
+                        "schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate"
+                        ),
+                        "evidence_ref": (
+                            "evidence://acceptance-execution-rerun-result-review-decision-4"
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                )
+            )
+            unsupported_summary = (
+                summarize_route_task_field_retest_acceptance_execution_rerun_result_review_decision(
+                    {
+                        "schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary.v1"
+                        ),
+                        "source_schema": "trashbot.route_task_field_retest_acceptance_execution_rerun_result_intake.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_intake_gate"
+                        ),
+                        "safe_evidence_ref": (
+                            "evidence://acceptance-execution-rerun-result-review-decision-5"
+                        ),
+                        "decision_status": {"status": "needs_backfill"},
+                        "review_decision": "needs_acceptance_execution_rerun_result_backfill",
+                        "owner_handoff": {"owner": "Autonomy Algorithm Engineer"},
+                        "next_required_evidence": ["same evidence_ref backfill"],
+                        "boundary_flags": {"metadata_only": True},
+                        "safe_copy": (
+                            "Unsupported rerun result review decision is metadata-only; "
+                            "same_evidence_ref_required=true; delivery_success=false; "
+                            "primary_actions_enabled=false."
+                        ),
+                        "same_evidence_ref_required": True,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                )
+            )
+            missing_summary = (
+                summarize_route_task_field_retest_acceptance_execution_rerun_result_review_decision(
+                    str(
+                        Path(td)
+                        / "Bearer-secret-token"
+                        / "missing_rerun_result_review_decision.json"
+                    )
+                )
+            )
+            encoded = json.dumps(
+                [
+                    summary,
+                    summary_alias,
+                    robot_alias,
+                    nested_summary,
+                    unsafe_summary,
+                    raw_artifact_summary,
+                    unsupported_summary,
+                    missing_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision.v1",
+        )
+        self.assertEqual(
+            summary["decision_status"]["status"],
+            "needs_acceptance_execution_rerun_result_backfill",
+        )
+        self.assertEqual(
+            summary["review_decision"],
+            "needs_acceptance_execution_rerun_result_backfill",
+        )
+        self.assertEqual(nested_summary["decision_status"]["status"], "needs_owner_handoff")
+        self.assertEqual(
+            unsafe_summary["decision_status"]["status"],
+            "blocked_unsafe_rerun_result",
+        )
+        self.assertEqual(raw_artifact_summary["decision_status"]["status"], "missing_summary")
+        self.assertEqual(
+            unsupported_summary["decision_status"]["status"],
+            "blocked_unsupported_rerun_result_intake",
+        )
+        self.assertEqual(missing_summary["decision_status"]["status"], "missing")
+        self.assertIn("same evidence_ref route completion signal", summary["next_required_evidence"])
+        self.assertIn(
+            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate",
             encoded,
         )
         self.assertIn("not_proven", encoded)

@@ -935,7 +935,11 @@ unsupported schema or boundary, unsafe copy, raw artifact consumption,
 control-entrypoint enablement, missing `evidence_ref`, same-`evidence_ref`
 mismatch, non-boolean `same_evidence_ref_required`, success/control claims,
 enabled actions, `delivery_success=true`, or `primary_actions_enabled=true`
-sources fail closed as blocked/not_proven. The fields do not trigger
+sources fail closed as blocked/not_proven. Expected decision statuses include
+`ready_for_acceptance_execution_rerun_result_handoff`,
+`needs_acceptance_execution_rerun_result_backfill`,
+`evidence_ref_mismatch_rerun_result`, `blocked_unsafe_rerun_result`, and
+`blocked_unsupported_rerun_result_intake`. The fields do not trigger
 `/api/collect`, Start Delivery, Confirm Dropoff, Cancel, dropoff, cancel, ACK,
 remote ACK, cursor advance/persistence, terminal ACK, Nav2/fixed-route runtime,
 WAVE ROVER, serial/UART, HIL, route completion, dropoff/cancel completion,
@@ -1195,6 +1199,45 @@ success/control claims, `delivery_success=true`, or
 `primary_actions_enabled=true` sources fail closed as blocked/not_proven. The
 fields do not trigger `/api/collect`, dropoff, cancel, remote ACK, cursor
 advance/persistence, terminal ACK, Nav2, WAVE ROVER, HIL, result review
+completion, production readiness, dropoff/cancel completion, or delivery
+success. They must not expose raw material files, raw route logs, raw
+artifacts, raw commands, raw ROS topics, `/cmd_vel`, serial/UART details,
+credentials, local paths, checksums, tracebacks, complete artifacts, or
+Objective 5 external proof, and they are not command/status/ACK robot contract
+fields.
+
+Operator diagnostics may also expose
+`route_task_field_retest_acceptance_execution_rerun_result_review_decision`,
+the alias
+`route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary`,
+and the Robot safe alias
+`robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary`
+from an explicit
+`route_task_field_retest_acceptance_execution_rerun_result_review_decision_ref`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_RESULT_REVIEW_DECISION`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_RESULT_REVIEW_DECISION_SUMMARY`,
+top-level status fields, or an already sanitized nested diagnostics summary
+source. Robot consumes only the sanitized Autonomy summary, not the raw
+Autonomy artifact. The summary must use
+`schema=trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary.v1`,
+point to
+`source_schema=trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision.v1`,
+and stay inside
+`evidence_boundary=software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate`.
+This field is metadata-only Robot diagnostics support for Autonomy's acceptance
+execution rerun result review decision summary: it may expose only schema,
+decision status, review decision, safe `evidence_ref`, next required evidence,
+owner handoff, boundary flags, safe copy,
+`software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate`,
+`not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. Missing sanitized summary, unreadable input,
+unsupported schema or boundary, unsafe copy, raw artifact consumption,
+control-entrypoint enablement, missing `evidence_ref`, same-`evidence_ref`
+mismatch, non-boolean `same_evidence_ref_required`, success/control claims,
+enabled actions, `delivery_success=true`, or `primary_actions_enabled=true`
+sources fail closed as blocked/not_proven. The fields do not trigger
+`/api/collect`, Start Delivery, Confirm Dropoff, Cancel, dropoff, cancel, ACK,
+remote ACK, cursor advance/persistence, terminal ACK, Nav2/fixed-route runtime,
 completion, production readiness, dropoff/cancel completion, or delivery
 success. They must not expose raw material files, raw route logs, raw
 artifacts, raw commands, raw ROS topics, `/cmd_vel`, serial/UART details,

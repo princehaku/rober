@@ -4185,6 +4185,136 @@ class RouteTaskFieldRetestAcceptanceExecutionRerunResultIntakeMobileTest(unittes
             self.assertNotIn(forbidden, alias_text)
 
 
+class RouteTaskFieldRetestAcceptanceExecutionRerunResultReviewDecisionMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_field_retest_acceptance_execution_rerun_result_review_decision_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 复核决策跟在 rerun result intake 后，只读展示 handoff/backfill/mismatch/unsafe/unsupported。
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionRerunResultReviewDecisionTitle", app)
+        self.assertIn("受控复跑结果复核决策", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionRerunResultIntakeTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("route-task-field-retest-acceptance-execution-rerun-result-review-decision-panel", app)
+        self.assertIn("route-task-field-retest-acceptance-execution-rerun-result-review-decision-grid", app)
+
+        # Robot sanitized alias 必须先于主 summary / artifact，手机端不读取未脱敏复核决策。
+        alias_index = app.index(
+            "status?.robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary"
+        )
+        summary_index = app.index(
+            "status?.route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary"
+        )
+        artifact_index = app.index(
+            "status?.route_task_field_retest_acceptance_execution_rerun_result_review_decision,"
+        )
+        self.assertLess(alias_index, summary_index)
+        self.assertLess(summary_index, artifact_index)
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_RESULT_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_RESULT_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestAcceptanceExecutionRerunResultReviewDecisionText", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionRerunResultReviewDecisionCandidate", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionRerunResultReviewDecisionFromStatus", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_acceptance_execution_rerun_result_review_decision", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_acceptance_execution_rerun_result_review_decision", app)
+        self.assertIn("decision_status", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("safe_evidence_ref", app)
+
+        # 该 panel 不提供 copy/export，不 fetch diagnostics，也不触发 Start/Confirm/Cancel。
+        decision_block = app[
+            app.index("function ensureRouteTaskFieldRetestAcceptanceExecutionRerunResultReviewDecisionPanel"):
+            app.index("function ensureRouteTaskFieldRetestEvidenceDispatchPanel")
+        ]
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(
+            decision_block,
+            r"routeTaskFieldRetestAcceptanceExecutionRerunResultReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotIn("copyRouteTaskFieldRetestAcceptanceExecutionRerunResultReviewDecisionButton", app)
+        self.assertNotIn("downloadRouteTaskFieldRetestAcceptanceExecutionRerunResultReviewDecisionButton", app)
+
+        # fixture、文档和 focused literals 覆盖 handoff/backfill/mismatch/unsafe/unsupported。
+        decision = fixture["route_task_field_retest_acceptance_execution_rerun_result_review_decision"]
+        self.assertEqual(
+            decision["decision_status"],
+            "ready_for_acceptance_execution_rerun_result_handoff",
+        )
+        self.assertEqual(decision["delivery_success"], False)
+        self.assertEqual(decision["primary_actions_enabled"], False)
+        self.assertIn(
+            "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary",
+            fixture,
+        )
+        for literal in (
+            "ready_for_acceptance_execution_rerun_result_handoff",
+            "needs_acceptance_execution_rerun_result_backfill",
+            "evidence_ref_mismatch_rerun_result",
+            "blocked_unsafe_rerun_result",
+            "blocked_unsupported_rerun_result_intake",
+        ):
+            self.assertIn(literal, fixture_text)
+            self.assertIn(literal, doc)
+        self.assertIn(
+            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate",
+            fixture_text,
+        )
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("route_task_field_retest_acceptance_execution_rerun_result_review_decision", doc)
+        self.assertIn("受控复跑结果复核决策", doc)
+
+    def test_field_retest_acceptance_execution_rerun_result_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        decision_text = json.dumps(
+            fixture["route_task_field_retest_acceptance_execution_rerun_result_review_decision"],
+            ensure_ascii=False,
+        ).lower()
+        alias_text = json.dumps(
+            fixture["robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 复核决策 fixture 只能携带白名单 metadata，不能泄漏路径、凭证、底层控制或成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "local path",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "wave rover detail",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "complete artifacts",
+            "traceback",
+            "ack payload",
+            "cursor",
+            "robot command",
+            "diagnostics fetch",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, decision_text)
+            self.assertNotIn(forbidden, alias_text)
+
+
 class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")
