@@ -204,6 +204,40 @@ field pass, real Nav2/fixed-route proof, task record/completion signal,
 dropoff/cancel completion, delivery success, HIL pass, real phone/browser
 validation, O5 external proof, or any primary robot action being enabled.
 
+## route_task_field_retest_acceptance_execution_callback_review_handoff
+
+`pc-tools/evidence/route_task_field_retest_acceptance_execution_callback_review_handoff.py`
+generates the PC-only handoff gate after
+`route_task_field_retest_acceptance_execution_callback_review_decision.py`.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate`
+- Allowed inputs:
+  `trashbot.route_task_field_retest_acceptance_execution_callback_review_decision.v1`
+  and
+  `trashbot.route_task_field_retest_acceptance_execution_callback_review_decision_summary.v1`
+  only. Wrapper or nested JSON is allowed when it contains one of those schemas.
+- Handoff values:
+  `ready_for_acceptance_execution_callback_review_handoff`,
+  `needs_owner_follow_up`, `needs_acceptance_execution_callback_rerun`,
+  `evidence_ref_mismatch_rerun`, and fail-closed unsafe states such as
+  `blocked_unsafe_review_handoff`.
+
+The Robot diagnostics consumer exposes only phone-safe metadata from the
+artifact, summary, or compatible nested summary: handoff status, source review
+decision/status, safe `evidence_ref`, owner handoff, next required evidence,
+safe rerun hint, boundary, `not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+
+This contract is software proof only. It does not prove real route/elevator
+execution, Nav2/fixed-route proof, ACK, cursor persistence, dropoff/cancel
+completion, delivery success, HIL pass, WAVE ROVER feedback, real phone/browser
+validation, O5 external proof, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

@@ -296,6 +296,24 @@ python3 pc-tools/evidence/route_task_field_retest_acceptance_execution_callback_
 
 Decision mapping 固定包含 `ready_for_controlled_field_rerun`、`needs_material_backfill`、`evidence_ref_mismatch_rerun` 和 fail-closed unsafe/unsupported 状态。该 gate 不读取真实材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、callback intake 未 ready、missing/rejected/empty materials、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、checksum、完整 raw artifact、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_controlled_field_rerun` 只表示 Docker/local `software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_decision_gate` 已把回执材料复核为受控现场复跑前的只读决策，不是真实 route/elevator field pass、Nav2/fixed-route proof、task record/completion signal、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 O5 external proof。
 
+## route/task field retest acceptance execution callback review handoff
+
+`pc-tools/evidence/route_task_field_retest_acceptance_execution_callback_review_handoff.py` 只读上一节 `route_task_field_retest_acceptance_execution_callback_review_decision` artifact、summary 或 wrapper/nested JSON，把复核决策转成 metadata-only handoff artifact / summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_acceptance_execution_callback_review_handoff.py \
+  --callback-review-decision-json /tmp/route_task_field_retest_acceptance_execution_callback_review_decision_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_acceptance_execution_callback_review_handoff.json \
+  --summary-output /tmp/route_task_field_retest_acceptance_execution_callback_review_handoff_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff.v1`，summary 使用 `schema=trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate`。核心字段包括 `handoff_status`、safe `evidence_ref`、source review decision/status、`owner_handoff`、`handoff_package`、`safe_rerun_hint`、`next_required_evidence`、`safe_copy`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+顶层 acceptance command 可用 `python3 -m unittest tests.test_route_task_field_retest_acceptance_execution_callback_review_handoff` 复用 `pc-tools/evidence` 下的离线围栏测试；该入口只证明本地 callback-review-handoff gate 的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
+
+Handoff mapping 固定包含 `ready_for_acceptance_execution_callback_review_handoff`、`needs_owner_follow_up`、`needs_acceptance_execution_callback_rerun`、`evidence_ref_mismatch_rerun` 和 `blocked_unsafe_review_handoff`。该 handoff gate 不读取真实材料目录、不触发现场复跑、不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、unsupported review decision、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、checksum、完整 raw artifact、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_acceptance_execution_callback_review_handoff` 只表示 Docker/local `software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate` 已把上一轮 review decision 交接成只读 handoff package，不是真实 route/elevator field pass、Nav2/fixed-route proof、task record/completion signal、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 O5 external proof。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

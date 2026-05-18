@@ -36,6 +36,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_acceptance_execution_pack,
     summarize_route_task_field_retest_acceptance_execution_callback_intake,
     summarize_route_task_field_retest_acceptance_execution_callback_review_decision,
+    summarize_route_task_field_retest_acceptance_execution_callback_review_handoff,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -6884,6 +6885,313 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(unsafe_summary["review_status"]["status"], "unsafe_fields")
         self.assertIn(
             "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_decision_gate",
+            encoded,
+        )
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("primary_actions_enabled=false", summary["safe_phone_copy"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_route_task_field_retest_acceptance_execution_callback_review_handoff_alias_env_nested_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            handoff_path = Path(td) / "acceptance_execution_callback_review_handoff.json"
+            handoff_path.write_text(
+                json.dumps(
+                    {
+                        "schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff.v1"
+                        ),
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate"
+                        ),
+                        "safe_evidence_ref": (
+                            "evidence://acceptance-execution-callback-review-handoff-1"
+                        ),
+                        "handoff_status": {
+                            "status": "ready_for_acceptance_execution_callback_review_handoff",
+                            "verdict": "not_proven",
+                            "reason": "handoff metadata is ready for owner review only",
+                        },
+                        "source_review_decision_status": {
+                            "status": "ready_for_owner_handoff",
+                            "verdict": "not_proven",
+                        },
+                        "source_review_decision": "ready_for_owner_handoff",
+                        "owner_handoff": {"owner": "Product Manager / OKR Owner"},
+                        "next_required_evidence": ["real acceptance execution callback packet"],
+                        "safe_rerun_hint": ["Rerun sanitized handoff gate with same evidence_ref."],
+                        "safe_copy": (
+                            "Acceptance execution callback review handoff is metadata-only; "
+                            "same_evidence_ref_required=true; delivery_success=false; "
+                            "primary_actions_enabled=false."
+                        ),
+                        "same_evidence_ref_required": True,
+                        "not_proven": ["delivery_success", "real_hil_pass"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_acceptance_execution_callback_review_handoff_ref=str(
+                    handoff_path
+                ),
+            )
+            summary = payload[
+                "route_task_field_retest_acceptance_execution_callback_review_handoff"
+            ]
+            summary_alias = payload[
+                "route_task_field_retest_acceptance_execution_callback_review_handoff_summary"
+            ]
+            robot_alias = payload[
+                "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_review_handoff_summary"
+            ]
+
+            summary_path = Path(td) / "acceptance_execution_callback_review_handoff_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate"
+                        ),
+                        "safe_evidence_ref": (
+                            "evidence://acceptance-execution-callback-review-handoff-2"
+                        ),
+                        "handoff_status": {"status": "needs_owner_follow_up", "verdict": "not_proven"},
+                        "source_review_decision_status": {"status": "needs_acceptance_evidence"},
+                        "source_review_decision": "needs_acceptance_execution_callback_rerun",
+                        "owner_handoff": {"owner": "Autonomy Algorithm Engineer"},
+                        "next_required_evidence": ["same evidence_ref owner handoff"],
+                        "safe_rerun_hint": ["Use sanitized handoff summary."],
+                        "safe_copy": (
+                            "Acceptance execution callback review handoff is metadata-only; "
+                            "same_evidence_ref_required=true; delivery_success=false; "
+                            "primary_actions_enabled=false."
+                        ),
+                        "same_evidence_ref_required": True,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_handoff = os.environ.get(
+                "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_REVIEW_HANDOFF"
+            )
+            previous_summary = os.environ.get(
+                "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_REVIEW_HANDOFF_SUMMARY"
+            )
+            os.environ.pop(
+                "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_REVIEW_HANDOFF",
+                None,
+            )
+            os.environ[
+                "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_REVIEW_HANDOFF_SUMMARY"
+            ] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_retest_acceptance_execution_callback_review_handoff"
+                ]
+            finally:
+                if previous_handoff is None:
+                    os.environ.pop(
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_REVIEW_HANDOFF",
+                        None,
+                    )
+                else:
+                    os.environ[
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_REVIEW_HANDOFF"
+                    ] = previous_handoff
+                if previous_summary is None:
+                    os.environ.pop(
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_REVIEW_HANDOFF_SUMMARY",
+                        None,
+                    )
+                else:
+                    os.environ[
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_REVIEW_HANDOFF_SUMMARY"
+                    ] = previous_summary
+
+            nested_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_review_handoff_summary": {
+                            "schema": (
+                                "trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff_summary.v1"
+                            ),
+                            "source_schema": (
+                                "trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff.v1"
+                            ),
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate"
+                            ),
+                            "safe_evidence_ref": (
+                                "evidence://acceptance-execution-callback-review-handoff-3"
+                            ),
+                            "handoff_status": {"status": "nested_handoff_ready", "verdict": "not_proven"},
+                            "source_review_decision_status": {"status": "ready"},
+                            "source_review_decision": "ready_for_owner_handoff",
+                            "owner_handoff": {"owner": "Robot Platform Engineer"},
+                            "next_required_evidence": ["operator acceptance callback"],
+                            "safe_rerun_hint": ["Run same evidence_ref handoff gate."],
+                            "safe_copy": (
+                                "Nested acceptance execution callback review handoff is metadata-only; "
+                                "same_evidence_ref_required=true; delivery_success=false; "
+                                "primary_actions_enabled=false."
+                            ),
+                            "same_evidence_ref_required": True,
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["route_task_field_retest_acceptance_execution_callback_review_handoff"]
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_acceptance_handoff.json"
+            missing_summary = summarize_route_task_field_retest_acceptance_execution_callback_review_handoff(
+                missing_path
+            )
+            unsupported_summary = summarize_route_task_field_retest_acceptance_execution_callback_review_handoff(
+                {
+                    "schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_callback_review_decision.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_decision_gate"
+                    ),
+                    "safe_evidence_ref": "evidence://unsupported",
+                    "safe_copy": "Unsupported handoff is metadata-only; delivery_success=false.",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            mismatch_summary = summarize_route_task_field_retest_acceptance_execution_callback_review_handoff(
+                {
+                    "schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate"
+                    ),
+                    "safe_evidence_ref": "evidence://source-ref",
+                    "route_task_field_retest_acceptance_execution_callback_review_handoff_summary": {
+                        "schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://summary-ref",
+                        "source_review_decision": "needs_rerun",
+                        "source_review_decision_status": {"status": "ready"},
+                        "owner_handoff": {},
+                        "next_required_evidence": [],
+                        "safe_rerun_hint": [],
+                        "same_evidence_ref_required": True,
+                        "safe_copy": (
+                            "Acceptance execution callback review handoff is metadata-only; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                }
+            )
+            unsafe_summary = summarize_route_task_field_retest_acceptance_execution_callback_review_handoff(
+                {
+                    "schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff_summary.v1"
+                    ),
+                    "source_schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate"
+                    ),
+                    "safe_evidence_ref": (
+                        "evidence://acceptance-execution-callback-review-handoff-5"
+                    ),
+                    "source_review_decision": "ready_for_owner_handoff",
+                    "source_review_decision_status": {"status": "ready"},
+                    "owner_handoff": {},
+                    "next_required_evidence": [],
+                    "safe_rerun_hint": [],
+                    "same_evidence_ref_required": True,
+                    "safe_copy": "Acceptance callback review handoff confirms delivery success and ACK posted.",
+                    "delivery_success": True,
+                    "primary_actions_enabled": False,
+                }
+            )
+            encoded = json.dumps(
+                [
+                    summary,
+                    summary_alias,
+                    robot_alias,
+                    env_summary,
+                    nested_summary,
+                    missing_summary,
+                    unsupported_summary,
+                    mismatch_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff_summary.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.route_task_field_retest_acceptance_execution_callback_review_handoff.v1",
+        )
+        self.assertEqual(summary["source_review_decision"], "ready_for_owner_handoff")
+        self.assertEqual(summary["source_review_decision_status"]["status"], "ready_for_owner_handoff")
+        self.assertIn("real acceptance execution callback packet", summary["next_required_evidence"])
+        self.assertEqual(env_summary["handoff_status"]["status"], "needs_owner_follow_up")
+        self.assertEqual(nested_summary["handoff_status"]["status"], "nested_handoff_ready")
+        self.assertEqual(missing_summary["handoff_status"]["status"], "missing")
+        self.assertEqual(unsupported_summary["handoff_status"]["status"], "unsupported_schema")
+        self.assertEqual(mismatch_summary["handoff_status"]["status"], "evidence_ref_mismatch_rerun")
+        self.assertEqual(unsafe_summary["handoff_status"]["status"], "blocked_unsafe_review_handoff")
+        self.assertIn(
+            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_handoff_gate",
             encoded,
         )
         self.assertIn("not_proven", encoded)
