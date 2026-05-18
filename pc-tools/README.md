@@ -225,6 +225,22 @@ python3 pc-tools/evidence/route_task_field_retest_acceptance_brief.py \
 
 必需证据包固定包含 Nav2/fixed-route runtime log、route completion signal、task record、door_state、target_floor_confirmation、human_assistance_note、dropoff_or_cancel_completion 和 delivery_result。该 brief 不读取真实材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、drill console 未 ready、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_acceptance_brief_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_acceptance_brief_gate` 已把现场验收简报整理清楚，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
+## route/task field retest acceptance review decision
+
+`pc-tools/evidence/route_task_field_retest_acceptance_review_decision.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把验收简报转成现场验收前的 metadata-only review decision：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_acceptance_review_decision.py \
+  --acceptance-brief-json /tmp/route_task_field_retest_acceptance_brief_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_acceptance_review_decision.json \
+  --summary-output /tmp/route_task_field_retest_acceptance_review_decision_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_acceptance_review_decision.v1`，summary 使用 `schema=trashbot.route_task_field_retest_acceptance_review_decision_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_acceptance_review_decision_gate`。核心字段包括 `review_decision`、safe `evidence_ref`、`material_status`、`owner_handoff`、`next_required_evidence`、`rerun_commands`、`safe_copy`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+Decision mapping 固定包含 `ready_for_controlled_field_retest_not_proven`、`needs_route_elevator_material_backfill_not_proven`、`needs_owner_handoff_not_proven`、`evidence_ref_mismatch_rerun_not_proven`、`blocked_acceptance_brief_not_ready`、`unsupported_acceptance_brief_schema_not_proven` 和 `rejected_unsafe_acceptance_brief_claim_not_proven`。该 gate 不读取真实材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser；ready 只表示 Docker/local software proof 已把受控现场复跑前的 review decision 口径整理清楚，不是真实现场通过、真实 delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

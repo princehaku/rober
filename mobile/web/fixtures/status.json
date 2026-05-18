@@ -868,6 +868,109 @@
       "Objective 5 external proof"
     ]
   },
+  "route_task_field_retest_acceptance_review_decision": {
+    "schema": "trashbot.route_task_field_retest_acceptance_review_decision.v1",
+    "summary_schema": "trashbot.route_task_field_retest_acceptance_review_decision_summary.v1",
+    "schema_version": 1,
+    "review_decision": "blocked_missing_acceptance_review_materials_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "material_status": [
+      "material_status=Nav2/fixed-route runtime log remains not_proven",
+      "material_status=route completion signal remains not_proven",
+      "material_status=task record remains not_proven",
+      "material_status=dropoff_or_cancel_completion remains not_proven",
+      "material_status=delivery_result remains not_proven"
+    ],
+    "owner_handoff": [
+      "owner_handoff=Autonomy owner supplies field runtime material summary",
+      "owner_handoff=Robot owner publishes safe diagnostics alias",
+      "owner_handoff=Full-stack keeps Start Delivery, Confirm Dropoff and Cancel gating unchanged"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=Nav2/fixed-route runtime log summary",
+      "next_required_evidence=route completion signal summary",
+      "next_required_evidence=task record summary",
+      "next_required_evidence=door_state and target_floor_confirmation summary",
+      "next_required_evidence=dropoff_or_cancel_completion and delivery_result summary"
+    ],
+    "rerun_commands": [
+      "rerun_commands=python3 pc-tools/evidence/route_task_field_retest_acceptance_brief.py --input <safe_summary>",
+      "rerun_commands=python3 pc-tools/evidence/route_task_field_retest_acceptance_review_decision.py --acceptance-brief <safe_summary>"
+    ],
+    "same_evidence_ref_required": true,
+    "safe_copy": {
+      "safe_phone_copy": "现场复测验收复核决策 safe copy：只读导出 review decision、safe evidence_ref、material status、owner handoff、next required evidence、rerun commands、boundary flags 和 not_proven。"
+    },
+    "safe_phone_copy": "现场复测验收复核决策只读展示 review decision、safe evidence ref、material status、owner handoff、next required evidence、rerun commands 和 boundary flags；这是 software proof only。",
+    "recovery_hint": "请按同一 safe evidence_ref 补齐真实现场复测验收材料，并由 Robot diagnostics 发布 acceptance review decision safe alias。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_review_decision_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 acceptance review decision material",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实 door_state",
+      "真实 target_floor_confirmation",
+      "真实 human_assistance_note",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机设备/browser",
+      "真实硬件/HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
+  "route_task_field_retest_acceptance_review_decision_summary": {
+    "schema": "trashbot.route_task_field_retest_acceptance_review_decision_summary.v1",
+    "schema_version": 1,
+    "review_decision": "blocked_missing_acceptance_review_materials_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "material_status": "material_status=route/elevator acceptance materials remain not_proven.",
+    "owner_handoff": "owner_handoff=Autonomy/Robot owners backfill same safe_evidence_ref field materials; Full-stack remains read-only.",
+    "next_required_evidence": "next_required_evidence=runtime log、completion signal、task record、door/floor/human-assistance and delivery result summaries.",
+    "rerun_commands": "rerun_commands=software_proof_docker_route_task_field_retest_acceptance_review_decision_gate after safe material backfill.",
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "route_task_field_retest_acceptance_review_decision_summary 只用于手机只读验收复核决策，不放行 Start、Confirm 或 Cancel。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_review_decision_gate",
+    "not_proven": [
+      "真实 route/elevator field pass",
+      "HIL",
+      "delivery success"
+    ]
+  },
+  "robot_diagnostics_route_task_field_retest_acceptance_review_decision_summary": {
+    "schema": "trashbot.route_task_field_retest_acceptance_review_decision_summary.v1",
+    "schema_version": 1,
+    "source_alias": "robot_diagnostics_route_task_field_retest_acceptance_review_decision_summary",
+    "review_decision": "blocked_missing_acceptance_review_materials_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "material_status": "material_status=Robot safe alias confirms acceptance review materials remain not_proven.",
+    "owner_handoff": "owner_handoff=Robot owner exposes sanitized diagnostics summary; field owners backfill same safe evidence_ref materials.",
+    "next_required_evidence": "next_required_evidence=runtime log, route completion, task record, door/floor, human assistance, dropoff/cancel and delivery result summaries.",
+    "rerun_commands": "rerun_commands=rerun acceptance brief, then acceptance review decision gate with the same safe evidence_ref.",
+    "same_evidence_ref_required": true,
+    "safe_copy": {
+      "safe_phone_copy": "Robot diagnostics acceptance review decision safe copy：只读导出 review decision、safe evidence_ref、material status、owner handoff、next required evidence、rerun commands、boundary flags 和 not_proven。"
+    },
+    "safe_phone_copy": "Robot diagnostics acceptance review decision summary 只读展示现场复测验收复核决策；这是 software proof only。",
+    "recovery_hint": "请按同一 safe evidence_ref 补齐真实现场复测验收材料；手机端优先消费 Robot diagnostics safe alias。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_review_decision_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 acceptance review decision material",
+      "真实 route/elevator field pass",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
   "route_task_field_retest_evidence_dispatch": {
     "schema": "trashbot.route_task_field_retest_evidence_dispatch.v1",
     "summary_schema": "trashbot.route_task_field_retest_evidence_dispatch_summary.v1",

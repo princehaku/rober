@@ -8,7 +8,19 @@
 
 ## 2026-05-18 系列
 
-更新时间：2026-05-18 09:13 Asia/Shanghai。
+更新时间：2026-05-18 10:15 Asia/Shanghai。
+
+### 2026-05-18 10-11｜route-task-acceptance-review-decision｜O2/O3/O4 acceptance review decision software proof，均保守保持约 99%，O5 保持约 68%
+
+`sprints/2026.05.18_10-11_route-task-acceptance-review-decision/` 完成 `software_proof_docker_route_task_field_retest_acceptance_review_decision_gate`。Autonomy worker 新增 `route_task_field_retest_acceptance_review_decision` PC gate，消费上一轮 `route_task_field_retest_acceptance_brief` artifact/summary/wrapper，输出 review decision、material status、owner handoff、next required evidence、rerun commands 和 safe copy；Autonomy worker 回报 unittest `Ran 5 tests OK`。
+
+Robot worker 新增 diagnostics safe aliases：`route_task_field_retest_acceptance_review_decision`、`route_task_field_retest_acceptance_review_decision_summary`、`robot_diagnostics_route_task_field_retest_acceptance_review_decision_summary`，只读暴露 sanitized summary，并保持 task_orchestrator、ACK、Start Delivery、Confirm Dropoff、Cancel、Nav2、HIL 和 primary actions 不变；Robot worker 回报 diagnostics unittest `Ran 178 tests OK`。
+
+Full-stack worker 新增 mobile/web 只读 review decision panel，读取 `robot_diagnostics_route_task_field_retest_acceptance_review_decision_summary` 与主 summary，展示 review decision、safe evidence ref、material status、owner handoff、next required evidence、rerun commands、boundary flags、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`；Start Delivery、Confirm Dropoff、Cancel gating 不变。Full-stack worker 回报 mobile unittest `Ran 74 tests OK`，`node --check` pass。
+
+Product closeout 更新 sprint 留档、`OKR.md` 和本日志；required closeout `rg` 匹配 `route_task_field_retest_acceptance_review_decision`、`robot_diagnostics_route_task_field_retest_acceptance_review_decision_summary`、`software_proof_docker_route_task_field_retest_acceptance_review_decision_gate`、`Objective 5`、`Objective 1`、`PR #4`、`PR #5`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，closeout scoped `git diff --check` exit 0。
+
+该证据只支持 Objective 2、Objective 3 和 Objective 4 继续保守保持约 99%，不继续上调到 100。理由是本轮把 PR #4 route/elevator acceptance brief 推进为现场复跑前的 review decision，减少受控现场复跑、材料回填、owner handoff、evidence_ref mismatch rerun 与 unsafe rejection 的解释偏差；但没有真实 route/elevator field pass、真实 Nav2/fixed-route runtime log、真实 route completion signal、真实 task record、真实门状态、真实目标楼层确认、真实人工协助记录、真实 dropoff/cancel completion、真实 delivery result、真实手机/browser、production app 或真实 PWA prompt/user choice。Objective 1 保持约 81%，因为本轮没有新增 WAVE ROVER、UART、HIL packet、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、operator HIL report、2D LiDAR / ToF SKU/source、串口、波特率或硬件假设；PR #5 相关真实硬件材料仍缺。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；O5 stop rule 仍成立。本轮始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
 
 ### 2026-05-18 09-10｜route-task-field-retest-acceptance-brief｜O2/O3/O4 acceptance brief 三端一致性 software proof，均保守保持约 99%，O5 保持约 68%
 

@@ -1,5 +1,51 @@
 # Evidence Contracts
 
+## route_task_field_retest_acceptance_review_decision
+
+`pc-tools/evidence/route_task_field_retest_acceptance_review_decision.py`
+generates the PC-only review decision gate after
+`route_task_field_retest_acceptance_brief.py`.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_acceptance_review_decision.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_acceptance_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_acceptance_review_decision_gate`
+- Allowed inputs:
+  `trashbot.route_task_field_retest_acceptance_brief.v1` and
+  `trashbot.route_task_field_retest_acceptance_brief_summary.v1`
+  only. Wrapper or nested JSON is allowed when it contains one of those schemas.
+- Decision values:
+  `ready_for_controlled_field_retest_not_proven`,
+  `needs_route_elevator_material_backfill_not_proven`,
+  `needs_owner_handoff_not_proven`, `evidence_ref_mismatch_rerun_not_proven`,
+  `blocked_acceptance_brief_not_ready`,
+  `unsupported_acceptance_brief_schema_not_proven`, and
+  `rejected_unsafe_acceptance_brief_claim_not_proven`.
+
+The output always includes `review_decision`, `material_status`,
+`owner_handoff`, `next_required_evidence`, `rerun_commands`, `safe_copy`,
+`not_proven`, `delivery_success=false`, `primary_actions_enabled=false`,
+`same_evidence_ref_required=true`, and
+`evidence_boundary=software_proof_docker_route_task_field_retest_acceptance_review_decision_gate`.
+
+Decision mapping is fail-closed. A supported, safe, ready acceptance brief with
+matched evidence_ref, complete packet metadata, and owner handoff maps to
+`ready_for_controlled_field_retest_not_proven`. Missing route/elevator packet
+metadata maps to `needs_route_elevator_material_backfill_not_proven`. Missing
+handoff maps to `needs_owner_handoff_not_proven`. Mismatched or weak
+same-evidence-ref state maps to `evidence_ref_mismatch_rerun_not_proven`.
+Unsupported schema, missing input, bad JSON, unsupported boundary, unsafe copy,
+raw paths, credentials, ROS topics, serial/UART/WAVE ROVER text,
+success/control claims, `delivery_success=true`, or
+`primary_actions_enabled=true` fail closed.
+
+This contract is software proof only. It does not prove a real route/elevator
+field outcome, HIL pass, real Nav2/fixed-route execution, real delivery
+success, real phone/browser validation, O5 external cloud proof, or any primary
+robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`
