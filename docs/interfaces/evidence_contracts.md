@@ -314,6 +314,52 @@ acknowledgement state, owner handoff, next required evidence, safe rerun hint,
 boundary, `not_proven`, `delivery_success=false`, and
 `primary_actions_enabled=false`.
 
+## route_task_field_retest_acceptance_execution_rerun_result_intake
+
+`pc-tools/evidence/route_task_field_retest_acceptance_execution_rerun_result_intake.py`
+generates the PC-only rerun result intake gate after
+`route_task_field_retest_acceptance_execution_rerun_queue.py`.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_result_intake.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_result_intake_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_intake_gate`
+- Allowed source inputs:
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_queue.v1`
+  and
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_queue_summary.v1`
+  under
+  `software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate`
+  only. Wrapper or nested JSON is allowed when it contains one of those schemas.
+- Optional rerun result packet input:
+  owner-safe result metadata with safe `evidence_ref`, explicit ready/submitted
+  packet state, result material categories, and an optional safe operator note.
+- Rerun result intake values:
+  `ready_for_acceptance_execution_rerun_result_review_not_proven`,
+  `needs_acceptance_execution_rerun_result_backfill`,
+  `evidence_ref_mismatch_rerun_result`,
+  `blocked_unsafe_rerun_result`, and
+  `blocked_unsupported_rerun_queue`.
+
+The Robot diagnostics and mobile consumers should expose only phone-safe
+metadata from the artifact, summary, or compatible nested summary: rerun result
+intake status, source rerun queue status, safe `evidence_ref`, owner-safe rerun
+result packet summary, owner handoff, next required evidence, safe review hint,
+boundary, `not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+
+This gate does not read real field material directories, does not execute a
+controlled rerun, does not access ROS graph, Nav2/fixed-route runtime,
+serial/UART, WAVE ROVER, real phone/browser runtime, external cloud, OSS/CDN,
+DB/queue, or 4G, and does not prove real route/elevator field pass, delivery
+success, HIL, real phone/browser proof, or Objective 5 external proof. Unsafe
+copy, raw artifact text, local paths, checksums, credentials, DB/queue URLs,
+ROS topic names, `/cmd_vel`, serial/UART/baudrate or WAVE ROVER low-level
+control detail, success/control claims, `delivery_success=true`, or
+`primary_actions_enabled=true` must map to `blocked_unsafe_rerun_result`.
+
 This contract is software proof only. It does not prove a real controlled field
 rerun, route/elevator execution, Nav2/fixed-route proof, ACK, cursor
 persistence, dropoff/cancel completion, delivery success, HIL pass, WAVE ROVER

@@ -908,6 +908,45 @@ credentials, local paths, checksums, tracebacks, or complete artifacts, and
 they are not command/status/ACK robot contract fields.
 
 Operator diagnostics may also expose
+`route_task_field_retest_acceptance_execution_rerun_result_intake`, the alias
+`route_task_field_retest_acceptance_execution_rerun_result_intake_summary`, and
+the Robot safe alias
+`robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_result_intake_summary`
+from an explicit
+`route_task_field_retest_acceptance_execution_rerun_result_intake_ref`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_RESULT_INTAKE`,
+`TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_RESULT_INTAKE_SUMMARY`,
+top-level status fields, or an already sanitized nested diagnostics summary
+source. Robot consumes only the sanitized summary, not the raw Autonomy artifact.
+The summary must use
+`schema=trashbot.route_task_field_retest_acceptance_execution_rerun_result_intake_summary.v1`,
+point to
+`source_schema=trashbot.route_task_field_retest_acceptance_execution_rerun_result_intake.v1`,
+and stay inside
+`evidence_boundary=software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_intake_gate`.
+This field is metadata-only Robot diagnostics support for Autonomy's acceptance
+execution rerun result intake summary: it may expose only schema, intake
+status, safe `evidence_ref`, owner handoff, next required evidence, boundary
+flags, safe copy,
+`software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_intake_gate`,
+`not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. Missing sanitized summary, unreadable input,
+unsupported schema or boundary, unsafe copy, raw artifact consumption,
+control-entrypoint enablement, missing `evidence_ref`, same-`evidence_ref`
+mismatch, non-boolean `same_evidence_ref_required`, success/control claims,
+enabled actions, `delivery_success=true`, or `primary_actions_enabled=true`
+sources fail closed as blocked/not_proven. The fields do not trigger
+`/api/collect`, Start Delivery, Confirm Dropoff, Cancel, dropoff, cancel, ACK,
+remote ACK, cursor advance/persistence, terminal ACK, Nav2/fixed-route runtime,
+WAVE ROVER, serial/UART, HIL, route completion, dropoff/cancel completion,
+delivery result, delivery success, real phone/browser proof, or Objective 5
+external proof. They must not expose raw material files, raw route logs, raw
+callback artifacts, raw owner intake JSON, raw commands, raw ROS topics,
+`/cmd_vel`, serial/UART details, baudrate, credentials, local paths, checksums,
+tracebacks, WAVE ROVER material, or complete artifacts, and they are not
+command/status/ACK robot contract fields.
+
+Operator diagnostics may also expose
 `route_task_field_retest_callback_intake` and the alias
 `route_task_field_retest_callback_intake_summary` from an explicit
 `route_task_field_retest_callback_intake_ref`,
