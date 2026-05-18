@@ -71,7 +71,7 @@ The ESP32 feedback frame used by this contract is vendor `T=1001` with at least 
 | --- | --- |
 | `status` | Compatibility numeric status: `0` idle/failure, `1` navigating, `3` delivering/dropoff, `4` done. |
 | `percent_complete` | Compatibility progress percentage from `0` to `100`. |
-| `current_step` | Compatibility readable step name. |
+| `current_step` | Compatibility readable step name. During elevator assisted delivery dry-run and rehearsal-artifact playback, `task_orchestrator` publishes phone-safe `elevator:<phase>` values such as `elevator:waiting_elevator_open`, `elevator:requesting_floor_help`, and `elevator:resume_delivery` before the task record is written. |
 | `state` | Delivery state machine state, such as `loaded`, `delivering`, `dropoff`, `returning`, `idle`, or `error`. |
 | `event` | Latest state machine event, including `invalid_transition` for rejected public transitions. |
 | `message` | Human-readable progress or failure detail. |
@@ -138,6 +138,19 @@ artifact `failure.phase/reason/manual_takeover_reason` fails closed through
 `software_proof_docker_elevator_evidence_driven_mainline_gate`; it is not real
 elevator operation, not real Nav2/fixed-route execution, not WAVE ROVER motion,
 not HIL, and not delivery success.
+
+The same dry-run and rehearsal-artifact paths also publish live
+`TrashCollection.Feedback` updates for each elevator subphase. Feedback uses the
+existing action fields only: `current_step=elevator:<phase>`, `state=delivering`,
+`event=elevator_phase` for in-progress subphases or `event=elevator_completed`
+for `elevator:resume_delivery`, non-success `status=3`, and
+`percent_complete` bounded to the 30-55% delivery window. Feedback messages must
+stay phone-safe and must not expose local artifact paths, serial/UART details,
+ROS topic names, raw evidence payloads, or success/control claims. This feedback
+does not change `/trashbot/collect_trash` result semantics and must keep
+`delivery_success=false` plus `primary_actions_enabled=false` under both
+`software_proof_docker_elevator_assist_default_mainline_gate` and
+`software_proof_docker_elevator_evidence_driven_mainline_gate`.
 
 Operator diagnostics may additionally expose `route_task_rehearsal` from a
 configured route/task rehearsal artifact. The diagnostics summary uses

@@ -90,6 +90,16 @@ ELEVATOR_ASSIST_DRY_RUN_PHASES = (
     "exiting_elevator",
     "resume_delivery",
 )
+ELEVATOR_ASSIST_FEEDBACK_MESSAGES = {
+    "approaching_elevator": "已进入电梯辅助流程，正在接近电梯厅。",
+    "waiting_elevator_open": "已到电梯厅，等待电梯开门。",
+    "entering_elevator": "电梯门可进入，正在进入电梯。",
+    "requesting_floor_help": "已进入电梯，正在请求帮忙按楼层。",
+    "waiting_target_floor": "正在等待目标楼层，请保持通道安全。",
+    "exiting_elevator": "已到目标楼层，准备驶出电梯。",
+    "resume_delivery": "已驶出电梯，继续送往垃圾站。",
+    "elevator_rehearsal_evidence_validation": "电梯演练证据未通过校验，需要人工接管。",
+}
 ELEVATOR_ASSIST_REHEARSAL_REQUIRED_PHASES = (
     "waiting_elevator_open",
     "entering_elevator",
@@ -444,7 +454,7 @@ class TaskOrchestrator(Node):
                     machine.navigation_failed(nav_result.message, "NAV_FAIL")
                 raise RuntimeError(machine.error_message)
 
-            elevator_assist = self._perform_elevator_assist(machine)
+            elevator_assist = self._perform_elevator_assist(machine, goal_handle, start_time)
             if not elevator_assist["success"]:
                 machine.elevator_failed(elevator_assist["reason"])
                 raise RuntimeError(machine.error_message)
@@ -648,6 +658,38 @@ class TaskOrchestrator(Node):
         feedback.message = message
         feedback.elapsed_sec = (self.get_clock().now() - start_time).nanoseconds / 1e9
         goal_handle.publish_feedback(feedback)
+
+    def _publish_elevator_assist_feedback(
+        self,
+        goal_handle,
+        machine,
+        start_time,
+        phase,
+        phase_index,
+        phase_total,
+    ):
+        if goal_handle is None or start_time is None:
+            return
+        if phase_total <= 1:
+            percent_complete = 55.0
+        else:
+            bounded_index = min(max(int(phase_index), 0), int(phase_total) - 1)
+            percent_complete = 30.0 + (25.0 * bounded_index / (int(phase_total) - 1))
+        message = ELEVATOR_ASSIST_FEEDBACK_MESSAGES.get(
+            phase,
+            "电梯辅助流程状态已更新。",
+        )
+        # 复用 TrashCollection.Feedback 的既有字段，避免 action definition 变更拖累旧消费者。
+        # current_step 加 elevator: 前缀，让手机/API 可以实时识别电梯子阶段而不读 task_record。
+        self._publish_collection_feedback(
+            goal_handle,
+            machine,
+            start_time,
+            3,
+            percent_complete,
+            f"elevator:{phase}",
+            message,
+        )
 
     def _write_collection_record(
         self,
@@ -1015,7 +1057,7 @@ class TaskOrchestrator(Node):
         # 这些字段面向 mobile/diagnostics 消费方，防止把 software proof 误渲染成真实送达。
         return payload
 
-    def _perform_elevator_assist(self, machine):
+    def _perform_elevator_assist(self, machine, goal_handle=None, start_time=None):
         if not self.elevator_assist_enabled:
             return self._elevator_assist_disabled_status()
         if self.elevator_assist_mode != "dry_run":
@@ -1035,14 +1077,19 @@ class TaskOrchestrator(Node):
                 "success": False,
             }, phone_copy="电梯辅助模式不是 dry_run，已保持失败关闭；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
 
-        artifact_status = self._perform_rehearsal_artifact_elevator_assist(machine)
+        artifact_status = self._perform_rehearsal_artifact_elevator_assist(
+            machine,
+            goal_handle,
+            start_time,
+        )
         if artifact_status is not None:
             return artifact_status
 
         events = []
         evidence = {}
         failure = ELEVATOR_ASSIST_FAILURES.get(self.elevator_assist_dry_run_failure)
-        for phase in ELEVATOR_ASSIST_DRY_RUN_PHASES:
+        phase_total = len(ELEVATOR_ASSIST_DRY_RUN_PHASES)
+        for phase_index, phase in enumerate(ELEVATOR_ASSIST_DRY_RUN_PHASES):
             evidence_key = ELEVATOR_ASSIST_DRY_RUN_EVIDENCE[phase]
             event = {
                 "phase": phase,
@@ -1059,6 +1106,15 @@ class TaskOrchestrator(Node):
             events.append(event)
             evidence[phase] = evidence_key
             machine.elevator_phase(phase, json.dumps(event, ensure_ascii=False, sort_keys=True))
+            if phase != "resume_delivery":
+                self._publish_elevator_assist_feedback(
+                    goal_handle,
+                    machine,
+                    start_time,
+                    phase,
+                    phase_index,
+                    phase_total,
+                )
             if failure and failure["phase"] == phase:
                 return self._with_elevator_assist_boundary({
                     "enabled": True,
@@ -1077,6 +1133,14 @@ class TaskOrchestrator(Node):
                 }, phone_copy="电梯辅助 dry-run 需要人工接管；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
 
         machine.elevator_completed("elevator assist dry-run complete; resume delivery")
+        self._publish_elevator_assist_feedback(
+            goal_handle,
+            machine,
+            start_time,
+            "resume_delivery",
+            phase_total - 1,
+            phase_total,
+        )
         return self._with_elevator_assist_boundary({
             "enabled": True,
             "mode": "dry_run",
@@ -1093,7 +1157,12 @@ class TaskOrchestrator(Node):
             "success": True,
         }, phone_copy="电梯辅助 dry-run 已走完默认软件主链路；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
 
-    def _perform_rehearsal_artifact_elevator_assist(self, machine):
+    def _perform_rehearsal_artifact_elevator_assist(
+        self,
+        machine,
+        goal_handle=None,
+        start_time=None,
+    ):
         artifact_path = str(getattr(self, "elevator_assist_evidence_file", "") or "").strip()
         if not artifact_path:
             return None
@@ -1132,7 +1201,8 @@ class TaskOrchestrator(Node):
         phase_evidence = payload["phase_evidence"]
         events = []
         evidence = {}
-        for phase in ELEVATOR_ASSIST_REHEARSAL_REQUIRED_PHASES:
+        phase_total = len(ELEVATOR_ASSIST_REHEARSAL_REQUIRED_PHASES) + 1
+        for phase_index, phase in enumerate(ELEVATOR_ASSIST_REHEARSAL_REQUIRED_PHASES):
             phase_payload = phase_evidence[phase]
             event = {
                 "phase": phase,
@@ -1150,6 +1220,14 @@ class TaskOrchestrator(Node):
             evidence[phase] = phase_payload
             # machine 只记录可回放摘要，artifact 原文仍保存在文件侧，避免 state transition 膨胀。
             machine.elevator_phase(phase, json.dumps(event, ensure_ascii=False, sort_keys=True))
+            self._publish_elevator_assist_feedback(
+                goal_handle,
+                machine,
+                start_time,
+                phase,
+                phase_index,
+                phase_total,
+            )
 
         failure = payload.get("failure")
         if isinstance(failure, dict) and failure:
@@ -1180,6 +1258,14 @@ class TaskOrchestrator(Node):
             }, phone_copy="电梯演练 artifact 要求人工接管，行为主链路已失败关闭；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
 
         machine.elevator_completed("elevator assist rehearsal artifact complete; resume delivery")
+        self._publish_elevator_assist_feedback(
+            goal_handle,
+            machine,
+            start_time,
+            "resume_delivery",
+            phase_total - 1,
+            phase_total,
+        )
         return self._with_elevator_assist_boundary({
             "enabled": True,
             "mode": "dry_run",

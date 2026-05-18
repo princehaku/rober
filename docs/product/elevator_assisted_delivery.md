@@ -107,6 +107,19 @@ P1 识别要求：
 
 ## 手机与语音提示
 
+`TrashCollection.Feedback.current_step` 会在电梯 assisted delivery dry-run
+期间实时发布 `elevator:<phase>`，覆盖默认 dry-run 和 rehearsal artifact 两条路
+径。手机/API 消费方可以直接展示 `elevator:waiting_elevator_open`、
+`elevator:requesting_floor_help`、`elevator:waiting_target_floor` 等阶段，而不
+必等到任务结束后再从 `task_record.elevator_assist.events` 复盘。
+
+这些 action feedback 只复用既有 ROS action 字段；`status` 仍保持非成功状态码，
+`percent_complete` 只在 30-55% 的 delivery 区间内递增，`message` 只包含
+phone-safe 中文文案，不暴露 artifact 路径、串口、ROS topic 或底层控制参数。
+该实时反馈仍属于 `software_proof_docker_elevator_assist_default_mainline_gate`
+或 `software_proof_docker_elevator_evidence_driven_mainline_gate`，并继续保持
+`delivery_success=false`、`primary_actions_enabled=false`。
+
 | 触发点 | 手机文案 | 语音提示 |
 | --- | --- | --- |
 | 到达电梯厅 | 已到电梯厅，等待电梯开门。 | 等待电梯开门。 |

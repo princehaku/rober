@@ -273,6 +273,10 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
             transition for transition in payload["state_transitions"]
             if transition["event"] == "elevator_phase"
         ]
+        elevator_feedback = [
+            item for item in goal.feedback
+            if item.current_step.startswith("elevator:")
+        ]
 
         self.assertTrue(result.success)
         self.assertEqual(
@@ -304,6 +308,26 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         )
         self.assertEqual(payload["elevator_assist"]["evidence"]["waiting_elevator_open"], "door_open")
         self.assertEqual(len(elevator_events), 7)
+        self.assertEqual(
+            [item.current_step for item in elevator_feedback],
+            [
+                "elevator:approaching_elevator",
+                "elevator:waiting_elevator_open",
+                "elevator:entering_elevator",
+                "elevator:requesting_floor_help",
+                "elevator:waiting_target_floor",
+                "elevator:exiting_elevator",
+                "elevator:resume_delivery",
+            ],
+        )
+        self.assertEqual([item.event for item in elevator_feedback[:-1]], ["elevator_phase"] * 6)
+        self.assertEqual(elevator_feedback[-1].event, "elevator_completed")
+        self.assertEqual([item.state for item in elevator_feedback], ["delivering"] * 7)
+        self.assertEqual([item.status for item in elevator_feedback], [3] * 7)
+        self.assertEqual(elevator_feedback[0].percent_complete, 30.0)
+        self.assertEqual(elevator_feedback[-1].percent_complete, 55.0)
+        self.assertIn("等待电梯开门", elevator_feedback[1].message)
+        self.assertIn("帮忙按楼层", elevator_feedback[3].message)
         self.assertEqual(payload["final_status"], "success")
 
     def test_execute_collection_elevator_rehearsal_artifact_drives_phases_and_record_ref(self):
@@ -325,6 +349,10 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         elevator_events = [
             transition for transition in payload["state_transitions"]
             if transition["event"] == "elevator_phase"
+        ]
+        elevator_feedback = [
+            item for item in goal.feedback
+            if item.current_step.startswith("elevator:")
         ]
 
         self.assertTrue(result.success)
@@ -357,6 +385,22 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
             {"status": "door_open", "source": "software_proof"},
         )
         self.assertIn("不证明真实电梯", payload["elevator_assist"]["safe_phone_copy"])
+        self.assertEqual(
+            [item.current_step for item in elevator_feedback],
+            [
+                "elevator:waiting_elevator_open",
+                "elevator:entering_elevator",
+                "elevator:requesting_floor_help",
+                "elevator:waiting_target_floor",
+                "elevator:exiting_elevator",
+                "elevator:resume_delivery",
+            ],
+        )
+        self.assertEqual([item.event for item in elevator_feedback[:-1]], ["elevator_phase"] * 5)
+        self.assertEqual(elevator_feedback[-1].event, "elevator_completed")
+        self.assertEqual(elevator_feedback[0].percent_complete, 30.0)
+        self.assertEqual(elevator_feedback[-1].percent_complete, 55.0)
+        self.assertNotIn(str(artifact_file), " ".join(item.message for item in elevator_feedback))
         self.assertEqual(payload["final_status"], "success")
 
     def test_execute_collection_missing_elevator_rehearsal_artifact_uses_default_dry_run(self):

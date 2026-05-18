@@ -6,6 +6,24 @@
 
 ---
 
+## 2026-05-19 系列
+
+更新时间：2026-05-19 00:12 Asia/Shanghai。
+
+### 2026-05-19 00-01｜elevator-assist-action-feedback-mainline｜O2/O4 elevator action feedback software proof
+
+本轮 `sprints/2026.05.19_00-01_elevator-assist-action-feedback-mainline/` 推进 Objective 2 / Objective 4：Robot worker 让 `TrashCollection` 在默认电梯 dry-run 和 rehearsal artifact 路径中逐阶段发布 phone-safe feedback，`current_step=elevator:<phase>`，覆盖等待开门、进入电梯、请求按楼层、等待目标楼层、驶出/恢复送达等阶段。Product closeout 更新 sprint 留档、`OKR.md` 和本日志。证据边界是 `software_proof_docker_elevator_assist_default_mainline_gate` / `software_proof_docker_elevator_evidence_driven_mainline_gate`，保持 `source=software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮未新增 WAVE ROVER、UART、HIL packet、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery` 或 operator HIL report；PR #5 2D LiDAR / ToF SKU/source、receipt、采购、安装、接线、电源、标定和 HIL-entry 仍缺真实材料。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | elevator action feedback 让电梯 assisted delivery 主链路在 action 层实时可观测，支撑 KR6/KR7；仍缺真实 route/elevator field pass、真实门状态、真实楼层确认、人工协助记录、真实 Nav2/fixed-route、dropoff/cancel completion、delivery result 和 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮未新增真实路线采集、Nav2/fixed-route 实跑、route completion signal、task record 或同一 `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | 手机/API 后续可消费 `current_step=elevator:<phase>` 做实时只读阶段展示；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 和真实现场验收通过。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof。 |
+
+本轮验证：Robot worker 报告 `py_compile` pass、focused unittest `Ran 15 tests OK`、required `rg` pass、scoped `git diff --check` pass；Product closeout required file check、`rg` 和 scoped `git diff --check` 通过。本轮不证明真实 iPhone/Android device behavior、production app、Objective 5 external proof、HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、PR #5 2D LiDAR / ToF materials 或 delivery success。
+
 ## 2026-05-18 系列
 
 更新时间：2026-05-18 23:19 Asia/Shanghai。
