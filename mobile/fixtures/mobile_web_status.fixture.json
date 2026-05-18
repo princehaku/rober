@@ -2245,6 +2245,37 @@
     "delivery_success": false,
     "primary_actions_enabled": false
   },
+  "robot_diagnostics_elevator_action_feedback_trace_summary": {
+    "schema": "trashbot.elevator_action_feedback_trace_summary.v1",
+    "schema_version": 1,
+    "status": "not_proven",
+    "source_boundary": "software_proof",
+    "safe_evidence_ref": "elevator_action_feedback_trace_mobile_fixture_20260519_0001",
+    "current_step": "elevator:requesting_floor_help",
+    "phases": [
+      {
+        "phase": "waiting_elevator_open",
+        "safe_phone_copy": "current_step=elevator:<phase> 只读追踪：等待电梯开门。"
+      },
+      {
+        "phase": "requesting_floor_help",
+        "safe_phone_copy": "电梯内请求旁人按目标楼层；这是 software_proof / not_proven。"
+      }
+    ],
+    "safe_phone_copy": "手机 fixture 只读展示 elevator_action_feedback_trace safe summary，不改变控制按钮。",
+    "recovery_hint": "继续等待 Robot safe summary；缺真实电梯材料前 delivery_success=false / primary_actions_enabled=false。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实手机设备/browser",
+      "真实电梯",
+      "HIL"
+    ]
+  },
   "mobile_terminal_action_confirmation_gate": {
     "schema": "trashbot.mobile_terminal_action_confirmation_gate.v1",
     "schema_version": 1,

@@ -508,6 +508,10 @@ ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_SUMMARY_SCHEMA = (
 ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_GATE = (
     "software_proof_docker_elevator_route_evidence_reconciliation_gate"
 )
+ELEVATOR_ACTION_FEEDBACK_TRACE_SCHEMA = "trashbot.elevator_action_feedback_trace.v1"
+ELEVATOR_ACTION_FEEDBACK_TRACE_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_elevator_action_feedback_trace_summary.v1"
+)
 ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_SCHEMA = (
     "trashbot.route_elevator_field_session_handoff.v1"
 )
@@ -33739,6 +33743,100 @@ def _elevator_assist_from_task_record(task_record):
     return None, ""
 
 
+def _elevator_action_feedback_trace_from_payloads(*payloads):
+    # diagnostics 只接受已经沉淀的 trace 摘要或 task_record 字段，不从任意 raw JSON 推导动作。
+    for payload in payloads:
+        if not isinstance(payload, dict):
+            continue
+        for key in (
+            "elevator_action_feedback_trace",
+            "robot_diagnostics_elevator_action_feedback_trace_summary",
+        ):
+            candidate = payload.get(key)
+            if isinstance(candidate, dict):
+                return candidate, key
+    return {}, ""
+
+
+def _elevator_trace_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def summarize_elevator_action_feedback_trace(trace=None, *, source=""):
+    # 该 summary 给 mobile/full-stack 消费，只暴露阶段、current_step 和安全边界。
+    # delivery_success/primary_actions_enabled 永远保持 false，防止 UI 把 trace 当成控制授权。
+    trace = trace if isinstance(trace, dict) else {}
+    source_text = str(source or "").strip()
+    supported = trace.get("schema") == ELEVATOR_ACTION_FEEDBACK_TRACE_SCHEMA
+    phases = []
+    for phase in trace.get("phases") if isinstance(trace.get("phases"), list) else []:
+        if not isinstance(phase, dict):
+            continue
+        phase_name = str(phase.get("phase") or "").strip()
+        current_step = str(phase.get("current_step") or "").strip()
+        if not phase_name or not current_step.startswith("elevator:"):
+            continue
+        phases.append(
+            {
+                "phase": phase_name,
+                "current_step": current_step,
+                "message": str(phase.get("message") or "").strip(),
+                "percent": _elevator_trace_float(phase.get("percent")),
+                "event": str(phase.get("event") or "").strip(),
+                "status": "not_proven",
+            }
+        )
+    status = (
+        str(trace.get("status") or "elevator_action_feedback_trace_not_proven")
+        if supported and phases
+        else "blocked_missing_elevator_action_feedback_trace"
+    )
+    not_proven = []
+    for item in list(trace.get("not_proven") if isinstance(trace.get("not_proven"), list) else []) + [
+        "real_elevator",
+        "real_nav2_or_fixed_route",
+        "real_phone_device_or_browser",
+        "real_hil_pass",
+        "delivery_success",
+    ]:
+        text = str(item or "").strip()
+        if text and text not in not_proven:
+            not_proven.append(text)
+    return {
+        "schema": ELEVATOR_ACTION_FEEDBACK_TRACE_SUMMARY_SCHEMA,
+        "source_schema": trace.get("schema", ""),
+        "status": status,
+        "source": "software_proof",
+        "source_boundary": str(trace.get("source_boundary") or "").strip(),
+        "safe_evidence_ref": str(trace.get("safe_evidence_ref") or "").strip(),
+        "same_evidence_ref_required": bool(trace.get("same_evidence_ref_required", True)),
+        "current_step": str(trace.get("current_step") or "").strip(),
+        "message": str(trace.get("message") or "").strip(),
+        "percent": _elevator_trace_float(trace.get("percent")),
+        "event": str(trace.get("event") or "").strip(),
+        "phases": phases,
+        "phase_count": len(phases),
+        "source_path": source_text,
+        "phone_safe_summary": {
+            "safe_copy": (
+                "Elevator action feedback trace is metadata-only; "
+                "delivery_success=false; primary_actions_enabled=false."
+            ),
+            "safe_phone_copy": (
+                "电梯 action feedback trace 仅用于复盘展示；"
+                "delivery_success=false; primary_actions_enabled=false。"
+            ),
+        },
+        "not_proven": not_proven,
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+
+
 def extract_elevator_assist(latest_status, last_task):
     latest_status = latest_status if isinstance(latest_status, dict) else {}
     last_task = last_task if isinstance(last_task, dict) else {}
@@ -35754,6 +35852,8 @@ def build_diagnostics_payload(
     latest_status.pop("hardware_sensor_hil_entry_readiness_review_copy", None)
     latest_status.pop("hardware_sensor_hil_entry_execution_pack", None)
     latest_status.pop("hardware_sensor_hil_entry_execution_pack_summary", None)
+    latest_status.pop("elevator_action_feedback_trace", None)
+    latest_status.pop("robot_diagnostics_elevator_action_feedback_trace_summary", None)
     last_task = dict(latest_status.get("last_task") or {})
     task_record_path = str(
         latest_status.get("task_record_path")
@@ -35761,6 +35861,13 @@ def build_diagnostics_payload(
         or ""
     )
     task_record = _read_task_record(task_record_path)
+    elevator_action_feedback_trace, elevator_action_feedback_trace_source = (
+        _elevator_action_feedback_trace_from_payloads(task_record, latest_status, last_task)
+    )
+    elevator_action_feedback_trace_summary = summarize_elevator_action_feedback_trace(
+        elevator_action_feedback_trace,
+        source=elevator_action_feedback_trace_source,
+    )
     route_proof_summary, route_proof_source = _extract_route_proof_summary(latest_status, last_task)
     route_proof_status = classify_route_proof(route_proof_summary, source=route_proof_source)
     elevator_assist, elevator_assist_source = extract_elevator_assist(latest_status, last_task)
@@ -36818,6 +36925,10 @@ def build_diagnostics_payload(
         hardware_sensor_hil_entry_readiness_review_summary=hardware_sensor_hil_entry_readiness_review_summary,
         hardware_sensor_hil_entry_execution_pack=hardware_sensor_hil_entry_execution_pack_summary,
         hardware_sensor_hil_entry_execution_pack_summary=hardware_sensor_hil_entry_execution_pack_summary,
+        elevator_action_feedback_trace=elevator_action_feedback_trace_summary,
+        robot_diagnostics_elevator_action_feedback_trace_summary=(
+            elevator_action_feedback_trace_summary
+        ),
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),

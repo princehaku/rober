@@ -4959,6 +4959,76 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
         self.assertIn("software_proof", doc)
         self.assertIn("not_proven", doc)
 
+    def test_elevator_action_feedback_trace_panel_is_read_only_and_whitelisted(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        doc = DOC.read_text(encoding="utf-8")
+
+        # post-run trace 优先消费 Robot diagnostics safe summary，并保持白名单字段渲染。
+        self.assertIn("ELEVATOR_ACTION_FEEDBACK_TRACE_BOUNDARY", app)
+        self.assertIn("elevatorActionFeedbackTraceCandidate", app)
+        self.assertIn("elevatorActionFeedbackTraceFromStatus", app)
+        self.assertIn("robot_diagnostics_elevator_action_feedback_trace_summary", app)
+        self.assertIn("status?.elevator_action_feedback_trace", app)
+        self.assertIn("status?.last_task?.elevator_action_feedback_trace", app)
+        self.assertIn("safe_evidence_ref", app)
+        self.assertIn("source_boundary", app)
+        self.assertIn("phases", app)
+        self.assertIn("电梯动作反馈追踪", app)
+        self.assertIn("elevator-action-feedback-trace-panel", styles)
+        self.assertIn("elevator-action-feedback-trace-grid", styles)
+
+        # panel 不新增任何控制请求，missing/unknown/non-elevator 必须 fail closed。
+        self.assertIn("非电梯或未知阶段 fail closed", app)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"elevatorActionFeedbackTrace.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+        trace = fixture["robot_diagnostics_elevator_action_feedback_trace_summary"]
+        self.assertEqual(trace["source_boundary"], "software_proof")
+        self.assertEqual(trace["status"], "not_proven")
+        self.assertEqual(trace["current_step"], "elevator:waiting_elevator_open")
+        self.assertEqual(trace["delivery_success"], False)
+        self.assertEqual(trace["primary_actions_enabled"], False)
+        mobile_trace = mobile_fixture["robot_diagnostics_elevator_action_feedback_trace_summary"]
+        self.assertEqual(mobile_trace["current_step"], "elevator:requesting_floor_help")
+        self.assertEqual(mobile_trace["delivery_success"], False)
+        self.assertEqual(mobile_trace["primary_actions_enabled"], False)
+        self.assertIn("elevator_action_feedback_trace", doc)
+        self.assertIn("robot_diagnostics_elevator_action_feedback_trace_summary", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+
+    def test_elevator_action_feedback_trace_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        trace_text = json.dumps(
+            fixture["robot_diagnostics_elevator_action_feedback_trace_summary"],
+            ensure_ascii=False,
+        ).lower()
+
+        # trace fixture 只能包含 phone-safe 摘要，不能携带 raw ROS、路径、凭证、checksum 或成功/控制授权语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "local path",
+            "/users/",
+            "/tmp/",
+            "authorization",
+            "token",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "control grant",
+            "control enabled",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, trace_text)
+
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
         app = self.read_web("app.js")

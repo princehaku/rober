@@ -68,6 +68,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_run_material_bundle,
     summarize_route_task_field_run_material_validation,
     summarize_elevator_field_run_material_validation,
+    summarize_elevator_action_feedback_trace,
     summarize_elevator_field_run_review,
     summarize_elevator_field_run_execution_pack,
     summarize_elevator_route_evidence_reconciliation,
@@ -224,6 +225,93 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertTrue(elevator_assist["requires_human_help"])
         self.assertEqual(elevator_assist["target_floor"], "1")
         self.assertEqual(elevator_assist["evidence"]["target_floor_unconfirmed"], True)
+
+    def test_diagnostics_payload_includes_elevator_action_feedback_trace_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            task_record_path = Path(td) / "task.json"
+            task_record_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "delivery-elevator-trace-1",
+                        "elevator_action_feedback_trace": {
+                            "schema": "trashbot.elevator_action_feedback_trace.v1",
+                            "status": "elevator_action_feedback_trace_not_proven",
+                            "source": "software_proof",
+                            "source_boundary": (
+                                "software_proof_docker_elevator_evidence_driven_mainline_gate"
+                            ),
+                            "safe_evidence_ref": "elevator:trace-001",
+                            "same_evidence_ref_required": True,
+                            "current_step": "elevator:resume_delivery",
+                            "message": "elevator rehearsal evidence artifact accepted",
+                            "percent": 55.0,
+                            "event": "elevator_completed",
+                            "phases": [
+                                {
+                                    "phase": "waiting_elevator_open",
+                                    "current_step": "elevator:waiting_elevator_open",
+                                    "message": "door open",
+                                    "percent": 30.0,
+                                    "event": "elevator_phase",
+                                    "status": "not_proven",
+                                },
+                                {
+                                    "phase": "resume_delivery",
+                                    "current_step": "elevator:resume_delivery",
+                                    "message": "resume",
+                                    "percent": 55.0,
+                                    "event": "elevator_completed",
+                                    "status": "not_proven",
+                                },
+                            ],
+                            "not_proven": ["delivery_success", "real_elevator"],
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = self._base_build_payload(
+                {"state": "completed", "task_record_path": str(task_record_path)}
+            )
+            summary = payload["robot_diagnostics_elevator_action_feedback_trace_summary"]
+            alias = payload["elevator_action_feedback_trace"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_elevator_action_feedback_trace_summary.v1",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.elevator_action_feedback_trace.v1")
+        self.assertEqual(summary["status"], "elevator_action_feedback_trace_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_evidence_ref"], "elevator:trace-001")
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertEqual(summary["current_step"], "elevator:resume_delivery")
+        self.assertEqual(summary["event"], "elevator_completed")
+        self.assertEqual(summary["phase_count"], 2)
+        self.assertEqual(summary["phases"][0]["current_step"], "elevator:waiting_elevator_open")
+        self.assertIn("delivery_success=false", summary["phone_safe_summary"]["safe_copy"])
+        self.assertIn("real_phone_device_or_browser", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertNotIn(str(task_record_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_elevator_action_feedback_trace_summary_fail_closed_without_trace(self):
+        summary = summarize_elevator_action_feedback_trace({})
+
+        self.assertEqual(summary["status"], "blocked_missing_elevator_action_feedback_trace")
+        self.assertEqual(summary["phases"], [])
+        self.assertEqual(summary["current_step"], "")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertIn("delivery_success", summary["not_proven"])
 
     def test_route_proof_summary_missing_fields_downgrades_to_unknown(self):
         payload = self._base_build_payload(

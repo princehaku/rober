@@ -28,6 +28,33 @@ completion, or delivery success. Start Delivery, Confirm Dropoff, and Cancel
 must stay governed by the existing command-safety gates and must not be enabled
 by this feedback display.
 
+## elevator_action_feedback_trace
+
+Robot `task_record` now persists the realtime elevator action feedback chain as
+`elevator_action_feedback_trace`. The trace schema is
+`trashbot.elevator_action_feedback_trace.v1`; Robot diagnostics exposes the
+phone-safe alias
+`robot_diagnostics_elevator_action_feedback_trace_summary` with summary schema
+`trashbot.robot_diagnostics_elevator_action_feedback_trace_summary.v1`.
+
+The trace is derived only from existing elevator assist events and the known
+feedback phase table behind `TrashCollection.Feedback.current_step=elevator:<phase>`.
+It does not change the ROS action schema, add a topic/service, or alter robot
+motion. Required fields are `schema`, `status`, `source=software_proof`,
+`source_boundary`, `safe_evidence_ref`, `same_evidence_ref_required`, `phases`,
+`current_step`, `message`, `percent`, `event`, `not_proven`,
+`delivery_success=false`, and `primary_actions_enabled=false`.
+
+Diagnostics may expose only metadata-safe values: phase names, `current_step`,
+bounded message text, percent, event, source boundary, and safe `evidence_ref`.
+It must fail closed as `blocked_missing_elevator_action_feedback_trace` when the
+task record lacks a valid trace or has no safe `elevator:` phase entries.
+
+This contract is software proof only. It does not prove real elevator
+operation, real Nav2/fixed-route execution, real phone-device/browser
+validation, WAVE ROVER/UART/HIL, dropoff completion, cancel completion, or
+delivery success.
+
 ## route_task_field_retest_acceptance_review_decision
 
 `pc-tools/evidence/route_task_field_retest_acceptance_review_decision.py`

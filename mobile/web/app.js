@@ -15,6 +15,7 @@ const ACTIONS = {
 const SAFE_EMPTY = "等待后端提供安全摘要。";
 const ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
 const ELEVATOR_ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
+const ELEVATOR_ACTION_FEEDBACK_TRACE_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
 const CLOUD_READINESS_BOUNDARY = "software_proof_docker_mobile_cloud_readiness_summary_gate";
 const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_acceptance_readiness_gate";
 const MOBILE_DEVICE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_device_evidence_capture_gate";
@@ -16957,6 +16958,115 @@ function elevatorActionFeedbackFromStatus(status, readiness, diagnostics) {
   };
 }
 
+function safeElevatorActionFeedbackTracePhase(value) {
+  // trace 的 phase 只能来自电梯 action feedback 白名单，避免把非电梯任务误显示成电梯状态。
+  const raw = safeElevatorActionFeedbackText(value, "");
+  const phase = raw.startsWith("elevator:") ? raw.slice("elevator:".length) : raw;
+  if (!ELEVATOR_ACTION_PHASES[phase]) {
+    return null;
+  }
+  return phase;
+}
+
+function normalizeElevatorActionFeedbackTracePhases(value) {
+  // 后端可能给字符串数组或 phase 对象数组；手机端只保留阶段名和安全说明。
+  const values = Array.isArray(value) ? value : [];
+  return values.map((entry) => {
+    if (typeof entry === "string") {
+      const phase = safeElevatorActionFeedbackTracePhase(entry);
+      return phase ? { phase, copy: ELEVATOR_ACTION_PHASES[phase].title } : null;
+    }
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+    const phase = safeElevatorActionFeedbackTracePhase(
+      entry.phase || entry.current_step || entry.currentStep || entry.step,
+    );
+    if (!phase) {
+      return null;
+    }
+    return {
+      phase,
+      copy: safeElevatorActionFeedbackText(
+        entry.safe_phone_copy || entry.safe_copy || entry.copy || entry.summary,
+        ELEVATOR_ACTION_PHASES[phase].title,
+      ),
+    };
+  }).filter(Boolean);
+}
+
+function elevatorActionFeedbackTraceCandidate(status, diagnostics) {
+  // 兼容 Robot worker 的 safe summary，同时不主动发起 diagnostics/cursor/ACK 请求。
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object" ? diagnostics.summary : {};
+  const diagnosticsInnerSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const statusDiagnosticsSummary = status?.diagnostics && typeof status.diagnostics.summary === "object"
+    ? status.diagnostics.summary
+    : {};
+  const candidates = [
+    status?.robot_diagnostics_elevator_action_feedback_trace_summary,
+    status?.elevator_action_feedback_trace,
+    status?.last_task?.elevator_action_feedback_trace,
+    diagnostics?.robot_diagnostics_elevator_action_feedback_trace_summary,
+    diagnosticsSummary.robot_diagnostics_elevator_action_feedback_trace_summary,
+    diagnosticsInnerSummary.robot_diagnostics_elevator_action_feedback_trace_summary,
+    statusDiagnosticsSummary.robot_diagnostics_elevator_action_feedback_trace_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function elevatorActionFeedbackTraceFromStatus(status, diagnostics) {
+  const provided = elevatorActionFeedbackTraceCandidate(status, diagnostics);
+  const currentStep = safeElevatorActionFeedbackText(
+    provided?.current_step || provided?.currentStep || provided?.step,
+    "",
+  );
+  const phase = currentStep.startsWith("elevator:")
+    ? safeElevatorActionFeedbackTracePhase(currentStep)
+    : null;
+  if (!provided || !phase) {
+    return {
+      missing: true,
+      status: "not_proven",
+      source_boundary: "software_proof",
+      safe_evidence_ref: "not_proven",
+      current_step: "not_proven",
+      phases: [],
+      safe_phone_copy: "等待 Robot diagnostics 提供 elevator_action_feedback_trace safe summary；非电梯或未知阶段 fail closed。",
+      recovery_hint: "继续按原 Start Delivery、Confirm Dropoff、Cancel gate 操作；不要把缺失 trace 当作真实电梯结果。",
+      not_proven: ["software_proof", "not_proven", "delivery_success=false", "primary_actions_enabled=false"],
+      delivery_success: false,
+      primary_actions_enabled: false,
+    };
+  }
+  const phases = normalizeElevatorActionFeedbackTracePhases(provided.phases);
+  return {
+    missing: false,
+    status: safeElevatorActionFeedbackText(provided.status || provided.overall_status, "not_proven"),
+    source_boundary: safeElevatorActionFeedbackText(provided.source_boundary || provided.source, "software_proof"),
+    safe_evidence_ref: safeElevatorActionFeedbackText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "not_proven",
+    ),
+    current_step: `elevator:${phase}`,
+    phases,
+    safe_phone_copy: safeElevatorActionFeedbackText(
+      provided.safe_phone_copy || provided.safe_copy || provided.summary,
+      "电梯动作反馈追踪只读展示 Robot diagnostics 的 phone-safe summary。",
+    ),
+    recovery_hint: safeElevatorActionFeedbackText(
+      provided.recovery_hint,
+      "继续观察 Robot diagnostics；缺真实现场材料前保持 not_proven。",
+    ),
+    not_proven: normalizeList(provided.not_proven).map((item) =>
+      safeElevatorActionFeedbackText(item, "not_proven"),
+    ).filter(Boolean),
+    delivery_success: false,
+    primary_actions_enabled: false,
+  };
+}
+
 function commandSafetyFromReadiness(readiness) {
   // 若 command_safety 缺失，前端必须 fail closed，不能用 UI 猜测状态。
   return readiness && typeof readiness.command_safety === "object" ? readiness.command_safety : {};
@@ -22252,6 +22362,69 @@ function renderElevatorRealtimeStage(status) {
   $("elevatorRealtimeStageNotProven").textContent = summary.not_proven.join("、");
 }
 
+function ensureElevatorActionFeedbackTracePanel() {
+  // post-run trace 放在实时阶段后面，强调它是只读复盘摘要，不影响任何主操作 gate。
+  let panel = $("elevatorActionFeedbackTracePanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("elevatorRealtimeStageTitle")?.closest("section") ||
+    $("elevatorAssistTitle")?.closest("section") ||
+    $("primaryJourneyTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "elevatorActionFeedbackTracePanel";
+  panel.className = "elevator-action-feedback-trace-panel";
+  panel.setAttribute("aria-labelledby", "elevatorActionFeedbackTraceTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="elevatorActionFeedbackTraceTitle">电梯动作反馈追踪</h2>
+      <span id="elevatorActionFeedbackTraceBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="elevatorActionFeedbackTraceCopy" class="message">等待 robot_diagnostics_elevator_action_feedback_trace_summary。</p>
+    <dl class="elevator-action-feedback-trace-grid">
+      <div><dt>status</dt><dd id="elevatorActionFeedbackTraceStatus">not_proven</dd></div>
+      <div><dt>source_boundary</dt><dd id="elevatorActionFeedbackTraceSource">software_proof</dd></div>
+      <div><dt>safe_evidence_ref</dt><dd id="elevatorActionFeedbackTraceEvidenceRef">not_proven</dd></div>
+      <div><dt>current_step</dt><dd id="elevatorActionFeedbackTraceCurrentStep">not_proven</dd></div>
+      <div><dt>phases</dt><dd id="elevatorActionFeedbackTracePhases">not_proven</dd></div>
+      <div><dt>recovery_hint</dt><dd id="elevatorActionFeedbackTraceRecovery">继续观察 Robot diagnostics。</dd></div>
+      <div><dt>Control Boundary</dt><dd id="elevatorActionFeedbackTraceControls">delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="elevatorActionFeedbackTraceNotProven">software_proof、not_proven、delivery_success=false、primary_actions_enabled=false</dd></div>
+    </dl>
+    <p id="elevatorActionFeedbackTraceHint" class="hint">只展示白名单字段；过滤 raw ROS topic、本地路径、凭证、checksum、success/control claims。</p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderElevatorActionFeedbackTrace(status) {
+  const panel = ensureElevatorActionFeedbackTracePanel();
+  if (!panel) {
+    return;
+  }
+  const summary = elevatorActionFeedbackTraceFromStatus(status, latestDiagnostics);
+  const badge = $("elevatorActionFeedbackTraceBadge");
+  const phases = summary.phases.length
+    ? summary.phases.map((item) => `${item.phase}: ${item.copy}`).join("；")
+    : "not_proven";
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-ready");
+  badge.textContent = summary.missing ? "not_proven" : summary.status;
+  $("elevatorActionFeedbackTraceCopy").textContent = summary.safe_phone_copy;
+  $("elevatorActionFeedbackTraceStatus").textContent = summary.status;
+  $("elevatorActionFeedbackTraceSource").textContent = summary.source_boundary;
+  $("elevatorActionFeedbackTraceEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("elevatorActionFeedbackTraceCurrentStep").textContent = summary.current_step;
+  $("elevatorActionFeedbackTracePhases").textContent = phases;
+  $("elevatorActionFeedbackTraceRecovery").textContent = summary.recovery_hint;
+  $("elevatorActionFeedbackTraceControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("elevatorActionFeedbackTraceNotProven").textContent = summary.not_proven.join("、");
+}
+
 function setBadge(state, copy) {
   const badge = $("connectionBadge");
   badge.className = "badge";
@@ -25153,6 +25326,7 @@ function renderOfflineFailure() {
   renderElevatorFieldRunExecutionPack({});
   renderElevatorAssist({});
   renderElevatorRealtimeStage({});
+  renderElevatorActionFeedbackTrace({});
   renderElevatorRouteEvidenceReconciliation({});
   renderRouteTaskCompletionSignal({});
   renderRouteTaskTerminalCompletionRehearsal({});
@@ -25251,6 +25425,7 @@ function renderStatus(status) {
   renderElevatorFieldRunExecutionPack(status);
   renderElevatorAssist(status);
   renderElevatorRealtimeStage(status);
+  renderElevatorActionFeedbackTrace(status);
   renderElevatorRouteEvidenceReconciliation(status);
   renderRouteTaskCompletionSignal(status);
   renderRouteTaskTerminalCompletionRehearsal(status);
@@ -25529,6 +25704,7 @@ async function openDiagnostics() {
     renderElevatorFieldRunExecutionPack(latestStatus || {});
     renderElevatorAssist(latestStatus || {});
     renderElevatorRealtimeStage(latestStatus || {});
+    renderElevatorActionFeedbackTrace(latestStatus || {});
     renderRouteTaskCompletionSignal(latestStatus || {});
     renderRouteTaskTerminalCompletionRehearsal(latestStatus || {});
     renderRouteTaskTerminalReviewDecision(latestStatus || {});

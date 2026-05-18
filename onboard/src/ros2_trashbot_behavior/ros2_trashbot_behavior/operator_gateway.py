@@ -74,6 +74,8 @@ def _task_record_support_fields(task_record_path, latest_state_payload):
         "human_intervention_required": traceability["human_intervention_required"],
         "state_transition_history": traceability["state_transition_history"],
         "route_progress": traceability["route_progress"],
+        # operator status 只透传 task_record 已生成的只读 trace，HTTP/diagnostics 再做安全摘要。
+        "elevator_action_feedback_trace": record.get("elevator_action_feedback_trace", {}),
     }
     return support
 
@@ -463,6 +465,9 @@ class OperatorGateway(Node):
             evidence_ref = str(task_record_fields.get("evidence_ref") or result_path or result.task_record_path or "")
             state_transition_history = task_record_fields.get("state_transition_history") or []
             route_progress = task_record_fields.get("route_progress") or {}
+            elevator_action_feedback_trace = (
+                task_record_fields.get("elevator_action_feedback_trace") or {}
+            )
             source = _normalize_task_source(task_record_fields.get("source"))
             self._set_status(status_payload(
                 state,
@@ -477,6 +482,7 @@ class OperatorGateway(Node):
                 human_intervention_required=human_intervention_required,
                 final_state=result.final_state,
                 elevator_assist=elevator_assist,
+                elevator_action_feedback_trace=elevator_action_feedback_trace,
                 state_transition_history=state_transition_history,
                 route_progress=route_progress,
                 can_collect=True,
@@ -494,6 +500,7 @@ class OperatorGateway(Node):
                     "final_state": result.final_state,
                     "state_transition_history": state_transition_history,
                     "elevator_assist": elevator_assist,
+                    "elevator_action_feedback_trace": elevator_action_feedback_trace,
                     "route_progress": route_progress,
                 },
             ))

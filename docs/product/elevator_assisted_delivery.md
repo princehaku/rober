@@ -128,6 +128,18 @@ artifact 或 checksum。该实时反馈仍属于
 Dropoff 或 Cancel，也不证明真实电梯、真实手机、真实 Nav2/fixed-route、
 WAVE ROVER/UART/HIL 或 delivery success。
 
+Robot task record 会把同一条实时链沉淀为
+`elevator_action_feedback_trace`，供现场 owner 复盘手机显示、task record、
+diagnostics 和同一 `evidence_ref`。该 trace 只来源于现有 elevator assist
+events 和 feedback phase table，不新增 ROS action 字段、topic 或 service，也不改变真实运动行为。
+字段包含 `schema`、`status`、`source=software_proof`、`source_boundary`、
+`safe_evidence_ref`、`same_evidence_ref_required`、`phases`、`current_step`、
+`message`、`percent`、`event`、`not_proven`、`delivery_success=false` 和
+`primary_actions_enabled=false`。Diagnostics 暴露只读安全别名
+`robot_diagnostics_elevator_action_feedback_trace_summary`；disabled/no-elevator
+或缺少 trace 时必须 fail closed，不得让手机端把它显示成真实电梯、真实
+Nav2/fixed-route、真实手机、HIL 或 delivery success。
+
 | 触发点 | 手机文案 | 语音提示 |
 | --- | --- | --- |
 | 到达电梯厅 | 已到电梯厅，等待电梯开门。 | 等待电梯开门。 |

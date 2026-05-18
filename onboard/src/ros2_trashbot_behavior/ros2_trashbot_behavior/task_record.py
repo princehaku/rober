@@ -37,6 +37,18 @@ TERMINAL_COMPLETION_REHEARSAL_NOT_PROVEN = (
     "delivery_success",
     "objective_5_external_proof",
 )
+ELEVATOR_ACTION_FEEDBACK_TRACE_SCHEMA = "trashbot.elevator_action_feedback_trace.v1"
+ELEVATOR_ACTION_FEEDBACK_TRACE_STATUS = "elevator_action_feedback_trace_not_proven"
+ELEVATOR_ACTION_FEEDBACK_TRACE_NOT_PROVEN = (
+    "real_elevator",
+    "real_elevator_operation",
+    "real_nav2_or_fixed_route",
+    "real_phone_device_or_browser",
+    "wave_rover_motion",
+    "real_serial_or_uart_feedback",
+    "real_hil_pass",
+    "delivery_success",
+)
 
 
 def _normalize_task_record_source(value):
@@ -167,6 +179,79 @@ def _terminal_completion_rehearsal_summary(
     }
 
 
+def _elevator_action_feedback_trace(
+    *,
+    elevator_assist,
+    safe_evidence_ref,
+):
+    # trace 只沉淀 action feedback 阶段表，方便事后复盘手机显示与 task_record。
+    # 它不生成新 ROS topic/service，也不把 dry-run 阶段升级成真实电梯或送达证据。
+    assist = elevator_assist if isinstance(elevator_assist, dict) else {}
+    events = assist.get("events") if isinstance(assist.get("events"), list) else []
+    raw_phases = []
+    for index, event in enumerate(events):
+        if not isinstance(event, dict):
+            continue
+        phase = str(event.get("phase") or event.get("state") or "").strip()
+        if not phase:
+            continue
+        raw_phases.append((phase, event))
+    current_phase = str(assist.get("phase") or assist.get("state") or "").strip()
+    if current_phase == "resume_delivery" and not any(phase == current_phase for phase, _event in raw_phases):
+        # rehearsal artifact 的 action feedback 会补发 resume_delivery；原始 events 只记录 artifact 阶段。
+        # trace 在这里补齐，保证事后复盘与实时 current_step 链一致。
+        raw_phases.append((current_phase, {"phase": current_phase, "reason": assist.get("reason", "")}))
+    phases = []
+    phase_total = len(raw_phases)
+    for index, (phase, event) in enumerate(raw_phases):
+        if phase_total <= 1:
+            percent = 55.0
+        else:
+            percent = 30.0 + (25.0 * index / (phase_total - 1))
+        phases.append(
+            {
+                "phase": phase,
+                "current_step": f"elevator:{phase}",
+                "message": str(event.get("message") or event.get("reason") or "").strip(),
+                "percent": percent,
+                "event": "elevator_completed" if phase == "resume_delivery" else "elevator_phase",
+                "status": "not_proven",
+                "source": "software_proof",
+                "index": len(phases),
+            }
+        )
+
+    current_step = f"elevator:{current_phase}" if current_phase else ""
+    current_percent = phases[-1]["percent"] if phases else None
+    status = (
+        ELEVATOR_ACTION_FEEDBACK_TRACE_STATUS
+        if bool(assist.get("enabled")) and phases
+        else "blocked_missing_elevator_action_feedback_trace"
+    )
+    return {
+        "schema": ELEVATOR_ACTION_FEEDBACK_TRACE_SCHEMA,
+        "schema_version": 1,
+        "status": status,
+        "source": "software_proof",
+        "source_boundary": str(
+            assist.get("evidence_boundary")
+            or assist.get("proof_gate")
+            or "software_proof_docker_elevator_assist_default_mainline_gate"
+        ),
+        "safe_evidence_ref": str(safe_evidence_ref or "").strip(),
+        "same_evidence_ref_required": bool(assist.get("same_evidence_ref_required", True)),
+        "phases": phases,
+        "current_step": current_step,
+        "message": str(assist.get("reason") or assist.get("failure_reason") or "").strip(),
+        "percent": current_percent,
+        "event": "elevator_completed" if current_phase == "resume_delivery" else "elevator_phase",
+        "not_proven": list(ELEVATOR_ACTION_FEEDBACK_TRACE_NOT_PROVEN),
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "metadata_only": True,
+    }
+
+
 def write_task_record(
     output_dir,
     task_id,
@@ -273,6 +358,10 @@ def write_task_record(
             evidence_ref=payload_evidence_ref,
             route_progress=normalized_route_progress,
             dropoff_result=dropoff_result,
+        ),
+        "elevator_action_feedback_trace": _elevator_action_feedback_trace(
+            elevator_assist=elevator_assist,
+            safe_evidence_ref=payload_evidence_ref,
         ),
         "duration": max(0.0, ended_at - started_at),
         "written_at": time.time(),

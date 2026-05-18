@@ -26,6 +26,37 @@
       "delivery success"
     ]
   },
+  "robot_diagnostics_elevator_action_feedback_trace_summary": {
+    "schema": "trashbot.elevator_action_feedback_trace_summary.v1",
+    "schema_version": 1,
+    "status": "not_proven",
+    "source_boundary": "software_proof",
+    "safe_evidence_ref": "elevator_action_feedback_trace_fixture_20260519_0001",
+    "current_step": "elevator:waiting_elevator_open",
+    "phases": [
+      {
+        "phase": "waiting_elevator_open",
+        "safe_phone_copy": "current_step=elevator:<phase> 只读追踪：等待电梯开门。"
+      },
+      {
+        "phase": "requesting_floor_help",
+        "safe_phone_copy": "请求旁人协助按目标楼层，仍是 software_proof。"
+      }
+    ],
+    "safe_phone_copy": "电梯动作反馈追踪来自 Robot diagnostics safe summary；手机端只展示白名单字段。",
+    "recovery_hint": "缺真实现场材料前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实电梯",
+      "真实 Nav2/fixed-route",
+      "HIL"
+    ]
+  },
   "hardware_baseline_source_alignment": {
     "schema": "trashbot.hardware_baseline_source_alignment.v1",
     "summary_schema": "trashbot.hardware_baseline_source_alignment_summary.v1",

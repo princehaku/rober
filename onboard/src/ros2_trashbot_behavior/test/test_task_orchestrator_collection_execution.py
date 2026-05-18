@@ -219,6 +219,18 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["evidence_ref"], "")
         self.assertEqual(payload["failure_code"], "")
         self.assertEqual(payload["human_intervention_required"], False)
+        trace = payload["elevator_action_feedback_trace"]
+        self.assertEqual(trace["schema"], "trashbot.elevator_action_feedback_trace.v1")
+        self.assertEqual(trace["status"], "elevator_action_feedback_trace_not_proven")
+        self.assertEqual(trace["source"], "software_proof")
+        self.assertEqual(trace["source_boundary"], "software_proof_docker_elevator_assist_default_mainline_gate")
+        self.assertEqual(trace["current_step"], "elevator:resume_delivery")
+        self.assertEqual(trace["event"], "elevator_completed")
+        self.assertEqual(trace["safe_evidence_ref"], "")
+        self.assertTrue(trace["same_evidence_ref_required"])
+        self.assertFalse(trace["delivery_success"])
+        self.assertFalse(trace["primary_actions_enabled"])
+        self.assertIn("real_phone_device_or_browser", trace["not_proven"])
         rehearsal = payload["route_task_terminal_completion_rehearsal"]
         self.assertEqual(
             rehearsal["evidence_boundary"],
@@ -258,6 +270,12 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
             payload["route_task_terminal_completion_rehearsal"]["terminal_verdict"]["verdict"],
             "not_proven",
         )
+        trace = payload["elevator_action_feedback_trace"]
+        self.assertEqual(trace["status"], "blocked_missing_elevator_action_feedback_trace")
+        self.assertEqual(trace["current_step"], "elevator:disabled")
+        self.assertEqual(trace["phases"], [])
+        self.assertFalse(trace["delivery_success"])
+        self.assertFalse(trace["primary_actions_enabled"])
 
     def test_execute_collection_elevator_assist_dry_run_records_happy_path(self):
         with tempfile.TemporaryDirectory() as td:
@@ -307,6 +325,22 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
             self.module.ELEVATOR_ASSIST_PROMPT,
         )
         self.assertEqual(payload["elevator_assist"]["evidence"]["waiting_elevator_open"], "door_open")
+        trace = payload["elevator_action_feedback_trace"]
+        self.assertEqual(
+            [item["current_step"] for item in trace["phases"]],
+            [
+                "elevator:approaching_elevator",
+                "elevator:waiting_elevator_open",
+                "elevator:entering_elevator",
+                "elevator:requesting_floor_help",
+                "elevator:waiting_target_floor",
+                "elevator:exiting_elevator",
+                "elevator:resume_delivery",
+            ],
+        )
+        self.assertEqual(trace["phases"][0]["percent"], 30.0)
+        self.assertEqual(trace["phases"][-1]["percent"], 55.0)
+        self.assertEqual(trace["phases"][-1]["event"], "elevator_completed")
         self.assertEqual(len(elevator_events), 7)
         self.assertEqual(
             [item.current_step for item in elevator_feedback],
@@ -369,6 +403,21 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertEqual(payload["elevator_assist"]["delivery_success"], False)
         self.assertEqual(payload["elevator_assist"]["primary_actions_enabled"], False)
         self.assertEqual(payload["elevator_assist"]["target_floor"], "1F")
+        trace = payload["elevator_action_feedback_trace"]
+        self.assertEqual(trace["safe_evidence_ref"], "elevator:rehearsal-001")
+        self.assertEqual(trace["source_boundary"], "software_proof_docker_elevator_evidence_driven_mainline_gate")
+        self.assertEqual(trace["same_evidence_ref_required"], True)
+        self.assertEqual(
+            [item["current_step"] for item in trace["phases"]],
+            [
+                "elevator:waiting_elevator_open",
+                "elevator:entering_elevator",
+                "elevator:requesting_floor_help",
+                "elevator:waiting_target_floor",
+                "elevator:exiting_elevator",
+                "elevator:resume_delivery",
+            ],
+        )
         self.assertEqual(
             phases,
             [
