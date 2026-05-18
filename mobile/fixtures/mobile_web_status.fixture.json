@@ -2013,6 +2013,89 @@
       "delivery success"
     ]
   },
+  "route_task_field_retest_acceptance_execution_rerun_result_review_handoff": {
+    "schema": "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary.v1",
+    "source": "software_proof",
+    "overall_status": "not_proven",
+    "handoff_status": "ready_for_acceptance_execution_rerun_result_owner_handoff",
+    "owner_role": "owner_role=Robot owner mirrors sanitized handoff while Autonomy owns same safe_evidence_ref material review.",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "next_required_evidence": [
+      "next_required_evidence=real route completion summary",
+      "next_required_evidence=real task record summary",
+      "next_required_evidence=real dropoff/cancel and delivery result summaries"
+    ],
+    "rerun_summary": "rerun_summary=controlled rerun result review is ready for owner handoff, but field evidence remains not_proven.",
+    "status_literals": [
+      "ready_for_acceptance_execution_rerun_result_owner_handoff",
+      "needs_acceptance_execution_rerun_result_material_backfill",
+      "evidence_ref_mismatch_rerun_result_handoff_blocked",
+      "blocked_unsafe_rerun_result_handoff_copy",
+      "blocked_unsupported_rerun_result_review_decision"
+    ],
+    "safe_phone_copy": "route_task_field_retest_acceptance_execution_rerun_result_review_handoff 只用于手机只读受控复跑交接，不放行 Start、Confirm、Cancel、ACK、游标或诊断拉取。",
+    "recovery_hint": "按同一 safe_evidence_ref 补齐真实现场复跑结果材料后重跑 software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "boundary_flags": "source=software_proof / not_proven / delivery_success=false / primary_actions_enabled=false",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate",
+    "not_proven": [
+      "真实 rerun result review handoff",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机设备/browser",
+      "HIL",
+      "delivery success"
+    ]
+  },
+  "route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary": {
+    "schema": "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary.v1",
+    "schema_version": 1,
+    "handoff_status": "needs_acceptance_execution_rerun_result_material_backfill",
+    "owner_role": "owner_role=Field owners backfill same safe_evidence_ref rerun result handoff materials.",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "next_required_evidence": "next_required_evidence=route completion, task record, dropoff/cancel and delivery result summaries.",
+    "rerun_summary": "rerun_summary=material backfill required before owner handoff can proceed.",
+    "safe_phone_copy": "route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary 只用于手机只读受控复跑交接；unsafe、unsupported 和 evidence_ref mismatch 均保持 fail-closed。",
+    "recovery_hint": "手机端等 Robot safe alias 或主 summary 更新，不读取未脱敏交接材料。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "boundary_flags": "source=software_proof / not_proven / delivery_success=false / primary_actions_enabled=false",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate",
+    "not_proven": [
+      "真实 rerun result review handoff",
+      "HIL",
+      "delivery success"
+    ]
+  },
+  "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary": {
+    "schema": "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary.v1",
+    "schema_version": 1,
+    "source_alias": "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary",
+    "handoff_status": "evidence_ref_mismatch_rerun_result_handoff_blocked",
+    "owner_role": "owner_role=Robot owner exposes sanitized rerun result review handoff alias; field owners keep same safe_evidence_ref before handoff.",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "next_required_evidence": "next_required_evidence=route completion, task record, dropoff/cancel and delivery result summaries.",
+    "rerun_summary": "rerun_summary=Robot diagnostics blocks owner handoff until same safe_evidence_ref is restored.",
+    "safe_phone_copy": "Robot diagnostics acceptance execution rerun result review handoff summary 只用于手机只读受控复跑交接，不放行 Start、Confirm、Cancel、ACK、游标或诊断拉取；ready_for_acceptance_execution_rerun_result_owner_handoff、needs_acceptance_execution_rerun_result_material_backfill、evidence_ref_mismatch_rerun_result_handoff_blocked、blocked_unsafe_rerun_result_handoff_copy 和 blocked_unsupported_rerun_result_review_decision 都保持 not_proven。",
+    "recovery_hint": "补齐同一 safe_evidence_ref 的真实受控复跑结果交接材料后再交接；手机端优先读取 Robot safe alias。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "boundary_flags": "source=software_proof / not_proven / delivery_success=false / primary_actions_enabled=false",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate",
+    "not_proven": [
+      "真实 rerun result review handoff",
+      "真实 route/elevator materials",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "elevator_assist": {
     "schema": "trashbot.elevator_assist_summary.v1",
     "schema_version": 1,

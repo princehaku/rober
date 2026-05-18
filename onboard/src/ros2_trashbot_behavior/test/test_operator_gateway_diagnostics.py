@@ -41,6 +41,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_acceptance_execution_rerun_queue,
     summarize_route_task_field_retest_acceptance_execution_rerun_result_intake,
     summarize_route_task_field_retest_acceptance_execution_rerun_result_review_decision,
+    summarize_route_task_field_retest_acceptance_execution_rerun_result_review_handoff,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -8905,6 +8906,221 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("secret-token", encoded)
         self.assertNotIn("/cmd_vel", encoded)
         self.assertNotIn("WAVE ROVER serial material", encoded)
+
+    def test_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_alias_and_fail_closed(self):
+        def handoff_summary(status, evidence_ref, **overrides):
+            base = {
+                "schema": (
+                    "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary.v1"
+                ),
+                "schema_version": 1,
+                "source_schema": (
+                    "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff.v1"
+                ),
+                "evidence_boundary": (
+                    "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate"
+                ),
+                "source_evidence_boundary": (
+                    "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate"
+                ),
+                "safe_evidence_ref": evidence_ref,
+                "handoff_status": {
+                    "status": status,
+                    "verdict": "not_proven",
+                    "reason": "sanitized Autonomy handoff summary was received",
+                },
+                "owner_role": "Autonomy Algorithm Engineer",
+                "owner_handoff": {"owner_role": "Autonomy Algorithm Engineer"},
+                "next_required_evidence": [
+                    "same evidence_ref route completion signal",
+                    "dropoff_or_cancel_completion proof",
+                ],
+                "boundary_flags": {
+                    "metadata_only": True,
+                    "source": "software_proof",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "raw_artifact_consumed": False,
+                    "control_entrypoint_enabled": False,
+                },
+                "robot_diagnostics_summary": {
+                    "status": "metadata_only",
+                    "reason": "Robot diagnostics mirrors sanitized handoff metadata only.",
+                },
+                "safe_copy": (
+                    "Acceptance execution rerun result review handoff is metadata-only; "
+                    "source=software_proof; not_proven; delivery_success=false; "
+                    "primary_actions_enabled=false."
+                ),
+                "same_evidence_ref_required": True,
+                "not_proven": ["delivery_success", "real_hil_pass"],
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            }
+            base.update(overrides)
+            return base
+
+        with tempfile.TemporaryDirectory() as td:
+            handoff_path = Path(td) / "acceptance_execution_rerun_result_review_handoff_summary.json"
+            handoff_path.write_text(
+                json.dumps(
+                    handoff_summary(
+                        "ready_for_acceptance_execution_rerun_result_owner_handoff",
+                        "evidence://acceptance-execution-rerun-result-review-handoff-1",
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_acceptance_execution_rerun_result_review_handoff_ref=str(
+                    handoff_path
+                ),
+            )
+            summary = payload[
+                "route_task_field_retest_acceptance_execution_rerun_result_review_handoff"
+            ]
+            summary_alias = payload[
+                "route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary"
+            ]
+            robot_alias = payload[
+                "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary"
+            ]
+            backfill_summary = (
+                summarize_route_task_field_retest_acceptance_execution_rerun_result_review_handoff(
+                    handoff_summary(
+                        "needs_acceptance_execution_rerun_result_material_backfill",
+                        "evidence://acceptance-execution-rerun-result-review-handoff-2",
+                    )
+                )
+            )
+            mismatch_summary = (
+                summarize_route_task_field_retest_acceptance_execution_rerun_result_review_handoff(
+                    {
+                        "schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate"
+                        ),
+                        "evidence_ref": (
+                            "evidence://acceptance-execution-rerun-result-review-handoff-source"
+                        ),
+                        "route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary": handoff_summary(
+                            "ready_for_acceptance_execution_rerun_result_owner_handoff",
+                            "evidence://acceptance-execution-rerun-result-review-handoff-summary",
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                )
+            )
+            unsafe_summary = (
+                summarize_route_task_field_retest_acceptance_execution_rerun_result_review_handoff(
+                    handoff_summary(
+                        "ready_for_acceptance_execution_rerun_result_owner_handoff",
+                        "evidence://acceptance-execution-rerun-result-review-handoff-3",
+                        safe_copy="Rerun result review handoff confirms delivery success and ACK posted.",
+                        delivery_success=True,
+                        primary_actions_enabled=True,
+                    )
+                )
+            )
+            unsupported_summary = (
+                summarize_route_task_field_retest_acceptance_execution_rerun_result_review_handoff(
+                    handoff_summary(
+                        "ready_for_acceptance_execution_rerun_result_owner_handoff",
+                        "evidence://acceptance-execution-rerun-result-review-handoff-4",
+                        source_schema=(
+                            "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision.v1"
+                        ),
+                        evidence_boundary=(
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate"
+                        ),
+                    )
+                )
+            )
+            encoded = json.dumps(
+                [
+                    summary,
+                    summary_alias,
+                    robot_alias,
+                    backfill_summary,
+                    mismatch_summary,
+                    unsafe_summary,
+                    unsupported_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff.v1",
+        )
+        self.assertEqual(
+            summary["handoff_status"]["status"],
+            "ready_for_acceptance_execution_rerun_result_owner_handoff",
+        )
+        self.assertEqual(
+            backfill_summary["handoff_status"]["status"],
+            "needs_acceptance_execution_rerun_result_material_backfill",
+        )
+        self.assertEqual(
+            mismatch_summary["handoff_status"]["status"],
+            "evidence_ref_mismatch_rerun_result_handoff_blocked",
+        )
+        self.assertEqual(
+            unsafe_summary["handoff_status"]["status"],
+            "blocked_unsafe_rerun_result_handoff_copy",
+        )
+        self.assertEqual(
+            unsupported_summary["handoff_status"]["status"],
+            "blocked_unsupported_rerun_result_review_decision",
+        )
+        self.assertEqual(summary["owner_role"], "Autonomy Algorithm Engineer")
+        self.assertIn("same evidence_ref route completion signal", summary["next_required_evidence"])
+        self.assertIn(
+            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate",
+            encoded,
+        )
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("primary_actions_enabled=false", summary["safe_phone_copy"])
+        self.assertTrue(summary["boundary_flags"]["metadata_only"])
+        self.assertEqual(summary["boundary_flags"]["source"], "software_proof")
+        self.assertFalse(summary["boundary_flags"]["delivery_success"])
+        self.assertFalse(summary["boundary_flags"]["primary_actions_enabled"])
+        self.assertFalse(summary["boundary_flags"]["raw_artifact_consumed"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(handoff_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("/cmd_vel", encoded)
 
     def test_diagnostics_payload_includes_route_task_field_retest_review_result_handoff_summary(self):
         with tempfile.TemporaryDirectory() as td:

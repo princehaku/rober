@@ -422,6 +422,67 @@ record/completion signal, dropoff/cancel completion, delivery success, HIL
 pass, real phone/browser validation, Objective 5 external proof, or any
 primary robot action being enabled.
 
+## route_task_field_retest_acceptance_execution_rerun_result_review_handoff
+
+`pc-tools/evidence/route_task_field_retest_acceptance_execution_rerun_result_review_handoff.py`
+generates the dependency-free PC owner handoff gate after
+`route_task_field_retest_acceptance_execution_rerun_result_review_decision.py`.
+It is the PR #4 real route/elevator field backfill preparation layer, not a
+real field pass or delivery-success proof.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate`
+- Allowed source inputs:
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision.v1`
+  and
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary.v1`
+  under
+  `software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate`
+  only. Wrapper or nested JSON is allowed only through whitelisted
+  `summary`, `artifact`, `safe_copy`, diagnostics, mobile, `payload`, or `data`
+  keys.
+- Handoff status values:
+  `ready_for_acceptance_execution_rerun_result_owner_handoff`,
+  `needs_acceptance_execution_rerun_result_material_backfill`,
+  `evidence_ref_mismatch_rerun_result_handoff_blocked`,
+  `blocked_unsafe_rerun_result_handoff_copy`, and
+  `blocked_unsupported_rerun_result_review_decision`.
+
+The output always includes `source=software_proof`, `safe_evidence_ref`,
+`same_evidence_ref_required=true`, source review decision metadata,
+`owner_role`, `owner_handoff`, `next_required_evidence`, `rerun_summary`,
+`safe_copy`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate`.
+
+Mapping is fail-closed. A supported source decision with
+`ready_for_acceptance_execution_rerun_result_handoff`, matching safe
+evidence_ref, `review_decision_package.ready=true`, and all required material
+categories maps to `ready_for_acceptance_execution_rerun_result_owner_handoff`.
+Missing elevator door state, target floor confirmation, human assistance
+record, Nav2/fixed-route runtime log, task record, route completion signal,
+dropoff/cancel completion, or delivery result maps to
+`needs_acceptance_execution_rerun_result_material_backfill`. Mismatched
+evidence_ref, missing evidence_ref, or weak `same_evidence_ref_required` maps
+to `evidence_ref_mismatch_rerun_result_handoff_blocked`. Unsafe copy, raw
+artifact text, local paths, checksum text, credentials, DB/queue URLs, ROS
+topic names, `/cmd_vel`, serial/UART/WAVE ROVER text, success/control claims,
+`delivery_success=true`, or `primary_actions_enabled=true` maps to
+`blocked_unsafe_rerun_result_handoff_copy`. Missing JSON, bad JSON, unreadable
+JSON, non-object JSON, unsupported schema, unsupported boundary, or unsupported
+source decision status maps to
+`blocked_unsupported_rerun_result_review_decision`.
+
+This contract is software proof only. It does not read material directories,
+parse raw artifacts, access local paths/checksums/credentials/DB/queue URLs,
+read ROS topics, touch serial/UART, trigger Nav2/fixed-route actions, prove a
+real route/elevator field pass, prove PR #4 field backfill, prove HIL, prove a
+real phone/browser run, prove O5/O1, or enable primary robot actions.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

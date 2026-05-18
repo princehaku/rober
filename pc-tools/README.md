@@ -389,6 +389,24 @@ python3 pc-tools/evidence/route_task_field_retest_acceptance_execution_rerun_res
 
 Rerun result review decision mapping 固定包含 `ready_for_acceptance_execution_rerun_result_handoff`、`needs_acceptance_execution_rerun_result_backfill`、`evidence_ref_mismatch_rerun_result`、`blocked_unsafe_rerun_result` 和 `blocked_unsupported_rerun_result_intake`。该 review decision gate 不读取真实材料目录、不触发现场复跑、不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺 route completion signal、task record、Nav2/fixed-route runtime log、dropoff/cancel completion、delivery result、elevator door state、target floor confirmation 或 human assistance record 会进入 `needs_acceptance_execution_rerun_result_backfill`。unsupported intake schema/boundary、缺 safe `evidence_ref`、证据号不一致、unsafe copy、raw path/credential/DB/queue URL/ROS topic/`/cmd_vel`/serial/UART/WAVE ROVER low-level controls、checksum、完整 raw artifact、success/control claim、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_acceptance_execution_rerun_result_handoff` 只表示 Docker/local `software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_decision_gate` 已把 safe intake 转成可交接复核决策，不是真实 route/elevator field pass、真实现场复跑、Nav2/fixed-route proof、task record/completion signal、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
+### route/task field retest acceptance execution rerun result review handoff
+
+`pc-tools/evidence/route_task_field_retest_acceptance_execution_rerun_result_review_handoff.py` 只读上一节 `route_task_field_retest_acceptance_execution_rerun_result_review_decision` artifact、summary 或 wrapper/nested JSON，把 safe review decision 转换成 PR #4 真实 route/elevator 现场回填准备层的 metadata-only owner handoff artifact / summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_acceptance_execution_rerun_result_review_handoff.py \
+  --rerun-result-review-decision-json /tmp/route_task_field_retest_acceptance_execution_rerun_result_review_decision_summary.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_acceptance_execution_rerun_result_review_handoff.json \
+  --summary-output /tmp/route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff.v1`，summary 使用 `schema=trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate`。核心字段包括 `handoff_status`、safe `evidence_ref`、`owner_role`、`owner_handoff`、`next_required_evidence`、`rerun_summary`、`safe_copy`、`source=software_proof`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+顶层 acceptance command 可用 `python3 -m unittest tests.test_route_task_field_retest_acceptance_execution_rerun_result_review_handoff` 复用 `pc-tools/evidence` 下的离线围栏测试；该入口只证明本地 rerun-result-review-handoff gate 的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
+
+Rerun result review handoff mapping 固定包含 `ready_for_acceptance_execution_rerun_result_owner_handoff`、`needs_acceptance_execution_rerun_result_material_backfill`、`evidence_ref_mismatch_rerun_result_handoff_blocked`、`blocked_unsafe_rerun_result_handoff_copy` 和 `blocked_unsupported_rerun_result_review_decision`。上一轮 `ready_for_acceptance_execution_rerun_result_handoff` 且 safe `evidence_ref` 匹配、`review_decision_package.ready=true`、材料类别齐全时映射为 `ready_for_acceptance_execution_rerun_result_owner_handoff`。缺真实门状态、楼层确认、人工协助记录、Nav2/fixed-route runtime log、task record/completion signal、dropoff/cancel completion 或 delivery result 会进入 `needs_acceptance_execution_rerun_result_material_backfill`。证据号不一致、缺 safe `evidence_ref` 或 `same_evidence_ref_required` 不是布尔 true 会进入 `evidence_ref_mismatch_rerun_result_handoff_blocked`。unsafe copy、raw artifact、本机路径、checksum、credential、DB/queue URL、ROS topic、`/cmd_vel`、serial/UART/WAVE ROVER low-level controls、success/control claim、`delivery_success=true` 或 `primary_actions_enabled=true` 都会进入 `blocked_unsafe_rerun_result_handoff_copy`。unsupported review decision schema/boundary、bad JSON 或 missing JSON 会进入 `blocked_unsupported_rerun_result_review_decision`。该 gate 不读取真实材料目录、不解析 raw artifact、不访问本地 path/checksum/credentials/DB/queue URL/ROS topic/serial/UART、不执行任何机器人动作；`ready_for_acceptance_execution_rerun_result_owner_handoff` 只表示 PR #4 owner handoff package 已由 safe decision 准备好，不是真实现场通过、O5/O1 proof、HIL、真实手机/browser 或 delivery success。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：
