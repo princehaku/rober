@@ -5945,6 +5945,102 @@
         "delivery success"
       ]
     },
+    "mobile_real_device_field_trial_acceptance_review_decision": {
+      "schema": "trashbot.mobile_real_device_field_trial_acceptance_review_decision.v1",
+      "schema_version": 1,
+      "summary_schema": "trashbot.mobile_real_device_field_trial_acceptance_review_decision_summary.v1",
+      "copy_schema": "trashbot.mobile_real_device_field_trial_acceptance_review_decision_copy.v1",
+      "decision_id": "field_trial_acceptance_review_decision_fixture_20260518_0001",
+      "source": "derived_from_mobile_real_device_field_trial_acceptance_session",
+      "review_decision": "blocked_missing_acceptance_review_materials_not_proven",
+      "source_session_id": "field_trial_acceptance_session_fixture_20260514_0001",
+      "source_session_status": "blocked_missing_field_trial_acceptance_materials",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "accepted_materials": [
+        "accepted_materials=none_not_control_proof"
+      ],
+      "missing_materials": [
+        "missing_materials=real_device_observed:not_proven",
+        "missing_materials=production_app_observed:not_proven",
+        "missing_materials=pwa_install_prompt_observed:not_proven",
+        "missing_materials=install_user_choice_observed:not_proven",
+        "missing_materials=offline_reload_observed:not_proven",
+        "missing_materials=touch_target_issue:not_proven",
+        "missing_materials=visual_issue:not_proven",
+        "missing_materials=material_redaction_status:not_proven",
+        "missing_materials=operator_support_note:not_provided"
+      ],
+      "rejected_materials": [
+        "rejected_materials=raw_or_success_claim_materials_filtered"
+      ],
+      "owner_handoff": "owner_handoff=Product/Support 复核真实手机材料；Full-stack 保持手机 panel 只读。",
+      "next_required_evidence": "next_required_evidence=真实手机、production app、PWA prompt/user choice、offline、touch、visual 和 redaction 脱敏摘要。",
+      "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+      "safe_phone_copy": "现场验收复核决策 fixture 只把 acceptance session 转成 fail-closed 复核决策；这是 Docker/local mobile software proof。",
+      "recovery_hint": "补齐真实手机材料后再人工复核；Start、Confirm、Cancel 继续 fail closed。",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_review_decision_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_session_gate",
+      "not_proven": [
+        "真实 iPhone/Android device behavior",
+        "production app",
+        "真实 PWA install prompt/user choice",
+        "Objective 5 external proof",
+        "HIL",
+        "delivery success"
+      ]
+    },
+    "mobile_real_device_field_trial_acceptance_review_decision_summary": {
+      "schema": "trashbot.mobile_real_device_field_trial_acceptance_review_decision_summary.v1",
+      "schema_version": 1,
+      "decision_schema": "trashbot.mobile_real_device_field_trial_acceptance_review_decision.v1",
+      "review_decision": "blocked_missing_acceptance_review_materials_not_proven",
+      "source_session_id": "field_trial_acceptance_session_fixture_20260514_0001",
+      "source_session_status": "blocked_missing_field_trial_acceptance_materials",
+      "missing_material_count": 9,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_review_decision_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_session_gate",
+      "not_proven": [
+        "真实 iPhone/Android device behavior",
+        "production app",
+        "真实 PWA install prompt/user choice",
+        "Objective 5 external proof",
+        "HIL",
+        "delivery success"
+      ]
+    },
+    "mobile_real_device_field_trial_acceptance_review_decision_copy": {
+      "schema": "trashbot.mobile_real_device_field_trial_acceptance_review_decision.v1",
+      "schema_version": 1,
+      "copy_schema": "trashbot.mobile_real_device_field_trial_acceptance_review_decision_copy.v1",
+      "summary_schema": "trashbot.mobile_real_device_field_trial_acceptance_review_decision_summary.v1",
+      "decision_id": "field_trial_acceptance_review_decision_fixture_20260518_0001",
+      "review_decision": "blocked_missing_acceptance_review_materials_not_proven",
+      "source_session_id": "field_trial_acceptance_session_fixture_20260514_0001",
+      "source_session_status": "blocked_missing_field_trial_acceptance_materials",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "safe_phone_copy": "fixture copy 只包含 whitelist-only phone-safe acceptance review decision 字段。",
+      "recovery_hint": "缺真实手机、production app 和 PWA prompt 前不得写成验收通过或控制放行。",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_review_decision_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_session_gate",
+      "not_proven": [
+        "真实 iPhone/Android device behavior",
+        "production app",
+        "真实 PWA install prompt/user choice",
+        "Objective 5 external proof",
+        "HIL",
+        "delivery success"
+      ]
+    },
     "mobile_browser_acceptance_bundle": {
       "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
       "schema_version": 1,

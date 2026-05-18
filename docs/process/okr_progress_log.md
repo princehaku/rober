@@ -8,7 +8,29 @@
 
 ## 2026-05-18 系列
 
-更新时间：2026-05-18 19:20 Asia/Shanghai。
+更新时间：2026-05-18 20:55 Asia/Shanghai。
+
+### 2026-05-18 21-22｜mobile-real-device-acceptance-review-decision｜O4 真实手机验收会话复核决策 software proof
+
+本轮 `sprints/2026.05.18_21-22_mobile-real-device-acceptance-review-decision/` 在 20-21 真实材料 rerank 后改道推进 Objective 4。Full-stack 新增 `mobile_real_device_field_trial_acceptance_review_decision*`：mobile/web 在“现场验收会话”之后展示“现场验收复核决策”panel，从 `mobile_real_device_field_trial_acceptance_session*` 推导 review decision、accepted/missing/rejected material summaries、owner handoff、next required evidence、safe copy 和 `not_proven` 边界。证据边界是 `software_proof_docker_mobile_real_device_field_trial_acceptance_review_decision_gate`，保持 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮未新增 WAVE ROVER、UART、HIL packet、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery` 或 operator HIL report。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 route/elevator wrapper，不证明真实 route/elevator field pass、dropoff/cancel completion、delivery result 或 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮未新增真实路线采集、Nav2/fixed-route 实跑、route completion signal 或 task record。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | 真实手机材料链路从 acceptance session 前移到 review decision / owner handoff / next evidence request；仍缺真实 iPhone/Android 行为、production app、真实 PWA prompt/user choice 与真实现场验收通过。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof。 |
+
+本轮验证：Full-stack worker 报告 `node --check mobile/web/app.js` 通过，`python3 -m unittest mobile.web.test_mobile_web_entrypoint` 输出 `Ran 94 tests in 0.573s OK`，required `rg` 与 scoped `git diff --check` 通过；Product closeout 复跑集成围栏并记录在 sprint `final.md`。
+
+### 2026-05-18 20-21｜okr-evidence-rerank-real-material-escalation｜PR/review/OKR 真实材料升级决策
+
+本轮 `sprints/2026.05.18_20-21_okr-evidence-rerank-real-material-escalation/` 根据 PR #4、PR #5 review、`OKR.md` 4.1、18-19 / 19-20 final 与三位 owner fact-check 完成 rerank。结论是 Objective 5 数字最低但缺真实外部材料；Objective 1 次低但缺真实 WAVE ROVER/UART/HIL 与 PR #5 2D LiDAR / ToF 材料；PR #4 route/elevator 真实现场材料 blocker 已被最近两轮连续消费，不能第三次继续本地 wrapper。因此下一轮改道 O4 真实手机材料链路。
+
+证据边界保持 `source=software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。本轮不上调 OKR，不新增产品代码，不新增测试文件。
+
+本轮验证：Hardware / Autonomy / Full-stack 三个只读 worker 的 required `rg` 命令均 exit 0；主会话后续集成围栏记录在 sprint `final.md`。
 
 ### 2026-05-18 19-20｜route-task-acceptance-execution-rerun-result-review-handoff｜O2/O3/O4 PR #4 受控复跑结果复核交接 software proof
 

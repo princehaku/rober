@@ -4649,6 +4649,82 @@ class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, handoff_text)
 
+    def test_mobile_real_device_field_trial_acceptance_review_decision_is_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # acceptance review decision 从 acceptance session 派生，只读展示人工复核材料，不改变主按钮 gating。
+        self.assertIn("MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_REVIEW_DECISION_SCHEMA", app)
+        self.assertIn("mobileRealDeviceFieldTrialAcceptanceReviewDecisionCandidate", app)
+        self.assertIn("mobileRealDeviceFieldTrialAcceptanceReviewDecisionFromStatus", app)
+        self.assertIn("realDeviceFieldTrialAcceptanceReviewDecisionCopyPayload", app)
+        self.assertIn("mobileRealDeviceFieldTrialAcceptanceSessionFromStatus", app)
+        self.assertIn("mobileRealDeviceFieldTrialAcceptanceReviewDecisionTitle", app)
+        self.assertIn("现场验收复核决策", app)
+        self.assertIn("generateRealDeviceFieldTrialAcceptanceReviewDecisionButton", app)
+        self.assertIn("copyRealDeviceFieldTrialAcceptanceReviewDecisionButton", app)
+        self.assertIn("safe_to_control: false", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"mobileRealDeviceFieldTrialAcceptanceReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+
+        # fixture 和文档必须固定 software proof / not_proven / not-control 边界。
+        decision = fixture["phone_readiness"]["mobile_real_device_field_trial_acceptance_review_decision"]
+        self.assertEqual(
+            decision["review_decision"],
+            "blocked_missing_acceptance_review_materials_not_proven",
+        )
+        self.assertEqual(decision["safe_to_control"], False)
+        self.assertEqual(decision["delivery_success"], False)
+        self.assertEqual(decision["primary_actions_enabled"], False)
+        self.assertIn("accepted_materials", decision)
+        self.assertIn("missing_materials", decision)
+        self.assertIn("rejected_materials", decision)
+        self.assertIn("owner_handoff", decision)
+        self.assertIn("next_required_evidence", decision)
+        self.assertIn("software_proof_docker_mobile_real_device_field_trial_acceptance_review_decision_gate", fixture_text)
+        self.assertIn("mobile_real_device_field_trial_acceptance_review_decision", doc)
+        self.assertIn("现场验收复核决策", doc)
+
+    def test_mobile_real_device_field_trial_acceptance_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        decision_text = json.dumps(
+            fixture["phone_readiness"]["mobile_real_device_field_trial_acceptance_review_decision"],
+            ensure_ascii=False,
+        ).lower()
+
+        # review decision fixture 只能携带白名单摘要，不能带 raw 材料、控制授权或真实验收成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw review",
+            "raw decision",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "真实手机已验收",
+            "验收通过",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, decision_text)
+
 
 if __name__ == "__main__":
     unittest.main()
