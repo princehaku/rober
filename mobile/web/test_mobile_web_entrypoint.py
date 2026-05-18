@@ -3932,6 +3932,129 @@ class RouteTaskFieldRetestAcceptanceExecutionHandoffIntakeMobileTest(unittest.Te
             self.assertNotIn(forbidden, alias_text)
 
 
+class RouteTaskFieldRetestAcceptanceExecutionRerunQueueMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_field_retest_acceptance_execution_rerun_queue_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 受控复跑队列跟在 handoff intake 后，只读展示队列 metadata。
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionRerunQueueTitle", app)
+        self.assertIn("受控复跑队列", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionHandoffIntakeTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("route-task-field-retest-acceptance-execution-rerun-queue-panel", app)
+        self.assertIn("route-task-field-retest-acceptance-execution-rerun-queue-grid", app)
+
+        # Robot worker alias 必须早于主 summary / artifact，避免手机端读取 raw queue。
+        alias_index = app.index(
+            "status?.robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary"
+        )
+        summary_index = app.index(
+            "status?.route_task_field_retest_acceptance_execution_rerun_queue_summary"
+        )
+        artifact_index = app.index(
+            "status?.route_task_field_retest_acceptance_execution_rerun_queue,"
+        )
+        self.assertLess(alias_index, summary_index)
+        self.assertLess(summary_index, artifact_index)
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestAcceptanceExecutionRerunQueueText", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionRerunQueueCandidate", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionRerunQueueFromStatus", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_acceptance_execution_rerun_queue", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_acceptance_execution_rerun_queue", app)
+        self.assertIn("queue_status", app)
+        self.assertIn("source_handoff_status", app)
+        self.assertIn("queue_position", app)
+        self.assertIn("queue_readiness", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("safe_rerun_hint", app)
+
+        # 该 panel 不提供 copy/export，不 fetch raw artifact，也不触发主操作或 diagnostics 拉取。
+        queue_block = app[
+            app.index("function ensureRouteTaskFieldRetestAcceptanceExecutionRerunQueuePanel"):
+            app.index("function ensureRouteTaskFieldRetestEvidenceDispatchPanel")
+        ]
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(
+            queue_block,
+            r"routeTaskFieldRetestAcceptanceExecutionRerunQueue.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotIn("copyRouteTaskFieldRetestAcceptanceExecutionRerunQueueButton", app)
+        self.assertNotIn("downloadRouteTaskFieldRetestAcceptanceExecutionRerunQueueButton", app)
+
+        # fixture 和产品文档必须明确 software proof / not_proven / 主操作禁用边界。
+        queue = fixture["route_task_field_retest_acceptance_execution_rerun_queue"]
+        self.assertEqual(queue["queue_status"], "queued_pending_same_evidence_ref_owner_ack")
+        self.assertEqual(queue["delivery_success"], False)
+        self.assertEqual(queue["primary_actions_enabled"], False)
+        self.assertIn(
+            "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary",
+            fixture,
+        )
+        self.assertIn(
+            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate",
+            fixture_text,
+        )
+        self.assertIn("queue_readiness", fixture_text)
+        self.assertIn("queue_position", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("route_task_field_retest_acceptance_execution_rerun_queue", doc)
+        self.assertIn("受控复跑队列", doc)
+
+    def test_field_retest_acceptance_execution_rerun_queue_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        queue_text = json.dumps(
+            fixture["route_task_field_retest_acceptance_execution_rerun_queue"],
+            ensure_ascii=False,
+        ).lower()
+        alias_text = json.dumps(
+            fixture["robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 队列 fixture 只能携带白名单 metadata，不能泄漏 raw artifact、路径、凭证或底层链路。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "local path",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "wave rover detail",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "complete artifacts",
+            "traceback",
+            "ack payload",
+            "cursor",
+            "robot command",
+            "diagnostics fetch",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, queue_text)
+            self.assertNotIn(forbidden, alias_text)
+
+
 class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

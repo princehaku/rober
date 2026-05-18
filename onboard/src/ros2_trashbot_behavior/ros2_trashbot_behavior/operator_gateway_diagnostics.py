@@ -259,6 +259,15 @@ ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_HANDOFF_INTAKE_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_HANDOFF_INTAKE_GATE = (
     "software_proof_docker_route_task_field_retest_acceptance_execution_handoff_intake_gate"
 )
+ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_SCHEMA = (
+    "trashbot.route_task_field_retest_acceptance_execution_rerun_queue.v1"
+)
+ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_retest_acceptance_execution_rerun_queue_summary.v1"
+)
+ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_GATE = (
+    "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate"
+)
 ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SCHEMA = (
     "trashbot.route_task_field_retest_evidence_dispatch.v1"
 )
@@ -2184,6 +2193,53 @@ def _route_task_field_retest_acceptance_execution_handoff_intake_not_proven(
         "owner_acknowledgement_completed",
         "next_required_evidence_collected",
         "rerun_command_executed",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "real_phone_device_or_browser_proof",
+        "production_readiness",
+        "real_dropoff_completion",
+        "real_cancel_completion",
+        "dropoff_or_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_retest_acceptance_execution_rerun_queue_not_proven(
+    queue=None,
+    summary_fragment=None,
+):
+    # rerun queue 只是把 Autonomy 的受控复跑排队元数据带给 Robot diagnostics，不代表现场复跑已经发生。
+    queue = queue if isinstance(queue, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(queue.get("not_proven"), list):
+        source_values.extend(queue.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_elevator_operation",
+        "real_elevator_door_state",
+        "real_floor_confirmation",
+        "human_assistance_outcome",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "route_task_completion_real_world",
+        "controlled_field_rerun_executed",
+        "rerun_queue_execution",
+        "rerun_command_executed",
+        "route_elevator_field_result",
         "wave_rover_motion",
         "real_serial_or_uart_feedback",
         "real_hil_pass",
@@ -5482,6 +5538,61 @@ def _default_route_task_field_retest_acceptance_execution_handoff_intake_summary
     }
 
 
+def _default_route_task_field_retest_acceptance_execution_rerun_queue_summary(
+    path,
+    queue_status="blocked_missing_route_task_field_retest_acceptance_execution_rerun_queue",
+    read_error="",
+):
+    # 缺少 Autonomy queue summary 时必须 fail-closed，Robot diagnostics 不能自行补造复跑队列状态。
+    reason = read_error or "route-task field retest acceptance execution rerun queue is not configured"
+    return {
+        "schema": ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "queue_status": {"status": queue_status, "verdict": "not_proven", "reason": reason},
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "source_handoff_intake_status": {},
+        "owner_handoff": {},
+        "next_required_evidence": [],
+        "safe_rerun_hint": [],
+        "blocked_reason": reason,
+        "same_evidence_ref_required": True,
+        "robot_diagnostics_summary": {"status": "blocked", "reason": reason},
+        "boundary": ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_GATE,
+        "not_proven": _route_task_field_retest_acceptance_execution_rerun_queue_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": (
+            "Route-task field retest acceptance execution rerun queue is metadata-only; "
+            "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
+        ),
+        "safe_phone_copy": (
+            "Route-task field retest acceptance execution rerun queue is metadata-only; "
+            "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
+        ),
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
 def _default_route_task_field_retest_result_callback_review_handoff_summary(
     path,
     handoff_status="blocked_missing_route_task_field_retest_result_callback_review_handoff",
@@ -8545,6 +8656,19 @@ def _route_task_field_retest_acceptance_execution_handoff_intake_source_contract
     return source_schema, source_boundary
 
 
+def _route_task_field_retest_acceptance_execution_rerun_queue_source_contract(value):
+    # rerun queue 支持 artifact、summary wrapper 和 nested diagnostics；summary 缺 source 时回指本轮 queue artifact。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema")
+            or ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _elevator_route_evidence_reconciliation_source_contract(value):
     # 允许直接 artifact 或 summary wrapper；wrapper 必须保留原始 schema/boundary，防止把别的 gate 混入。
     source_schema = str(value.get("schema") or "")
@@ -9421,6 +9545,17 @@ def _route_task_field_retest_acceptance_execution_handoff_intake_has_disabled_ac
     summary_fragment,
 ):
     # intake alias 只读展示交接元数据；显式 false 是隔离 API action、ACK、Nav2/HIL 的硬边界。
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    return (
+        summary_fragment.get("delivery_success") is False
+        and summary_fragment.get("primary_actions_enabled") is False
+    )
+
+
+def _route_task_field_retest_acceptance_execution_rerun_queue_has_disabled_actions(
+    summary_fragment,
+):
+    # rerun queue 只读进入 diagnostics；显式 false 是阻断 collect/dropoff/cancel/ACK/Nav2/HIL 的硬边界。
     summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
     return (
         summary_fragment.get("delivery_success") is False
@@ -22217,6 +22352,408 @@ def summarize_route_task_field_retest_acceptance_execution_handoff_intake(source
     return summary
 
 
+def summarize_route_task_field_retest_acceptance_execution_rerun_queue(source):
+    """构建 acceptance execution rerun queue 的 metadata-only diagnostics 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        queue = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_route_task_field_retest_acceptance_execution_rerun_queue_summary(
+            source_path,
+            read_error="route-task field retest acceptance execution rerun queue is not configured",
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "queue_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": "route-task field retest acceptance execution rerun queue summary missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "acceptance execution rerun queue missing",
+                    },
+                    "safe_copy": (
+                        "Route-task field retest acceptance execution rerun queue "
+                        "is missing; metadata remains blocked/not_proven."
+                    ),
+                    "safe_phone_copy": (
+                        "Route-task field retest acceptance execution rerun queue "
+                        "is missing; metadata remains blocked/not_proven."
+                    ),
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                queue = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "queue_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            "failed reading route-task field retest acceptance execution "
+                            f"rerun queue: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "acceptance execution rerun queue JSON read error",
+                    },
+                    "safe_copy": (
+                        "Route-task field retest acceptance execution rerun queue "
+                        "could not be read; metadata remains blocked/not_proven."
+                    ),
+                    "safe_phone_copy": (
+                        "Route-task field retest acceptance execution rerun queue "
+                        "could not be read; metadata remains blocked/not_proven."
+                    ),
+                }
+            )
+            return summary
+    summary = _default_route_task_field_retest_acceptance_execution_rerun_queue_summary(
+        source_path,
+        read_error="route-task field retest acceptance execution rerun queue is not configured",
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(queue, dict):
+        summary.update(
+            {
+                "queue_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest acceptance execution rerun queue JSON must be an object",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "acceptance execution rerun queue JSON shape is invalid",
+                },
+                "safe_copy": (
+                    "Route-task field retest acceptance execution rerun queue "
+                    "shape is invalid; metadata remains blocked/not_proven."
+                ),
+                "safe_phone_copy": (
+                    "Route-task field retest acceptance execution rerun queue "
+                    "shape is invalid; metadata remains blocked/not_proven."
+                ),
+            }
+        )
+        return summary
+
+    diagnostics = queue.get("diagnostics") if isinstance(queue.get("diagnostics"), dict) else {}
+    queue_schema = str(queue.get("schema") or "")
+    # Autonomy 可以传 summary、artifact 内嵌 summary、Robot alias 或 diagnostics wrapper；Robot 只消费白名单摘要。
+    summary_fragment = (
+        queue
+        if queue_schema == ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_SUMMARY_SCHEMA
+        else {}
+    )
+    if not summary_fragment:
+        for candidate in (
+            queue.get("robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary"),
+            queue.get("route_task_field_retest_acceptance_execution_rerun_queue_summary"),
+            queue.get("route_task_field_retest_acceptance_execution_rerun_queue"),
+            queue.get("robot_diagnostics_summary"),
+            queue.get("robot_compatible_summary"),
+            queue.get("diagnostics_compatible_summary"),
+            queue.get("mobile_readonly_summary"),
+            queue.get("phone_safe_summary"),
+            diagnostics.get("robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary"),
+            diagnostics.get("route_task_field_retest_acceptance_execution_rerun_queue_summary"),
+            diagnostics.get("route_task_field_retest_acceptance_execution_rerun_queue"),
+            diagnostics.get("summary"),
+            diagnostics.get("diagnostics_summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if (
+        not summary_fragment
+        and queue_schema == ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_SCHEMA
+    ):
+        # artifact 本身必须满足同一套安全字段；存在 nested summary 时上面的白名单优先。
+        summary_fragment = queue
+
+    contract_source = summary_fragment if summary_fragment else queue
+    source_schema, source_boundary = (
+        _route_task_field_retest_acceptance_execution_rerun_queue_source_contract(
+            contract_source
+        )
+    )
+    if (
+        source_schema != ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_SCHEMA
+        or source_boundary != ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_GATE
+    ):
+        summary.update(
+            {
+                "source_schema": _redact_route_task_rehearsal_text(source_schema),
+                "source_schema_version": contract_source.get("schema_version"),
+                "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "queue_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest acceptance execution rerun queue "
+                        "schema or evidence boundary is unsupported"
+                    ),
+                },
+                "blocked_reason": "unsupported schema or evidence boundary",
+                "owner_handoff": {},
+                "next_required_evidence": [],
+                "safe_rerun_hint": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+            }
+        )
+        return summary
+
+    status_source = summary_fragment.get("queue_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("rerun_queue_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("status_summary")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    queue_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or status_source.get("verdict")
+        or summary_fragment.get("queue_status")
+        or summary_fragment.get("rerun_queue_status")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or "blocked"
+    )
+    queue_verdict = _redact_route_task_rehearsal_text(
+        status_source.get("verdict")
+        or status_source.get("decision")
+        or summary_fragment.get("verdict")
+        or "not_proven"
+    )
+    queue_reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or status_source.get("summary")
+        or summary_fragment.get("blocked_reason")
+        or summary_fragment.get("reason")
+        or "route-task field retest acceptance execution rerun queue consumed without explicit reason"
+    )
+    safe_copy = _safe_pc_route_debug_value(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or (
+            "Route-task field retest acceptance execution rerun queue is metadata-only; "
+            "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    safe_copy_text = (
+        json.dumps(safe_copy, ensure_ascii=False, sort_keys=True)
+        if isinstance(safe_copy, (dict, list))
+        else str(safe_copy or "")
+    )
+    if "delivery_success=false" not in safe_copy_text:
+        # safe_phone_copy 保留 literal false，便于 mobile/diagnostics 证明它不是动作授权。
+        safe_copy_text = (
+            f"{safe_copy_text}; same_evidence_ref_required=true; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+    source_ref = str(queue.get("safe_evidence_ref") or queue.get("evidence_ref") or "").strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref") or summary_fragment.get("evidence_ref") or ""
+    ).strip()
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else summary_fragment.get("diagnostics_compatible_summary")
+        if isinstance(summary_fragment.get("diagnostics_compatible_summary"), dict)
+        else diagnostics.get("robot_diagnostics_summary")
+        if isinstance(diagnostics.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    source_handoff_status = _safe_pc_route_debug_value(
+        summary_fragment.get("source_handoff_intake_status")
+        if "source_handoff_intake_status" in summary_fragment
+        else summary_fragment.get("handoff_intake_status")
+    )
+    owner_handoff = _safe_pc_route_debug_value(
+        summary_fragment.get("owner_handoff")
+        if "owner_handoff" in summary_fragment
+        else summary_fragment.get("owner_acknowledgement")
+    )
+    next_required_evidence = _safe_pc_route_debug_value(
+        summary_fragment.get("next_required_evidence")
+        if "next_required_evidence" in summary_fragment
+        else summary_fragment.get("next_evidence_flags")
+    )
+    safe_rerun_hint = _safe_pc_route_debug_value(
+        summary_fragment.get("safe_rerun_hint")
+        if "safe_rerun_hint" in summary_fragment
+        else summary_fragment.get("safe_rerun_command_summary")
+        if "safe_rerun_command_summary" in summary_fragment
+        else summary_fragment.get("rerun_commands_summary")
+        if "rerun_commands_summary" in summary_fragment
+        else summary_fragment.get("rerun_commands")
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": contract_source.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "queue_status": {
+                "status": queue_status or "blocked",
+                "verdict": queue_verdict or "not_proven",
+                "reason": queue_reason,
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(summary_ref or source_ref),
+            "source_handoff_intake_status": source_handoff_status,
+            "owner_handoff": owner_handoff,
+            "next_required_evidence": next_required_evidence,
+            "safe_rerun_hint": safe_rerun_hint,
+            "blocked_reason": _redact_route_task_rehearsal_text(
+                summary_fragment.get("blocked_reason") or queue_reason
+            ),
+            "same_evidence_ref_required": summary_fragment.get("same_evidence_ref_required") is True,
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": queue_status or "blocked",
+                "reason": "acceptance execution rerun queue consumed without explicit robot diagnostics summary",
+            },
+            "boundary": ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_GATE,
+            "not_proven": _route_task_field_retest_acceptance_execution_rerun_queue_not_proven(
+                queue,
+                summary_fragment,
+            ),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy_text,
+            "read_error": "",
+        }
+    )
+
+    required_summary_fields = (
+        isinstance(summary["source_handoff_intake_status"], (dict, list, str)),
+        isinstance(summary["owner_handoff"], (dict, list, str)),
+        isinstance(summary["next_required_evidence"], list),
+        isinstance(summary["safe_rerun_hint"], (dict, list, str)),
+        bool(summary["safe_copy"]),
+    )
+    if not summary["safe_evidence_ref"]:
+        summary.update(
+            {
+                "queue_status": {
+                    "status": "missing_evidence_ref",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest acceptance execution rerun queue is missing evidence_ref",
+                },
+                "blocked_reason": "missing evidence_ref",
+                "robot_diagnostics_summary": {"status": "blocked", "reason": "missing evidence_ref"},
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary.update(
+            {
+                "queue_status": {
+                    "status": "evidence_ref_mismatch_rerun_queue",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest acceptance execution rerun queue "
+                        "summary evidence_ref does not match source evidence_ref"
+                    ),
+                },
+                "blocked_reason": "same evidence_ref mismatch",
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "same evidence_ref mismatch",
+                },
+            }
+        )
+        return summary
+    if not summary["same_evidence_ref_required"]:
+        summary.update(
+            {
+                "queue_status": {
+                    "status": "same_evidence_ref_required_false",
+                    "verdict": "not_proven",
+                    "reason": "route-task field retest acceptance execution rerun queue must require the same evidence_ref",
+                },
+                "blocked_reason": "same_evidence_ref_required must be JSON true",
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "same_evidence_ref_required must be JSON true",
+                },
+            }
+        )
+        return summary
+    if not all(required_summary_fields):
+        summary.update(
+            {
+                "queue_status": {
+                    "status": "missing_required_summary_fields",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest acceptance execution rerun queue "
+                        "is missing required safe summary fields"
+                    ),
+                },
+                "blocked_reason": "missing required acceptance execution rerun queue fields",
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing required acceptance execution rerun queue fields",
+                },
+            }
+        )
+        return summary
+    if (
+        not _route_task_field_retest_acceptance_execution_rerun_queue_has_disabled_actions(
+            summary_fragment
+        )
+        or _route_task_field_run_console_has_unsafe_fields(summary_fragment)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy_text)
+        or _route_task_field_retest_execution_pack_has_success_wording(summary_fragment)
+    ):
+        summary.update(
+            {
+                "queue_status": {
+                    "status": "blocked_unsafe_rerun_queue",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest acceptance execution rerun queue "
+                        "contains unsafe fields, enabled actions, raw details, or success wording"
+                    ),
+                },
+                "owner_handoff": {},
+                "next_required_evidence": [],
+                "safe_rerun_hint": [],
+                "blocked_reason": "unsafe acceptance execution rerun queue fields",
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe acceptance execution rerun queue fields",
+                },
+                "safe_copy": (
+                    "Route-task field retest acceptance execution rerun queue was blocked "
+                    "because summary fields could imply control, ACK, Nav2/HIL, raw artifact "
+                    "access, or delivery success."
+                ),
+                "safe_phone_copy": (
+                    "Route-task field retest acceptance execution rerun queue was blocked "
+                    "because summary fields could imply control, ACK, Nav2/HIL, raw artifact "
+                    "access, or delivery success."
+                ),
+            }
+        )
+    return summary
+
+
 def summarize_route_task_field_retest_result_callback_review_handoff(source):
     """构建 route-task field retest result callback review handoff 的 metadata-only diagnostics 摘要。"""
     source_path = ""
@@ -31107,6 +31644,7 @@ def build_diagnostics_payload(
     route_task_field_retest_acceptance_execution_callback_review_decision_ref="",
     route_task_field_retest_acceptance_execution_callback_review_handoff_ref="",
     route_task_field_retest_acceptance_execution_handoff_intake_ref="",
+    route_task_field_retest_acceptance_execution_rerun_queue_ref="",
     route_task_field_retest_evidence_dispatch_ref="",
     route_task_field_retest_callback_intake_ref="",
     route_task_field_retest_callback_review_decision_ref="",
@@ -31924,6 +32462,49 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
         else {}
     )
+    route_task_field_retest_acceptance_execution_rerun_queue_source = (
+        latest_status.get("robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary")
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary"
+            ),
+            dict,
+        )
+        else latest_status.get("route_task_field_retest_acceptance_execution_rerun_queue_summary")
+        if isinstance(
+            latest_status.get("route_task_field_retest_acceptance_execution_rerun_queue_summary"),
+            dict,
+        )
+        else latest_status.get("route_task_field_retest_acceptance_execution_rerun_queue")
+        if isinstance(
+            latest_status.get("route_task_field_retest_acceptance_execution_rerun_queue"),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("route_task_field_retest_acceptance_execution_rerun_queue_summary")
+        if isinstance(
+            diagnostics_source.get("route_task_field_retest_acceptance_execution_rerun_queue_summary"),
+            dict,
+        )
+        else diagnostics_source.get("route_task_field_retest_acceptance_execution_rerun_queue")
+        if isinstance(
+            diagnostics_source.get("route_task_field_retest_acceptance_execution_rerun_queue"),
+            dict,
+        )
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
+        else {}
+    )
     route_task_field_retest_evidence_dispatch_source = (
         latest_status.get("route_task_field_retest_evidence_dispatch")
         if isinstance(latest_status.get("route_task_field_retest_evidence_dispatch"), dict)
@@ -32276,6 +32857,12 @@ def build_diagnostics_payload(
     latest_status.pop("route_task_field_retest_acceptance_execution_handoff_intake_summary", None)
     latest_status.pop(
         "robot_diagnostics_route_task_field_retest_acceptance_execution_handoff_intake_summary",
+        None,
+    )
+    latest_status.pop("route_task_field_retest_acceptance_execution_rerun_queue", None)
+    latest_status.pop("route_task_field_retest_acceptance_execution_rerun_queue_summary", None)
+    latest_status.pop(
+        "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary",
         None,
     )
     latest_status.pop("route_task_field_retest_evidence_dispatch", None)
@@ -32632,6 +33219,23 @@ def build_diagnostics_payload(
     route_task_field_retest_acceptance_execution_handoff_intake_summary = (
         summarize_route_task_field_retest_acceptance_execution_handoff_intake(
             route_task_field_retest_acceptance_execution_handoff_intake_source
+        )
+    )
+    route_task_field_retest_acceptance_execution_rerun_queue_source = (
+        route_task_field_retest_acceptance_execution_rerun_queue_ref
+        or os.environ.get(
+            "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_QUEUE_SUMMARY",
+            "",
+        )
+        or route_task_field_retest_acceptance_execution_rerun_queue_source
+    )
+    route_task_field_retest_acceptance_execution_rerun_queue_summary = (
+        summarize_route_task_field_retest_acceptance_execution_rerun_queue(
+            route_task_field_retest_acceptance_execution_rerun_queue_source
         )
     )
     route_task_field_retest_evidence_dispatch_source = (
@@ -33185,6 +33789,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_route_task_field_retest_acceptance_execution_handoff_intake_summary=(
             route_task_field_retest_acceptance_execution_handoff_intake_summary
+        ),
+        route_task_field_retest_acceptance_execution_rerun_queue=(
+            route_task_field_retest_acceptance_execution_rerun_queue_summary
+        ),
+        route_task_field_retest_acceptance_execution_rerun_queue_summary=(
+            route_task_field_retest_acceptance_execution_rerun_queue_summary
+        ),
+        robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary=(
+            route_task_field_retest_acceptance_execution_rerun_queue_summary
         ),
         route_task_field_retest_evidence_dispatch=route_task_field_retest_evidence_dispatch_summary,
         route_task_field_retest_evidence_dispatch_summary=route_task_field_retest_evidence_dispatch_summary,

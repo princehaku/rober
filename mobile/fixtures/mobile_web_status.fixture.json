@@ -1756,6 +1756,95 @@
       "delivery success"
     ]
   },
+  "route_task_field_retest_acceptance_execution_rerun_queue": {
+    "schema": "trashbot.route_task_field_retest_acceptance_execution_rerun_queue.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.route_task_field_retest_acceptance_execution_rerun_queue_summary.v1",
+    "source": "software_proof",
+    "overall_status": "not_proven",
+    "queue_status": "queued_pending_same_evidence_ref_owner_ack",
+    "source_handoff_status": "source_handoff_status=needs_owner_follow_up_not_proven",
+    "queue_position": "queue_position=controlled_rerun_slot_pending",
+    "queue_readiness": "queue_readiness=blocked_pending_real_route_task_materials",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "owner_handoff": [
+      "owner_handoff=Autonomy keeps controlled rerun inputs aligned to the same safe_evidence_ref",
+      "owner_handoff=Robot mirrors robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary",
+      "owner_handoff=Full-stack keeps mobile queue panel read-only"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real route completion summary",
+      "next_required_evidence=real task record summary",
+      "next_required_evidence=real dropoff/cancel and delivery result summaries"
+    ],
+    "safe_rerun_hint": "safe_rerun_hint=run software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate with the same safe_evidence_ref.",
+    "safe_phone_copy": "route_task_field_retest_acceptance_execution_rerun_queue 只用于手机只读受控复跑队列，不放行 Start、Confirm 或 Cancel。",
+    "recovery_hint": "按同一 safe_evidence_ref 补齐真实现场复跑材料后重跑 software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "boundary_flags": "not_proven / delivery_success=false / primary_actions_enabled=false",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate",
+    "not_proven": [
+      "真实 controlled rerun queue material",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机设备/browser",
+      "HIL",
+      "delivery success"
+    ]
+  },
+  "route_task_field_retest_acceptance_execution_rerun_queue_summary": {
+    "schema": "trashbot.route_task_field_retest_acceptance_execution_rerun_queue_summary.v1",
+    "schema_version": 1,
+    "queue_status": "queued_pending_same_evidence_ref_owner_ack",
+    "source_handoff_status": "source_handoff_status=needs_owner_follow_up_not_proven",
+    "queue_position": "queue_position=controlled_rerun_slot_pending",
+    "queue_readiness": "queue_readiness=blocked_pending_real_route_task_materials",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "owner_handoff": "owner_handoff=Robot publishes safe alias; field owners backfill same safe_evidence_ref rerun queue materials.",
+    "next_required_evidence": "next_required_evidence=route completion, task record, dropoff/cancel and delivery result summaries.",
+    "safe_rerun_hint": "safe_rerun_hint=software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate after owner acknowledgement.",
+    "safe_phone_copy": "route_task_field_retest_acceptance_execution_rerun_queue_summary 只用于手机只读受控复跑队列，不放行 Start、Confirm 或 Cancel。",
+    "recovery_hint": "手机端等 Robot safe alias 或主 summary 更新，不读取 raw rerun queue。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "boundary_flags": "not_proven / delivery_success=false / primary_actions_enabled=false",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate",
+    "not_proven": [
+      "真实 controlled rerun queue material",
+      "HIL",
+      "delivery success"
+    ]
+  },
+  "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary": {
+    "schema": "trashbot.route_task_field_retest_acceptance_execution_rerun_queue_summary.v1",
+    "schema_version": 1,
+    "source_alias": "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary",
+    "queue_status": "queued_pending_same_evidence_ref_owner_ack",
+    "source_handoff_status": "source_handoff_status=Robot alias confirms handoff intake remains not_proven.",
+    "queue_position": "queue_position=controlled_rerun_slot_pending",
+    "queue_readiness": "queue_readiness=blocked_pending_real_route_task_materials",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "owner_handoff": "owner_handoff=Robot owner exposes sanitized rerun queue alias; field owners backfill same safe_evidence_ref route/task material summaries.",
+    "next_required_evidence": "next_required_evidence=route completion, task record, dropoff/cancel and delivery result summaries.",
+    "safe_rerun_hint": "safe_rerun_hint=rerun queue gate with the same safe_evidence_ref after owner acknowledgement.",
+    "safe_phone_copy": "Robot diagnostics acceptance execution rerun queue summary 只用于手机只读受控复跑队列，不放行 Start、Confirm 或 Cancel。",
+    "recovery_hint": "补齐同一 safe_evidence_ref 的真实受控复跑材料后再复核；手机端优先读取 Robot safe alias。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "boundary_flags": "not_proven / delivery_success=false / primary_actions_enabled=false",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate",
+    "not_proven": [
+      "真实 controlled rerun queue material",
+      "真实 route/elevator materials",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "elevator_assist": {
     "schema": "trashbot.elevator_assist_summary.v1",
     "schema_version": 1,

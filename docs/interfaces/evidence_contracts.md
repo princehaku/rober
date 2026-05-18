@@ -277,6 +277,49 @@ completion, delivery success, HIL pass, WAVE ROVER feedback, real phone/browser
 validation, Objective 5 external proof, or any primary robot action being
 enabled.
 
+## route_task_field_retest_acceptance_execution_rerun_queue
+
+`pc-tools/evidence/route_task_field_retest_acceptance_execution_rerun_queue.py`
+generates the PC-only controlled rerun queue gate after
+`route_task_field_retest_acceptance_execution_handoff_intake.py`.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_queue.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_queue_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate`
+- Allowed source inputs:
+  `trashbot.route_task_field_retest_acceptance_execution_handoff_intake.v1`
+  and
+  `trashbot.route_task_field_retest_acceptance_execution_handoff_intake_summary.v1`
+  under
+  `software_proof_docker_route_task_field_retest_acceptance_execution_handoff_intake_gate`
+  only. Wrapper or nested JSON is allowed when it contains one of those schemas.
+- Optional queue request input:
+  owner-safe queue metadata with safe `evidence_ref`, owner acknowledgement,
+  requested rerun reason, and next-required evidence.
+- Rerun queue values:
+  `queued_for_controlled_field_rerun_not_proven`,
+  `needs_owner_ack_before_queue`,
+  `needs_acceptance_execution_rerun_queue_backfill`,
+  `evidence_ref_mismatch_rerun_queue`,
+  `blocked_unsafe_rerun_queue`, and
+  `blocked_unsupported_handoff_intake`.
+
+The Robot diagnostics and mobile consumers should expose only phone-safe
+metadata from the artifact, summary, or compatible nested summary: rerun queue
+status, source handoff intake status, safe `evidence_ref`, owner
+acknowledgement state, owner handoff, next required evidence, safe rerun hint,
+boundary, `not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+
+This contract is software proof only. It does not prove a real controlled field
+rerun, route/elevator execution, Nav2/fixed-route proof, ACK, cursor
+persistence, dropoff/cancel completion, delivery success, HIL pass, WAVE ROVER
+feedback, real phone/browser validation, Objective 5 external proof, or any
+primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

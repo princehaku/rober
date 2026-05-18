@@ -38,6 +38,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_acceptance_execution_callback_review_decision,
     summarize_route_task_field_retest_acceptance_execution_callback_review_handoff,
     summarize_route_task_field_retest_acceptance_execution_handoff_intake,
+    summarize_route_task_field_retest_acceptance_execution_rerun_queue,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -8233,6 +8234,204 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(summary["delivery_success"])
         self.assertFalse(summary["primary_actions_enabled"])
         self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(disabled_summary["delivery_success"])
+        self.assertFalse(disabled_summary["primary_actions_enabled"])
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("raw_payload", encoded)
+
+    def test_route_task_field_retest_acceptance_execution_rerun_queue_alias_nested_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            queue_path = Path(td) / "acceptance_execution_rerun_queue.json"
+            queue_path.write_text(
+                json.dumps(
+                    {
+                        "schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_rerun_queue.v1"
+                        ),
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://acceptance-execution-rerun-queue-1",
+                        "queue_status": {
+                            "status": "queued_for_controlled_field_rerun_not_proven",
+                            "verdict": "not_proven",
+                            "reason": "owner handoff intake is queued for controlled rerun only",
+                        },
+                        "source_handoff_intake_status": {
+                            "status": "ready_for_controlled_field_rerun_queue"
+                        },
+                        "owner_handoff": {"owner": "Autonomy Algorithm Engineer"},
+                        "next_required_evidence": ["same evidence_ref field rerun result"],
+                        "safe_rerun_hint": ["Run the sanitized rerun queue gate again after field result capture."],
+                        "blocked_reason": "",
+                        "safe_copy": (
+                            "Acceptance execution rerun queue is metadata-only; "
+                            "same_evidence_ref_required=true; delivery_success=false; "
+                            "primary_actions_enabled=false."
+                        ),
+                        "same_evidence_ref_required": True,
+                        "not_proven": ["delivery_success", "real_hil_pass"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_acceptance_execution_rerun_queue_ref=str(queue_path),
+            )
+            summary = payload["route_task_field_retest_acceptance_execution_rerun_queue"]
+            summary_alias = payload["route_task_field_retest_acceptance_execution_rerun_queue_summary"]
+            robot_alias = payload[
+                "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary"
+            ]
+
+            nested_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_queue_summary": {
+                            "schema": (
+                                "trashbot.route_task_field_retest_acceptance_execution_rerun_queue_summary.v1"
+                            ),
+                            "source_schema": (
+                                "trashbot.route_task_field_retest_acceptance_execution_rerun_queue.v1"
+                            ),
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate"
+                            ),
+                            "safe_evidence_ref": "evidence://acceptance-execution-rerun-queue-2",
+                            "queue_status": {
+                                "status": "needs_owner_ack_before_queue",
+                                "verdict": "not_proven",
+                            },
+                            "source_handoff_intake_status": {"status": "needs_owner_ack"},
+                            "owner_handoff": {"owner": "Robot Platform Engineer"},
+                            "next_required_evidence": ["owner ack with same evidence_ref"],
+                            "safe_rerun_hint": ["Use sanitized rerun queue summary."],
+                            "blocked_reason": "owner ack is still required",
+                            "safe_copy": (
+                                "Nested acceptance execution rerun queue is metadata-only; "
+                                "same_evidence_ref_required=true; delivery_success=false; "
+                                "primary_actions_enabled=false."
+                            ),
+                            "same_evidence_ref_required": True,
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["route_task_field_retest_acceptance_execution_rerun_queue"]
+            unsafe_summary = summarize_route_task_field_retest_acceptance_execution_rerun_queue(
+                {
+                    "schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_rerun_queue_summary.v1"
+                    ),
+                    "source_schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_rerun_queue.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate"
+                    ),
+                    "safe_evidence_ref": "evidence://acceptance-execution-rerun-queue-3",
+                    "queue_status": {"status": "queued_for_controlled_field_rerun_not_proven"},
+                    "source_handoff_intake_status": {"status": "ready_for_controlled_field_rerun_queue"},
+                    "owner_handoff": {"owner": "Autonomy Algorithm Engineer"},
+                    "next_required_evidence": ["field rerun result"],
+                    "safe_rerun_hint": ["Use sanitized rerun queue summary."],
+                    "safe_copy": "Acceptance execution rerun queue confirms delivery success and ACK posted.",
+                    "same_evidence_ref_required": True,
+                    "delivery_success": True,
+                    "primary_actions_enabled": False,
+                    "raw_payload": {"Authorization": "Bearer secret-token"},
+                }
+            )
+            missing_summary = summarize_route_task_field_retest_acceptance_execution_rerun_queue(
+                str(Path(td) / "Bearer-secret-token" / "missing_queue.json")
+            )
+            disabled_summary = summarize_route_task_field_retest_acceptance_execution_rerun_queue(
+                {
+                    "schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_rerun_queue_summary.v1"
+                    ),
+                    "source_schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_rerun_queue.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate"
+                    ),
+                    "safe_evidence_ref": "evidence://acceptance-execution-rerun-queue-4",
+                    "queue_status": {"status": "needs_acceptance_execution_rerun_queue_backfill"},
+                    "source_handoff_intake_status": {"status": "needs_acceptance_execution_handoff_backfill"},
+                    "owner_handoff": {"owner": "Product Manager / OKR Owner"},
+                    "next_required_evidence": ["backfill owner ack packet"],
+                    "safe_rerun_hint": ["Backfill queue materials before rerun."],
+                    "safe_copy": (
+                        "Acceptance execution rerun queue is metadata-only; "
+                        "delivery_success=false; primary_actions_enabled=false."
+                    ),
+                    "same_evidence_ref_required": True,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            encoded = json.dumps(
+                [summary, summary_alias, robot_alias, nested_summary, unsafe_summary, missing_summary],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.route_task_field_retest_acceptance_execution_rerun_queue_summary.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.route_task_field_retest_acceptance_execution_rerun_queue.v1",
+        )
+        self.assertEqual(
+            summary["queue_status"]["status"],
+            "queued_for_controlled_field_rerun_not_proven",
+        )
+        self.assertEqual(nested_summary["queue_status"]["status"], "needs_owner_ack_before_queue")
+        self.assertEqual(unsafe_summary["queue_status"]["status"], "blocked_unsafe_rerun_queue")
+        self.assertEqual(missing_summary["queue_status"]["status"], "missing")
+        self.assertEqual(
+            disabled_summary["queue_status"]["status"],
+            "needs_acceptance_execution_rerun_queue_backfill",
+        )
+        self.assertIn("same evidence_ref field rerun result", summary["next_required_evidence"])
+        self.assertIn(
+            "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_queue_gate",
+            encoded,
+        )
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("primary_actions_enabled=false", summary["safe_phone_copy"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
         self.assertFalse(summary["nav2_triggered"])
         self.assertFalse(summary["hil_pass"])
         self.assertFalse(disabled_summary["delivery_success"])
