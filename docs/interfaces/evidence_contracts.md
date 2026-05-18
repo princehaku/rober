@@ -158,6 +158,52 @@ field outcome, HIL pass, real Nav2/fixed-route execution, real delivery
 success, real dropoff/cancel completion, real phone/browser validation, O5
 external cloud proof, or any primary robot action being enabled.
 
+## route_task_field_retest_acceptance_execution_callback_review_decision
+
+`pc-tools/evidence/route_task_field_retest_acceptance_execution_callback_review_decision.py`
+generates the PC-only review decision gate after
+`route_task_field_retest_acceptance_execution_callback_intake.py`.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_acceptance_execution_callback_review_decision.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_acceptance_execution_callback_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_decision_gate`
+- Allowed inputs:
+  `trashbot.route_task_field_retest_acceptance_execution_callback_intake.v1` and
+  `trashbot.route_task_field_retest_acceptance_execution_callback_intake_summary.v1`
+  only. Wrapper or nested JSON is allowed when it contains one of those schemas.
+- Decision values:
+  `ready_for_controlled_field_rerun`, `needs_material_backfill`,
+  `evidence_ref_mismatch_rerun`, and fail-closed unsafe/unsupported states such
+  as `rejected_unsafe_callback`.
+
+The output always includes `review_decision`, `status_reasons`,
+`source_callback_intake`, `field_rerun_readiness`, `owner_handoff`,
+`next_required_evidence`, `rerun_commands`, `safe_copy`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`,
+`same_evidence_ref_required=true`, and
+`evidence_boundary=software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_decision_gate`.
+
+Decision mapping is fail-closed. A supported, safe
+`ready_for_field_retest_acceptance_execution_callback_intake_not_proven` source
+with matched evidence_ref, matched same-evidence-ref status, received callback
+materials, and no missing or rejected materials maps to
+`ready_for_controlled_field_rerun`. Missing, rejected, empty, unsupported, or
+non-ready callback-intake material states map to `needs_material_backfill`.
+Mismatched or weak same-evidence-ref state maps to
+`evidence_ref_mismatch_rerun`. Missing input, bad JSON, unsupported schema,
+unsupported boundary, unsafe copy, raw paths, credentials, ROS topics,
+serial/UART/WAVE ROVER text, checksums, raw artifact text,
+success/control claims, `delivery_success=true`, or
+`primary_actions_enabled=true` fail closed.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, real Nav2/fixed-route proof, task record/completion signal,
+dropoff/cancel completion, delivery success, HIL pass, real phone/browser
+validation, O5 external proof, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

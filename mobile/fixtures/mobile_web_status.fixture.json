@@ -1506,6 +1506,93 @@
       "delivery success"
     ]
   },
+  "route_task_field_retest_acceptance_execution_callback_review_decision": {
+    "schema": "trashbot.route_task_field_retest_acceptance_execution_callback_review_decision.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.route_task_field_retest_acceptance_execution_callback_review_decision_summary.v1",
+    "review_decision": "blocked_missing_acceptance_execution_callback_review_materials_not_proven",
+    "source_callback_intake_status": "source_callback_intake_status=blocked_missing_acceptance_execution_callback_intake_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "owner_handoff": [
+      "owner_handoff=Field owner returns safe callback review packet under the same safe_evidence_ref",
+      "owner_handoff=Robot owner mirrors robot_diagnostics_route_task_field_retest_acceptance_execution_callback_review_decision_summary",
+      "owner_handoff=Full-stack keeps Start Delivery, Confirm Dropoff and Cancel gating unchanged"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=Nav2/fixed-route runtime log summary",
+      "next_required_evidence=route completion signal and task record summaries",
+      "next_required_evidence=door_state, target_floor_confirmation and human_assistance_note summaries",
+      "next_required_evidence=dropoff_or_cancel_completion and delivery_result summaries"
+    ],
+    "safe_rerun_hint": "safe_rerun_hint=run callback intake gate, then software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_decision_gate with the same safe_evidence_ref.",
+    "same_evidence_ref_required": true,
+    "safe_copy": {
+      "safe_phone_copy": "路线/电梯现场回执复核决策 copy 只包含 whitelist-only phone-safe metadata；不得当成真实现场结论、控制授权或交付完成。"
+    },
+    "safe_phone_copy": "路线/电梯现场回执复核决策 fixture 只展示 review decision、source callback intake status、safe evidence ref、owner handoff、next required evidence、safe rerun hint 和 boundary flags；这是 Docker/local software proof，不是真实现场结论。",
+    "recovery_hint": "按同一 safe_evidence_ref 补齐真实现场回执复核材料后重跑 software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_decision_gate。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_decision_gate",
+    "not_proven": [
+      "真实 acceptance execution callback review decision material",
+      "真实 route/elevator materials",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
+  "route_task_field_retest_acceptance_execution_callback_review_decision_summary": {
+    "schema": "trashbot.route_task_field_retest_acceptance_execution_callback_review_decision_summary.v1",
+    "schema_version": 1,
+    "review_decision": "blocked_missing_acceptance_execution_callback_review_materials_not_proven",
+    "source_callback_intake_status": "source_callback_intake_status=callback intake remains not_proven.",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "owner_handoff": "owner_handoff=field owner returns safe callback review packet; Robot owner publishes safe diagnostics alias.",
+    "next_required_evidence": "next_required_evidence=runtime log, completion signal, task record, door/floor/human-assistance, dropoff/cancel and delivery result summaries.",
+    "safe_rerun_hint": "safe_rerun_hint=software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_decision_gate after safe material backfill.",
+    "same_evidence_ref_required": true,
+    "safe_phone_copy": "route_task_field_retest_acceptance_execution_callback_review_decision_summary 只用于手机只读现场回执复核决策，不放行 Start、Confirm 或 Cancel。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_decision_gate",
+    "not_proven": [
+      "真实 route/elevator field pass",
+      "HIL",
+      "delivery success"
+    ]
+  },
+  "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_review_decision_summary": {
+    "schema": "trashbot.route_task_field_retest_acceptance_execution_callback_review_decision_summary.v1",
+    "schema_version": 1,
+    "source_alias": "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_review_decision_summary",
+    "review_decision": "blocked_missing_acceptance_execution_callback_review_materials_not_proven",
+    "source_callback_intake_status": "source_callback_intake_status=Robot alias confirms callback intake remains not_proven.",
+    "safe_evidence_ref": "route_task_field_retest_result_review_dispatch_fixture_20260517_0001",
+    "owner_handoff": "owner_handoff=Robot owner exposes sanitized diagnostics alias; field owners backfill same safe_evidence_ref materials.",
+    "next_required_evidence": "next_required_evidence=runtime log, route completion, task record, door/floor, human assistance, dropoff/cancel and delivery result summaries.",
+    "safe_rerun_hint": "safe_rerun_hint=rerun callback intake gate, then callback review decision gate with the same safe_evidence_ref.",
+    "same_evidence_ref_required": true,
+    "safe_copy": {
+      "safe_phone_copy": "Robot diagnostics acceptance execution callback review decision copy 只包含 whitelist-only phone-safe metadata；不得当成真实现场结论或控制授权。"
+    },
+    "safe_phone_copy": "Robot diagnostics acceptance execution callback review decision summary 只用于手机只读现场回执复核决策，不放行 Start、Confirm 或 Cancel。",
+    "recovery_hint": "补齐同一 safe_evidence_ref 的真实现场回执复核材料后再复核；手机端优先读取 Robot safe alias。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_execution_callback_review_decision_gate",
+    "not_proven": [
+      "真实 acceptance execution callback review decision material",
+      "真实 route/elevator materials",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
   "elevator_assist": {
     "schema": "trashbot.elevator_assist_summary.v1",
     "schema_version": 1,
