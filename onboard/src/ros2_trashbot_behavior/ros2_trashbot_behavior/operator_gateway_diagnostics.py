@@ -552,6 +552,15 @@ MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_REVIEW_HANDOFF_SUMMARY_SCHEMA = (
 MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_REVIEW_HANDOFF_GATE = (
     "software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate"
 )
+MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_SCHEMA = (
+    "trashbot.mobile_real_device_field_trial_acceptance_execution_pack.v1"
+)
+MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_SUMMARY_SCHEMA = (
+    "trashbot.mobile_real_device_field_trial_acceptance_execution_pack_summary.v1"
+)
+MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_GATE = (
+    "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_pack_gate"
+)
 WAVE_ROVER_FEEDBACK_REPLAY_SCHEMA = "trashbot.wave_rover_feedback_replay.v1"
 WAVE_ROVER_FEEDBACK_REPLAY_SUMMARY_SCHEMA = "trashbot.wave_rover_feedback_replay_summary.v1"
 WAVE_ROVER_FEEDBACK_REPLAY_GATE = (
@@ -3059,6 +3068,36 @@ def _mobile_real_device_field_trial_acceptance_review_handoff_not_proven(
     }
     values = set(defaults)
     for source in (handoff, summary_fragment):
+        if isinstance(source, dict) and isinstance(source.get("not_proven"), list):
+            values.update(str(item) for item in source["not_proven"] if str(item or "").strip())
+    return sorted(values)
+
+
+def _mobile_real_device_field_trial_acceptance_execution_pack_not_proven(
+    pack=None,
+    summary_fragment=None,
+):
+    # execution pack 只组织真实手机验收要采集的材料；控制、ACK、Nav2、HIL 和交付结果仍未证明。
+    defaults = {
+        "real_phone_device",
+        "production_app",
+        "real_pwa_prompt_or_user_choice",
+        "real_cloud_or_4g",
+        "oss_cdn_live_traffic",
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "nav2_fixed_route_run",
+        "wave_rover_motion",
+        "hil_pass",
+        "route_elevator_field_pass",
+        "dropoff_completion",
+        "cancel_completion",
+        "delivery_success",
+    }
+    values = set(defaults)
+    for source in (pack, summary_fragment):
         if isinstance(source, dict) and isinstance(source.get("not_proven"), list):
             values.update(str(item) for item in source["not_proven"] if str(item or "").strip())
     return sorted(values)
@@ -7036,6 +7075,78 @@ def _default_mobile_real_device_field_trial_acceptance_review_handoff_summary(
     }
 
 
+def _default_mobile_real_device_field_trial_acceptance_execution_pack_summary(
+    path,
+    status="not_configured",
+    read_error="",
+):
+    # execution pack 默认只能呈现“待人工执行”的安全摘要，不能变成手机或机器人动作入口。
+    return {
+        "schema": MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "execution_pack_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "reason": read_error
+            or "mobile real-device field-trial acceptance execution pack is not configured",
+            "evidence_source": "software_proof",
+        },
+        "safe_evidence_ref": "",
+        "source_review_handoff": {"status": "not_configured", "verdict": "not_proven"},
+        "owner_handoff": [],
+        "next_required_evidence": [],
+        "accepted_materials_summary": [],
+        "missing_materials_summary": [],
+        "rejected_materials_summary": [],
+        "execution_steps_summary": [],
+        "rerun_commands_summary": [],
+        "robot_diagnostics_summary": {
+            "safe_copy": (
+                "Mobile real-device acceptance execution pack is metadata-only; "
+                "source=software_proof; safe_to_control=false; delivery_success=false; "
+                "primary_actions_enabled=false; not_proven."
+            ),
+            "safe_phone_copy": (
+                "Mobile real-device acceptance execution pack is metadata-only; "
+                "source=software_proof; safe_to_control=false; delivery_success=false; "
+                "primary_actions_enabled=false; not_proven."
+            ),
+        },
+        "safe_copy": (
+            "Mobile real-device acceptance execution pack is metadata-only; "
+            "source=software_proof; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false; not_proven."
+        ),
+        "safe_phone_copy": (
+            "Mobile real-device acceptance execution pack is metadata-only; "
+            "source=software_proof; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false; not_proven."
+        ),
+        "source": "software_proof",
+        "not_proven": _mobile_real_device_field_trial_acceptance_execution_pack_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _default_wave_rover_feedback_replay_summary(
     path,
     status="not_configured",
@@ -9241,6 +9352,16 @@ def _mobile_real_device_field_trial_acceptance_review_handoff_source_contract(va
     source_schema = str(value.get("schema") or "")
     source_boundary = str(value.get("evidence_boundary") or "")
     if source_schema == MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_REVIEW_HANDOFF_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or source_schema)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _mobile_real_device_field_trial_acceptance_execution_pack_source_contract(value):
+    # 支持 direct artifact、summary 和 Robot diagnostics alias；summary 必须回指 execution pack gate。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or source_schema)
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
@@ -29490,6 +29611,314 @@ def summarize_mobile_real_device_field_trial_acceptance_review_handoff(source):
     return summary
 
 
+def summarize_mobile_real_device_field_trial_acceptance_execution_pack(source):
+    """构建 real-device acceptance execution pack 的只读 diagnostics 摘要。"""
+    # Robot diagnostics 只复制白名单字段；执行包不能触发 collect/dropoff/cancel/ACK/cursor/Nav2/HIL。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_mobile_real_device_field_trial_acceptance_execution_pack_summary(
+        source_path,
+        read_error="mobile real-device field-trial acceptance execution pack is not configured",
+    )
+    if isinstance(source, dict):
+        pack = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "execution_pack_status": {
+                        "status": "missing_summary",
+                        "verdict": "not_proven",
+                        "reason": "mobile real-device acceptance execution pack summary missing",
+                        "evidence_source": "software_proof",
+                    },
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Mobile real-device acceptance execution pack is missing; metadata remains blocked/not_proven.",
+                        "safe_phone_copy": "Mobile real-device acceptance execution pack is missing; metadata remains blocked/not_proven.",
+                    },
+                }
+            )
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                pack = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading mobile real-device acceptance execution pack: {exc}"
+            )
+            summary.update(
+                {
+                    "execution_pack_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": safe_error,
+                        "evidence_source": "software_proof",
+                    },
+                    "read_error": safe_error,
+                    "robot_diagnostics_summary": {
+                        "safe_copy": "Mobile real-device acceptance execution pack could not be read; metadata remains blocked/not_proven.",
+                        "safe_phone_copy": "Mobile real-device acceptance execution pack could not be read; metadata remains blocked/not_proven.",
+                    },
+                }
+            )
+            return summary
+
+    if not isinstance(pack, dict):
+        summary.update(
+            {
+                "execution_pack_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "mobile real-device acceptance execution pack JSON must be an object",
+                    "evidence_source": "software_proof",
+                },
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Mobile real-device acceptance execution pack shape is invalid; metadata remains blocked/not_proven.",
+                    "safe_phone_copy": "Mobile real-device acceptance execution pack shape is invalid; metadata remains blocked/not_proven.",
+                },
+            }
+        )
+        return summary
+
+    diagnostics = pack.get("diagnostics") if isinstance(pack.get("diagnostics"), dict) else {}
+    summary_fragment = {}
+    for candidate in (
+        pack
+        if pack.get("schema") == MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_SUMMARY_SCHEMA
+        else {},
+        pack.get("mobile_real_device_field_trial_acceptance_execution_pack_summary"),
+        pack.get("robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_pack_summary"),
+        pack.get("robot_diagnostics_summary"),
+        pack.get("mobile_readonly_summary"),
+        pack.get("phone_safe_summary"),
+        pack.get("summary"),
+        diagnostics.get("mobile_real_device_field_trial_acceptance_execution_pack_summary"),
+        diagnostics.get("robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_pack_summary"),
+        diagnostics.get("summary"),
+        diagnostics.get("diagnostics_summary"),
+    ):
+        if isinstance(candidate, dict) and candidate:
+            summary_fragment = candidate
+            break
+    if (
+        (
+            not summary_fragment
+            or (
+                not summary_fragment.get("schema")
+                and pack.get("schema") == MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_SCHEMA
+            )
+        )
+        and pack.get("schema") == MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_SCHEMA
+    ):
+        summary_fragment = pack
+    if not summary_fragment:
+        source_schema, source_boundary = _mobile_real_device_field_trial_acceptance_execution_pack_source_contract(
+            pack
+        )
+        if source_schema or source_boundary:
+            summary.update(
+                {
+                    "source_schema": _redact_route_task_rehearsal_text(source_schema),
+                    "source_schema_version": pack.get("schema_version"),
+                    "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                    "execution_pack_status": {
+                        "status": "unsupported_schema",
+                        "verdict": "not_proven",
+                        "reason": "mobile real-device acceptance execution pack schema or evidence boundary is unsupported",
+                        "evidence_source": "software_proof",
+                    },
+                }
+            )
+            return summary
+        summary.update(
+            {
+                "execution_pack_status": {
+                    "status": "missing_summary",
+                    "verdict": "not_proven",
+                    "reason": "mobile real-device acceptance execution pack lacks a safe summary",
+                    "evidence_source": "software_proof",
+                },
+            }
+        )
+        return summary
+
+    contract_source = summary_fragment
+    source_schema, source_boundary = _mobile_real_device_field_trial_acceptance_execution_pack_source_contract(
+        contract_source
+    )
+    status_source = (
+        summary_fragment.get("execution_pack_status")
+        if isinstance(summary_fragment.get("execution_pack_status"), dict)
+        else pack.get("execution_pack_status")
+        if isinstance(pack.get("execution_pack_status"), dict)
+        else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or pack.get("safe_copy")
+        or pack.get("safe_phone_copy")
+        or (
+            "Mobile real-device acceptance execution pack is metadata-only; "
+            "source=software_proof; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false; not_proven."
+        )
+    )
+    if "source=software_proof" not in safe_copy:
+        safe_copy = f"{safe_copy}; source=software_proof."
+    if "safe_to_control=false" not in safe_copy:
+        safe_copy = (
+            f"{safe_copy}; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false; not_proven."
+        )
+    robot_summary = {}
+    for key in ("summary", "safe_copy", "safe_phone_copy"):
+        if str(summary_fragment.get(key) or "").strip():
+            robot_summary[key] = _redact_route_task_rehearsal_text(summary_fragment.get(key))
+    robot_summary["safe_copy"] = safe_copy
+    robot_summary["safe_phone_copy"] = safe_copy
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": contract_source.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "execution_pack_status": {
+                "status": _redact_route_task_rehearsal_text(
+                    status_source.get("status")
+                    or summary_fragment.get("status")
+                    or pack.get("status")
+                    or "blocked_not_proven"
+                ),
+                "verdict": _redact_route_task_rehearsal_text(
+                    status_source.get("verdict")
+                    or summary_fragment.get("verdict")
+                    or "not_proven"
+                ),
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or "mobile real-device acceptance execution pack consumed without explicit reason"
+                ),
+                "evidence_source": "software_proof",
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("safe_evidence_ref")
+                or summary_fragment.get("evidence_ref")
+                or pack.get("safe_evidence_ref")
+                or pack.get("evidence_ref", "")
+            ),
+            "source_review_handoff": _safe_pc_route_debug_value(
+                summary_fragment.get("source_review_handoff")
+                or summary_fragment.get("source_review_handoff_summary")
+            ),
+            "owner_handoff": _safe_pc_route_debug_value(summary_fragment.get("owner_handoff")),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "accepted_materials_summary": _safe_route_task_rehearsal_list(
+                summary_fragment.get("accepted_materials_summary")
+                if isinstance(summary_fragment.get("accepted_materials_summary"), list)
+                else summary_fragment.get("accepted_materials")
+            ),
+            "missing_materials_summary": _safe_route_task_rehearsal_list(
+                summary_fragment.get("missing_materials_summary")
+                if isinstance(summary_fragment.get("missing_materials_summary"), list)
+                else summary_fragment.get("missing_materials")
+            ),
+            "rejected_materials_summary": _safe_route_task_rehearsal_list(
+                summary_fragment.get("rejected_materials_summary")
+                if isinstance(summary_fragment.get("rejected_materials_summary"), list)
+                else summary_fragment.get("rejected_materials")
+            ),
+            "execution_steps_summary": _safe_route_task_rehearsal_list(
+                summary_fragment.get("execution_steps_summary")
+                if isinstance(summary_fragment.get("execution_steps_summary"), list)
+                else summary_fragment.get("execution_steps")
+            ),
+            "rerun_commands_summary": _safe_route_task_rehearsal_list(
+                summary_fragment.get("rerun_commands_summary")
+                if isinstance(summary_fragment.get("rerun_commands_summary"), list)
+                else summary_fragment.get("rerun_commands")
+            ),
+            "robot_diagnostics_summary": robot_summary,
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "source": "software_proof",
+            "not_proven": _mobile_real_device_field_trial_acceptance_execution_pack_not_proven(
+                pack, summary_fragment
+            ),
+            "read_error": "",
+            "metadata_only": True,
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+    )
+    accepted_schemas = {
+        MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_SCHEMA,
+        MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_SUMMARY_SCHEMA,
+    }
+    if source_schema not in accepted_schemas or source_boundary != MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_GATE:
+        summary.update(
+            {
+                "execution_pack_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": "mobile real-device acceptance execution pack schema or evidence boundary is unsupported",
+                    "evidence_source": "software_proof",
+                },
+                "source_review_handoff": {"status": "blocked_not_proven", "verdict": "not_proven"},
+                "owner_handoff": [],
+                "next_required_evidence": [],
+                "accepted_materials_summary": [],
+                "missing_materials_summary": [],
+                "rejected_materials_summary": [],
+                "execution_steps_summary": [],
+                "rerun_commands_summary": [],
+            }
+        )
+        return summary
+
+    unsafe_source = str(summary_fragment.get("source") or pack.get("source") or "software_proof")
+    if (
+        unsafe_source != "software_proof"
+        or summary_fragment.get("safe_to_control") is True
+        or summary_fragment.get("delivery_success") is True
+        or summary_fragment.get("primary_actions_enabled") is True
+        or not summary["safe_evidence_ref"]
+        or _mobile_field_material_intake_has_unsafe_fields(summary_fragment)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "execution_pack_status": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": "mobile real-device acceptance execution pack contains unsafe raw fields, success claims, or control claims",
+                    "evidence_source": "software_proof",
+                },
+                "source_review_handoff": {"status": "blocked_not_proven", "verdict": "not_proven"},
+                "owner_handoff": [],
+                "next_required_evidence": [],
+                "accepted_materials_summary": [],
+                "missing_materials_summary": [],
+                "rejected_materials_summary": [],
+                "execution_steps_summary": [],
+                "rerun_commands_summary": [],
+                "robot_diagnostics_summary": {
+                    "safe_copy": "Mobile real-device acceptance execution pack was blocked because fields could expose raw/control data or imply delivery success.",
+                    "safe_phone_copy": "Mobile real-device acceptance execution pack was blocked because fields could expose raw/control data or imply delivery success.",
+                },
+                "safe_copy": "Mobile real-device acceptance execution pack was blocked because fields could expose raw/control data or imply delivery success.",
+                "safe_phone_copy": "Mobile real-device acceptance execution pack was blocked because fields could expose raw/control data or imply delivery success.",
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_wave_rover_feedback_replay(source):
     """构建 WAVE ROVER feedback replay 的 metadata-only diagnostics 摘要。"""
     # 本 consumer 只读 Hardware gate 的安全摘要；不接触真实串口、不请求反馈流、不触发远控。
@@ -33830,6 +34259,7 @@ def build_diagnostics_payload(
     mobile_field_material_review_decision_ref="",
     mobile_field_material_retest_request_ref="",
     mobile_real_device_field_trial_acceptance_review_handoff_ref="",
+    mobile_real_device_field_trial_acceptance_execution_pack_ref="",
     wave_rover_feedback_replay_ref="",
     wave_rover_hil_packet_intake_ref="",
     wave_rover_hil_packet_review_decision_ref="",
@@ -33991,6 +34421,35 @@ def build_diagnostics_payload(
         if isinstance(
             diagnostics_source.get(
                 "robot_diagnostics_mobile_real_device_field_trial_acceptance_review_handoff_summary"
+            ),
+            dict,
+        )
+        else {}
+    )
+    mobile_real_device_field_trial_acceptance_execution_pack_source = (
+        latest_status.get("mobile_real_device_field_trial_acceptance_execution_pack")
+        if isinstance(latest_status.get("mobile_real_device_field_trial_acceptance_execution_pack"), dict)
+        else latest_status.get("mobile_real_device_field_trial_acceptance_execution_pack_summary")
+        if isinstance(latest_status.get("mobile_real_device_field_trial_acceptance_execution_pack_summary"), dict)
+        else latest_status.get(
+            "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_pack_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_pack_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("mobile_real_device_field_trial_acceptance_execution_pack")
+        if isinstance(diagnostics_source.get("mobile_real_device_field_trial_acceptance_execution_pack"), dict)
+        else diagnostics_source.get("mobile_real_device_field_trial_acceptance_execution_pack_summary")
+        if isinstance(diagnostics_source.get("mobile_real_device_field_trial_acceptance_execution_pack_summary"), dict)
+        else diagnostics_source.get(
+            "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_pack_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_pack_summary"
             ),
             dict,
         )
@@ -35073,6 +35532,13 @@ def build_diagnostics_payload(
     latest_status.pop("mobile_field_material_retest_request", None)
     latest_status.pop("mobile_field_material_retest_request_summary", None)
     latest_status.pop("mobile_field_material_retest_request_copy", None)
+    latest_status.pop("mobile_real_device_field_trial_acceptance_execution_pack", None)
+    latest_status.pop("mobile_real_device_field_trial_acceptance_execution_pack_summary", None)
+    latest_status.pop(
+        "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_pack_summary",
+        None,
+    )
+    latest_status.pop("mobile_real_device_field_trial_acceptance_execution_pack_copy", None)
     latest_status.pop("wave_rover_feedback_replay", None)
     latest_status.pop("wave_rover_feedback_replay_summary", None)
     latest_status.pop("wave_rover_feedback_replay_copy", None)
@@ -35903,6 +36369,17 @@ def build_diagnostics_payload(
             mobile_real_device_field_trial_acceptance_review_handoff_source
         )
     )
+    mobile_real_device_field_trial_acceptance_execution_pack_source = (
+        mobile_real_device_field_trial_acceptance_execution_pack_ref
+        or os.environ.get("TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK", "")
+        or os.environ.get("TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_SUMMARY", "")
+        or mobile_real_device_field_trial_acceptance_execution_pack_source
+    )
+    mobile_real_device_field_trial_acceptance_execution_pack_summary = (
+        summarize_mobile_real_device_field_trial_acceptance_execution_pack(
+            mobile_real_device_field_trial_acceptance_execution_pack_source
+        )
+    )
     wave_rover_feedback_replay_source = (
         wave_rover_feedback_replay_ref
         or os.environ.get("TRASHBOT_WAVE_ROVER_FEEDBACK_REPLAY", "")
@@ -36298,6 +36775,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_mobile_real_device_field_trial_acceptance_review_handoff_summary=(
             mobile_real_device_field_trial_acceptance_review_handoff_summary
+        ),
+        mobile_real_device_field_trial_acceptance_execution_pack=(
+            mobile_real_device_field_trial_acceptance_execution_pack_summary
+        ),
+        mobile_real_device_field_trial_acceptance_execution_pack_summary=(
+            mobile_real_device_field_trial_acceptance_execution_pack_summary
+        ),
+        robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_pack_summary=(
+            mobile_real_device_field_trial_acceptance_execution_pack_summary
         ),
         wave_rover_feedback_replay=wave_rover_feedback_replay_summary,
         wave_rover_feedback_replay_summary=wave_rover_feedback_replay_summary,

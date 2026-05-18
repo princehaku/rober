@@ -6126,6 +6126,106 @@
         "delivery success"
       ]
     },
+    "mobile_real_device_field_trial_acceptance_execution_pack": {
+      "schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_pack.v1",
+      "schema_version": 1,
+      "summary_schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_pack_summary.v1",
+      "copy_schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_pack_copy.v1",
+      "execution_pack_id": "field_trial_acceptance_execution_pack_fixture_20260518_0001",
+      "source": "software_proof",
+      "execution_pack_status": "blocked_missing_acceptance_execution_pack_summary_or_handoff_safe_copy_not_proven",
+      "safe_evidence_ref": "field_trial_acceptance_review_decision_fixture_20260518_0001",
+      "owner_checklist": [
+        "owner_checklist=Product/Support 确认真实手机、浏览器、PWA、offline、touch、visual 材料槽位",
+        "owner_checklist=Full-stack 只复制 phone-safe execution pack，不开启 Start/Confirm/Cancel",
+        "owner_checklist=Robot/Hardware 只接收脱敏摘要，不把本包当 route/elevator/HIL 通过"
+      ],
+      "evidence_capture_steps": [
+        "evidence_capture_steps=现场手机打开 mobile/web 并截图首屏状态",
+        "evidence_capture_steps=记录真实设备平台、浏览器族、viewport、DPR、orientation 摘要",
+        "evidence_capture_steps=记录 PWA prompt/user choice、offline reload、touch target、visual issue 摘要"
+      ],
+      "redaction_requirements": [
+        "redaction_requirements=删除 auth headers、object storage secrets、database/queue endpoints 和 credential-bearing links",
+        "redaction_requirements=删除 low-level topic detail、motion command、transport detail、local path、integrity hash",
+        "redaction_requirements=只保留 phone-safe summary/copy，不保留 source material 或 success claim"
+      ],
+      "rerun_commands": [
+        "rerun_commands=rerun_mobile_real_device_field_trial_acceptance_review_handoff_gate_after_safe_material_update",
+        "rerun_commands=rerun_mobile_real_device_field_trial_acceptance_execution_pack_gate_after_real_device_summary"
+      ],
+      "next_required_evidence": "next_required_evidence=真实手机验收执行材料的脱敏摘要、截图、设备/browser/PWA/offline/touch/visual/redaction 结果。",
+      "safe_phone_copy": "现场真实手机验收执行包 fixture 只读展示 owner checklist、采证步骤、脱敏要求、rerun commands 和控制边界；这是 source=software_proof / not_proven。",
+      "safe_copy_status": "safe_copy_available",
+      "source_handoff_status": "blocked_missing_acceptance_review_handoff_summary_or_safe_copy_not_proven",
+      "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "recovery_hint": "执行包只指导现场采证；缺真实手机材料或脱敏摘要时继续 blocked，不能写成硬件、路线或电梯完成。",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_pack_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate",
+      "not_proven": [
+        "真实 iPhone/Android device behavior",
+        "production app",
+        "真实 PWA install prompt/user choice",
+        "Objective 5 external proof",
+        "真实 route/elevator field evidence",
+        "HIL",
+        "delivery success"
+      ]
+    },
+    "mobile_real_device_field_trial_acceptance_execution_pack_summary": {
+      "schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_pack_summary.v1",
+      "schema_version": 1,
+      "execution_pack_schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_pack.v1",
+      "execution_pack_status": "blocked_missing_acceptance_execution_pack_summary_or_handoff_safe_copy_not_proven",
+      "safe_evidence_ref": "field_trial_acceptance_review_decision_fixture_20260518_0001",
+      "source_handoff_status": "blocked_missing_acceptance_review_handoff_summary_or_safe_copy_not_proven",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_pack_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate",
+      "not_proven": [
+        "真实 iPhone/Android device behavior",
+        "production app",
+        "真实 PWA install prompt/user choice",
+        "Objective 5 external proof",
+        "真实 route/elevator field evidence",
+        "HIL",
+        "delivery success"
+      ]
+    },
+    "mobile_real_device_field_trial_acceptance_execution_pack_copy": {
+      "schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_pack.v1",
+      "schema_version": 1,
+      "copy_schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_pack_copy.v1",
+      "summary_schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_pack_summary.v1",
+      "execution_pack_id": "field_trial_acceptance_execution_pack_fixture_20260518_0001",
+      "source": "software_proof",
+      "execution_pack_status": "blocked_missing_acceptance_execution_pack_summary_or_handoff_safe_copy_not_proven",
+      "safe_evidence_ref": "field_trial_acceptance_review_decision_fixture_20260518_0001",
+      "safe_phone_copy": "fixture copy 只包含 whitelist-only phone-safe acceptance execution pack 字段。",
+      "safe_copy_status": "safe_copy_available",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "recovery_hint": "缺真实手机、production app 和 PWA prompt 前不得写成控制放行或现场通过。",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_pack_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_review_handoff_gate",
+      "not_proven": [
+        "真实 iPhone/Android device behavior",
+        "production app",
+        "真实 PWA install prompt/user choice",
+        "Objective 5 external proof",
+        "真实 route/elevator field evidence",
+        "HIL",
+        "delivery success"
+      ]
+    },
     "mobile_browser_acceptance_bundle": {
       "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
       "schema_version": 1,

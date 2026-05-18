@@ -4813,6 +4813,104 @@ class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, handoff_text)
 
+    def test_mobile_real_device_field_trial_acceptance_execution_pack_is_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # execution pack 消费上一轮 handoff safe summary/copy，只读展示现场真实手机验收执行清单。
+        self.assertIn("MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_BOUNDARY", app)
+        self.assertIn("REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_PACK_SCHEMA", app)
+        self.assertIn("UNSAFE_REAL_DEVICE_ACCEPTANCE_EXECUTION_PACK_TEXT", app)
+        self.assertIn("safeRealDeviceAcceptanceExecutionPackText", app)
+        self.assertIn("mobileRealDeviceFieldTrialAcceptanceExecutionPackCandidate", app)
+        self.assertIn("mobileRealDeviceFieldTrialAcceptanceExecutionPackFromStatus", app)
+        self.assertIn("realDeviceFieldTrialAcceptanceExecutionPackCopyPayload", app)
+        self.assertIn("mobileRealDeviceFieldTrialAcceptanceExecutionPackTitle", app)
+        self.assertIn("现场真实手机验收执行包", app)
+        self.assertIn("generateRealDeviceFieldTrialAcceptanceExecutionPackButton", app)
+        self.assertIn("copyRealDeviceFieldTrialAcceptanceExecutionPackButton", app)
+        self.assertIn("owner_checklist", app)
+        self.assertIn("evidence_capture_steps", app)
+        self.assertIn("redaction_requirements", app)
+        self.assertIn("rerun_commands", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("safe_to_control: false", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"mobileRealDeviceFieldTrialAcceptanceExecutionPack.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+
+        # fixture 和文档必须固定 execution pack 的 software proof / not_proven / not-control 边界。
+        pack = fixture["phone_readiness"]["mobile_real_device_field_trial_acceptance_execution_pack"]
+        self.assertEqual(
+            pack["execution_pack_status"],
+            "blocked_missing_acceptance_execution_pack_summary_or_handoff_safe_copy_not_proven",
+        )
+        self.assertEqual(pack["source"], "software_proof")
+        self.assertEqual(pack["safe_to_control"], False)
+        self.assertEqual(pack["delivery_success"], False)
+        self.assertEqual(pack["primary_actions_enabled"], False)
+        self.assertIn("owner_checklist", pack)
+        self.assertIn("evidence_capture_steps", pack)
+        self.assertIn("redaction_requirements", pack)
+        self.assertIn("rerun_commands", pack)
+        self.assertIn("next_required_evidence", pack)
+        self.assertIn("software_proof_docker_mobile_real_device_field_trial_acceptance_execution_pack_gate", fixture_text)
+        self.assertIn("mobile_real_device_field_trial_acceptance_execution_pack", doc)
+        self.assertIn("现场真实手机验收执行包", doc)
+
+    def test_mobile_real_device_field_trial_acceptance_execution_pack_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        pack_text = json.dumps(
+            fixture["phone_readiness"]["mobile_real_device_field_trial_acceptance_execution_pack"],
+            ensure_ascii=False,
+        ).lower()
+
+        # execution pack fixture 只能携带执行摘要和脱敏要求，不能带 raw 材料、控制授权或现场通过语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw review",
+            "raw decision",
+            "raw execution pack",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "complete acceptance materials",
+            "complete artifact",
+            "raw artifact",
+            "raw robot response",
+            "raw intake json",
+            "ack payload",
+            "cursor",
+            "robot/internal",
+            "control authorization",
+            "field pass",
+            "真实手机已验收",
+            "验收通过",
+            "现场通过",
+            "control grant",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, pack_text)
+
 
 if __name__ == "__main__":
     unittest.main()
