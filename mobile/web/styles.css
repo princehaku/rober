@@ -166,6 +166,7 @@ h2 {
 .elevator-action-feedback-trace-panel,
 .elevator-field-evidence-trace-callback-intake-panel,
 .elevator-field-evidence-trace-callback-review-decision-panel,
+.elevator-field-evidence-trace-callback-review-handoff-panel,
 .route-task-completion-panel,
 .route-task-terminal-completion-panel,
 .route-task-terminal-review-decision-panel,
@@ -316,6 +317,7 @@ h2 {
 .elevator-action-feedback-trace-grid,
 .elevator-field-evidence-trace-callback-intake-grid,
 .elevator-field-evidence-trace-callback-review-decision-grid,
+.elevator-field-evidence-trace-callback-review-handoff-grid,
 .route-task-completion-grid,
 .route-task-terminal-completion-grid,
 .route-task-terminal-review-decision-grid,
@@ -382,6 +384,7 @@ h2 {
 .elevator-action-feedback-trace-grid div,
 .elevator-field-evidence-trace-callback-intake-grid div,
 .elevator-field-evidence-trace-callback-review-decision-grid div,
+.elevator-field-evidence-trace-callback-review-handoff-grid div,
 .route-task-completion-grid div,
 .route-task-terminal-completion-grid div,
 .route-task-terminal-review-decision-grid div,
@@ -589,6 +592,10 @@ dd {
 }
 
 .elevator-field-evidence-trace-callback-review-decision-grid {
+  grid-template-columns: 1fr;
+}
+
+.elevator-field-evidence-trace-callback-review-handoff-grid {
   grid-template-columns: 1fr;
 }
 
@@ -973,6 +980,10 @@ dd {
   }
 
   .elevator-field-evidence-trace-callback-review-decision-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .elevator-field-evidence-trace-callback-review-handoff-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

@@ -71,6 +71,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_elevator_action_feedback_trace,
     summarize_elevator_field_evidence_trace_callback_intake,
     summarize_elevator_field_evidence_trace_callback_review_decision,
+    summarize_elevator_field_evidence_trace_callback_review_handoff,
     summarize_elevator_field_run_review,
     summarize_elevator_field_run_execution_pack,
     summarize_elevator_route_evidence_reconciliation,
@@ -836,6 +837,282 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("secret-token", blocked_encoded)
         self.assertNotIn("/dev/ttyUSB0", blocked_encoded)
         self.assertNotIn("raw_callback_body", blocked_encoded)
+
+    def test_elevator_field_evidence_trace_callback_review_handoff_safe_alias_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = (
+                Path(td)
+                / "elevator_field_evidence_trace_callback_review_handoff_summary.json"
+            )
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": (
+                            "trashbot.elevator_field_evidence_trace_callback_review_handoff_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.elevator_field_evidence_trace_callback_review_handoff.v1"
+                        ),
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate"
+                        ),
+                        "source": "software_proof",
+                        "overall_status": "not_proven",
+                        "handoff_status": "handoff_ready_for_owner_follow_up_not_proven",
+                        "safe_evidence_ref": "evidence://elevator-field-callback-handoff-1",
+                        "same_evidence_ref_required": True,
+                        "source_review_decision": {
+                            "schema": (
+                                "trashbot.elevator_field_evidence_trace_callback_review_decision_summary.v1"
+                            ),
+                            "review_decision": "needs_route_elevator_material_backfill_not_proven",
+                        },
+                        "handoff_reasons": [
+                            "review_decision_ready_for_robot_owner_visibility"
+                        ],
+                        "missing_required_materials": [
+                            "real_route_elevator_field_pass"
+                        ],
+                        "next_required_evidence": ["real_owner_follow_up"],
+                        "owner_handoff": [
+                            "Robot owner keeps diagnostics read-only; no ACK or control side effect."
+                        ],
+                        "robot_diagnostics_summary": {
+                            "status": "metadata_only",
+                            "safe_copy": (
+                                "Elevator field evidence trace callback review handoff "
+                                "is metadata-only; software_proof; not_proven; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            ),
+                        },
+                        "safe_copy": (
+                            "Elevator field evidence trace callback review handoff "
+                            "is metadata-only; software_proof; not_proven; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "not_proven": [
+                            "real_route_elevator_field_pass",
+                            "delivery_success",
+                        ],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "elevator_field_evidence_trace_callback_review_handoff": {
+                        "delivery_success": True,
+                        "ack_post": "must not be consumed",
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                elevator_field_evidence_trace_callback_review_handoff_ref=str(
+                    summary_path
+                ),
+            )
+            summary = payload[
+                "robot_diagnostics_elevator_field_evidence_trace_callback_review_handoff_summary"
+            ]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+            artifact_summary = (
+                summarize_elevator_field_evidence_trace_callback_review_handoff(
+                    {
+                        "schema": (
+                            "trashbot.elevator_field_evidence_trace_callback_review_handoff.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate"
+                        ),
+                        "evidence_ref": "evidence://elevator-field-callback-handoff-2",
+                        "elevator_field_evidence_trace_callback_review_handoff_summary": {
+                            "schema": (
+                                "trashbot.elevator_field_evidence_trace_callback_review_handoff_summary.v1"
+                            ),
+                            "source_schema": (
+                                "trashbot.elevator_field_evidence_trace_callback_review_handoff.v1"
+                            ),
+                            "evidence_boundary": (
+                                "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate"
+                            ),
+                            "source_evidence_boundary": (
+                                "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate"
+                            ),
+                            "source": "software_proof",
+                            "overall_status": "not_proven",
+                            "safe_evidence_ref": "evidence://elevator-field-callback-handoff-2",
+                            "same_evidence_ref_required": True,
+                            "handoff_status": "owner_follow_up_handoff_not_proven",
+                            "safe_copy": (
+                                "Elevator field evidence trace callback review handoff "
+                                "is metadata-only; delivery_success=false; "
+                                "primary_actions_enabled=false."
+                            ),
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        },
+                    }
+                )
+            )
+            missing = summarize_elevator_field_evidence_trace_callback_review_handoff(
+                Path(td) / "Bearer-secret-token" / "missing_handoff.json"
+            )
+            unsupported = summarize_elevator_field_evidence_trace_callback_review_handoff(
+                {
+                    "schema": (
+                        "trashbot.elevator_field_evidence_trace_callback_review_handoff_summary.v1"
+                    ),
+                    "source_schema": (
+                        "trashbot.elevator_field_evidence_trace_callback_review_decision.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate"
+                    ),
+                    "source_evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_callback_review_decision_gate"
+                    ),
+                    "source": "software_proof",
+                    "overall_status": "not_proven",
+                    "safe_evidence_ref": "evidence://unsupported-handoff",
+                    "same_evidence_ref_required": True,
+                    "handoff_status": "owner_follow_up_handoff_not_proven",
+                    "safe_copy": (
+                        "Review handoff is metadata-only; delivery_success=false; "
+                        "primary_actions_enabled=false."
+                    ),
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            bad_source = summarize_elevator_field_evidence_trace_callback_review_handoff(
+                {
+                    "schema": (
+                        "trashbot.elevator_field_evidence_trace_callback_review_handoff_summary.v1"
+                    ),
+                    "source_schema": (
+                        "trashbot.elevator_field_evidence_trace_callback_review_handoff.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate"
+                    ),
+                    "source_evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate"
+                    ),
+                    "source": "hil_pass",
+                    "overall_status": "not_proven",
+                    "safe_evidence_ref": "evidence://bad-source-handoff",
+                    "same_evidence_ref_required": True,
+                    "handoff_status": "owner_follow_up_handoff_not_proven",
+                    "safe_copy": (
+                        "Review handoff is metadata-only; delivery_success=false; "
+                        "primary_actions_enabled=false."
+                    ),
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsafe = summarize_elevator_field_evidence_trace_callback_review_handoff(
+                {
+                    "schema": (
+                        "trashbot.elevator_field_evidence_trace_callback_review_handoff_summary.v1"
+                    ),
+                    "source_schema": (
+                        "trashbot.elevator_field_evidence_trace_callback_review_handoff.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate"
+                    ),
+                    "source_evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate"
+                    ),
+                    "source": "software_proof",
+                    "overall_status": "not_proven",
+                    "safe_evidence_ref": "evidence://unsafe-handoff",
+                    "same_evidence_ref_required": True,
+                    "ack_post": "token secret /dev/ttyUSB0",
+                    "safe_copy": "Review handoff confirms delivery success and ACK posted.",
+                    "delivery_success": True,
+                    "primary_actions_enabled": False,
+                }
+            )
+            blocked_encoded = json.dumps(
+                [missing, unsupported, bad_source, unsafe],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(
+            summary,
+            payload["elevator_field_evidence_trace_callback_review_handoff"],
+        )
+        self.assertEqual(
+            summary,
+            payload["elevator_field_evidence_trace_callback_review_handoff_summary"],
+        )
+        self.assertNotIn(
+            "elevator_field_evidence_trace_callback_review_handoff",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_elevator_field_evidence_trace_callback_review_handoff_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.elevator_field_evidence_trace_callback_review_handoff.v1",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["overall_status"], "not_proven")
+        self.assertEqual(
+            summary["handoff_status"],
+            "handoff_ready_for_owner_follow_up_not_proven",
+        )
+        self.assertEqual(
+            artifact_summary["handoff_status"],
+            "owner_follow_up_handoff_not_proven",
+        )
+        self.assertEqual(
+            missing["handoff_status"],
+            "blocked_missing_elevator_field_evidence_trace_callback_review_handoff_summary",
+        )
+        self.assertEqual(unsupported["handoff_status"], "unsupported_schema")
+        self.assertEqual(
+            bad_source["handoff_status"],
+            "blocked_unsupported_elevator_field_evidence_trace_callback_review_handoff_summary",
+        )
+        self.assertEqual(
+            unsafe["handoff_status"],
+            "blocked_unsafe_elevator_field_evidence_trace_callback_review_handoff_summary",
+        )
+        self.assertIn("real_route_elevator_field_pass", summary["not_proven"])
+        self.assertIn("software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(summary_path), encoded)
+        self.assertNotIn(str(Path(td)), blocked_encoded)
+        self.assertNotIn("secret-token", blocked_encoded)
+        self.assertNotIn("/dev/ttyUSB0", blocked_encoded)
+        self.assertNotIn("must not be consumed", encoded)
 
     def test_route_proof_summary_missing_fields_downgrades_to_unknown(self):
         payload = self._base_build_payload(
