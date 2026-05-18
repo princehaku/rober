@@ -96,6 +96,7 @@ const ELEVATOR_ASSIST_BOUNDARY = "software_proof_docker_elevator_assist_default_
 const ELEVATOR_ASSIST_REHEARSAL_EVIDENCE_BOUNDARY = "software_proof_docker_elevator_evidence_driven_mainline_gate";
 const ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_BOUNDARY = "software_proof_docker_elevator_route_evidence_reconciliation_gate";
 const ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_INTAKE_BOUNDARY = "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate";
+const ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_REVIEW_DECISION_BOUNDARY = "software_proof_docker_elevator_field_evidence_trace_callback_review_decision_gate";
 const PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_BOUNDARY = "software_proof_docker_pc_route_elevator_console_integration_gate";
 const ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_BOUNDARY = "software_proof_docker_route_elevator_field_session_handoff_gate";
 const MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_BOUNDARY = "software_proof_docker_mobile_route_elevator_field_device_precheck_gate";
@@ -196,6 +197,7 @@ const UNSAFE_ELEVATOR_FIELD_MATERIAL_VALIDATION_TEXT = /(authorization|bearer|to
 const UNSAFE_ELEVATOR_FIELD_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw review|full review|review artifact|raw validation|validation artifact|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|真实送达成功|投放完成|取消完成|hil_pass)/i;
 const UNSAFE_ELEVATOR_FIELD_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw execution pack|full execution pack|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|field run complete|completed delivery|真实送达成功|投放完成|取消完成|hil_pass)/i;
 const UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw callback|raw packet|raw diagnostics|raw internal log|full callback|complete artifact|complete artifacts|execution bundle|ack payload|cursor|diagnostics fetch|robot command|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external proof|真实送达成功|投放完成|取消完成|现场通过|真实电梯通过|真实 nav2)/i;
+const UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw callback|raw packet|raw review|raw decision|raw diagnostics|raw internal log|full callback|complete artifact|complete artifacts|execution bundle|ack payload|cursor|diagnostics fetch|robot command|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external proof|真实送达成功|投放完成|取消完成|现场通过|真实电梯通过|真实 nav2)/i;
 const UNSAFE_ROUTE_TASK_COMPLETION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw completion|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_ROUTE_TASK_TERMINAL_COMPLETION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw completion|raw rehearsal|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|真实送达成功|投放完成|取消完成|hil_pass|hil)/i;
 const UNSAFE_ROUTE_TASK_TERMINAL_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw review|raw decision|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|真实送达成功|投放完成|取消完成|hil_pass|hil)/i;
@@ -555,6 +557,15 @@ function safeElevatorFieldEvidenceTraceCallbackIntakeText(value, fallback = "not
   // trace callback intake 只读承接 Robot/PC 脱敏摘要，命中 raw callback、路径或成功暗示时 fail closed。
   const text = safeText(value, fallback);
   if (UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_INTAKE_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeElevatorFieldEvidenceTraceCallbackReviewDecisionText(value, fallback = "not_proven") {
+  // callback review decision 只展示复核结论和下一步材料，不把 raw review 或控制授权带进手机端。
+  const text = safeText(value, fallback);
+  if (UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_REVIEW_DECISION_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -17414,6 +17425,165 @@ function elevatorFieldEvidenceTraceCallbackIntakeFromStatus(status, readiness, d
   };
 }
 
+function elevatorFieldEvidenceTraceCallbackReviewDecisionCandidate(status, readiness, diagnostics) {
+  // Robot diagnostics safe alias 优先；summary/artifact 兼容旧 fixture，但最终只展示白名单字段。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.robot_diagnostics_elevator_field_evidence_trace_callback_review_decision_summary,
+    readiness?.robot_diagnostics_elevator_field_evidence_trace_callback_review_decision_summary,
+    diagnostics?.robot_diagnostics_elevator_field_evidence_trace_callback_review_decision_summary,
+    diagnosticsReadiness.robot_diagnostics_elevator_field_evidence_trace_callback_review_decision_summary,
+    diagnosticsSummary.robot_diagnostics_elevator_field_evidence_trace_callback_review_decision_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_elevator_field_evidence_trace_callback_review_decision_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_elevator_field_evidence_trace_callback_review_decision_summary,
+    statusDiagnosticsSummary.robot_diagnostics_elevator_field_evidence_trace_callback_review_decision_summary,
+    status?.elevator_field_evidence_trace_callback_review_decision_summary,
+    readiness?.elevator_field_evidence_trace_callback_review_decision_summary,
+    diagnostics?.elevator_field_evidence_trace_callback_review_decision_summary,
+    diagnosticsReadiness.elevator_field_evidence_trace_callback_review_decision_summary,
+    diagnosticsSummary.elevator_field_evidence_trace_callback_review_decision_summary,
+    nestedDiagnosticsSummary.elevator_field_evidence_trace_callback_review_decision_summary,
+    nestedDiagnosticsInnerSummary.elevator_field_evidence_trace_callback_review_decision_summary,
+    statusDiagnosticsSummary.elevator_field_evidence_trace_callback_review_decision_summary,
+    status?.elevator_field_evidence_trace_callback_review_decision,
+    readiness?.elevator_field_evidence_trace_callback_review_decision,
+    diagnostics?.elevator_field_evidence_trace_callback_review_decision,
+    diagnosticsReadiness.elevator_field_evidence_trace_callback_review_decision,
+    diagnosticsSummary.elevator_field_evidence_trace_callback_review_decision,
+    nestedDiagnosticsSummary.elevator_field_evidence_trace_callback_review_decision,
+    nestedDiagnosticsInnerSummary.elevator_field_evidence_trace_callback_review_decision,
+    statusDiagnosticsSummary.elevator_field_evidence_trace_callback_review_decision,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function elevatorFieldEvidenceTraceCallbackReviewDecisionNotProvenList(value) {
+  // 复核决策只证明手机端能读安全摘要，不证明现场、电梯、路线、HIL 或送达结果。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "真实 callback review material",
+    "真实电梯",
+    "真实 Nav2/fixed-route",
+    "真实 dropoff/cancel completion",
+    "真实手机设备/browser",
+    "HIL",
+    "Objective 5 external proof",
+    "delivery success",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 16);
+}
+
+function elevatorFieldEvidenceTraceCallbackReviewDecisionSummaryText(value, fallback) {
+  // 决策字段可能来自数组、owner map 或短字符串；只拼接 phone-safe 摘要。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeElevatorFieldEvidenceTraceCallbackReviewDecisionText(
+        item?.safe_phone_copy || item?.summary || item?.reason || item?.material ||
+          item?.category || item?.owner || item?.status || item?.next_step ||
+          item?.evidence || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.safe_summary || value.summary ||
+      value.material_summary || value.owner_handoff || value.status || value.state || value.result;
+    if (direct) {
+      return safeElevatorFieldEvidenceTraceCallbackReviewDecisionText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeElevatorFieldEvidenceTraceCallbackReviewDecisionText(key, "");
+        const copy = elevatorFieldEvidenceTraceCallbackReviewDecisionSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safeElevatorFieldEvidenceTraceCallbackReviewDecisionText(value, fallback);
+}
+
+function elevatorFieldEvidenceTraceCallbackReviewDecisionFromStatus(status, readiness, diagnostics) {
+  const provided = elevatorFieldEvidenceTraceCallbackReviewDecisionCandidate(status, readiness, diagnostics) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.elevator_field_evidence_trace_callback_review_decision.v1",
+    summary_schema: "trashbot.elevator_field_evidence_trace_callback_review_decision_summary.v1",
+    schema_version: 1,
+    source: safeElevatorFieldEvidenceTraceCallbackReviewDecisionText(provided.source, "software_proof"),
+    review_decision: safeElevatorFieldEvidenceTraceCallbackReviewDecisionText(
+      provided.review_decision || provided.decision_status || provided.status || provided.overall_status,
+      "blocked_missing_elevator_field_evidence_trace_callback_review_decision_not_proven",
+    ),
+    source_callback_intake: elevatorFieldEvidenceTraceCallbackReviewDecisionSummaryText(
+      provided.source_callback_intake || provided.source_intake_status || provided.callback_intake_status,
+      "source_callback_intake=not_proven",
+    ),
+    decision_reasons: elevatorFieldEvidenceTraceCallbackReviewDecisionSummaryText(
+      provided.decision_reasons || provided.reasons || provided.blocker_summary,
+      "decision_reasons=callback review decision summary missing",
+    ),
+    missing_required_materials: elevatorFieldEvidenceTraceCallbackReviewDecisionSummaryText(
+      provided.missing_required_materials || provided.missing_materials || provided.missing_backfill_summary,
+      "missing_required_materials=real route/elevator material summaries remain not_proven",
+    ),
+    rejected_callback_materials: elevatorFieldEvidenceTraceCallbackReviewDecisionSummaryText(
+      provided.rejected_callback_materials || provided.rejected_materials || provided.rejected_material_summary,
+      "rejected_callback_materials=none accepted as field proof",
+    ),
+    next_required_evidence: elevatorFieldEvidenceTraceCallbackReviewDecisionSummaryText(
+      provided.next_required_evidence || provided.required_next_evidence || provided.next_steps,
+      "next_required_evidence=real elevator door、target floor、assistance、Nav2/fixed-route、task record、dropoff/cancel、delivery result summaries",
+    ),
+    owner_handoff: elevatorFieldEvidenceTraceCallbackReviewDecisionSummaryText(
+      provided.owner_handoff || provided.owner_next_steps || provided.owner_follow_up,
+      "owner_handoff=field owner backfills evidence; Robot publishes safe alias; mobile remains read-only.",
+    ),
+    safe_evidence_ref: safeElevatorFieldEvidenceTraceCallbackReviewDecisionText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "not_provided",
+    ),
+    safe_phone_copy: safeElevatorFieldEvidenceTraceCallbackReviewDecisionText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "elevator_field_evidence_trace_callback_review_decision 摘要缺失；手机端只显示 blocked/not_proven。",
+    ),
+    recovery_hint: safeElevatorFieldEvidenceTraceCallbackReviewDecisionText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由 Robot diagnostics/status 提供 robot_diagnostics_elevator_field_evidence_trace_callback_review_decision_summary。",
+    ),
+    evidence_boundary: safeElevatorFieldEvidenceTraceCallbackReviewDecisionText(
+      provided.evidence_boundary,
+      ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_REVIEW_DECISION_BOUNDARY,
+    ),
+    boundary_flags: "software_proof / not_proven / delivery_success=false / primary_actions_enabled=false",
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: elevatorFieldEvidenceTraceCallbackReviewDecisionNotProvenList(provided),
+  };
+}
+
 function commandSafetyFromReadiness(readiness) {
   // 若 command_safety 缺失，前端必须 fail closed，不能用 UI 猜测状态。
   return readiness && typeof readiness.command_safety === "object" ? readiness.command_safety : {};
@@ -22925,6 +23095,73 @@ function renderElevatorFieldEvidenceTraceCallbackIntake(status) {
   $("elevatorFieldEvidenceTraceCallbackIntakeHint").textContent = summary.recovery_hint;
 }
 
+function ensureElevatorFieldEvidenceTraceCallbackReviewDecisionPanel() {
+  // review decision 紧跟 callback intake，帮助现场人员知道下一步，但不引入任何控制按钮。
+  let panel = $("elevatorFieldEvidenceTraceCallbackReviewDecisionPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("elevatorFieldEvidenceTraceCallbackIntakeTitle")?.closest("section") ||
+    $("elevatorActionFeedbackTraceTitle")?.closest("section") ||
+    $("elevatorRealtimeStageTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "elevatorFieldEvidenceTraceCallbackReviewDecisionPanel";
+  panel.className = "elevator-field-evidence-trace-callback-review-decision-panel";
+  panel.setAttribute("aria-labelledby", "elevatorFieldEvidenceTraceCallbackReviewDecisionTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="elevatorFieldEvidenceTraceCallbackReviewDecisionTitle">电梯现场证据回调复核决策</h2>
+      <span id="elevatorFieldEvidenceTraceCallbackReviewDecisionBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="elevatorFieldEvidenceTraceCallbackReviewDecisionCopy" class="message">等待 robot_diagnostics_elevator_field_evidence_trace_callback_review_decision_summary。</p>
+    <dl class="elevator-field-evidence-trace-callback-review-decision-grid">
+      <div><dt>Review Decision</dt><dd id="elevatorFieldEvidenceTraceCallbackReviewDecisionValue">blocked_missing_elevator_field_evidence_trace_callback_review_decision_not_proven</dd></div>
+      <div><dt>Source Callback Intake</dt><dd id="elevatorFieldEvidenceTraceCallbackReviewDecisionSourceIntake">source_callback_intake=not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="elevatorFieldEvidenceTraceCallbackReviewDecisionEvidenceRef">not_provided</dd></div>
+      <div><dt>Decision Reasons</dt><dd id="elevatorFieldEvidenceTraceCallbackReviewDecisionReasons">decision_reasons=not_proven</dd></div>
+      <div><dt>Missing Materials</dt><dd id="elevatorFieldEvidenceTraceCallbackReviewDecisionMissing">missing_required_materials=not_proven</dd></div>
+      <div><dt>Rejected Materials</dt><dd id="elevatorFieldEvidenceTraceCallbackReviewDecisionRejected">rejected_callback_materials=not_proven</dd></div>
+      <div><dt>Next Required Evidence</dt><dd id="elevatorFieldEvidenceTraceCallbackReviewDecisionNextEvidence">next_required_evidence=not_proven</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="elevatorFieldEvidenceTraceCallbackReviewDecisionOwner">owner_handoff=not_proven</dd></div>
+      <div><dt>Control Boundary</dt><dd id="elevatorFieldEvidenceTraceCallbackReviewDecisionControls">software_proof / not_proven / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="elevatorFieldEvidenceTraceCallbackReviewDecisionBoundary">software_proof_docker_elevator_field_evidence_trace_callback_review_decision_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="elevatorFieldEvidenceTraceCallbackReviewDecisionNotProven">真实电梯、Nav2/fixed-route、HIL、真实手机/browser 和 delivery success 未证明。</dd></div>
+    </dl>
+    <p id="elevatorFieldEvidenceTraceCallbackReviewDecisionHint" class="hint">只消费现有 status/diagnostics 中的白名单复核 summary；不展示 raw review、topic、串口、路径、凭证或完整日志。</p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderElevatorFieldEvidenceTraceCallbackReviewDecision(status) {
+  const panel = ensureElevatorFieldEvidenceTraceCallbackReviewDecisionPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = elevatorFieldEvidenceTraceCallbackReviewDecisionFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("elevatorFieldEvidenceTraceCallbackReviewDecisionBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-ready");
+  badge.textContent = summary.missing ? "not_proven" : summary.review_decision;
+  $("elevatorFieldEvidenceTraceCallbackReviewDecisionCopy").textContent = summary.safe_phone_copy;
+  $("elevatorFieldEvidenceTraceCallbackReviewDecisionValue").textContent = summary.review_decision;
+  $("elevatorFieldEvidenceTraceCallbackReviewDecisionSourceIntake").textContent = summary.source_callback_intake;
+  $("elevatorFieldEvidenceTraceCallbackReviewDecisionEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("elevatorFieldEvidenceTraceCallbackReviewDecisionReasons").textContent = summary.decision_reasons;
+  $("elevatorFieldEvidenceTraceCallbackReviewDecisionMissing").textContent = summary.missing_required_materials;
+  $("elevatorFieldEvidenceTraceCallbackReviewDecisionRejected").textContent = summary.rejected_callback_materials;
+  $("elevatorFieldEvidenceTraceCallbackReviewDecisionNextEvidence").textContent = summary.next_required_evidence;
+  $("elevatorFieldEvidenceTraceCallbackReviewDecisionOwner").textContent = summary.owner_handoff;
+  $("elevatorFieldEvidenceTraceCallbackReviewDecisionControls").textContent = summary.boundary_flags;
+  $("elevatorFieldEvidenceTraceCallbackReviewDecisionBoundary").textContent = summary.evidence_boundary;
+  $("elevatorFieldEvidenceTraceCallbackReviewDecisionNotProven").textContent = summary.not_proven.join("、");
+  $("elevatorFieldEvidenceTraceCallbackReviewDecisionHint").textContent = summary.recovery_hint;
+}
+
 function setBadge(state, copy) {
   const badge = $("connectionBadge");
   badge.className = "badge";
@@ -25564,6 +25801,12 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const elevatorFieldEvidenceTraceCallbackReviewDecision =
+    elevatorFieldEvidenceTraceCallbackReviewDecisionFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      payload || {},
+    );
   const elevatorRouteReconciliation = elevatorRouteEvidenceReconciliationFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -25743,6 +25986,10 @@ function renderDiagnosticsSummary(payload) {
     ["route_task_field_retest_result_review_decision", routeTaskFieldRetestResultReviewDecision.decision_status],
     ["route_task_field_retest_result_review_handoff", routeTaskFieldRetestResultReviewHandoff.handoff_status],
     ["elevator_field_evidence_trace_callback_intake", elevatorFieldEvidenceTraceCallbackIntake.intake_status],
+    [
+      "elevator_field_evidence_trace_callback_review_decision",
+      elevatorFieldEvidenceTraceCallbackReviewDecision.review_decision,
+    ],
     ["Elevator-route evidence reconciliation", elevatorRouteReconciliation.reconciliation_verdict],
     ["Route-elevator field session handoff", routeElevatorFieldHandoff.handoff_verdict],
     ["mobile_route_elevator_field_device_precheck", mobileRouteElevatorPrecheck.precheck_status],
@@ -25840,6 +26087,7 @@ function renderOfflineFailure() {
   renderElevatorRealtimeStage({});
   renderElevatorActionFeedbackTrace({});
   renderElevatorFieldEvidenceTraceCallbackIntake({});
+  renderElevatorFieldEvidenceTraceCallbackReviewDecision({});
   renderElevatorRouteEvidenceReconciliation({});
   renderRouteTaskCompletionSignal({});
   renderRouteTaskTerminalCompletionRehearsal({});
@@ -25941,6 +26189,7 @@ function renderStatus(status) {
   renderElevatorRealtimeStage(status);
   renderElevatorActionFeedbackTrace(status);
   renderElevatorFieldEvidenceTraceCallbackIntake(status);
+  renderElevatorFieldEvidenceTraceCallbackReviewDecision(status);
   renderElevatorRouteEvidenceReconciliation(status);
   renderRouteTaskCompletionSignal(status);
   renderRouteTaskTerminalCompletionRehearsal(status);
@@ -26222,6 +26471,7 @@ async function openDiagnostics() {
     renderElevatorRealtimeStage(latestStatus || {});
     renderElevatorActionFeedbackTrace(latestStatus || {});
     renderElevatorFieldEvidenceTraceCallbackIntake(latestStatus || {});
+    renderElevatorFieldEvidenceTraceCallbackReviewDecision(latestStatus || {});
     renderRouteTaskCompletionSignal(latestStatus || {});
     renderRouteTaskTerminalCompletionRehearsal(latestStatus || {});
     renderRouteTaskTerminalReviewDecision(latestStatus || {});
@@ -26350,6 +26600,7 @@ function wireEvents() {
   ensureWaveRoverFeedbackReplayPanel();
   ensureWaveRoverHilPacketIntakePanel();
   ensureWaveRoverHilPacketReviewDecisionPanel();
+  ensureWaveRoverHilPacketExecutionPackPanel();
   ensureRouteTaskTerminalCompletionRehearsalPanel();
   ensureRouteTaskTerminalReviewDecisionPanel();
   ensureRouteTaskFieldRetestExecutionPackPanel();
@@ -26357,21 +26608,38 @@ function wireEvents() {
   ensureRouteTaskFieldRetestResultIntakePanel();
   ensureRouteTaskFieldRetestResultReconciliationPanel();
   ensureRouteTaskFieldRetestResultAcceptancePacketPanel();
+  ensureRouteTaskFieldRetestResultAcceptanceBackfillPanel();
   ensureRouteTaskFieldRetestResultBackfillReviewDecisionPanel();
   ensureRouteTaskFieldRetestResultReviewDispatchPanel();
   ensureRouteTaskFieldRetestResultCallbackIntakePanel();
   ensureRouteTaskFieldRetestResultCallbackReviewDecisionPanel();
+  ensureRouteTaskFieldRetestResultCallbackReviewHandoffPanel();
   ensureRouteTaskFieldRetestMaterialPackPanel();
   ensureRouteTaskFieldRetestMaterialCallbackPacketPanel();
+  ensureRouteTaskFieldRetestMaterialCallbackReviewDecisionPanel();
   ensureRouteTaskFieldRetestOperatorDrillPanel();
   ensureRouteTaskFieldRetestDrillConsolePanel();
   ensureRouteTaskFieldRetestAcceptanceBriefPanel();
   ensureRouteTaskFieldRetestAcceptanceReviewDecisionPanel();
   ensureRouteTaskFieldRetestAcceptanceExecutionPackPanel();
   ensureRouteTaskFieldRetestAcceptanceExecutionCallbackIntakePanel();
+  ensureRouteTaskFieldRetestAcceptanceExecutionCallbackReviewDecisionPanel();
+  ensureRouteTaskFieldRetestAcceptanceExecutionCallbackReviewHandoffPanel();
+  ensureRouteTaskFieldRetestAcceptanceExecutionHandoffIntakePanel();
+  ensureRouteTaskFieldRetestAcceptanceExecutionRerunQueuePanel();
+  ensureRouteTaskFieldRetestAcceptanceExecutionRerunResultIntakePanel();
+  ensureRouteTaskFieldRetestAcceptanceExecutionRerunResultReviewDecisionPanel();
+  ensureRouteTaskFieldRetestAcceptanceExecutionRerunResultReviewHandoffPanel();
   ensureRouteTaskFieldRetestEvidenceDispatchPanel();
   ensureRouteTaskFieldRetestCallbackIntakePanel();
   ensureRouteTaskFieldRetestCallbackReviewDecisionPanel();
+  ensureRouteTaskFieldRetestReviewResultHandoffPanel();
+  ensureRouteTaskFieldRetestResultReviewIntakePanel();
+  ensureRouteTaskFieldRetestResultReviewDecisionPanel();
+  ensureRouteTaskFieldRetestResultReviewHandoffPanel();
+  ensureMobileRealDeviceFieldTrialAcceptanceReviewDecisionPanel();
+  ensureMobileRealDeviceFieldTrialAcceptanceReviewHandoffPanel();
+  ensureMobileRealDeviceFieldTrialAcceptanceExecutionPackPanel();
   $("copyMobileRouteElevatorFieldDevicePrecheckButton").addEventListener("click", async () => {
     const payload = JSON.stringify(
       mobileRouteElevatorFieldDevicePrecheckCopyPayload(latestMobileRouteElevatorFieldDevicePrecheck || {}),

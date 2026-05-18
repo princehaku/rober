@@ -152,6 +152,101 @@
       "delivery success"
     ]
   },
+  "elevator_field_evidence_trace_callback_review_decision_summary": {
+    "schema": "trashbot.elevator_field_evidence_trace_callback_review_decision_summary.v1",
+    "schema_version": 1,
+    "source": "software_proof",
+    "overall_status": "not_proven",
+    "review_decision": "needs_route_elevator_material_backfill_not_proven",
+    "safe_evidence_ref": "elevator_field_evidence_trace_callback_intake_fixture_20260519_0001",
+    "source_callback_intake": {
+      "schema": "trashbot.elevator_field_evidence_trace_callback_intake_summary.v1",
+      "intake_status": "blocked_missing_elevator_field_evidence_trace_callback_intake_not_proven"
+    },
+    "decision_reasons": [
+      "decision_reason=missing_real_elevator_door_state",
+      "decision_reason=missing_real_nav2_or_fixed_route_runtime_log",
+      "decision_reason=missing_real_dropoff_or_cancel_completion"
+    ],
+    "missing_required_materials": [
+      "missing_required_material=real_elevator_door_state",
+      "missing_required_material=real_target_floor_confirmation",
+      "missing_required_material=real_human_assistance_record",
+      "missing_required_material=real_nav2_or_fixed_route_runtime_log",
+      "missing_required_material=real_route_completion_signal",
+      "missing_required_material=real_field_task_record",
+      "missing_required_material=real_dropoff_or_cancel_completion",
+      "missing_required_material=real_delivery_result"
+    ],
+    "rejected_callback_materials": [
+      "rejected_callback_materials=none accepted as field proof"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real elevator door state summary",
+      "next_required_evidence=real target floor confirmation summary",
+      "next_required_evidence=real human assistance record",
+      "next_required_evidence=real Nav2 or fixed-route runtime log summary",
+      "next_required_evidence=real dropoff or cancel completion summary"
+    ],
+    "owner_handoff": [
+      "owner_handoff=Autonomy reviews route runtime and completion material under the same safe_evidence_ref",
+      "owner_handoff=Robot reviews field task record and diagnostics summary under the same safe_evidence_ref",
+      "owner_handoff=Field owner backfills elevator door, target floor, assistance, dropoff/cancel, and delivery result materials",
+      "owner_handoff=Full-stack keeps mobile/web read-only and primary actions unchanged"
+    ],
+    "safe_phone_copy": "elevator_field_evidence_trace_callback_review_decision_summary 只读展示 callback review decision、decision reasons、missing/rejected materials、next required evidence 和 owner handoff；这是 software_proof / not_proven。",
+    "recovery_hint": "请按同一 safe_evidence_ref 补齐真实 route/elevator field materials 后再重新生成 review decision；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_callback_review_decision_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 callback review material",
+      "真实电梯",
+      "真实 Nav2/fixed-route",
+      "真实 dropoff/cancel completion",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
+  "robot_diagnostics_elevator_field_evidence_trace_callback_review_decision_summary": {
+    "schema": "trashbot.elevator_field_evidence_trace_callback_review_decision_summary.v1",
+    "schema_version": 1,
+    "source": "software_proof",
+    "source_alias": "robot_diagnostics_elevator_field_evidence_trace_callback_review_decision_summary",
+    "overall_status": "not_proven",
+    "review_decision": "needs_route_elevator_material_backfill_not_proven",
+    "safe_evidence_ref": "elevator_field_evidence_trace_callback_intake_fixture_20260519_0001",
+    "source_callback_intake": "source_callback_intake=blocked_missing_elevator_field_evidence_trace_callback_intake_not_proven",
+    "decision_reasons": "decision_reasons=missing real route/elevator material summaries under the same safe_evidence_ref",
+    "missing_required_materials": "missing_required_materials=real_elevator_door_state、real_target_floor_confirmation、real_human_assistance_record、real_nav2_or_fixed_route_runtime_log、real_route_completion_signal、real_field_task_record、real_dropoff_or_cancel_completion、real_delivery_result",
+    "rejected_callback_materials": "rejected_callback_materials=none accepted as field proof",
+    "next_required_evidence": "next_required_evidence=real route/elevator field materials under the same safe_evidence_ref",
+    "owner_handoff": "owner_handoff=Autonomy and Robot review same-ref field materials; field owner backfills missing evidence; Full-stack keeps panel read-only.",
+    "safe_phone_copy": "Robot diagnostics elevator field evidence trace callback review decision summary 只读展示复核决策；这是 software_proof only。",
+    "recovery_hint": "缺真实 route/elevator field materials 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_callback_review_decision_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 callback review material",
+      "真实电梯",
+      "真实 Nav2/fixed-route",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
     "robot_diagnostics_pr5_review_thread_closeout_summary": {
         "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
         "schema_version": 1,
