@@ -8,7 +8,21 @@
 
 ## 2026-05-19 系列
 
-更新时间：2026-05-19 02:11 Asia/Shanghai。
+更新时间：2026-05-19 03:22 Asia/Shanghai。
+
+### 2026-05-19 03-04｜pr5-review-thread-closeout｜O1/O4 PR #5 review thread closeout software proof
+
+本轮 `sprints/2026.05.19_03-04_pr5-review-thread-closeout/` 推进 Objective 1 / Objective 4：Hardware worker 新增 `pr5_review_thread_closeout` gate，输出 `trashbot.pr5_review_thread_closeout_summary.v1`，把 PR #5 三条 review thread 判定为 P1 hardware boundary = `ready_to_close_on_mainline_docs`、P2 OKR narrative/table = `ready_to_close_on_mainline_docs`、P2 mandatory sensor citation/material = `blocked_pending_real_materials`。Robot worker 新增 `robot_diagnostics_pr5_review_thread_closeout_summary` safe alias，只读消费 summary 并对缺失/unsupported/unsafe/success/control fail closed。Full-Stack worker 在 mobile/web 增加 PR #5 review closeout 只读 panel，缺 summary fail closed 到 `still_open_missing_current_evidence`，Start Delivery、Confirm Dropoff、Cancel gating 不变。证据边界保持 `software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮提升 PR #5 review closeout 可判定性，让 mainline docs 可支撑两条 thread 的 `ready_to_close_on_mainline_docs` 判断，并保留真实 sensor material thread 为 `blocked_pending_real_materials`；仍缺真实 WAVE ROVER/UART/HIL、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、真实 2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 PR #4 route/elevator runtime、真实电梯、真实 task record、dropoff/cancel completion、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮不新增真实路线采集、Nav2/fixed-route 实跑、route completion signal、现场 task record 或同一 `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可只读展示 PR #5 每条 review thread 的 decision、当前证据、缺失真实材料和 owner handoff；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 与现场 phone behavior。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof。 |
+
+本轮验证：Hardware worker 报告 `test -f docs/vendor/VENDOR_INDEX.md` 通过、`python3 -m py_compile pc-tools/evidence/pr5_review_thread_closeout_gate.py` 通过、`python3 -m unittest tests/test_pr5_review_thread_closeout_gate.py` 输出 `Ran 7 tests ... OK`、required `rg` 与 scoped diff check 通过；初始 unsafe-claim detector 误判 contract examples，已修正。Robot worker 报告 `py_compile` 通过、diagnostics unittest `Ran 194 tests in 0.453s OK`、required `rg` 与 scoped diff check 通过；第一轮缺 `_dedupe_ordered`、第二轮 `not_proven=["delivery_success"]` 被误判 success wording，均已修复。Full-Stack worker 报告 `python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 104 tests in 0.655s OK`、`py_compile` 通过、`node --check mobile/web/app.js` 通过、required `rg` 与 scoped diff check 通过。Product closeout required file check、required `rg` 与 scoped `git diff --check` 通过。本轮不证明真实 GitHub thread closure、真实 2D LiDAR / ToF、WAVE ROVER/UART/HIL、PR #4 route/elevator field pass、真实手机/browser、Objective 5 external proof、dropoff/cancel completion 或 delivery success。
 
 ### 2026-05-19 02-03｜elevator-feedback-task-record-trace｜O2/O4 post-run elevator action feedback trace software proof
 

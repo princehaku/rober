@@ -4,11 +4,59 @@
   "state": "waiting_for_trash",
   "phone_copy": "请放入垃圾，确认安全后再开始送达。",
   "destination": "一号楼东侧垃圾站",
-  "can_collect": true,
-  "can_confirm_dropoff": false,
-  "can_cancel": false,
-  "wave_rover_feedback_replay": {
-    "schema": "trashbot.wave_rover_feedback_replay.v1",
+    "can_collect": true,
+    "can_confirm_dropoff": false,
+    "can_cancel": false,
+    "pr5_review_thread_closeout_summary": {
+        "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
+        "schema_version": 1,
+        "source": "software_proof",
+        "overall_status": "not_proven",
+        "pr": {
+            "number": 5,
+            "title": "PR #5 review thread closeout"
+        },
+        "safe_evidence_ref": "pr5_review_thread_closeout_fixture_20260519_0002",
+        "thread_decisions": [
+            {
+                "thread_key": "p1_production_hardware_boundary_default_vs_mandatory_sensor_baseline",
+                "severity": "P1",
+                "decision": "ready_to_close_on_mainline_docs",
+                "current_evidence_refs": [
+                    "production hardware boundary summary",
+                    "vendor source boundary summary"
+                ],
+                "missing_real_materials": [
+                    "real_2d_lidar_sku_source_receipt",
+                    "real_tof_sku_source_receipt",
+                    "real_hil_entry"
+                ],
+                "owner_handoff": "Hardware owner requests reviewer closeout only for docs alignment; real material evidence stays open."
+            }
+        ],
+        "missing_real_materials": [
+            "real_2d_lidar_sku_source_receipt",
+            "real_tof_sku_source_receipt",
+            "real_install_wiring_power_calibration",
+            "real_hil_entry"
+        ],
+        "owner_handoff": "Full-stack only renders the safe summary and keeps primary actions disabled by the existing gates.",
+        "safe_phone_copy": "pr5_review_thread_closeout_summary 只用于手机只读 PR #5 review thread closeout，不放行 Start、Confirm 或 Cancel。",
+        "evidence_boundary": "software_proof_docker_pr5_review_thread_closeout_gate",
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "not_proven": [
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "real_2d_lidar",
+            "real_tof",
+            "hil_pass"
+        ]
+    },
+    "wave_rover_feedback_replay": {
+        "schema": "trashbot.wave_rover_feedback_replay.v1",
     "schema_version": 1,
     "summary_schema": "trashbot.wave_rover_feedback_replay_summary.v1",
     "replay_status": "wave_rover_feedback_replay_not_proven",

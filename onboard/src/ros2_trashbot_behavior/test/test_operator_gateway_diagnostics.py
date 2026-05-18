@@ -90,6 +90,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_hardware_sensor_hil_entry_config_precheck,
     summarize_hardware_sensor_hil_entry_readiness_review,
     summarize_hardware_sensor_hil_entry_execution_pack,
+    summarize_pr5_review_thread_closeout,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
     summarize_cloud_worker_migration_rehearsal,
@@ -20820,6 +20821,183 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("采购完成", encoded)
         self.assertNotIn("安装完成", encoded)
         self.assertNotIn("接线完成", encoded)
+
+    def test_diagnostics_payload_includes_pr5_review_thread_closeout_safe_alias(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "pr5_review_thread_closeout_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
+                        "source_schema": "trashbot.pr5_review_thread_closeout.v1",
+                        "source_schema_version": 1,
+                        "evidence_boundary": "software_proof_docker_pr5_review_thread_closeout_gate",
+                        "source_evidence_boundary": "software_proof_docker_pr5_review_thread_closeout_gate",
+                        "evidence_ref": "evidence://pr5-review-thread-closeout-robot-1",
+                        "status": "ready_to_close_on_mainline_docs",
+                        "overall_status": "not_proven",
+                        "pr": {
+                            "number": 5,
+                            "title": "Make elevator-assisted delivery mandatory",
+                        },
+                        "thread_decisions": [
+                            {
+                                "thread_key": "p1_production_hardware_boundary",
+                                "severity": "P1",
+                                "decision": "ready_to_close_on_mainline_docs",
+                                "current_evidence_refs": [
+                                    "docs/product/production_hardware_boundary.md#Default Hardware Set",
+                                    "docs/vendor/VENDOR_INDEX.md#Complete Material Coverage",
+                                ],
+                                "missing_real_materials": [
+                                    "real_2d_lidar_sku_source_receipt",
+                                    "real_tof_sku_source_receipt",
+                                ],
+                                "owner_handoff": "Hardware closes only if reviewer accepts mainline docs.",
+                            }
+                        ],
+                        "missing_real_materials": [
+                            "real_install_wiring_power_calibration",
+                            "real_hil_entry",
+                        ],
+                        "next_required_evidence": ["real 2D LiDAR / ToF material packet"],
+                        "owner_handoff": ["Hardware owns PR #5 reviewer closeout."],
+                        "safe_copy": (
+                            "PR #5 review thread closeout is metadata-only; "
+                            "software_proof, not_proven, delivery_success=false, "
+                            "primary_actions_enabled=false."
+                        ),
+                        "robot_diagnostics_summary": {
+                            "safe_copy": (
+                                "PR #5 review thread closeout is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            )
+                        },
+                        "not_proven": ["real_2d_lidar", "real_tof", "delivery_success"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "pr5_review_thread_closeout": {"delivery_success": True},
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                pr5_review_thread_closeout_ref=str(summary_path),
+            )
+            summary = payload["robot_diagnostics_pr5_review_thread_closeout_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, payload["pr5_review_thread_closeout"])
+        self.assertEqual(summary, payload["pr5_review_thread_closeout_summary"])
+        self.assertNotIn("pr5_review_thread_closeout", payload["latest_status"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_pr5_review_thread_closeout_summary.v1",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.pr5_review_thread_closeout.v1")
+        self.assertEqual(summary["source_schema_version"], 1)
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_pr5_review_thread_closeout_gate",
+        )
+        self.assertEqual(summary["status"], "ready_to_close_on_mainline_docs")
+        self.assertEqual(summary["overall_status"], "not_proven")
+        self.assertEqual(summary["closeout_status"]["evidence_source"], "software_proof")
+        self.assertEqual(summary["safe_evidence_ref"], "evidence://pr5-review-thread-closeout-robot-1")
+        self.assertEqual(summary["thread_decisions"][0]["decision"], "ready_to_close_on_mainline_docs")
+        self.assertIn("real_2d_lidar_sku_source_receipt", summary["not_proven"])
+        self.assertIn("real_hil_entry", summary["not_proven"])
+        self.assertIn("delivery_success=false", summary["robot_diagnostics_summary"]["safe_copy"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertTrue(summary["summary_required"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(summary_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_pr5_review_thread_closeout_missing_unsupported_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_without_summary = summarize_pr5_review_thread_closeout(
+                {
+                    "schema": "trashbot.pr5_review_thread_closeout.v1",
+                    "schema_version": 1,
+                    "evidence_boundary": "software_proof_docker_pr5_review_thread_closeout_gate",
+                    "evidence_ref": "evidence://pr5-review-thread-closeout-no-summary",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsupported = summarize_pr5_review_thread_closeout(
+                {
+                    "schema": "trashbot.hardware_baseline_review_summary.v1",
+                    "evidence_boundary": "software_proof_docker_hardware_baseline_review_gate",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "PR #5 review thread closeout is metadata-only.",
+                }
+            )
+            unsafe = summarize_pr5_review_thread_closeout(
+                {
+                    "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
+                    "source_schema": "trashbot.pr5_review_thread_closeout.v1",
+                    "evidence_boundary": "software_proof_docker_pr5_review_thread_closeout_gate",
+                    "source_evidence_boundary": "software_proof_docker_pr5_review_thread_closeout_gate",
+                    "evidence_ref": "evidence://pr5-review-thread-closeout-unsafe",
+                    "safe_copy": "PR #5 review closeout passed; Start Delivery control enabled.",
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "raw_review_body": "token secret /dev/ttyUSB0 Traceback (most recent call last): boom",
+                }
+            )
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_pr5_review_thread_closeout.json"
+            missing = summarize_pr5_review_thread_closeout(str(missing_path))
+            encoded = json.dumps(
+                [artifact_without_summary, unsupported, unsafe, missing],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(
+            artifact_without_summary["status"],
+            "blocked_missing_pr5_review_thread_closeout_summary",
+        )
+        self.assertEqual(unsupported["status"], "unsupported_schema")
+        self.assertEqual(unsafe["status"], "blocked_unsafe_pr5_review_thread_closeout_summary")
+        self.assertEqual(missing["status"], "blocked_missing_pr5_review_thread_closeout_summary")
+        self.assertIn("software_proof_docker_pr5_review_thread_closeout_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", encoded)
+        self.assertIn("primary_actions_enabled", encoded)
+        self.assertFalse(unsafe["delivery_success"])
+        self.assertFalse(unsafe["primary_actions_enabled"])
+        self.assertFalse(unsafe["ack_post_allowed"])
+        self.assertFalse(unsafe["cursor_updates_allowed"])
+        self.assertFalse(unsafe["nav2_triggered"])
+        self.assertFalse(unsafe["hil_pass"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("Traceback", encoded)
+        self.assertNotIn("raw_review_body", encoded)
+        self.assertNotIn("Start Delivery control enabled", encoded)
 
     def test_diagnostics_payload_includes_phone_safe_oss_cdn_manifest_summary(self):
         with tempfile.TemporaryDirectory() as td:

@@ -110,6 +110,7 @@ const HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_BOUNDARY = "software_proof_dock
 const HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_config_precheck_gate";
 const HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate";
 const HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_execution_pack_gate";
+const PR5_REVIEW_THREAD_CLOSEOUT_BOUNDARY = "software_proof_docker_pr5_review_thread_closeout_gate";
 const WAVE_ROVER_FEEDBACK_REPLAY_BOUNDARY = "software_proof_docker_wave_rover_feedback_replay_gate";
 const WAVE_ROVER_HIL_PACKET_INTAKE_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_intake_gate";
 const WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_review_decision_gate";
@@ -245,6 +246,7 @@ const UNSAFE_HARDWARE_SENSOR_PROCUREMENT_RECEIPT_INTAKE_TEXT = /(authorization|b
 const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw config|raw sensor config|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|hil_pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过)/i;
 const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|raw vendor docs|vendor document raw|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|hil_pass|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|raw vendor docs|vendor document raw|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
+const UNSAFE_PR5_REVIEW_THREAD_CLOSEOUT_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw review body|raw github|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_WAVE_ROVER_FEEDBACK_REPLAY_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*反馈)/i;
 const UNSAFE_WAVE_ROVER_HIL_PACKET_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial device|uart device|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw packet|raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*packet|完整\s*反馈)/i;
 const UNSAFE_WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial device|uart device|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw packet|raw review|raw feedback|full raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_passed|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*packet|完整\s*反馈)/i;
@@ -311,6 +313,7 @@ let latestHardwareSensorProcurementReceiptIntake = null;
 let latestHardwareSensorHilEntryConfigPrecheck = null;
 let latestHardwareSensorHilEntryReadinessReview = null;
 let latestHardwareSensorHilEntryExecutionPack = null;
+let latestPr5ReviewThreadCloseout = null;
 let latestWaveRoverFeedbackReplay = null;
 let latestWaveRoverHilPacketIntake = null;
 let latestWaveRoverHilPacketReviewDecision = null;
@@ -1018,6 +1021,15 @@ function safeHardwareSensorHilEntryExecutionPackText(value, fallback = "not_prov
   // HIL-entry 执行包只给现场支持看白名单摘要；命中 raw 材料、底层细节或完成声明时降级。
   const text = safeText(value, fallback);
   if (UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safePr5ReviewThreadCloseoutText(value, fallback = "not_proven") {
+  // PR #5 closeout 只展示 review thread 的脱敏决策，不允许 GitHub/raw JSON/底层控制细节外流。
+  const text = safeText(value, fallback);
+  if (UNSAFE_PR5_REVIEW_THREAD_CLOSEOUT_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -15917,6 +15929,184 @@ function hardwareSensorHilEntryExecutionPackFromStatus(status, readiness, diagno
   };
 }
 
+function pr5ReviewThreadCloseoutCandidate(status, readiness, diagnostics) {
+  // PR #5 closeout 兼容 PC gate、Robot diagnostics alias 和 status nested summary，但只读取对象摘要。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.robot_diagnostics_pr5_review_thread_closeout_summary,
+    status?.pr5_review_thread_closeout_summary,
+    status?.pr5_review_thread_closeout,
+    readiness?.robot_diagnostics_pr5_review_thread_closeout_summary,
+    readiness?.pr5_review_thread_closeout_summary,
+    readiness?.pr5_review_thread_closeout,
+    diagnostics?.robot_diagnostics_pr5_review_thread_closeout_summary,
+    diagnostics?.pr5_review_thread_closeout_summary,
+    diagnostics?.pr5_review_thread_closeout,
+    diagnosticsReadiness.robot_diagnostics_pr5_review_thread_closeout_summary,
+    diagnosticsReadiness.pr5_review_thread_closeout_summary,
+    diagnosticsReadiness.pr5_review_thread_closeout,
+    diagnosticsSummary.robot_diagnostics_pr5_review_thread_closeout_summary,
+    diagnosticsSummary.pr5_review_thread_closeout_summary,
+    diagnosticsSummary.pr5_review_thread_closeout,
+    nestedDiagnosticsSummary.robot_diagnostics_pr5_review_thread_closeout_summary,
+    nestedDiagnosticsSummary.pr5_review_thread_closeout_summary,
+    nestedDiagnosticsSummary.pr5_review_thread_closeout,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_pr5_review_thread_closeout_summary,
+    nestedDiagnosticsInnerSummary.pr5_review_thread_closeout_summary,
+    nestedDiagnosticsInnerSummary.pr5_review_thread_closeout,
+    statusDiagnosticsSummary.robot_diagnostics_pr5_review_thread_closeout_summary,
+    statusDiagnosticsSummary.pr5_review_thread_closeout_summary,
+    statusDiagnosticsSummary.pr5_review_thread_closeout,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function pr5ReviewThreadCloseoutNotProvenList(value) {
+  // 评审 thread closeout 只证明 mainline 文档可复核，不证明真实硬件或现场材料已经存在。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "真实 2D LiDAR SKU/source/receipt",
+    "真实 ToF SKU/source/receipt",
+    "真实 install/wiring/power/calibration",
+    "真实 HIL entry",
+    "真实 route/elevator field pass",
+    "真实手机/browser",
+    "delivery success",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 18);
+}
+
+function pr5ReviewThreadCloseoutSummaryText(value, fallback) {
+  // thread evidence、缺失材料和 owner handoff 可能是数组/对象；只输出短白名单摘要。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safePr5ReviewThreadCloseoutText(
+        item?.safe_phone_copy || item?.summary || item?.status || item?.state ||
+          item?.decision || item?.thread_key || item?.severity || item?.owner_handoff ||
+          item?.evidence_ref || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 12).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.decision || value.thread_key || value.owner_handoff || value.evidence_ref;
+    if (direct) {
+      return safePr5ReviewThreadCloseoutText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safePr5ReviewThreadCloseoutText(key, "");
+        const copy = pr5ReviewThreadCloseoutSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 12).join("；") : fallback;
+  }
+  return safePr5ReviewThreadCloseoutText(value, fallback);
+}
+
+function pr5ReviewThreadCloseoutThreads(value) {
+  // 每条 thread 只保留 decision、当前证据、缺失真实材料和 owner handoff 四类展示字段。
+  const threads = Array.isArray(value?.thread_decisions) ? value.thread_decisions : [];
+  if (!threads.length) {
+    return [
+      {
+        thread_key: "pr5_review_thread_closeout_missing_summary",
+        severity: "not_proven",
+        decision: "still_open_missing_current_evidence",
+        current_evidence: "current_evidence=not_proven",
+        missing_real_materials: "missing_real_materials=real_2d_lidar_sku_source_receipt, real_tof_sku_source_receipt, real_hil_entry",
+        owner_handoff: "owner_handoff=Hardware/Robot/Full-stack keep phone summary read-only until safe closeout exists.",
+      },
+    ];
+  }
+  return threads.slice(0, 8).map((thread) => ({
+    thread_key: safePr5ReviewThreadCloseoutText(thread.thread_key || thread.id, "thread_key=not_proven"),
+    severity: safePr5ReviewThreadCloseoutText(thread.severity, "severity=not_proven"),
+    decision: safePr5ReviewThreadCloseoutText(
+      thread.decision || thread.closeout_decision,
+      "still_open_missing_current_evidence",
+    ),
+    current_evidence: pr5ReviewThreadCloseoutSummaryText(
+      thread.current_evidence_refs || thread.current_evidence || thread.evidence_refs,
+      "current_evidence=not_proven",
+    ),
+    missing_real_materials: pr5ReviewThreadCloseoutSummaryText(
+      thread.missing_real_materials || thread.missing_materials,
+      "missing_real_materials=2D LiDAR / ToF / install / wiring / calibration / HIL-entry material pending",
+    ),
+    owner_handoff: pr5ReviewThreadCloseoutSummaryText(
+      thread.owner_handoff || thread.owner_next_steps,
+      "owner_handoff=Hardware owner keeps real materials open; Full-stack displays safe summary only.",
+    ),
+  }));
+}
+
+function pr5ReviewThreadCloseoutFromStatus(status, readiness, diagnostics) {
+  const provided = pr5ReviewThreadCloseoutCandidate(status, readiness, diagnostics) || {};
+  const pr = provided.pr && typeof provided.pr === "object" ? provided.pr : {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.pr5_review_thread_closeout_summary.v1",
+    source_schema: provided.source_schema || "trashbot.pr5_review_thread_closeout.v1",
+    schema_version: 1,
+    source: safePr5ReviewThreadCloseoutText(provided.source, "software_proof"),
+    overall_status: safePr5ReviewThreadCloseoutText(
+      provided.overall_status || provided.status,
+      "not_proven",
+    ),
+    pr_number: safePr5ReviewThreadCloseoutText(pr.number || provided.pr_number || "5", "5"),
+    pr_title: safePr5ReviewThreadCloseoutText(
+      pr.title || provided.pr_title,
+      "PR #5 review thread closeout",
+    ),
+    safe_phone_copy: safePr5ReviewThreadCloseoutText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "PR #5 review thread closeout 只读摘要缺失；手机端保持 not_proven 和主操作关闭。",
+    ),
+    thread_decisions: pr5ReviewThreadCloseoutThreads(provided),
+    missing_real_materials: pr5ReviewThreadCloseoutSummaryText(
+      provided.missing_real_materials || provided.missing_materials,
+      "missing_real_materials=真实 2D LiDAR / ToF source/receipt、安装、接线、电源、标定、HIL-entry pending",
+    ),
+    owner_handoff: pr5ReviewThreadCloseoutSummaryText(
+      provided.owner_handoff || provided.owner_next_steps,
+      "owner_handoff=Hardware closes docs-only thread only after reviewer accepts; real materials stay open.",
+    ),
+    safe_evidence_ref: safePr5ReviewThreadCloseoutText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "evidence_ref=not_proven",
+    ),
+    evidence_boundary: safePr5ReviewThreadCloseoutText(
+      provided.evidence_boundary,
+      PR5_REVIEW_THREAD_CLOSEOUT_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: pr5ReviewThreadCloseoutNotProvenList(provided),
+  };
+}
+
 function waveRoverFeedbackReplayCandidate(status, readiness, diagnostics) {
   // 兼容 PC gate、Robot diagnostics 和 status 多层 summary；前端拒绝读取 raw artifact。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -21514,6 +21704,98 @@ function renderHardwareBaselineSourceAlignment(status) {
   $("hardwareBaselineSourceAlignmentHint").textContent = summary.recovery_hint;
 }
 
+function ensurePr5ReviewThreadCloseoutPanel() {
+  // PR #5 panel 放在 hardware baseline/source alignment 后面，保持 review closeout 与材料缺口紧邻。
+  let panel = $("pr5ReviewThreadCloseoutPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("hardwareBaselineSourceAlignmentTitle")?.closest("section") ||
+    $("hardwareBaselineReviewTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "pr5ReviewThreadCloseoutPanel";
+  panel.className = "pr5-review-thread-closeout-panel";
+  panel.setAttribute("aria-labelledby", "pr5ReviewThreadCloseoutTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="pr5ReviewThreadCloseoutTitle">PR #5 review thread closeout</h2>
+      <span id="pr5ReviewThreadCloseoutBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="pr5ReviewThreadCloseoutCopy" class="message">
+      pr5_review_thread_closeout 只读展示每条 review thread 的 decision、当前证据、缺失真实材料和 owner handoff。
+    </p>
+    <dl class="pr5-review-thread-closeout-grid">
+      <div><dt>PR</dt><dd id="pr5ReviewThreadCloseoutPr">PR #5 / not_proven</dd></div>
+      <div><dt>Overall Status</dt><dd id="pr5ReviewThreadCloseoutStatus">not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="pr5ReviewThreadCloseoutEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Missing Real Materials</dt><dd id="pr5ReviewThreadCloseoutMissingMaterials">missing_real_materials=not_proven</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="pr5ReviewThreadCloseoutOwnerHandoff">owner_handoff=not_proven</dd></div>
+      <div><dt>Control Boundary</dt><dd id="pr5ReviewThreadCloseoutControls">software_proof / not_proven / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="pr5ReviewThreadCloseoutBoundary">software_proof_docker_pr5_review_thread_closeout_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="pr5ReviewThreadCloseoutNotProven">真实 2D LiDAR、真实 ToF、HIL、field pass 和 delivery success 未证明。</dd></div>
+    </dl>
+    <div id="pr5ReviewThreadCloseoutThreadList" class="thread-decision-list" aria-label="PR #5 review thread decision list"></div>
+    <p id="pr5ReviewThreadCloseoutHint" class="hint">
+      本 panel 不展示 raw JSON、GitHub token、ROS topic、serial path、credentials、traceback 或完整本机路径；不会触发 Start Delivery、Confirm Dropoff、Cancel、ACK、cursor 或 diagnostics fetch。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderPr5ReviewThreadCloseoutThreads(summary) {
+  // thread list 使用 DOM textContent 写入，避免把后端摘要当作 HTML 或 raw JSON 暴露。
+  const list = $("pr5ReviewThreadCloseoutThreadList");
+  if (!list) {
+    return;
+  }
+  list.textContent = "";
+  summary.thread_decisions.forEach((thread) => {
+    const item = document.createElement("article");
+    const title = document.createElement("h3");
+    const meta = document.createElement("p");
+    const evidence = document.createElement("p");
+    const missing = document.createElement("p");
+    const handoff = document.createElement("p");
+    item.className = "thread-decision-item";
+    title.textContent = `${thread.thread_key} / ${thread.decision}`;
+    meta.textContent = `severity=${thread.severity}`;
+    evidence.textContent = `current_evidence=${thread.current_evidence}`;
+    missing.textContent = `missing_real_materials=${thread.missing_real_materials}`;
+    handoff.textContent = `owner_handoff=${thread.owner_handoff}`;
+    item.append(title, meta, evidence, missing, handoff);
+    list.appendChild(item);
+  });
+}
+
+function renderPr5ReviewThreadCloseout(status) {
+  const panel = ensurePr5ReviewThreadCloseoutPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = pr5ReviewThreadCloseoutFromStatus(status, readiness, latestDiagnostics);
+  latestPr5ReviewThreadCloseout = summary;
+  const badge = $("pr5ReviewThreadCloseoutBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 PR #5 summary" : "review thread not_proven";
+  $("pr5ReviewThreadCloseoutCopy").textContent = summary.safe_phone_copy;
+  $("pr5ReviewThreadCloseoutPr").textContent = `PR #${summary.pr_number} / ${summary.pr_title}`;
+  $("pr5ReviewThreadCloseoutStatus").textContent = `${summary.source} / ${summary.overall_status}`;
+  $("pr5ReviewThreadCloseoutEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("pr5ReviewThreadCloseoutMissingMaterials").textContent = summary.missing_real_materials;
+  $("pr5ReviewThreadCloseoutOwnerHandoff").textContent = summary.owner_handoff;
+  $("pr5ReviewThreadCloseoutControls").textContent =
+    `${summary.source} / ${summary.overall_status} / delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("pr5ReviewThreadCloseoutBoundary").textContent = summary.evidence_boundary;
+  $("pr5ReviewThreadCloseoutNotProven").textContent = summary.not_proven.join("、");
+  renderPr5ReviewThreadCloseoutThreads(summary);
+}
+
 function renderHardwareSensorProcurementIntake(status) {
   const readiness = readinessFromStatus(status);
   const summary = hardwareSensorProcurementIntakeFromStatus(status, readiness, latestDiagnostics);
@@ -25134,6 +25416,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const pr5ReviewThreadCloseout = pr5ReviewThreadCloseoutFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const waveRoverFeedbackReplay = waveRoverFeedbackReplayFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -25255,6 +25542,7 @@ function renderDiagnosticsSummary(payload) {
     ["hardware_sensor_hil_entry_config_precheck", hardwareSensorHilEntryConfigPrecheck.precheck_status],
     ["hardware_sensor_hil_entry_readiness_review", hardwareSensorHilEntryReadinessReview.readiness_status],
     ["hardware_sensor_hil_entry_execution_pack", hardwareSensorHilEntryExecutionPack.execution_status],
+    ["pr5_review_thread_closeout", pr5ReviewThreadCloseout.overall_status],
     ["wave_rover_feedback_replay", waveRoverFeedbackReplay.replay_status],
     ["wave_rover_hil_packet_intake", waveRoverHilPacketIntake.packet_status],
     ["wave_rover_hil_packet_review_decision", waveRoverHilPacketReviewDecision.review_decision],
@@ -25379,6 +25667,7 @@ function renderOfflineFailure() {
   renderHardwareSensorHilEntryConfigPrecheck({});
   renderHardwareSensorHilEntryReadinessReview({});
   renderHardwareSensorHilEntryExecutionPack({});
+  renderPr5ReviewThreadCloseout({});
   renderWaveRoverFeedbackReplay({});
   renderWaveRoverHilPacketIntake({});
   renderWaveRoverHilPacketReviewDecision({});
@@ -25478,6 +25767,7 @@ function renderStatus(status) {
   renderHardwareSensorHilEntryConfigPrecheck(status);
   renderHardwareSensorHilEntryReadinessReview(status);
   renderHardwareSensorHilEntryExecutionPack(status);
+  renderPr5ReviewThreadCloseout(status);
   renderWaveRoverFeedbackReplay(status);
   renderWaveRoverHilPacketIntake(status);
   renderWaveRoverHilPacketReviewDecision(status);

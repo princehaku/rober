@@ -174,6 +174,95 @@ class HardwareSensorProcurementExecutionPackMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, execution_pack_text)
 
 
+class Pr5ReviewThreadCloseoutMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_pr5_review_thread_closeout_panel_is_read_only_and_whitelisted(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # PR #5 panel 只展示 safe summary，不新增主动 fetch、ACK、cursor 或主操作按钮。
+        self.assertIn("PR #5 review thread closeout", app)
+        self.assertIn("PR5_REVIEW_THREAD_CLOSEOUT_BOUNDARY", app)
+        self.assertIn("UNSAFE_PR5_REVIEW_THREAD_CLOSEOUT_TEXT", app)
+        self.assertIn("safePr5ReviewThreadCloseoutText", app)
+        self.assertIn("pr5ReviewThreadCloseoutCandidate", app)
+        self.assertIn("pr5ReviewThreadCloseoutFromStatus", app)
+        self.assertIn("renderPr5ReviewThreadCloseoutThreads", app)
+        self.assertIn("robot_diagnostics_pr5_review_thread_closeout_summary", app)
+        self.assertIn("pr5_review_thread_closeout_summary", app)
+        self.assertIn("pr5_review_thread_closeout", app)
+        self.assertIn("ready_to_close_on_mainline_docs", fixture_text)
+        self.assertIn("blocked_pending_real_materials", fixture_text)
+        self.assertIn("still_open_missing_current_evidence", app)
+        self.assertIn("pr5-review-thread-closeout-panel", styles)
+        self.assertIn("pr5-review-thread-closeout-grid", styles)
+        self.assertIn("thread-decision-list", styles)
+        self.assertNotRegex(app, r"pr5ReviewThreadCloseout.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+
+        # fixture、移动端 fixture 和文档都必须保留 software_proof/not_proven 控制边界。
+        closeout = fixture["robot_diagnostics_pr5_review_thread_closeout_summary"]
+        self.assertEqual(closeout["source"], "software_proof")
+        self.assertEqual(closeout["overall_status"], "not_proven")
+        self.assertEqual(closeout["delivery_success"], False)
+        self.assertEqual(closeout["primary_actions_enabled"], False)
+        self.assertEqual(closeout["thread_decisions"][0]["decision"], "ready_to_close_on_mainline_docs")
+        self.assertEqual(closeout["thread_decisions"][1]["decision"], "blocked_pending_real_materials")
+        mobile_closeout = mobile_fixture["pr5_review_thread_closeout_summary"]
+        self.assertEqual(mobile_closeout["source"], "software_proof")
+        self.assertEqual(mobile_closeout["overall_status"], "not_proven")
+        self.assertEqual(mobile_closeout["delivery_success"], False)
+        self.assertEqual(mobile_closeout["primary_actions_enabled"], False)
+        self.assertIn("pr5_review_thread_closeout", doc)
+        self.assertIn("robot_diagnostics_pr5_review_thread_closeout_summary", doc)
+        self.assertIn("software_proof", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+
+    def test_pr5_review_thread_closeout_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        closeout_text = json.dumps(
+            {
+                "status": fixture["robot_diagnostics_pr5_review_thread_closeout_summary"],
+                "mobile": mobile_fixture["pr5_review_thread_closeout_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # PR #5 closeout fixture 只能包含脱敏 thread decision，不携带 raw JSON、凭证、路径或控制成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "github token",
+            "ghp_",
+            "serial path",
+            "serial device",
+            "baudrate",
+            "/users/",
+            "/tmp/",
+            "credentials",
+            "authorization",
+            "bearer",
+            "token",
+            "database url",
+            "queue url",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "raw review body",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, closeout_text)
+
+
 class HardwareSensorProcurementReceiptIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

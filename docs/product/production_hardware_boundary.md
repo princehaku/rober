@@ -320,6 +320,38 @@ local source references for WAVE ROVER / UART JSON / firmware/vendor app
 behavior only; they do not prove real 2D LiDAR or ToF procurement,
 installation, wiring, power, calibration, HIL, field, or delivery evidence.
 
+## PR #5 Review Thread Closeout Gate
+
+`pr5_review_thread_closeout` is the Docker-only repo-local gate for the current
+PR #5 unresolved review threads against this product boundary, `OKR.md`, and
+`docs/vendor/VENDOR_INDEX.md`. It emits
+`schema=trashbot.pr5_review_thread_closeout.v1` and
+`schema=trashbot.pr5_review_thread_closeout_summary.v1` under
+`software_proof_docker_pr5_review_thread_closeout_gate`.
+
+The gate only decides whether each PR #5 review thread is ready to close on
+mainline documentation, blocked on real materials, or still open because
+current repo evidence is missing. Supported decisions are
+`ready_to_close_on_mainline_docs`, `blocked_pending_real_materials`, and
+`still_open_missing_current_evidence`.
+
+For the hardware boundary thread, the gate checks that the Default Hardware Set
+remains WAVE ROVER, Orange Pi Zero 3, network access, monocular camera,
+microphone, and speaker/buzzer, while the Navigation/Sensing baseline keeps
+2D LiDAR and ToF as target hardware pending procurement/source attribution,
+mounting, wiring, calibration, and HIL evidence. For the vendor citation
+thread, the gate cites `docs/vendor/VENDOR_INDEX.md` and the local WAVE ROVER /
+Orange Pi / UART JSON / firmware/vendor-app references as source boundary
+only; those references still do not prove a project 2D LiDAR or ToF SKU,
+receipt, purchase order, installation, wiring, calibration, HIL entry, field
+pass, Objective 5 external proof, or delivery result.
+
+Every output remains `software_proof`, `not_proven`, `delivery_success=false`,
+and `primary_actions_enabled=false`. A `ready_to_close_on_mainline_docs`
+decision means only that the reviewer can evaluate the current docs-only
+fix; it is not hardware procurement, installation, HIL, route/elevator field
+pass, phone-device proof, Objective 5 external proof, or delivery success.
+
 ## Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)
 
 - Target baseline combo: monocular camera + one 2D LiDAR + ToF safety ring.

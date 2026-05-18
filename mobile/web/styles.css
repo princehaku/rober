@@ -149,6 +149,7 @@ h2 {
 .hardware-sensor-hil-entry-config-precheck-panel,
 .hardware-sensor-hil-entry-readiness-review-panel,
 .hardware-sensor-hil-entry-execution-pack-panel,
+.pr5-review-thread-closeout-panel,
 .recovery-decision-panel,
 .route-review-panel,
 .pc-route-debug-panel,
@@ -296,6 +297,7 @@ h2 {
 .hardware-sensor-hil-entry-config-precheck-grid,
 .hardware-sensor-hil-entry-readiness-review-grid,
 .hardware-sensor-hil-entry-execution-pack-grid,
+.pr5-review-thread-closeout-grid,
 .recovery-decision-grid,
 .route-review-grid,
 .pc-route-debug-grid,
@@ -359,6 +361,7 @@ h2 {
 .hardware-sensor-hil-entry-config-precheck-grid div,
 .hardware-sensor-hil-entry-readiness-review-grid div,
 .hardware-sensor-hil-entry-execution-pack-grid div,
+.pr5-review-thread-closeout-grid div,
 .recovery-decision-grid div,
 .route-review-grid div,
 .pc-route-debug-grid div,
@@ -463,6 +466,32 @@ dd {
 
 .route-field-run-grid {
   grid-template-columns: 1fr;
+}
+
+.thread-decision-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.thread-decision-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fbfa;
+}
+
+.thread-decision-item h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.thread-decision-item p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .route-field-run-console-grid {
@@ -862,6 +891,10 @@ dd {
   }
 
   .hardware-sensor-hil-entry-execution-pack-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pr5-review-thread-closeout-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

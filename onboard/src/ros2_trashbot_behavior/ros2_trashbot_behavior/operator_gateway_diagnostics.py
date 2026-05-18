@@ -667,6 +667,14 @@ HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_SUMMARY_SCHEMA = (
 HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_GATE = (
     "software_proof_docker_hardware_sensor_hil_entry_execution_pack_gate"
 )
+PR5_REVIEW_THREAD_CLOSEOUT_SCHEMA = "trashbot.pr5_review_thread_closeout.v1"
+PR5_REVIEW_THREAD_CLOSEOUT_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.pr5_review_thread_closeout_summary.v1"
+)
+PR5_REVIEW_THREAD_CLOSEOUT_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_pr5_review_thread_closeout_summary.v1"
+)
+PR5_REVIEW_THREAD_CLOSEOUT_GATE = "software_proof_docker_pr5_review_thread_closeout_gate"
 CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA = "trashbot.cloud_worker_migration_rehearsal.v1"
 CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA = (
     "trashbot.cloud_worker_migration_rehearsal_summary.v1"
@@ -709,6 +717,16 @@ CLOUD_WORKER_CUTOVER_DRAIN_REQUIRED_NOT_PROVEN = (
     "cursor_advance_or_persistence",
     "delivery_success",
 )
+PR5_REVIEW_THREAD_CLOSEOUT_REQUIRED_NOT_PROVEN = (
+    "real_2d_lidar",
+    "real_tof",
+    "real_procurement_receipt",
+    "real_install_wiring_power_calibration",
+    "real_hil_entry",
+    "route_elevator_field_pass",
+    "delivery_success",
+    "objective_5_external_proof",
+)
 ROUTE_TASK_REHEARSAL_TEXT_REDACTIONS = (
     (re.compile(r"(?i)\bAuthorization\s*:\s*(?:Bearer\s+)?[^,\s]+"), "[REDACTED_AUTH_HEADER]"),
     (re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+"), "Bearer [REDACTED]"),
@@ -748,6 +766,16 @@ def _safe_route_task_rehearsal_list(value, limit=8):
         items.append(_redact_route_task_rehearsal_text(item))
         if len(items) >= limit:
             break
+    return items
+
+
+def _dedupe_ordered(values):
+    # diagnostics 摘要要保持 Hardware gate 的顺序，同时避免重复 not_proven / missing material 文案刷屏。
+    items = []
+    for value in values:
+        text = _redact_route_task_rehearsal_text(value)
+        if text and text not in items:
+            items.append(text)
     return items
 
 
@@ -3565,6 +3593,27 @@ def _hardware_sensor_hil_entry_execution_pack_not_proven(pack=None, summary_frag
         "objective_5_external_proof",
     )
     for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _pr5_review_thread_closeout_not_proven(closeout=None, summary_fragment=None):
+    # PR #5 closeout 只表示 review thread 的软件侧消毒摘要，不代表硬件到货、安装、HIL 或送达成功。
+    closeout = closeout if isinstance(closeout, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    for source in (closeout, summary_fragment):
+        if isinstance(source.get("not_proven"), list):
+            source_values.extend(source.get("not_proven"))
+        if isinstance(source.get("missing_real_materials"), list):
+            source_values.extend(source.get("missing_real_materials"))
+        for decision in source.get("thread_decisions", []):
+            if isinstance(decision, dict) and isinstance(decision.get("missing_real_materials"), list):
+                source_values.extend(decision.get("missing_real_materials"))
+    for item in list(source_values) + list(PR5_REVIEW_THREAD_CLOSEOUT_REQUIRED_NOT_PROVEN):
         text = str(item or "").strip()
         if text and text not in values:
             values.append(text)
@@ -8016,6 +8065,79 @@ def _default_hardware_sensor_hil_entry_execution_pack_summary(
     }
 
 
+def _default_pr5_review_thread_closeout_summary(
+    path,
+    status="blocked_missing_pr5_review_thread_closeout_summary",
+    read_error="",
+):
+    # 缺少 Hardware 产出的消毒 summary 时必须保守 blocked，Robot diagnostics 不能从原始 review 内容推断可关闭。
+    safe_copy = (
+        "PR #5 review thread closeout is metadata-only; software_proof, "
+        "not_proven, delivery_success=false and primary_actions_enabled=false."
+    )
+    return {
+        "schema": PR5_REVIEW_THREAD_CLOSEOUT_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": PR5_REVIEW_THREAD_CLOSEOUT_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source_contract": {
+            "schema": "",
+            "evidence_boundary": "",
+            "metadata_only": True,
+        },
+        "status": status,
+        "overall_status": "not_proven",
+        "closeout_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": read_error or "PR #5 review thread closeout summary is not configured",
+        },
+        "pr": {"number": 5, "title": ""},
+        "thread_decisions": [],
+        "missing_real_materials": [],
+        "next_required_evidence": [],
+        "owner_handoff": [],
+        "safe_copy": safe_copy,
+        "safe_evidence_ref": "",
+        "robot_diagnostics_summary": {
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+        },
+        "not_proven": _pr5_review_thread_closeout_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "summary_required": True,
+        "review_thread_closeout_only": True,
+        "hardware_material_pending": True,
+        "real_hardware_observed": False,
+        "sensor_procurement_completed": False,
+        "sensor_installed_on_robot": False,
+        "sensor_wiring_verified": False,
+        "sensor_power_budget_verified": False,
+        "sensor_calibrated_on_robot": False,
+        "route_elevator_field_pass": False,
+        "nav2_fixed_route_run": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -9523,6 +9645,16 @@ def _hardware_sensor_hil_entry_execution_pack_source_contract(value):
     source_boundary = str(value.get("evidence_boundary") or "")
     if source_schema == HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or source_schema)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _pr5_review_thread_closeout_source_contract(value):
+    # Robot 只接受 Hardware gate 或其 summary wrapper；summary 必须回指同一 PR #5 closeout boundary。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == PR5_REVIEW_THREAD_CLOSEOUT_SOURCE_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or PR5_REVIEW_THREAD_CLOSEOUT_SCHEMA)
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
 
@@ -33094,6 +33226,348 @@ def summarize_hardware_sensor_hil_entry_execution_pack(source):
     return summary
 
 
+def _pr5_review_thread_closeout_copy_is_unsafe(value):
+    # 允许安全边界里的 false/not_proven 文案；其余 success/control/HIL/field-pass 语义一律降级。
+    redacted = _redact_route_task_rehearsal_text(value)
+    guarded = redacted.lower()
+    for phrase in (
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "not_proven",
+        "not proven",
+        "metadata-only",
+        "software_proof",
+        "must not",
+        "not real",
+        "不证明",
+    ):
+        guarded = guarded.replace(phrase, "")
+    return (
+        "success" in guarded
+        or "passed" in guarded
+        or "field pass" in guarded
+        or "hil pass" in guarded
+        or "control enabled" in guarded
+        or "start delivery" in guarded
+        or "confirm dropoff" in guarded
+        or "cancel delivery" in guarded
+        or "/cmd_vel" in guarded
+        or "ack posted" in guarded
+        or "cursor advanced" in guarded
+        or any(marker in redacted for marker in (
+            "[REDACTED_AUTH_HEADER]",
+            "Bearer [REDACTED]",
+            "[REDACTED_URL]",
+            "/dev/[REDACTED_SERIAL]",
+            "[REDACTED_BAUD]",
+            "[REDACTED_TRACEBACK]",
+            "[REDACTED_LOCAL_PATH]",
+        ))
+    )
+
+
+def _pr5_review_thread_closeout_has_unsafe_fields(value, key_path=""):
+    # PR review 原文、控制入口、凭证、本机路径和 raw artifact 都不能泄进 Robot diagnostics。
+    unsafe_key_fragments = (
+        "raw",
+        "body",
+        "comment",
+        "credential",
+        "token",
+        "secret",
+        "ack",
+        "cursor",
+        "cmd_vel",
+        "command",
+        "control",
+    )
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            current_path = f"{key_path}.{key_text}" if key_path else key_text
+            if key_text == "not_proven":
+                continue
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if key_text == "delivery_success" and item is not False:
+                return True
+            if key_text == "primary_actions_enabled" and item is not False:
+                return True
+            if _pr5_review_thread_closeout_has_unsafe_fields(item, current_path):
+                return True
+    if isinstance(value, list):
+        return any(_pr5_review_thread_closeout_has_unsafe_fields(item, key_path) for item in value)
+    if isinstance(value, str):
+        return _pr5_review_thread_closeout_copy_is_unsafe(value)
+    return False
+
+
+def summarize_pr5_review_thread_closeout(source):
+    """构建 PR #5 review thread closeout 的 metadata-only Robot diagnostics 摘要。"""
+    # 这里故意要求 Hardware gate 的 sanitized summary；缺 summary 不能退回读取 raw review thread。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_pr5_review_thread_closeout_summary(
+        source_path,
+        read_error="PR #5 review thread closeout summary is not configured",
+    )
+    if isinstance(source, dict):
+        closeout = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = "PR #5 review thread closeout summary artifact missing"
+            summary["closeout_status"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                closeout = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading PR #5 review thread closeout summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["closeout_status"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(closeout, dict):
+        summary["closeout_status"]["reason"] = "PR #5 review thread closeout JSON must be an object"
+        return summary
+
+    raw_schema = str(closeout.get("schema") or "")
+    summary_fragment = {}
+    source_schema, source_boundary = _pr5_review_thread_closeout_source_contract(closeout)
+    if raw_schema == PR5_REVIEW_THREAD_CLOSEOUT_SOURCE_SUMMARY_SCHEMA:
+        summary_fragment = closeout
+    else:
+        for candidate in (
+            closeout.get("pr5_review_thread_closeout_summary"),
+            closeout.get("robot_diagnostics_pr5_review_thread_closeout_summary"),
+            closeout.get("diagnostics_summary"),
+            closeout.get("robot_diagnostics_summary"),
+            closeout.get("summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if isinstance(summary_fragment, dict) and summary_fragment:
+        nested_schema, nested_boundary = _pr5_review_thread_closeout_source_contract(
+            summary_fragment
+        )
+        if nested_schema:
+            source_schema, source_boundary = nested_schema, nested_boundary
+
+    accepted_schemas = {
+        PR5_REVIEW_THREAD_CLOSEOUT_SCHEMA,
+        PR5_REVIEW_THREAD_CLOSEOUT_SOURCE_SUMMARY_SCHEMA,
+    }
+    source_schema_version = (
+        closeout.get("schema_version")
+        if closeout.get("schema") != PR5_REVIEW_THREAD_CLOSEOUT_SOURCE_SUMMARY_SCHEMA
+        else closeout.get("source_schema_version") or closeout.get("schema_version")
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or closeout.get("safe_copy")
+        or closeout.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    status_source = (
+        summary_fragment.get("closeout_status")
+        if isinstance(summary_fragment.get("closeout_status"), dict)
+        else closeout.get("closeout_status")
+        if isinstance(closeout.get("closeout_status"), dict)
+        else {}
+    )
+    status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or closeout.get("status")
+        or closeout.get("overall_status")
+        or "not_proven"
+    )
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or closeout.get("safe_evidence_ref")
+        or closeout.get("evidence_ref", "")
+    )
+    thread_decision_source = (
+        summary_fragment.get("thread_decisions")
+        if isinstance(summary_fragment.get("thread_decisions"), list)
+        else closeout.get("thread_decisions")
+        if isinstance(closeout.get("thread_decisions"), list)
+        else []
+    )
+    thread_decisions = [
+        _safe_pc_route_debug_dict(decision)
+        for decision in thread_decision_source[:8]
+        if isinstance(decision, dict)
+    ]
+    missing_real_materials = _safe_route_task_rehearsal_list(
+        summary_fragment.get("missing_real_materials")
+        if isinstance(summary_fragment.get("missing_real_materials"), list)
+        else closeout.get("missing_real_materials")
+    )
+    if not missing_real_materials:
+        for decision in thread_decisions:
+            if isinstance(decision, dict) and isinstance(decision.get("missing_real_materials"), list):
+                missing_real_materials.extend(decision.get("missing_real_materials"))
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else closeout.get("robot_diagnostics_summary")
+        if isinstance(closeout.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    safe_robot_summary = {
+        "safe_copy": _redact_route_task_rehearsal_text(
+            robot_summary.get("safe_copy") or safe_copy
+        ),
+        "safe_phone_copy": _redact_route_task_rehearsal_text(
+            robot_summary.get("safe_phone_copy") or safe_copy
+        ),
+    }
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": source_schema_version,
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "source_contract": {
+                "schema": _redact_route_task_rehearsal_text(source_schema),
+                "evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "metadata_only": True,
+            },
+            "status": status,
+            "overall_status": "not_proven",
+            "closeout_status": {
+                "status": status,
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or closeout.get("reason")
+                    or "PR #5 review thread closeout is software_proof only"
+                ),
+            },
+            "pr": _safe_pc_route_debug_dict(summary_fragment.get("pr") or closeout.get("pr")),
+            "thread_decisions": thread_decisions,
+            "missing_real_materials": _dedupe_ordered(missing_real_materials),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+                if isinstance(summary_fragment.get("next_required_evidence"), list)
+                else closeout.get("next_required_evidence")
+            ),
+            "owner_handoff": _safe_route_task_rehearsal_list(
+                summary_fragment.get("owner_handoff")
+                if isinstance(summary_fragment.get("owner_handoff"), list)
+                else closeout.get("owner_handoff")
+            ),
+            "safe_copy": _redact_route_task_rehearsal_text(safe_copy),
+            "safe_evidence_ref": safe_evidence_ref,
+            "robot_diagnostics_summary": safe_robot_summary,
+            "not_proven": _pr5_review_thread_closeout_not_proven(closeout, summary_fragment),
+            "read_error": "",
+            "metadata_only": True,
+            "summary_required": True,
+            "review_thread_closeout_only": True,
+            "hardware_material_pending": True,
+            "real_hardware_observed": False,
+            "sensor_procurement_completed": False,
+            "sensor_installed_on_robot": False,
+            "sensor_wiring_verified": False,
+            "sensor_power_budget_verified": False,
+            "sensor_calibrated_on_robot": False,
+            "route_elevator_field_pass": False,
+            "nav2_fixed_route_run": False,
+            "dropoff_completion": False,
+            "cancel_completion": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "collect_triggered": False,
+            "dropoff_triggered": False,
+            "cancel_triggered": False,
+            "ack_post_allowed": False,
+            "remote_ack_allowed": False,
+            "cursor_updates_allowed": False,
+            "persistence_updates_allowed": False,
+            "terminal_ack_allowed": False,
+            "nav2_triggered": False,
+            "hil_pass": False,
+            "production_ready": False,
+        }
+    )
+    if source_schema not in accepted_schemas or source_boundary != PR5_REVIEW_THREAD_CLOSEOUT_GATE:
+        summary.update(
+            {
+                "status": "unsupported_schema",
+                "closeout_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "PR #5 review thread closeout schema or evidence boundary is unsupported",
+                },
+                "thread_decisions": [],
+                "safe_evidence_ref": "",
+            }
+        )
+        return summary
+    if not isinstance(summary_fragment, dict) or not summary_fragment:
+        summary.update(
+            {
+                "status": "blocked_missing_pr5_review_thread_closeout_summary",
+                "closeout_status": {
+                    "status": "blocked_missing_pr5_review_thread_closeout_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "PR #5 review thread closeout is missing sanitized summary",
+                },
+                "thread_decisions": [],
+                "safe_evidence_ref": "",
+            }
+        )
+        return summary
+    if (
+        closeout.get("delivery_success") is not False
+        or closeout.get("primary_actions_enabled") is not False
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or _pr5_review_thread_closeout_has_unsafe_fields(closeout)
+        or _pr5_review_thread_closeout_has_unsafe_fields(summary_fragment)
+        or _pr5_review_thread_closeout_copy_is_unsafe(safe_copy)
+        or not safe_evidence_ref
+        or safe_evidence_ref.startswith("local_path_redacted:")
+    ):
+        blocked_copy = (
+            "PR #5 review thread closeout was blocked because the summary could expose "
+            "raw review/control data or imply success; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "status": "blocked_unsafe_pr5_review_thread_closeout_summary",
+                "closeout_status": {
+                    "status": "blocked_unsafe_pr5_review_thread_closeout_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "PR #5 review thread closeout contains unsafe copy, weak evidence_ref, success wording, or enabled actions",
+                },
+                "thread_decisions": [],
+                "safe_evidence_ref": "",
+                "safe_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+            }
+        )
+        return summary
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -34371,6 +34845,7 @@ def build_diagnostics_payload(
     hardware_sensor_hil_entry_config_precheck_ref="",
     hardware_sensor_hil_entry_readiness_review_ref="",
     hardware_sensor_hil_entry_execution_pack_ref="",
+    pr5_review_thread_closeout_ref="",
 ):
     latest_status = dict(latest_status or {})
     diagnostics_source = latest_status.get("diagnostics") if isinstance(latest_status.get("diagnostics"), dict) else {}
@@ -34471,6 +34946,21 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("hardware_sensor_hil_entry_execution_pack"), dict)
         else diagnostics_source.get("hardware_sensor_hil_entry_execution_pack_summary")
         if isinstance(diagnostics_source.get("hardware_sensor_hil_entry_execution_pack_summary"), dict)
+        else {}
+    )
+    pr5_review_thread_closeout_source = (
+        latest_status.get("pr5_review_thread_closeout")
+        if isinstance(latest_status.get("pr5_review_thread_closeout"), dict)
+        else latest_status.get("pr5_review_thread_closeout_summary")
+        if isinstance(latest_status.get("pr5_review_thread_closeout_summary"), dict)
+        else latest_status.get("robot_diagnostics_pr5_review_thread_closeout_summary")
+        if isinstance(latest_status.get("robot_diagnostics_pr5_review_thread_closeout_summary"), dict)
+        else diagnostics_source.get("pr5_review_thread_closeout")
+        if isinstance(diagnostics_source.get("pr5_review_thread_closeout"), dict)
+        else diagnostics_source.get("pr5_review_thread_closeout_summary")
+        if isinstance(diagnostics_source.get("pr5_review_thread_closeout_summary"), dict)
+        else diagnostics_source.get("robot_diagnostics_pr5_review_thread_closeout_summary")
+        if isinstance(diagnostics_source.get("robot_diagnostics_pr5_review_thread_closeout_summary"), dict)
         else {}
     )
     mobile_field_material_review_decision_source = (
@@ -35852,6 +36342,9 @@ def build_diagnostics_payload(
     latest_status.pop("hardware_sensor_hil_entry_readiness_review_copy", None)
     latest_status.pop("hardware_sensor_hil_entry_execution_pack", None)
     latest_status.pop("hardware_sensor_hil_entry_execution_pack_summary", None)
+    latest_status.pop("pr5_review_thread_closeout", None)
+    latest_status.pop("pr5_review_thread_closeout_summary", None)
+    latest_status.pop("robot_diagnostics_pr5_review_thread_closeout_summary", None)
     latest_status.pop("elevator_action_feedback_trace", None)
     latest_status.pop("robot_diagnostics_elevator_action_feedback_trace_summary", None)
     last_task = dict(latest_status.get("last_task") or {})
@@ -36622,6 +37115,15 @@ def build_diagnostics_payload(
             hardware_sensor_hil_entry_execution_pack_source
         )
     )
+    pr5_review_thread_closeout_source = (
+        pr5_review_thread_closeout_ref
+        or os.environ.get("TRASHBOT_PR5_REVIEW_THREAD_CLOSEOUT", "")
+        or os.environ.get("TRASHBOT_PR5_REVIEW_THREAD_CLOSEOUT_SUMMARY", "")
+        or pr5_review_thread_closeout_source
+    )
+    pr5_review_thread_closeout_summary = summarize_pr5_review_thread_closeout(
+        pr5_review_thread_closeout_source
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -36925,6 +37427,11 @@ def build_diagnostics_payload(
         hardware_sensor_hil_entry_readiness_review_summary=hardware_sensor_hil_entry_readiness_review_summary,
         hardware_sensor_hil_entry_execution_pack=hardware_sensor_hil_entry_execution_pack_summary,
         hardware_sensor_hil_entry_execution_pack_summary=hardware_sensor_hil_entry_execution_pack_summary,
+        pr5_review_thread_closeout=pr5_review_thread_closeout_summary,
+        pr5_review_thread_closeout_summary=pr5_review_thread_closeout_summary,
+        robot_diagnostics_pr5_review_thread_closeout_summary=(
+            pr5_review_thread_closeout_summary
+        ),
         elevator_action_feedback_trace=elevator_action_feedback_trace_summary,
         robot_diagnostics_elevator_action_feedback_trace_summary=(
             elevator_action_feedback_trace_summary

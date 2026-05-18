@@ -26,8 +26,8 @@
       "delivery success"
     ]
   },
-  "robot_diagnostics_elevator_action_feedback_trace_summary": {
-    "schema": "trashbot.elevator_action_feedback_trace_summary.v1",
+    "robot_diagnostics_elevator_action_feedback_trace_summary": {
+        "schema": "trashbot.elevator_action_feedback_trace_summary.v1",
     "schema_version": 1,
     "status": "not_proven",
     "source_boundary": "software_proof",
@@ -54,11 +54,79 @@
       "primary_actions_enabled=false",
       "真实电梯",
       "真实 Nav2/fixed-route",
-      "HIL"
-    ]
-  },
-  "hardware_baseline_source_alignment": {
-    "schema": "trashbot.hardware_baseline_source_alignment.v1",
+            "HIL"
+        ]
+    },
+    "robot_diagnostics_pr5_review_thread_closeout_summary": {
+        "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
+        "schema_version": 1,
+        "source": "software_proof",
+        "overall_status": "not_proven",
+        "pr": {
+            "number": 5,
+            "title": "PR #5 review thread closeout"
+        },
+        "safe_evidence_ref": "pr5_review_thread_closeout_fixture_20260519_0001",
+        "thread_decisions": [
+            {
+                "thread_key": "p1_production_hardware_boundary_default_vs_mandatory_sensor_baseline",
+                "severity": "P1",
+                "decision": "ready_to_close_on_mainline_docs",
+                "current_evidence_refs": [
+                    "production_hardware_boundary default hardware set summary",
+                    "production_hardware_boundary vendor/source attribution boundary",
+                    "docs/vendor/VENDOR_INDEX.md material coverage summary"
+                ],
+                "missing_real_materials": [
+                    "real_2d_lidar_sku_source_receipt",
+                    "real_tof_sku_source_receipt",
+                    "real_install_wiring_power_calibration",
+                    "real_hil_entry"
+                ],
+                "owner_handoff": "Hardware owner may close docs-only mismatch after reviewer accepts; real materials remain open."
+            },
+            {
+                "thread_key": "p2_sensor_materials_missing_real_receipt_and_hil_entry",
+                "severity": "P2",
+                "decision": "blocked_pending_real_materials",
+                "current_evidence_refs": [
+                    "hardware_baseline_source_alignment summary",
+                    "hardware_sensor_hil_entry_execution_pack summary"
+                ],
+                "missing_real_materials": [
+                    "real_2d_lidar_receipt",
+                    "real_tof_receipt",
+                    "real_installation_photo_summary",
+                    "real_hil_entry_summary"
+                ],
+                "owner_handoff": "Hardware owner supplies real material summaries before this thread can change state."
+            }
+        ],
+        "missing_real_materials": [
+            "real_2d_lidar_sku_source_receipt",
+            "real_tof_sku_source_receipt",
+            "real_install_wiring_power_calibration",
+            "real_hil_entry"
+        ],
+        "owner_handoff": "Hardware owns reviewer closeout and real material follow-up; Robot and Full-stack keep summaries read-only.",
+        "safe_phone_copy": "PR #5 review thread closeout 只读展示每条 thread 的 decision、当前证据、缺失真实材料和 owner handoff；这是 software_proof / not_proven。",
+        "recovery_hint": "缺真实材料前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+        "evidence_boundary": "software_proof_docker_pr5_review_thread_closeout_gate",
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "not_proven": [
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "real_2d_lidar",
+            "real_tof",
+            "hil_pass",
+            "route_elevator_field_pass"
+        ]
+    },
+    "hardware_baseline_source_alignment": {
+        "schema": "trashbot.hardware_baseline_source_alignment.v1",
     "summary_schema": "trashbot.hardware_baseline_source_alignment_summary.v1",
     "schema_version": 1,
     "alignment_status": "hardware_baseline_source_alignment_not_proven",

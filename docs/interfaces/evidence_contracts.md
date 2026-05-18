@@ -55,6 +55,46 @@ operation, real Nav2/fixed-route execution, real phone-device/browser
 validation, WAVE ROVER/UART/HIL, dropoff completion, cancel completion, or
 delivery success.
 
+## pr5_review_thread_closeout
+
+`pc-tools/evidence/pr5_review_thread_closeout_gate.py` generates the PC-only
+review closeout gate for PR #5 unresolved review threads.
+
+- Artifact schema: `trashbot.pr5_review_thread_closeout.v1`
+- Summary schema: `trashbot.pr5_review_thread_closeout_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_pr5_review_thread_closeout_gate`
+- Source inputs: `docs/product/production_hardware_boundary.md`,
+  `docs/vendor/VENDOR_INDEX.md`, `OKR.md`, and an optional safe PR #5 thread
+  summary with schema `trashbot.pr5_review_thread_summary.v1`. The built-in
+  thread summary contains only thread keys, severities, and topics; it does not
+  copy raw GitHub review bodies or tokens.
+- Decision values: `ready_to_close_on_mainline_docs`,
+  `blocked_pending_real_materials`, and
+  `still_open_missing_current_evidence`.
+
+The gate maps the P1 hardware-boundary thread to
+`ready_to_close_on_mainline_docs` only when the Default Hardware Set is separate
+from the pending Navigation/Sensing target baseline and
+`docs/vendor/VENDOR_INDEX.md` is cited as source boundary. It maps the P2 OKR
+thread to `ready_to_close_on_mainline_docs` only when `OKR.md` 4.1 and the
+priority narrative both identify Objective 5 as the lowest current objective.
+It maps the mandatory sensor citation thread to
+`blocked_pending_real_materials` when vendor/source citation exists but real
+2D LiDAR / ToF SKU, receipt, installation, wiring, calibration, and HIL-entry
+materials are still missing.
+
+Missing source docs, unsupported thread summary schema, unsafe copy, raw local
+paths, raw serial/UART paths, raw credentials, procurement/HIL/field success
+claims, `delivery_success=true`, or `primary_actions_enabled=true` fail closed.
+Every output must remain `source=software_proof`, `overall_status=not_proven`,
+`delivery_success=false`, and `primary_actions_enabled=false`.
+
+This contract is a docs/review closeout decision gate only. It does not prove
+real hardware procurement, real 2D LiDAR, real ToF, real WAVE ROVER/UART/HIL,
+real Nav2/fixed-route execution, real route/elevator field pass, real
+phone/browser validation, Objective 5 external proof, or delivery success.
+
 ## route_task_field_retest_acceptance_review_decision
 
 `pc-tools/evidence/route_task_field_retest_acceptance_review_decision.py`
