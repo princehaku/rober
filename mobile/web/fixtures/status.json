@@ -6,6 +6,26 @@
   "can_collect": false,
   "can_confirm_dropoff": false,
   "can_cancel": false,
+  "phone_action_feedback": {
+    "schema": "trashbot.mobile_action_confirmation.v1",
+    "schema_version": 1,
+    "action": "trash_collection",
+    "submission_status": "accepted_or_processing",
+    "current_step": "elevator:waiting_elevator_open",
+    "safe_action_message": "小车正在等待电梯开门；这是 current_step=elevator:<phase> 的 software_proof 手机展示，不代表真实电梯通过。",
+    "safe_phone_copy": "电梯实时阶段来自 Robot action feedback；手机端只读展示。",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "evidence_boundary": "software_proof_docker_mobile_action_feedback_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实电梯",
+      "真实 Nav2/fixed-route",
+      "真实手机设备/browser",
+      "HIL",
+      "delivery success"
+    ]
+  },
   "hardware_baseline_source_alignment": {
     "schema": "trashbot.hardware_baseline_source_alignment.v1",
     "summary_schema": "trashbot.hardware_baseline_source_alignment_summary.v1",

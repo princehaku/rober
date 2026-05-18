@@ -1,5 +1,33 @@
 # Evidence Contracts
 
+## mobile_elevator_action_feedback
+
+`TrashCollection.Feedback.current_step=elevator:<phase>` is the phone-safe,
+read-only realtime feedback contract for elevator-assisted delivery display.
+It reuses the existing ROS action feedback field and does not add a robot
+command, ACK payload, delivery result, route result, or diagnostics artifact.
+
+Allowed phase values are `waiting_elevator_open`, `entering_elevator`,
+`requesting_floor_help`, `waiting_target_floor`, `exiting_elevator`, and
+`resume_delivery`. Mobile and diagnostics consumers must fail closed for
+missing fields, non-`elevator:` prefixes, or unknown phases. The existing
+`operator_gateway` status payload exposes the field as `current_step`, while
+`operator_gateway_http` may derive phone-safe `elevator_assist` copy from the
+same known phase family.
+
+Phone-safe copies for this contract must not expose raw ROS topics, artifact
+paths, serial/UART identifiers, baudrate, WAVE ROVER parameters, credentials,
+DB/queue URLs, raw JSON, complete artifacts, or checksums. They may expose only
+the current phase, bounded Chinese help copy, and conservative support state.
+
+This contract remains `source=software_proof` / `not_proven` and must preserve
+`delivery_success=false` and `primary_actions_enabled=false`. It does not prove
+real elevator operation, real phone-device/browser validation, real
+Nav2/fixed-route execution, WAVE ROVER/UART/HIL, dropoff success, cancel
+completion, or delivery success. Start Delivery, Confirm Dropoff, and Cancel
+must stay governed by the existing command-safety gates and must not be enabled
+by this feedback display.
+
 ## route_task_field_retest_acceptance_review_decision
 
 `pc-tools/evidence/route_task_field_retest_acceptance_review_decision.py`

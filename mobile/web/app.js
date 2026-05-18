@@ -14,6 +14,7 @@ const ACTIONS = {
 
 const SAFE_EMPTY = "等待后端提供安全摘要。";
 const ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
+const ELEVATOR_ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
 const CLOUD_READINESS_BOUNDARY = "software_proof_docker_mobile_cloud_readiness_summary_gate";
 const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_acceptance_readiness_gate";
 const MOBILE_DEVICE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_device_evidence_capture_gate";
@@ -251,6 +252,40 @@ const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 const UNSAFE_REAL_DEVICE_ACCEPTANCE_REVIEW_HANDOFF_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|complete acceptance materials|complete artifact|complete artifacts|raw robot response|raw robot responses|robot response|raw intake json|robot\/internal|internal technical|ack payload|cursor|control authorization|control grant|control enabled|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil passed|真实手机已验收|验收通过|现场通过|真实送达成功|投放完成|取消完成|成功)/i;
 const UNSAFE_REAL_DEVICE_ACCEPTANCE_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|complete acceptance materials|complete artifact|complete artifacts|raw robot response|raw robot responses|robot response|raw intake json|robot\/internal|internal technical|ack payload|cursor|control authorization|control grant|control enabled|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|route\/elevator field pass|field pass|hil_pass|hil passed|真实手机已验收|验收通过|现场通过|真实送达成功|投放完成|取消完成|成功)/i;
+const UNSAFE_ELEVATOR_ACTION_FEEDBACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|complete artifact|complete artifacts|raw robot response|robot\/internal|internal technical|ack payload|cursor|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil passed|真实送达成功|投放完成|取消完成|现场通过)/i;
+
+const ELEVATOR_ACTION_PHASES = {
+  waiting_elevator_open: {
+    title: "等待电梯开门",
+    description: "小车已进入电梯辅助阶段，正在等待可安全进入的开门条件。",
+    next: "请观察电梯门状态；未开门时等待现场人员协助，不要重复点击主操作。",
+  },
+  entering_elevator: {
+    title: "进入电梯",
+    description: "小车正在执行进入电梯阶段，手机端只读展示当前 action feedback。",
+    next: "请保持电梯入口通道安全，等待下一条 Robot action feedback。",
+  },
+  requesting_floor_help: {
+    title: "请求帮忙按楼层",
+    description: "小车正在请求旁人协助按目标楼层，这不是到达或送达成功。",
+    next: "请由现场人员确认目标楼层；缺确认时保持人工接管准备。",
+  },
+  waiting_target_floor: {
+    title: "等待目标楼层",
+    description: "小车正在等待目标楼层证据，不能据此判断已经到达。",
+    next: "请等待目标楼层和开门条件确认，再继续观察下一阶段。",
+  },
+  exiting_elevator: {
+    title: "驶出电梯",
+    description: "小车正在目标楼层开门后驶出电梯，仍不代表任务完成。",
+    next: "请保持出口通道安全，等待恢复送达或异常提示。",
+  },
+  resume_delivery: {
+    title: "继续送往垃圾站",
+    description: "电梯段结束后继续送达流程；这不是投放完成或 delivery success。",
+    next: "请继续观察送达状态；Confirm Dropoff 仍由原 gate 控制。",
+  },
+};
 
 let latestStatus = null;
 let latestDiagnostics = null;
@@ -838,6 +873,15 @@ function safeElevatorAssistText(value, fallback = "not_proven") {
   // 电梯辅助摘要面向普通用户，只能展示后端 phone-safe 文案，不能泄漏 ROS/硬件细节或成功暗示。
   const text = safeText(value, fallback);
   if (UNSAFE_ELEVATOR_ASSIST_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeElevatorActionFeedbackText(value, fallback = "not_proven") {
+  // 实时阶段 message 直接面向手机用户，命中 raw ROS、硬件、凭证、路径或成功语义时必须隐藏。
+  const text = safeText(value, fallback);
+  if (UNSAFE_ELEVATOR_ACTION_FEEDBACK_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -16815,6 +16859,104 @@ function actionFeedbackFromStatus(status, readiness) {
   return provided ? normalizeActionFeedback(provided, "status") : null;
 }
 
+function elevatorActionFeedbackCandidate(status, readiness, diagnostics) {
+  // 实时电梯阶段必须来自 action feedback/current_step 显式字段，不能从旧材料 checklist 推断。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object" ? diagnostics.summary : {};
+  const diagnosticsInnerSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const statusDiagnosticsSummary = status?.diagnostics && typeof status.diagnostics.summary === "object"
+    ? status.diagnostics.summary
+    : {};
+  const directStatusStep = status?.current_step ? { current_step: status.current_step } : null;
+  const directReadinessStep = readiness?.current_step ? { current_step: readiness.current_step } : null;
+  const candidates = [
+    status?.phone_action_feedback,
+    status?.mobile_action_receipt,
+    status?.action_feedback,
+    status?.trash_collection_feedback,
+    status?.trash_collection_action_feedback,
+    directStatusStep,
+    readiness?.phone_action_feedback,
+    readiness?.mobile_action_receipt,
+    readiness?.action_feedback,
+    readiness?.trash_collection_feedback,
+    readiness?.trash_collection_action_feedback,
+    directReadinessStep,
+    diagnostics?.phone_action_feedback,
+    diagnostics?.mobile_action_receipt,
+    diagnostics?.action_feedback,
+    diagnostics?.trash_collection_feedback,
+    diagnostics?.trash_collection_action_feedback,
+    diagnosticsReadiness.phone_action_feedback,
+    diagnosticsReadiness.action_feedback,
+    diagnosticsSummary.phone_action_feedback,
+    diagnosticsSummary.action_feedback,
+    diagnosticsInnerSummary.phone_action_feedback,
+    diagnosticsInnerSummary.action_feedback,
+    statusDiagnosticsSummary.phone_action_feedback,
+    statusDiagnosticsSummary.action_feedback,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function elevatorCurrentStepFromFeedback(value) {
+  // 只接受 current_step=elevator:<phase> 的精确前缀，未知 phase 统一 fail closed。
+  const raw = safeElevatorActionFeedbackText(
+    value?.current_step || value?.currentStep || value?.feedback_current_step || value?.step,
+    "",
+  );
+  if (!raw.startsWith("elevator:")) {
+    return null;
+  }
+  const phase = raw.slice("elevator:".length);
+  const phaseCopy = ELEVATOR_ACTION_PHASES[phase];
+  if (!phaseCopy) {
+    return null;
+  }
+  return { currentStep: raw, phase, ...phaseCopy };
+}
+
+function elevatorActionFeedbackFromStatus(status, readiness, diagnostics) {
+  const provided = elevatorActionFeedbackCandidate(status, readiness, diagnostics);
+  const step = elevatorCurrentStepFromFeedback(provided || {});
+  if (!step) {
+    return {
+      missing: true,
+      current_step: "not_proven",
+      phase: "not_proven",
+      title: "未收到电梯实时阶段",
+      description: "等待 Robot action feedback 提供 current_step=elevator:<phase>；手机端不会从旧材料清单推断实时阶段。",
+      next: "继续观察状态；Start Delivery、Confirm Dropoff、Cancel 仍按原 gate fail closed。",
+      safe_message: "等待 phone-safe action feedback message。",
+      evidence_boundary: ELEVATOR_ACTION_FEEDBACK_BOUNDARY,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      not_proven: ["真实电梯", "真实 Nav2/fixed-route", "真实手机设备/browser", "HIL", "delivery success"],
+    };
+  }
+  const safeMessage = safeElevatorActionFeedbackText(
+    provided?.safe_action_message || provided?.safe_phone_copy || provided?.message || provided?.summary,
+    "后端未提供 phone-safe action message；仅展示白名单阶段。",
+  );
+  return {
+    missing: false,
+    current_step: step.currentStep,
+    phase: step.phase,
+    title: step.title,
+    description: step.description,
+    next: step.next,
+    safe_message: safeMessage,
+    evidence_boundary: safeElevatorActionFeedbackText(provided?.evidence_boundary, ELEVATOR_ACTION_FEEDBACK_BOUNDARY),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: ["真实电梯", "真实 Nav2/fixed-route", "真实 dropoff/cancel completion", "真实手机设备/browser", "HIL", "delivery success"],
+  };
+}
+
 function commandSafetyFromReadiness(readiness) {
   // 若 command_safety 缺失，前端必须 fail closed，不能用 UI 猜测状态。
   return readiness && typeof readiness.command_safety === "object" ? readiness.command_safety : {};
@@ -22049,6 +22191,67 @@ function renderElevatorAssist(status) {
   $("elevatorAssistHint").textContent = summary.recovery_hint;
 }
 
+function ensureElevatorRealtimeStagePanel() {
+  // 实时阶段跟在电梯辅助状态后，只解释 action feedback，不承载任何控制按钮。
+  let panel = $("elevatorRealtimeStagePanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("elevatorAssistTitle")?.closest("section") ||
+    $("recoveryDecisionTitle")?.closest("section") ||
+    $("primaryJourneyTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "elevatorRealtimeStagePanel";
+  panel.className = "elevator-realtime-stage-panel";
+  panel.setAttribute("aria-labelledby", "elevatorRealtimeStageTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="elevatorRealtimeStageTitle">电梯实时阶段</h2>
+      <span id="elevatorRealtimeStageBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="elevatorRealtimeStageCopy" class="message">等待 current_step=elevator:&lt;phase&gt; 的 phone-safe action feedback。</p>
+    <dl class="elevator-realtime-stage-grid">
+      <div><dt>current_step</dt><dd id="elevatorRealtimeStageCurrentStep">not_proven</dd></div>
+      <div><dt>阶段</dt><dd id="elevatorRealtimeStagePhase">not_proven</dd></div>
+      <div><dt>用户说明</dt><dd id="elevatorRealtimeStageDescription">等待 Robot action feedback。</dd></div>
+      <div><dt>下一步提示</dt><dd id="elevatorRealtimeStageNext">继续观察状态，主操作保持原 gate。</dd></div>
+      <div><dt>Action Message</dt><dd id="elevatorRealtimeStageMessage">等待 phone-safe action message。</dd></div>
+      <div><dt>Control Boundary</dt><dd id="elevatorRealtimeStageControls">delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="elevatorRealtimeStageBoundary">software_proof_docker_mobile_action_feedback_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="elevatorRealtimeStageNotProven">真实电梯、真实 Nav2/fixed-route、HIL 和 delivery success 未证明。</dd></div>
+    </dl>
+    <p id="elevatorRealtimeStageHint" class="hint">只读展示；不会触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderElevatorRealtimeStage(status) {
+  const panel = ensureElevatorRealtimeStagePanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = elevatorActionFeedbackFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("elevatorRealtimeStageBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-ready");
+  badge.textContent = summary.missing ? "等待 action feedback" : summary.phase;
+  $("elevatorRealtimeStageCopy").textContent = summary.title;
+  $("elevatorRealtimeStageCurrentStep").textContent = summary.current_step;
+  $("elevatorRealtimeStagePhase").textContent = summary.phase;
+  $("elevatorRealtimeStageDescription").textContent = summary.description;
+  $("elevatorRealtimeStageNext").textContent = summary.next;
+  $("elevatorRealtimeStageMessage").textContent = summary.safe_message;
+  $("elevatorRealtimeStageControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("elevatorRealtimeStageBoundary").textContent = summary.evidence_boundary;
+  $("elevatorRealtimeStageNotProven").textContent = summary.not_proven.join("、");
+}
+
 function setBadge(state, copy) {
   const badge = $("connectionBadge");
   badge.className = "badge";
@@ -24949,6 +25152,7 @@ function renderOfflineFailure() {
   renderElevatorFieldRunReview({});
   renderElevatorFieldRunExecutionPack({});
   renderElevatorAssist({});
+  renderElevatorRealtimeStage({});
   renderElevatorRouteEvidenceReconciliation({});
   renderRouteTaskCompletionSignal({});
   renderRouteTaskTerminalCompletionRehearsal({});
@@ -25046,6 +25250,7 @@ function renderStatus(status) {
   renderElevatorFieldRunReview(status);
   renderElevatorFieldRunExecutionPack(status);
   renderElevatorAssist(status);
+  renderElevatorRealtimeStage(status);
   renderElevatorRouteEvidenceReconciliation(status);
   renderRouteTaskCompletionSignal(status);
   renderRouteTaskTerminalCompletionRehearsal(status);
@@ -25323,6 +25528,7 @@ async function openDiagnostics() {
     renderElevatorFieldRunReview(latestStatus || {});
     renderElevatorFieldRunExecutionPack(latestStatus || {});
     renderElevatorAssist(latestStatus || {});
+    renderElevatorRealtimeStage(latestStatus || {});
     renderRouteTaskCompletionSignal(latestStatus || {});
     renderRouteTaskTerminalCompletionRehearsal(latestStatus || {});
     renderRouteTaskTerminalReviewDecision(latestStatus || {});

@@ -8,7 +8,21 @@
 
 ## 2026-05-19 系列
 
-更新时间：2026-05-19 00:12 Asia/Shanghai。
+更新时间：2026-05-19 01:17 Asia/Shanghai。
+
+### 2026-05-19 01-02｜mobile-elevator-action-feedback-display｜O4/O2 mobile elevator action feedback display software proof
+
+本轮 `sprints/2026.05.19_01-02_mobile-elevator-action-feedback-display/` 推进 Objective 4 / Objective 2：Full-Stack worker 让 mobile/web 白名单消费 `current_step=elevator:<phase>` 并渲染只读“电梯实时阶段”panel，覆盖等待电梯开门、进入电梯、请求帮忙按楼层、等待目标楼层、驶出电梯、继续送往垃圾站；Robot worker 明确 `mobile_elevator_action_feedback` contract，确认该字段 phone-safe、只读、metadata-only。证据边界是本地 `software_proof`，保持 `source=software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，Start Delivery、Confirm Dropoff、Cancel gating 不变。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮未新增 WAVE ROVER、UART、HIL packet、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery` 或 operator HIL report；PR #5 2D LiDAR / ToF SKU/source、receipt、采购、安装、接线、电源、标定和 HIL-entry 仍缺真实材料。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | PR #4 支撑电梯主链路；本轮把 action feedback `current_step=elevator:<phase>` 进一步贯通到手机展示层，提升电梯阶段可观测性。仍缺真实电梯、真实门状态、真实楼层确认、人工协助记录、真实 Nav2/fixed-route、dropoff/cancel completion、delivery result 和 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮未新增真实路线采集、Nav2/fixed-route 实跑、route completion signal、task record 或同一 `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可只读展示 allowed elevator phase，并对 unknown/missing/non-elevator fail closed；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 和真实现场验收通过。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof。 |
+
+本轮验证：Full-Stack worker 报告 `python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 100 tests in 0.612s OK`、`py_compile` exit 0、`node --check` exit 0、required `rg` 与 scoped diff check 通过；Robot worker 报告 operator gateway/diagnostics `py_compile` exit 0、diagnostics unittest `Ran 190 tests in 0.435s OK`、required `rg` 与 scoped diff check 通过；Product closeout required file check、required `rg` 与 scoped `git diff --check` 通过。本轮不证明真实手机、真实电梯、真实 Nav2/fixed-route、WAVE ROVER/UART/HIL、Objective 5 external proof、dropoff/cancel completion、delivery success 或 PR #5 2D LiDAR / ToF vendor source/materials。
 
 ### 2026-05-19 00-01｜elevator-assist-action-feedback-mainline｜O2/O4 elevator action feedback software proof
 

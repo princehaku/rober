@@ -108,17 +108,25 @@ P1 识别要求：
 ## 手机与语音提示
 
 `TrashCollection.Feedback.current_step` 会在电梯 assisted delivery dry-run
-期间实时发布 `elevator:<phase>`，覆盖默认 dry-run 和 rehearsal artifact 两条路
-径。手机/API 消费方可以直接展示 `elevator:waiting_elevator_open`、
-`elevator:requesting_floor_help`、`elevator:waiting_target_floor` 等阶段，而不
-必等到任务结束后再从 `task_record.elevator_assist.events` 复盘。
+期间实时发布 `current_step=elevator:<phase>`，覆盖默认 dry-run 和 rehearsal
+artifact 两条路径。手机/API 消费方可以直接展示
+`elevator:waiting_elevator_open`、`elevator:entering_elevator`、
+`elevator:requesting_floor_help`、`elevator:waiting_target_floor`、
+`elevator:exiting_elevator`、`elevator:resume_delivery` 六个阶段，而不必等到
+任务结束后再从 `task_record.elevator_assist.events` 复盘。未知 phase、非
+`elevator:` 前缀或缺失字段必须 fail closed。
 
 这些 action feedback 只复用既有 ROS action 字段；`status` 仍保持非成功状态码，
 `percent_complete` 只在 30-55% 的 delivery 区间内递增，`message` 只包含
-phone-safe 中文文案，不暴露 artifact 路径、串口、ROS topic 或底层控制参数。
-该实时反馈仍属于 `software_proof_docker_elevator_assist_default_mainline_gate`
-或 `software_proof_docker_elevator_evidence_driven_mainline_gate`，并继续保持
-`delivery_success=false`、`primary_actions_enabled=false`。
+phone-safe 中文文案，不暴露 raw ROS topic、artifact 路径、serial/UART、
+baudrate、WAVE ROVER 参数、credentials、DB/queue URL、raw JSON、完整
+artifact 或 checksum。该实时反馈仍属于
+`software_proof_docker_elevator_assist_default_mainline_gate` 或
+`software_proof_docker_elevator_evidence_driven_mainline_gate`，并继续保持
+`source=software_proof`、`not_proven`、`delivery_success=false`、
+`primary_actions_enabled=false`。该展示不启用 Start Delivery、Confirm
+Dropoff 或 Cancel，也不证明真实电梯、真实手机、真实 Nav2/fixed-route、
+WAVE ROVER/UART/HIL 或 delivery success。
 
 | 触发点 | 手机文案 | 语音提示 |
 | --- | --- | --- |

@@ -4911,6 +4911,91 @@ class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, pack_text)
 
+class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_elevator_realtime_stage_consumes_current_step_whitelist(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 实时阶段必须来自 action feedback 的 current_step=elevator:<phase>，不能从旧 checklist 推断。
+        self.assertIn("ELEVATOR_ACTION_PHASES", app)
+        self.assertIn("elevatorActionFeedbackCandidate", app)
+        self.assertIn("elevatorCurrentStepFromFeedback", app)
+        self.assertIn("elevatorActionFeedbackFromStatus", app)
+        self.assertIn("current_step=elevator:<phase>", app)
+        for phase in (
+            "waiting_elevator_open",
+            "entering_elevator",
+            "requesting_floor_help",
+            "waiting_target_floor",
+            "exiting_elevator",
+            "resume_delivery",
+        ):
+            self.assertIn(phase, app)
+
+        # panel 只读展示，不新增 Start Delivery / Confirm Dropoff / Cancel 请求路径。
+        self.assertIn("elevatorRealtimeStageTitle", app)
+        self.assertIn("电梯实时阶段", app)
+        self.assertIn("elevator-realtime-stage-panel", styles)
+        self.assertIn("elevator-realtime-stage-grid", styles)
+        self.assertIn("UNSAFE_ELEVATOR_ACTION_FEEDBACK_TEXT", app)
+        self.assertIn("safeElevatorActionFeedbackText", app)
+        self.assertNotRegex(app, r"elevatorRealtimeStage.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        feedback = fixture["phone_action_feedback"]
+        self.assertEqual(feedback["current_step"], "elevator:waiting_elevator_open")
+        self.assertEqual(feedback["delivery_success"], False)
+        self.assertEqual(feedback["primary_actions_enabled"], False)
+        mobile_feedback = mobile_fixture["phone_action_feedback"]
+        self.assertEqual(mobile_feedback["current_step"], "elevator:requesting_floor_help")
+        self.assertEqual(mobile_feedback["delivery_success"], False)
+        self.assertEqual(mobile_feedback["primary_actions_enabled"], False)
+        self.assertIn("电梯实时阶段", doc)
+        self.assertIn("software_proof", doc)
+        self.assertIn("not_proven", doc)
+
+    def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        app = self.read_web("app.js")
+        feedback_text = json.dumps(fixture["phone_action_feedback"], ensure_ascii=False).lower()
+
+        # 新 panel 即使展示实时阶段，也不能覆盖既有 primary action gating。
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertEqual(fixture["phone_action_feedback"]["primary_actions_enabled"], False)
+        self.assertIn("startButton", app)
+        self.assertIn("confirmButton", app)
+        self.assertIn("cancelButton", app)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 仍按原 gate fail closed", app)
+
+        # action message 只能是 phone-safe 摘要，不能带 raw ROS、硬件、凭证、路径或成功证明。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover",
+            "authorization",
+            "token",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, feedback_text)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2234,12 +2234,16 @@
     "schema_version": 1,
     "action": "cancel",
     "submission_status": "failed",
+    "current_step": "elevator:requesting_floor_help",
     "client_reference": "mobile_web_cancel_failed_fixture",
+    "safe_action_message": "小车正在请求旁人协助按目标楼层；这是 current_step=elevator:<phase> 的 software_proof 手机展示，不代表真实送达。",
     "safe_phone_copy": "取消请求提交失败；手机端没有收到 accepted/processing evidence。",
     "failure_reason": "本地静态 smoke 展示失败提示，不代表机器人已取消。",
     "recovery_hint": "刷新状态后再试；仍失败时打开诊断或联系支持。",
     "ack_semantics": "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。",
-    "evidence_boundary": "software_proof_docker_mobile_action_feedback_gate"
+    "evidence_boundary": "software_proof_docker_mobile_action_feedback_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false
   },
   "mobile_terminal_action_confirmation_gate": {
     "schema": "trashbot.mobile_terminal_action_confirmation_gate.v1",
