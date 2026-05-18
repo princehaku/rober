@@ -57,6 +57,101 @@
             "HIL"
         ]
     },
+  "elevator_field_evidence_trace_callback_intake": {
+    "schema": "trashbot.elevator_field_evidence_trace_callback_intake.v1",
+    "summary_schema": "trashbot.elevator_field_evidence_trace_callback_intake_summary.v1",
+    "schema_version": 1,
+    "source": "software_proof",
+    "intake_status": "blocked_missing_elevator_field_evidence_trace_callback_intake_not_proven",
+    "safe_evidence_ref": "elevator_field_evidence_trace_callback_intake_fixture_20260519_0001",
+    "missing_required_materials": [
+      "missing_required_material=door_state.summary.json",
+      "missing_required_material=target_floor_confirmation.summary.json",
+      "missing_required_material=human_assistance_note.summary.md",
+      "missing_required_material=elevator_field_trace.summary.json",
+      "missing_required_material=dropoff_or_cancel_completion.summary.json",
+      "missing_required_material=delivery_result.summary.json"
+    ],
+    "accepted_callback_materials": [
+      "accepted_callback_materials=callback envelope metadata only",
+      "accepted_callback_materials=no real elevator, Nav2/fixed-route, HIL, phone, or delivery proof accepted"
+    ],
+    "owner_handoff": [
+      "owner_handoff=Robot owner exposes sanitized diagnostics summary",
+      "owner_handoff=Field owner backfills same safe_evidence_ref materials",
+      "owner_handoff=Full-stack keeps mobile/web read-only and primary actions unchanged"
+    ],
+    "safe_phone_copy": "电梯现场证据追踪回调入口只读展示 intake status、missing required materials、accepted callback materials、owner handoff 和 safe_evidence_ref；这是 software_proof / not_proven。",
+    "recovery_hint": "请按同一 safe_evidence_ref 补齐电梯现场回调材料；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 elevator evidence trace callback material",
+      "真实电梯",
+      "真实 Nav2/fixed-route",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
+  "elevator_field_evidence_trace_callback_intake_summary": {
+    "schema": "trashbot.elevator_field_evidence_trace_callback_intake_summary.v1",
+    "schema_version": 1,
+    "source": "software_proof",
+    "intake_status": "blocked_missing_elevator_field_evidence_trace_callback_intake_not_proven",
+    "safe_evidence_ref": "elevator_field_evidence_trace_callback_intake_fixture_20260519_0001",
+    "missing_required_materials": "missing_required_materials=door_state、target_floor_confirmation、human_assistance_note、elevator_field_trace、dropoff_or_cancel_completion、delivery_result summaries",
+    "accepted_callback_materials": "accepted_callback_materials=metadata only; no field proof accepted",
+    "owner_handoff": "owner_handoff=field owner backfills same safe_evidence_ref materials; Robot owner publishes safe diagnostics alias.",
+    "safe_phone_copy": "elevator_field_evidence_trace_callback_intake_summary 只用于手机只读电梯证据回调入口，不放行 Start、Confirm 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实电梯",
+      "HIL",
+      "delivery success"
+    ]
+  },
+  "robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary": {
+    "schema": "trashbot.elevator_field_evidence_trace_callback_intake_summary.v1",
+    "schema_version": 1,
+    "source": "software_proof",
+    "source_alias": "robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary",
+    "intake_status": "blocked_missing_elevator_field_evidence_trace_callback_intake_not_proven",
+    "safe_evidence_ref": "elevator_field_evidence_trace_callback_intake_fixture_20260519_0001",
+    "missing_required_materials": "missing_required_materials=door_state、target_floor_confirmation、human_assistance_note、elevator_field_trace、dropoff_or_cancel_completion、delivery_result summaries",
+    "accepted_callback_materials": "accepted_callback_materials=Robot alias exposes metadata only; no field proof accepted",
+    "owner_handoff": "owner_handoff=Robot owner exposes sanitized diagnostics summary; field owner backfills same safe_evidence_ref materials; Full-stack keeps panel read-only.",
+    "safe_phone_copy": "Robot diagnostics elevator field evidence trace callback intake summary 只读展示电梯现场证据回调入口；这是 software_proof only。",
+    "recovery_hint": "请按同一 safe_evidence_ref 补齐电梯现场回调材料；手机端优先消费 Robot diagnostics safe alias。",
+    "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 elevator evidence trace callback material",
+      "真实电梯",
+      "真实 Nav2/fixed-route",
+      "真实手机设备/browser",
+      "HIL",
+      "Objective 5 external proof",
+      "delivery success"
+    ]
+  },
     "robot_diagnostics_pr5_review_thread_closeout_summary": {
         "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
         "schema_version": 1,

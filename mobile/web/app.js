@@ -95,6 +95,7 @@ const ROUTE_TASK_FIELD_RETEST_RESULT_REVIEW_HANDOFF_BOUNDARY = "software_proof_d
 const ELEVATOR_ASSIST_BOUNDARY = "software_proof_docker_elevator_assist_default_mainline_gate";
 const ELEVATOR_ASSIST_REHEARSAL_EVIDENCE_BOUNDARY = "software_proof_docker_elevator_evidence_driven_mainline_gate";
 const ELEVATOR_ROUTE_EVIDENCE_RECONCILIATION_BOUNDARY = "software_proof_docker_elevator_route_evidence_reconciliation_gate";
+const ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_INTAKE_BOUNDARY = "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate";
 const PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_BOUNDARY = "software_proof_docker_pc_route_elevator_console_integration_gate";
 const ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_BOUNDARY = "software_proof_docker_route_elevator_field_session_handoff_gate";
 const MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_BOUNDARY = "software_proof_docker_mobile_route_elevator_field_device_precheck_gate";
@@ -194,6 +195,7 @@ const UNSAFE_FIELD_RUN_MATERIAL_VALIDATION_TEXT = /(authorization|bearer|token|o
 const UNSAFE_ELEVATOR_FIELD_MATERIAL_VALIDATION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw validation|full validation|validation artifact|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|真实送达成功|投放完成|取消完成|hil_pass)/i;
 const UNSAFE_ELEVATOR_FIELD_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw review|full review|review artifact|raw validation|validation artifact|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|真实送达成功|投放完成|取消完成|hil_pass)/i;
 const UNSAFE_ELEVATOR_FIELD_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw execution pack|full execution pack|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|field run complete|completed delivery|真实送达成功|投放完成|取消完成|hil_pass)/i;
+const UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw callback|raw packet|raw diagnostics|raw internal log|full callback|complete artifact|complete artifacts|execution bundle|ack payload|cursor|diagnostics fetch|robot command|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external proof|真实送达成功|投放完成|取消完成|现场通过|真实电梯通过|真实 nav2)/i;
 const UNSAFE_ROUTE_TASK_COMPLETION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw completion|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_ROUTE_TASK_TERMINAL_COMPLETION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw completion|raw rehearsal|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|真实送达成功|投放完成|取消完成|hil_pass|hil)/i;
 const UNSAFE_ROUTE_TASK_TERMINAL_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw review|raw decision|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|真实送达成功|投放完成|取消完成|hil_pass|hil)/i;
@@ -544,6 +546,15 @@ function safeElevatorFieldExecutionPackText(value, fallback = "not_proven") {
   // 电梯演练执行包只展示执行准备摘要，任何 raw artifact、路径、硬件细节或成功暗示都降级。
   const text = safeText(value, fallback);
   if (UNSAFE_ELEVATOR_FIELD_EXECUTION_PACK_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeElevatorFieldEvidenceTraceCallbackIntakeText(value, fallback = "not_proven") {
+  // trace callback intake 只读承接 Robot/PC 脱敏摘要，命中 raw callback、路径或成功暗示时 fail closed。
+  const text = safeText(value, fallback);
+  if (UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_INTAKE_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -17257,6 +17268,152 @@ function elevatorActionFeedbackTraceFromStatus(status, diagnostics) {
   };
 }
 
+function elevatorFieldEvidenceTraceCallbackIntakeCandidate(status, readiness, diagnostics) {
+  // Robot diagnostics safe alias 优先；artifact fixture 只作为兼容输入，后续逐字段白名单过滤。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary,
+    readiness?.robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary,
+    diagnostics?.robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary,
+    diagnosticsReadiness.robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary,
+    diagnosticsSummary.robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary,
+    statusDiagnosticsSummary.robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary,
+    status?.elevator_field_evidence_trace_callback_intake_summary,
+    readiness?.elevator_field_evidence_trace_callback_intake_summary,
+    diagnostics?.elevator_field_evidence_trace_callback_intake_summary,
+    diagnosticsReadiness.elevator_field_evidence_trace_callback_intake_summary,
+    diagnosticsSummary.elevator_field_evidence_trace_callback_intake_summary,
+    nestedDiagnosticsSummary.elevator_field_evidence_trace_callback_intake_summary,
+    nestedDiagnosticsInnerSummary.elevator_field_evidence_trace_callback_intake_summary,
+    statusDiagnosticsSummary.elevator_field_evidence_trace_callback_intake_summary,
+    status?.elevator_field_evidence_trace_callback_intake,
+    readiness?.elevator_field_evidence_trace_callback_intake,
+    diagnostics?.elevator_field_evidence_trace_callback_intake,
+    diagnosticsReadiness.elevator_field_evidence_trace_callback_intake,
+    diagnosticsSummary.elevator_field_evidence_trace_callback_intake,
+    nestedDiagnosticsSummary.elevator_field_evidence_trace_callback_intake,
+    nestedDiagnosticsInnerSummary.elevator_field_evidence_trace_callback_intake,
+    statusDiagnosticsSummary.elevator_field_evidence_trace_callback_intake,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function elevatorFieldEvidenceTraceCallbackIntakeNotProvenList(value) {
+  // 该 panel 只证明 callback intake metadata 可读，不证明真实电梯、路线、HIL 或送达结果。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "真实 elevator evidence trace callback material",
+    "真实电梯",
+    "真实 Nav2/fixed-route",
+    "真实 dropoff/cancel completion",
+    "真实手机设备/browser",
+    "HIL",
+    "Objective 5 external proof",
+    "delivery success",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 16);
+}
+
+function elevatorFieldEvidenceTraceCallbackIntakeSummaryText(value, fallback) {
+  // material list 可能是数组、对象或短字符串；最终只拼接 phone-safe 摘要。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeElevatorFieldEvidenceTraceCallbackIntakeText(
+        item?.safe_phone_copy || item?.summary || item?.material || item?.category ||
+          item?.owner || item?.status || item?.next_step || item?.evidence || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.safe_summary || value.summary ||
+      value.material_summary || value.owner_handoff || value.status || value.state || value.result;
+    if (direct) {
+      return safeElevatorFieldEvidenceTraceCallbackIntakeText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeElevatorFieldEvidenceTraceCallbackIntakeText(key, "");
+        const copy = elevatorFieldEvidenceTraceCallbackIntakeSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safeElevatorFieldEvidenceTraceCallbackIntakeText(value, fallback);
+}
+
+function elevatorFieldEvidenceTraceCallbackIntakeFromStatus(status, readiness, diagnostics) {
+  const provided = elevatorFieldEvidenceTraceCallbackIntakeCandidate(status, readiness, diagnostics) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.elevator_field_evidence_trace_callback_intake.v1",
+    summary_schema: "trashbot.elevator_field_evidence_trace_callback_intake_summary.v1",
+    schema_version: 1,
+    source: safeElevatorFieldEvidenceTraceCallbackIntakeText(provided.source, "software_proof"),
+    intake_status: safeElevatorFieldEvidenceTraceCallbackIntakeText(
+      provided.intake_status || provided.callback_intake_status || provided.status || provided.overall_status,
+      "blocked_missing_elevator_field_evidence_trace_callback_intake_not_proven",
+    ),
+    missing_required_materials: elevatorFieldEvidenceTraceCallbackIntakeSummaryText(
+      provided.missing_required_materials || provided.missing_materials || provided.required_missing_materials,
+      "missing_required_materials=door_state、target_floor_confirmation、human_assistance_note、route/elevator trace 和 delivery_result summaries",
+    ),
+    accepted_callback_materials: elevatorFieldEvidenceTraceCallbackIntakeSummaryText(
+      provided.accepted_callback_materials || provided.accepted_materials || provided.received_materials,
+      "accepted_callback_materials=none accepted as field proof",
+    ),
+    owner_handoff: elevatorFieldEvidenceTraceCallbackIntakeSummaryText(
+      provided.owner_handoff || provided.owner_next_steps || provided.owner_follow_up,
+      "owner_handoff=Robot owner publishes safe diagnostics alias; field owner backfills same safe evidence_ref materials.",
+    ),
+    safe_evidence_ref: safeElevatorFieldEvidenceTraceCallbackIntakeText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "not_provided",
+    ),
+    safe_phone_copy: safeElevatorFieldEvidenceTraceCallbackIntakeText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "elevator_field_evidence_trace_callback_intake 摘要缺失；手机端只显示 blocked/not_proven，不读取 raw callback artifact。",
+    ),
+    recovery_hint: safeElevatorFieldEvidenceTraceCallbackIntakeText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由 Robot diagnostics/status 提供 robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary 后再复核。",
+    ),
+    evidence_boundary: safeElevatorFieldEvidenceTraceCallbackIntakeText(
+      provided.evidence_boundary,
+      ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_INTAKE_BOUNDARY,
+    ),
+    boundary_flags: "software_proof / not_proven / delivery_success=false / primary_actions_enabled=false",
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: elevatorFieldEvidenceTraceCallbackIntakeNotProvenList(provided),
+  };
+}
+
 function commandSafetyFromReadiness(readiness) {
   // 若 command_safety 缺失，前端必须 fail closed，不能用 UI 猜测状态。
   return readiness && typeof readiness.command_safety === "object" ? readiness.command_safety : {};
@@ -22707,6 +22864,67 @@ function renderElevatorActionFeedbackTrace(status) {
   $("elevatorActionFeedbackTraceNotProven").textContent = summary.not_proven.join("、");
 }
 
+function ensureElevatorFieldEvidenceTraceCallbackIntakePanel() {
+  // callback intake 放在动作 trace 后，明确它是只读材料入口，不改变 Start/Confirm/Cancel gate。
+  let panel = $("elevatorFieldEvidenceTraceCallbackIntakePanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("elevatorActionFeedbackTraceTitle")?.closest("section") ||
+    $("elevatorRealtimeStageTitle")?.closest("section") ||
+    $("elevatorAssistTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "elevatorFieldEvidenceTraceCallbackIntakePanel";
+  panel.className = "elevator-field-evidence-trace-callback-intake-panel";
+  panel.setAttribute("aria-labelledby", "elevatorFieldEvidenceTraceCallbackIntakeTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="elevatorFieldEvidenceTraceCallbackIntakeTitle">电梯现场证据追踪回调入口</h2>
+      <span id="elevatorFieldEvidenceTraceCallbackIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="elevatorFieldEvidenceTraceCallbackIntakeCopy" class="message">等待 robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary。</p>
+    <dl class="elevator-field-evidence-trace-callback-intake-grid">
+      <div><dt>Intake Status</dt><dd id="elevatorFieldEvidenceTraceCallbackIntakeStatus">blocked_missing_elevator_field_evidence_trace_callback_intake_not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="elevatorFieldEvidenceTraceCallbackIntakeEvidenceRef">not_provided</dd></div>
+      <div><dt>Missing Required Materials</dt><dd id="elevatorFieldEvidenceTraceCallbackIntakeMissing">missing_required_materials=not_proven</dd></div>
+      <div><dt>Accepted Callback Materials</dt><dd id="elevatorFieldEvidenceTraceCallbackIntakeAccepted">accepted_callback_materials=none accepted as field proof</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="elevatorFieldEvidenceTraceCallbackIntakeOwner">owner_handoff=not_proven</dd></div>
+      <div><dt>Control Boundary</dt><dd id="elevatorFieldEvidenceTraceCallbackIntakeControls">software_proof / not_proven / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="elevatorFieldEvidenceTraceCallbackIntakeBoundary">software_proof_docker_elevator_field_evidence_trace_callback_intake_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="elevatorFieldEvidenceTraceCallbackIntakeNotProven">真实电梯、Nav2/fixed-route、HIL、真实手机/browser 和 delivery success 未证明。</dd></div>
+    </dl>
+    <p id="elevatorFieldEvidenceTraceCallbackIntakeHint" class="hint">只消费现有 status/diagnostics 中的白名单 summary；不展示 raw JSON、topic、串口、路径、凭证或完整日志。</p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderElevatorFieldEvidenceTraceCallbackIntake(status) {
+  const panel = ensureElevatorFieldEvidenceTraceCallbackIntakePanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = elevatorFieldEvidenceTraceCallbackIntakeFromStatus(status, readiness, latestDiagnostics);
+  const badge = $("elevatorFieldEvidenceTraceCallbackIntakeBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-ready");
+  badge.textContent = summary.missing ? "not_proven" : summary.intake_status;
+  $("elevatorFieldEvidenceTraceCallbackIntakeCopy").textContent = summary.safe_phone_copy;
+  $("elevatorFieldEvidenceTraceCallbackIntakeStatus").textContent = summary.intake_status;
+  $("elevatorFieldEvidenceTraceCallbackIntakeEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("elevatorFieldEvidenceTraceCallbackIntakeMissing").textContent = summary.missing_required_materials;
+  $("elevatorFieldEvidenceTraceCallbackIntakeAccepted").textContent = summary.accepted_callback_materials;
+  $("elevatorFieldEvidenceTraceCallbackIntakeOwner").textContent = summary.owner_handoff;
+  $("elevatorFieldEvidenceTraceCallbackIntakeControls").textContent = summary.boundary_flags;
+  $("elevatorFieldEvidenceTraceCallbackIntakeBoundary").textContent = summary.evidence_boundary;
+  $("elevatorFieldEvidenceTraceCallbackIntakeNotProven").textContent = summary.not_proven.join("、");
+  $("elevatorFieldEvidenceTraceCallbackIntakeHint").textContent = summary.recovery_hint;
+}
+
 function setBadge(state, copy) {
   const badge = $("connectionBadge");
   badge.className = "badge";
@@ -25341,6 +25559,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const elevatorFieldEvidenceTraceCallbackIntake = elevatorFieldEvidenceTraceCallbackIntakeFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const elevatorRouteReconciliation = elevatorRouteEvidenceReconciliationFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -25519,6 +25742,7 @@ function renderDiagnosticsSummary(payload) {
     ["route_task_field_retest_result_review_intake", routeTaskFieldRetestResultReviewIntake.intake_status],
     ["route_task_field_retest_result_review_decision", routeTaskFieldRetestResultReviewDecision.decision_status],
     ["route_task_field_retest_result_review_handoff", routeTaskFieldRetestResultReviewHandoff.handoff_status],
+    ["elevator_field_evidence_trace_callback_intake", elevatorFieldEvidenceTraceCallbackIntake.intake_status],
     ["Elevator-route evidence reconciliation", elevatorRouteReconciliation.reconciliation_verdict],
     ["Route-elevator field session handoff", routeElevatorFieldHandoff.handoff_verdict],
     ["mobile_route_elevator_field_device_precheck", mobileRouteElevatorPrecheck.precheck_status],
@@ -25615,6 +25839,7 @@ function renderOfflineFailure() {
   renderElevatorAssist({});
   renderElevatorRealtimeStage({});
   renderElevatorActionFeedbackTrace({});
+  renderElevatorFieldEvidenceTraceCallbackIntake({});
   renderElevatorRouteEvidenceReconciliation({});
   renderRouteTaskCompletionSignal({});
   renderRouteTaskTerminalCompletionRehearsal({});
@@ -25715,6 +25940,7 @@ function renderStatus(status) {
   renderElevatorAssist(status);
   renderElevatorRealtimeStage(status);
   renderElevatorActionFeedbackTrace(status);
+  renderElevatorFieldEvidenceTraceCallbackIntake(status);
   renderElevatorRouteEvidenceReconciliation(status);
   renderRouteTaskCompletionSignal(status);
   renderRouteTaskTerminalCompletionRehearsal(status);
@@ -25995,6 +26221,7 @@ async function openDiagnostics() {
     renderElevatorAssist(latestStatus || {});
     renderElevatorRealtimeStage(latestStatus || {});
     renderElevatorActionFeedbackTrace(latestStatus || {});
+    renderElevatorFieldEvidenceTraceCallbackIntake(latestStatus || {});
     renderRouteTaskCompletionSignal(latestStatus || {});
     renderRouteTaskTerminalCompletionRehearsal(latestStatus || {});
     renderRouteTaskTerminalReviewDecision(latestStatus || {});

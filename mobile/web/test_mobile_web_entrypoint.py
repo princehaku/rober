@@ -5118,6 +5118,107 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, trace_text)
 
+    def test_elevator_field_evidence_trace_callback_intake_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # callback intake panel 跟在 elevator action trace 后，只读展示 Robot diagnostics safe alias。
+        self.assertIn("ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_INTAKE_TEXT", app)
+        self.assertIn("safeElevatorFieldEvidenceTraceCallbackIntakeText", app)
+        self.assertIn("elevatorFieldEvidenceTraceCallbackIntakeCandidate", app)
+        self.assertIn("elevatorFieldEvidenceTraceCallbackIntakeFromStatus", app)
+        self.assertIn("robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary", app)
+        self.assertIn("elevator_field_evidence_trace_callback_intake_summary", app)
+        self.assertIn("status?.elevator_field_evidence_trace_callback_intake", app)
+        self.assertIn("diagnosticsSummary.elevator_field_evidence_trace_callback_intake", app)
+        self.assertIn("statusDiagnosticsSummary.elevator_field_evidence_trace_callback_intake", app)
+        self.assertIn("电梯现场证据追踪回调入口", app)
+        self.assertIn("elevator-field-evidence-trace-callback-intake-panel", styles)
+        self.assertIn("elevator-field-evidence-trace-callback-intake-grid", styles)
+
+        # panel 只显示白名单字段，不新增 copy/export、diagnostics fetch 或主操作请求。
+        self.assertIn("intake_status", app)
+        self.assertIn("missing_required_materials", app)
+        self.assertIn("accepted_callback_materials", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("safe_evidence_ref", app)
+        self.assertIn("not_proven", app)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(
+            app,
+            r"elevatorFieldEvidenceTraceCallbackIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotIn("copyElevatorFieldEvidenceTraceCallbackIntakeButton", app)
+        self.assertNotIn("downloadElevatorFieldEvidenceTraceCallbackIntakeButton", app)
+
+        # web/mobile fixture 和产品文档固定 software_proof/not_proven 边界。
+        intake = fixture["robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary"]
+        self.assertEqual(intake["source"], "software_proof")
+        self.assertEqual(
+            intake["intake_status"],
+            "blocked_missing_elevator_field_evidence_trace_callback_intake_not_proven",
+        )
+        self.assertEqual(intake["delivery_success"], False)
+        self.assertEqual(intake["primary_actions_enabled"], False)
+        mobile_intake = mobile_fixture["elevator_field_evidence_trace_callback_intake_summary"]
+        self.assertEqual(mobile_intake["delivery_success"], False)
+        self.assertEqual(mobile_intake["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_elevator_field_evidence_trace_callback_intake_gate", fixture_text)
+        self.assertIn("missing_required_materials", fixture_text)
+        self.assertIn("accepted_callback_materials", fixture_text)
+        self.assertIn("owner_handoff", fixture_text)
+        self.assertIn("elevator_field_evidence_trace_callback_intake", doc)
+        self.assertIn("robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+
+    def test_elevator_field_evidence_trace_callback_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        intake_text = json.dumps(
+            {
+                "web": fixture["robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary"],
+                "mobile": mobile_fixture["elevator_field_evidence_trace_callback_intake_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # callback intake fixture 不能泄漏 raw callback、内部日志、路径、凭证、topic 或成功/控制授权语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw callback",
+            "raw packet",
+            "raw diagnostics",
+            "raw internal log",
+            "/users/",
+            "/tmp/",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "authorization",
+            "token",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "ack payload",
+            "cursor",
+            "robot command",
+            "diagnostics fetch",
+            "control grant",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, intake_text)
+
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
         app = self.read_web("app.js")

@@ -69,6 +69,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_run_material_validation,
     summarize_elevator_field_run_material_validation,
     summarize_elevator_action_feedback_trace,
+    summarize_elevator_field_evidence_trace_callback_intake,
     summarize_elevator_field_run_review,
     summarize_elevator_field_run_execution_pack,
     summarize_elevator_route_evidence_reconciliation,
@@ -313,6 +314,244 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(summary["delivery_success"])
         self.assertFalse(summary["primary_actions_enabled"])
         self.assertIn("delivery_success", summary["not_proven"])
+
+    def test_elevator_field_evidence_trace_callback_intake_safe_alias_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "elevator_field_evidence_trace_callback_intake_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_field_evidence_trace_callback_intake_summary.v1",
+                        "source_schema": "trashbot.elevator_field_evidence_trace_callback_intake.v1",
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate"
+                        ),
+                        "intake_status": "callback_packet_intake_ready_for_review_not_proven",
+                        "safe_evidence_ref": "evidence://elevator-field-callback-intake-1",
+                        "same_evidence_ref_required": True,
+                        "source_trace": {
+                            "schema": "trashbot.elevator_action_feedback_trace_summary.v1",
+                            "trace_status": "software_trace_ready",
+                        },
+                        "source_diagnostics": {
+                            "alias": "robot_diagnostics_elevator_action_feedback_trace_summary",
+                            "summary_status": "not_proven",
+                        },
+                        "callback_packet": {
+                            "packet_status": "callback_packet_metadata_received_not_proven",
+                            "redaction_status": "redacted",
+                        },
+                        "accepted_callback_materials": [
+                            "safe_evidence_ref",
+                            "redacted_callback_packet_metadata",
+                        ],
+                        "missing_required_materials": [
+                            "real_elevator_door_state",
+                            "real_nav2_or_fixed_route_runtime_log",
+                        ],
+                        "owner_handoff": [
+                            "Robot owner keeps diagnostics read-only under same evidence_ref."
+                        ],
+                        "next_required_evidence": ["real route/elevator field materials"],
+                        "robot_diagnostics_summary": {
+                            "status": "metadata_only",
+                            "safe_copy": (
+                                "Elevator field evidence trace callback intake is metadata-only; "
+                                "software_proof; not_proven; delivery_success=false; "
+                                "primary_actions_enabled=false."
+                            ),
+                        },
+                        "safe_copy": (
+                            "Elevator field evidence trace callback intake is metadata-only; "
+                            "software_proof; not_proven; delivery_success=false; "
+                            "primary_actions_enabled=false."
+                        ),
+                        "not_proven": ["real_route_elevator_field_pass", "delivery_success"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "elevator_field_evidence_trace_callback_intake": {
+                        "delivery_success": True,
+                        "raw_callback_body": "must not be consumed",
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                elevator_field_evidence_trace_callback_intake_ref=str(summary_path),
+            )
+            summary = payload[
+                "robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary"
+            ]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+            artifact_summary = summarize_elevator_field_evidence_trace_callback_intake(
+                {
+                    "schema": "trashbot.elevator_field_evidence_trace_callback_intake.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate"
+                    ),
+                    "evidence_ref": "evidence://elevator-field-callback-intake-2",
+                    "elevator_field_evidence_trace_callback_intake_summary": {
+                        "schema": "trashbot.elevator_field_evidence_trace_callback_intake_summary.v1",
+                        "source_schema": "trashbot.elevator_field_evidence_trace_callback_intake.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://elevator-field-callback-intake-2",
+                        "same_evidence_ref_required": True,
+                        "intake_status": "needs_route_elevator_material_backfill_not_proven",
+                        "callback_packet": {"packet_status": "redacted"},
+                        "safe_copy": (
+                            "Elevator field evidence trace callback intake is metadata-only; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                }
+            )
+            missing = summarize_elevator_field_evidence_trace_callback_intake(
+                Path(td) / "Bearer-secret-token" / "missing_callback_intake.json"
+            )
+            artifact_without_summary = summarize_elevator_field_evidence_trace_callback_intake(
+                {
+                    "schema": "trashbot.elevator_field_evidence_trace_callback_intake.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate"
+                    ),
+                    "evidence_ref": "evidence://no-summary",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsupported = summarize_elevator_field_evidence_trace_callback_intake(
+                {
+                    "schema": "trashbot.elevator_action_feedback_trace.v1",
+                    "evidence_boundary": "software_proof_docker_elevator_action_feedback_trace_gate",
+                    "safe_evidence_ref": "evidence://unsupported",
+                    "safe_copy": "Unsupported callback intake is metadata-only; delivery_success=false.",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsafe = summarize_elevator_field_evidence_trace_callback_intake(
+                {
+                    "schema": "trashbot.elevator_field_evidence_trace_callback_intake_summary.v1",
+                    "source_schema": "trashbot.elevator_field_evidence_trace_callback_intake.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate"
+                    ),
+                    "source_evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate"
+                    ),
+                    "safe_evidence_ref": "evidence://unsafe",
+                    "same_evidence_ref_required": True,
+                    "raw_callback_body": "token secret /dev/ttyUSB0",
+                    "safe_copy": "Callback intake confirms delivery success and ACK posted.",
+                    "delivery_success": True,
+                    "primary_actions_enabled": False,
+                }
+            )
+            enabled = summarize_elevator_field_evidence_trace_callback_intake(
+                {
+                    "schema": "trashbot.elevator_field_evidence_trace_callback_intake_summary.v1",
+                    "source_schema": "trashbot.elevator_field_evidence_trace_callback_intake.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate"
+                    ),
+                    "source_evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate"
+                    ),
+                    "safe_evidence_ref": "evidence://enabled",
+                    "same_evidence_ref_required": True,
+                    "safe_copy": (
+                        "Elevator field evidence trace callback intake is metadata-only; "
+                        "delivery_success=false; primary_actions_enabled=false."
+                    ),
+                    "delivery_success": False,
+                    "primary_actions_enabled": True,
+                }
+            )
+            blocked_encoded = json.dumps(
+                [missing, artifact_without_summary, unsupported, unsafe, enabled],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(summary, payload["elevator_field_evidence_trace_callback_intake"])
+        self.assertEqual(summary, payload["elevator_field_evidence_trace_callback_intake_summary"])
+        self.assertNotIn("elevator_field_evidence_trace_callback_intake", payload["latest_status"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.elevator_field_evidence_trace_callback_intake.v1",
+        )
+        self.assertEqual(
+            summary["source_evidence_boundary"],
+            "software_proof_docker_elevator_field_evidence_trace_callback_intake_gate",
+        )
+        self.assertEqual(
+            summary["intake_status"],
+            "callback_packet_intake_ready_for_review_not_proven",
+        )
+        self.assertEqual(
+            artifact_summary["intake_status"],
+            "needs_route_elevator_material_backfill_not_proven",
+        )
+        self.assertEqual(
+            missing["intake_status"],
+            "blocked_missing_elevator_field_evidence_trace_callback_intake_summary",
+        )
+        self.assertEqual(
+            artifact_without_summary["intake_status"],
+            "blocked_missing_elevator_field_evidence_trace_callback_intake_summary",
+        )
+        self.assertEqual(unsupported["intake_status"], "unsupported_schema")
+        self.assertEqual(
+            unsafe["intake_status"],
+            "blocked_unsafe_elevator_field_evidence_trace_callback_intake_summary",
+        )
+        self.assertEqual(
+            enabled["intake_status"],
+            "blocked_unsafe_elevator_field_evidence_trace_callback_intake_summary",
+        )
+        self.assertIn("real_route_elevator_field_pass", summary["not_proven"])
+        self.assertIn("software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(summary_path), encoded)
+        self.assertNotIn(str(Path(td)), blocked_encoded)
+        self.assertNotIn("secret-token", blocked_encoded)
+        self.assertNotIn("/dev/ttyUSB0", blocked_encoded)
+        self.assertNotIn("raw_callback_body", blocked_encoded)
 
     def test_route_proof_summary_missing_fields_downgrades_to_unknown(self):
         payload = self._base_build_payload(

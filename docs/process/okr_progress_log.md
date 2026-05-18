@@ -8,7 +8,21 @@
 
 ## 2026-05-19 系列
 
-更新时间：2026-05-19 03:22 Asia/Shanghai。
+更新时间：2026-05-19 04:22 Asia/Shanghai。
+
+### 2026-05-19 04-05｜elevator-field-evidence-trace-callback-intake｜O2/O3/O4 route/elevator callback intake software proof
+
+本轮 `sprints/2026.05.19_04-05_elevator-field-evidence-trace-callback-intake/` 推进 Objective 2 / Objective 3 / Objective 4：Autonomy worker 新增 `elevator_field_evidence_trace_callback_intake` PC gate，输出 `trashbot.elevator_field_evidence_trace_callback_intake_summary.v1`，只读消费 safe callback packet、`elevator_action_feedback_trace` summary、Robot diagnostics summary 和 required materials，并用同一 safe `evidence_ref` 判定 `callback_packet_intake_ready_for_review_not_proven`、`needs_route_elevator_material_backfill_not_proven` 或 blocked states。Robot worker 新增 `robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary` safe alias，缺失/unsupported/unsafe/success/control fields fail closed。Full-Stack worker 在 mobile/web 增加只读 callback intake panel，展示 intake status、missing required materials、owner handoff 和 evidence boundary，Start Delivery、Confirm Dropoff、Cancel gating 不变。证据边界保持 `software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮未新增 WAVE ROVER/UART/HIL、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery` 或 operator HIL report；PR #5 2D LiDAR / ToF SKU/source、receipt、采购、安装、接线、电源、标定和 HIL-entry 仍缺真实材料。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | `elevator_field_evidence_trace_callback_intake` 让 PR #4 route/elevator 现场 owner 后续材料可以按同一 safe `evidence_ref` 回填和复核；仍缺真实电梯、真实门状态、真实楼层确认、人工协助记录、真实 Nav2/fixed-route、dropoff/cancel completion、delivery result 和 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮把真实 Nav2/fixed-route runtime log、route completion signal、field task record、dropoff/cancel completion 和 delivery result 列为 `missing_required_materials` / owner handoff；仍缺真实路线采集、Nav2/fixed-route 实跑、route completion signal、现场 task_record 或同一 `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可只读展示 callback intake summary、missing materials 和 owner handoff；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 与现场 phone behavior。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过、`python3 -m unittest tests/test_elevator_field_evidence_trace_callback_intake.py` 输出 `Ran 6 tests in 0.105s OK`、required `rg` 与 scoped diff check 通过；第一轮 success regex 误读 `real_route_elevator_field_pass` 的 `not_proven` literal，已收窄并重跑通过。Robot worker 报告 `py_compile` 通过、diagnostics unittest `Ran 195 tests in 0.464s OK`、required `rg` 与 scoped diff check 通过；第一轮 unsafe key fragment `ack` 误匹配 `callback`，已改成具体 ACK fields 并重跑通过。Full-Stack worker 报告 `python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 106 tests OK`、`py_compile` 通过、`node --check mobile/web/app.js` 通过、required `rg` 与 scoped diff check 通过。Product closeout required file check、required `rg` 与 scoped `git diff --check` 通过。本轮不证明真实电梯、真实 Nav2/fixed-route、真实 task record/completion signal、dropoff/cancel completion、delivery success、WAVE ROVER/UART/HIL、真实 phone/browser、PR #5 真实 2D LiDAR/ToF 材料或 O5 external proof。
 
 ### 2026-05-19 03-04｜pr5-review-thread-closeout｜O1/O4 PR #5 review thread closeout software proof
 
