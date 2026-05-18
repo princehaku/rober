@@ -28351,6 +28351,7 @@ def build_diagnostics_payload(
     latest_status.pop("route_task_field_retest_drill_console_copy", None)
     latest_status.pop("route_task_field_retest_acceptance_brief", None)
     latest_status.pop("route_task_field_retest_acceptance_brief_summary", None)
+    latest_status.pop("robot_diagnostics_route_task_field_retest_acceptance_brief_summary", None)
     latest_status.pop("route_task_field_retest_acceptance_brief_copy", None)
     latest_status.pop("route_task_field_retest_evidence_dispatch", None)
     latest_status.pop("route_task_field_retest_evidence_dispatch_summary", None)
@@ -29107,6 +29108,9 @@ def build_diagnostics_payload(
         ),
         route_task_field_retest_acceptance_brief=route_task_field_retest_acceptance_brief_summary,
         route_task_field_retest_acceptance_brief_summary=route_task_field_retest_acceptance_brief_summary,
+        robot_diagnostics_route_task_field_retest_acceptance_brief_summary=(
+            route_task_field_retest_acceptance_brief_summary
+        ),
         route_task_field_retest_evidence_dispatch=route_task_field_retest_evidence_dispatch_summary,
         route_task_field_retest_evidence_dispatch_summary=route_task_field_retest_evidence_dispatch_summary,
         route_task_field_retest_callback_intake=route_task_field_retest_callback_intake_summary,

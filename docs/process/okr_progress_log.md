@@ -8,7 +8,19 @@
 
 ## 2026-05-18 系列
 
-更新时间：2026-05-18 08:46 Asia/Shanghai。
+更新时间：2026-05-18 09:13 Asia/Shanghai。
+
+### 2026-05-18 09-10｜route-task-field-retest-acceptance-brief｜O2/O3/O4 acceptance brief 三端一致性 software proof，均保守保持约 99%，O5 保持约 68%
+
+`sprints/2026.05.18_09-10_route-task-field-retest-acceptance-brief/` 完成 `software_proof_docker_route_task_field_retest_acceptance_brief_gate`。Autonomy worker 新增顶层验收入口 `tests/test_route_task_field_retest_acceptance_brief.py` 并更新 `pc-tools/README.md`，复用 `pc-tools/evidence/test_route_task_field_retest_acceptance_brief.py`，无 schema/CLI/runtime 行为变化。Autonomy worker 报告 py_compile pass、focused unittest `Ran 5 tests in 0.029s OK`、required `rg` pass、scoped `git diff --check` pass。
+
+Robot worker 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py` 与 diagnostics tests，新增 `robot_diagnostics_route_task_field_retest_acceptance_brief_summary` safe alias，值等于 sanitized `route_task_field_retest_acceptance_brief_summary`；清理 latest_status 时移除同名输入 alias，测试断言 `route_task_field_retest_acceptance_brief`、`route_task_field_retest_acceptance_brief_summary` 与 `robot_diagnostics_route_task_field_retest_acceptance_brief_summary` 三个 alias 一致。Robot worker 报告 py_compile pass、diagnostics unittest `Ran 176 tests in 0.356s OK`、required `rg` pass、scoped `git diff --check` pass。
+
+Full-stack worker 更新 `mobile/web/fixtures/status.json`、`mobile/web/test_mobile_web_entrypoint.py` 与 `docs/product/mobile_user_flow.md`；未改 `mobile/web/app.js`，因为已有 alias 读取路径覆盖 `robot_diagnostics_route_task_field_retest_acceptance_brief_summary`。fixture 和 tests 证明 Robot alias 与主 acceptance brief 使用同一 boundary/status/phone-safe whitelist，docs 记录 Robot alias metadata-only。Full-stack worker 报告 `node --check mobile/web/app.js` pass、mobile unittest `Ran 72 tests in 0.368s OK`、required `rg` pass、scoped `git diff --check` pass。
+
+Product closeout 更新 sprint 留档、`OKR.md` 和本日志；required closeout `rg` 匹配 `route_task_field_retest_acceptance_brief`、`robot_diagnostics_route_task_field_retest_acceptance_brief_summary`、`software_proof_docker_route_task_field_retest_acceptance_brief_gate`、`Objective 5`、`Objective 1`、`PR #4`、`PR #5`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，closeout scoped `git diff --check` exit 0。
+
+该证据只支持 Objective 2、Objective 3 和 Objective 4 继续保守保持约 99%，不继续上调到 100。理由是本轮把 PR #4 route/elevator acceptance brief 的 PC gate、Robot diagnostics safe alias 和 mobile/web phone-safe 消费路径统一起来，减少真实现场材料回填前的 key 漂移和“acceptance brief 即现场通过”的误读；但没有真实 route/elevator field pass、真实 Nav2/fixed-route runtime log、真实 route completion signal、真实 task record、真实门状态、真实目标楼层确认、真实人工协助记录、真实 dropoff/cancel completion、真实 delivery result、真实手机/browser、production app 或真实 PWA prompt/user choice。Objective 1 保持约 81%，因为本轮没有新增 WAVE ROVER、UART、HIL packet、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、operator HIL report、2D LiDAR / ToF SKU/source、串口、波特率或硬件假设；PR #5 相关真实硬件材料仍缺。Objective 5 保持约 68%，因为本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或其他真实 external proof；O5 stop rule 仍成立。本轮始终保持 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
 
 ### 2026-05-18 08-09｜route-task-field-retest-drill-console｜O2/O3/O4 drill console software proof，均保守保持约 99%，O5 保持约 68%
 

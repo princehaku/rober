@@ -827,6 +827,47 @@
       "Objective 5 external proof"
     ]
   },
+  "robot_diagnostics_route_task_field_retest_acceptance_brief_summary": {
+    "schema": "trashbot.route_task_field_retest_acceptance_brief_summary.v1",
+    "schema_version": 1,
+    "source_alias": "robot_diagnostics_route_task_field_retest_acceptance_brief_summary",
+    "acceptance_status": "blocked_missing_route_task_field_retest_acceptance_brief_not_proven",
+    "safe_evidence_ref": "route_task_field_retest_result_intake_fixture_20260516_0001",
+    "pass_fail_criteria": [
+      "criteria=same safe evidence_ref must match material pack, result intake and result reconciliation",
+      "criteria=Robot diagnostics compatible summary must remain phone-safe",
+      "criteria=delivery_success=false",
+      "criteria=primary_actions_enabled=false"
+    ],
+    "required_evidence_packet": [
+      "evidence=Nav2/fixed-route runtime log remains not_proven",
+      "evidence=route completion signal remains not_proven",
+      "evidence=task record remains not_proven",
+      "evidence=dropoff_or_cancel_completion remains not_proven",
+      "evidence=delivery_result remains not_proven"
+    ],
+    "owner_handoff": [
+      "handoff=Robot owner exposes sanitized diagnostics summary",
+      "handoff=Full-stack keeps Start Delivery, Confirm Dropoff and Cancel gating unchanged"
+    ],
+    "safe_copy": "Robot diagnostics acceptance brief safe copy：只读导出 acceptance status、safe evidence_ref、criteria、required evidence packet、owner handoff、boundary 和 not_proven。",
+    "safe_phone_copy": "Robot diagnostics acceptance brief summary 只读展示现场复测验收简报；这是 software proof only。",
+    "recovery_hint": "请按同一 safe evidence_ref 补齐真实现场复测验收材料；手机端只读消费 Robot diagnostics compatible summary。",
+    "evidence_boundary": "software_proof_docker_route_task_field_retest_acceptance_brief_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "真实 acceptance field review",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机设备/browser",
+      "真实硬件/HIL",
+      "Objective 5 external proof"
+    ]
+  },
   "route_task_field_retest_evidence_dispatch": {
     "schema": "trashbot.route_task_field_retest_evidence_dispatch.v1",
     "summary_schema": "trashbot.route_task_field_retest_evidence_dispatch_summary.v1",

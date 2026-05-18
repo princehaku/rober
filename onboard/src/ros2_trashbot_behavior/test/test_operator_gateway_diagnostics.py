@@ -5254,9 +5254,13 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             )
             summary = payload["route_task_field_retest_acceptance_brief"]
             summary_alias = payload["route_task_field_retest_acceptance_brief_summary"]
+            robot_alias = payload[
+                "robot_diagnostics_route_task_field_retest_acceptance_brief_summary"
+            ]
             encoded = json.dumps(summary, ensure_ascii=False)
 
         self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
         self.assertEqual(summary["schema"], "trashbot.route_task_field_retest_acceptance_brief_summary.v1")
         self.assertEqual(
             summary["evidence_boundary"],

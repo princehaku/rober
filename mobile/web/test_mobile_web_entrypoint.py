@@ -2655,14 +2655,24 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
 
         # fixture 和产品文档必须固定 acceptance brief 的 software proof / not_proven 边界。
         acceptance_brief = fixture["route_task_field_retest_acceptance_brief"]
+        robot_alias = fixture["robot_diagnostics_route_task_field_retest_acceptance_brief_summary"]
         self.assertEqual(
             acceptance_brief["acceptance_status"],
             "blocked_missing_route_task_field_retest_acceptance_brief_not_proven",
         )
+        self.assertEqual(
+            robot_alias["acceptance_status"],
+            acceptance_brief["acceptance_status"],
+        )
+        self.assertEqual(robot_alias["source_alias"], "robot_diagnostics_route_task_field_retest_acceptance_brief_summary")
+        self.assertEqual(robot_alias["delivery_success"], False)
+        self.assertEqual(robot_alias["primary_actions_enabled"], False)
+        self.assertIn("Robot diagnostics acceptance brief summary", robot_alias["safe_phone_copy"])
         self.assertEqual(acceptance_brief["delivery_success"], False)
         self.assertEqual(acceptance_brief["primary_actions_enabled"], False)
         self.assertIn("software_proof_docker_route_task_field_retest_acceptance_brief_gate", fixture_text)
         self.assertIn("not_proven", fixture_text)
+        self.assertIn("robot_diagnostics_route_task_field_retest_acceptance_brief_summary", doc)
         self.assertIn("route_task_field_retest_acceptance_brief", doc)
         self.assertIn("现场复测验收简报", doc)
 
@@ -2670,6 +2680,10 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
         acceptance_brief_text = json.dumps(
             fixture["route_task_field_retest_acceptance_brief"],
+            ensure_ascii=False,
+        ).lower()
+        robot_alias_text = json.dumps(
+            fixture["robot_diagnostics_route_task_field_retest_acceptance_brief_summary"],
             ensure_ascii=False,
         ).lower()
 
@@ -2697,6 +2711,7 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
             "primary_actions_enabled\": true",
         ):
             self.assertNotIn(forbidden, acceptance_brief_text)
+            self.assertNotIn(forbidden, robot_alias_text)
 
     def test_field_retest_evidence_dispatch_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
