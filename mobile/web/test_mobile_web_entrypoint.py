@@ -3420,6 +3420,143 @@ class RouteTaskFieldRetestAcceptanceExecutionPackMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, pack_text)
 
 
+class RouteTaskFieldRetestAcceptanceExecutionCallbackIntakeMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_field_retest_acceptance_execution_callback_intake_panel_is_read_only_and_alias_first(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        web_fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 执行回调入口跟在 execution pack 后，只读展示 callback packet intake，不改变主操作 gating。
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionCallbackIntakeTitle", app)
+        self.assertIn("现场复测验收执行回调入口", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionPackTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("route-task-field-retest-acceptance-execution-callback-intake-panel", app)
+        self.assertIn("route-task-field-retest-acceptance-execution-callback-intake-grid", app)
+
+        # Robot diagnostics safe alias 必须早于普通 summary，再早于 artifact。
+        alias_index = app.index(
+            "status?.robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary"
+        )
+        summary_index = app.index(
+            "status?.route_task_field_retest_acceptance_execution_callback_intake_summary"
+        )
+        artifact_index = app.index(
+            "status?.route_task_field_retest_acceptance_execution_callback_intake,"
+        )
+        self.assertLess(alias_index, summary_index)
+        self.assertLess(summary_index, artifact_index)
+        self.assertIn("ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_TEXT", app)
+        self.assertIn("safeRouteTaskFieldRetestAcceptanceExecutionCallbackIntakeText", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionCallbackIntakeCandidate", app)
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionCallbackIntakeFromStatus", app)
+        self.assertIn("robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary", app)
+        self.assertIn("diagnosticsSummary.route_task_field_retest_acceptance_execution_callback_intake", app)
+        self.assertIn("statusDiagnosticsSummary.route_task_field_retest_acceptance_execution_callback_intake", app)
+        self.assertIn("source_execution_pack", app)
+        self.assertIn("callback_packet_status", app)
+        self.assertIn("received_materials", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("rejected_materials", app)
+        self.assertIn("owner_next_steps", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("boundary_flags", app)
+
+        # copy/export 只能由 safe_copy 解锁，且不触发 Start/Confirm/Cancel 或 diagnostics fetch。
+        self.assertIn("routeTaskFieldRetestAcceptanceExecutionCallbackIntakeCopyPayload", app)
+        self.assertIn("trashbot.route_task_field_retest_acceptance_execution_callback_intake_copy.v1", app)
+        self.assertIn("copyRouteTaskFieldRetestAcceptanceExecutionCallbackIntakeButton", app)
+        self.assertIn("downloadRouteTaskFieldRetestAcceptanceExecutionCallbackIntakeButton", app)
+        self.assertIn("blocked copy unavailable", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("Start Delivery", app)
+        self.assertIn("Confirm Dropoff", app)
+        self.assertIn("Cancel", app)
+        self.assertNotRegex(
+            app,
+            r"routeTaskFieldRetestAcceptanceExecutionCallbackIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotRegex(app, r"copyRouteTaskFieldRetestAcceptanceExecutionCallbackIntakeButton.*fetchJson")
+
+        # 两套 fixture 和产品文档都固定 execution callback intake 的 software proof / not_proven 口径。
+        intake = fixture["route_task_field_retest_acceptance_execution_callback_intake"]
+        self.assertEqual(
+            intake["intake_status"],
+            "blocked_missing_acceptance_execution_callback_intake_not_proven",
+        )
+        self.assertEqual(intake["same_evidence_ref_required"], True)
+        self.assertEqual(intake["delivery_success"], False)
+        self.assertEqual(intake["primary_actions_enabled"], False)
+        self.assertIn(
+            "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary",
+            web_fixture,
+        )
+        self.assertIn(
+            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate",
+            fixture_text,
+        )
+        self.assertIn("received_materials", fixture_text)
+        self.assertIn("missing_materials", fixture_text)
+        self.assertIn("rejected_materials", fixture_text)
+        self.assertIn("owner_next_steps", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("route_task_field_retest_acceptance_execution_callback_intake", doc)
+        self.assertIn("现场复测验收执行回调入口", doc)
+
+    def test_field_retest_acceptance_execution_callback_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        web_fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        intake_text = json.dumps(
+            fixture["route_task_field_retest_acceptance_execution_callback_intake"],
+            ensure_ascii=False,
+        ).lower()
+        robot_alias_text = json.dumps(
+            web_fixture["robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary"],
+            ensure_ascii=False,
+        ).lower()
+
+        # execution callback intake fixture 只能携带白名单 metadata，不能泄漏 raw callback 或控制成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw callback packet",
+            "raw execution pack",
+            "raw diagnostics",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "robot command",
+            "diagnostics fetch",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, intake_text)
+            self.assertNotIn(forbidden, robot_alias_text)
+
+
 class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

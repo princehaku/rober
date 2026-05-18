@@ -34,6 +34,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_acceptance_brief,
     summarize_route_task_field_retest_acceptance_review_decision,
     summarize_route_task_field_retest_acceptance_execution_pack,
+    summarize_route_task_field_retest_acceptance_execution_callback_intake,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -2580,6 +2581,350 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(env_summary["ack_post_allowed"])
         self.assertFalse(env_summary["nav2_triggered"])
         self.assertFalse(env_summary["hil_pass"])
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+
+    def test_route_task_field_retest_acceptance_execution_callback_intake_alias_env_nested_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            intake_path = Path(td) / "acceptance_execution_callback_intake.json"
+            intake_path.write_text(
+                json.dumps(
+                    {
+                        "schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_callback_intake.v1"
+                        ),
+                        "schema_version": 1,
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate"
+                        ),
+                        "evidence_ref": "evidence://acceptance-execution-callback-intake-1",
+                        "same_evidence_ref_required": True,
+                        "callback_intake_status": {
+                            "status": "callback_received_not_proven",
+                            "verdict": "not_proven",
+                            "reason": "safe callback packet was consumed only as metadata",
+                        },
+                        "source_execution_pack": {
+                            "schema": "trashbot.route_task_field_retest_acceptance_execution_pack.v1",
+                            "status": "ready_not_proven",
+                        },
+                        "safe_callback_packet": {
+                            "status": "received",
+                            "owner": "field-operator",
+                        },
+                        "evidence_ref_status": {"status": "same_evidence_ref"},
+                        "received_materials": ["door state note", "task record summary"],
+                        "missing_materials": ["real HIL packet"],
+                        "rejected_materials": [],
+                        "owner_next_steps": ["rerun result intake with same evidence_ref"],
+                        "next_required_evidence": ["real field operator packet"],
+                        "robot_diagnostics_summary": {
+                            "status": "metadata_only",
+                            "reason": "robot can display only safe callback summary",
+                        },
+                        "safe_copy": (
+                            "Route-task field retest acceptance execution callback intake "
+                            "is metadata-only; same_evidence_ref_required=true; "
+                            "delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "not_proven": ["field_retest_pass"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                route_task_field_retest_acceptance_execution_callback_intake_ref=str(intake_path),
+            )
+            summary = payload["route_task_field_retest_acceptance_execution_callback_intake"]
+            summary_alias = payload[
+                "route_task_field_retest_acceptance_execution_callback_intake_summary"
+            ]
+            robot_alias = payload[
+                "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary"
+            ]
+
+            summary_path = Path(td) / "acceptance_execution_callback_intake_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_callback_intake_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_callback_intake.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://acceptance-execution-callback-intake-2",
+                        "same_evidence_ref_required": True,
+                        "callback_intake_status": "callback_received_not_proven",
+                        "source_execution_pack": {"status": "ready_not_proven"},
+                        "safe_callback_packet": {"status": "received"},
+                        "evidence_ref_status": {"status": "same_evidence_ref"},
+                        "received_materials": ["human assistance note"],
+                        "missing_materials": [],
+                        "rejected_materials": [],
+                        "owner_next_steps": ["continue metadata review"],
+                        "next_required_evidence": ["real route completion evidence"],
+                        "robot_diagnostics_summary": {"status": "metadata_only"},
+                        "safe_phone_copy": (
+                            "Route-task field retest acceptance execution callback intake "
+                            "is metadata-only; delivery_success=false; primary_actions_enabled=false."
+                        ),
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_artifact = os.environ.get(
+                "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE"
+            )
+            previous_summary = os.environ.get(
+                "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SUMMARY"
+            )
+            os.environ.pop(
+                "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE",
+                None,
+            )
+            os.environ[
+                "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SUMMARY"
+            ] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "route_task_field_retest_acceptance_execution_callback_intake"
+                ]
+            finally:
+                if previous_artifact is None:
+                    os.environ.pop(
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE",
+                        None,
+                    )
+                else:
+                    os.environ[
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE"
+                    ] = previous_artifact
+                if previous_summary is None:
+                    os.environ.pop(
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SUMMARY",
+                        None,
+                    )
+                else:
+                    os.environ[
+                        "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SUMMARY"
+                    ] = previous_summary
+
+            nested_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary": {
+                            "schema": (
+                                "trashbot.route_task_field_retest_acceptance_execution_callback_intake.v1"
+                            ),
+                            "evidence_boundary": (
+                                "software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate"
+                            ),
+                            "evidence_ref": (
+                                "evidence://acceptance-execution-callback-intake-3"
+                            ),
+                            "same_evidence_ref_required": True,
+                            "callback_intake_status": {
+                                "status": "nested_callback_received_not_proven",
+                                "verdict": "not_proven",
+                            },
+                            "source_execution_pack": {"status": "nested"},
+                            "safe_callback_packet": {"status": "nested"},
+                            "evidence_ref_status": {"status": "same_evidence_ref"},
+                            "received_materials": [],
+                            "missing_materials": ["dropoff completion"],
+                            "rejected_materials": [],
+                            "owner_next_steps": ["collect dropoff completion"],
+                            "next_required_evidence": ["field callback packet"],
+                            "safe_copy": (
+                                "Route-task field retest acceptance execution callback intake "
+                                "is metadata-only; delivery_success=false; primary_actions_enabled=false."
+                            ),
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["route_task_field_retest_acceptance_execution_callback_intake"]
+            missing_summary = summarize_route_task_field_retest_acceptance_execution_callback_intake(
+                Path(td) / "Bearer-secret-token" / "missing_acceptance_execution_callback.json"
+            )
+            unsupported_summary = summarize_route_task_field_retest_acceptance_execution_callback_intake(
+                {
+                    "schema": "trashbot.route_task_field_retest_acceptance_execution_pack.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_acceptance_execution_pack_gate"
+                    ),
+                    "evidence_ref": "evidence://unsupported",
+                    "same_evidence_ref_required": True,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": (
+                        "Unsupported acceptance execution callback intake is metadata-only; "
+                        "delivery_success=false; primary_actions_enabled=false."
+                    ),
+                }
+            )
+            mismatch_summary = summarize_route_task_field_retest_acceptance_execution_callback_intake(
+                {
+                    "schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_callback_intake.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate"
+                    ),
+                    "evidence_ref": "evidence://source-ref",
+                    "same_evidence_ref_required": True,
+                    "route_task_field_retest_acceptance_execution_callback_intake_summary": {
+                        "schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_callback_intake_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.route_task_field_retest_acceptance_execution_callback_intake.v1"
+                        ),
+                        "evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://summary-ref",
+                        "same_evidence_ref_required": True,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                }
+            )
+            unsafe_summary = summarize_route_task_field_retest_acceptance_execution_callback_intake(
+                {
+                    "schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_callback_intake.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate"
+                    ),
+                    "evidence_ref": "evidence://unsafe",
+                    "same_evidence_ref_required": True,
+                    "source_execution_pack": {"status": "ready"},
+                    "safe_callback_packet": {"status": "received"},
+                    "evidence_ref_status": {"status": "same_evidence_ref"},
+                    "received_materials": [],
+                    "missing_materials": [],
+                    "rejected_materials": [],
+                    "owner_next_steps": [],
+                    "next_required_evidence": [],
+                    "delivery_success": True,
+                    "primary_actions_enabled": False,
+                    "safe_copy": (
+                        "Route-task field retest acceptance execution callback intake "
+                        "confirms delivery success and ACK posted."
+                    ),
+                }
+            )
+            enabled_summary = summarize_route_task_field_retest_acceptance_execution_callback_intake(
+                {
+                    "schema": (
+                        "trashbot.route_task_field_retest_acceptance_execution_callback_intake.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate"
+                    ),
+                    "evidence_ref": "evidence://enabled",
+                    "same_evidence_ref_required": True,
+                    "source_execution_pack": {"status": "ready"},
+                    "safe_callback_packet": {"status": "received"},
+                    "evidence_ref_status": {"status": "same_evidence_ref"},
+                    "received_materials": [],
+                    "missing_materials": [],
+                    "rejected_materials": [],
+                    "owner_next_steps": [],
+                    "next_required_evidence": [],
+                    "delivery_success": False,
+                    "primary_actions_enabled": True,
+                    "safe_copy": (
+                        "Route-task field retest acceptance execution callback intake "
+                        "is metadata-only; delivery_success=false; primary_actions_enabled=false."
+                    ),
+                }
+            )
+            encoded = json.dumps(
+                [
+                    summary,
+                    summary_alias,
+                    robot_alias,
+                    env_summary,
+                    nested_summary,
+                    missing_summary,
+                    unsupported_summary,
+                    mismatch_summary,
+                    unsafe_summary,
+                    enabled_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.route_task_field_retest_acceptance_execution_callback_intake_summary.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.route_task_field_retest_acceptance_execution_callback_intake.v1",
+        )
+        self.assertEqual(summary["callback_intake_status"]["status"], "callback_received_not_proven")
+        self.assertEqual(
+            env_summary["safe_evidence_ref"],
+            "evidence://acceptance-execution-callback-intake-2",
+        )
+        self.assertEqual(
+            nested_summary["callback_intake_status"]["status"],
+            "nested_callback_received_not_proven",
+        )
+        self.assertEqual(missing_summary["callback_intake_status"]["status"], "missing")
+        self.assertEqual(unsupported_summary["callback_intake_status"]["status"], "unsupported_schema")
+        self.assertEqual(mismatch_summary["callback_intake_status"]["status"], "evidence_ref_mismatch")
+        self.assertEqual(unsafe_summary["callback_intake_status"]["status"], "unsafe_fields")
+        self.assertEqual(enabled_summary["callback_intake_status"]["status"], "unsafe_fields")
+        self.assertIn(
+            "software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate",
+            encoded,
+        )
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", summary["not_proven"])
+        self.assertIn("primary_actions_enabled=false", summary["safe_phone_copy"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["dropoff_completion"])
+        self.assertFalse(summary["cancel_completion"])
         self.assertNotIn(str(Path(td)), encoded)
         self.assertNotIn("secret-token", encoded)
 

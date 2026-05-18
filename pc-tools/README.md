@@ -259,6 +259,25 @@ python3 pc-tools/evidence/route_task_field_retest_acceptance_execution_pack.py \
 
 required route/elevator materials 固定包含 Nav2/fixed-route runtime log、route completion signal、task record、door_state、target_floor_confirmation、human_assistance_note、dropoff_or_cancel_completion 和 delivery_result。该 execution pack 不读取真实材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。缺输入、坏 JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、review decision 未 ready、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_acceptance_execution_pack_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_acceptance_execution_pack_gate` 已把现场复跑 checklist、rerun commands 和 safe evidence bundle 整理清楚，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
+## route/task field retest acceptance execution callback intake
+
+`pc-tools/evidence/route_task_field_retest_acceptance_execution_callback_intake.py` 只读上一节 acceptance execution pack artifact、summary、wrapper/nested JSON，或 `file:<path>` / `env:<VAR>` source，再读取 safe callback packet，把现场回执整理成 metadata-only callback intake artifact / summary：
+
+```bash
+python3 pc-tools/evidence/route_task_field_retest_acceptance_execution_callback_intake.py \
+  --acceptance-execution-pack-json /tmp/route_task_field_retest_acceptance_execution_pack_summary.json \
+  --callback-json /tmp/safe_callback_packet.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/route_task_field_retest_acceptance_execution_callback_intake.json \
+  --summary-output /tmp/route_task_field_retest_acceptance_execution_callback_intake_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.route_task_field_retest_acceptance_execution_callback_intake.v1`，summary 使用 `schema=trashbot.route_task_field_retest_acceptance_execution_callback_intake_summary.v1`，证据边界固定为 `software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate`。核心字段包括 `callback_intake_status`、`source_execution_pack`、`safe_callback_packet`、`evidence_ref_status`、`required_route_elevator_materials`、`received_materials`、`missing_materials`、`rejected_materials`、`owner_next_steps`、`next_required_evidence`、`rerun_commands`、`safe_copy`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+顶层 acceptance command 可用 `python3 -m unittest tests.test_route_task_field_retest_acceptance_execution_callback_intake` 复用 `pc-tools/evidence` 下的离线围栏测试；该入口只证明本地 callback-intake gate 的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
+
+required route/elevator materials 固定覆盖 Nav2/fixed-route runtime log、route completion signal、task record、door_state、target_floor_confirmation、human_assistance_note、dropoff_or_cancel_completion、delivery_result 和 diagnostics/mobile safe summary。该 callback intake 不读取真实材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。缺输入、坏 JSON、unsupported source/callback schema 或 boundary、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、execution pack 未 ready、safe callback packet 字段弱类型、missing/rejected materials、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、checksum、完整 raw artifact、success phrasing、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_retest_acceptance_execution_callback_intake_not_proven` 只表示 Docker/local `software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate` 已把 safe callback packet 复账为只读摘要，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

@@ -94,6 +94,70 @@ field outcome, HIL pass, real Nav2/fixed-route execution, real delivery
 success, real dropoff/cancel completion, real phone/browser validation, O5
 external cloud proof, or any primary robot action being enabled.
 
+## route_task_field_retest_acceptance_execution_callback_intake
+
+`pc-tools/evidence/route_task_field_retest_acceptance_execution_callback_intake.py`
+generates the PC-only callback intake gate after
+`route_task_field_retest_acceptance_execution_pack.py`.
+
+- Artifact schema:
+  `trashbot.route_task_field_retest_acceptance_execution_callback_intake.v1`
+- Summary schema:
+  `trashbot.route_task_field_retest_acceptance_execution_callback_intake_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate`
+- Allowed source inputs:
+  `trashbot.route_task_field_retest_acceptance_execution_pack.v1` and
+  `trashbot.route_task_field_retest_acceptance_execution_pack_summary.v1`
+  only. Wrapper or nested JSON is allowed when it contains one of those schemas.
+  CLI sources may also use `file:<path>` or `env:<VAR>` to locate the same JSON.
+- Allowed callback packet inputs:
+  a safe callback packet with optional
+  `trashbot.route_task_field_retest_acceptance_execution_callback_packet.v1`
+  or `_summary.v1` schema. The packet must stay inside the whitelist:
+  `safe_evidence_ref`, `same_evidence_ref_required`, `material_responses`,
+  `received_materials`, `missing_materials`, `rejected_materials`,
+  `owner_next_steps`, `next_required_evidence`, `safe_copy`,
+  `delivery_success=false`, and `primary_actions_enabled=false`.
+- Status values:
+  `ready_for_field_retest_acceptance_execution_callback_intake_not_proven`,
+  `blocked_missing_execution_pack_json`, `blocked_missing_callback_json`,
+  `blocked_bad_json`, `blocked_unsupported_execution_pack_schema_or_boundary`,
+  `blocked_unsupported_callback_packet_schema_or_fields`,
+  `blocked_missing_evidence_ref`, `blocked_same_evidence_ref_mismatch`,
+  `blocked_same_evidence_ref_not_required`, `blocked_unsafe_copy`,
+  `blocked_weak_callback_fields`, `blocked_execution_pack_not_ready`,
+  `blocked_rejected_callback_materials`, and
+  `blocked_missing_callback_materials`.
+
+The output always includes `callback_intake_status`,
+`source_execution_pack`, `safe_callback_packet`, `evidence_ref_status`,
+`required_route_elevator_materials`, `received_materials`,
+`missing_materials`, `rejected_materials`, `owner_next_steps`,
+`next_required_evidence`, `rerun_commands`, `safe_copy`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`,
+`same_evidence_ref_required=true`, and
+`evidence_boundary=software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate`.
+
+Callback-intake mapping is fail-closed. A supported, safe
+`ready_for_field_retest_acceptance_execution_pack_not_proven` source with
+matched `evidence_ref` and a callback packet that marks every required
+route/elevator material as received maps to
+`ready_for_field_retest_acceptance_execution_callback_intake_not_proven`.
+Missing materials stay `blocked_missing_callback_materials`. Rejected or
+unknown callback material entries stay `blocked_rejected_callback_materials`.
+Mismatched, missing, or weak same-evidence-ref state maps to a blocked
+same-evidence-ref status. Unsupported schema, missing input, bad JSON,
+unsupported boundary, weak callback field types, raw paths, credentials, ROS
+topics, hardware transport details, checksum text, full raw artifact text,
+success/control claims, `delivery_success=true`, or
+`primary_actions_enabled=true` fail closed.
+
+This contract is software proof only. It does not prove a real route/elevator
+field outcome, HIL pass, real Nav2/fixed-route execution, real delivery
+success, real dropoff/cancel completion, real phone/browser validation, O5
+external cloud proof, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

@@ -223,6 +223,15 @@ ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_PACK_SUMMARY_SCHEMA = (
 ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_PACK_GATE = (
     "software_proof_docker_route_task_field_retest_acceptance_execution_pack_gate"
 )
+ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SCHEMA = (
+    "trashbot.route_task_field_retest_acceptance_execution_callback_intake.v1"
+)
+ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SUMMARY_SCHEMA = (
+    "trashbot.route_task_field_retest_acceptance_execution_callback_intake_summary.v1"
+)
+ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_GATE = (
+    "software_proof_docker_route_task_field_retest_acceptance_execution_callback_intake_gate"
+)
 ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SCHEMA = (
     "trashbot.route_task_field_retest_evidence_dispatch.v1"
 )
@@ -1354,6 +1363,55 @@ def _route_task_field_retest_acceptance_execution_pack_not_proven(
         "owner_checklist_executed",
         "safe_evidence_bundle_collected",
         "review_decision_source_verified",
+        "rerun_command_executed",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "real_phone_device_or_browser_proof",
+        "production_readiness",
+        "real_dropoff_completion",
+        "real_cancel_completion",
+        "dropoff_or_cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _route_task_field_retest_acceptance_execution_callback_intake_not_proven(
+    intake=None,
+    summary_fragment=None,
+):
+    # acceptance execution callback intake 只摄取现场 owner 的安全回执；不能证明现场执行、ACK、Nav2 或 HIL。
+    intake = intake if isinstance(intake, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(intake.get("not_proven"), list):
+        source_values.extend(intake.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "terminal_ack",
+        "real_elevator_operation",
+        "real_elevator_door_state",
+        "real_floor_confirmation",
+        "human_assistance_outcome",
+        "real_nav2_fixed_route_run",
+        "real_fixed_route_collection",
+        "route_task_completion_real_world",
+        "field_retest_pass",
+        "acceptance_execution_callback_intake_only",
+        "acceptance_execution_pack_executed",
+        "safe_callback_packet_verified",
+        "owner_next_steps_completed",
         "rerun_command_executed",
         "wave_rover_motion",
         "real_serial_or_uart_feedback",
@@ -4132,6 +4190,73 @@ def _default_route_task_field_retest_acceptance_execution_pack_summary(
         ),
         "safe_phone_copy": (
             "Route-task field retest acceptance execution pack is metadata-only; "
+            "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
+        ),
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
+def _default_route_task_field_retest_acceptance_execution_callback_intake_summary(
+    path,
+    intake_status="blocked_missing_route_task_field_retest_acceptance_execution_callback_intake",
+    read_error="",
+):
+    # 默认 blocked 是为了让 diagnostics 在缺少 Autonomy 回执时保持只读，不推断现场验收或动作授权。
+    return {
+        "schema": ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "callback_intake_status": {
+            "status": intake_status,
+            "verdict": "not_proven",
+            "reason": read_error
+            or "route-task field retest acceptance execution callback intake is not configured",
+        },
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "source_execution_pack": {},
+        "safe_callback_packet": {},
+        "evidence_ref_status": {},
+        "received_materials": [],
+        "missing_materials": [],
+        "rejected_materials": [],
+        "owner_next_steps": [],
+        "next_required_evidence": [],
+        "same_evidence_ref_required": True,
+        "robot_diagnostics_summary": {
+            "status": "blocked",
+            "reason": (
+                "route-task field retest acceptance execution callback intake is not configured"
+            ),
+        },
+        "boundary": ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_GATE,
+        "not_proven": _route_task_field_retest_acceptance_execution_callback_intake_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": (
+            "Route-task field retest acceptance execution callback intake is metadata-only; "
+            "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
+        ),
+        "safe_phone_copy": (
+            "Route-task field retest acceptance execution callback intake is metadata-only; "
             "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
         ),
         "metadata_only": True,
@@ -7807,6 +7932,19 @@ def _route_task_field_retest_acceptance_execution_pack_source_contract(value):
     return source_schema, source_boundary
 
 
+def _route_task_field_retest_acceptance_execution_callback_intake_source_contract(value):
+    # callback intake 支持 artifact、summary wrapper 和 nested diagnostics；summary 缺 source 时回指本轮 artifact。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema")
+            or ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _route_task_field_retest_evidence_dispatch_source_contract(value):
     # evidence dispatch 支持 artifact、summary wrapper 和 nested diagnostics；wrapper 必须回指 dispatch gate，避免误接 acceptance brief。
     source_schema = str(value.get("schema") or "")
@@ -8328,6 +8466,15 @@ def _route_task_field_retest_acceptance_execution_pack_requires_same_evidence_re
     return summary_fragment.get("same_evidence_ref_required") is True
 
 
+def _route_task_field_retest_acceptance_execution_callback_intake_requires_same_evidence_ref(
+    summary_fragment,
+):
+    # acceptance execution callback intake 必须复用同一个 evidence_ref，防止把其他现场回执串到本轮执行包。
+    if not isinstance(summary_fragment, dict):
+        return False
+    return summary_fragment.get("same_evidence_ref_required") is True
+
+
 def _route_task_field_retest_result_review_decision_requires_same_evidence_ref(
     summary_fragment,
 ):
@@ -8557,6 +8704,26 @@ def _route_task_field_retest_acceptance_execution_pack_has_disabled_actions(
         summary_fragment.get("primary_actions_enabled")
         if "primary_actions_enabled" in summary_fragment
         else pack.get("primary_actions_enabled")
+    )
+    return delivery_success is False and primary_actions_enabled is False
+
+
+def _route_task_field_retest_acceptance_execution_callback_intake_has_disabled_actions(
+    intake,
+    summary_fragment,
+):
+    # intake source 和 summary 都必须显式关闭主动作；缺字段不能被解释成 Start/Confirm/Cancel 授权。
+    intake = intake if isinstance(intake, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    delivery_success = (
+        summary_fragment.get("delivery_success")
+        if "delivery_success" in summary_fragment
+        else intake.get("delivery_success")
+    )
+    primary_actions_enabled = (
+        summary_fragment.get("primary_actions_enabled")
+        if "primary_actions_enabled" in summary_fragment
+        else intake.get("primary_actions_enabled")
     )
     return delivery_success is False and primary_actions_enabled is False
 
@@ -14971,6 +15138,478 @@ def summarize_route_task_field_retest_acceptance_execution_pack(source):
                 },
                 "safe_copy": "Route-task field retest acceptance execution pack was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
                 "safe_phone_copy": "Route-task field retest acceptance execution pack was blocked because summary fields could imply control, ACK, Nav2/HIL, raw artifact access, or delivery success.",
+            }
+        )
+    return summary
+
+
+def summarize_route_task_field_retest_acceptance_execution_callback_intake(source):
+    """构建 route-task field retest acceptance execution callback intake 的 metadata-only diagnostics 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        intake = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_route_task_field_retest_acceptance_execution_callback_intake_summary(
+            source_path,
+            read_error=(
+                "route-task field retest acceptance execution callback intake is not configured"
+            ),
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "callback_intake_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": (
+                            "route-task field retest acceptance execution callback intake "
+                            "summary missing"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "acceptance execution callback intake summary missing",
+                    },
+                    "safe_copy": (
+                        "Route-task field retest acceptance execution callback intake is "
+                        "missing; metadata remains blocked/not_proven."
+                    ),
+                    "safe_phone_copy": (
+                        "Route-task field retest acceptance execution callback intake is "
+                        "missing; metadata remains blocked/not_proven."
+                    ),
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                intake = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "callback_intake_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            "failed reading route-task field retest acceptance "
+                            f"execution callback intake: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "acceptance execution callback intake JSON read error",
+                    },
+                    "safe_copy": (
+                        "Route-task field retest acceptance execution callback intake "
+                        "could not be read; metadata remains blocked/not_proven."
+                    ),
+                    "safe_phone_copy": (
+                        "Route-task field retest acceptance execution callback intake "
+                        "could not be read; metadata remains blocked/not_proven."
+                    ),
+                }
+            )
+            return summary
+    summary = _default_route_task_field_retest_acceptance_execution_callback_intake_summary(
+        source_path,
+        read_error=(
+            "route-task field retest acceptance execution callback intake is not configured"
+        ),
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(intake, dict):
+        summary.update(
+            {
+                "callback_intake_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest acceptance execution callback intake JSON "
+                        "must be an object"
+                    ),
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "acceptance execution callback intake JSON shape is invalid",
+                },
+                "safe_copy": (
+                    "Route-task field retest acceptance execution callback intake shape is "
+                    "invalid; metadata remains blocked/not_proven."
+                ),
+                "safe_phone_copy": (
+                    "Route-task field retest acceptance execution callback intake shape is "
+                    "invalid; metadata remains blocked/not_proven."
+                ),
+            }
+        )
+        return summary
+
+    diagnostics = intake.get("diagnostics") if isinstance(intake.get("diagnostics"), dict) else {}
+    # 本 gate 名字很长；只消费完全匹配的 key，避免误接旧 callback_intake 或 result_callback_intake。
+    summary_fragment = (
+        intake
+        if str(intake.get("schema") or "")
+        == ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SUMMARY_SCHEMA
+        else {}
+    )
+    if not summary_fragment:
+        for candidate in (
+            intake.get("route_task_field_retest_acceptance_execution_callback_intake_summary"),
+            intake.get("route_task_field_retest_acceptance_execution_callback_intake"),
+            intake.get(
+                "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary"
+            ),
+            intake.get("robot_compatible_summary"),
+            intake.get("robot_diagnostics_summary"),
+            intake.get("mobile_readonly_summary"),
+            intake.get("phone_safe_summary"),
+            diagnostics.get("summary"),
+            diagnostics.get("diagnostics_summary"),
+            diagnostics.get(
+                "route_task_field_retest_acceptance_execution_callback_intake_summary"
+            ),
+            diagnostics.get("route_task_field_retest_acceptance_execution_callback_intake"),
+            diagnostics.get(
+                "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary"
+            ),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if (
+        str(intake.get("schema") or "")
+        == ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SCHEMA
+        and not str(summary_fragment.get("schema") or "")
+    ):
+        # 直接 artifact 可作为安全摘要消费；泛用 robot_diagnostics_summary 不能覆盖 artifact contract。
+        summary_fragment = intake
+    if not summary_fragment and (intake.get("schema") or intake.get("evidence_boundary")):
+        # artifact 或带 contract 的对象要进入 contract 检查；unsupported source 也能给出明确失败原因。
+        summary_fragment = intake
+
+    contract_source = summary_fragment if summary_fragment else intake
+    source_schema, source_boundary = (
+        _route_task_field_retest_acceptance_execution_callback_intake_source_contract(
+            contract_source
+        )
+    )
+    if not summary_fragment:
+        summary.update(
+            {
+                "source_schema": _redact_route_task_rehearsal_text(source_schema),
+                "source_schema_version": intake.get("schema_version"),
+                "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "callback_intake_status": {
+                    "status": "missing_summary",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest acceptance execution callback intake lacks "
+                        "a safe diagnostics summary"
+                    ),
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing safe acceptance execution callback intake summary",
+                },
+                "safe_copy": (
+                    "Route-task field retest acceptance execution callback intake is blocked "
+                    "because no safe summary was provided."
+                ),
+                "safe_phone_copy": (
+                    "Route-task field retest acceptance execution callback intake is blocked "
+                    "because no safe summary was provided."
+                ),
+            }
+        )
+        return summary
+
+    status_source = summary_fragment.get("callback_intake_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("intake_status")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    callback_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or status_source.get("verdict")
+        or summary_fragment.get("callback_intake_status")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or "blocked"
+    )
+    callback_verdict = _redact_route_task_rehearsal_text(
+        status_source.get("verdict")
+        or status_source.get("decision")
+        or summary_fragment.get("verdict")
+        or "not_proven"
+    )
+    callback_reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or status_source.get("summary")
+        or summary_fragment.get("reason")
+        or (
+            "route-task field retest acceptance execution callback intake consumed "
+            "without explicit reason"
+        )
+    )
+    safe_copy_source = summary_fragment.get("safe_copy") or summary_fragment.get("safe_phone_copy")
+    safe_copy = _safe_pc_route_debug_value(
+        safe_copy_source
+        or (
+            "Route-task field retest acceptance execution callback intake is metadata-only; "
+            "same_evidence_ref_required=true; delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    safe_copy_text = (
+        json.dumps(safe_copy, ensure_ascii=False, sort_keys=True)
+        if isinstance(safe_copy, (dict, list))
+        else str(safe_copy or "")
+    )
+    if "delivery_success=false" not in safe_copy_text:
+        # phone/mobile copy 保留 literal boundary，方便围栏确认不会启用主动作。
+        safe_copy_text = (
+            f"{safe_copy_text}; same_evidence_ref_required=true; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+    source_ref = str(intake.get("safe_evidence_ref") or intake.get("evidence_ref") or "").strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref") or summary_fragment.get("evidence_ref") or ""
+    ).strip()
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else diagnostics.get("robot_diagnostics_summary")
+        if isinstance(diagnostics.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    source_pack = summary_fragment.get("source_execution_pack")
+    if not isinstance(source_pack, dict):
+        source_pack = summary_fragment.get("source_acceptance_execution_pack")
+    if not isinstance(source_pack, dict):
+        source_pack = {}
+    safe_callback_packet = summary_fragment.get("safe_callback_packet")
+    if not isinstance(safe_callback_packet, dict):
+        safe_callback_packet = summary_fragment.get("callback_packet")
+    if not isinstance(safe_callback_packet, dict):
+        safe_callback_packet = {}
+    evidence_ref_status = summary_fragment.get("evidence_ref_status")
+    if not isinstance(evidence_ref_status, dict):
+        evidence_ref_status = summary_fragment.get("same_evidence_ref_status")
+    if not isinstance(evidence_ref_status, dict):
+        evidence_ref_status = {}
+    received_materials = _safe_pc_route_debug_value(
+        summary_fragment.get("received_materials", summary_fragment.get("accepted_materials"))
+    )
+    missing_materials = _safe_pc_route_debug_value(summary_fragment.get("missing_materials"))
+    rejected_materials = _safe_pc_route_debug_value(summary_fragment.get("rejected_materials"))
+    owner_next_steps = _safe_pc_route_debug_value(
+        summary_fragment.get("owner_next_steps", summary_fragment.get("owner_follow_up"))
+    )
+    next_required_evidence = _safe_pc_route_debug_value(
+        summary_fragment.get("next_required_evidence")
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": contract_source.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "callback_intake_status": {
+                "status": callback_status or "blocked",
+                "verdict": callback_verdict or "not_proven",
+                "reason": callback_reason,
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(summary_ref or source_ref),
+            "source_execution_pack": _safe_pc_route_debug_dict(source_pack),
+            "safe_callback_packet": _safe_pc_route_debug_dict(safe_callback_packet),
+            "evidence_ref_status": _safe_pc_route_debug_dict(evidence_ref_status),
+            "received_materials": received_materials,
+            "missing_materials": missing_materials,
+            "rejected_materials": rejected_materials,
+            "owner_next_steps": owner_next_steps,
+            "next_required_evidence": next_required_evidence,
+            "same_evidence_ref_required": (
+                summary_fragment.get("same_evidence_ref_required") is True
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": callback_status or "blocked",
+                "reason": (
+                    "acceptance execution callback intake consumed without explicit "
+                    "robot diagnostics summary"
+                ),
+            },
+            "boundary": ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_GATE,
+            "not_proven": (
+                _route_task_field_retest_acceptance_execution_callback_intake_not_proven(
+                    intake,
+                    summary_fragment,
+                )
+            ),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy_text,
+            "read_error": "",
+        }
+    )
+
+    required_summary_fields = (
+        bool(summary["source_execution_pack"]),
+        bool(summary["safe_callback_packet"]),
+        bool(summary["evidence_ref_status"]),
+        isinstance(summary["received_materials"], list),
+        isinstance(summary["missing_materials"], list),
+        isinstance(summary["rejected_materials"], list),
+        isinstance(summary["owner_next_steps"], list),
+        isinstance(summary["next_required_evidence"], list),
+        bool(summary["safe_copy"]),
+    )
+    if (
+        source_schema != ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SCHEMA
+        or source_boundary != ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_GATE
+    ):
+        summary.update(
+            {
+                "callback_intake_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest acceptance execution callback intake "
+                        "schema or evidence boundary is unsupported"
+                    ),
+                },
+                "source_execution_pack": {},
+                "safe_callback_packet": {},
+                "evidence_ref_status": {},
+                "received_materials": [],
+                "missing_materials": [],
+                "rejected_materials": [],
+                "owner_next_steps": [],
+                "next_required_evidence": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+            }
+        )
+        return summary
+    if not summary["safe_evidence_ref"]:
+        summary.update(
+            {
+                "callback_intake_status": {
+                    "status": "missing_evidence_ref",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest acceptance execution callback intake is "
+                        "missing evidence_ref"
+                    ),
+                },
+                "robot_diagnostics_summary": {"status": "blocked", "reason": "missing evidence_ref"},
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary.update(
+            {
+                "callback_intake_status": {
+                    "status": "evidence_ref_mismatch",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest acceptance execution callback intake "
+                        "summary evidence_ref does not match source evidence_ref"
+                    ),
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "same evidence_ref mismatch",
+                },
+            }
+        )
+        return summary
+    if not _route_task_field_retest_acceptance_execution_callback_intake_requires_same_evidence_ref(
+        summary_fragment
+    ):
+        summary.update(
+            {
+                "callback_intake_status": {
+                    "status": "same_evidence_ref_required_false",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest acceptance execution callback intake must "
+                        "require the same evidence_ref"
+                    ),
+                },
+                "same_evidence_ref_required": False,
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "same_evidence_ref_required must be JSON true",
+                },
+            }
+        )
+        return summary
+    if not all(required_summary_fields):
+        summary.update(
+            {
+                "callback_intake_status": {
+                    "status": "missing_required_summary_fields",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest acceptance execution callback intake is "
+                        "missing required safe summary fields"
+                    ),
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing required acceptance execution callback intake summary fields",
+                },
+            }
+        )
+        return summary
+    if (
+        not _route_task_field_retest_acceptance_execution_callback_intake_has_disabled_actions(
+            intake,
+            summary_fragment,
+        )
+        or _route_task_field_run_console_has_unsafe_fields(summary_fragment)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy_text)
+        or _route_task_field_retest_execution_pack_has_success_wording(summary_fragment)
+    ):
+        summary.update(
+            {
+                "callback_intake_status": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "route-task field retest acceptance execution callback intake "
+                        "contains unsafe fields, enabled actions, raw details, or success wording"
+                    ),
+                },
+                "source_execution_pack": {},
+                "safe_callback_packet": {},
+                "evidence_ref_status": {},
+                "received_materials": [],
+                "missing_materials": [],
+                "rejected_materials": [],
+                "owner_next_steps": [],
+                "next_required_evidence": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe acceptance execution callback intake summary fields",
+                },
+                "safe_copy": (
+                    "Route-task field retest acceptance execution callback intake was "
+                    "blocked because summary fields could imply control, ACK, Nav2/HIL, "
+                    "raw artifact access, or delivery success."
+                ),
+                "safe_phone_copy": (
+                    "Route-task field retest acceptance execution callback intake was "
+                    "blocked because summary fields could imply control, ACK, Nav2/HIL, "
+                    "raw artifact access, or delivery success."
+                ),
             }
         )
     return summary
@@ -28606,6 +29245,7 @@ def build_diagnostics_payload(
     route_task_field_retest_acceptance_brief_ref="",
     route_task_field_retest_acceptance_review_decision_ref="",
     route_task_field_retest_acceptance_execution_pack_ref="",
+    route_task_field_retest_acceptance_execution_callback_intake_ref="",
     route_task_field_retest_evidence_dispatch_ref="",
     route_task_field_retest_callback_intake_ref="",
     route_task_field_retest_callback_review_decision_ref="",
@@ -29209,6 +29849,57 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
         else {}
     )
+    route_task_field_retest_acceptance_execution_callback_intake_source = (
+        latest_status.get("route_task_field_retest_acceptance_execution_callback_intake")
+        if isinstance(
+            latest_status.get("route_task_field_retest_acceptance_execution_callback_intake"),
+            dict,
+        )
+        else latest_status.get("route_task_field_retest_acceptance_execution_callback_intake_summary")
+        if isinstance(
+            latest_status.get(
+                "route_task_field_retest_acceptance_execution_callback_intake_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("route_task_field_retest_acceptance_execution_callback_intake")
+        if isinstance(
+            diagnostics_source.get("route_task_field_retest_acceptance_execution_callback_intake"),
+            dict,
+        )
+        else diagnostics_source.get(
+            "route_task_field_retest_acceptance_execution_callback_intake_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "route_task_field_retest_acceptance_execution_callback_intake_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
+        else {}
+    )
     route_task_field_retest_evidence_dispatch_source = (
         latest_status.get("route_task_field_retest_evidence_dispatch")
         if isinstance(latest_status.get("route_task_field_retest_evidence_dispatch"), dict)
@@ -29532,6 +30223,13 @@ def build_diagnostics_payload(
         None,
     )
     latest_status.pop("route_task_field_retest_acceptance_execution_pack_copy", None)
+    latest_status.pop("route_task_field_retest_acceptance_execution_callback_intake", None)
+    latest_status.pop("route_task_field_retest_acceptance_execution_callback_intake_summary", None)
+    latest_status.pop(
+        "robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary",
+        None,
+    )
+    latest_status.pop("route_task_field_retest_acceptance_execution_callback_intake_copy", None)
     latest_status.pop("route_task_field_retest_evidence_dispatch", None)
     latest_status.pop("route_task_field_retest_evidence_dispatch_summary", None)
     latest_status.pop("route_task_field_retest_evidence_dispatch_copy", None)
@@ -29818,6 +30516,23 @@ def build_diagnostics_payload(
     route_task_field_retest_acceptance_execution_pack_summary = (
         summarize_route_task_field_retest_acceptance_execution_pack(
             route_task_field_retest_acceptance_execution_pack_source
+        )
+    )
+    route_task_field_retest_acceptance_execution_callback_intake_source = (
+        route_task_field_retest_acceptance_execution_callback_intake_ref
+        or os.environ.get(
+            "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SUMMARY",
+            "",
+        )
+        or route_task_field_retest_acceptance_execution_callback_intake_source
+    )
+    route_task_field_retest_acceptance_execution_callback_intake_summary = (
+        summarize_route_task_field_retest_acceptance_execution_callback_intake(
+            route_task_field_retest_acceptance_execution_callback_intake_source
         )
     )
     route_task_field_retest_evidence_dispatch_source = (
@@ -30335,6 +31050,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_route_task_field_retest_acceptance_execution_pack_summary=(
             route_task_field_retest_acceptance_execution_pack_summary
+        ),
+        route_task_field_retest_acceptance_execution_callback_intake=(
+            route_task_field_retest_acceptance_execution_callback_intake_summary
+        ),
+        route_task_field_retest_acceptance_execution_callback_intake_summary=(
+            route_task_field_retest_acceptance_execution_callback_intake_summary
+        ),
+        robot_diagnostics_route_task_field_retest_acceptance_execution_callback_intake_summary=(
+            route_task_field_retest_acceptance_execution_callback_intake_summary
         ),
         route_task_field_retest_evidence_dispatch=route_task_field_retest_evidence_dispatch_summary,
         route_task_field_retest_evidence_dispatch_summary=route_task_field_retest_evidence_dispatch_summary,
