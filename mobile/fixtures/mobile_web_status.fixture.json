@@ -7086,6 +7086,110 @@
         "delivery success"
       ]
     },
+    "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_summary": {
+      "schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_review_decision_summary.v1",
+      "schema_version": 1,
+      "callback_review_decision_schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_review_decision.v1",
+      "source_alias": "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_summary",
+      "source": "software_proof",
+      "review_decision": "needs_callback_backfill_not_proven",
+      "source_callback_intake_status": "callback_packet_intake_ready_for_review_not_proven",
+      "accepted_callback_evidence": [
+        "accepted_callback_evidence=device_platform_summary_present_metadata_only",
+        "accepted_callback_evidence=viewport_touch_summary_present_metadata_only"
+      ],
+      "missing_callback_evidence": [
+        "missing_callback_evidence=production_app_or_pwa_prompt_user_choice_summary",
+        "missing_callback_evidence=redaction_result_summary"
+      ],
+      "rejected_callback_evidence": [
+        "rejected_callback_evidence=none_phone_safe_summary_only"
+      ],
+      "decision_reasons": [
+        "decision_reason=accepted callback evidence is metadata-only software_proof",
+        "decision_reason=missing production app or PWA prompt user choice callback summary"
+      ],
+      "safe_evidence_ref": "field_trial_acceptance_review_decision_fixture_20260518_0001",
+      "owner_handoff": "owner_handoff=现场 owner 补齐真实手机/PWA/production app callback evidence 后再交 Product/Support 复核。",
+      "next_required_evidence": "next_required_evidence=同一 safe_evidence_ref 的真实手机执行 callback 摘要、PWA prompt/user choice、production app 和 redaction result。",
+      "rerun_guidance": "rerun_guidance=补齐缺失 callback evidence 后重跑 callback intake，再运行 software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_gate。",
+      "safe_phone_copy": "现场真实手机验收执行回调复核决策 fixture 只读展示 review decision、decision reasons、owner handoff、next evidence 和 rerun guidance；这是 source=software_proof / not_proven。",
+      "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "recovery_hint": "review decision 只复核 callback evidence；缺真实手机材料、schema mismatch、unsafe copy 或 evidence_ref 不匹配时继续 blocked。",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate",
+      "not_proven": [
+        "software_proof",
+        "not_proven",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false",
+        "真实 iPhone/Android device behavior",
+        "production app",
+        "真实 PWA install prompt/user choice",
+        "真实 phone/browser acceptance",
+        "Objective 5 external proof",
+        "真实 route/elevator 现场材料缺口",
+        "HIL",
+        "delivery success"
+      ]
+    },
+    "mobile_real_device_field_trial_acceptance_execution_callback_review_decision": {
+      "schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_review_decision.v1",
+      "schema_version": 1,
+      "summary_schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_review_decision_summary.v1",
+      "decision_id": "field_trial_acceptance_execution_callback_review_decision_fixture_20260519_0001",
+      "source": "software_proof",
+      "review_decision": "needs_callback_backfill_not_proven",
+      "source_callback_intake_status": "callback_packet_intake_ready_for_review_not_proven",
+      "accepted_callback_evidence": [
+        "accepted_callback_evidence=device_platform_summary_present_metadata_only",
+        "accepted_callback_evidence=viewport_touch_summary_present_metadata_only"
+      ],
+      "missing_callback_evidence": [
+        "missing_callback_evidence=production_app_or_pwa_prompt_user_choice_summary",
+        "missing_callback_evidence=redaction_result_summary"
+      ],
+      "rejected_callback_evidence": [
+        "rejected_callback_evidence=none_phone_safe_summary_only"
+      ],
+      "decision_reasons": [
+        "decision_reason=accepted callback evidence is metadata-only software_proof",
+        "decision_reason=missing production app or PWA prompt user choice callback summary"
+      ],
+      "safe_evidence_ref": "field_trial_acceptance_review_decision_fixture_20260518_0001",
+      "owner_handoff": "owner_handoff=现场 owner 补齐真实手机/PWA/production app callback evidence 后再交 Product/Support 复核。",
+      "next_required_evidence": "next_required_evidence=同一 safe_evidence_ref 的真实手机执行 callback 摘要、PWA prompt/user choice、production app 和 redaction result。",
+      "rerun_guidance": "rerun_guidance=补齐缺失 callback evidence 后重跑 callback intake，再运行 software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_gate。",
+      "safe_phone_copy": "现场真实手机验收执行回调复核决策 fixture 只读展示 review decision、decision reasons、owner handoff、next evidence 和 rerun guidance；这是 source=software_proof / not_proven。",
+      "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "recovery_hint": "review decision 只复核 callback evidence；缺真实手机材料、schema mismatch、unsafe copy 或 evidence_ref 不匹配时继续 blocked。",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_gate",
+      "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate",
+      "not_proven": [
+        "software_proof",
+        "not_proven",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false",
+        "真实 iPhone/Android device behavior",
+        "production app",
+        "真实 PWA install prompt/user_choice",
+        "真实 phone/browser acceptance",
+        "Objective 5 external proof",
+        "真实 route/elevator 现场材料缺口",
+        "HIL",
+        "delivery success"
+      ]
+    },
     "mobile_browser_acceptance_bundle": {
       "schema": "trashbot.mobile_browser_acceptance_bundle.v1",
       "schema_version": 1,

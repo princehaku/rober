@@ -5649,6 +5649,121 @@ class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, callback_text)
 
+
+    def test_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_is_fail_closed(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        web_fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # callback review decision 只消费 safe alias/summary，不新增 ACK、diagnostics fetch 或控制请求。
+        self.assertIn("MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_CALLBACK_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_CALLBACK_REVIEW_DECISION_SCHEMA", app)
+        self.assertIn("UNSAFE_REAL_DEVICE_ACCEPTANCE_EXECUTION_CALLBACK_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeRealDeviceAcceptanceExecutionCallbackReviewDecisionText", app)
+        self.assertIn("mobileRealDeviceFieldTrialAcceptanceExecutionCallbackReviewDecisionCandidate", app)
+        self.assertIn("mobileRealDeviceFieldTrialAcceptanceExecutionCallbackReviewDecisionFromStatus", app)
+        self.assertIn("mobileRealDeviceFieldTrialAcceptanceExecutionCallbackReviewDecisionTitle", app)
+        self.assertIn("现场真实手机验收执行回调复核决策", app)
+        self.assertIn("robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_summary", app)
+        self.assertIn("review_decision", app)
+        self.assertIn("source_callback_intake_status", app)
+        self.assertIn("decision_reasons", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("rerun_guidance", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("real-device-field-trial-acceptance-execution-callback-review-decision-panel", styles)
+        self.assertIn("real-device-field-trial-acceptance-execution-callback-review-decision-grid", styles)
+        self.assertNotRegex(app, r"mobileRealDeviceFieldTrialAcceptanceExecutionCallbackReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+        self.assertNotIn("copyRealDeviceFieldTrialAcceptanceExecutionCallbackReviewDecisionButton", app)
+        self.assertNotIn("downloadRealDeviceFieldTrialAcceptanceExecutionCallbackReviewDecisionButton", app)
+
+        # fixture、Web fixture 和文档必须固定 review decision 的 software proof / not_proven / not-control 边界。
+        decision = fixture["phone_readiness"]["mobile_real_device_field_trial_acceptance_execution_callback_review_decision"]
+        alias = fixture["phone_readiness"]["robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_summary"]
+        web_alias = web_fixture["robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_summary"]
+        self.assertEqual(decision["review_decision"], "needs_callback_backfill_not_proven")
+        self.assertEqual(decision["source"], "software_proof")
+        self.assertEqual(decision["safe_to_control"], False)
+        self.assertEqual(decision["delivery_success"], False)
+        self.assertEqual(decision["primary_actions_enabled"], False)
+        self.assertIn("decision_reasons", decision)
+        self.assertIn("accepted_callback_evidence", decision)
+        self.assertIn("missing_callback_evidence", decision)
+        self.assertIn("rejected_callback_evidence", decision)
+        self.assertEqual(alias["source"], "software_proof")
+        self.assertEqual(web_alias["primary_actions_enabled"], False)
+        self.assertIn(
+            "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_gate",
+            fixture_text,
+        )
+        self.assertIn("mobile_real_device_field_trial_acceptance_execution_callback_review_decision", doc)
+        self.assertIn("现场真实手机验收执行回调复核决策", doc)
+
+    def test_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        web_fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        decision_text = json.dumps(
+            {
+                "decision": fixture["phone_readiness"]["mobile_real_device_field_trial_acceptance_execution_callback_review_decision"],
+                "alias": fixture["phone_readiness"]["robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_summary"],
+                "web_alias": web_fixture["robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # review decision fixture 只能携带脱敏复核结论，不能带 raw review、控制授权或现场通过语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw review",
+            "raw decision",
+            "full callback",
+            "full review",
+            "complete callback",
+            "complete review",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "complete acceptance materials",
+            "complete artifact",
+            "raw artifact",
+            "raw robot response",
+            "raw intake json",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "robot command",
+            "robot/internal",
+            "control authorization",
+            "field pass",
+            "真实手机已验收",
+            "验收通过",
+            "现场通过",
+            "control grant",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, decision_text)
+
 class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")
