@@ -64,6 +64,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_terminal_completion_rehearsal,
     summarize_task_terminal_completion_mainline,
     summarize_task_terminal_field_material_intake,
+    summarize_task_terminal_field_material_review_decision,
     summarize_route_task_terminal_review_decision,
     summarize_route_task_field_run_console,
     summarize_route_task_field_run_evidence_kit,
@@ -554,6 +555,159 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         )
         self.assertEqual(summary["safe_evidence_ref"], "")
         self.assertEqual(summary["accepted_safe_refs"], [])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+
+    def test_diagnostics_payload_includes_task_terminal_field_material_review_decision_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            task_record_path = Path(td) / "task.json"
+            task_record_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "terminal-field-material-review-1",
+                        "task_terminal_field_material_review_decision": {
+                            "schema": "trashbot.task_terminal_field_material_review_decision.v1",
+                            "schema_version": 1,
+                            "status": "not_proven",
+                            "source": "software_proof",
+                            "evidence_boundary": (
+                                "software_proof_docker_task_terminal_field_material_review_decision_gate"
+                            ),
+                            "safe_evidence_ref": "terminal-field-material-review-1",
+                            "evidence_ref": "terminal-field-material-review-1",
+                            "review_decision": "needs_required_material_backfill_not_proven",
+                            "accepted_materials": ["safe_task_record_metadata"],
+                            "missing_materials": [
+                                "real_dropoff_or_cancel_terminal_material",
+                                "real_route_elevator_field_material",
+                            ],
+                            "rejected_materials": ["unsafe_phone_screenshot"],
+                            "blocked_materials": ["missing_real_phone_browser_evidence"],
+                            "owner_handoff": ["现场 owner 补齐同一 safe evidence_ref 的材料"],
+                            "next_required_evidence": ["真实手机/browser evidence"],
+                            "rerun_guidance": [
+                                "补齐缺失材料后重新运行 task_terminal_field_material_intake",
+                                "保持同一 safe evidence_ref 后再运行 task_terminal_field_material_review_decision",
+                            ],
+                            "phone_safe_copy": (
+                                "现场材料仍需补齐；software_proof；not_proven；"
+                                "delivery_success=false；primary_actions_enabled=false；"
+                                "safe_to_control=false。"
+                            ),
+                            "evidence_boundary_flags": [
+                                "software_proof",
+                                "not_proven",
+                                "delivery_success=false",
+                                "primary_actions_enabled=false",
+                                "safe_to_control=false",
+                            ],
+                            "not_proven": ["real_route_elevator_field_pass"],
+                            "metadata_only": True,
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                            "safe_to_control": False,
+                            "ack_post_allowed": False,
+                            "remote_ack_allowed": False,
+                            "cursor_updates_allowed": False,
+                            "terminal_ack_allowed": False,
+                            "nav2_triggered": False,
+                            "hil_pass": False,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "completed", "task_record_path": str(task_record_path)},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )
+            summary = payload[
+                "robot_diagnostics_task_terminal_field_material_review_decision_summary"
+            ]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, payload["task_terminal_field_material_review_decision"])
+        self.assertEqual(summary, payload["task_terminal_field_material_review_decision_summary"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_task_terminal_field_material_review_decision_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.task_terminal_field_material_review_decision.v1",
+        )
+        self.assertEqual(summary["status"], "not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["review_decision"], "needs_required_material_backfill_not_proven")
+        self.assertEqual(summary["safe_evidence_ref"], "terminal-field-material-review-1")
+        self.assertIn("safe_task_record_metadata", summary["accepted_materials"])
+        self.assertIn("real_route_elevator_field_material", summary["missing_materials"])
+        self.assertIn("unsafe_phone_screenshot", summary["rejected_materials"])
+        self.assertIn("missing_real_phone_browser_evidence", summary["blocked_materials"])
+        self.assertIn("现场 owner", summary["owner_handoff"][0])
+        self.assertIn("真实手机/browser evidence", summary["next_required_evidence"])
+        self.assertIn("task_terminal_field_material_review_decision", summary["rerun_guidance"][1])
+        self.assertIn("delivery_success=false", summary["evidence_boundary_flags"])
+        self.assertIn("safe_to_control=false", summary["evidence_boundary_flags"])
+        self.assertIn("real_route_elevator_field_pass", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(task_record_path), encoded)
+
+    def test_task_terminal_field_material_review_decision_fail_closed_on_unsafe_payload(self):
+        summary = summarize_task_terminal_field_material_review_decision(
+            {
+                "schema": "trashbot.task_terminal_field_material_review_decision_summary.v1",
+                "evidence_boundary": (
+                    "software_proof_docker_task_terminal_field_material_review_decision_gate"
+                ),
+                "safe_evidence_ref": "terminal-field-material-review-unsafe",
+                "status": "field_pass",
+                "review_decision": "ready_for_owner_handoff_not_proven",
+                "accepted_materials": ["safe-ref"],
+                "missing_materials": [],
+                "phone_safe_copy": "Route/elevator field pass complete; HIL pass; control grant.",
+                "delivery_success": True,
+                "primary_actions_enabled": True,
+                "safe_to_control": True,
+                "raw_artifact": "token secret /tmp/raw.json checksum=abc",
+            }
+        )
+        missing = summarize_task_terminal_field_material_review_decision({})
+
+        self.assertEqual(
+            summary["status"],
+            "blocked_unsafe_task_terminal_field_material_review_decision_summary",
+        )
+        self.assertEqual(
+            missing["status"],
+            "blocked_missing_task_terminal_field_material_review_decision",
+        )
+        self.assertEqual(summary["safe_evidence_ref"], "")
+        self.assertEqual(summary["accepted_materials"], [])
+        self.assertEqual(summary["review_decision"], "blocked_missing_or_unsupported_intake_not_proven")
         self.assertFalse(summary["delivery_success"])
         self.assertFalse(summary["primary_actions_enabled"])
         self.assertFalse(summary["safe_to_control"])

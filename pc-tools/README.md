@@ -120,6 +120,22 @@ python3 pc-tools/evidence/route_task_terminal_review_decision.py \
 
 该 gate 不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、硬件、真实手机、外部云、OSS/CDN、DB/queue 或 4G。缺输入、坏 JSON、unsupported schema/boundary、same `evidence_ref` mismatch、unsafe copy、raw path/credential/ROS topic/serial/WAVE ROVER/HIL/success wording、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_operator_terminal_review_not_proven` 只表示 Docker/local 终态复账材料足够进入 operator review 或 field retest 请求准备，不是真实 dropoff/cancel completion、delivery success、HIL、真实手机设备或 Objective 5 external proof。
 
+## task_terminal_field_material_review_decision
+
+`pc-tools/evidence/task_terminal_field_material_review_decision.py` 只读上一轮 `task_terminal_field_material_intake` artifact、summary 或 Robot safe alias，把 returned/missing materials 转成 metadata-only 复核决策：
+
+```bash
+python3 pc-tools/evidence/task_terminal_field_material_review_decision.py \
+  --intake-json /tmp/task_terminal_field_material_intake_summary.json \
+  --evidence-ref terminal-field-material-review-001 \
+  --output /tmp/task_terminal_field_material_review_decision.json \
+  --summary-output /tmp/task_terminal_field_material_review_decision_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.task_terminal_field_material_review_decision.v1`，summary 使用 `schema=trashbot.task_terminal_field_material_review_decision_summary.v1`，证据边界固定为 `software_proof_docker_task_terminal_field_material_review_decision_gate`。核心字段包括 `review_decision`、`accepted_materials`、`missing_materials`、`rejected_materials`、`blocked_materials`、`owner_handoff`、`next_required_evidence`、`rerun_guidance`、`same_evidence_ref_required=true`、`software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false` 和 `safe_to_control=false`。
+
+Decision mapping 固定覆盖 `ready_for_owner_handoff_not_proven`、`needs_required_material_backfill_not_proven`、`blocked_rejected_or_unsafe_materials_not_proven`、`blocked_evidence_ref_mismatch_not_proven` 和 `blocked_missing_or_unsupported_intake_not_proven`。该 gate 服务 Objective 3 / PR #4 的现场材料复核链路，也保留 PR #5 真实材料 blocker 边界；它不读取真实材料目录，不访问 ROS graph、Nav2 runtime、serial/UART、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。ready 只表示 owner handoff 可复核，不是真实 route/elevator field pass、真实 dropoff/cancel completion、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 ## route/task field retest execution pack
 
 `pc-tools/evidence/route_task_field_retest_execution_pack.py` 只读上一轮 `route_task_terminal_review_decision` artifact、summary 或 wrapper/nested JSON，把 review decision、owner handoff、next required evidence 和 field retest guidance 整理成下一次真实现场复测可用的 execution pack：

@@ -64,6 +64,44 @@ Nav2, route execution, WAVE ROVER, HIL, material collection, Objective 5
 external proof, dropoff/cancel completion, route/elevator field pass, or
 delivery success.
 
+## robot_diagnostics_task_terminal_field_material_review_decision_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_task_terminal_field_material_review_decision_summary` as a
+safe alias for task-terminal field-material review-decision metadata.
+
+- Source artifact schema:
+  `trashbot.task_terminal_field_material_review_decision.v1`
+- Source summary schema:
+  `trashbot.task_terminal_field_material_review_decision_summary.v1`
+- Robot alias schema:
+  `trashbot.robot_diagnostics_task_terminal_field_material_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_task_terminal_field_material_review_decision_gate`
+
+The alias is metadata-only and read-only. It may expose sanitized
+`status`, `source=software_proof`, review decision, safe `evidence_ref`,
+accepted materials, missing materials, rejected materials, blocked materials,
+`owner_handoff`, `next_required_evidence`, `rerun_guidance`, phone-safe copy,
+`software_proof`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and `safe_to_control=false`.
+
+Missing payload, unsupported schema or boundary, unsafe copy, raw artifact or
+local-path fields, checksums, credentials, success wording, field-pass
+wording, HIL/pass wording, Objective 5 external proof wording, control grants,
+`delivery_success=true`, `primary_actions_enabled=true`, or
+`safe_to_control=true` must fail closed as blocked/not_proven.
+
+This alias must not read raw artifacts, hardware, serial/UART, ROS graph,
+cloud resources, mobile browser state, ACK payloads, command envelopes, or
+completion cursors. It must not enable Start Delivery, Confirm Dropoff,
+Cancel, ACK, cursor updates, persistence updates, terminal ACK, commands,
+Nav2, route execution, WAVE ROVER, HIL, material collection, Objective 5
+external proof, dropoff/cancel completion, route/elevator field pass, PR #4
+field pass, PR #5 hardware-material closure, or delivery success. It supports
+Objective 2 and Objective 3 evidence hygiene only as `software_proof` /
+`not_proven` reviewability.
+
 ## robot_diagnostics_hardware_real_material_escalation_request_summary
 
 Robot diagnostics exposes

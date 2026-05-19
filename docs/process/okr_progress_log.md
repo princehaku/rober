@@ -8,7 +8,21 @@
 
 ## 2026-05-19 系列
 
-更新时间：2026-05-19 15:07 Asia/Shanghai。
+更新时间：2026-05-19 16:19 Asia/Shanghai。
+
+### 2026-05-19 16-17｜task-terminal-field-material-review-decision｜O2/O3/O4 terminal field material review decision software proof
+
+本轮 `sprints/2026.05.19_16-17_task-terminal-field-material-review-decision/` 按 live OKR rerank 后推进 `task_terminal_field_material_review_decision`，不继续 O5 local metadata depth、不继续 O1 hardware metadata wrapper，也不把 PR #4 route/elevator material blocker 写成真实 field pass。Autonomy worker 新增 read-only PC evidence gate，把 `task_terminal_field_material_intake` 的 returned/missing materials 转成 accepted/missing/rejected/blocked materials、owner_handoff、next_required_evidence 和 rerun_guidance，并修复首轮 empty `missing_materials: []` 被误判为 absent 的 bug。Robot worker 新增 `robot_diagnostics_task_terminal_field_material_review_decision_summary` safe alias，对 missing/unsupported/unsafe/success/control inputs fail closed。Full-Stack worker 在 mobile/web 增加只读“现场材料复核决策”panel，只消费 Robot safe alias，Start Delivery、Confirm Dropoff、Cancel gating 不变。证据边界保持 `software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL，不补 PR #5 2D LiDAR / ToF 真实材料；仍缺真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report、真实 UART、真实 HIL-entry、真实 SKU/source/receipt/procurement/installation/wiring/power/calibration。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | `task_terminal_field_material_review_decision` 让 terminal field materials 能从 intake 进入 accepted/missing/rejected/blocked review decision、owner handoff 和 rerun guidance；仍缺真实 dropoff completion、真实 cancel completion、delivery result、delivery_success、真实电梯、真实门状态、真实楼层确认、人工协助记录、真实 Nav2/fixed-route、真实 route/elevator field pass 和现场 task record。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮把真实 Nav2/fixed-route runtime log、route completion signal、field task record、route/elevator field material、dropoff/cancel terminal material 和 delivery result 继续作为 `next_required_evidence`；仍缺真实路线采集、Nav2/fixed-route 实跑、route completion signal、现场 task_record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可只读展示“现场材料复核决策”、accepted/missing/rejected/blocked materials、owner_handoff、next_required_evidence 和 rerun_guidance；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice、真实手机/browser external proof 和现场 phone behavior。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；`python3 -m unittest tests.test_task_terminal_field_material_review_decision` 输出 `Ran 5 tests ... OK`；`--help` 通过；required `rg` 与 scoped diff check 通过。Robot worker 报告 `py_compile` 通过；`python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py` 输出 `Ran 208 tests in 0.509s OK`；required `rg` 与 scoped diff check 通过。Full-Stack worker 报告 `python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 129 tests ... OK`；`py_compile` 通过；`node --check mobile/web/app.js` 通过；required `rg` 与 scoped diff check 通过。Product closeout required file check、required `rg` 与 scoped `git diff --check` 通过。本轮不证明真实 O5 external proof、O1 HIL、PR #4 field pass、PR #5 hardware material、真实 phone/browser、真实 Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
 
 ### 2026-05-19 15-16｜pr5-github-thread-resolution｜O1/O4 PR #5 GitHub review state closeout
 

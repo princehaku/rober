@@ -155,6 +155,68 @@
             "real_phone_browser"
         ]
     },
+    "robot_diagnostics_task_terminal_field_material_review_decision_summary": {
+        "schema": "trashbot.task_terminal_field_material_review_decision_summary.v1",
+        "schema_version": 1,
+        "summary_alias": "robot_diagnostics_task_terminal_field_material_review_decision_summary",
+        "source": "software_proof",
+        "review_decision": "needs_required_material_backfill_not_proven",
+        "safe_evidence_ref": "task_terminal_field_material_intake_fixture_20260519_0001",
+        "accepted_materials": [
+            "accepted_material=task_terminal_completion_mainline_summary_metadata_only"
+        ],
+        "missing_materials": [
+            "missing_material=real_task_record",
+            "missing_material=real_dropoff_or_cancel_terminal_material",
+            "missing_material=real_route_elevator_field_material",
+            "missing_material=real_phone_browser_evidence"
+        ],
+        "rejected_materials": [],
+        "blocked_materials": [
+            "blocked_material=missing_real_task_record",
+            "blocked_material=missing_real_dropoff_or_cancel_terminal_material"
+        ],
+        "owner_handoff": [
+            "owner_handoff=现场 owner 补齐同一 safe evidence_ref 下的真实 task record 和 terminal materials",
+            "owner_handoff=Autonomy 复核 route/elevator/Nav2 runtime log 和 route completion signal",
+            "owner_handoff=Full-Stack 复核真实手机/browser evidence"
+        ],
+        "next_required_evidence": [
+            "next_required_evidence=同一 safe evidence_ref 的真实 task record",
+            "next_required_evidence=真实 dropoff/cancel terminal materials",
+            "next_required_evidence=真实 Nav2/fixed-route runtime log",
+            "next_required_evidence=真实 route completion signal",
+            "next_required_evidence=真实电梯门状态、目标楼层确认和人工协助记录",
+            "next_required_evidence=真实手机/browser evidence"
+        ],
+        "rerun_guidance": [
+            "rerun_guidance=补齐缺失材料后重新运行 task_terminal_field_material_intake",
+            "rerun_guidance=保持同一 safe evidence_ref 后再运行 task_terminal_field_material_review_decision"
+        ],
+        "phone_safe_copy": "现场材料仍需补齐，当前只能查看复核决策和下一步证据要求；手机端不放行 Start Delivery、Confirm Dropoff 或 Cancel。",
+        "evidence_boundary": [
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false"
+        ],
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "safe_to_control": false,
+        "not_proven": [
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "真实 task record",
+            "真实 dropoff/cancel terminal materials",
+            "真实 route/elevator field materials",
+            "真实手机/browser",
+            "PR #4 real field materials"
+        ]
+    },
     "wave_rover_feedback_replay": {
         "schema": "trashbot.wave_rover_feedback_replay.v1",
     "schema_version": 1,
