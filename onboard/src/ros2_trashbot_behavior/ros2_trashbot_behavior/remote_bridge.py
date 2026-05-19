@@ -35,6 +35,9 @@ CURSOR_PROTOCOL_VERSION = "trashbot.remote.cursor.v1"
 CLOUD_ACK_OUTAGE_REPLAY_GUARD_BOUNDARY = "software_proof_docker_cloud_ack_outage_replay_guard"
 CLOUD_PENDING_ACK_STATUS_GUARD_BOUNDARY = "software_proof_docker_cloud_pending_ack_status_guard"
 CLOUD_COMMAND_EXPIRY_SAFETY_GUARD_BOUNDARY = "software_proof_docker_cloud_command_expiry_safety_guard"
+CLOUD_COMMAND_IDEMPOTENCY_VISIBILITY_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_command_idempotency_visibility_guard"
+)
 PENDING_TERMINAL_ACK_KEY = "pending_terminal_ack"
 SAFE_OPERATOR_STATUS_KEYS = {
     "protocol_version",
@@ -50,6 +53,9 @@ SAFE_OPERATOR_STATUS_KEYS = {
     "safe_phone_copy",
     "pending_terminal_ack_id",
     "expired_command_id",
+    "duplicate_command_id",
+    "cached_ack_state",
+    "ack_semantics",
     "primary_actions_enabled",
     "proof_boundary",
     "accepted",
@@ -155,6 +161,28 @@ def _phone_safe_expired_command_status(robot_id, command_id):
     )
 
 
+def _phone_safe_duplicate_command_status(robot_id, command_id, ack_state):
+    safe_command_id = _safe_state_text_value(command_id)
+    safe_ack_state = str(ack_state or "unknown").strip() or "unknown"
+    safe_phone_copy = "重复云指令已去重，机器人没有重复执行；cached ACK 不是送达成功。"
+    return make_status(
+        robot_id,
+        "remote_degraded",
+        safe_phone_copy,
+        remote_ready=False,
+        cloud_reachable=True,
+        auth_state="unknown",
+        degradation_state="command_duplicate_deduped",
+        retry_hint="refresh_status",
+        safe_phone_copy=safe_phone_copy,
+        duplicate_command_id=safe_command_id,
+        cached_ack_state=safe_ack_state,
+        ack_semantics="duplicate_cached_ack_not_delivery_success",
+        primary_actions_enabled=False,
+        proof_boundary=CLOUD_COMMAND_IDEMPOTENCY_VISIBILITY_GUARD_BOUNDARY,
+    )
+
+
 class RemoteBridgeWorker:
     """Pure-Python HTTP polling worker for the outbound 4G bridge.
 
@@ -214,15 +242,22 @@ class RemoteBridgeWorker:
             return True
         if command is None:
             return False
-        if command["id"] in self.command_results:
-            ack = self.command_results[command["id"]]
-            self._post_terminal_ack(command["id"], ack, remember=False)
-            return True
         if command_expired(command):
             # 过期命令不能只回 ACK；手机首屏也必须看到 fail-closed 原因，避免用户误以为可继续发车。
             expired_status = self._record_expired_command_status(command["id"])
             ack = self._make_ack("ignored", "command expired before robot polling", expired_status)
             self._post_terminal_ack(command["id"], ack)
+            return True
+        if command["id"] in self.command_results:
+            # duplicate 只复用已有 terminal ACK envelope，不再提交本地 action；同时把“去重不是送达”
+            # 写进 operator_status，避免手机端只看到 acked 就误判 delivery success。
+            cached_ack = dict(self.command_results[command["id"]])
+            duplicate_status = self._record_duplicate_command_status(
+                command["id"],
+                cached_ack.get("state"),
+            )
+            duplicate_ack = self._ack_with_operator_status(cached_ack, duplicate_status)
+            self._post_terminal_ack(command["id"], duplicate_ack, remember=False)
             return True
 
         try:
@@ -317,6 +352,19 @@ class RemoteBridgeWorker:
         self._set_operator_status(status)
         return status
 
+    def _record_duplicate_command_status(self, command_id, ack_state):
+        status = _phone_safe_duplicate_command_status(self.robot_id, command_id, ack_state)
+        self._set_operator_status(status)
+        return status
+
+    def _ack_with_operator_status(self, ack, operator_status):
+        duplicate_ack = dict(ack or {})
+        result = duplicate_ack.get("result") if isinstance(duplicate_ack.get("result"), dict) else {}
+        safe_result = dict(result)
+        safe_result["operator_status"] = operator_status
+        duplicate_ack["result"] = safe_result
+        return duplicate_ack
+
     def _set_operator_status(self, status):
         if hasattr(self.operator_backend, "_set_status"):
             extra = {
@@ -330,6 +378,9 @@ class RemoteBridgeWorker:
             for key in (
                 "pending_terminal_ack_id",
                 "expired_command_id",
+                "duplicate_command_id",
+                "cached_ack_state",
+                "ack_semantics",
                 "primary_actions_enabled",
                 "proof_boundary",
             ):

@@ -21,6 +21,8 @@ const CLOUD_PENDING_ACK_STATUS_BOUNDARY = "software_proof_docker_cloud_pending_a
 const CLOUD_PENDING_ACK_STATUS_COPY = "本地命令已终态，但云端 ACK 还没确认，暂不能拉取新命令";
 const CLOUD_COMMAND_EXPIRY_BOUNDARY = "software_proof_docker_cloud_command_expiry_safety_guard";
 const CLOUD_COMMAND_EXPIRY_COPY = "云端命令已过期，机器人已忽略旧命令；请重新下发一次安全指令。";
+const CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY = "software_proof_docker_cloud_command_idempotency_visibility_guard";
+const CLOUD_COMMAND_IDEMPOTENCY_COPY = "重复云指令已去重；机器人没有重复执行；这不是送达成功。";
 const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_acceptance_readiness_gate";
 const MOBILE_DEVICE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_device_evidence_capture_gate";
 const MOBILE_DEVICE_HANDOFF_SESSION_BOUNDARY = "software_proof_docker_mobile_device_handoff_session_gate";
@@ -1450,6 +1452,38 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         evidence_boundary: CLOUD_COMMAND_EXPIRY_BOUNDARY,
         proof_boundary: CLOUD_COMMAND_EXPIRY_BOUNDARY,
         expired_command_id: safeText(provided.expired_command_id, ""),
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
+    if (provided.degradation_state === "command_duplicate_deduped" ||
+        provided.proof_boundary === CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY) {
+      // duplicate cached ACK 只说明重复 command_id 被去重；前端不能把 cached ACK 升格成送达结果。
+      const duplicateCommandId = safeText(provided.duplicate_command_id, "");
+      const cachedAckState = safeText(provided.cached_ack_state, "cached_ack");
+      return {
+        ...provided,
+        missing: false,
+        overall_status: "blocked",
+        preflight_status: "command_duplicate_deduped",
+        db_queue_status: `duplicate_command_id=${duplicateCommandId || "[redacted]"} / cached_ack_state=${cachedAckState} / remote_ready=false / primary_actions_enabled=false`,
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_COMMAND_IDEMPOTENCY_COPY),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "刷新状态确认最新任务；不要自动重放或 resubmit 重复云指令。",
+        ),
+        ack_semantics: safeText(
+          provided.ack_semantics,
+          "duplicate_cached_ack_not_delivery_success",
+        ),
+        evidence_boundary: CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY,
+        proof_boundary: CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY,
+        duplicate_command_id: duplicateCommandId,
+        cached_ack_state: cachedAckState,
         not_proven: notProvenList(provided.not_proven),
       };
     }

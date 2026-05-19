@@ -829,6 +829,42 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             "software_proof_docker_cloud_command_expiry_safety_guard",
         )
 
+        duplicate = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "degradation_state": "command_duplicate_deduped",
+                "retry_hint": "refresh_status",
+                "safe_phone_copy": "重复云指令已去重，机器人没有重复执行；cached ACK 不是送达成功。",
+                "duplicate_command_id": "cmd-duplicate",
+                "cached_ack_state": "acked",
+                "ack_semantics": "duplicate_cached_ack_not_delivery_success",
+                "remote_ready": False,
+                "primary_actions_enabled": False,
+                "proof_boundary": "software_proof_docker_cloud_command_idempotency_visibility_guard",
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        self.assertEqual(duplicate["primary_state"], "waiting_for_command_ack")
+        self.assertFalse(duplicate["can_continue"])
+        self.assertEqual(duplicate["next_action"], "refresh_status")
+        self.assertEqual(duplicate["support_level"], "remote_duplicate_deduped")
+        self.assertEqual(duplicate["command_safety"]["global_block_reason"], "command_duplicate_deduped")
+        self.assertFalse(duplicate["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(duplicate["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(duplicate["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(duplicate["command_safety"]["actions"]["diagnostics"]["enabled"])
+        self.assertEqual(duplicate["remote_readiness"]["duplicate_command_id"], "cmd-duplicate")
+        self.assertEqual(duplicate["remote_readiness"]["cached_ack_state"], "acked")
+        self.assertEqual(
+            duplicate["remote_readiness"]["ack_semantics"],
+            "duplicate_cached_ack_not_delivery_success",
+        )
+        self.assertEqual(
+            duplicate["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_command_idempotency_visibility_guard",
+        )
+        self.assertNotIn("delivery_success\": true", json.dumps(duplicate["remote_readiness"]))
+
         acked = build_phone_readiness(
             dict(local_status, target="Lobby trash station"),
             remote_readiness={
@@ -1686,6 +1722,60 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertFalse(payload["remote_readiness"]["remote_ready"])
         self.assertEqual(payload["remote_readiness"]["degradation_state"], "command_expired")
         self.assertIn("重新提交", payload["remote_readiness"]["safe_phone_copy"])
+
+    def test_mock_cloud_reports_duplicate_cached_ack_as_phone_safe_deduped_status(self):
+        command = {
+            "protocol_version": REMOTE_PROTOCOL_VERSION,
+            "id": "cmd-duplicate-visible",
+            "type": "collect",
+            "payload": {"target": "trash_station"},
+        }
+        status, payload = self.request("POST", "/robots/trashbot-001/commands", command)
+        self.assertEqual(status, 201)
+
+        status, payload = self.request(
+            "POST",
+            "/robots/trashbot-001/commands/cmd-duplicate-visible/ack",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "acked",
+                "message": "collect command submitted",
+                "updated_at": time.time(),
+                "result": {
+                    "operator_status": {
+                        "state": "remote_degraded",
+                        "degradation_state": "command_duplicate_deduped",
+                        "duplicate_command_id": "cmd-duplicate-visible",
+                        "cached_ack_state": "acked",
+                        "ack_semantics": "duplicate_cached_ack_not_delivery_success",
+                        "remote_ready": False,
+                        "primary_actions_enabled": False,
+                        "retry_hint": "refresh_status",
+                        "safe_phone_copy": "重复云指令已去重，机器人没有重复执行；cached ACK 不是送达成功。",
+                        "proof_boundary": "software_proof_docker_cloud_command_idempotency_visibility_guard",
+                    }
+                },
+            },
+        )
+        self.assertEqual(status, 200)
+
+        status, payload = self.request("POST", "/robots/trashbot-001/commands", command)
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["duplicate"])
+        self.assertFalse(payload["remote_readiness"]["remote_ready"])
+        self.assertEqual(payload["remote_readiness"]["degradation_state"], "command_duplicate_deduped")
+        self.assertEqual(payload["remote_readiness"]["duplicate_command_id"], "cmd-duplicate-visible")
+        self.assertEqual(payload["remote_readiness"]["cached_ack_state"], "acked")
+        self.assertEqual(
+            payload["remote_readiness"]["ack_semantics"],
+            "duplicate_cached_ack_not_delivery_success",
+        )
+        self.assertFalse(payload["remote_readiness"]["primary_actions_enabled"])
+        self.assertEqual(
+            payload["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_command_idempotency_visibility_guard",
+        )
+        self.assertNotIn("delivery_success\": true", json.dumps(payload["remote_readiness"]))
 
     def test_mock_cloud_treats_missing_or_null_expires_at_as_pending_not_expired(self):
         store = MockCloudStore()

@@ -510,6 +510,38 @@ can still reproduce the issue. ACK text must stay conservative: an ACK is only
 command accepted/processing evidence and does not prove delivery success, real
 4G/cloud, OSS/CDN traffic, WAVE ROVER motion, or HIL.
 
+## Command Idempotency Visibility Guard
+
+The Robot bridge treats `command.id` as the idempotency key. If the cloud sends
+the same unexpired command id again after the robot already has a terminal ACK
+cached in memory, the bridge must reuse that cached ACK and must not submit a
+second local action. The operator status still has to become visible and
+phone-safe, because an `acked` cached envelope is not delivery success.
+
+When this guard is active, status/readiness must include:
+
+- `degradation_state=command_duplicate_deduped`
+- `remote_ready=false`
+- `duplicate_command_id=<safe command id or [redacted]>`
+- `cached_ack_state=<acked|failed|ignored>`
+- `ack_semantics=duplicate_cached_ack_not_delivery_success`
+- `primary_actions_enabled=false`
+- `safe_phone_copy=重复云指令已去重，机器人没有重复执行；cached ACK 不是送达成功。`
+- `retry_hint=refresh_status`
+- `proof_boundary=software_proof_docker_cloud_command_idempotency_visibility_guard`
+
+Priority order matters. A persisted pending terminal ACK still blocks command
+pulling before the bridge can observe another command, and expired commands must
+continue to report `command_expired` rather than being hidden by duplicate
+visibility. `build_phone_readiness` and `trashbot.command_safety.v1` must block
+Start Delivery, Confirm Dropoff, and Cancel for
+`command_duplicate_deduped`; Diagnostics remains available so support can inspect
+the safe command id, cached ACK state, ACK semantics, and proof boundary. This is
+only `software_proof_docker_cloud_command_idempotency_visibility_guard`; it does
+not prove production DB/queue behavior, public HTTPS/TLS, real 4G/SIM,
+OSS/CDN live traffic, real phone browser, Nav2 or fixed route delivery,
+WAVE ROVER motion, HIL, or delivery success.
+
 ## Command Expiry Safety Guard
 
 The Robot bridge treats an expired cloud command as a terminal `ignored` ACK and
@@ -951,8 +983,8 @@ details.
 | `remote_ready` | `true` only means the current local/mock control-plane conditions allow the phone flow to continue; it is not real cloud, 4G, HIL, or delivery proof. |
 | `cloud_reachable` | Whether the configured local/mock control-plane is reachable from the caller's point of view. |
 | `auth_state` | Phone-safe auth state such as `mock_not_required`, `required`, `authorized`, or `auth_failed`. |
-| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `auth_failed`, `cloud_unreachable`, or `malformed_response`. |
-| `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `check_auth`, `retry_cloud`, or `contact_support`. |
+| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `auth_failed`, `cloud_unreachable`, or `malformed_response`. |
+| `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `retry_cloud`, or `contact_support`. |
 | `safe_phone_copy` | Plain-language UI copy that must not include raw JSON, ROS topic names, secrets, serial devices, or hardware parameters. |
 
 `auth_state=authorized` means the local/mock request passed the configured bearer
@@ -1027,7 +1059,9 @@ processed the command yet.
 
 - The robot never exposes `/cmd_vel` over the remote bridge.
 - The bridge calls only behavior-level ROS contracts.
-- `command.id` is an idempotency key; duplicate IDs reuse the cached ack.
+- `command.id` is an idempotency key; duplicate IDs reuse the cached ack and
+  expose `command_duplicate_deduped` with
+  `ack_semantics=duplicate_cached_ack_not_delivery_success`.
 - Expired commands are ignored.
 - Malformed `collect` commands without a non-empty `target` fail before any local action goal is sent.
 - New `collect` commands are ignored while a task is already active.

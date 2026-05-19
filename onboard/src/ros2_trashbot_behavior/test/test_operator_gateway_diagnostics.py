@@ -25853,6 +25853,17 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                     "can_cancel": True,
                     "source": "software_proof",
                     "task_id": "task-support-1",
+                    "remote_readiness": {
+                        "degradation_state": "command_duplicate_deduped",
+                        "duplicate_command_id": "cmd-duplicate-diagnostics",
+                        "cached_ack_state": "acked",
+                        "ack_semantics": "duplicate_cached_ack_not_delivery_success",
+                        "remote_ready": False,
+                        "primary_actions_enabled": False,
+                        "retry_hint": "refresh_status",
+                        "safe_phone_copy": "重复云指令已去重，机器人没有重复执行；cached ACK 不是送达成功。",
+                        "proof_boundary": "software_proof_docker_cloud_command_idempotency_visibility_guard",
+                    },
                     "queue_url": "postgres://robot:secret@db.local/queue",
                     "local_path": "/tmp/robot/status.json",
                 }
@@ -25949,6 +25960,21 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(offline_resume["primary_actions_enabled"])
         self.assertTrue(offline_resume["support_entry_enabled"])
         self.assertIn("ACK 只表示", offline_resume["ack_semantics"])
+        self.assertEqual(
+            payload["latest_status"]["phone_readiness"]["remote_readiness"]["degradation_state"],
+            "command_duplicate_deduped",
+        )
+        self.assertEqual(
+            payload["latest_status"]["phone_readiness"]["remote_readiness"]["ack_semantics"],
+            "duplicate_cached_ack_not_delivery_success",
+        )
+        self.assertEqual(
+            payload["latest_status"]["phone_readiness"]["command_safety"]["global_block_reason"],
+            "command_duplicate_deduped",
+        )
+        self.assertFalse(
+            payload["latest_status"]["phone_readiness"]["command_safety"]["actions"]["start"]["enabled"]
+        )
         encoded_offline_resume = json.dumps(offline_resume, ensure_ascii=False)
         for forbidden in (
             "raw_ros_topic",

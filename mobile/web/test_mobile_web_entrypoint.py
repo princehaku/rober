@@ -9,6 +9,9 @@ REPO_ROOT = WEB_ROOT.parent.parent
 FIXTURE = WEB_ROOT / "fixtures" / "status.json"
 CLOUD_PENDING_ACK_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_pending_ack_status_guard.json"
 CLOUD_COMMAND_EXPIRY_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_expiry_safety_guard.json"
+CLOUD_COMMAND_IDEMPOTENCY_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_idempotency_visibility_guard.json"
+)
 PR5_VENDOR_SOURCE_REVIEW_PACKET_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_pr5_vendor_source_review_packet_summary.json"
 )
@@ -139,6 +142,84 @@ class CloudCommandExpirySafetyGuardMobileTest(unittest.TestCase):
         fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
 
         # expired command fixture 只提供安全摘要，不能泄漏原始命令、凭证、控制面或成功证明。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "serial device",
+            "baudrate",
+            "wave rover parameter",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
+
+
+class CloudCommandIdempotencyVisibilityGuardMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_command_idempotency_visibility_guard_is_consumed_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_COMMAND_IDEMPOTENCY_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # duplicate cached ACK 复用 cloud readiness 面板；手机端只能解释去重，不能新增控制 endpoint。
+        self.assertIn("CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY", app)
+        self.assertIn("CLOUD_COMMAND_IDEMPOTENCY_COPY", app)
+        self.assertIn("software_proof_docker_cloud_command_idempotency_visibility_guard", app)
+        self.assertIn("command_duplicate_deduped", app)
+        self.assertIn("duplicate_command_id", app)
+        self.assertIn("cached_ack_state", app)
+        self.assertIn("duplicate_cached_ack_not_delivery_success", app)
+        self.assertIn("remote_ready=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"cloudCommandIdempotency.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 明确重复 command_id 已去重，cached ACK 不代表送达成功，三类主操作全关闭。
+        self.assertEqual(fixture["degradation_state"], "command_duplicate_deduped")
+        self.assertEqual(fixture["duplicate_command_id"], "cmd_duplicate_20260520_001")
+        self.assertEqual(fixture["cached_ack_state"], "acked")
+        self.assertEqual(fixture["remote_ready"], False)
+        self.assertEqual(fixture["primary_actions_enabled"], False)
+        self.assertEqual(fixture["delivery_success"], False)
+        self.assertEqual(fixture["ack_semantics"], "duplicate_cached_ack_not_delivery_success")
+        self.assertIn("重复云指令已去重", fixture_text)
+        self.assertIn("机器人没有重复执行", fixture_text)
+        self.assertIn("这不是送达成功", fixture_text)
+        self.assertIn("自动重放", fixture_text)
+        self.assertIn("自动 resubmit", fixture_text)
+        self.assertIn("remote_ready=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("software_proof_docker_cloud_command_idempotency_visibility_guard", fixture_text)
+        self.assertNotIn("delivery_success\": true", fixture_text)
+
+        # 产品文档必须把 duplicate/deduped 写成只读可见性，不是真实云/手机/HIL/送达证明。
+        self.assertIn("cloud_command_idempotency_visibility_guard", doc)
+        self.assertIn("command_duplicate_deduped", doc)
+        self.assertIn("duplicate_command_id", doc)
+        self.assertIn("cached_ack_state", doc)
+        self.assertIn("duplicate_cached_ack_not_delivery_success", doc)
+        self.assertIn("重复云指令已去重", doc)
+        self.assertIn("这不是送达成功", doc)
+        self.assertIn("不自动重放、不自动 resubmit", doc)
+        self.assertIn("software_proof_docker_cloud_command_idempotency_visibility_guard", doc)
+
+    def test_cloud_command_idempotency_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_COMMAND_IDEMPOTENCY_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # duplicate/deduped fixture 只暴露安全摘要，不能携带原始命令、凭证、控制授权或成功证明。
         for forbidden in (
             "/cmd_vel",
             "raw ros topic",

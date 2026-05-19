@@ -34,6 +34,9 @@ PHONE_OFFLINE_RESUME_READINESS_SCHEMA = "trashbot.phone_offline_resume_readiness
 PHONE_OFFLINE_RESUME_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_offline_resume_gate"
 PHONE_PWA_EVIDENCE_BOUNDARY = "software_proof_docker_phone_pwa_installability_gate"
 PHONE_COMMAND_EXPIRY_SAFETY_GUARD_BOUNDARY = "software_proof_docker_cloud_command_expiry_safety_guard"
+PHONE_COMMAND_IDEMPOTENCY_VISIBILITY_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_command_idempotency_visibility_guard"
+)
 COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 REMOTE_STATUS_STALE_AFTER_SEC = 90.0
@@ -60,6 +63,7 @@ REMOTE_DEGRADATION_COPY = {
     "status_stale": "正在等待小车上报最新状态，请稍后再试。",
     "command_pending": "指令已提交，正在等待小车确认。",
     "command_expired": "这条云端指令已经过期，机器人没有执行；请重新提交最新指令。",
+    "command_duplicate_deduped": "重复云指令已去重，机器人没有重复执行；cached ACK 不是送达成功。",
     "auth_failed": "手机登录已失效，请重新登录或检查访问凭证。",
     "cloud_unreachable": "远程控制通道暂不可用，请稍后重试。",
     "malformed_response": "远程控制返回异常，请联系支持人员。",
@@ -74,6 +78,9 @@ REMOTE_STATUS_SAFE_EXTRA_KEYS = {
     "safe_phone_copy",
     "pending_terminal_ack_id",
     "expired_command_id",
+    "duplicate_command_id",
+    "cached_ack_state",
+    "ack_semantics",
     "primary_actions_enabled",
     "proof_boundary",
 }
@@ -95,6 +102,7 @@ PHONE_READINESS_NEXT_ACTION_COPY = {
     "wait_for_robot_status": "等待小车上报最新状态后再继续。",
     "wait_for_command_ack": "等待小车确认上一条指令，避免重复发车。",
     "resubmit_command": "重新提交一条未过期的新指令。",
+    "refresh_status": "刷新状态，确认机器人仍在同一个任务状态。",
     "check_auth": "重新登录或检查访问码后再试。",
     "retry_cloud": "稍后重试远程通道，必要时切到本地 fallback。",
     "contact_support": "联系支持人员，并附带 diagnostics。",
@@ -113,6 +121,7 @@ COMMAND_SAFETY_BLOCK_COPY = {
     "status_stale": "正在等待小车上报最新状态，主操作暂不可用。",
     "command_pending": "上一条指令仍在等待 ACK，暂不重复下发。",
     "command_expired": "上一条云端指令已过期，请重新提交新指令。",
+    "command_duplicate_deduped": "重复云指令已去重，主操作保持不可用。",
     "auth_failed": "手机登录或访问码未通过，主操作暂不可用。",
     "cloud_unreachable": "远程控制通道暂不可用，主操作暂不可用。",
     "malformed_response": "远程控制返回异常，主操作暂不可用。",
@@ -819,24 +828,41 @@ class MockCloudStore:
         status_degradation = str(status.get("degradation_state") or "").strip()
         if status_degradation == "command_expired":
             expired_command_id = str(status.get("expired_command_id") or expired_command_id).strip()
+        duplicate_command_id = ""
+        if status_degradation == "command_duplicate_deduped":
+            duplicate_command_id = str(status.get("duplicate_command_id") or "").strip()
         ack_operator_status = {}
         if latest_ack and isinstance((latest_ack.get("result") or {}).get("operator_status"), dict):
             ack_operator_status = (latest_ack.get("result") or {}).get("operator_status")
         if not expired_command_id and str(ack_operator_status.get("degradation_state") or "") == "command_expired":
             expired_command_id = str(ack_operator_status.get("expired_command_id") or last_command_ack).strip()
+        if (
+            not duplicate_command_id
+            and str(ack_operator_status.get("degradation_state") or "") == "command_duplicate_deduped"
+        ):
+            duplicate_command_id = str(ack_operator_status.get("duplicate_command_id") or last_command_ack).strip()
         retry_hint = "ok"
         degradation_state = "ok"
-        # 过期命令优先显示 resubmit；新鲜命令仍沿用既有 status_stale -> pending 顺序。
+        # 过期和 pending 都比 duplicate 更需要用户立即处理，不能被 cached ACK 可见性覆盖。
         if expired_command_id or status_degradation == "command_expired":
             retry_hint = "resubmit_command"
             degradation_state = "command_expired"
+        elif status_degradation == "command_pending":
+            retry_hint = str(status.get("retry_hint") or ack_operator_status.get("retry_hint") or "wait_for_command_ack")
+            degradation_state = "command_pending"
+        elif duplicate_command_id or status_degradation == "command_duplicate_deduped":
+            retry_hint = "refresh_status"
+            degradation_state = "command_duplicate_deduped"
         elif status_stale:
             retry_hint = "wait_for_robot_status"
             degradation_state = "status_stale"
         elif pending_command_count:
             retry_hint = "wait_for_command_ack"
             degradation_state = "command_pending"
-        remote_ready = bool(not status_stale and degradation_state != "command_expired")
+        remote_ready = bool(
+            not status_stale
+            and degradation_state not in {"command_expired", "command_duplicate_deduped"}
+        )
         readiness = {
             "remote_ready": remote_ready,
             "cloud_reachable": True,
@@ -860,6 +886,21 @@ class MockCloudStore:
                 status.get("proof_boundary")
                 or ack_operator_status.get("proof_boundary")
                 or PHONE_COMMAND_EXPIRY_SAFETY_GUARD_BOUNDARY
+            )
+        if degradation_state == "command_duplicate_deduped":
+            readiness["duplicate_command_id"] = duplicate_command_id
+            readiness["cached_ack_state"] = str(
+                status.get("cached_ack_state")
+                or ack_operator_status.get("cached_ack_state")
+                or (latest_ack or {}).get("state")
+                or "unknown"
+            )
+            readiness["ack_semantics"] = "duplicate_cached_ack_not_delivery_success"
+            readiness["primary_actions_enabled"] = False
+            readiness["proof_boundary"] = str(
+                status.get("proof_boundary")
+                or ack_operator_status.get("proof_boundary")
+                or PHONE_COMMAND_IDEMPOTENCY_VISIBILITY_GUARD_BOUNDARY
             )
         return readiness
 
@@ -2672,6 +2713,7 @@ def _command_safety_block_reason(primary_state, remote_state, manifest_state):
         "status_stale",
         "command_pending",
         "command_expired",
+        "command_duplicate_deduped",
         "auth_failed",
         "cloud_unreachable",
         "malformed_response",
@@ -3173,7 +3215,7 @@ def _offline_resume_connection_state(primary_state, remote_state, command_safety
         return "status_stale"
     if remote_state == "command_pending":
         return "pending_ack"
-    if remote_state == "command_expired":
+    if remote_state in {"command_expired", "command_duplicate_deduped"}:
         return "blocked"
     if primary_state in {"login_required", "remote_response_invalid"}:
         return "blocked"
@@ -3241,6 +3283,10 @@ def build_phone_offline_resume_readiness(
         next_action = "resubmit_command"
         recovery_hint = PHONE_READINESS_NEXT_ACTION_COPY["resubmit_command"]
         safe_phone_copy = REMOTE_DEGRADATION_COPY["command_expired"]
+    elif remote_state == "command_duplicate_deduped":
+        next_action = "refresh_status"
+        recovery_hint = PHONE_READINESS_NEXT_ACTION_COPY["refresh_status"]
+        safe_phone_copy = REMOTE_DEGRADATION_COPY["command_duplicate_deduped"]
     elif connection_state == "manual_takeover":
         recovery_hint = "保持现场安全，按手机提示人工接管，并打开 Support Handoff。"
         safe_phone_copy = "当前需要人工接管，不能通过离线恢复直接继续任务。"
@@ -3427,6 +3473,11 @@ def build_phone_readiness(
         next_action = "resubmit_command"
         can_continue = False
         support_level = "remote_command_expired"
+    elif remote_state == "command_duplicate_deduped":
+        primary_state = "waiting_for_command_ack"
+        next_action = "refresh_status"
+        can_continue = False
+        support_level = "remote_duplicate_deduped"
     elif remote_state == "status_stale":
         if can_use_local_action:
             primary_state = "local_ready_remote_status_waiting"
@@ -3635,6 +3686,7 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
     latest_status = diagnostics_payload.get("latest_status")
     if isinstance(latest_status, dict):
         # diagnostics 不能信任 status 文件内预置的 phone metadata；这里统一覆盖成现算的脱敏摘要。
+        latest_status["phone_readiness"] = dict(phone_readiness)
         latest_status["phone_task_flow_readiness"] = task_flow
         latest_status["phone_support_bundle"] = phone_support_bundle
         latest_status["voice_prompt_readiness"] = voice_prompt_readiness

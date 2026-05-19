@@ -320,6 +320,40 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
         self.assertEqual([ack["command_id"] for ack in self.cloud.ack_posts], ["cmd-duplicate", "cmd-duplicate"])
         self.assertEqual([ack["state"] for ack in self.cloud.ack_posts], ["acked", "acked"])
+        duplicate_status = self.cloud.ack_posts[-1]["result"]["operator_status"]
+        self.assertEqual(duplicate_status["degradation_state"], "command_duplicate_deduped")
+        self.assertEqual(duplicate_status["duplicate_command_id"], "cmd-duplicate")
+        self.assertEqual(duplicate_status["cached_ack_state"], "acked")
+        self.assertEqual(
+            duplicate_status["ack_semantics"],
+            "duplicate_cached_ack_not_delivery_success",
+        )
+        self.assertFalse(duplicate_status["remote_ready"])
+        self.assertFalse(duplicate_status["primary_actions_enabled"])
+        self.assertEqual(
+            duplicate_status["proof_boundary"],
+            "software_proof_docker_cloud_command_idempotency_visibility_guard",
+        )
+        self.assertNotIn("delivery_success\": true", json.dumps(duplicate_status))
+
+    def test_expired_duplicate_command_keeps_expired_priority(self):
+        command = {
+            "id": "cmd-expired-duplicate",
+            "type": "collect",
+            "payload": {"target": "trash_station"},
+        }
+        self.cloud.commands.append(command)
+        self.assertTrue(self.worker.poll_once())
+
+        expired_duplicate = dict(command, expires_at=time.time() - 1)
+        self.cloud.commands.append(expired_duplicate)
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.cloud.ack_posts[-1]["state"], "ignored")
+        operator_status = self.cloud.ack_posts[-1]["result"]["operator_status"]
+        self.assertEqual(operator_status["degradation_state"], "command_expired")
+        self.assertNotEqual(operator_status["degradation_state"], "command_duplicate_deduped")
 
     def test_busy_collect_is_ignored_not_failed(self):
         busy_backend = FakeOperatorBackend(busy=True)

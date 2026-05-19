@@ -8,7 +8,21 @@
 
 ## 2026-05-20 系列
 
-更新时间：2026-05-20 05:11 Asia/Shanghai。
+更新时间：2026-05-20 06:21 Asia/Shanghai。
+
+### 2026-05-20 06-07｜cloud-command-idempotency-visibility-guard｜duplicate command idempotency visibility software proof
+
+本轮 `sprints/2026.05.20_06-07_cloud-command-idempotency-visibility-guard/` 针对 Objective 5 command/status/ack 主链路的具体安全缺口，不继续包装 external proof blocker。Robot worker 完成 duplicate command cached ACK 可见性：重复 command id 复用 cached ACK 时输出 `command_duplicate_deduped`、`duplicate_command_id`、`cached_ack_state`、`ack_semantics=duplicate_cached_ack_not_delivery_success`、`remote_ready=false`、`primary_actions_enabled=false` 和 `proof_boundary=software_proof_docker_cloud_command_idempotency_visibility_guard`；duplicate 不重复提交本地 action，expired duplicate 仍保持 `command_expired` 优先级，pending terminal ACK 仍先阻塞 command pulling。Full-Stack worker 在 mobile/web cloud readiness panel 只读消费 `command_duplicate_deduped`，展示“重复云指令已去重；机器人没有重复执行；这不是送达成功”，保持 Start Delivery / Confirm Dropoff / Cancel disabled，且不新增 auto replay、auto resubmit 或控制 endpoint。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮未触碰 WAVE ROVER/UART/HIL、hardware bridge、2D LiDAR / ToF materials 或 PR #5 真实材料；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 route/elevator field material、dropoff/cancel completion、delivery result 或真实电梯 proof；duplicate cached ACK 不等于 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可读状态受益：手机端能展示 command duplicate deduped 降级状态，并保持 `remote_ready=false`、`primary_actions_enabled=false` 和主操作不可用；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_command_idempotency_visibility_guard` 只证明 local worker + mobile static fixture 下的 duplicate command idempotency visibility guard：duplicate cached ACK 可见、no duplicate local action、phone-safe copy 和 fail-closed actions。本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Robot worker 首轮曾因 stale/pending priority 与 `ack_semantics` 检查失败，已定位修复并重跑 `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_http.py onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py` 输出 `Ran 394 tests in 89.981s OK`；`py_compile`、required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker `PYTHONDONTWRITEBYTECODE=1 python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 151 tests ... OK`；`node --check mobile/web/app.js`、required `rg` 与 scoped `git diff --check` 通过。Product closeout 复跑 required `rg` 覆盖 sprint/OKR/progress log 和 implementation/product docs，scoped `git diff --check` 通过。本轮不证明真实 O5 external proof、Objective 1 HIL、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` closure、PR #4 route/elevator field pass、真实手机/browser、Nav2/fixed-route、dropoff/cancel completion、production DB/queue 或 delivery success。
 
 ### 2026-05-20 05-06｜pr5-review-reply-publication-closeout｜PR #5 GitHub reply publication closeout
 
