@@ -1,5 +1,35 @@
 # Operator Gateway Diagnostics
 
+## robot_diagnostics_task_terminal_completion_mainline_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_task_terminal_completion_mainline_summary` as a safe alias
+for Robot task-record terminal-action mainline metadata.
+
+- Source schema: `trashbot.task_terminal_completion_mainline.v1`
+- Robot alias schema:
+  `trashbot.robot_diagnostics_task_terminal_completion_mainline_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_task_terminal_completion_mainline_gate`
+
+The alias is metadata-only and read-only. It may expose sanitized
+`terminal_action`, `terminal_status`, safe `evidence_ref`, operator
+confirmation status, missing required materials, next required evidence,
+failure reason, route-progress metadata, `software_proof`, `not_proven`,
+`delivery_success=false`, and `primary_actions_enabled=false`.
+
+Missing summary, unsupported schema or boundary, same `evidence_ref` mismatch,
+unsafe copy, raw artifact fields, ACK/cursor/command/control fields, success
+wording, `delivery_success=true`, or `primary_actions_enabled=true` must fail
+closed as blocked/not_proven. Missing real field materials must keep
+`dropoff_completion_proven=false` and `cancel_completion_proven=false`.
+
+This alias must not read hardware, serial/UART, ROS graph, raw artifacts,
+cloud resources, or mobile browser state. It must not enable Start Delivery,
+Confirm Dropoff, Cancel, ACK, cursor updates, persistence updates, terminal
+ACK, commands, Nav2, WAVE ROVER, HIL, material collection, Objective 5
+external proof, dropoff/cancel completion, or delivery success.
+
 ## robot_diagnostics_hardware_real_material_escalation_request_summary
 
 Robot diagnostics exposes

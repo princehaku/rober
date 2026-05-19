@@ -151,6 +151,7 @@ h2 {
 .hardware-sensor-hil-entry-execution-pack-panel,
 .pr5-review-thread-closeout-panel,
 .hardware-real-material-escalation-request-panel,
+.task-terminal-completion-mainline-panel,
 .recovery-decision-panel,
 .route-review-panel,
 .pc-route-debug-panel,
@@ -306,6 +307,7 @@ h2 {
 .hardware-sensor-hil-entry-execution-pack-grid,
 .pr5-review-thread-closeout-grid,
 .hardware-real-material-escalation-request-grid,
+.task-terminal-completion-mainline-grid,
 .recovery-decision-grid,
 .route-review-grid,
 .pc-route-debug-grid,
@@ -377,6 +379,7 @@ h2 {
 .hardware-sensor-hil-entry-execution-pack-grid div,
 .pr5-review-thread-closeout-grid div,
 .hardware-real-material-escalation-request-grid div,
+.task-terminal-completion-mainline-grid div,
 .recovery-decision-grid div,
 .route-review-grid div,
 .pc-route-debug-grid div,
@@ -587,6 +590,10 @@ dd {
 }
 
 .hardware-real-material-escalation-request-grid {
+  grid-template-columns: 1fr;
+}
+
+.task-terminal-completion-mainline-grid {
   grid-template-columns: 1fr;
 }
 
@@ -939,6 +946,10 @@ dd {
   }
 
   .hardware-real-material-escalation-request-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .task-terminal-completion-mainline-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

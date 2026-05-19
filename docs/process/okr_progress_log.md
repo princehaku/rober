@@ -8,7 +8,21 @@
 
 ## 2026-05-19 系列
 
-更新时间：2026-05-19 10:19 Asia/Shanghai。
+更新时间：2026-05-19 11:19 Asia/Shanghai。
+
+### 2026-05-19 11-12｜task-terminal-completion-mainline｜O2/O3/O4 terminal action mainline software proof
+
+本轮 `sprints/2026.05.19_11-12_task-terminal-completion-mainline/` 按 live OKR rerank 后推进 `task_terminal_completion_mainline`，不继续 O5 local metadata depth、不继续 O1 hardware metadata wrapper，也不继续第三次消费 PR #4 route/elevator material blocker。Robot worker 新增 / 调整 `task_terminal_completion_mainline` 与 `robot_diagnostics_task_terminal_completion_mainline_summary`，让 task_record / diagnostics 用 safe `evidence_ref`、terminal action、operator confirmation、missing materials、next required evidence 和 fail-closed flags 描述 dropoff / cancel terminal action。Full-Stack worker 在 mobile/web 增加只读“任务终态主链路”panel，只消费 Robot safe alias，展示 safe terminal action、safe `evidence_ref`、operator confirmation、missing materials、next required evidence、evidence boundary 和 `not_proven`，Start Delivery、Confirm Dropoff、Cancel gating 不变。Autonomy 只读建议已纳入：必须使用 safe `evidence_ref`，不得展示 `fixed_route_status_file`、debug status file 或 local path，不得把 ACK、diagnostics summary、mobile panel、task_record summary 或 material status 写成真实 route evidence。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL，不补 PR #5 2D LiDAR / ToF 真实材料；仍缺真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report、真实 UART、真实 HIL-entry、真实 SKU/source/receipt/procurement/installation/wiring/power/calibration。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | `task_terminal_completion_mainline` 让 dropoff/cancel terminal action 进入 Robot task_record / diagnostics 主链路 software-proof 可观察契约；仍缺真实 dropoff completion、真实 cancel completion、delivery result、delivery_success、真实电梯、真实门状态、真实楼层确认、人工协助记录、真实 Nav2/fixed-route、真实 route/elevator field pass 和现场 task record。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮只保证 terminal action summary 可围绕同一 safe `evidence_ref` 支撑后续 route/task evidence 复盘；仍缺真实路线采集、Nav2/fixed-route runtime log、route completion signal、现场 task_record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读展示 terminal action mainline、missing materials、next required evidence 和 boundary；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice、真实手机/browser external proof 和现场 phone behavior。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof。 |
+
+本轮验证：Robot worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 228 tests in 0.684s OK`；required `rg` 与 scoped diff check 通过。Full-Stack worker 报告 `python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 120 tests in 0.851s OK`；`py_compile` 通过；`node --check mobile/web/app.js` 通过；required `rg` 与 scoped diff check 通过。Product closeout required file check、required `rg` 与 scoped `git diff --check` 通过。本轮不证明真实 dropoff completion、真实 cancel completion、delivery success、真实 route/elevator field pass、真实 Nav2/fixed-route、真实手机、WAVE ROVER/UART/HIL、PR #5 真实 2D LiDAR / ToF 材料或 O5 external proof；ACK、diagnostics summary、mobile panel、task_record summary 和 material status 均不得写成真实完成。
 
 ### 2026-05-19 10-11｜hardware-real-material-escalation-request｜O1/O4 hardware real material escalation request software proof
 

@@ -84,6 +84,38 @@
             "real_phone_browser"
         ]
     },
+    "robot_diagnostics_task_terminal_completion_mainline_summary": {
+        "schema": "trashbot.task_terminal_completion_mainline.v1",
+        "schema_version": 1,
+        "source": "software_proof",
+        "status": "blocked_not_proven",
+        "safe_terminal_action": "terminal_action=dropoff",
+        "safe_evidence_ref": "task_terminal_completion_mainline_fixture_20260519_0001",
+        "operator_confirmation": "operator_confirmation=missing",
+        "missing_materials": [
+            "missing_material=real_task_record",
+            "missing_material=real_terminal_action_material",
+            "missing_material=same_evidence_ref_field_replay"
+        ],
+        "next_required_evidence": [
+            "next_required_evidence=真实 task record 摘要",
+            "next_required_evidence=安全 terminal action 材料摘要",
+            "next_required_evidence=同一 evidence_ref 的现场复账摘要"
+        ],
+        "safe_phone_copy": "task_terminal_completion_mainline safe summary 只读展示 terminal action 主链路状态；缺真实材料前不放行 Start、Confirm 或 Cancel。",
+        "evidence_boundary": "software_proof_docker_task_terminal_completion_mainline_gate",
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "not_proven": [
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "real_task_record",
+            "real_terminal_action_material",
+            "real_phone_browser"
+        ]
+    },
     "wave_rover_feedback_replay": {
         "schema": "trashbot.wave_rover_feedback_replay.v1",
     "schema_version": 1,

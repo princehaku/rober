@@ -37,6 +37,22 @@ TERMINAL_COMPLETION_REHEARSAL_NOT_PROVEN = (
     "delivery_success",
     "objective_5_external_proof",
 )
+TASK_TERMINAL_COMPLETION_MAINLINE_SCHEMA = "trashbot.task_terminal_completion_mainline.v1"
+TASK_TERMINAL_COMPLETION_MAINLINE_GATE = "software_proof_docker_task_terminal_completion_mainline_gate"
+TASK_TERMINAL_COMPLETION_MAINLINE_NOT_PROVEN = (
+    "real_task_record",
+    "real_dropoff_completion_material",
+    "real_cancel_completion_material",
+    "same_evidence_ref_field_replay",
+    "real_nav2_fixed_route_run",
+    "real_route_elevator_field_pass",
+    "real_phone_device_or_browser",
+    "wave_rover_motion",
+    "real_serial_or_uart_feedback",
+    "real_hil_pass",
+    "objective_5_external_proof",
+    "delivery_success",
+)
 ELEVATOR_ACTION_FEEDBACK_TRACE_SCHEMA = "trashbot.elevator_action_feedback_trace.v1"
 ELEVATOR_ACTION_FEEDBACK_TRACE_STATUS = "elevator_action_feedback_trace_not_proven"
 ELEVATOR_ACTION_FEEDBACK_TRACE_NOT_PROVEN = (
@@ -176,6 +192,116 @@ def _terminal_completion_rehearsal_summary(
         "metadata_only": True,
         "delivery_success": False,
         "primary_actions_enabled": False,
+    }
+
+
+def _task_terminal_completion_mainline_summary(
+    *,
+    task_id,
+    final_status,
+    final_state,
+    error_code,
+    error_message,
+    failure_code,
+    human_intervention_required,
+    evidence_ref,
+    route_progress,
+    dropoff_result,
+):
+    # 这个 mainline 摘要是 Robot 到 diagnostics/mobile 的唯一安全事实源。
+    # 它只解释终态，不执行 dropoff/cancel，也不读取硬件、ROS graph 或外部材料。
+    dropoff = dropoff_result if isinstance(dropoff_result, dict) else {}
+    normalized_final_status = str(final_status or "").strip() or "unknown"
+    normalized_final_state = str(final_state or "").strip() or "unknown"
+    normalized_error_code = str(error_code or "").strip()
+    normalized_failure_code = str(failure_code or normalized_error_code or "").strip()
+    terminal_action = "cancel" if normalized_final_status == "canceled" or normalized_failure_code == "TASK_CANCEL" else "dropoff"
+    operator_confirmation_status = "missing"
+    if terminal_action == "dropoff":
+        result_code = str(dropoff.get("result_code") or "").strip()
+        if result_code in {"manual_confirmed", "dry_run"}:
+            operator_confirmation_status = "software_only_reported"
+        elif result_code in {"manual_rejected", "manual_confirm_timeout"}:
+            operator_confirmation_status = result_code
+    elif human_intervention_required:
+        operator_confirmation_status = "required_for_cancel_review"
+
+    # 缺真实材料时即使 action result 是 success，也必须固定 not_proven。
+    # 这样 mobile/diagnostics 只能看到下一步材料需求，不能误触发 ACK、cursor 或机器人命令。
+    terminal_status = "missing_materials"
+    failure_reason = ""
+    if terminal_action == "cancel":
+        failure_reason = str(error_message or normalized_failure_code or "task canceled before terminal completion").strip()
+    elif normalized_final_status != "success":
+        failure_reason = str(error_message or normalized_failure_code or "dropoff terminal action lacks proven completion").strip()
+    route_ref = _route_progress_evidence_ref(route_progress)
+    safe_evidence_ref = str(evidence_ref or route_ref or "").strip()
+    missing_required_materials = [
+        "real_task_record",
+        "real_dropoff_or_cancel_completion_material",
+        "same_evidence_ref_field_replay",
+    ]
+    next_required_evidence = [
+        "真实 task record",
+        "真实 dropoff/cancel completion 材料",
+        "同一 evidence_ref 的现场复账",
+    ]
+    return {
+        "schema": TASK_TERMINAL_COMPLETION_MAINLINE_SCHEMA,
+        "schema_version": 1,
+        "status": "blocked_not_proven",
+        "source": "software_proof",
+        "evidence_boundary": TASK_TERMINAL_COMPLETION_MAINLINE_GATE,
+        "task_id": str(task_id or ""),
+        "safe_evidence_ref": safe_evidence_ref,
+        "evidence_ref": safe_evidence_ref,
+        "same_evidence_ref_required": True,
+        "terminal_action": terminal_action,
+        "terminal_status": terminal_status,
+        "final_status": normalized_final_status,
+        "final_state": normalized_final_state,
+        "error_code": normalized_error_code,
+        "failure_code": normalized_failure_code,
+        "failure_reason": failure_reason,
+        "operator_confirmation_required": True,
+        "operator_confirmation_status": operator_confirmation_status,
+        "dropoff_result_code": str(dropoff.get("result_code") or "").strip(),
+        "dropoff_completion_proven": False,
+        "cancel_completion_proven": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "missing_required_materials": missing_required_materials,
+        "next_required_evidence": next_required_evidence,
+        "route_progress": {
+            "present": isinstance(route_progress, dict) and bool(route_progress),
+            "evidence_ref": route_ref,
+        },
+        "evidence_boundary_flags": [
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+        ],
+        "phone_safe_summary": {
+            "safe_copy": (
+                "Task terminal completion mainline is software_proof/not_proven; "
+                "delivery_success=false; primary_actions_enabled=false."
+            ),
+            "safe_phone_copy": (
+                "任务终态主链路仅为 software_proof/not_proven；"
+                "delivery_success=false；primary_actions_enabled=false。"
+            ),
+        },
+        "not_proven": list(TASK_TERMINAL_COMPLETION_MAINLINE_NOT_PROVEN),
+        "metadata_only": True,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
     }
 
 
@@ -344,6 +470,22 @@ def write_task_record(
         "human_intervention_required": bool(human_intervention_required),
         "route_progress": normalized_route_progress,
         "route_task_terminal_completion_rehearsal": _terminal_completion_rehearsal_summary(
+            task_id=task_id,
+            final_status=final_status,
+            final_state=final_state if final_state is not None else machine.state.value,
+            error_code=(
+                error_code
+                if error_code is not None
+                else (machine.events[-1].event.value if machine.events else "")
+            ),
+            error_message=error_message,
+            failure_code=failure_code,
+            human_intervention_required=bool(human_intervention_required),
+            evidence_ref=payload_evidence_ref,
+            route_progress=normalized_route_progress,
+            dropoff_result=dropoff_result,
+        ),
+        "task_terminal_completion_mainline": _task_terminal_completion_mainline_summary(
             task_id=task_id,
             final_status=final_status,
             final_state=final_state if final_state is not None else machine.state.value,

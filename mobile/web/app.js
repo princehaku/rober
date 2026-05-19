@@ -58,6 +58,7 @@ const ELEVATOR_FIELD_RUN_EXECUTION_PACK_BOUNDARY = "software_proof_docker_elevat
 const ROUTE_TASK_COMPLETION_SIGNAL_BOUNDARY = "software_proof_docker_route_task_completion_signal_gate";
 const ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_BOUNDARY = "software_proof_docker_route_task_terminal_completion_rehearsal_gate";
 const ROUTE_TASK_TERMINAL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_route_task_terminal_review_decision_gate";
+const TASK_TERMINAL_COMPLETION_MAINLINE_BOUNDARY = "software_proof_docker_task_terminal_completion_mainline_gate";
 const ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_BOUNDARY = "software_proof_docker_route_task_field_retest_execution_pack_gate";
 const ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF_BOUNDARY = "software_proof_docker_route_task_field_retest_session_handoff_gate";
 const ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_BOUNDARY = "software_proof_docker_route_task_field_retest_result_intake_gate";
@@ -210,6 +211,7 @@ const UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_TEXT
 const UNSAFE_ROUTE_TASK_COMPLETION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw completion|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_ROUTE_TASK_TERMINAL_COMPLETION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw completion|raw rehearsal|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|真实送达成功|投放完成|取消完成|hil_pass|hil)/i;
 const UNSAFE_ROUTE_TASK_TERMINAL_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw review|raw decision|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|真实送达成功|投放完成|取消完成|hil_pass|hil)/i;
+const UNSAFE_TASK_TERMINAL_COMPLETION_MAINLINE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw completion|complete artifact|complete artifacts|full artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|ack payload|cursor|diagnostics fetch|handoff route|review route|robot command|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|dropoff completion|cancel completed|cancel completion|completed delivery|真实送达成功|投放完成|取消完成|hil_pass|\bhil\b|field pass|现场通过)/i;
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw execution pack|full execution pack|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw result|raw intake|full result|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
 const UNSAFE_ROUTE_TASK_FIELD_RETEST_RESULT_RECONCILIATION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw result|raw reconciliation|raw diagnostics|raw intake|full result|complete artifact|complete artifacts|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external material|真实送达成功|投放完成|取消完成)/i;
@@ -335,6 +337,7 @@ let latestWaveRoverHilPacketReviewDecision = null;
 let latestWaveRoverHilPacketExecutionPack = null;
 let latestRouteTaskTerminalCompletionRehearsal = null;
 let latestRouteTaskTerminalReviewDecision = null;
+let latestTaskTerminalCompletionMainline = null;
 let latestRouteTaskFieldRetestExecutionPack = null;
 let latestRouteTaskFieldRetestSessionHandoff = null;
 let latestRouteTaskFieldRetestResultIntake = null;
@@ -640,6 +643,15 @@ function safeRouteTaskTerminalReviewDecisionText(value, fallback = "not_proven")
   // 终态复核决策只把后端安全摘要转成复测指导；任何 raw 决策包、路径、凭证或成功暗示都降级。
   const text = safeText(value, fallback);
   if (UNSAFE_ROUTE_TASK_TERMINAL_REVIEW_DECISION_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeTaskTerminalCompletionMainlineText(value, fallback = "not_proven") {
+  // terminal mainline 只消费 Robot diagnostics safe alias；任何完成、控制、底层调试或 raw 材料暗示都降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_TASK_TERMINAL_COMPLETION_MAINLINE_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -6802,6 +6814,132 @@ function routeTaskTerminalReviewDecisionCopyPayload(summary) {
     not_proven: source.not_proven,
     delivery_success: false,
     primary_actions_enabled: false,
+  };
+}
+
+function taskTerminalCompletionMainlineCandidate(status, readiness, diagnostics) {
+  // 只查找 Robot diagnostics safe alias；缺失时保持 blocked，避免从 raw artifact 或旧 ACK 推导终态。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.robot_diagnostics_task_terminal_completion_mainline_summary,
+    readiness?.robot_diagnostics_task_terminal_completion_mainline_summary,
+    diagnostics?.robot_diagnostics_task_terminal_completion_mainline_summary,
+    diagnosticsReadiness.robot_diagnostics_task_terminal_completion_mainline_summary,
+    diagnosticsSummary.robot_diagnostics_task_terminal_completion_mainline_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_task_terminal_completion_mainline_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_task_terminal_completion_mainline_summary,
+    statusDiagnosticsSummary.robot_diagnostics_task_terminal_completion_mainline_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function taskTerminalCompletionMainlineNotProvenList(value) {
+  // not_proven 是 UI 安全边界的一部分，不能因为 operator confirmation 字段存在就缩窄。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "真实 terminal action material",
+    "真实 task record",
+    "真实 Nav2/fixed-route",
+    "真实手机/browser",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 16);
+}
+
+function taskTerminalCompletionMainlineSummaryText(value, fallback) {
+  // 数组/对象字段只折叠成短白名单文案，不把完整材料、路径或 raw diagnostics 泄露到手机端。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeTaskTerminalCompletionMainlineText(
+        item?.safe_phone_copy || item?.summary || item?.status || item?.state ||
+          item?.material || item?.evidence || item?.next_required_evidence ||
+          item?.operator_confirmation || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.material || value.evidence || value.next_required_evidence || value.operator_confirmation;
+    if (direct) {
+      return safeTaskTerminalCompletionMainlineText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeTaskTerminalCompletionMainlineText(key, "");
+        const copy = taskTerminalCompletionMainlineSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  return safeTaskTerminalCompletionMainlineText(value, fallback);
+}
+
+function taskTerminalCompletionMainlineFromStatus(status, readiness, diagnostics) {
+  const provided = taskTerminalCompletionMainlineCandidate(status, readiness, diagnostics) || {};
+  const terminalAction = safeTaskTerminalCompletionMainlineText(
+    provided.safe_terminal_action || provided.terminal_action || provided.action,
+    "terminal_action=not_proven",
+  );
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.task_terminal_completion_mainline.v1",
+    source: safeTaskTerminalCompletionMainlineText(provided.source, "software_proof"),
+    status: safeTaskTerminalCompletionMainlineText(
+      provided.safe_status || provided.status || provided.terminal_status || provided.overall_status,
+      "blocked_missing_task_terminal_completion_mainline_not_proven",
+    ),
+    safe_terminal_action: terminalAction,
+    safe_evidence_ref: safeTaskTerminalCompletionMainlineText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "evidence_ref=not_proven",
+    ),
+    operator_confirmation: taskTerminalCompletionMainlineSummaryText(
+      provided.operator_confirmation || provided.operator_confirmation_status ||
+        provided.operator_confirmation_required,
+      "operator_confirmation=missing",
+    ),
+    missing_materials: taskTerminalCompletionMainlineSummaryText(
+      provided.missing_materials || provided.missing_required_materials,
+      "missing_materials=real_task_record、real_terminal_action_material、same_evidence_ref_field_replay",
+    ),
+    next_required_evidence: taskTerminalCompletionMainlineSummaryText(
+      provided.next_required_evidence || provided.next_evidence,
+      "next_required_evidence=真实 task record、安全 terminal action 材料、同一 evidence_ref 现场复账",
+    ),
+    evidence_boundary: safeTaskTerminalCompletionMainlineText(
+      provided.evidence_boundary,
+      TASK_TERMINAL_COMPLETION_MAINLINE_BOUNDARY,
+    ),
+    safe_phone_copy: safeTaskTerminalCompletionMainlineText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "等待 robot_diagnostics_task_terminal_completion_mainline_summary；手机端保持 fail closed，不从 raw artifact 推导终态。",
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: taskTerminalCompletionMainlineNotProvenList(provided),
   };
 }
 
@@ -19441,6 +19579,72 @@ function renderRouteTaskTerminalReviewDecision(status) {
   $("routeTaskTerminalReviewDecisionHint").textContent = summary.recovery_hint;
 }
 
+function ensureTaskTerminalCompletionMainlinePanel() {
+  // terminal mainline 紧跟旧终态复核 panel；它只读展示 Robot safe alias，不授权任何终端动作。
+  let panel = $("taskTerminalCompletionMainlinePanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("routeTaskTerminalReviewDecisionTitle")?.closest("section") ||
+    $("routeTaskTerminalCompletionRehearsalTitle")?.closest("section") ||
+    $("routeTaskCompletionSignalTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "taskTerminalCompletionMainlinePanel";
+  panel.className = "task-terminal-completion-mainline-panel";
+  panel.setAttribute("aria-labelledby", "taskTerminalCompletionMainlineTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="taskTerminalCompletionMainlineTitle">任务终态主链路</h2>
+      <span id="taskTerminalCompletionMainlineBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="taskTerminalCompletionMainlineCopy" class="message">
+      等待 robot_diagnostics_task_terminal_completion_mainline_summary。
+    </p>
+    <dl class="task-terminal-completion-mainline-grid">
+      <div><dt>Safe Terminal Action</dt><dd id="taskTerminalCompletionMainlineAction">terminal_action=not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="taskTerminalCompletionMainlineEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Operator Confirmation</dt><dd id="taskTerminalCompletionMainlineOperatorConfirmation">operator_confirmation=missing</dd></div>
+      <div><dt>Missing Materials</dt><dd id="taskTerminalCompletionMainlineMissingMaterials">missing_materials=not_proven</dd></div>
+      <div><dt>Next Required Evidence</dt><dd id="taskTerminalCompletionMainlineNextEvidence">next_required_evidence=not_proven</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="taskTerminalCompletionMainlineBoundary">software_proof_docker_task_terminal_completion_mainline_gate</dd></div>
+      <div><dt>Control Boundary</dt><dd id="taskTerminalCompletionMainlineControls">software_proof / not_proven / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="taskTerminalCompletionMainlineNotProven">真实终态材料、真实手机/browser 和 delivery outcome 未证明。</dd></div>
+    </dl>
+    <p id="taskTerminalCompletionMainlineHint" class="hint">
+      本 panel 只消费 Robot diagnostics safe summary；缺失、命中不安全文案或出现成功/控制暗示时 fail closed，不触发 Start Delivery、Confirm Dropoff、Cancel、ACK、cursor、diagnostics fetch、handoff/review route 或 robot command。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderTaskTerminalCompletionMainline(status) {
+  const panel = ensureTaskTerminalCompletionMainlinePanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = taskTerminalCompletionMainlineFromStatus(status, readiness, latestDiagnostics);
+  latestTaskTerminalCompletionMainline = summary;
+  const badge = $("taskTerminalCompletionMainlineBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 terminal mainline" : summary.status;
+  $("taskTerminalCompletionMainlineCopy").textContent = summary.safe_phone_copy;
+  $("taskTerminalCompletionMainlineAction").textContent = summary.safe_terminal_action;
+  $("taskTerminalCompletionMainlineEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("taskTerminalCompletionMainlineOperatorConfirmation").textContent = summary.operator_confirmation;
+  $("taskTerminalCompletionMainlineMissingMaterials").textContent = summary.missing_materials;
+  $("taskTerminalCompletionMainlineNextEvidence").textContent = summary.next_required_evidence;
+  $("taskTerminalCompletionMainlineBoundary").textContent = summary.evidence_boundary;
+  $("taskTerminalCompletionMainlineControls").textContent =
+    `${summary.source} / not_proven / delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("taskTerminalCompletionMainlineNotProven").textContent = summary.not_proven.join("、");
+}
+
 function ensureRouteTaskFieldRetestExecutionPackPanel() {
   // 复测执行包紧跟终态复核决策，保持从 review decision 到下一次现场复测的材料链可读。
   let panel = $("routeTaskFieldRetestExecutionPackPanel");
@@ -27236,6 +27440,7 @@ function renderDiagnosticsSummary(payload) {
     ["wave_rover_hil_packet_intake", waveRoverHilPacketIntake.packet_status],
     ["wave_rover_hil_packet_review_decision", waveRoverHilPacketReviewDecision.review_decision],
     ["wave_rover_hil_packet_execution_pack", waveRoverHilPacketExecutionPack.execution_pack_status],
+    ["task_terminal_completion_mainline", latestTaskTerminalCompletionMainline?.status || "not_proven"],
   ];
   rows.forEach(([label, value]) => {
     const box = document.createElement("div");
@@ -27368,6 +27573,7 @@ function renderOfflineFailure() {
   renderWaveRoverHilPacketIntake({});
   renderWaveRoverHilPacketReviewDecision({});
   renderWaveRoverHilPacketExecutionPack({});
+  renderTaskTerminalCompletionMainline({});
   latestActionFeedback = normalizeActionFeedback({
     action: "status_refresh",
     submission_status: "blocked",
@@ -27421,6 +27627,7 @@ function renderStatus(status) {
   renderRouteTaskCompletionSignal(status);
   renderRouteTaskTerminalCompletionRehearsal(status);
   renderRouteTaskTerminalReviewDecision(status);
+  renderTaskTerminalCompletionMainline(status);
   renderRouteTaskFieldRetestExecutionPack(status);
   renderRouteTaskFieldRetestSessionHandoff(status);
   renderRouteTaskFieldRetestResultIntake(status);
@@ -27836,6 +28043,7 @@ function wireEvents() {
   ensureWaveRoverHilPacketExecutionPackPanel();
   ensureRouteTaskTerminalCompletionRehearsalPanel();
   ensureRouteTaskTerminalReviewDecisionPanel();
+  ensureTaskTerminalCompletionMainlinePanel();
   ensureRouteTaskFieldRetestExecutionPackPanel();
   ensureRouteTaskFieldRetestSessionHandoffPanel();
   ensureRouteTaskFieldRetestResultIntakePanel();

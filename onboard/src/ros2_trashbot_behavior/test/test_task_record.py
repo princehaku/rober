@@ -138,6 +138,21 @@ class TaskRecordTest(unittest.TestCase):
         self.assertFalse(rehearsal["delivery_success"])
         self.assertFalse(rehearsal["primary_actions_enabled"])
         self.assertIn("real_dropoff_completion", rehearsal["not_proven"])
+        mainline = payload["task_terminal_completion_mainline"]
+        self.assertEqual(mainline["schema"], "trashbot.task_terminal_completion_mainline.v1")
+        self.assertEqual(mainline["status"], "blocked_not_proven")
+        self.assertEqual(mainline["source"], "software_proof")
+        self.assertEqual(mainline["terminal_action"], "dropoff")
+        self.assertEqual(mainline["terminal_status"], "missing_materials")
+        self.assertEqual(mainline["operator_confirmation_status"], "software_only_reported")
+        self.assertFalse(mainline["dropoff_completion_proven"])
+        self.assertFalse(mainline["cancel_completion_proven"])
+        self.assertFalse(mainline["delivery_success"])
+        self.assertFalse(mainline["primary_actions_enabled"])
+        self.assertFalse(mainline["ack_post_allowed"])
+        self.assertFalse(mainline["terminal_ack_allowed"])
+        self.assertIn("real_dropoff_or_cancel_completion_material", mainline["missing_required_materials"])
+        self.assertIn("software_proof", mainline["evidence_boundary_flags"])
         self.assertEqual(payload["state_transition_history"], payload["state_transitions"])
         self.assertGreaterEqual(len(payload["state_transitions"]), 4)
 
@@ -531,6 +546,43 @@ class TaskRecordTest(unittest.TestCase):
         self.assertEqual(payload["evidence_ref"], "/tmp/trashbot_fixed_route_status.json")
         self.assertEqual(payload["failure_code"], "NAV_TIMEOUT")
         self.assertEqual(payload["human_intervention_required"], True)
+        mainline = payload["task_terminal_completion_mainline"]
+        self.assertEqual(mainline["terminal_action"], "dropoff")
+        self.assertEqual(mainline["terminal_status"], "missing_materials")
+        self.assertIn("fixed route status file did not report completion", mainline["failure_reason"])
+        self.assertFalse(mainline["dropoff_completion_proven"])
+        self.assertFalse(mainline["cancel_completion_proven"])
+        self.assertFalse(mainline["delivery_success"])
+
+    def test_write_task_record_persists_cancel_terminal_mainline(self):
+        with tempfile.TemporaryDirectory() as td:
+            machine = DeliveryStateMachine()
+            machine.confirm_loaded("trash_station")
+            machine.start_delivery()
+            machine.cancel("user canceled", "TASK_CANCEL")
+
+            output = write_task_record(
+                Path(td),
+                "task-cancel",
+                machine,
+                "canceled",
+                "user canceled",
+                target="trash_station",
+                source="software_proof",
+                evidence_ref="terminal-cancel-1",
+                failure_code="TASK_CANCEL",
+                human_intervention_required=True,
+            )
+            payload = json.loads(output.read_text(encoding="utf-8"))
+
+        mainline = payload["task_terminal_completion_mainline"]
+        self.assertEqual(mainline["terminal_action"], "cancel")
+        self.assertEqual(mainline["operator_confirmation_status"], "required_for_cancel_review")
+        self.assertEqual(mainline["safe_evidence_ref"], "terminal-cancel-1")
+        self.assertFalse(mainline["cancel_completion_proven"])
+        self.assertFalse(mainline["dropoff_completion_proven"])
+        self.assertFalse(mainline["primary_actions_enabled"])
+        self.assertIn("real_cancel_completion_material", mainline["not_proven"])
 
 
 if __name__ == "__main__":

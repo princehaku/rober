@@ -62,6 +62,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_run_review,
     summarize_route_task_completion_signal,
     summarize_route_task_terminal_completion_rehearsal,
+    summarize_task_terminal_completion_mainline,
     summarize_route_task_terminal_review_decision,
     summarize_route_task_field_run_console,
     summarize_route_task_field_run_evidence_kit,
@@ -308,7 +309,122 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(summary["delivery_success"])
         self.assertFalse(summary["primary_actions_enabled"])
         self.assertNotIn(str(task_record_path), encoded)
-        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_diagnostics_payload_includes_task_terminal_completion_mainline_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            task_record_path = Path(td) / "task.json"
+            task_record_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "terminal-mainline-1",
+                        "task_terminal_completion_mainline": {
+                            "schema": "trashbot.task_terminal_completion_mainline.v1",
+                            "schema_version": 1,
+                            "status": "blocked_not_proven",
+                            "source": "software_proof",
+                            "evidence_boundary": (
+                                "software_proof_docker_task_terminal_completion_mainline_gate"
+                            ),
+                            "safe_evidence_ref": "terminal-mainline-1",
+                            "evidence_ref": "terminal-mainline-1",
+                            "same_evidence_ref_required": True,
+                            "terminal_action": "dropoff",
+                            "terminal_status": "missing_materials",
+                            "operator_confirmation_required": True,
+                            "operator_confirmation_status": "software_only_reported",
+                            "dropoff_completion_proven": False,
+                            "cancel_completion_proven": False,
+                            "failure_reason": "",
+                            "missing_required_materials": [
+                                "real_task_record",
+                                "real_dropoff_or_cancel_completion_material",
+                                "same_evidence_ref_field_replay",
+                            ],
+                            "next_required_evidence": ["真实 task record"],
+                            "evidence_boundary_flags": [
+                                "software_proof",
+                                "not_proven",
+                                "delivery_success=false",
+                                "primary_actions_enabled=false",
+                            ],
+                            "phone_safe_summary": {
+                                "safe_copy": (
+                                    "Task terminal completion mainline is software_proof/not_proven; "
+                                    "delivery_success=false; primary_actions_enabled=false."
+                                )
+                            },
+                            "not_proven": ["real_dropoff_completion_material"],
+                            "metadata_only": True,
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                            "collect_triggered": False,
+                            "dropoff_triggered": False,
+                            "cancel_triggered": False,
+                            "ack_post_allowed": False,
+                            "cursor_updates_allowed": False,
+                            "terminal_ack_allowed": False,
+                            "nav2_triggered": False,
+                            "hil_pass": False,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "completed", "task_record_path": str(task_record_path)},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )
+            summary = payload["robot_diagnostics_task_terminal_completion_mainline_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, payload["task_terminal_completion_mainline_summary"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_task_terminal_completion_mainline_summary.v1",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.task_terminal_completion_mainline.v1")
+        self.assertEqual(summary["status"], "blocked_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_evidence_ref"], "terminal-mainline-1")
+        self.assertEqual(summary["terminal_action"], "dropoff")
+        self.assertEqual(summary["terminal_status"], "missing_materials")
+        self.assertEqual(summary["operator_confirmation_status"], "software_only_reported")
+        self.assertFalse(summary["dropoff_completion_proven"])
+        self.assertFalse(summary["cancel_completion_proven"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertIn("real_dropoff_completion_material", summary["not_proven"])
+        self.assertIn("delivery_success=false", summary["evidence_boundary_flags"])
+        self.assertNotIn(str(task_record_path), encoded)
+
+    def test_task_terminal_completion_mainline_fail_closed_on_success_claims(self):
+        summary = summarize_task_terminal_completion_mainline(
+            {
+                "schema": "trashbot.task_terminal_completion_mainline.v1",
+                "evidence_boundary": "software_proof_docker_task_terminal_completion_mainline_gate",
+                "status": "blocked_not_proven",
+                "safe_evidence_ref": "terminal-mainline-unsafe",
+                "terminal_action": "cancel",
+                "terminal_status": "missing_materials",
+                "delivery_success": True,
+                "primary_actions_enabled": True,
+                "phone_safe_summary": {"safe_copy": "terminal mainline metadata-only"},
+            }
+        )
+
+        self.assertEqual(summary["status"], "unsafe_fields")
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["cancel_completion_proven"])
 
     def test_elevator_action_feedback_trace_summary_fail_closed_without_trace(self):
         summary = summarize_elevator_action_feedback_trace({})

@@ -241,6 +241,21 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         self.assertFalse(rehearsal["delivery_success"])
         self.assertFalse(rehearsal["primary_actions_enabled"])
         self.assertIn("real_dropoff_completion", rehearsal["not_proven"])
+        mainline = payload["task_terminal_completion_mainline"]
+        self.assertEqual(mainline["schema"], "trashbot.task_terminal_completion_mainline.v1")
+        self.assertEqual(mainline["status"], "blocked_not_proven")
+        self.assertEqual(mainline["source"], "software_proof")
+        self.assertEqual(mainline["terminal_action"], "dropoff")
+        self.assertEqual(mainline["terminal_status"], "missing_materials")
+        self.assertEqual(mainline["operator_confirmation_status"], "software_only_reported")
+        self.assertFalse(mainline["dropoff_completion_proven"])
+        self.assertFalse(mainline["cancel_completion_proven"])
+        self.assertFalse(mainline["delivery_success"])
+        self.assertFalse(mainline["primary_actions_enabled"])
+        self.assertFalse(mainline["dropoff_triggered"])
+        self.assertFalse(mainline["cancel_triggered"])
+        self.assertFalse(mainline["terminal_ack_allowed"])
+        self.assertIn("real_dropoff_or_cancel_completion_material", mainline["missing_required_materials"])
 
     def test_execute_collection_elevator_assist_explicitly_disabled_records_warning_boundary(self):
         with tempfile.TemporaryDirectory() as td:
