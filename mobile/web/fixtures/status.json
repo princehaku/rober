@@ -185,7 +185,7 @@
       "safe_to_control=false",
       "真实 task record",
       "真实 dropoff/cancel terminal materials",
-      "真实 route/elevator field materials",
+      "真实 route/elevator 现场材料缺口",
       "真实手机/browser",
       "PR #4 real field materials"
     ]
@@ -328,7 +328,7 @@
       "owner_handoff=Full-stack keeps mobile/web read-only and primary actions unchanged"
     ],
     "safe_phone_copy": "elevator_field_evidence_trace_callback_review_decision_summary 只读展示 callback review decision、decision reasons、missing/rejected materials、next required evidence 和 owner handoff；这是 software_proof / not_proven。",
-    "recovery_hint": "请按同一 safe_evidence_ref 补齐真实 route/elevator field materials 后再重新生成 review decision；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "recovery_hint": "请按同一 safe_evidence_ref 补齐真实 route/elevator field pass 后再重新生成 review decision；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
     "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_callback_review_decision_gate",
     "delivery_success": false,
     "primary_actions_enabled": false,
@@ -359,10 +359,10 @@
     "decision_reasons": "decision_reasons=missing real route/elevator material summaries under the same safe_evidence_ref",
     "missing_required_materials": "missing_required_materials=real_elevator_door_state、real_target_floor_confirmation、real_human_assistance_record、real_nav2_or_fixed_route_runtime_log、real_route_completion_signal、real_field_task_record、real_dropoff_or_cancel_completion、real_delivery_result",
     "rejected_callback_materials": "rejected_callback_materials=none accepted as field proof",
-    "next_required_evidence": "next_required_evidence=real route/elevator field materials under the same safe_evidence_ref",
+    "next_required_evidence": "next_required_evidence=real route/elevator field pass under the same safe_evidence_ref",
     "owner_handoff": "owner_handoff=Autonomy and Robot review same-ref field materials; field owner backfills missing evidence; Full-stack keeps panel read-only.",
     "safe_phone_copy": "Robot diagnostics elevator field evidence trace callback review decision summary 只读展示复核决策；这是 software_proof only。",
-    "recovery_hint": "缺真实 route/elevator field materials 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "recovery_hint": "缺真实 route/elevator field pass 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
     "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_callback_review_decision_gate",
     "delivery_success": false,
     "primary_actions_enabled": false,
@@ -409,7 +409,7 @@
       "next_required_evidence=robot diagnostics safe handoff alias after real material backfill"
     ],
     "safe_phone_copy": "elevator_field_evidence_trace_callback_review_handoff_summary 只读展示 handoff status、owner handoff、missing materials、next evidence 和 safe_evidence_ref；这是 software_proof / not_proven。",
-    "recovery_hint": "请按同一 safe_evidence_ref 补齐真实 route/elevator field materials；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "recovery_hint": "请按同一 safe_evidence_ref 补齐真实 route/elevator field pass；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
     "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate",
     "delivery_success": false,
     "primary_actions_enabled": false,
@@ -440,7 +440,7 @@
     "missing_required_materials": "missing_required_materials=real_elevator_door_state、real_target_floor_confirmation、real_human_assistance_record、real_nav2_or_fixed_route_runtime_log、real_route_completion_signal、real_field_task_record、real_dropoff_or_cancel_completion、real_delivery_result",
     "next_required_evidence": "next_required_evidence=same_evidence_ref_real_field_material_backfill and safe Robot diagnostics alias refresh",
     "safe_phone_copy": "Robot diagnostics elevator field evidence trace callback review handoff summary 只读展示 owner handoff；这是 software_proof only。",
-    "recovery_hint": "缺真实 route/elevator field materials 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "recovery_hint": "缺真实 route/elevator field pass 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
     "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate",
     "delivery_success": false,
     "primary_actions_enabled": false,
@@ -495,7 +495,7 @@
       "next_required_evidence=robot diagnostics safe backfill intake alias after materials exist"
     ],
     "safe_phone_copy": "elevator_field_evidence_trace_material_backfill_intake 只读展示材料回填 intake status、accepted refs、missing/rejected materials、owner handoff、next required evidence 和 safe_evidence_ref；这是 software_proof / not_proven。",
-    "recovery_hint": "缺真实 route/elevator field materials 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "recovery_hint": "缺真实 route/elevator field pass 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
     "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate",
     "delivery_success": false,
     "primary_actions_enabled": false,
@@ -527,7 +527,7 @@
     "owner_handoff": "owner_handoff=Autonomy, Robot, and field owner backfill same-ref material summaries; Full-stack keeps panel read-only.",
     "next_required_evidence": "next_required_evidence=same safe_evidence_ref real field material summaries and safe Robot diagnostics alias refresh",
     "safe_phone_copy": "elevator_field_evidence_trace_material_backfill_intake_summary 只用于手机只读材料回填入口，不放行 Start、Confirm 或 Cancel。",
-    "recovery_hint": "缺真实 route/elevator field materials 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "recovery_hint": "缺真实 route/elevator field pass 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
     "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate",
     "delivery_success": false,
     "primary_actions_enabled": false,
@@ -560,7 +560,7 @@
     "owner_handoff": "owner_handoff=Robot diagnostics publishes safe alias after same-ref material summaries; Full-stack keeps mobile/web read-only.",
     "next_required_evidence": "next_required_evidence=same safe_evidence_ref real route/elevator material summaries",
     "safe_phone_copy": "Robot diagnostics elevator field evidence trace material backfill intake summary 只读展示材料回填入口；这是 software_proof only。",
-    "recovery_hint": "缺真实 route/elevator field materials 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "recovery_hint": "缺真实 route/elevator field pass 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
     "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate",
     "delivery_success": false,
     "primary_actions_enabled": false,
@@ -614,7 +614,7 @@
       "owner_handoff=Full-stack keeps Start Delivery, Confirm Dropoff and Cancel gating unchanged"
     ],
     "safe_phone_copy": "elevator_field_evidence_trace_material_backfill_review_decision 只读展示材料回填复核决策、decision reasons、accepted/missing/rejected materials、owner handoff、next required evidence 和 safe_evidence_ref；这是 software_proof / not_proven。",
-    "recovery_hint": "缺真实 route/elevator field materials 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "recovery_hint": "缺真实 route/elevator field pass 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
     "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_decision_gate",
     "delivery_success": false,
     "primary_actions_enabled": false,
@@ -646,7 +646,7 @@
     "owner_handoff": "owner_handoff=Autonomy reruns review decision; Robot refreshes safe alias; Full-stack keeps panel read-only.",
     "next_required_evidence": "next_required_evidence=backfill missing material refs with same safe_evidence_ref then rerun review decision",
     "safe_phone_copy": "elevator_field_evidence_trace_material_backfill_review_decision_summary 只用于手机只读材料回填复核决策，不放行 Start、Confirm 或 Cancel。",
-    "recovery_hint": "缺真实 route/elevator field materials 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "recovery_hint": "缺真实 route/elevator field pass 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
     "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_decision_gate",
     "delivery_success": false,
     "primary_actions_enabled": false,
@@ -679,7 +679,7 @@
     "owner_handoff": "owner_handoff=Robot diagnostics publishes safe alias after Autonomy review decision summary; Full-stack keeps mobile/web read-only.",
     "next_required_evidence": "next_required_evidence=same safe_evidence_ref missing route/elevator material summaries",
     "safe_phone_copy": "Robot diagnostics elevator field evidence trace material backfill review decision summary 只读展示材料回填复核决策；这是 software_proof only。",
-    "recovery_hint": "缺真实 route/elevator field materials 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "recovery_hint": "缺真实 route/elevator field pass 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
     "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_decision_gate",
     "delivery_success": false,
     "primary_actions_enabled": false,
@@ -710,7 +710,7 @@
     "phone_safe_copy": "电梯现场证据材料回填复核交接只读展示 owner handoff、safe rerun hints、missing/rejected materials 和 evidence boundary；这是 software_proof / not_proven。",
     "missing_required_materials": "missing_required_materials=real_human_assistance_record、real_nav2_or_fixed_route_runtime_log、real_route_completion_signal、real_field_task_record、real_dropoff_or_cancel_completion、real_delivery_result",
     "rejected_materials": "rejected_materials=none accepted as real field proof",
-    "recovery_hint": "缺真实 route/elevator field materials 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "recovery_hint": "缺真实 route/elevator field pass 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
     "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_handoff_gate",
     "delivery_success": false,
     "primary_actions_enabled": false,
@@ -742,7 +742,7 @@
     "phone_safe_copy": "Robot diagnostics elevator field evidence trace material backfill review handoff summary 只读展示复核交接；这是 software_proof only。",
     "missing_required_materials": "missing_required_materials=real_human_assistance_record、real_nav2_or_fixed_route_runtime_log、real_route_completion_signal、real_field_task_record、real_dropoff_or_cancel_completion、real_delivery_result",
     "rejected_materials": "rejected_materials=none accepted as real field proof",
-    "recovery_hint": "缺真实 route/elevator field materials 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "recovery_hint": "缺真实 route/elevator field pass 前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
     "evidence_boundary": "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_handoff_gate",
     "delivery_success": false,
     "primary_actions_enabled": false,
@@ -2344,6 +2344,51 @@
       "真实手机设备/browser",
       "真实硬件/HIL",
       "Objective 5 external proof"
+    ]
+  },
+  "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_intake_summary": {
+    "schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake_summary.v1",
+    "schema_version": 1,
+    "callback_intake_schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake.v1",
+    "source_alias": "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_intake_summary",
+    "source": "software_proof",
+    "callback_intake_status": "callback_packet_intake_ready_for_review_not_proven",
+    "accepted_callback_evidence": [
+      "accepted_callback_evidence=device_platform_summary_present",
+      "accepted_callback_evidence=viewport_touch_summary_present"
+    ],
+    "missing_callback_evidence": [
+      "missing_callback_evidence=production_app_or_pwa_prompt_user_choice_summary",
+      "missing_callback_evidence=redaction_result_summary"
+    ],
+    "rejected_callback_evidence": [
+      "rejected_callback_evidence=none_phone_safe_summary_only"
+    ],
+    "same_evidence_ref_status": "same_safe_evidence_ref_matched_not_proven",
+    "safe_evidence_ref": "field_trial_acceptance_review_decision_fixture_20260518_0001",
+    "owner_handoff": "owner_handoff=现场 owner 补齐真实手机 callback 摘要后交给 Product/Support 复核。",
+    "next_required_evidence": "next_required_evidence=补齐真实 PWA prompt/user choice、production app 或真实 iPhone/Android 行为摘要和脱敏结果。",
+    "rerun_guidance": "rerun_guidance=补齐同一 safe_evidence_ref 的 callback evidence 后重跑 software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate。",
+    "safe_phone_copy": "现场真实手机验收执行回调入口 fixture 只读展示 callback evidence 分类、same evidence_ref、owner handoff 和 rerun guidance；这是 source=software_proof / not_proven。",
+    "safe_copy_status": "safe_copy_available",
+    "source_execution_pack_status": "blocked_missing_acceptance_execution_pack_summary_or_handoff_safe_copy_not_proven",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "recovery_hint": "callback intake 只分流材料；缺真实手机材料、schema mismatch、unsafe copy 或 evidence_ref 不匹配时继续 blocked。",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate",
+    "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_pack_gate",
+    "not_proven": [
+      "真实 iPhone/Android device behavior",
+      "production app",
+      "真实 PWA install prompt/user choice",
+      "真实 phone/browser acceptance",
+      "Objective 5 external proof",
+      "真实 route/elevator 现场材料缺口",
+      "HIL",
+      "delivery success"
     ]
   }
 }

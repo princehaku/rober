@@ -86,6 +86,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_mobile_field_material_retest_request,
     summarize_mobile_real_device_field_trial_acceptance_review_handoff,
     summarize_mobile_real_device_field_trial_acceptance_execution_pack,
+    summarize_mobile_real_device_field_trial_acceptance_execution_callback_intake,
     summarize_wave_rover_feedback_replay,
     summarize_wave_rover_hil_packet_intake,
     summarize_wave_rover_hil_packet_review_decision,
@@ -19314,6 +19315,386 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(missing_summary["execution_pack_status"]["status"], "missing_summary")
         self.assertEqual(unsupported_summary["execution_pack_status"]["status"], "unsupported_schema")
         self.assertEqual(unsafe_summary["execution_pack_status"]["status"], "unsafe_fields")
+        self.assertIn("source=software_proof", summary["safe_phone_copy"])
+        self.assertIn("safe_to_control=false", summary["safe_phone_copy"])
+        self.assertIn("delivery_success=false", summary["safe_phone_copy"])
+        self.assertIn("primary_actions_enabled=false", summary["safe_phone_copy"])
+        self.assertIn("not_proven", encoded)
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("ACK posted", encoded)
+        self.assertNotIn("hardware_proof", encoded)
+
+    def test_mobile_real_device_acceptance_execution_callback_intake_alias_env_nested_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            intake_path = Path(td) / "mobile_real_device_acceptance_execution_callback_intake.json"
+            intake_path.write_text(
+                json.dumps(
+                    {
+                        "schema": (
+                            "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake.v1"
+                        ),
+                        "schema_version": 1,
+                        "source": "software_proof",
+                        "evidence_boundary": (
+                            "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://mobile-real-device-acceptance-callback-intake-1",
+                        "callback_intake_status": {
+                            "status": "accepted_callback_ready_for_review_not_proven",
+                            "verdict": "not_proven",
+                            "reason": "callback evidence is accepted for review only",
+                        },
+                        "source_execution_pack": {
+                            "status": "ready_for_real_device_field_trial_not_proven"
+                        },
+                        "owner_handoff": ["Full-stack reviews the real-device callback packet"],
+                        "next_required_evidence": ["callback review decision"],
+                        "accepted_callback_evidence": ["same safe evidence_ref callback packet"],
+                        "missing_callback_evidence": [],
+                        "rejected_callback_evidence": [],
+                        "rerun_guidance": ["rerun callback review decision gate"],
+                        "rerun_commands_summary": ["run safe callback intake gate"],
+                        "robot_diagnostics_summary": {
+                            "safe_copy": (
+                                "Mobile real-device callback intake is metadata-only; "
+                                "source=software_proof; safe_to_control=false; delivery_success=false; "
+                                "primary_actions_enabled=false; not_proven."
+                            ),
+                        },
+                        "safe_copy": (
+                            "Mobile real-device callback intake is metadata-only; "
+                            "source=software_proof; safe_to_control=false; delivery_success=false; "
+                            "primary_actions_enabled=false; not_proven."
+                        ),
+                        "not_proven": ["delivery_success", "real_phone_device"],
+                        "safe_to_control": False,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "mobile_real_device_field_trial_acceptance_execution_callback_intake": {
+                        "delivery_success": True,
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                mobile_real_device_field_trial_acceptance_execution_callback_intake_ref=str(intake_path),
+            )
+            summary = payload["mobile_real_device_field_trial_acceptance_execution_callback_intake"]
+            summary_alias = payload[
+                "mobile_real_device_field_trial_acceptance_execution_callback_intake_summary"
+            ]
+            robot_alias = payload[
+                "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_intake_summary"
+            ]
+
+            summary_path = Path(td) / "mobile_real_device_acceptance_execution_callback_intake_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": (
+                            "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake.v1"
+                        ),
+                        "source": "software_proof",
+                        "evidence_boundary": (
+                            "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://mobile-real-device-acceptance-callback-intake-2",
+                        "callback_intake_status": {
+                            "status": "env_accepted_callback_ready_for_review_not_proven",
+                            "verdict": "not_proven",
+                        },
+                        "source_execution_pack": {
+                            "status": "ready_for_real_device_field_trial_not_proven"
+                        },
+                        "owner_handoff": ["Robot mirrors safe callback intake metadata"],
+                        "next_required_evidence": ["callback review decision"],
+                        "accepted_callback_evidence": ["sanitized callback packet"],
+                        "missing_callback_evidence": [],
+                        "rejected_callback_evidence": [],
+                        "rerun_guidance": ["rerun safe callback intake"],
+                        "safe_copy": (
+                            "Mobile real-device callback intake is metadata-only; "
+                            "source=software_proof; safe_to_control=false; delivery_success=false; "
+                            "primary_actions_enabled=false; not_proven."
+                        ),
+                        "safe_to_control": False,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous_intake = os.environ.get(
+                "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE"
+            )
+            previous_summary = os.environ.get(
+                "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SUMMARY"
+            )
+            os.environ.pop(
+                "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE",
+                None,
+            )
+            os.environ[
+                "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SUMMARY"
+            ] = str(summary_path)
+            try:
+                env_summary = self._base_build_payload({"state": "waiting_for_trash"})[
+                    "mobile_real_device_field_trial_acceptance_execution_callback_intake"
+                ]
+            finally:
+                if previous_intake is None:
+                    os.environ.pop(
+                        "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE",
+                        None,
+                    )
+                else:
+                    os.environ[
+                        "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE"
+                    ] = previous_intake
+                if previous_summary is None:
+                    os.environ.pop(
+                        "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SUMMARY",
+                        None,
+                    )
+                else:
+                    os.environ[
+                        "TRASHBOT_MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_CALLBACK_INTAKE_SUMMARY"
+                    ] = previous_summary
+
+            nested_summary = self._base_build_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_intake_summary": {
+                            "schema": (
+                                "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake_summary.v1"
+                            ),
+                            "source_schema": (
+                                "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake.v1"
+                            ),
+                            "source": "software_proof",
+                            "evidence_boundary": (
+                                "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate"
+                            ),
+                            "source_evidence_boundary": (
+                                "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate"
+                            ),
+                            "safe_evidence_ref": "evidence://mobile-real-device-acceptance-callback-intake-3",
+                            "callback_intake_status": {
+                                "status": "nested_accepted_callback_ready_for_review_not_proven",
+                                "verdict": "not_proven",
+                            },
+                            "source_execution_pack": {
+                                "status": "ready_for_real_device_field_trial_not_proven"
+                            },
+                            "owner_handoff": ["Robot diagnostics remains read-only"],
+                            "next_required_evidence": ["callback review decision"],
+                            "accepted_callback_evidence": ["same-ref callback packet"],
+                            "missing_callback_evidence": [],
+                            "rejected_callback_evidence": [],
+                            "rerun_guidance": ["rerun safe gate"],
+                            "safe_copy": (
+                                "Nested mobile callback intake is metadata-only; source=software_proof; "
+                                "safe_to_control=false; delivery_success=false; "
+                                "primary_actions_enabled=false; not_proven."
+                            ),
+                            "safe_to_control": False,
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        }
+                    },
+                }
+            )["mobile_real_device_field_trial_acceptance_execution_callback_intake"]
+
+            missing_path = Path(td) / "Bearer-secret-token" / "missing_callback_intake.json"
+            missing_summary = summarize_mobile_real_device_field_trial_acceptance_execution_callback_intake(
+                str(missing_path)
+            )
+            unsupported_summary = (
+                summarize_mobile_real_device_field_trial_acceptance_execution_callback_intake(
+                    {
+                        "schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_pack.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_pack_gate"
+                        ),
+                        "source": "software_proof",
+                        "safe_copy": "Unsupported callback intake is metadata-only; delivery_success=false.",
+                        "safe_to_control": False,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                )
+            )
+            missing_material_summary = (
+                summarize_mobile_real_device_field_trial_acceptance_execution_callback_intake(
+                    {
+                        "schema": (
+                            "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake.v1"
+                        ),
+                        "source": "software_proof",
+                        "evidence_boundary": (
+                            "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://mobile-real-device-acceptance-callback-intake-4",
+                        "callback_intake_status": {"status": "missing_callback_material"},
+                        "missing_callback_evidence": ["real phone video"],
+                        "safe_copy": (
+                            "Missing callback material is metadata-only; source=software_proof; "
+                            "safe_to_control=false; delivery_success=false; "
+                            "primary_actions_enabled=false; not_proven."
+                        ),
+                        "safe_to_control": False,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                )
+            )
+            rejected_summary = (
+                summarize_mobile_real_device_field_trial_acceptance_execution_callback_intake(
+                    {
+                        "schema": (
+                            "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake.v1"
+                        ),
+                        "source": "software_proof",
+                        "evidence_boundary": (
+                            "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://mobile-real-device-acceptance-callback-intake-5",
+                        "callback_intake_status": {"status": "rejected_callback_material"},
+                        "rejected_callback_evidence": ["evidence_ref mismatch"],
+                        "safe_copy": (
+                            "Rejected callback material is metadata-only; source=software_proof; "
+                            "safe_to_control=false; delivery_success=false; "
+                            "primary_actions_enabled=false; not_proven."
+                        ),
+                        "safe_to_control": False,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                )
+            )
+            unsafe_summary = (
+                summarize_mobile_real_device_field_trial_acceptance_execution_callback_intake(
+                    {
+                        "schema": (
+                            "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake_summary.v1"
+                        ),
+                        "source_schema": (
+                            "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake.v1"
+                        ),
+                        "source": "hardware_proof",
+                        "evidence_boundary": (
+                            "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate"
+                        ),
+                        "source_evidence_boundary": (
+                            "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://mobile-real-device-acceptance-callback-intake-6",
+                        "callback_intake_status": {"status": "unsafe_success_claim"},
+                        "safe_copy": "Callback intake confirms delivery success and ACK posted.",
+                        "safe_to_control": True,
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                    }
+                )
+            )
+            encoded = json.dumps(
+                [
+                    summary,
+                    summary_alias,
+                    robot_alias,
+                    env_summary,
+                    nested_summary,
+                    missing_summary,
+                    unsupported_summary,
+                    missing_material_summary,
+                    rejected_summary,
+                    unsafe_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
+        self.assertNotIn(
+            "mobile_real_device_field_trial_acceptance_execution_callback_intake",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake_summary.v1",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_intake.v1",
+        )
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://mobile-real-device-acceptance-callback-intake-1",
+        )
+        self.assertEqual(
+            summary["callback_intake_status"]["status"],
+            "accepted_callback_ready_for_review_not_proven",
+        )
+        self.assertEqual(summary["callback_intake_status"]["evidence_source"], "software_proof")
+        self.assertEqual(
+            env_summary["callback_intake_status"]["status"],
+            "env_accepted_callback_ready_for_review_not_proven",
+        )
+        self.assertEqual(
+            nested_summary["callback_intake_status"]["status"],
+            "nested_accepted_callback_ready_for_review_not_proven",
+        )
+        self.assertEqual(missing_summary["callback_intake_status"]["status"], "missing_summary")
+        self.assertEqual(unsupported_summary["callback_intake_status"]["status"], "unsupported_schema")
+        self.assertEqual(missing_material_summary["callback_intake_status"]["status"], "blocked_not_proven")
+        self.assertEqual(rejected_summary["callback_intake_status"]["status"], "blocked_not_proven")
+        self.assertEqual(unsafe_summary["callback_intake_status"]["status"], "unsafe_fields")
         self.assertIn("source=software_proof", summary["safe_phone_copy"])
         self.assertIn("safe_to_control=false", summary["safe_phone_copy"])
         self.assertIn("delivery_success=false", summary["safe_phone_copy"])

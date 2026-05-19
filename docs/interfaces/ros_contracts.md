@@ -3610,6 +3610,32 @@ alias must not expose raw artifacts, local paths, credentials, raw ROS topics,
 cancel commands, ACK/terminal ACK/cursor state, Nav2/fixed-route execution,
 HIL pass, real phone/browser proof, route/elevator field pass, dropoff/cancel
 completion, delivery result, or delivery success.
+Mobile real-device field-trial acceptance-execution-callback-intake metadata,
+including `mobile_real_device_field_trial_acceptance_execution_callback_intake`,
+`mobile_real_device_field_trial_acceptance_execution_callback_intake_summary`,
+and the Robot diagnostics safe alias
+`robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_intake_summary`,
+follows the same metadata-only rule for the
+`software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_intake_gate`
+boundary. Robot diagnostics may consume an explicit
+`mobile_real_device_field_trial_acceptance_execution_callback_intake_ref`, the
+matching environment variables, a sanitized `latest_status` object, or a nested
+`diagnostics` summary, but it may copy only whitelisted summary fields:
+`source=software_proof`, safe `evidence_ref`, callback-intake status, source
+execution-pack summary, owner handoff, next required evidence,
+accepted/missing/rejected callback evidence, rerun guidance, safe copy,
+evidence boundary, and `not_proven`. It must always emit
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`. Missing summary, schema mismatch, unsupported
+boundary, unsafe `evidence_ref`, unsafe raw fields, rejected callback evidence,
+missing callback material, success claims, control claims, enabled actions,
+`safe_to_control=true`, `delivery_success=true`, `primary_actions_enabled=true`,
+or non-`software_proof` source must fail closed as blocked/not_proven. The
+alias must not expose raw artifacts, local paths, credentials, raw ROS topics,
+`/cmd_vel`, serial/UART details, DB/queue URLs, OSS AK/SK, collect/dropoff/
+cancel commands, ACK/terminal ACK/cursor state, Nav2/fixed-route execution,
+HIL pass, real phone/browser proof, route/elevator field pass, dropoff/cancel
+completion, delivery result, or delivery success.
 Mobile real-device field-trial runbook-execution metadata, including
 `mobile_real_device_field_trial_runbook_execution`,
 `mobile_real_device_field_trial_runbook_execution_summary`, and
