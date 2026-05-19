@@ -152,6 +152,7 @@ h2 {
 .pr5-review-thread-closeout-panel,
 .hardware-real-material-escalation-request-panel,
 .real-material-readiness-board-panel,
+.real-material-evidence-intake-panel,
 .task-terminal-completion-mainline-panel,
 .task-terminal-field-material-intake-panel,
 .task-terminal-field-material-review-decision-panel,
@@ -315,6 +316,7 @@ h2 {
 .pr5-review-thread-closeout-grid,
 .hardware-real-material-escalation-request-grid,
 .real-material-readiness-board-grid,
+.real-material-evidence-intake-grid,
 .task-terminal-completion-mainline-grid,
 .task-terminal-field-material-intake-grid,
 .task-terminal-field-material-review-decision-grid,
@@ -394,6 +396,7 @@ h2 {
 .pr5-review-thread-closeout-grid div,
 .hardware-real-material-escalation-request-grid div,
 .real-material-readiness-board-grid div,
+.real-material-evidence-intake-grid div,
 .task-terminal-completion-mainline-grid div,
 .task-terminal-field-material-intake-grid div,
 .task-terminal-field-material-review-decision-grid div,
@@ -614,6 +617,10 @@ dd {
 }
 
 .real-material-readiness-board-grid {
+  grid-template-columns: 1fr;
+}
+
+.real-material-evidence-intake-grid {
   grid-template-columns: 1fr;
 }
 
@@ -1023,6 +1030,10 @@ dd {
   }
 
   .real-material-readiness-board-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .real-material-evidence-intake-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

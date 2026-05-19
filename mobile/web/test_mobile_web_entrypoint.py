@@ -548,6 +548,107 @@ class RealMaterialReadinessBoardMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, board_text)
 
 
+class RealMaterialEvidenceIntakeMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_real_material_evidence_intake_panel_is_read_only_and_whitelisted(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 真实材料回填入口只消费 phone-safe safe alias/summary，不新增控制或诊断请求。
+        self.assertIn("真实材料回填入口", app)
+        self.assertIn("REAL_MATERIAL_EVIDENCE_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_REAL_MATERIAL_EVIDENCE_INTAKE_TEXT", app)
+        self.assertIn("safeRealMaterialEvidenceIntakeText", app)
+        self.assertIn("realMaterialEvidenceIntakeCandidate", app)
+        self.assertIn("realMaterialEvidenceIntakeFromStatus", app)
+        self.assertIn("robot_diagnostics_real_material_evidence_intake_summary", app)
+        self.assertIn("real_material_evidence_intake_summary", app)
+        self.assertIn("phone_safe_real_material_evidence_intake_summary", app)
+        self.assertIn("real-material-evidence-intake-panel", styles)
+        self.assertIn("real-material-evidence-intake-grid", styles)
+        self.assertIn("accepted_items", fixture_text)
+        self.assertIn("missing_items", fixture_text)
+        self.assertIn("rejected_items", fixture_text)
+        self.assertIn("next_action", fixture_text)
+        self.assertIn("owner_handoff", fixture_text)
+        self.assertNotRegex(
+            app,
+            r"realMaterialEvidenceIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+
+        # 两个 fixture 与产品文档都保留 Docker/software-proof 边界和 fail-closed 控制状态。
+        summary = fixture["robot_diagnostics_real_material_evidence_intake_summary"]
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["intake_status"], "blocked_missing_real_material_evidence_not_proven")
+        self.assertEqual(summary["material_group"], "pr4_route_elevator")
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(summary["safe_to_control"], False)
+        mobile_summary = mobile_fixture["real_material_evidence_intake_summary"]
+        self.assertEqual(mobile_summary["source"], "software_proof")
+        self.assertEqual(mobile_summary["intake_status"], "blocked_missing_real_material_evidence_not_proven")
+        self.assertEqual(mobile_summary["delivery_success"], False)
+        self.assertEqual(mobile_summary["primary_actions_enabled"], False)
+        self.assertEqual(mobile_summary["safe_to_control"], False)
+        self.assertIn("real_material_evidence_intake", doc)
+        self.assertIn("robot_diagnostics_real_material_evidence_intake_summary", doc)
+        self.assertIn("真实材料回填入口", doc)
+        self.assertIn("software_proof_docker_real_material_evidence_intake_gate", doc)
+        self.assertIn("software_proof", doc)
+        self.assertIn("not_proven", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("safe_to_control=false", doc)
+
+    def test_real_material_evidence_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        intake_text = json.dumps(
+            {
+                "status": fixture["robot_diagnostics_real_material_evidence_intake_summary"],
+                "mobile": mobile_fixture["real_material_evidence_intake_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # 回填入口 fixture 只保留材料分类结果，不夹带原始材料、控制协议、路径、凭证或成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial path",
+            "serial device",
+            "uart path",
+            "baudrate",
+            "/users/",
+            "/tmp/",
+            "credentials",
+            "authorization",
+            "bearer",
+            "token",
+            "database url",
+            "queue url",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "hil_pass",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, intake_text)
+
+
 class TaskTerminalFieldMaterialIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

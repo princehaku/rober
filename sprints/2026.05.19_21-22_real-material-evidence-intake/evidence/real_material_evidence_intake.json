@@ -1,0 +1,185 @@
+{
+  "accepted_count": 0,
+  "delivery_success": false,
+  "evidence_boundary": "software_proof_docker_real_material_evidence_intake_gate",
+  "generated_at": "2026-05-19T13:14:13.523841+00:00",
+  "intake_status": "blocked_missing_real_material_items",
+  "manifest_source": "sample_manifest",
+  "material_groups": [
+    {
+      "accepted_items": [],
+      "delivery_success": false,
+      "evidence_boundary": "software_proof_docker_real_material_evidence_intake_gate",
+      "intake_status": "blocked_missing_real_material_items",
+      "material_group": "o5_external",
+      "missing_items": [
+        "public_https_tls",
+        "4g_sim",
+        "oss_cdn_live_traffic",
+        "production_db_queue",
+        "worker_migration_cutover",
+        "external_proof"
+      ],
+      "next_action": "collect_real_external_cloud_network_and_db_queue_materials",
+      "not_proven": true,
+      "objective_ref": "Objective 5",
+      "owner_handoff": "product-okr-owner",
+      "primary_actions_enabled": false,
+      "rejected_items": [],
+      "safe_evidence_ref": "sample-real-material-evidence-2026-05-19",
+      "safe_to_control": false,
+      "safety_markers": [
+        "software_proof",
+        "not_proven",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "same_evidence_ref_required": true,
+      "source": "software_proof",
+      "status": "not_proven",
+      "title": "Objective 5 external real material"
+    },
+    {
+      "accepted_items": [],
+      "delivery_success": false,
+      "evidence_boundary": "software_proof_docker_real_material_evidence_intake_gate",
+      "intake_status": "blocked_missing_real_material_items",
+      "material_group": "o1_pr5_hardware",
+      "missing_items": [
+        "2d_lidar_sku_source_receipt",
+        "tof_sku_source_receipt",
+        "procurement_install_wiring_power_calibration",
+        "hil_entry",
+        "wave_rover_uart_hil_packet"
+      ],
+      "next_action": "collect_pr5_sensor_and_wave_rover_uart_hil_materials",
+      "not_proven": true,
+      "objective_ref": "Objective 1",
+      "owner_handoff": "hardware-engineer",
+      "primary_actions_enabled": false,
+      "rejected_items": [],
+      "safe_evidence_ref": "sample-real-material-evidence-2026-05-19",
+      "safe_to_control": false,
+      "safety_markers": [
+        "software_proof",
+        "not_proven",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "same_evidence_ref_required": true,
+      "source": "software_proof",
+      "status": "not_proven",
+      "title": "Objective 1 / PR #5 hardware real material"
+    },
+    {
+      "accepted_items": [],
+      "delivery_success": false,
+      "evidence_boundary": "software_proof_docker_real_material_evidence_intake_gate",
+      "intake_status": "blocked_missing_real_material_items",
+      "material_group": "pr4_route_elevator",
+      "missing_items": [
+        "nav2_fixed_route_runtime_log",
+        "route_completion_signal",
+        "field_task_record",
+        "elevator_door_state",
+        "target_floor_confirmation",
+        "human_assistance_record",
+        "dropoff_cancel_material",
+        "delivery_result"
+      ],
+      "next_action": "collect_real_route_elevator_field_materials",
+      "not_proven": true,
+      "objective_ref": "PR #4 / Objective 2 / Objective 3",
+      "owner_handoff": "autonomy-engineer",
+      "primary_actions_enabled": false,
+      "rejected_items": [],
+      "safe_evidence_ref": "sample-real-material-evidence-2026-05-19",
+      "safe_to_control": false,
+      "safety_markers": [
+        "software_proof",
+        "not_proven",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "same_evidence_ref_required": true,
+      "source": "software_proof",
+      "status": "not_proven",
+      "title": "PR #4 route/elevator real material"
+    },
+    {
+      "accepted_items": [],
+      "delivery_success": false,
+      "evidence_boundary": "software_proof_docker_real_material_evidence_intake_gate",
+      "intake_status": "blocked_missing_real_material_items",
+      "material_group": "o4_real_phone",
+      "missing_items": [
+        "real_phone_browser_session",
+        "production_app",
+        "pwa_prompt_user_choice",
+        "true_phone_browser_acceptance"
+      ],
+      "next_action": "collect_real_phone_device_acceptance_materials",
+      "not_proven": true,
+      "objective_ref": "Objective 4",
+      "owner_handoff": "full-stack-software-engineer",
+      "primary_actions_enabled": false,
+      "rejected_items": [],
+      "safe_evidence_ref": "sample-real-material-evidence-2026-05-19",
+      "safe_to_control": false,
+      "safety_markers": [
+        "software_proof",
+        "not_proven",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "same_evidence_ref_required": true,
+      "source": "software_proof",
+      "status": "not_proven",
+      "title": "Objective 4 real phone material"
+    }
+  ],
+  "missing_count": 23,
+  "not_proven": true,
+  "not_proven_items": [
+    "real_public_https_tls",
+    "real_4g_sim",
+    "real_oss_cdn_live_traffic",
+    "real_production_db_queue",
+    "real_2d_lidar_or_tof_procurement_install_calibration",
+    "real_wave_rover_uart_hil",
+    "real_route_elevator_field_run",
+    "real_phone_browser_acceptance",
+    "delivery_success"
+  ],
+  "primary_actions_enabled": false,
+  "real_material_evidence_intake": "blocked_missing_real_material_items",
+  "rejected_count": 0,
+  "review_refs": {
+    "objective_1": "Objective 1 / PR #5 remains blocked pending real hardware materials",
+    "objective_5": "Objective 5 remains blocked pending real external proof",
+    "pr5_state": "blocked_pending_real_materials_not_closed",
+    "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX"
+  },
+  "safe_evidence_ref": "sample-real-material-evidence-2026-05-19",
+  "safe_to_control": false,
+  "same_evidence_ref_required": true,
+  "schema": "trashbot.real_material_evidence_intake.v1",
+  "schema_version": 1,
+  "source": "software_proof",
+  "status": "not_proven",
+  "vendor_source_boundary": {
+    "hardware_conclusion": "vendor coverage bounds WAVE ROVER/UART/Orange Pi source facts only; it does not prove real 2D LiDAR/ToF procurement, WAVE ROVER UART/HIL, or PR #5 closure",
+    "source_refs": [
+      "docs/vendor/VENDOR_INDEX.md",
+      "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+      "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+      "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+    ],
+    "vendor_index": "docs/vendor/VENDOR_INDEX.md",
+    "vendor_index_exists": true
+  }
+}
