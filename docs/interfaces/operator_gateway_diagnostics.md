@@ -1,5 +1,47 @@
 # Operator Gateway Diagnostics
 
+## robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary`
+as a safe alias for Autonomy's elevator field evidence trace material
+backfill review handoff summary.
+
+- Source artifact schema:
+  `trashbot.elevator_field_evidence_trace_material_backfill_review_handoff.v1`
+- Source summary schema:
+  `trashbot.elevator_field_evidence_trace_material_backfill_review_handoff_summary.v1`
+- Robot alias schema:
+  `trashbot.robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_elevator_field_evidence_trace_material_backfill_review_handoff_gate`
+
+The alias is metadata-only and read-only. It may expose sanitized handoff
+status such as `ready_for_field_owner_material_backfill_rerun_not_proven` or
+`needs_field_owner_material_handoff_not_proven`, safe `evidence_ref`,
+`same_evidence_ref_required=true`, `same_evidence_ref_status=matched`, source
+material backfill review decision metadata, field owner handoff rows, safe
+rerun hints, phone-safe copy, missing required materials, rejected materials,
+next required evidence, safe copy, `software_proof`, `not_proven`,
+`delivery_success=false`, and `primary_actions_enabled=false`.
+
+Missing summary, unreadable input, unsupported schema or boundary,
+`source` other than `software_proof`, `overall_status` other than
+`not_proven`, same `evidence_ref` mismatch, missing owner handoff fields,
+unsafe copy, raw material body, raw material refs, raw route/elevator logs,
+raw ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details,
+credentials, local paths, checksums, tracebacks, ACK/cursor/command/control
+fields, success wording, `delivery_success=true`, or
+`primary_actions_enabled=true` must fail closed as blocked/not_proven.
+
+This alias must not expose a complete artifact or enable Start Delivery,
+Confirm Dropoff, Cancel, ACK, cursor updates, persistence updates, terminal
+ACK, commands, Nav2, WAVE ROVER, HIL, material collection, production
+readiness, dropoff/cancel completion, or delivery success. It also does not
+prove a real elevator run, real Nav2/fixed-route runtime, real field task
+record, real phone/browser validation, Objective 5 external proof, or any
+hardware/HIL result.
+
 ## robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary
 
 Robot diagnostics exposes

@@ -74,6 +74,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_elevator_field_evidence_trace_callback_review_handoff,
     summarize_elevator_field_evidence_trace_material_backfill_intake,
     summarize_elevator_field_evidence_trace_material_backfill_review_decision,
+    summarize_elevator_field_evidence_trace_material_backfill_review_handoff,
     summarize_elevator_field_run_review,
     summarize_elevator_field_run_execution_pack,
     summarize_elevator_route_evidence_reconciliation,
@@ -1676,6 +1677,257 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(
             enabled["review_decision"],
             "blocked_unsafe_elevator_field_evidence_trace_material_backfill_review_decision_summary",
+        )
+        self.assertIn("real_route_elevator_field_pass", summary["not_proven"])
+        self.assertIn("objective_5_external_proof", summary["not_proven"])
+        self.assertIn("software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+
+    def test_elevator_field_evidence_trace_material_backfill_review_handoff_alias_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = (
+                Path(td)
+                / "elevator_field_evidence_trace_material_backfill_review_handoff_summary.json"
+            )
+            safe_summary = {
+                "schema": (
+                    "trashbot.elevator_field_evidence_trace_material_backfill_review_handoff_summary.v1"
+                ),
+                "source_schema": (
+                    "trashbot.elevator_field_evidence_trace_material_backfill_review_handoff.v1"
+                ),
+                "schema_version": 1,
+                "evidence_boundary": (
+                    "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_handoff_gate"
+                ),
+                "source_evidence_boundary": (
+                    "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_handoff_gate"
+                ),
+                "source": "software_proof",
+                "overall_status": "not_proven",
+                "handoff_status": "ready_for_field_owner_material_backfill_rerun_not_proven",
+                "safe_evidence_ref": "evidence://elevator-field-material-handoff-1",
+                "same_evidence_ref_required": True,
+                "same_evidence_ref_status": "matched",
+                "source_review_decision": {
+                    "schema": (
+                        "trashbot.elevator_field_evidence_trace_material_backfill_review_decision_summary.v1"
+                    ),
+                    "review_decision": "needs_required_material_backfill_not_proven",
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_decision_gate"
+                    ),
+                },
+                "field_owner_handoff": [
+                    {
+                        "owner": "field-owner",
+                        "required_material": "real_field_task_record",
+                        "next_step": (
+                            "collect_same_evidence_ref_material_then_rerun_review_decision_and_handoff"
+                        ),
+                        "status": "not_proven",
+                    }
+                ],
+                "safe_rerun_hints": [
+                    "use_the_same_safe_evidence_ref",
+                    "provide_only_redacted_material_refs_to_robot_and_mobile",
+                ],
+                "phone_safe_copy": [
+                    "现场材料仍未证明真实通过，请补齐同一证据编号下的真实路线、电梯和投放材料。"
+                ],
+                "missing_required_materials": ["real_field_task_record"],
+                "rejected_materials": [],
+                "next_required_evidence": [
+                    "backfill_missing_material_refs_with_same_evidence_ref_then_rerun_review_handoff"
+                ],
+                "robot_diagnostics_summary": {
+                    "status": "metadata_only",
+                    "safe_copy": (
+                        "Elevator field evidence trace material backfill review handoff "
+                        "is metadata-only; software_proof; not_proven; "
+                        "delivery_success=false; primary_actions_enabled=false."
+                    ),
+                },
+                "safe_copy": (
+                    "Elevator field evidence trace material backfill review handoff "
+                    "is metadata-only; software_proof; not_proven; "
+                    "delivery_success=false; primary_actions_enabled=false."
+                ),
+                "not_proven": ["real_route_elevator_field_pass", "delivery_success"],
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            }
+            summary_path.write_text(json.dumps(safe_summary), encoding="utf-8")
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "diagnostics": {
+                        "elevator_field_evidence_trace_material_backfill_review_handoff": {
+                            "delivery_success": True,
+                            "raw_material_body": "must not be consumed",
+                        }
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                elevator_field_evidence_trace_material_backfill_review_handoff_ref=str(
+                    summary_path
+                ),
+            )
+            summary = payload[
+                "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+            ]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+            artifact_summary = summarize_elevator_field_evidence_trace_material_backfill_review_handoff(
+                {
+                    "schema": (
+                        "trashbot.elevator_field_evidence_trace_material_backfill_review_handoff.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_handoff_gate"
+                    ),
+                    "evidence_ref": "evidence://elevator-field-material-handoff-2",
+                    "elevator_field_evidence_trace_material_backfill_review_handoff_summary": dict(
+                        safe_summary,
+                        safe_evidence_ref="evidence://elevator-field-material-handoff-2",
+                    ),
+                }
+            )
+            missing = summarize_elevator_field_evidence_trace_material_backfill_review_handoff(
+                Path(td) / "Bearer-secret-token" / "missing_review_handoff.json"
+            )
+            unsupported = summarize_elevator_field_evidence_trace_material_backfill_review_handoff(
+                dict(
+                    safe_summary,
+                    source_schema=(
+                        "trashbot.elevator_field_evidence_trace_material_backfill_review_decision.v1"
+                    ),
+                    source_evidence_boundary=(
+                        "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_decision_gate"
+                    ),
+                    safe_evidence_ref="evidence://unsupported-handoff",
+                )
+            )
+            bad_source = summarize_elevator_field_evidence_trace_material_backfill_review_handoff(
+                dict(safe_summary, source="hil_pass", safe_evidence_ref="evidence://bad-source")
+            )
+            mismatch = summarize_elevator_field_evidence_trace_material_backfill_review_handoff(
+                {
+                    "schema": (
+                        "trashbot.elevator_field_evidence_trace_material_backfill_review_handoff.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_handoff_gate"
+                    ),
+                    "evidence_ref": "evidence://source-handoff",
+                    "elevator_field_evidence_trace_material_backfill_review_handoff_summary": dict(
+                        safe_summary,
+                        safe_evidence_ref="evidence://summary-handoff",
+                    ),
+                }
+            )
+            incomplete = summarize_elevator_field_evidence_trace_material_backfill_review_handoff(
+                dict(
+                    safe_summary,
+                    safe_evidence_ref="evidence://incomplete-handoff",
+                    field_owner_handoff=[],
+                )
+            )
+            unsafe = summarize_elevator_field_evidence_trace_material_backfill_review_handoff(
+                dict(
+                    safe_summary,
+                    safe_evidence_ref="evidence://unsafe-handoff",
+                    raw_material_body="token secret /cmd_vel /dev/ttyUSB0",
+                    safe_copy=(
+                        "Material backfill review handoff confirms delivery success "
+                        "and primary actions enabled."
+                    ),
+                    delivery_success=True,
+                )
+            )
+            enabled = summarize_elevator_field_evidence_trace_material_backfill_review_handoff(
+                dict(
+                    safe_summary,
+                    safe_evidence_ref="evidence://enabled-handoff",
+                    primary_actions_enabled=True,
+                )
+            )
+            blocked_encoded = json.dumps(
+                [missing, unsupported, bad_source, mismatch, incomplete, unsafe, enabled],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(
+            summary,
+            payload["elevator_field_evidence_trace_material_backfill_review_handoff"],
+        )
+        self.assertEqual(
+            summary,
+            payload[
+                "elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+            ],
+        )
+        self.assertNotIn(
+            "elevator_field_evidence_trace_material_backfill_review_handoff",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.elevator_field_evidence_trace_material_backfill_review_handoff.v1",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["overall_status"], "not_proven")
+        self.assertEqual(
+            summary["handoff_status"],
+            "ready_for_field_owner_material_backfill_rerun_not_proven",
+        )
+        self.assertEqual(summary["same_evidence_ref_status"], "matched")
+        self.assertEqual(
+            artifact_summary["handoff_status"],
+            "ready_for_field_owner_material_backfill_rerun_not_proven",
+        )
+        self.assertEqual(
+            missing["handoff_status"],
+            "blocked_missing_elevator_field_evidence_trace_material_backfill_review_handoff_summary",
+        )
+        self.assertEqual(unsupported["handoff_status"], "unsupported_schema")
+        self.assertEqual(
+            bad_source["handoff_status"],
+            "blocked_unsupported_elevator_field_evidence_trace_material_backfill_review_handoff_summary",
+        )
+        self.assertEqual(
+            mismatch["handoff_status"],
+            "blocked_evidence_ref_mismatch_not_proven",
+        )
+        self.assertEqual(
+            incomplete["handoff_status"],
+            "needs_field_owner_material_handoff_not_proven",
+        )
+        self.assertEqual(
+            unsafe["handoff_status"],
+            "blocked_unsafe_elevator_field_evidence_trace_material_backfill_review_handoff_summary",
+        )
+        self.assertEqual(
+            enabled["handoff_status"],
+            "blocked_unsafe_elevator_field_evidence_trace_material_backfill_review_handoff_summary",
         )
         self.assertIn("real_route_elevator_field_pass", summary["not_proven"])
         self.assertIn("objective_5_external_proof", summary["not_proven"])

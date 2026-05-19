@@ -5681,6 +5681,138 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, decision_text)
 
+    def test_elevator_field_evidence_trace_material_backfill_review_handoff_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # review handoff panel 优先消费 Robot diagnostics alias；summary 回退不能读取 raw artifact。
+        self.assertIn("ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_BOUNDARY", app)
+        self.assertIn("UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_TEXT", app)
+        self.assertIn("safeElevatorFieldEvidenceTraceMaterialBackfillReviewHandoffText", app)
+        self.assertIn("elevatorFieldEvidenceTraceMaterialBackfillReviewHandoffCandidate", app)
+        self.assertIn("elevatorFieldEvidenceTraceMaterialBackfillReviewHandoffFromStatus", app)
+        self.assertIn(
+            "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary",
+            app,
+        )
+        self.assertIn("elevator_field_evidence_trace_material_backfill_review_handoff_summary", app)
+        self.assertIn(
+            "diagnosticsSummary.elevator_field_evidence_trace_material_backfill_review_handoff",
+            app,
+        )
+        self.assertIn(
+            "statusDiagnosticsSummary.elevator_field_evidence_trace_material_backfill_review_handoff",
+            app,
+        )
+        self.assertIn("电梯现场证据材料回填复核交接", app)
+        self.assertIn("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionTitle", app)
+        self.assertIn("elevator-field-evidence-trace-material-backfill-review-handoff-panel", styles)
+        self.assertIn("elevator-field-evidence-trace-material-backfill-review-handoff-grid", styles)
+
+        # panel 只显示交接字段，不新增 copy/export、diagnostics fetch 或主操作请求。
+        self.assertIn("handoff_status", app)
+        self.assertIn("safe_evidence_ref", app)
+        self.assertIn("field_owner_handoff", app)
+        self.assertIn("safe_rerun_hints", app)
+        self.assertIn("phone_safe_copy", app)
+        self.assertIn("missing_required_materials", app)
+        self.assertIn("rejected_materials", app)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", app)
+        self.assertIn("Start Delivery", app)
+        self.assertIn("Confirm Dropoff", app)
+        self.assertIn("Cancel", app)
+        self.assertNotRegex(
+            app,
+            r"elevatorFieldEvidenceTraceMaterialBackfillReviewHandoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotIn("copyElevatorFieldEvidenceTraceMaterialBackfillReviewHandoffButton", app)
+        self.assertNotIn("downloadElevatorFieldEvidenceTraceMaterialBackfillReviewHandoffButton", app)
+
+        # web/mobile fixture 和产品文档固定 software_proof/not_proven 边界。
+        handoff = fixture[
+            "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+        ]
+        self.assertEqual(handoff["source"], "software_proof")
+        self.assertEqual(handoff["overall_status"], "not_proven")
+        self.assertEqual(handoff["handoff_status"], "ready_for_field_owner_follow_up_not_proven")
+        self.assertEqual(handoff["delivery_success"], False)
+        self.assertEqual(handoff["primary_actions_enabled"], False)
+        mobile_handoff = mobile_fixture[
+            "elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+        ]
+        self.assertEqual(mobile_handoff["delivery_success"], False)
+        self.assertEqual(mobile_handoff["primary_actions_enabled"], False)
+        self.assertIn(
+            "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_handoff_gate",
+            fixture_text,
+        )
+        self.assertIn("field_owner_handoff", fixture_text)
+        self.assertIn("safe_rerun_hints", fixture_text)
+        self.assertIn("phone_safe_copy", fixture_text)
+        self.assertIn("elevator_field_evidence_trace_material_backfill_review_handoff", doc)
+        self.assertIn(
+            "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary",
+            doc,
+        )
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+
+    def test_elevator_field_evidence_trace_material_backfill_review_handoff_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        handoff_text = json.dumps(
+            {
+                "web": fixture[
+                    "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+                ],
+                "mobile": mobile_fixture[
+                    "elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+                ],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # handoff fixture 只能承载脱敏交接和 rerun hint，不能泄漏 raw handoff 或成功/控制授权语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw callback",
+            "raw packet",
+            "raw review",
+            "raw decision",
+            "raw handoff",
+            "raw material",
+            "raw backfill",
+            "raw diagnostics",
+            "raw path",
+            "raw internal log",
+            "/users/",
+            "/tmp/",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "authorization",
+            "token",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "ack payload",
+            "cursor",
+            "robot command",
+            "diagnostics fetch",
+            "control grant",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, handoff_text)
+
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
         app = self.read_web("app.js")

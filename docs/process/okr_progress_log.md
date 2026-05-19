@@ -8,7 +8,21 @@
 
 ## 2026-05-19 系列
 
-更新时间：2026-05-19 08:20 Asia/Shanghai。
+更新时间：2026-05-19 09:16 Asia/Shanghai。
+
+### 2026-05-19 09-10｜elevator-field-evidence-material-backfill-review-handoff｜O2/O3/O4 route/elevator material backfill review handoff software proof
+
+本轮 `sprints/2026.05.19_09-10_elevator-field-evidence-material-backfill-review-handoff/` 推进 Objective 2 / Objective 3 / Objective 4，但只记录 `software_proof_docker_elevator_field_evidence_trace_material_backfill_review_handoff_gate`：Autonomy worker 新增 `elevator_field_evidence_trace_material_backfill_review_handoff` PC gate，消费上一轮 material backfill review decision summary / diagnostics safe alias，并校验 same safe `evidence_ref`、schema、boundary、`software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，输出现场 owner handoff package、safe rerun hints 和 phone-safe copy。Robot worker 新增 `robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary` safe alias，缺失/unsupported/unsafe/success/control fields fail closed。Full-Stack worker 在 mobile/web 增加只读 material backfill review handoff panel，展示 handoff status、field owner handoff、safe rerun hints、phone-safe copy、missing/rejected materials 和 evidence boundary，Start Delivery、Confirm Dropoff、Cancel gating 不变。`ready_for_field_owner_material_backfill_rerun_not_proven` 只表示 handoff package 安全且齐全到可交给现场 owner 补同一 safe `evidence_ref` 的真实材料并 rerun，不是真实 route/elevator field pass。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮未新增 WAVE ROVER/UART/HIL、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery` 或 operator HIL report；PR #5 2D LiDAR / ToF SKU/source、receipt、采购、安装、接线、电源、标定和 HIL-entry 仍缺真实材料。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | `elevator_field_evidence_trace_material_backfill_review_handoff` 让 PR #4 route/elevator 现场 owner 可以从材料回填复核决策进入 owner handoff 和 safe rerun；仍缺真实电梯、真实门状态、真实楼层确认、人工协助记录、真实 Nav2/fixed-route、dropoff/cancel completion、delivery result 和 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮把真实 Nav2/fixed-route runtime log、route completion signal、field task record、dropoff/cancel completion 和 delivery result 继续作为 material backfill review handoff hard requirements；仍缺真实路线采集、Nav2/fixed-route 实跑、route completion signal、现场 task_record 或同一 `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可只读展示 material backfill review handoff、field owner handoff、safe rerun hints、phone-safe copy、missing/rejected materials 和 boundary；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 与现场 phone behavior。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；`python3 -m unittest tests/test_elevator_field_evidence_trace_material_backfill_review_handoff.py` 输出 `Ran 7 tests ... OK`；required `rg` 与 scoped diff check 通过。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 200 tests in 0.475s OK`；required `rg` 与 scoped diff check 通过；第一轮 unittest 因测试局部变量位置失败，已修复并重跑通过。Full-Stack worker 报告 `python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 116 tests ... OK`；`py_compile` 通过；`node --check mobile/web/app.js` 通过；required `rg` 与 scoped diff check 通过。Product closeout required file check、required `rg`、scoped `git diff --check` 与 staged `git diff --cached --check` 通过。本轮不证明真实电梯、真实 Nav2/fixed-route、真实 task record/completion signal、dropoff/cancel completion、delivery success、WAVE ROVER/UART/HIL、真实 phone/browser、PR #5 真实 2D LiDAR/ToF 材料或 O5 external proof。
 
 ### 2026-05-19 08-09｜elevator-field-evidence-material-backfill-review-decision｜O2/O3/O4 route/elevator material backfill review decision software proof
 

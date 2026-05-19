@@ -572,6 +572,18 @@ ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_DECISION_ROBOT_SUMMARY_SC
 ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_DECISION_GATE = (
     "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_decision_gate"
 )
+ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_SCHEMA = (
+    "trashbot.elevator_field_evidence_trace_material_backfill_review_handoff.v1"
+)
+ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_SUMMARY_SCHEMA = (
+    "trashbot.elevator_field_evidence_trace_material_backfill_review_handoff_summary.v1"
+)
+ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_ROBOT_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary.v1"
+)
+ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_GATE = (
+    "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_handoff_gate"
+)
 ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_SCHEMA = (
     "trashbot.route_elevator_field_session_handoff.v1"
 )
@@ -5703,6 +5715,95 @@ def _default_elevator_field_evidence_trace_material_backfill_review_decision_sum
             "safe_phone_copy": safe_copy,
         },
         "not_proven": _elevator_field_evidence_trace_material_backfill_review_decision_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "metadata_only": True,
+        "summary_required": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
+def _elevator_field_evidence_trace_material_backfill_review_handoff_not_proven(
+    *sources,
+):
+    # handoff 只是现场 owner 交接包，必须继承 review decision 的未证实边界。
+    defaults = _elevator_field_evidence_trace_material_backfill_review_decision_not_proven(
+        *[source for source in sources if isinstance(source, dict)]
+    )
+    for item in (
+        "real_field_owner_material_backfill_rerun",
+        "real_material_backfill_review_handoff",
+        "real_route_elevator_field_pass",
+        "real_phone_browser",
+        "delivery_success",
+    ):
+        if item not in defaults:
+            defaults.append(item)
+    return defaults
+
+
+def _default_elevator_field_evidence_trace_material_backfill_review_handoff_summary(
+    path,
+    handoff_status=(
+        "blocked_missing_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+    ),
+    read_error="",
+):
+    # 缺省态必须 fail closed；Robot 不从缺失 handoff 推导现场可 rerun。
+    safe_copy = (
+        "Elevator field evidence trace material backfill review handoff is "
+        "metadata-only; software_proof; not_proven; delivery_success=false; "
+        "primary_actions_enabled=false."
+    )
+    return {
+        "schema": ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_ROBOT_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "overall_status": "not_proven",
+        "handoff_status": handoff_status,
+        "handoff_status_detail": {
+            "status": handoff_status,
+            "verdict": "not_proven",
+            "reason": read_error
+            or "elevator field evidence trace material backfill review handoff is not configured",
+        },
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "same_evidence_ref_required": True,
+        "same_evidence_ref_status": "blocked",
+        "source_review_decision": {},
+        "field_owner_handoff": [],
+        "safe_rerun_hints": [],
+        "phone_safe_copy": [],
+        "missing_required_materials": [],
+        "rejected_materials": [],
+        "next_required_evidence": [],
+        "robot_diagnostics_summary": {
+            "status": "blocked",
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+        },
+        "not_proven": _elevator_field_evidence_trace_material_backfill_review_handoff_not_proven(),
         "read_error": _redact_route_task_rehearsal_text(read_error),
         "safe_copy": safe_copy,
         "safe_phone_copy": safe_copy,
@@ -35936,6 +36037,25 @@ def _elevator_field_evidence_trace_material_backfill_review_decision_source_cont
     return source_schema, source_boundary
 
 
+def _elevator_field_evidence_trace_material_backfill_review_handoff_source_contract(
+    value,
+):
+    # handoff 可以来自 artifact、summary 或 Robot alias；summary 必须回指同一 handoff gate。
+    value = value if isinstance(value, dict) else {}
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema in (
+        ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+        ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_ROBOT_SUMMARY_SCHEMA,
+    ):
+        source_schema = str(
+            value.get("source_schema")
+            or ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _elevator_field_evidence_trace_material_backfill_intake_has_unsafe_fields(value):
     # 回填入口只能带白名单元数据；raw、控制、ACK、设备、凭证或成功语义都必须降级。
     unsafe_key_fragments = (
@@ -35998,6 +36118,15 @@ def _elevator_field_evidence_trace_material_backfill_review_decision_has_unsafe_
     value,
 ):
     # 复核结论复用 intake 的红线；任何 raw/控制/设备/成功语义都不能进入 alias。
+    return _elevator_field_evidence_trace_material_backfill_intake_has_unsafe_fields(
+        value
+    )
+
+
+def _elevator_field_evidence_trace_material_backfill_review_handoff_has_unsafe_fields(
+    value,
+):
+    # handoff 仍只允许安全摘要；rerun hints 不能变成 ACK、cursor 或机器人动作。
     return _elevator_field_evidence_trace_material_backfill_intake_has_unsafe_fields(
         value
     )
@@ -36755,6 +36884,422 @@ def summarize_elevator_field_evidence_trace_material_backfill_review_decision(
     return summary
 
 
+def summarize_elevator_field_evidence_trace_material_backfill_review_handoff(source):
+    """构建 material backfill review handoff 的只读 Robot diagnostics 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        if not source:
+            return _default_elevator_field_evidence_trace_material_backfill_review_handoff_summary(
+                ""
+            )
+        handoff = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_elevator_field_evidence_trace_material_backfill_review_handoff_summary(
+            source_path,
+            read_error=(
+                "elevator field evidence trace material backfill review handoff "
+                "is not configured"
+            ),
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["handoff_status"] = (
+                "blocked_missing_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+            )
+            summary["handoff_status_detail"] = {
+                "status": summary["handoff_status"],
+                "verdict": "not_proven",
+                "reason": (
+                    "elevator field evidence trace material backfill review handoff "
+                    "artifact missing"
+                ),
+            }
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                handoff = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                "failed reading elevator field evidence trace material backfill "
+                f"review handoff: {exc}"
+            )
+            summary["handoff_status"] = "read_error"
+            summary["handoff_status_detail"] = {
+                "status": "read_error",
+                "verdict": "not_proven",
+                "reason": safe_error,
+            }
+            summary["read_error"] = safe_error
+            return summary
+
+    summary = _default_elevator_field_evidence_trace_material_backfill_review_handoff_summary(
+        source_path
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(handoff, dict):
+        summary["handoff_status"] = "read_error"
+        summary["handoff_status_detail"] = {
+            "status": "read_error",
+            "verdict": "not_proven",
+            "reason": (
+                "elevator field evidence trace material backfill review handoff JSON "
+                "must be an object"
+            ),
+        }
+        return summary
+
+    diagnostics = (
+        handoff.get("diagnostics")
+        if isinstance(handoff.get("diagnostics"), dict)
+        else {}
+    )
+    config = handoff.get("config") if isinstance(handoff.get("config"), dict) else {}
+    status = handoff.get("status") if isinstance(handoff.get("status"), dict) else {}
+    # Robot 只信任 Autonomy 已裁剪的 handoff summary；artifact 本体若带 raw 字段会被 unsafe gate 阻断。
+    summary_fragment = (
+        handoff
+        if str(handoff.get("schema") or "")
+        in (
+            ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+            ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_ROBOT_SUMMARY_SCHEMA,
+        )
+        or (
+            str(handoff.get("schema") or "")
+            == ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_SCHEMA
+            and any(
+                key in handoff
+                for key in (
+                    "handoff_status",
+                    "source_review_decision",
+                    "field_owner_handoff",
+                    "safe_rerun_hints",
+                    "phone_safe_copy",
+                    "missing_required_materials",
+                )
+            )
+        )
+        else {}
+    )
+    for candidate in (
+        handoff.get(
+            "elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+        ),
+        handoff.get("elevator_field_evidence_trace_material_backfill_review_handoff"),
+        handoff.get(
+            "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+        ),
+        handoff.get("robot_compatible_summary"),
+        handoff.get("phone_safe_summary"),
+        handoff.get("mobile_readonly_summary"),
+        diagnostics.get(
+            "elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+        ),
+        diagnostics.get("elevator_field_evidence_trace_material_backfill_review_handoff"),
+        diagnostics.get(
+            "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+        ),
+        diagnostics.get("summary"),
+        diagnostics.get("diagnostics_summary"),
+        config.get("elevator_field_evidence_trace_material_backfill_review_handoff_summary"),
+        status.get("elevator_field_evidence_trace_material_backfill_review_handoff_summary"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+
+    contract_source = summary_fragment if summary_fragment else handoff
+    source_schema, source_boundary = (
+        _elevator_field_evidence_trace_material_backfill_review_handoff_source_contract(
+            contract_source
+        )
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": contract_source.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+        }
+    )
+    if not summary_fragment:
+        summary["handoff_status"] = (
+            "blocked_missing_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+        )
+        summary["handoff_status_detail"] = {
+            "status": summary["handoff_status"],
+            "verdict": "not_proven",
+            "reason": (
+                "elevator field evidence trace material backfill review handoff "
+                "lacks a sanitized summary"
+            ),
+        }
+        return summary
+
+    handoff_status = _redact_route_task_rehearsal_text(
+        summary_fragment.get("handoff_status")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or "blocked_missing_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+    )
+    detail_source = (
+        summary_fragment.get("handoff_status_detail")
+        if isinstance(summary_fragment.get("handoff_status_detail"), dict)
+        else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or (
+            "Elevator field evidence trace material backfill review handoff "
+            "is metadata-only; software_proof; not_proven; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+    )
+    if "delivery_success=false" not in safe_copy:
+        safe_copy = f"{safe_copy}; delivery_success=false; primary_actions_enabled=false."
+    source_ref = str(
+        handoff.get("safe_evidence_ref") or handoff.get("evidence_ref") or ""
+    ).strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or ""
+    ).strip()
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    phone_safe_copy = _safe_route_task_rehearsal_list(
+        summary_fragment.get("phone_safe_copy")
+        or summary_fragment.get("phone_copy")
+        or summary_fragment.get("safe_phone_copy")
+    )
+    summary.update(
+        {
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or ""
+            ),
+            "overall_status": _redact_route_task_rehearsal_text(
+                summary_fragment.get("overall_status") or ""
+            ),
+            "handoff_status": handoff_status,
+            "handoff_status_detail": {
+                "status": handoff_status,
+                "verdict": _redact_route_task_rehearsal_text(
+                    detail_source.get("verdict") or "not_proven"
+                ),
+                "reason": _redact_route_task_rehearsal_text(
+                    detail_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or (
+                        "elevator field evidence trace material backfill review "
+                        "handoff consumed as software_proof"
+                    )
+                ),
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_ref or source_ref
+            ),
+            "same_evidence_ref_required": (
+                summary_fragment.get("same_evidence_ref_required") is True
+            ),
+            "same_evidence_ref_status": _redact_route_task_rehearsal_text(
+                summary_fragment.get("same_evidence_ref_status") or "matched"
+            ),
+            "source_review_decision": _safe_pc_route_debug_dict(
+                summary_fragment.get("source_review_decision")
+            ),
+            "field_owner_handoff": _safe_route_task_rehearsal_list(
+                summary_fragment.get("field_owner_handoff")
+                or summary_fragment.get("owner_handoff")
+            ),
+            "safe_rerun_hints": _safe_route_task_rehearsal_list(
+                summary_fragment.get("safe_rerun_hints")
+            ),
+            "phone_safe_copy": phone_safe_copy,
+            "missing_required_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("missing_required_materials")
+            ),
+            "rejected_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("rejected_materials")
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": handoff_status,
+                "safe_copy": safe_copy,
+                "safe_phone_copy": safe_copy,
+            },
+            "not_proven": (
+                _elevator_field_evidence_trace_material_backfill_review_handoff_not_proven(
+                    handoff,
+                    summary_fragment,
+                )
+            ),
+            "read_error": "",
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+        }
+    )
+    required_summary_fields = (
+        summary["handoff_status"],
+        isinstance(summary["source_review_decision"], dict)
+        and bool(summary["source_review_decision"]),
+        isinstance(summary["field_owner_handoff"], list)
+        and bool(summary["field_owner_handoff"]),
+        isinstance(summary["safe_rerun_hints"], list)
+        and bool(summary["safe_rerun_hints"]),
+        isinstance(summary["phone_safe_copy"], list)
+        and bool(summary["phone_safe_copy"]),
+        isinstance(summary["missing_required_materials"], list),
+        isinstance(summary["rejected_materials"], list),
+        isinstance(summary["next_required_evidence"], list),
+    )
+    if (
+        source_schema
+        != ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_SCHEMA
+        or source_boundary
+        != ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_GATE
+    ):
+        summary.update(
+            {
+                "handoff_status": "unsupported_schema",
+                "handoff_status_detail": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "elevator field evidence trace material backfill review "
+                        "handoff schema or evidence boundary is unsupported"
+                    ),
+                },
+                "source_review_decision": {},
+                "field_owner_handoff": [],
+                "safe_rerun_hints": [],
+                "phone_safe_copy": [],
+                "missing_required_materials": [],
+                "rejected_materials": [],
+                "next_required_evidence": [],
+            }
+        )
+        return summary
+    if summary["source"] != EVIDENCE_SOURCE_SOFTWARE or summary["overall_status"] != "not_proven":
+        summary["handoff_status"] = (
+            "blocked_unsupported_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+        )
+        summary["handoff_status_detail"] = {
+            "status": summary["handoff_status"],
+            "verdict": "not_proven",
+            "reason": "material backfill review handoff must be software_proof and not_proven",
+        }
+        summary["source_review_decision"] = {}
+        return summary
+    if not summary["safe_evidence_ref"] or summary["safe_evidence_ref"].startswith(
+        "local_path_redacted:"
+    ):
+        summary["handoff_status"] = "blocked_missing_evidence_ref"
+        summary["handoff_status_detail"] = {
+            "status": summary["handoff_status"],
+            "verdict": "not_proven",
+            "reason": (
+                "elevator field evidence trace material backfill review handoff "
+                "is missing a safe evidence_ref"
+            ),
+        }
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary["handoff_status"] = "blocked_evidence_ref_mismatch_not_proven"
+        summary["handoff_status_detail"] = {
+            "status": summary["handoff_status"],
+            "verdict": "not_proven",
+            "reason": (
+                "elevator field evidence trace material backfill review handoff "
+                "evidence_ref values do not match"
+            ),
+        }
+        return summary
+    if (
+        not summary["same_evidence_ref_required"]
+        or summary["same_evidence_ref_status"] not in ("matched", "same_evidence_ref_matched")
+    ):
+        summary["handoff_status"] = "blocked_evidence_ref_mismatch_not_proven"
+        summary["handoff_status_detail"] = {
+            "status": summary["handoff_status"],
+            "verdict": "not_proven",
+            "reason": (
+                "elevator field evidence trace material backfill review handoff "
+                "must require and report the same evidence_ref"
+            ),
+        }
+        return summary
+    if not all(required_summary_fields):
+        summary["handoff_status"] = "needs_field_owner_material_handoff_not_proven"
+        summary["handoff_status_detail"] = {
+            "status": summary["handoff_status"],
+            "verdict": "not_proven",
+            "reason": "material backfill review handoff is missing owner handoff fields",
+        }
+        return summary
+    if (
+        summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or _elevator_field_evidence_trace_material_backfill_review_handoff_has_unsafe_fields(
+            summary_fragment
+        )
+        or _elevator_field_evidence_trace_material_backfill_review_handoff_has_unsafe_fields(
+            robot_summary
+        )
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+        or any(
+            _route_task_field_run_readiness_copy_is_unsafe(str(item))
+            or _route_task_field_retest_execution_pack_has_success_wording(str(item))
+            for item in phone_safe_copy
+        )
+    ):
+        blocked_copy = (
+            "Elevator field evidence trace material backfill review handoff was "
+            "blocked because summary fields could expose raw/control data or imply "
+            "success; delivery_success=false; primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "handoff_status": (
+                    "blocked_unsafe_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+                ),
+                "handoff_status_detail": {
+                    "status": (
+                        "blocked_unsafe_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+                    ),
+                    "verdict": "not_proven",
+                    "reason": "unsafe copy, success wording, raw fields, or enabled actions",
+                },
+                "source_review_decision": {},
+                "field_owner_handoff": [],
+                "safe_rerun_hints": [],
+                "phone_safe_copy": [],
+                "missing_required_materials": [],
+                "rejected_materials": [],
+                "next_required_evidence": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+            }
+        )
+    return summary
+
+
 def summarize_elevator_action_feedback_trace(trace=None, *, source=""):
     # 该 summary 给 mobile/full-stack 消费，只暴露阶段、current_step 和安全边界。
     # delivery_success/primary_actions_enabled 永远保持 false，防止 UI 把 trace 当成控制授权。
@@ -37367,6 +37912,7 @@ def build_diagnostics_payload(
     elevator_field_evidence_trace_callback_review_handoff_ref="",
     elevator_field_evidence_trace_material_backfill_intake_ref="",
     elevator_field_evidence_trace_material_backfill_review_decision_ref="",
+    elevator_field_evidence_trace_material_backfill_review_handoff_ref="",
 ):
     latest_status = dict(latest_status or {})
     diagnostics_source = latest_status.get("diagnostics") if isinstance(latest_status.get("diagnostics"), dict) else {}
@@ -37574,6 +38120,59 @@ def build_diagnostics_payload(
         if isinstance(
             diagnostics_source.get(
                 "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary"
+            ),
+            dict,
+        )
+        else {}
+    )
+    elevator_field_evidence_trace_material_backfill_review_handoff_source = (
+        latest_status.get("elevator_field_evidence_trace_material_backfill_review_handoff")
+        if isinstance(
+            latest_status.get("elevator_field_evidence_trace_material_backfill_review_handoff"),
+            dict,
+        )
+        else latest_status.get(
+            "elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "elevator_field_evidence_trace_material_backfill_review_handoff"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "elevator_field_evidence_trace_material_backfill_review_handoff"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary"
             ),
             dict,
         )
@@ -39110,6 +39709,15 @@ def build_diagnostics_payload(
         "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary",
         None,
     )
+    latest_status.pop("elevator_field_evidence_trace_material_backfill_review_handoff", None)
+    latest_status.pop(
+        "elevator_field_evidence_trace_material_backfill_review_handoff_summary",
+        None,
+    )
+    latest_status.pop(
+        "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary",
+        None,
+    )
     last_task = dict(latest_status.get("last_task") or {})
     task_record_path = str(
         latest_status.get("task_record_path")
@@ -39201,6 +39809,23 @@ def build_diagnostics_payload(
     elevator_field_evidence_trace_material_backfill_review_decision_summary = (
         summarize_elevator_field_evidence_trace_material_backfill_review_decision(
             elevator_field_evidence_trace_material_backfill_review_decision_source
+        )
+    )
+    elevator_field_evidence_trace_material_backfill_review_handoff_source = (
+        elevator_field_evidence_trace_material_backfill_review_handoff_ref
+        or os.environ.get(
+            "TRASHBOT_ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_HANDOFF_SUMMARY",
+            "",
+        )
+        or elevator_field_evidence_trace_material_backfill_review_handoff_source
+    )
+    elevator_field_evidence_trace_material_backfill_review_handoff_summary = (
+        summarize_elevator_field_evidence_trace_material_backfill_review_handoff(
+            elevator_field_evidence_trace_material_backfill_review_handoff_source
         )
     )
     route_proof_summary, route_proof_source = _extract_route_proof_summary(latest_status, last_task)
@@ -40322,6 +40947,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary=(
             elevator_field_evidence_trace_material_backfill_review_decision_summary
+        ),
+        elevator_field_evidence_trace_material_backfill_review_handoff=(
+            elevator_field_evidence_trace_material_backfill_review_handoff_summary
+        ),
+        elevator_field_evidence_trace_material_backfill_review_handoff_summary=(
+            elevator_field_evidence_trace_material_backfill_review_handoff_summary
+        ),
+        robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary=(
+            elevator_field_evidence_trace_material_backfill_review_handoff_summary
         ),
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,

@@ -169,6 +169,7 @@ h2 {
 .elevator-field-evidence-trace-callback-review-handoff-panel,
 .elevator-field-evidence-trace-material-backfill-intake-panel,
 .elevator-field-evidence-trace-material-backfill-review-decision-panel,
+.elevator-field-evidence-trace-material-backfill-review-handoff-panel,
 .route-task-completion-panel,
 .route-task-terminal-completion-panel,
 .route-task-terminal-review-decision-panel,
@@ -322,6 +323,7 @@ h2 {
 .elevator-field-evidence-trace-callback-review-handoff-grid,
 .elevator-field-evidence-trace-material-backfill-intake-grid,
 .elevator-field-evidence-trace-material-backfill-review-decision-grid,
+.elevator-field-evidence-trace-material-backfill-review-handoff-grid,
 .route-task-completion-grid,
 .route-task-terminal-completion-grid,
 .route-task-terminal-review-decision-grid,
@@ -390,6 +392,7 @@ h2 {
 .elevator-field-evidence-trace-callback-review-decision-grid div,
 .elevator-field-evidence-trace-callback-review-handoff-grid div,
 .elevator-field-evidence-trace-material-backfill-intake-grid div,
+.elevator-field-evidence-trace-material-backfill-review-handoff-grid div,
 .route-task-completion-grid div,
 .route-task-terminal-completion-grid div,
 .route-task-terminal-review-decision-grid div,
@@ -605,6 +608,10 @@ dd {
 }
 
 .elevator-field-evidence-trace-material-backfill-intake-grid {
+  grid-template-columns: 1fr;
+}
+
+.elevator-field-evidence-trace-material-backfill-review-handoff-grid {
   grid-template-columns: 1fr;
 }
 
@@ -993,6 +1000,10 @@ dd {
   }
 
   .elevator-field-evidence-trace-callback-review-handoff-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .elevator-field-evidence-trace-material-backfill-review-handoff-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
