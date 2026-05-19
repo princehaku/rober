@@ -60,3 +60,43 @@ Result: exit 0. The `rg` command found the required Objective, PR #5 thread IDs,
 - O5 remains blocked until real external materials exist.
 - O1 remains blocked until real WAVE ROVER/UART/HIL or real sensor material evidence exists.
 - O4 remains blocked for completion movement until real phone/browser or production app evidence exists.
+
+## Hardware Acceptance CLI Compatibility Repair
+
+Run time: 2026-05-19 15:12 Asia/Shanghai.
+
+已读来源：
+
+- `AGENTS.md`
+- `docs/vendor/VENDOR_INDEX.md`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`
+- `docs/product/production_hardware_boundary.md`
+- `sprints/2026.05.19_15-16_pr5-github-thread-resolution/tech-plan.md`
+- `pc-tools/evidence/pr5_review_thread_closeout_gate.py`
+- `tests/test_pr5_review_thread_closeout_gate.py`
+
+修复内容：
+
+- `pc-tools/evidence/pr5_review_thread_closeout_gate.py` 增加 `--output-dir DIR`，自动写出 `pr5_review_thread_closeout.json` 和 `pr5_review_thread_closeout_summary.json`；保留 `--output` / `--summary-output` 显式路径优先级。
+- `tests/test_pr5_review_thread_closeout_gate.py` 增加 focused unittest，覆盖 `--output-dir` 默认文件名、软件证明边界、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+- 重新生成 `sprints/2026.05.19_15-16_pr5-github-thread-resolution/evidence/pr5_review_thread_closeout.json` 和 `sprints/2026.05.19_15-16_pr5-github-thread-resolution/evidence/pr5_review_thread_closeout_summary.json`。
+
+验证结果：
+
+```bash
+test -f docs/vendor/VENDOR_INDEX.md
+python3 -m py_compile pc-tools/evidence/pr5_review_thread_closeout_gate.py
+python3 -m unittest tests/test_pr5_review_thread_closeout_gate.py
+rm -rf sprints/2026.05.19_15-16_pr5-github-thread-resolution/evidence
+python3 pc-tools/evidence/pr5_review_thread_closeout_gate.py --output-dir sprints/2026.05.19_15-16_pr5-github-thread-resolution/evidence
+rg -n "ready_to_close_on_mainline_docs|blocked_pending_real_materials|software_proof|not_proven|delivery_success=false|primary_actions_enabled=false" sprints/2026.05.19_15-16_pr5-github-thread-resolution/evidence docs/product/production_hardware_boundary.md OKR.md
+git diff --check -- pc-tools/evidence tests docs/product sprints/2026.05.19_15-16_pr5-github-thread-resolution
+```
+
+Result: exit 0. `python3 -m unittest tests/test_pr5_review_thread_closeout_gate.py` ran 8 tests and passed. The `--output-dir` CLI now emits both expected JSON files and keeps `overall_status=not_proven`, `source=software_proof`, `ready_to_close_on_mainline_docs` for the two docs-only threads, and `blocked_pending_real_materials` for the real-material thread.
+
+硬件边界：
+
+本修复只是 CLI/evidence tooling 兼容。它不证明真实 2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry，不证明 WAVE ROVER/UART/HIL、真实 phone/browser、O5 external proof、route/elevator field pass、dropoff/cancel completion 或 delivery success。

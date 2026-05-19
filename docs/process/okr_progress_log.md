@@ -22,7 +22,7 @@
 | Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | 本轮只记录 PR #5 review-state visibility，不是 phone/browser acceptance；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 和现场 phone behavior。 |
 | Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实 external proof。 |
 
-本轮验证：Product closeout required file checks、required `rg` 与 scoped `git diff --check` 通过。GitHub thread state 由 connector 读取：`PRRT_kwDOSWB9286CJ3tQ` `resolved=true`，`PRRT_kwDOSWB9286CJ3tU` `resolved=true`，`PRRT_kwDOSWB9286CJ3tX` `unresolved`。本轮不证明真实 2D LiDAR / ToF、WAVE ROVER/UART/HIL、route/elevator field pass、真实手机/browser、Objective 5 external proof、dropoff/cancel completion 或 delivery success。
+本轮验证：Product closeout required file checks、required `rg` 与 scoped `git diff --check` 通过。GitHub thread state 由 connector 读取：`PRRT_kwDOSWB9286CJ3tQ` `resolved=true`，`PRRT_kwDOSWB9286CJ3tU` `resolved=true`，`PRRT_kwDOSWB9286CJ3tX` `unresolved`。Hardware follow-up 修复 `pr5_review_thread_closeout_gate.py --output-dir` CLI 兼容入口，`python3 -m unittest tests/test_pr5_review_thread_closeout_gate.py` 输出 8 tests OK，`--output-dir` 重新生成 full artifact 和 summary，required `rg` 与 scoped diff check 通过。本轮不证明真实 2D LiDAR / ToF、WAVE ROVER/UART/HIL、route/elevator field pass、真实手机/browser、Objective 5 external proof、dropoff/cancel completion 或 delivery success。
 
 ### 2026-05-19 14-15｜mobile-pwa-fresh-browser-proof｜O4 local fresh browser software proof
 

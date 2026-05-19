@@ -8,7 +8,7 @@
     "target_baseline_pending": true,
     "vendor_citation_boundary": true
   },
-  "generated_at": "2026-05-19T07:07:06.197923+00:00",
+  "generated_at": "2026-05-19T07:14:36.285967+00:00",
   "missing_real_materials": [
     "real_2d_lidar_sku_source_receipt",
     "real_tof_sku_source_receipt",

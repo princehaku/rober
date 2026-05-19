@@ -449,6 +449,17 @@ def _write_json(path: str, payload: dict[str, Any]) -> None:
     target.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def _resolve_output_paths(output_dir: str, output: str, summary_output: str) -> tuple[str, str]:
+    # --output-dir 是 sprint 计划里的兼容入口；显式文件路径仍保留最高优先级，便于旧脚本无感运行。
+    if not output_dir:
+        return output, summary_output
+    target_dir = Path(output_dir).expanduser()
+    return (
+        output or str(target_dir / "pr5_review_thread_closeout.json"),
+        summary_output or str(target_dir / "pr5_review_thread_closeout_summary.json"),
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     # CLI 是 Docker-only repo-local gate，不访问 GitHub、硬件、ROS 或外部云。
     parser = argparse.ArgumentParser(description="Generate PR #5 review thread closeout software-proof artifact.")
@@ -456,6 +467,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--vendor-index", default=str(DEFAULT_VENDOR_INDEX), help="docs/vendor/VENDOR_INDEX.md path.")
     parser.add_argument("--okr-md", default=str(DEFAULT_OKR), help="OKR.md path.")
     parser.add_argument("--thread-summary", default="", help="Optional safe PR #5 thread summary JSON.")
+    parser.add_argument(
+        "--output-dir",
+        default="",
+        help="Write pr5_review_thread_closeout.json and pr5_review_thread_closeout_summary.json under this directory.",
+    )
     parser.add_argument("--output", default="", help="Write full closeout artifact JSON to this path.")
     parser.add_argument("--summary-output", default="", help="Write compact closeout summary JSON.")
     parser.add_argument("--once-json", action="store_true", help="Print full artifact JSON to stdout.")
@@ -467,14 +483,16 @@ def main(argv: list[str] | None = None) -> int:
         args.okr_md,
         args.thread_summary or None,
     )
-    if args.output:
-        _write_json(args.output, artifact)
-    if args.summary_output:
-        _write_json(args.summary_output, summary)
-    if args.once_json or not (args.output or args.summary_output):
+    output_path, summary_output_path = _resolve_output_paths(args.output_dir, args.output, args.summary_output)
+    if output_path:
+        _write_json(output_path, artifact)
+    if summary_output_path:
+        _write_json(summary_output_path, summary)
+    if args.once_json or not (output_path or summary_output_path):
         print(json.dumps(artifact, ensure_ascii=False, indent=2, sort_keys=True))
     else:
-        print(f"pr5_review_thread_closeout: artifact_file:{Path(args.output).name if args.output else ''}")
+        print(f"pr5_review_thread_closeout: artifact_file:{Path(output_path).name if output_path else ''}")
+        print(f"summary_file: {Path(summary_output_path).name if summary_output_path else ''}")
         print(f"overall_status: {artifact['overall_status']}")
         print(f"closeout_status: {artifact['closeout_status']}")
     return exit_code

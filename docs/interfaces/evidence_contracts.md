@@ -72,6 +72,10 @@ review closeout gate for PR #5 unresolved review threads.
 - Decision values: `ready_to_close_on_mainline_docs`,
   `blocked_pending_real_materials`, and
   `still_open_missing_current_evidence`.
+- CLI outputs: use `--output-dir <dir>` to write
+  `pr5_review_thread_closeout.json` and
+  `pr5_review_thread_closeout_summary.json` with the default names. Explicit
+  `--output` and `--summary-output` paths still take precedence when supplied.
 
 The gate maps the P1 hardware-boundary thread to
 `ready_to_close_on_mainline_docs` only when the Default Hardware Set is separate

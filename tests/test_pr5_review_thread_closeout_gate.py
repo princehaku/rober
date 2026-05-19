@@ -138,6 +138,38 @@ class Pr5ReviewThreadCloseoutGateTest(unittest.TestCase):
         self.assertIn("real_hil_entry", artifact["missing_real_materials"])
         self.assertIn("real_wave_rover_uart_hil", artifact["not_proven"])
 
+    def test_output_dir_writes_default_artifact_and_summary_files(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            boundary, vendor, okr = self.write_sources(root)
+            output_dir = root / "evidence"
+
+            exit_code = gate.main(
+                [
+                    "--boundary-md",
+                    str(boundary),
+                    "--vendor-index",
+                    str(vendor),
+                    "--okr-md",
+                    str(okr),
+                    "--output-dir",
+                    str(output_dir),
+                ]
+            )
+
+            artifact_path = output_dir / "pr5_review_thread_closeout.json"
+            summary_path = output_dir / "pr5_review_thread_closeout_summary.json"
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(artifact_path.exists())
+            self.assertTrue(summary_path.exists())
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            # 新 CLI 只是路径兼容；输出仍必须保持软件证明和未验证硬件边界。
+            self.assertEqual(artifact["source"], "software_proof")
+            self.assertEqual(summary["overall_status"], "not_proven")
+            self.assertFalse(artifact["delivery_success"])
+            self.assertFalse(summary["primary_actions_enabled"])
+
     def test_okr_lowest_mismatch_fails_that_thread_closed(self):
         with tempfile.TemporaryDirectory() as td:
             broken_okr = OKR_MD.replace("当前数值最低完成度仍是 Objective 5（约 68%）", "当前数值最低完成度仍是 Objective 1（约 81%）")
