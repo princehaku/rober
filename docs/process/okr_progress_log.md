@@ -8,7 +8,21 @@
 
 ## 2026-05-19 系列
 
-更新时间：2026-05-19 19:20 Asia/Shanghai。
+更新时间：2026-05-19 20:23 Asia/Shanghai。
+
+### 2026-05-19 20-21｜real-material-readiness-board｜cross-objective real material routing readiness software proof
+
+本轮 `sprints/2026.05.19_20-21_real-material-readiness-board/` 不继续单点 O5 metadata depth、不关闭 PR #5、不把 PR #4 route/elevator blocker 写成 field pass，也不新增第四个 mobile real-device wrapper。工程 worker 完成 `real_material_readiness_board`：PC gate 生成 `trashbot.real_material_readiness_board.v1` artifact / summary，Robot diagnostics 暴露 `robot_diagnostics_real_material_readiness_board_summary` safe alias，mobile/web 增加只读“真实材料就绪看板”。board 统一展示 Objective 5 external、Objective 1 / PR #5 hardware、PR #4 route/elevator、Objective 4 real phone 四类真实材料缺口、owner、blocking reason 和 next_required_evidence。证据边界保持 `software_proof_docker_real_material_readiness_board_gate`、`source=software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | Hardware / Autonomy PC gate 已读取 `docs/vendor/VENDOR_INDEX.md` 及 WAVE ROVER 本地资料，并把 WAVE ROVER/UART/HIL 与 PR #5 hardware material 缺口纳入 board；unittest `Ran 5 tests OK`，artifact generation passed。但 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `blocked_pending_real_materials`，仍缺真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report、真实 2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | Autonomy read-only consult 确认 PR #4 仍缺真实 elevator door state、target floor confirmation、human assistance record、Nav2/fixed-route runtime log、field task record、route completion signal、dropoff/cancel material 和 delivery_result。本轮只把这些缺口路由到 board，不证明真实 route/elevator field pass、delivery_success、dropoff/cancel completion 或 safe-to-control。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | board 把真实 Nav2/fixed-route runtime log、route completion signal、field task record、route/elevator field material、dropoff/cancel material 和 delivery_result 继续作为 next_required_evidence；本轮没有真实路线采集、Nav2/fixed-route 实跑、route completion signal、现场 task_record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 增加只读“真实材料就绪看板”，消费 Robot safe alias，展示四类材料缺口与 owner handoff；Robot diagnostics unittest `Ran 213 tests OK`，Full-Stack mobile tests `Ran 137 tests ... OK`。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | O5 external material group 被纳入 `real_material_readiness_board`，但本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或 real external proof。 |
+
+本轮验证：Hardware / Autonomy worker 报告 vendor sources read、`python3 -m unittest tests/test_real_material_readiness_board.py` 输出 `Ran 5 tests OK`、artifact generation passed、required `rg` 与 scoped diff check 通过。Robot worker 报告 py_compile 通过、diagnostics unittest `Ran 213 tests OK`、required `rg` 与 scoped diff check 通过。Full-Stack worker 报告 `python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 137 tests ... OK`、py_compile 通过、`node --check mobile/web/app.js` 通过、required `rg` 与 scoped diff check 通过。Product closeout required file check、required `rg` 与 scoped `git diff --check` 通过。本轮不证明真实 O5 external proof、Objective 1 HIL、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` closure、PR #4 route/elevator field pass、真实手机/browser、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
 
 ### 2026-05-19 19-20｜mobile-real-device-acceptance-callback-review-handoff｜O4 real-device acceptance callback review handoff software proof
 

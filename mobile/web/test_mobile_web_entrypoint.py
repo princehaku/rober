@@ -442,6 +442,112 @@ class TaskTerminalCompletionMainlineMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, mainline_text)
 
 
+class RealMaterialReadinessBoardMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_real_material_readiness_board_panel_is_read_only_and_grouped(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 看板优先消费 Robot diagnostics safe alias；兼容 summary/artifact，但只展示四类固定 group。
+        self.assertIn("真实材料就绪看板", app)
+        self.assertIn("REAL_MATERIAL_READINESS_BOARD_BOUNDARY", app)
+        self.assertIn("UNSAFE_REAL_MATERIAL_READINESS_BOARD_TEXT", app)
+        self.assertIn("safeRealMaterialReadinessBoardText", app)
+        self.assertIn("realMaterialReadinessBoardCandidate", app)
+        self.assertIn("realMaterialReadinessBoardFromStatus", app)
+        self.assertIn("robot_diagnostics_real_material_readiness_board_summary", app)
+        self.assertIn("real_material_readiness_board_summary", app)
+        self.assertIn("real_material_readiness_board", app)
+        self.assertIn("Objective 5 external", app)
+        self.assertIn("Objective 1 / PR #5 hardware", app)
+        self.assertIn("PR #4 route/elevator", app)
+        self.assertIn("Objective 4 real phone", app)
+        self.assertIn("real-material-readiness-board-panel", styles)
+        self.assertIn("real-material-readiness-board-grid", styles)
+        self.assertIn("real-material-readiness-board-group", styles)
+        self.assertNotRegex(
+            app,
+            r"realMaterialReadinessBoard.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+
+        # fixture、mobile fixture 和产品文档都固定保留 fail-closed 控制边界。
+        summary = fixture["robot_diagnostics_real_material_readiness_board_summary"]
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["status"], "not_proven")
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(len(summary["material_groups"]), 4)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", fixture_text)
+        mobile_summary = mobile_fixture["real_material_readiness_board_summary"]
+        self.assertEqual(mobile_summary["source"], "software_proof")
+        self.assertEqual(mobile_summary["status"], "not_proven")
+        self.assertEqual(mobile_summary["delivery_success"], False)
+        self.assertEqual(mobile_summary["primary_actions_enabled"], False)
+        self.assertEqual(mobile_summary["safe_to_control"], False)
+        self.assertIn("real_material_readiness_board", doc)
+        self.assertIn("robot_diagnostics_real_material_readiness_board_summary", doc)
+        self.assertIn("真实材料就绪看板", doc)
+        self.assertIn("Objective 5", doc)
+        self.assertIn("Objective 1", doc)
+        self.assertIn("Objective 4", doc)
+        self.assertIn("PR #4", doc)
+        self.assertIn("PR #5", doc)
+        self.assertIn("software_proof", doc)
+        self.assertIn("not_proven", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("safe_to_control=false", doc)
+
+    def test_real_material_readiness_board_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        board_text = json.dumps(
+            {
+                "status": fixture["robot_diagnostics_real_material_readiness_board_summary"],
+                "mobile": mobile_fixture["real_material_readiness_board_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # 看板 fixture 只能携带现场 owner 路由摘要，不夹带内部材料、凭证、路径或控制成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial path",
+            "serial device",
+            "uart path",
+            "baudrate",
+            "/users/",
+            "/tmp/",
+            "credentials",
+            "authorization",
+            "bearer",
+            "token",
+            "database url",
+            "queue url",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "hil_pass",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, board_text)
+
+
 class TaskTerminalFieldMaterialIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

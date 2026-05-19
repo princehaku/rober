@@ -3901,6 +3901,33 @@ ACK remains a command-envelope processing state. It is never a delivery result
 and must not be used to claim Nav2/fixed-route success, WAVE ROVER movement, or
 HIL pass.
 
+Real-material readiness board diagnostics may expose
+`real_material_readiness_board`, `real_material_readiness_board_summary`, and
+the Robot safe alias
+`robot_diagnostics_real_material_readiness_board_summary` from an explicit
+`real_material_readiness_board_ref`,
+`TRASHBOT_REAL_MATERIAL_READINESS_BOARD`,
+`TRASHBOT_REAL_MATERIAL_READINESS_BOARD_SUMMARY`, top-level status fields, or
+an already sanitized nested diagnostics summary source. The source JSON must
+use `schema=trashbot.real_material_readiness_board.v1` or
+`schema=trashbot.real_material_readiness_board_summary.v1`; when an
+`evidence_boundary` is present it must remain
+`software_proof_docker_real_material_readiness_board_gate`. This field is
+metadata-only and routing-only Robot diagnostics support for missing real
+materials: it may expose only sanitized material groups, safe `evidence_ref`,
+owner handoff, next required evidence, safe copy, `source=software_proof`,
+`not_proven`, `delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`. Missing input, unreadable input, unsupported schema or
+boundary, `source` other than `software_proof`, status other than
+`not_proven`, unsafe copy, success/control claims, `delivery_success=true`,
+`primary_actions_enabled=true`, or `safe_to_control=true` sources fail closed
+as blocked/not_proven. The fields do not trigger `/api/collect`, Start
+Delivery, Confirm Dropoff, Cancel, dropoff, cancel, ACK, remote ACK, cursor
+advance/persistence, terminal ACK, Nav2, WAVE ROVER, serial/UART, HIL,
+material collection, production readiness, Objective 5 external proof,
+dropoff/cancel completion, or delivery success, and they are not
+command/status/ACK robot contract fields.
+
 | Type | Payload | Local action |
 | --- | --- | --- |
 | `collect` | Required `target`, optional `trash_type` | Starts `/trashbot/collect_trash`; malformed commands without a non-empty `target` are failed before any local action goal is sent. |

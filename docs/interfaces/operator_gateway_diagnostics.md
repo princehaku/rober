@@ -140,6 +140,41 @@ completion, or delivery success. It also does not prove real WAVE ROVER/UART,
 real 2D LiDAR / ToF, real PR #4 route/elevator field pass, real phone/browser
 validation, Objective 5 external proof, or any hardware/HIL result.
 
+## robot_diagnostics_real_material_readiness_board_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_real_material_readiness_board_summary` as a safe alias for
+the PC/evidence real-material readiness board.
+
+- Source artifact schema: `trashbot.real_material_readiness_board.v1`
+- Source summary schema: `trashbot.real_material_readiness_board_summary.v1`
+- Robot alias schema:
+  `trashbot.robot_diagnostics_real_material_readiness_board_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_real_material_readiness_board_gate`
+
+The alias is metadata-only, routing-only, and read-only. It may expose
+sanitized `material_groups`, safe `evidence_ref`, owner handoff,
+`next_required_evidence`, safe copy, `source=software_proof`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`.
+
+Missing board input, unreadable JSON, unsupported schema or evidence boundary,
+`source` other than `software_proof`, status other than `not_proven`, unsafe
+copy, raw artifact fields, credentials, local paths, raw ROS topics,
+`/cmd_vel`, serial/UART details, ACK/cursor/command/control fields, success
+wording, `delivery_success=true`, `primary_actions_enabled=true`, or
+`safe_to_control=true` must fail closed as blocked/not_proven.
+
+This alias must not read raw artifacts, serial devices, hardware devices, the
+ROS graph, cloud resources, or mobile browser state. It must not enable Start
+Delivery, Confirm Dropoff, Cancel, ACK, cursor updates, persistence updates,
+terminal ACK, commands, Nav2, WAVE ROVER, HIL, material collection, Objective
+5 external proof, production readiness, dropoff/cancel completion, or delivery
+success. It is only a routing surface for missing real-material evidence across
+Objective 5 external readiness, Objective 1 / PR #5 hardware materials, PR #4
+route/elevator materials, and Objective 4 real phone/browser materials.
+
 ## robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary
 
 Robot diagnostics exposes

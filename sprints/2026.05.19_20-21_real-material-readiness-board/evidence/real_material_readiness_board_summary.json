@@ -1,0 +1,203 @@
+{
+  "delivery_success": false,
+  "evidence_boundary": "software_proof_docker_real_material_readiness_board_gate",
+  "group_count": 4,
+  "material_groups": [
+    {
+      "blocking_reason": "missing_real_external_proof",
+      "delivery_success": false,
+      "group_id": "o5_external",
+      "group_status": "not_proven",
+      "material_status": "blocked_pending_real_materials",
+      "missing_material_categories": [
+        "public_https_tls",
+        "4g_sim",
+        "oss_cdn_live_traffic",
+        "production_db_queue"
+      ],
+      "next_required_evidence": [
+        "public HTTPS/TLS ingress proof",
+        "4G/SIM or equivalent real network material",
+        "OSS/CDN live traffic evidence",
+        "production DB/queue connectivity and worker/migration/cutover proof"
+      ],
+      "objective_ref": "Objective 5",
+      "owner": "product-okr-owner",
+      "primary_actions_enabled": false,
+      "review_refs": [
+        "OKR.md 4.1"
+      ],
+      "safe_to_control": false,
+      "safety_markers": [
+        "software_proof",
+        "not_proven",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "source": "software_proof",
+      "status": "not_proven",
+      "title": "Objective 5 external real-material readiness"
+    },
+    {
+      "blocking_reason": "missing_wave_rover_uart_hil_and_pr5_sensor_materials",
+      "delivery_success": false,
+      "group_id": "objective_1_pr5_hardware",
+      "group_status": "blocked_pending_real_materials",
+      "material_status": "blocked_pending_real_materials",
+      "missing_material_categories": [
+        "real_wave_rover_uart_feedback",
+        "real_hil_packet",
+        "real_2d_lidar_sku_source_receipt",
+        "real_tof_sku_source_receipt",
+        "install_wiring_power_calibration_materials"
+      ],
+      "next_required_evidence": [
+        "real WAVE ROVER powered bench evidence tied to one safe evidence_ref",
+        "Orange Pi runtime UART device confirmation plus wiring and power review",
+        "newline-delimited JSON UART command/feedback capture under operator control",
+        "HIL packet with feedback, odom, imu, battery, and operator signoff",
+        "PR #5 2D LiDAR / ToF SKU, source, receipt, install, wiring, power, calibration, and HIL-entry material"
+      ],
+      "objective_ref": "Objective 1",
+      "owner": "hardware-engineer",
+      "primary_actions_enabled": false,
+      "review_refs": [
+        "PR #5",
+        "PRRT_kwDOSWB9286CJ3tX",
+        "unresolved",
+        "blocked_pending_real_materials"
+      ],
+      "safe_to_control": false,
+      "safety_markers": [
+        "software_proof",
+        "not_proven",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "source": "software_proof",
+      "status": "not_proven",
+      "title": "Objective 1 / PR #5 hardware real-material readiness"
+    },
+    {
+      "blocking_reason": "missing_real_route_elevator_field_materials",
+      "delivery_success": false,
+      "group_id": "pr4_route_elevator",
+      "group_status": "blocked_missing_pr4_route_elevator_real_materials",
+      "material_status": "blocked_pending_real_materials",
+      "missing_material_categories": [
+        "real_elevator_door_state",
+        "target_floor_confirmation",
+        "human_assistance_record",
+        "nav2_fixed_route_runtime_log",
+        "field_task_record",
+        "route_completion_signal",
+        "dropoff_completion_material",
+        "cancel_completion_material",
+        "delivery_result"
+      ],
+      "next_required_evidence": [
+        "same safe evidence_ref field task record",
+        "real Nav2/fixed-route runtime log",
+        "route completion signal",
+        "real elevator door state",
+        "target floor confirmation",
+        "human assistance record",
+        "dropoff/cancel completion materials",
+        "delivery_result",
+        "field operator callback packet reviewed as accepted rather than synthetic fixture"
+      ],
+      "objective_ref": "PR #4",
+      "owner": "autonomy-engineer",
+      "primary_actions_enabled": false,
+      "review_refs": [
+        "PR #4",
+        "route/elevator field material blocked"
+      ],
+      "safe_to_control": false,
+      "safety_markers": [
+        "software_proof",
+        "not_proven",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "source": "software_proof",
+      "status": "not_proven",
+      "title": "PR #4 route/elevator real-material readiness"
+    },
+    {
+      "blocking_reason": "missing_real_phone_device_acceptance_materials",
+      "delivery_success": false,
+      "group_id": "objective_4_real_phone",
+      "group_status": "not_proven",
+      "material_status": "blocked_pending_real_materials",
+      "missing_material_categories": [
+        "real_phone_browser_session",
+        "real_device_pwa_installability",
+        "real_network_device_capture",
+        "operator_reviewed_real_device_material"
+      ],
+      "next_required_evidence": [
+        "real phone browser session evidence",
+        "PWA/installability evidence from a target device",
+        "real network/device capture proving status panel consumption",
+        "operator-visible screenshots or recording reviewed as real-device material"
+      ],
+      "objective_ref": "Objective 4",
+      "owner": "full-stack-software-engineer",
+      "primary_actions_enabled": false,
+      "review_refs": [
+        "Objective 4",
+        "mobile/web software proof"
+      ],
+      "safe_to_control": false,
+      "safety_markers": [
+        "software_proof",
+        "not_proven",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "source": "software_proof",
+      "status": "not_proven",
+      "title": "Objective 4 real phone readiness"
+    }
+  ],
+  "material_status": "blocked_pending_real_materials",
+  "not_proven": [
+    "Objective 5 external proof",
+    "Objective 1 WAVE ROVER/UART/HIL",
+    "PR #5 2D LiDAR / ToF real materials",
+    "PR #4 route/elevator real materials",
+    "Objective 4 real phone acceptance",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control"
+  ],
+  "primary_actions_enabled": false,
+  "real_material_readiness_board": "ready_for_real_material_readiness_board_not_proven",
+  "review_threads": {
+    "pr5_material_state": "blocked_pending_real_materials",
+    "pr5_review_state": "unresolved",
+    "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX"
+  },
+  "routing_surface_only": true,
+  "safe_to_control": false,
+  "safe_to_render_on_phone": true,
+  "safety_markers": [
+    "software_proof",
+    "not_proven",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "safe_to_control=false"
+  ],
+  "schema": "trashbot.real_material_readiness_board_summary.v1",
+  "schema_version": 1,
+  "source": "software_proof",
+  "source_schema": "trashbot.real_material_readiness_board.v1",
+  "status": "not_proven",
+  "summary_only": true,
+  "vendor_boundary": "docs/vendor/VENDOR_INDEX.md and referenced local vendor files are source boundary only; they are not real hardware proof."
+}

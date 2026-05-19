@@ -7,6 +7,100 @@
     "can_collect": true,
     "can_confirm_dropoff": false,
     "can_cancel": false,
+    "real_material_readiness_board_summary": {
+        "schema": "trashbot.real_material_readiness_board_summary.v1",
+        "schema_version": 1,
+        "source": "software_proof",
+        "status": "not_proven",
+        "safe_evidence_ref": "real_material_readiness_board_fixture_20260519_0002",
+        "material_groups": [
+            {
+                "group_id": "o5_external",
+                "title": "Objective 5 external",
+                "owner": "Product / Cloud owner",
+                "readiness_status": "not_proven",
+                "blocking_reason": "missing_real_external_proof",
+                "next_required_evidence": [
+                    "public_https_tls_summary",
+                    "4g_sim_summary",
+                    "oss_cdn_live_traffic_summary",
+                    "production_db_queue_summary"
+                ],
+                "source_refs": [
+                    "Objective 5",
+                    "OKR.md 4.1"
+                ]
+            },
+            {
+                "group_id": "o1_pr5_hardware",
+                "title": "Objective 1 / PR #5 hardware",
+                "owner": "Hardware owner",
+                "readiness_status": "not_proven",
+                "blocking_reason": "PR #5 PRRT_kwDOSWB9286CJ3tX blocked_pending_real_materials",
+                "next_required_evidence": [
+                    "real_2d_lidar_source_receipt_summary",
+                    "real_tof_source_receipt_summary",
+                    "real_install_wiring_power_calibration_summary",
+                    "real_hardware_bench_entry_summary"
+                ],
+                "source_refs": [
+                    "Objective 1",
+                    "PR #5",
+                    "PRRT_kwDOSWB9286CJ3tX"
+                ]
+            },
+            {
+                "group_id": "pr4_route_elevator",
+                "title": "PR #4 route/elevator",
+                "owner": "Autonomy / Robot owner",
+                "readiness_status": "not_proven",
+                "blocking_reason": "missing_real_route_elevator_materials",
+                "next_required_evidence": [
+                    "real_nav2_or_fixed_route_runtime_summary",
+                    "real_route_completion_signal_summary",
+                    "real_task_record_summary",
+                    "real_elevator_door_floor_human_assist_summary"
+                ],
+                "source_refs": [
+                    "PR #4",
+                    "route/elevator material review"
+                ]
+            },
+            {
+                "group_id": "o4_real_phone",
+                "title": "Objective 4 real phone",
+                "owner": "Full-stack / Field owner",
+                "readiness_status": "not_proven",
+                "blocking_reason": "missing_real_phone_acceptance_materials",
+                "next_required_evidence": [
+                    "real_iphone_or_android_browser_summary",
+                    "production_app_entry_summary",
+                    "pwa_prompt_user_choice_summary",
+                    "offline_touch_visual_summary"
+                ],
+                "source_refs": [
+                    "Objective 4",
+                    "mobile real phone review"
+                ]
+            }
+        ],
+        "safe_phone_copy": "真实材料就绪看板只读展示四类 owner 路由；不放行 Start Delivery、Confirm Dropoff 或 Cancel。",
+        "evidence_boundary": "software_proof_docker_real_material_readiness_board_gate",
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "safe_to_control": false,
+        "not_proven": [
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "Objective 5 external proof",
+            "Objective 1 PR #5 hardware material",
+            "PR #4 route/elevator material",
+            "Objective 4 real phone material"
+        ]
+    },
     "pr5_review_thread_closeout_summary": {
         "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
         "schema_version": 1,

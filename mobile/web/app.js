@@ -125,6 +125,7 @@ const HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_BOUNDARY = "software_proof_dock
 const HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_execution_pack_gate";
 const PR5_REVIEW_THREAD_CLOSEOUT_BOUNDARY = "software_proof_docker_pr5_review_thread_closeout_gate";
 const HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_BOUNDARY = "software_proof_docker_hardware_real_material_escalation_request_gate";
+const REAL_MATERIAL_READINESS_BOARD_BOUNDARY = "software_proof_docker_real_material_readiness_board_gate";
 const WAVE_ROVER_FEEDBACK_REPLAY_BOUNDARY = "software_proof_docker_wave_rover_feedback_replay_gate";
 const WAVE_ROVER_HIL_PACKET_INTAKE_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_intake_gate";
 const WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_review_decision_gate";
@@ -278,6 +279,7 @@ const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_TEXT = /(authorization|b
 const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|raw vendor docs|vendor document raw|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_PR5_REVIEW_THREAD_CLOSEOUT_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw review body|raw github|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw request|raw escalation|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|\bhil\b|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
+const UNSAFE_REAL_MATERIAL_READINESS_BOARD_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw board|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|safe_to_control\s*=\s*true|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_WAVE_ROVER_FEEDBACK_REPLAY_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*反馈)/i;
 const UNSAFE_WAVE_ROVER_HIL_PACKET_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial device|uart device|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw packet|raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*packet|完整\s*反馈)/i;
 const UNSAFE_WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial device|uart device|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw packet|raw review|raw feedback|full raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_passed|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*packet|完整\s*反馈)/i;
@@ -349,6 +351,7 @@ let latestHardwareSensorHilEntryReadinessReview = null;
 let latestHardwareSensorHilEntryExecutionPack = null;
 let latestPr5ReviewThreadCloseout = null;
 let latestHardwareRealMaterialEscalationRequest = null;
+let latestRealMaterialReadinessBoard = null;
 let latestWaveRoverFeedbackReplay = null;
 let latestWaveRoverHilPacketIntake = null;
 let latestWaveRoverHilPacketReviewDecision = null;
@@ -1164,6 +1167,15 @@ function safeHardwareRealMaterialEscalationRequestText(value, fallback = "not_pr
   // 真实材料升级请求只给手机端展示 owner 交接摘要，命中 raw 材料、底层设备或成功语义时降级。
   const text = safeText(value, fallback);
   if (UNSAFE_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeRealMaterialReadinessBoardText(value, fallback = "not_proven") {
+  // 真实材料就绪看板是 owner 路由面板，只能显示脱敏摘要，不能承载控制授权或内部材料。
+  const text = safeText(value, fallback);
+  if (UNSAFE_REAL_MATERIAL_READINESS_BOARD_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -17427,6 +17439,231 @@ function hardwareRealMaterialEscalationRequestFromStatus(status, readiness, diag
   };
 }
 
+function realMaterialReadinessBoardCandidate(status, readiness, diagnostics) {
+  // Robot diagnostics safe alias 优先；兼容 summary/artifact 只用于展示白名单字段。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.robot_diagnostics_real_material_readiness_board_summary,
+    readiness?.robot_diagnostics_real_material_readiness_board_summary,
+    diagnostics?.robot_diagnostics_real_material_readiness_board_summary,
+    diagnosticsReadiness.robot_diagnostics_real_material_readiness_board_summary,
+    diagnosticsSummary.robot_diagnostics_real_material_readiness_board_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_real_material_readiness_board_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_real_material_readiness_board_summary,
+    statusDiagnosticsSummary.robot_diagnostics_real_material_readiness_board_summary,
+    status?.real_material_readiness_board_summary,
+    readiness?.real_material_readiness_board_summary,
+    diagnostics?.real_material_readiness_board_summary,
+    diagnosticsReadiness.real_material_readiness_board_summary,
+    diagnosticsSummary.real_material_readiness_board_summary,
+    nestedDiagnosticsSummary.real_material_readiness_board_summary,
+    nestedDiagnosticsInnerSummary.real_material_readiness_board_summary,
+    statusDiagnosticsSummary.real_material_readiness_board_summary,
+    status?.real_material_readiness_board,
+    readiness?.real_material_readiness_board,
+    diagnostics?.real_material_readiness_board,
+    diagnosticsReadiness.real_material_readiness_board,
+    diagnosticsSummary.real_material_readiness_board,
+    nestedDiagnosticsSummary.real_material_readiness_board,
+    nestedDiagnosticsInnerSummary.real_material_readiness_board,
+    statusDiagnosticsSummary.real_material_readiness_board,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function realMaterialReadinessBoardSummaryText(value, fallback) {
+  // 各 owner 的材料清单可能是数组或对象；手机端统一折叠为短摘要。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeRealMaterialReadinessBoardText(
+        item?.safe_phone_copy || item?.summary || item?.status || item?.state ||
+          item?.blocking_reason || item?.owner_handoff || item?.evidence || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.blocking_reason || value.owner_handoff || value.evidence || value.next_required_evidence;
+    if (direct) {
+      return safeRealMaterialReadinessBoardText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeRealMaterialReadinessBoardText(key, "");
+        const copy = realMaterialReadinessBoardSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safeRealMaterialReadinessBoardText(value, fallback);
+}
+
+function realMaterialReadinessBoardDefaultGroups() {
+  // 缺 summary 时仍展示四个固定 owner 路由槽位，避免现场人员误以为缺口消失。
+  return [
+    {
+      group_id: "o5_external",
+      title: "Objective 5 external",
+      owner: "Product / Cloud owner",
+      readiness_status: "not_proven",
+      blocking_reason: "缺真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue 证据。",
+      next_required_evidence: "真实 external proof 摘要。",
+      source_refs: "Objective 5",
+    },
+    {
+      group_id: "o1_pr5_hardware",
+      title: "Objective 1 / PR #5 hardware",
+      owner: "Hardware owner",
+      readiness_status: "not_proven",
+      blocking_reason: "PR #5 PRRT_kwDOSWB9286CJ3tX 仍缺真实硬件材料。",
+      next_required_evidence: "真实 2D LiDAR / ToF source、receipt、install、wiring、power、calibration 和 HIL-entry 摘要。",
+      source_refs: "Objective 1 / PR #5 / PRRT_kwDOSWB9286CJ3tX",
+    },
+    {
+      group_id: "pr4_route_elevator",
+      title: "PR #4 route/elevator",
+      owner: "Autonomy / Robot owner",
+      readiness_status: "not_proven",
+      blocking_reason: "缺真实 Nav2/fixed-route runtime log、route completion signal、task record 和电梯现场材料。",
+      next_required_evidence: "PR #4 route/elevator 同一 evidence_ref 的现场材料摘要。",
+      source_refs: "PR #4",
+    },
+    {
+      group_id: "o4_real_phone",
+      title: "Objective 4 real phone",
+      owner: "Full-stack / Field owner",
+      readiness_status: "not_proven",
+      blocking_reason: "缺真实 iPhone/Android、production app、PWA prompt、offline、touch 和 visual 复核材料。",
+      next_required_evidence: "真实手机/browser 现场验收摘要。",
+      source_refs: "Objective 4",
+    },
+  ];
+}
+
+function realMaterialReadinessBoardGroupTitle(groupId, fallback) {
+  const titles = {
+    o5_external: "Objective 5 external",
+    objective_5_external: "Objective 5 external",
+    o1_pr5_hardware: "Objective 1 / PR #5 hardware",
+    objective_1_pr5_hardware: "Objective 1 / PR #5 hardware",
+    pr4_route_elevator: "PR #4 route/elevator",
+    route_elevator_pr4: "PR #4 route/elevator",
+    o4_real_phone: "Objective 4 real phone",
+    objective_4_real_phone: "Objective 4 real phone",
+  };
+  return titles[groupId] || fallback || "真实材料组";
+}
+
+function realMaterialReadinessBoardGroups(value) {
+  // 只允许四类固定 group 出现在手机端，额外 group 不展示，避免把内部 artifact 变成产品状态。
+  const allowed = new Set(["o5_external", "objective_5_external", "o1_pr5_hardware", "objective_1_pr5_hardware", "pr4_route_elevator", "route_elevator_pr4", "o4_real_phone", "objective_4_real_phone"]);
+  const groups = Array.isArray(value?.material_groups) ? value.material_groups : [];
+  const safeGroups = groups
+    .filter((group) => group && typeof group === "object")
+    .map((group) => {
+      const groupId = safeRealMaterialReadinessBoardText(group.group_id || group.id, "unknown_group");
+      if (!allowed.has(groupId)) {
+        return null;
+      }
+      return {
+        group_id: groupId,
+        title: realMaterialReadinessBoardGroupTitle(
+          groupId,
+          safeRealMaterialReadinessBoardText(group.title || group.label, groupId),
+        ),
+        owner: realMaterialReadinessBoardSummaryText(group.owner || group.owner_handoff, "owner=not_proven"),
+        readiness_status: safeRealMaterialReadinessBoardText(
+          group.readiness_status || group.status || group.overall_status,
+          "not_proven",
+        ),
+        blocking_reason: realMaterialReadinessBoardSummaryText(
+          group.blocking_reason || group.blockers || group.missing_materials,
+          "blocking_reason=missing_real_materials",
+        ),
+        next_required_evidence: realMaterialReadinessBoardSummaryText(
+          group.next_required_evidence || group.next_evidence || group.next_steps,
+          "next_required_evidence=not_proven",
+        ),
+        source_refs: realMaterialReadinessBoardSummaryText(
+          group.source_refs || group.source_ref || group.refs,
+          "source_refs=not_proven",
+        ),
+      };
+    })
+    .filter(Boolean);
+  const byId = new Map(safeGroups.map((group) => [group.group_id, group]));
+  return realMaterialReadinessBoardDefaultGroups().map((group) => byId.get(group.group_id) || group);
+}
+
+function realMaterialReadinessBoardNotProvenList(value) {
+  // 看板是 routing readiness，不是 proof surface；四类真实材料缺口必须始终可见。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "Objective 5 external proof",
+    "Objective 1 / PR #5 real hardware material",
+    "PR #4 route/elevator real field material",
+    "Objective 4 real phone/browser material",
+    "software_proof",
+    "not_proven",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "safe_to_control=false",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 20);
+}
+
+function realMaterialReadinessBoardFromStatus(status, readiness, diagnostics) {
+  const provided = realMaterialReadinessBoardCandidate(status, readiness, diagnostics) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.real_material_readiness_board_summary.v1",
+    source_schema: provided.source_schema || "trashbot.real_material_readiness_board.v1",
+    schema_version: 1,
+    source: safeRealMaterialReadinessBoardText(provided.source, "software_proof"),
+    status: safeRealMaterialReadinessBoardText(
+      provided.status || provided.overall_status || provided.safe_status,
+      "not_proven",
+    ),
+    safe_evidence_ref: safeRealMaterialReadinessBoardText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "evidence_ref=not_proven",
+    ),
+    safe_phone_copy: safeRealMaterialReadinessBoardText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "真实材料就绪看板摘要缺失；手机端只显示四类材料缺口，主操作保持原 gate。",
+    ),
+    material_groups: realMaterialReadinessBoardGroups(provided),
+    evidence_boundary: safeRealMaterialReadinessBoardText(
+      provided.evidence_boundary,
+      REAL_MATERIAL_READINESS_BOARD_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    safe_to_control: false,
+    not_proven: realMaterialReadinessBoardNotProvenList(provided),
+  };
+}
+
 function waveRoverFeedbackReplayCandidate(status, readiness, diagnostics) {
   // 兼容 PC gate、Robot diagnostics 和 status 多层 summary；前端拒绝读取 raw artifact。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -24322,6 +24559,95 @@ function renderHardwareRealMaterialEscalationRequest(status) {
   $("hardwareRealMaterialEscalationRequestNotProven").textContent = summary.not_proven.join("、");
 }
 
+function ensureRealMaterialReadinessBoardPanel() {
+  // 看板聚合四类真实材料路由，紧跟硬件升级请求，保持只读和现场 owner 导向。
+  let panel = $("realMaterialReadinessBoardPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("hardwareRealMaterialEscalationRequestTitle")?.closest("section") ||
+    $("pr5ReviewThreadCloseoutTitle")?.closest("section") ||
+    $("hardwareBaselineSourceAlignmentTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "realMaterialReadinessBoardPanel";
+  panel.className = "real-material-readiness-board-panel";
+  panel.setAttribute("aria-labelledby", "realMaterialReadinessBoardTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="realMaterialReadinessBoardTitle">真实材料就绪看板</h2>
+      <span id="realMaterialReadinessBoardBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="realMaterialReadinessBoardCopy" class="message">
+      等待 robot_diagnostics_real_material_readiness_board_summary。
+    </p>
+    <dl class="real-material-readiness-board-grid">
+      <div><dt>Status</dt><dd id="realMaterialReadinessBoardStatus">software_proof / not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="realMaterialReadinessBoardEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="realMaterialReadinessBoardBoundary">software_proof_docker_real_material_readiness_board_gate</dd></div>
+      <div><dt>Control Boundary</dt><dd id="realMaterialReadinessBoardControls">software_proof / not_proven / delivery_success=false / primary_actions_enabled=false / safe_to_control=false</dd></div>
+      <div><dt>not_proven</dt><dd id="realMaterialReadinessBoardNotProven">真实材料、真实手机/browser、HIL 和外部 proof 未证明。</dd></div>
+    </dl>
+    <div id="realMaterialReadinessBoardGroups" class="real-material-readiness-board-groups" aria-label="真实材料就绪看板 group list"></div>
+    <p id="realMaterialReadinessBoardHint" class="hint">
+      本看板只展示四类现场 owner 路由：Objective 5 external、Objective 1 / PR #5 hardware、PR #4 route/elevator、Objective 4 real phone；不展示内部材料、凭证、路径或底层调试信息，也不改变 Start Delivery、Confirm Dropoff、Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderRealMaterialReadinessBoardGroups(summary) {
+  // group 卡片全部用 textContent 写入，避免后端摘要被当作 HTML 或内部结构展示。
+  const list = $("realMaterialReadinessBoardGroups");
+  if (!list) {
+    return;
+  }
+  list.textContent = "";
+  summary.material_groups.forEach((group) => {
+    const item = document.createElement("article");
+    const title = document.createElement("h3");
+    const owner = document.createElement("p");
+    const status = document.createElement("p");
+    const blocker = document.createElement("p");
+    const next = document.createElement("p");
+    const refs = document.createElement("p");
+    item.className = "real-material-readiness-board-group";
+    title.textContent = group.title;
+    owner.textContent = `owner=${group.owner}`;
+    status.textContent = `status=${group.readiness_status}`;
+    blocker.textContent = `blocking_reason=${group.blocking_reason}`;
+    next.textContent = `next_required_evidence=${group.next_required_evidence}`;
+    refs.textContent = `source_refs=${group.source_refs}`;
+    item.append(title, owner, status, blocker, next, refs);
+    list.appendChild(item);
+  });
+}
+
+function renderRealMaterialReadinessBoard(status) {
+  const panel = ensureRealMaterialReadinessBoardPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = realMaterialReadinessBoardFromStatus(status, readiness, latestDiagnostics);
+  latestRealMaterialReadinessBoard = summary;
+  const badge = $("realMaterialReadinessBoardBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待真实材料看板" : "material readiness not_proven";
+  $("realMaterialReadinessBoardCopy").textContent = summary.safe_phone_copy;
+  $("realMaterialReadinessBoardStatus").textContent = `${summary.source} / ${summary.status}`;
+  $("realMaterialReadinessBoardEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("realMaterialReadinessBoardBoundary").textContent = summary.evidence_boundary;
+  $("realMaterialReadinessBoardControls").textContent =
+    `${summary.source} / ${summary.status} / delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled} / safe_to_control=${summary.safe_to_control}`;
+  $("realMaterialReadinessBoardNotProven").textContent = summary.not_proven.join("、");
+  renderRealMaterialReadinessBoardGroups(summary);
+}
+
 function renderHardwareSensorProcurementIntake(status) {
   const readiness = readinessFromStatus(status);
   const summary = hardwareSensorProcurementIntakeFromStatus(status, readiness, latestDiagnostics);
@@ -28764,6 +29090,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const realMaterialReadinessBoard = realMaterialReadinessBoardFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const waveRoverFeedbackReplay = waveRoverFeedbackReplayFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -28926,6 +29257,7 @@ function renderDiagnosticsSummary(payload) {
     ["hardware_sensor_hil_entry_execution_pack", hardwareSensorHilEntryExecutionPack.execution_status],
     ["pr5_review_thread_closeout", pr5ReviewThreadCloseout.overall_status],
     ["hardware_real_material_escalation_request", hardwareRealMaterialEscalationRequest.safe_status],
+    ["real_material_readiness_board", realMaterialReadinessBoard.status],
     ["wave_rover_feedback_replay", waveRoverFeedbackReplay.replay_status],
     ["wave_rover_hil_packet_intake", waveRoverHilPacketIntake.packet_status],
     ["wave_rover_hil_packet_review_decision", waveRoverHilPacketReviewDecision.review_decision],
@@ -29067,6 +29399,7 @@ function renderOfflineFailure() {
   renderHardwareSensorHilEntryExecutionPack({});
   renderPr5ReviewThreadCloseout({});
   renderHardwareRealMaterialEscalationRequest({});
+  renderRealMaterialReadinessBoard({});
   renderWaveRoverFeedbackReplay({});
   renderWaveRoverHilPacketIntake({});
   renderWaveRoverHilPacketReviewDecision({});
@@ -29180,6 +29513,7 @@ function renderStatus(status) {
   renderHardwareSensorHilEntryExecutionPack(status);
   renderPr5ReviewThreadCloseout(status);
   renderHardwareRealMaterialEscalationRequest(status);
+  renderRealMaterialReadinessBoard(status);
   renderWaveRoverFeedbackReplay(status);
   renderWaveRoverHilPacketIntake(status);
   renderWaveRoverHilPacketReviewDecision(status);
@@ -29468,6 +29802,7 @@ async function openDiagnostics() {
     renderHardwareSensorHilEntryConfigPrecheck(latestStatus || {});
     renderHardwareSensorHilEntryReadinessReview(latestStatus || {});
     renderHardwareSensorHilEntryExecutionPack(latestStatus || {});
+    renderRealMaterialReadinessBoard(latestStatus || {});
     renderWaveRoverFeedbackReplay(latestStatus || {});
     renderWaveRoverHilPacketIntake(latestStatus || {});
     renderWaveRoverHilPacketReviewDecision(latestStatus || {});

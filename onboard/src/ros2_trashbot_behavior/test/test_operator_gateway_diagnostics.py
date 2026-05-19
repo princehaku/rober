@@ -104,6 +104,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_hardware_sensor_hil_entry_execution_pack,
     summarize_pr5_review_thread_closeout,
     summarize_hardware_real_material_escalation_request,
+    summarize_real_material_readiness_board,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
     summarize_cloud_worker_migration_rehearsal,
@@ -24277,6 +24278,192 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("primary_actions_enabled", encoded)
         self.assertFalse(unsafe["delivery_success"])
         self.assertFalse(unsafe["primary_actions_enabled"])
+        self.assertFalse(unsafe["ack_post_allowed"])
+        self.assertFalse(unsafe["cursor_updates_allowed"])
+        self.assertFalse(unsafe["nav2_triggered"])
+        self.assertFalse(unsafe["hil_pass"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("baudrate=115200", encoded)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("Start Delivery control enabled", encoded)
+
+    def test_diagnostics_payload_includes_real_material_readiness_board_safe_alias(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "real_material_readiness_board_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.real_material_readiness_board_summary.v1",
+                        "source_schema": "trashbot.real_material_readiness_board.v1",
+                        "source_schema_version": 1,
+                        "evidence_boundary": "software_proof_docker_real_material_readiness_board_gate",
+                        "source_evidence_boundary": "software_proof_docker_real_material_readiness_board_gate",
+                        "source": "software_proof",
+                        "status": "not_proven",
+                        "overall_status": "not_proven",
+                        "safe_evidence_ref": "evidence://real-material-readiness-board-1",
+                        "material_groups": [
+                            {
+                                "group_id": "o5_external",
+                                "owner": "product-okr-owner",
+                                "blocking_reason": "missing_real_external_proof",
+                                "next_required_evidence": [
+                                    "public_https_tls",
+                                    "4g_sim",
+                                    "oss_cdn_live_traffic",
+                                    "production_db_queue",
+                                ],
+                                "source_refs": ["Objective 5", "OKR.md 4.1"],
+                            }
+                        ],
+                        "next_required_evidence": ["real material packets from owners"],
+                        "owner_handoff": ["Route board to material owners only."],
+                        "safe_copy": (
+                            "real_material_readiness_board is routing-only; software_proof, "
+                            "not_proven, delivery_success=false, primary_actions_enabled=false, "
+                            "safe_to_control=false."
+                        ),
+                        "robot_diagnostics_summary": {
+                            "safe_copy": (
+                                "Readiness board is metadata-only; delivery_success=false; "
+                                "primary_actions_enabled=false; safe_to_control=false."
+                            )
+                        },
+                        "not_proven": ["objective_5_external_proof", "delivery_success"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                        "safe_to_control": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "real_material_readiness_board": {
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                real_material_readiness_board_ref=str(summary_path),
+            )
+            summary = payload["robot_diagnostics_real_material_readiness_board_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, payload["real_material_readiness_board"])
+        self.assertEqual(summary, payload["real_material_readiness_board_summary"])
+        self.assertNotIn("real_material_readiness_board", payload["latest_status"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_real_material_readiness_board_summary.v1",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.real_material_readiness_board.v1")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_real_material_readiness_board_gate",
+        )
+        self.assertEqual(summary["status"], "not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://real-material-readiness-board-1",
+        )
+        self.assertEqual(summary["material_groups"][0]["group_id"], "o5_external")
+        self.assertIn("objective_5_external_proof", summary["not_proven"])
+        self.assertIn("delivery_success=false", summary["robot_diagnostics_summary"]["safe_copy"])
+        self.assertIn("primary_actions_enabled=false", summary["robot_diagnostics_summary"]["safe_copy"])
+        self.assertIn("safe_to_control=false", summary["robot_diagnostics_summary"]["safe_copy"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertTrue(summary["routing_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(summary_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_real_material_readiness_board_missing_unsupported_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact = summarize_real_material_readiness_board(
+                {
+                    "schema": "trashbot.real_material_readiness_board.v1",
+                    "evidence_boundary": "software_proof_docker_real_material_readiness_board_gate",
+                    "source": "software_proof",
+                    "status": "not_proven",
+                    "overall_status": "not_proven",
+                    "safe_evidence_ref": "evidence://real-material-readiness-board-raw",
+                    "material_groups": [{"group_id": "o1_hardware"}],
+                    "safe_copy": (
+                        "real_material_readiness_board is routing-only; software_proof, "
+                        "not_proven, delivery_success=false, primary_actions_enabled=false, "
+                        "safe_to_control=false."
+                    ),
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_to_control": False,
+                }
+            )
+            unsupported = summarize_real_material_readiness_board(
+                {
+                    "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
+                    "source": "software_proof",
+                    "status": "not_proven",
+                    "overall_status": "not_proven",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_to_control": False,
+                    "safe_copy": "real_material_readiness_board is routing-only.",
+                }
+            )
+            unsafe = summarize_real_material_readiness_board(
+                {
+                    "schema": "trashbot.real_material_readiness_board_summary.v1",
+                    "source_schema": "trashbot.real_material_readiness_board.v1",
+                    "evidence_boundary": "software_proof_docker_real_material_readiness_board_gate",
+                    "source_evidence_boundary": "software_proof_docker_real_material_readiness_board_gate",
+                    "source": "software_proof",
+                    "status": "not_proven",
+                    "overall_status": "not_proven",
+                    "safe_copy": "Board passed; Start Delivery control enabled.",
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "safe_to_control": True,
+                    "raw_artifact": "token secret /dev/ttyUSB0 baudrate=115200",
+                }
+            )
+            missing_path = Path(td) / "secret-token" / "missing_real_material_readiness_board.json"
+            missing = summarize_real_material_readiness_board(str(missing_path))
+            encoded = json.dumps([artifact, unsupported, unsafe, missing], ensure_ascii=False)
+
+        self.assertEqual(artifact["status"], "not_proven")
+        self.assertEqual(unsupported["status"], "unsupported_schema")
+        self.assertEqual(unsafe["status"], "blocked_unsafe_real_material_readiness_board_summary")
+        self.assertEqual(missing["status"], "blocked_missing_real_material_readiness_board_summary")
+        self.assertIn("software_proof_docker_real_material_readiness_board_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", encoded)
+        self.assertIn("primary_actions_enabled", encoded)
+        self.assertIn("safe_to_control", encoded)
+        self.assertFalse(unsafe["delivery_success"])
+        self.assertFalse(unsafe["primary_actions_enabled"])
+        self.assertFalse(unsafe["safe_to_control"])
         self.assertFalse(unsafe["ack_post_allowed"])
         self.assertFalse(unsafe["cursor_updates_allowed"])
         self.assertFalse(unsafe["nav2_triggered"])

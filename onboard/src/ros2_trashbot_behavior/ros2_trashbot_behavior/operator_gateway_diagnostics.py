@@ -817,6 +817,14 @@ HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SUMMARY_SCHEMA = (
 HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_GATE = (
     "software_proof_docker_hardware_real_material_escalation_request_gate"
 )
+REAL_MATERIAL_READINESS_BOARD_SCHEMA = "trashbot.real_material_readiness_board.v1"
+REAL_MATERIAL_READINESS_BOARD_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.real_material_readiness_board_summary.v1"
+)
+REAL_MATERIAL_READINESS_BOARD_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_real_material_readiness_board_summary.v1"
+)
+REAL_MATERIAL_READINESS_BOARD_GATE = "software_proof_docker_real_material_readiness_board_gate"
 CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA = "trashbot.cloud_worker_migration_rehearsal.v1"
 CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA = (
     "trashbot.cloud_worker_migration_rehearsal_summary.v1"
@@ -880,6 +888,20 @@ HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_REQUIRED_NOT_PROVEN = (
     "route_elevator_field_pass",
     "delivery_success",
     "primary_actions_enabled",
+)
+REAL_MATERIAL_READINESS_BOARD_REQUIRED_NOT_PROVEN = (
+    "objective_5_external_proof",
+    "public_https_tls",
+    "real_4g_or_sim",
+    "oss_cdn_live_traffic",
+    "production_db_queue",
+    "real_wave_rover_uart_hil_materials",
+    "real_2d_lidar_tof_materials",
+    "route_elevator_field_pass",
+    "real_phone_device_or_browser",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
 )
 ROUTE_TASK_REHEARSAL_TEXT_REDACTIONS = (
     (re.compile(r"(?i)\bAuthorization\s*:\s*(?:Bearer\s+)?[^,\s]+"), "[REDACTED_AUTH_HEADER]"),
@@ -3912,6 +3934,31 @@ def _hardware_real_material_escalation_request_not_proven(request=None, summary_
         list(source_values)
         + list(HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_REQUIRED_NOT_PROVEN)
     ):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _real_material_readiness_board_not_proven(board=None, summary_fragment=None):
+    # readiness board 只是跨端路由面板；所有真实材料、控制授权和交付结论仍必须保持未证明。
+    board = board if isinstance(board, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    for source in (board, summary_fragment):
+        if isinstance(source.get("not_proven"), list):
+            source_values.extend(source.get("not_proven"))
+        if isinstance(source.get("next_required_evidence"), list):
+            source_values.extend(source.get("next_required_evidence"))
+        for group in source.get("material_groups", []):
+            if not isinstance(group, dict):
+                continue
+            if isinstance(group.get("next_required_evidence"), list):
+                source_values.extend(group.get("next_required_evidence"))
+            if str(group.get("blocking_reason") or "").strip():
+                source_values.append(group.get("blocking_reason"))
+    for item in list(source_values) + list(REAL_MATERIAL_READINESS_BOARD_REQUIRED_NOT_PROVEN):
         text = str(item or "").strip()
         if text and text not in values:
             values.append(text)
@@ -9510,6 +9557,67 @@ def _default_hardware_real_material_escalation_request_summary(
     }
 
 
+def _default_real_material_readiness_board_summary(
+    path,
+    status="blocked_missing_real_material_readiness_board_summary",
+    read_error="",
+):
+    # 缺源或缺 summary 时必须 fail closed；Robot 不能用 readiness board 推导真实材料已就绪。
+    safe_copy = (
+        "Real material readiness board is routing-only; software_proof, not_proven, "
+        "delivery_success=false, primary_actions_enabled=false, safe_to_control=false."
+    )
+    return {
+        "schema": REAL_MATERIAL_READINESS_BOARD_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": REAL_MATERIAL_READINESS_BOARD_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source_contract": {"schema": "", "evidence_boundary": "", "metadata_only": True},
+        "status": status,
+        "overall_status": "not_proven",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "board_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": read_error or "real_material_readiness_board summary is not configured",
+        },
+        "safe_evidence_ref": "",
+        "material_groups": [],
+        "next_required_evidence": [],
+        "owner_handoff": [],
+        "safe_copy": safe_copy,
+        "robot_diagnostics_summary": {
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+        },
+        "not_proven": _real_material_readiness_board_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "routing_only": True,
+        "summary_required": True,
+        "real_materials_observed": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -11145,6 +11253,16 @@ def _hardware_real_material_escalation_request_source_contract(value):
         source_schema = str(
             value.get("source_schema") or HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SCHEMA
         )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _real_material_readiness_board_source_contract(value):
+    # 支持 PC gate artifact 或已消毒 summary；summary 必须回指同一个 board source schema。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == REAL_MATERIAL_READINESS_BOARD_SOURCE_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or REAL_MATERIAL_READINESS_BOARD_SCHEMA)
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
 
@@ -36917,6 +37035,240 @@ def summarize_hardware_real_material_escalation_request(source):
     return summary
 
 
+def summarize_real_material_readiness_board(source):
+    """构建真实材料就绪看板的 metadata-only Robot diagnostics 摘要。"""
+    # Robot 只消费 PC gate 的 board artifact/summary，不读取 PC gate 的原始证据正文或任何控制入口。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_real_material_readiness_board_summary(
+        source_path,
+        read_error="real_material_readiness_board summary is not configured",
+    )
+    if isinstance(source, dict):
+        board = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = "real_material_readiness_board summary artifact missing"
+            summary["board_status"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                board = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading real_material_readiness_board summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["board_status"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(board, dict):
+        summary["board_status"]["reason"] = "real_material_readiness_board JSON must be an object"
+        return summary
+
+    raw_schema = str(board.get("schema") or "")
+    source_schema, source_boundary = _real_material_readiness_board_source_contract(board)
+    if raw_schema in {
+        REAL_MATERIAL_READINESS_BOARD_SCHEMA,
+        REAL_MATERIAL_READINESS_BOARD_SOURCE_SUMMARY_SCHEMA,
+    }:
+        summary_fragment = board
+    else:
+        summary_fragment = {}
+        for candidate in (
+            board.get("real_material_readiness_board_summary"),
+            board.get("robot_diagnostics_real_material_readiness_board_summary"),
+            board.get("diagnostics_summary"),
+            board.get("robot_diagnostics_summary"),
+            board.get("summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if isinstance(summary_fragment, dict) and summary_fragment:
+        nested_schema, nested_boundary = _real_material_readiness_board_source_contract(
+            summary_fragment
+        )
+        if nested_schema:
+            source_schema, source_boundary = nested_schema, nested_boundary
+
+    accepted_schemas = {
+        REAL_MATERIAL_READINESS_BOARD_SCHEMA,
+        REAL_MATERIAL_READINESS_BOARD_SOURCE_SUMMARY_SCHEMA,
+    }
+    board_status = (
+        summary_fragment.get("board_status")
+        if isinstance(summary_fragment.get("board_status"), dict)
+        else board.get("board_status")
+        if isinstance(board.get("board_status"), dict)
+        else {}
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or board.get("safe_copy")
+        or board.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    status = _redact_route_task_rehearsal_text(
+        board_status.get("status")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or board.get("status")
+        or board.get("overall_status")
+        or "not_proven"
+    )
+    overall_status = _redact_route_task_rehearsal_text(
+        summary_fragment.get("overall_status") or board.get("overall_status") or status
+    )
+    source_value = _redact_route_task_rehearsal_text(
+        summary_fragment.get("source")
+        or board.get("source")
+        or board_status.get("evidence_source")
+        or ""
+    )
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or board.get("safe_evidence_ref")
+        or board.get("evidence_ref", "")
+    )
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else board.get("robot_diagnostics_summary")
+        if isinstance(board.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    safe_robot_summary = {
+        "safe_copy": _redact_route_task_rehearsal_text(
+            robot_summary.get("safe_copy") or safe_copy
+        ),
+        "safe_phone_copy": _redact_route_task_rehearsal_text(
+            robot_summary.get("safe_phone_copy") or safe_copy
+        ),
+    }
+    material_groups_source = (
+        summary_fragment.get("material_groups")
+        if isinstance(summary_fragment.get("material_groups"), list)
+        else board.get("material_groups")
+    )
+    next_required_source = (
+        summary_fragment.get("next_required_evidence")
+        if isinstance(summary_fragment.get("next_required_evidence"), list)
+        else board.get("next_required_evidence")
+    )
+    owner_handoff_source = (
+        summary_fragment.get("owner_handoff")
+        if isinstance(summary_fragment.get("owner_handoff"), list)
+        else board.get("owner_handoff")
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                summary_fragment.get("source_schema_version")
+                or summary_fragment.get("schema_version")
+                or board.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "source_contract": {
+                "schema": _redact_route_task_rehearsal_text(source_schema),
+                "evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "metadata_only": True,
+            },
+            "status": status,
+            "overall_status": "not_proven",
+            "source": EVIDENCE_SOURCE_SOFTWARE,
+            "board_status": {
+                "status": status,
+                "verdict": "not_proven",
+                "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                "reason": _redact_route_task_rehearsal_text(
+                    board_status.get("reason")
+                    or summary_fragment.get("reason")
+                    or board.get("reason")
+                    or "real material readiness board is software_proof only"
+                ),
+            },
+            "safe_evidence_ref": safe_evidence_ref,
+            "material_groups": _safe_pc_route_debug_value(
+                material_groups_source if isinstance(material_groups_source, list) else []
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(next_required_source),
+            "owner_handoff": _safe_route_task_rehearsal_list(owner_handoff_source),
+            "safe_copy": _redact_route_task_rehearsal_text(safe_copy),
+            "robot_diagnostics_summary": safe_robot_summary,
+            "not_proven": _real_material_readiness_board_not_proven(board, summary_fragment),
+            "read_error": "",
+        }
+    )
+    boundary_supported = not source_boundary or source_boundary == REAL_MATERIAL_READINESS_BOARD_GATE
+    if source_schema not in accepted_schemas or not boundary_supported:
+        summary.update(
+            {
+                "status": "unsupported_schema",
+                "board_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "real_material_readiness_board schema or evidence boundary is unsupported",
+                },
+                "safe_evidence_ref": "",
+                "material_groups": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+            }
+        )
+        return summary
+
+    # 只接受明确的 software_proof/not_proven/false 控制布尔值；缺失或字符串 false 都降级。
+    if (
+        source_value != EVIDENCE_SOURCE_SOFTWARE
+        or status != "not_proven"
+        or overall_status != "not_proven"
+        or board.get("delivery_success") is not False
+        or board.get("primary_actions_enabled") is not False
+        or board.get("safe_to_control") is not False
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or summary_fragment.get("safe_to_control") is not False
+        or _route_task_field_run_readiness_has_unsafe_fields(board)
+        or _route_task_field_run_readiness_has_unsafe_fields(summary_fragment)
+        or _task_terminal_field_material_intake_copy_is_unsafe(safe_copy)
+        or _task_terminal_field_material_intake_copy_is_unsafe(
+            safe_robot_summary.get("safe_copy", "")
+        )
+    ):
+        blocked_copy = (
+            "Real material readiness board was blocked because the source did not remain "
+            "software_proof/not_proven with delivery_success=false, "
+            "primary_actions_enabled=false, and safe_to_control=false."
+        )
+        summary.update(
+            {
+                "status": "blocked_unsafe_real_material_readiness_board_summary",
+                "board_status": {
+                    "status": "blocked_unsafe_real_material_readiness_board_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "real_material_readiness_board contains unsupported status, unsafe fields, success wording, or control claims",
+                },
+                "safe_evidence_ref": "",
+                "material_groups": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+                "safe_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+            }
+        )
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -40668,6 +41020,7 @@ def build_diagnostics_payload(
     hardware_sensor_hil_entry_execution_pack_ref="",
     pr5_review_thread_closeout_ref="",
     hardware_real_material_escalation_request_ref="",
+    real_material_readiness_board_ref="",
     elevator_field_evidence_trace_callback_intake_ref="",
     elevator_field_evidence_trace_callback_review_decision_ref="",
     elevator_field_evidence_trace_callback_review_handoff_ref="",
@@ -40688,6 +41041,27 @@ def build_diagnostics_payload(
             latest_status,
             diagnostics_source,
         )
+    )
+    real_material_readiness_board_source = (
+        latest_status.get("real_material_readiness_board")
+        if isinstance(latest_status.get("real_material_readiness_board"), dict)
+        else latest_status.get("real_material_readiness_board_summary")
+        if isinstance(latest_status.get("real_material_readiness_board_summary"), dict)
+        else latest_status.get("robot_diagnostics_real_material_readiness_board_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_real_material_readiness_board_summary"),
+            dict,
+        )
+        else diagnostics_source.get("real_material_readiness_board")
+        if isinstance(diagnostics_source.get("real_material_readiness_board"), dict)
+        else diagnostics_source.get("real_material_readiness_board_summary")
+        if isinstance(diagnostics_source.get("real_material_readiness_board_summary"), dict)
+        else diagnostics_source.get("robot_diagnostics_real_material_readiness_board_summary")
+        if isinstance(
+            diagnostics_source.get("robot_diagnostics_real_material_readiness_board_summary"),
+            dict,
+        )
+        else {}
     )
     elevator_field_evidence_trace_callback_intake_source = (
         latest_status.get("elevator_field_evidence_trace_callback_intake")
@@ -42724,6 +43098,9 @@ def build_diagnostics_payload(
     latest_status.pop("hardware_real_material_escalation_request", None)
     latest_status.pop("hardware_real_material_escalation_request_summary", None)
     latest_status.pop("robot_diagnostics_hardware_real_material_escalation_request_summary", None)
+    latest_status.pop("real_material_readiness_board", None)
+    latest_status.pop("real_material_readiness_board_summary", None)
+    latest_status.pop("robot_diagnostics_real_material_readiness_board_summary", None)
     latest_status.pop("elevator_action_feedback_trace", None)
     latest_status.pop("robot_diagnostics_elevator_action_feedback_trace_summary", None)
     latest_status.pop("elevator_field_evidence_trace_callback_intake", None)
@@ -43740,6 +44117,15 @@ def build_diagnostics_payload(
             hardware_real_material_escalation_request_source
         )
     )
+    real_material_readiness_board_source = (
+        real_material_readiness_board_ref
+        or os.environ.get("TRASHBOT_REAL_MATERIAL_READINESS_BOARD", "")
+        or os.environ.get("TRASHBOT_REAL_MATERIAL_READINESS_BOARD_SUMMARY", "")
+        or real_material_readiness_board_source
+    )
+    real_material_readiness_board_summary = summarize_real_material_readiness_board(
+        real_material_readiness_board_source
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -44104,6 +44490,11 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_hardware_real_material_escalation_request_summary=(
             hardware_real_material_escalation_request_summary
+        ),
+        real_material_readiness_board=real_material_readiness_board_summary,
+        real_material_readiness_board_summary=real_material_readiness_board_summary,
+        robot_diagnostics_real_material_readiness_board_summary=(
+            real_material_readiness_board_summary
         ),
         elevator_action_feedback_trace=elevator_action_feedback_trace_summary,
         robot_diagnostics_elevator_action_feedback_trace_summary=(
