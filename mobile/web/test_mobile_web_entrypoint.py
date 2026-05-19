@@ -614,6 +614,93 @@ class MobilePwaCacheRecoveryGateTest(unittest.TestCase):
         self.assertNotRegex(service_worker, r"caches\.(open|match).*api/(collect|dropoff/confirm|cancel)")
 
 
+class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def read_gate(self):
+        return (REPO_ROOT / "pc-tools" / "evidence" / "phone_browser_acceptance_gate.py").read_text(
+            encoding="utf-8",
+        )
+
+    def test_fresh_browser_flags_schema_and_boundary_are_static_contract(self):
+        gate = self.read_gate()
+        doc = DOC.read_text(encoding="utf-8")
+
+        # fresh mode 是现有 browser gate 的增强路径；默认 artifact/boundary 仍保留。
+        self.assertIn('"--fresh-profile"', gate)
+        self.assertIn('"--require-console-zero"', gate)
+        self.assertIn("mobile_pwa_fresh_browser_proof_summary.json", gate)
+        self.assertIn('FRESH_ARTIFACT_PREFIX = "mobile_pwa_fresh_browser_proof"', gate)
+        self.assertIn("config['artifact_prefix']}_{width}x{height}.json", gate)
+        self.assertIn("config['artifact_prefix']}_{width}x{height}.png", gate)
+        self.assertIn("software_proof_docker_mobile_pwa_fresh_browser_proof_gate", gate)
+        self.assertIn("mobile_current_pwa_field_trial_browser_acceptance_summary.json", gate)
+        self.assertIn("software_proof_docker_mobile_current_pwa_field_trial_browser_proof_gate", gate)
+
+        # 产品文档必须写清入口和非真机边界，避免把 fresh browser proof 写成真实手机验收。
+        self.assertIn("fresh browser proof", doc)
+        self.assertIn("--fresh-profile --require-console-zero", doc)
+        self.assertIn("mobile_pwa_fresh_browser_proof_summary.json", doc)
+        self.assertIn("software_proof_docker_mobile_pwa_fresh_browser_proof_gate", doc)
+        self.assertIn("not_proven", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("safe_to_control=false", doc)
+
+    def test_fresh_browser_console_zero_and_service_worker_markers_are_asserted(self):
+        gate = self.read_gate()
+        service_worker = self.read_web("service-worker.js")
+        app = self.read_web("app.js")
+
+        # CDP Runtime/Log 事件要被收集；require-console-zero 才把 console/runtime error 变成失败。
+        self.assertIn("Runtime.consoleAPICalled", gate)
+        self.assertIn("Runtime.exceptionThrown", gate)
+        self.assertIn("Log.entryAdded", gate)
+        self.assertIn("console_zero_status", gate)
+        self.assertIn("console_error_count", gate)
+        self.assertIn("console_runtime_failures_since", gate)
+
+        # 当前 shell marker 和 service-worker cache recovery marker 都必须被 fresh proof 识别。
+        self.assertIn("?mobile_pwa_cache_recovery=1", gate)
+        self.assertIn("freshProbe", gate)
+        self.assertIn("htmlMarker", gate)
+        self.assertIn("serviceWorkerRegistrationScript", gate)
+        self.assertIn("mobile_pwa_cache_recovery", service_worker)
+        self.assertIn("RECOVERY_MARKER", service_worker)
+        self.assertIn("markMobilePwaCacheRecovery", app)
+        self.assertIn("dataset.mobilePwaCacheRecovery", app)
+
+    def test_fresh_browser_dynamic_no_store_and_fail_closed_assertions(self):
+        gate = self.read_gate()
+        service_worker = self.read_web("service-worker.js")
+
+        # fresh proof 依赖静态 SW 断言和运行时 response header 双重证明动态控制面不进缓存。
+        self.assertIn("SERVICE_WORKER_DYNAMIC_ASSERTIONS", gate)
+        self.assertIn("service_worker_static_assertions", gate)
+        self.assertIn("service_worker_dynamic_no_store_status", gate)
+        self.assertIn("statusCacheControl", gate)
+        self.assertIn("diagnosticsCacheControl", gate)
+        self.assertIn('fetch(event.request, { cache: "no-store" })', service_worker)
+        for token in (
+            'path.startsWith("/api/")',
+            'path.startsWith("/robots/")',
+            'path.includes("/commands")',
+            'path.includes("/ack")',
+            'path.includes("/diagnostics")',
+            'request.method !== "GET"',
+        ):
+            self.assertIn(token, service_worker)
+
+        # 证据 summary 固定 fail-closed 字段；gate 只能证明本地 fresh Chromium software proof。
+        self.assertIn('"delivery_success": False', gate)
+        self.assertIn('"primary_actions_enabled": False', gate)
+        self.assertIn('"safe_to_control": False', gate)
+        self.assertIn("primary_actions_disabled", gate)
+        self.assertIn("fresh_profile", gate)
+        self.assertIn("not_proven", gate)
+
+
 class HardwareSensorProcurementReceiptIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

@@ -8,7 +8,21 @@
 
 ## 2026-05-19 系列
 
-更新时间：2026-05-19 14:20 Asia/Shanghai。
+更新时间：2026-05-19 14:29 Asia/Shanghai。
+
+### 2026-05-19 14-15｜mobile-pwa-fresh-browser-proof｜O4 local fresh browser software proof
+
+本轮 `sprints/2026.05.19_14-15_mobile-pwa-fresh-browser-proof/` 按 live OKR rerank 后推进 Objective 4 fresh browser proof，不继续 O5 local metadata depth，也不继续 O1 hardware metadata wrapper。Full-Stack worker 实现 `mobile_pwa_fresh_browser_proof`：独立 fresh Chromium profile、两档 viewport `390x844` / `768x900`、当前 shell marker、service-worker cache recovery marker、dynamic no-store/bypass 检查、console/runtime error zero、summary/screenshot artifacts；Start Delivery、Confirm Dropoff、Cancel 继续 fail-closed。Robot final review 未发现控制面扩大：没有新增 robot command path、`/cmd_vel`、ACK 发送或动态控制缓存/重放风险；fixture probes 只做 GET no-store，不提交 ACK、不推进 cursor、不触发 Start/Confirm/Cancel 或 robot command。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL，不补 PR #5 2D LiDAR / ToF 真实材料；仍缺真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report、真实 UART、真实 HIL-entry、真实 SKU/source/receipt/procurement/installation/wiring/power/calibration。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只为手机 PWA 增加 fresh browser proof，不新增 PR #4 route/elevator wrapper；仍缺真实 dropoff completion、真实 cancel completion、delivery result、delivery_success、真实电梯、真实门状态、真实楼层确认、人工协助记录、真实 Nav2/fixed-route、真实 route/elevator field pass 和现场 task record。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮不新增真实路线采集、Nav2/fixed-route runtime log、route completion signal、现场 task_record 或同一 safe `evidence_ref` 上车实机复账；fresh browser proof 不得写成 route/elevator field pass。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | 本轮让当前 `mobile/web` shell 在 fresh Chromium profile 下可复核通过：两个 viewport 均 `passed=true`、`console_error_count=0`、`fresh_browser_markers_status=passed`、`service_worker_dynamic_no_store_status=passed`，summary `ok=true`，boundary=`software_proof_docker_mobile_pwa_fresh_browser_proof_gate`。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice、真实 phone/browser acceptance 和现场 phone behavior。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof。 |
+
+本轮验证：Full-Stack `python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 127 tests in 0.860s OK`；`py_compile` 通过；`node --check mobile/web/app.js` 通过；`node --check mobile/web/service-worker.js` 通过；fresh browser gate 在 `390x844` 和 `768x900` 均通过，`console_error_count=0`，summary `ok=true`；required `rg` 与 scoped diff check 通过。Robot final review required `rg` 与 scoped diff check 通过，确认本轮没有 ACK 发送、robot command path、`/cmd_vel` 控制入口或动态控制请求缓存/重放。本轮不证明真实手机、真实 PWA prompt/user choice、production app、真实 route/elevator field pass、真实 Nav2/fixed-route、dropoff/cancel completion、delivery success、WAVE ROVER/UART/HIL、PR #5 真实 2D LiDAR / ToF 材料或 O5 external proof；fresh browser proof、service-worker marker、fixture GET probes、screenshots 和 summary 均保持 `software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
 
 ### 2026-05-19 13-14｜mobile-pwa-cache-recovery｜O4 local Browser QA cache recovery software proof
 

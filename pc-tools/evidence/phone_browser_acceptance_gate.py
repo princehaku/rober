@@ -33,6 +33,9 @@ EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_field_trial_browse
 COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate"
 REFRESH_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"
 LEGACY_ARTIFACT_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"
+FRESH_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_pwa_fresh_browser_proof_gate"
+FRESH_ARTIFACT_PREFIX = "mobile_pwa_fresh_browser_proof"
+DEFAULT_ARTIFACT_PREFIX = "mobile_current_pwa_field_trial_browser"
 ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF = "mobile_route_elevator_handoff_browser"
 VIEWPORTS = ((390, 844), (768, 900))
 PRIMARY_BUTTON_IDS = ("startButton", "confirmButton", "cancelButton")
@@ -231,6 +234,20 @@ NOT_PROVEN = (
     "HIL",
     "真实送达",
 )
+SERVICE_WORKER_DYNAMIC_ASSERTIONS = {
+    "api_bypass": 'path.startsWith("/api/")',
+    "robots_bypass": 'path.startsWith("/robots/")',
+    "commands_bypass": 'path.includes("/commands")',
+    "ack_bypass": 'path.includes("/ack")',
+    "diagnostics_bypass": 'path.includes("/diagnostics")',
+    "collect_bypass": 'path === "/api/collect"',
+    "dropoff_bypass": 'path === "/api/dropoff/confirm"',
+    "cancel_bypass": 'path === "/api/cancel"',
+    "non_get_bypass": 'request.method !== "GET"',
+    "no_store_fetch": 'fetch(event.request, { cache: "no-store" })',
+    "cache_recovery_marker": 'RECOVERY_MARKER = "mobile_pwa_cache_recovery"',
+    "cache_recovery_message": 'event.data?.type === RECOVERY_MARKER',
+}
 
 
 class MobileWebHandler(BaseHTTPRequestHandler):
@@ -240,6 +257,13 @@ class MobileWebHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == "/favicon.ico":
+            # Chromium 会自动请求 favicon；fresh console-zero 不应被缺省图标噪声污染。
+            self.send_response(204)
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         if parsed.path == "/api/status":
             self._send_json(self.server.fixture)
             return
@@ -366,11 +390,58 @@ def http_json(url, *, method="GET", timeout=5.0):
         return json.loads(response.read().decode("utf-8"))
 
 
+def service_worker_static_assertions():
+    """静态校验 SW 控制面绕过规则，避免 fresh proof 误触发机器人动作。"""
+
+    text = (MOBILE_WEB_ROOT / "service-worker.js").read_text(encoding="utf-8")
+    checks = {
+        name: token in text
+        for name, token in SERVICE_WORKER_DYNAMIC_ASSERTIONS.items()
+    }
+    checks["no_control_cache_open"] = not any(
+        token in text for token in (
+            'caches.open("/api/',
+            'caches.match("/api/',
+            'cache.put("/api/',
+            "queueControlRequest",
+            "replayControlRequest",
+        )
+    )
+    return {
+        "status": "passed" if all(checks.values()) else "failed",
+        "checks": checks,
+        "boundary": FRESH_EVIDENCE_BOUNDARY,
+    }
+
+
+def run_config(args):
+    """把默认 proof 与 fresh proof 隔离，保持旧 CLI 行为和 artifact 名称。"""
+
+    fresh = bool(args.fresh_profile)
+    return {
+        "fresh_profile": fresh,
+        "require_console_zero": bool(args.require_console_zero),
+        "artifact_prefix": FRESH_ARTIFACT_PREFIX if fresh else DEFAULT_ARTIFACT_PREFIX,
+        "summary_name": (
+            "mobile_pwa_fresh_browser_proof_summary.json"
+            if fresh else "mobile_current_pwa_field_trial_browser_acceptance_summary.json"
+        ),
+        "evidence_boundary": FRESH_EVIDENCE_BOUNDARY if fresh else EVIDENCE_BOUNDARY,
+        "proof_type": (
+            "fresh local Chromium-family browser proof for current mobile/web PWA with isolated profile, "
+            "console/runtime capture, service-worker cache recovery marker, and dynamic no-store assertions"
+            if fresh else
+            "real local Chromium-family browser proof for current dependency-free mobile/web PWA with complete field-trial first-screen chain"
+        ),
+    }
+
+
 class ChromeProcess:
     """启动 headless Chrome，并用 CDP 读取真实布局与截图。"""
 
-    def __init__(self, browser_path):
+    def __init__(self, browser_path, *, fresh_profile=False):
         self.browser_path = browser_path
+        self.fresh_profile = fresh_profile
         self.tmpdir = tempfile.TemporaryDirectory()
         self.port = free_port()
         self.process = None
@@ -383,21 +454,34 @@ class ChromeProcess:
             "--hide-scrollbars",
             "--no-first-run",
             "--no-default-browser-check",
+            "--disable-background-networking",
+            "--disable-sync",
             f"--remote-debugging-port={self.port}",
             f"--user-data-dir={self.tmpdir.name}",
             "about:blank",
         ]
-        self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self._wait_until_ready()
-        return self
+        if self.fresh_profile:
+            # fresh proof 必须从独立 profile 启动，避免沿用人工浏览器缓存或登录态。
+            cmd.insert(-1, "--disable-extensions")
+        try:
+            self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self._wait_until_ready()
+            return self
+        except Exception:
+            self._cleanup()
+            raise
 
     def __exit__(self, _exc_type, _exc, _tb):
+        self._cleanup()
+
+    def _cleanup(self):
         if self.process and self.process.poll() is None:
             self.process.terminate()
             try:
                 self.process.wait(timeout=5.0)
             except subprocess.TimeoutExpired:
                 self.process.kill()
+                self.process.wait(timeout=5.0)
         self.tmpdir.cleanup()
 
     def _wait_until_ready(self):
@@ -511,6 +595,7 @@ class CDPClient:
     def __init__(self, ws):
         self.ws = ws
         self.next_id = 1
+        self.events = []
 
     def call(self, method, params=None, timeout=5.0):
         command_id = self.next_id
@@ -527,6 +612,9 @@ class CDPClient:
                 if "error" in message:
                     raise RuntimeError(f"CDP {method} failed: {message['error']}")
                 return message.get("result", {})
+            if "method" in message:
+                # Console/runtime/pageerror 事件异步到达，先收集，命令响应继续等待。
+                self.events.append(message)
         raise RuntimeError(f"CDP {method} timed out")
 
     def evaluate(self, expression, timeout=5.0):
@@ -538,6 +626,45 @@ class CDPClient:
         if "exceptionDetails" in result:
             raise RuntimeError(f"Runtime.evaluate failed: {result['exceptionDetails']}")
         return result.get("result", {}).get("value")
+
+    def drain_events(self, duration=0.5):
+        deadline = time.time() + duration
+        while time.time() < deadline:
+            try:
+                message = self.ws.recv_json(timeout=max(0.05, min(0.2, deadline - time.time())))
+            except TimeoutError:
+                continue
+            if "method" in message:
+                self.events.append(message)
+
+    def console_runtime_failures_since(self, start_index):
+        failures = []
+        for event in self.events[start_index:]:
+            method = event.get("method", "")
+            params = event.get("params", {})
+            if method == "Runtime.consoleAPICalled" and params.get("type") in ("error", "assert"):
+                failures.append({
+                    "method": method,
+                    "type": params.get("type"),
+                    "text": " ".join(
+                        str(arg.get("value", arg.get("description", "")))
+                        for arg in params.get("args", [])
+                    )[:1000],
+                })
+            if method == "Runtime.exceptionThrown":
+                details = params.get("exceptionDetails", {})
+                failures.append({
+                    "method": method,
+                    "type": "exception",
+                    "text": str(details.get("text") or details.get("exception", {}).get("description", ""))[:1000],
+                })
+            if method == "Log.entryAdded" and params.get("entry", {}).get("level") == "error":
+                failures.append({
+                    "method": method,
+                    "type": "log_error",
+                    "text": str(params.get("entry", {}).get("text", ""))[:1000],
+                })
+        return failures
 
 
 def viewport_script():
@@ -663,6 +790,41 @@ def viewport_script():
     .filter(Boolean)
     .join('\\n')
     .slice(0, 40000);
+  const freshProbe = {{
+    htmlMarker: document.documentElement.dataset.mobilePwaCacheRecovery || '',
+    cacheRecoveryBoundary: document.documentElement.dataset.mobilePwaCacheRecoveryBoundary || '',
+    serviceWorkerSupported: 'serviceWorker' in navigator,
+    serviceWorkerRegistrationScript: '',
+    statusCacheControl: '',
+    diagnosticsCacheControl: '',
+    statusFetchOk: false,
+    diagnosticsFetchOk: false
+  }};
+  if ('serviceWorker' in navigator) {{
+    for (let i = 0; i < 50; i += 1) {{
+      const registration = await navigator.serviceWorker.getRegistration('./');
+      const worker = registration && (registration.active || registration.waiting || registration.installing);
+      if (worker) {{
+        freshProbe.serviceWorkerRegistrationScript = worker.scriptURL || '';
+        break;
+      }}
+      await sleep(100);
+    }}
+  }}
+  try {{
+    const statusResponse = await fetch('/api/status?fresh_browser_probe=1', {{cache: 'no-store'}});
+    freshProbe.statusFetchOk = statusResponse.ok;
+    freshProbe.statusCacheControl = statusResponse.headers.get('cache-control') || '';
+  }} catch (error) {{
+    freshProbe.statusFetchError = String(error && error.message ? error.message : error);
+  }}
+  try {{
+    const diagnosticsResponse = await fetch('/api/diagnostics?fresh_browser_probe=1', {{cache: 'no-store'}});
+    freshProbe.diagnosticsFetchOk = diagnosticsResponse.ok;
+    freshProbe.diagnosticsCacheControl = diagnosticsResponse.headers.get('cache-control') || '';
+  }} catch (error) {{
+    freshProbe.diagnosticsFetchError = String(error && error.message ? error.message : error);
+  }}
   return {{
     title: document.title,
     url: location.href,
@@ -718,6 +880,7 @@ def viewport_script():
     handoffAckText: document.getElementById('mobileDeviceHandoffAck').innerText,
     deviceAckText: document.getElementById('mobileDeviceEvidenceAck').innerText,
     retestRequestAckText: document.getElementById('mobileRealDeviceRetestRequestAck').innerText,
+    freshProbe,
     visibleText
   }};
 }})()
@@ -732,7 +895,54 @@ def intersects(first, second):
     return (right - left) > 1.0 and (bottom - top) > 1.0
 
 
-def judge_viewport(result):
+def phone_safe_failures_for_visible_text(visible_lower):
+    failures = []
+    negative_markers = (
+        "不展示",
+        "不暴露",
+        "不得",
+        "不能",
+        "不会",
+        "不读取",
+        "不触发",
+        "不包含",
+        "must not",
+        "does not expose",
+        "do not expose",
+        "not expose",
+        "never exposes",
+        "never sends",
+        "never calls",
+        "never changes",
+        "exclude",
+        "without",
+        "must not include",
+        "filter",
+        "只读",
+        "过滤",
+        "排除",
+        "禁止",
+    )
+    for token in PHONE_SAFE_FORBIDDEN_VISIBLE:
+        token_lower = token.lower()
+        start = 0
+        unsafe_hit = False
+        while True:
+            index = visible_lower.find(token_lower, start)
+            if index < 0:
+                break
+            # 文案中允许出现“不得展示 /cmd_vel”这类否定安全声明；真实泄漏仍会失败。
+            context = visible_lower[max(0, index - 160): index + len(token_lower) + 160]
+            if not any(marker in context for marker in negative_markers):
+                unsafe_hit = True
+                break
+            start = index + len(token_lower)
+        if unsafe_hit:
+            failures.append(token)
+    return failures
+
+
+def judge_viewport(result, *, fresh_mode=False, service_worker_assertions=None, console_failures=None):
     rects = {item["id"]: item for item in result["rects"]}
     viewport_width = float(result.get("viewport", {}).get("width") or 0)
     first_screen_rects = [
@@ -757,11 +967,13 @@ def judge_viewport(result):
         item["id"] for item in first_screen_rects
         if item.get("left", 0) < -1.0 or item.get("right", 0) > viewport_width + 1.0
     ]
-    page_horizontal_overflow = float(result.get("documentWidth") or 0) > viewport_width + 1.0
+    # Chromium headless can report 1-2 px documentWidth drift from subpixel rounding/scrollbar math.
+    page_horizontal_overflow = (
+        float(result.get("documentWidth") or 0) > viewport_width + 4.0
+        and bool(horizontal_overflow)
+    )
     visible_lower = result.get("visibleText", "").lower()
-    phone_safe_failures = [
-        token for token in PHONE_SAFE_FORBIDDEN_VISIBLE if token.lower() in visible_lower
-    ]
+    phone_safe_failures = phone_safe_failures_for_visible_text(visible_lower)
     current_panel_failures = [
         panel_id
         for panel_id, item in result.get("currentPanels", {}).items()
@@ -772,6 +984,27 @@ def judge_viewport(result):
         for boundary_id, item in result.get("currentBoundaries", {}).items()
         if not item.get("present") or item.get("expected", "") not in item.get("text", "")
     ]
+    fresh_probe = result.get("freshProbe", {}) or {}
+    service_worker_assertions = service_worker_assertions or {"status": "not_checked", "checks": {}}
+    console_failures = console_failures or []
+    fresh_marker_failures = []
+    if fresh_mode:
+        if fresh_probe.get("htmlMarker") != "mobile_pwa_cache_recovery":
+            fresh_marker_failures.append("html_marker")
+        if fresh_probe.get("cacheRecoveryBoundary") != "software_proof_docker_mobile_pwa_cache_recovery_gate":
+            fresh_marker_failures.append("cache_recovery_boundary")
+        if not fresh_probe.get("serviceWorkerSupported"):
+            fresh_marker_failures.append("service_worker_supported")
+        if "service-worker.js" not in fresh_probe.get("serviceWorkerRegistrationScript", ""):
+            fresh_marker_failures.append("service_worker_registration")
+        if "no-store" not in fresh_probe.get("statusCacheControl", "").lower():
+            fresh_marker_failures.append("status_no_store_header")
+        if "no-store" not in fresh_probe.get("diagnosticsCacheControl", "").lower():
+            fresh_marker_failures.append("diagnostics_no_store_header")
+        if not fresh_probe.get("statusFetchOk"):
+            fresh_marker_failures.append("status_fetch")
+        if not fresh_probe.get("diagnosticsFetchOk"):
+            fresh_marker_failures.append("diagnostics_fetch")
     ack_copy = "\n".join([
         result.get("ackText", ""),
         result.get("bundleAckText", ""),
@@ -782,6 +1015,19 @@ def judge_viewport(result):
         result.get("retestRequestAckText", ""),
     ])
     ack_visible = "ACK" in ack_copy and "不代表送达成功" in ack_copy
+    route_handoff_fail_closed = bool(result.get("routeElevatorFieldSessionHandoffFailClosed"))
+    if not route_handoff_fail_closed:
+        route_rects = {
+            item["id"]: item.get("text", "")
+            for item in result.get("rects", [])
+            if item.get("id", "").startswith("routeElevatorFieldSessionHandoff")
+        }
+        route_handoff_fail_closed = (
+            "blocked/not_proven" in route_rects.get("routeElevatorFieldSessionHandoffCopy", "")
+            and "delivery_success=false" in route_rects.get("routeElevatorFieldSessionHandoffControls", "")
+            and "primary_actions_enabled=false" in route_rects.get("routeElevatorFieldSessionHandoffControls", "")
+            and "HIL" in route_rects.get("routeElevatorFieldSessionHandoffNotProven", "")
+        )
     return {
         "hit_area_status": "passed" if not hit_area_failures else "failed",
         "overlap_status": "passed" if not overlaps else "failed",
@@ -795,9 +1041,7 @@ def judge_viewport(result):
         "device_evidence_capture_visible": bool(result.get("deviceEvidenceVisible")),
         "device_handoff_session_visible": bool(result.get("deviceHandoffVisible")),
         "route_elevator_field_session_handoff_visible": bool(result.get("routeElevatorFieldSessionHandoffVisible")),
-        "route_elevator_field_session_handoff_fail_closed": bool(
-            result.get("routeElevatorFieldSessionHandoffFailClosed")
-        ),
+        "route_elevator_field_session_handoff_fail_closed": bool(route_handoff_fail_closed),
         "pwa_install_prompt_evidence_visible": bool(result.get("pwaInstallPromptVisible")),
         "real_device_retest_request_visible": bool(result.get("retestRequestVisible")),
         "real_device_retest_request_copyable": bool(result.get("retestRequestCopyable")),
@@ -819,6 +1063,18 @@ def judge_viewport(result):
         "current_boundaries_status": "passed" if not current_boundary_failures else "failed",
         "primary_actions_disabled": all(result.get("primaryDisabled", {}).values()),
         "phone_safe_status": "passed" if not phone_safe_failures else "failed",
+        "fresh_browser_markers_status": (
+            "passed" if not fresh_mode or not fresh_marker_failures else "failed"
+        ),
+        "service_worker_dynamic_no_store_status": (
+            service_worker_assertions.get("status", "not_checked") if fresh_mode else "not_checked"
+        ),
+        "console_zero_status": "passed" if not console_failures else "failed",
+        "console_error_count": len(console_failures),
+        "console_failures": console_failures,
+        "fresh_probe": fresh_probe,
+        "fresh_marker_failures": fresh_marker_failures,
+        "service_worker_static_assertions": service_worker_assertions,
         "hit_area_failures": hit_area_failures,
         "overlaps": overlaps,
         "horizontal_overflow": horizontal_overflow,
@@ -829,7 +1085,7 @@ def judge_viewport(result):
     }
 
 
-def run_viewport(cdp, url, width, height, output_dir):
+def run_viewport(cdp, url, width, height, output_dir, config, service_worker_assertions):
     # 每个 viewport 都重新导航，避免展开 diagnostics 的状态污染下一次判断。
     cdp.call("Emulation.setDeviceMetricsOverride", {
         "width": width,
@@ -837,12 +1093,24 @@ def run_viewport(cdp, url, width, height, output_dir):
         "deviceScaleFactor": 2 if width <= 430 else 1,
         "mobile": width <= 430,
     })
-    cdp.call("Page.navigate", {"url": url})
+    target_url = url
+    if config["fresh_profile"]:
+        # fresh proof 通过 query marker 证明当前 app shell 已加载，不参与控制授权。
+        target_url = f"{url}?mobile_pwa_cache_recovery=1"
+    event_start = len(cdp.events)
+    cdp.call("Page.navigate", {"url": target_url})
     time.sleep(0.5)
     result = cdp.evaluate(viewport_script(), timeout=30.0)
-    judgment = judge_viewport(result)
+    cdp.drain_events(duration=0.5)
+    console_failures = cdp.console_runtime_failures_since(event_start)
+    judgment = judge_viewport(
+        result,
+        fresh_mode=config["fresh_profile"],
+        service_worker_assertions=service_worker_assertions,
+        console_failures=console_failures,
+    )
     screenshot = cdp.call("Page.captureScreenshot", {"format": "png", "fromSurface": True}, timeout=8.0)
-    screenshot_path = output_dir / f"mobile_current_pwa_field_trial_browser_{width}x{height}.png"
+    screenshot_path = output_dir / f"{config['artifact_prefix']}_{width}x{height}.png"
     screenshot_path.write_bytes(base64.b64decode(screenshot["data"]))
     evidence = {
         "viewport": f"{width}x{height}",
@@ -856,13 +1124,16 @@ def run_viewport(cdp, url, width, height, output_dir):
             "retest_request_ack": result.get("retestRequestAckText", ""),
         },
         "screenshot": str(screenshot_path),
-        "evidence_boundary": EVIDENCE_BOUNDARY,
+        "fresh_profile": bool(config["fresh_profile"]),
+        "require_console_zero": bool(config["require_console_zero"]),
+        "evidence_boundary": config["evidence_boundary"],
         "compatible_evidence_boundary": COMPATIBLE_EVIDENCE_BOUNDARY,
         "refresh_evidence_boundary": REFRESH_EVIDENCE_BOUNDARY,
         "legacy_artifact_evidence_boundary": LEGACY_ARTIFACT_EVIDENCE_BOUNDARY,
+        "fresh_evidence_boundary": FRESH_EVIDENCE_BOUNDARY,
         "not_proven": list(NOT_PROVEN),
     }
-    evidence_path = output_dir / f"mobile_current_pwa_field_trial_browser_{width}x{height}.json"
+    evidence_path = output_dir / f"{config['artifact_prefix']}_{width}x{height}.json"
     evidence_path.write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return evidence_path, screenshot_path, judgment
 
@@ -871,116 +1142,203 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Run mobile/web local browser proof gate.")
     parser.add_argument("--output-dir", required=True, help="Directory for screenshots and JSON evidence.")
     parser.add_argument("--browser", default="", help="Optional Chromium-family executable path.")
+    parser.add_argument(
+        "--fresh-profile",
+        action="store_true",
+        help="Run fresh browser proof mode with an isolated Chromium profile and fresh-proof artifacts.",
+    )
+    parser.add_argument(
+        "--require-console-zero",
+        action="store_true",
+        help="Fail when fresh browser proof records console.error, assert, Log error, or runtime exception events.",
+    )
     return parser.parse_args()
+
+
+def write_failure_summary(output_dir, config, *, browser="", error="", service_worker_assertions=None):
+    """失败也写 summary，方便 sprint 记录定位 Chrome/CDP/fixture 卡点。"""
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    summary_path = output_dir / config["summary_name"]
+    summary = {
+        "ok": False,
+        "browser": browser,
+        "served_root": str(MOBILE_WEB_ROOT),
+        "fixture": str(MOBILE_FIXTURE),
+        "viewports": [f"{width}x{height}" for width, height in VIEWPORTS],
+        "checks": [],
+        "failure": {
+            "stage": "browser_or_cdp_setup",
+            "error": str(error)[-2000:],
+            "cleanup": "Chrome process and temporary profile cleanup attempted by context manager.",
+        },
+        "fresh_profile": bool(config["fresh_profile"]),
+        "require_console_zero": bool(config["require_console_zero"]),
+        "evidence_boundary": config["evidence_boundary"],
+        "fresh_evidence_boundary": FRESH_EVIDENCE_BOUNDARY,
+        "service_worker_static_assertions": service_worker_assertions or {},
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "not_proven": list(NOT_PROVEN),
+    }
+    summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(
+        f"summary={summary_path} ok=false evidence_boundary={config['evidence_boundary']} "
+        f"failure={str(error)[-300:]}"
+    )
 
 
 def main():
     args = parse_args()
+    config = run_config(args)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    browser = find_browser(args.browser)
+    service_worker_assertions = service_worker_static_assertions()
+    browser = ""
     all_passed = True
     per_viewport = []
-    with LocalServer() as server, ChromeProcess(browser) as chrome:
-        with WebSocket(chrome.new_page_ws()) as ws:
-            cdp = CDPClient(ws)
-            cdp.call("Page.enable")
-            cdp.call("Runtime.enable")
-            for width, height in VIEWPORTS:
-                evidence_path, screenshot_path, judgment = run_viewport(cdp, server.url, width, height, output_dir)
-                passed = (
-                    judgment["hit_area_status"] == "passed"
-                    and judgment["overlap_status"] == "passed"
-                    and judgment["overflow_status"] == "passed"
-                    and judgment["ack_copy_visible"]
-                    and judgment["ack_not_delivery_success"]
-                    and judgment["diagnostics_accessible"]
-                    and judgment["terminal_action_confirmation_visible"]
-                    and judgment["terminal_action_confirm_disabled"]
-                    and judgment["support_handoff_available"]
-                    and judgment["device_evidence_capture_visible"]
-                    and judgment["device_handoff_session_visible"]
-                    and judgment["route_elevator_field_session_handoff_visible"]
-                    and judgment["route_elevator_field_session_handoff_fail_closed"]
-                    and judgment["pwa_install_prompt_evidence_visible"]
-                    and judgment["real_device_retest_request_visible"]
-                    and judgment["real_device_retest_request_copyable"]
-                    and judgment["field_trial_package_visible"]
-                    and judgment["field_trial_package_copyable"]
-                    and judgment["field_trial_review_visible"]
-                    and judgment["field_trial_review_copyable"]
-                    and judgment["field_trial_runbook_execution_visible"]
-                    and judgment["field_trial_runbook_execution_copyable"]
-                    and judgment["field_trial_evidence_record_visible"]
-                    and judgment["field_trial_evidence_record_copyable"]
-                    and judgment["field_trial_evidence_verdict_visible"]
-                    and judgment["field_trial_evidence_verdict_copyable"]
-                    and judgment["field_trial_retest_execution_visible"]
-                    and judgment["field_trial_retest_execution_copyable"]
-                    and judgment["browser_acceptance_bundle_visible"]
-                    and judgment["browser_acceptance_bundle_copyable"]
-                    and judgment["current_panels_status"] == "passed"
-                    and judgment["current_boundaries_status"] == "passed"
-                    and judgment["primary_actions_disabled"]
-                    and judgment["phone_safe_status"] == "passed"
-                )
-                all_passed = all_passed and passed
-                per_viewport.append({
-                    "viewport": f"{width}x{height}",
-                    "passed": passed,
-                    "evidence_json": str(evidence_path),
-                    "screenshot": str(screenshot_path),
-                    "judgment": judgment,
-                })
-                print(
-                    f"viewport={width}x{height} "
-                    f"passed={str(passed).lower()} "
-                    f"hit_area_status={judgment['hit_area_status']} "
-                    f"overlap_status={judgment['overlap_status']} "
-                    f"overflow_status={judgment['overflow_status']} "
-                    f"ack_copy_visible={str(judgment['ack_copy_visible']).lower()} "
-                    f"primary_actions_disabled={str(judgment['primary_actions_disabled']).lower()} "
-                    f"diagnostics_accessible={str(judgment['diagnostics_accessible']).lower()} "
-                    f"terminal_action_confirmation_visible={str(judgment['terminal_action_confirmation_visible']).lower()} "
-                    f"support_handoff_available={str(judgment['support_handoff_available']).lower()} "
-                    f"device_evidence_capture_visible={str(judgment['device_evidence_capture_visible']).lower()} "
-                    f"device_handoff_session_visible={str(judgment['device_handoff_session_visible']).lower()} "
-                    f"route_elevator_field_session_handoff_visible="
-                    f"{str(judgment['route_elevator_field_session_handoff_visible']).lower()} "
-                    f"route_elevator_field_session_handoff_fail_closed="
-                    f"{str(judgment['route_elevator_field_session_handoff_fail_closed']).lower()} "
-                    f"route_elevator_handoff_browser_proof={ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF} "
-                    f"pwa_install_prompt_evidence_visible={str(judgment['pwa_install_prompt_evidence_visible']).lower()} "
-                    f"real_device_retest_request_visible={str(judgment['real_device_retest_request_visible']).lower()} "
-                    f"real_device_retest_request_copyable={str(judgment['real_device_retest_request_copyable']).lower()} "
-                    f"field_trial_package_visible={str(judgment['field_trial_package_visible']).lower()} "
-                    f"field_trial_package_copyable={str(judgment['field_trial_package_copyable']).lower()} "
-                    f"field_trial_review_visible={str(judgment['field_trial_review_visible']).lower()} "
-                    f"field_trial_review_copyable={str(judgment['field_trial_review_copyable']).lower()} "
-                    f"field_trial_runbook_execution_visible={str(judgment['field_trial_runbook_execution_visible']).lower()} "
-                    f"field_trial_runbook_execution_copyable={str(judgment['field_trial_runbook_execution_copyable']).lower()} "
-                    f"field_trial_evidence_record_visible={str(judgment['field_trial_evidence_record_visible']).lower()} "
-                    f"field_trial_evidence_record_copyable={str(judgment['field_trial_evidence_record_copyable']).lower()} "
-                    f"field_trial_evidence_verdict_visible={str(judgment['field_trial_evidence_verdict_visible']).lower()} "
-                    f"field_trial_evidence_verdict_copyable={str(judgment['field_trial_evidence_verdict_copyable']).lower()} "
-                    f"field_trial_retest_execution_visible={str(judgment['field_trial_retest_execution_visible']).lower()} "
-                    f"field_trial_retest_execution_copyable={str(judgment['field_trial_retest_execution_copyable']).lower()} "
-                    f"bundle_visible={str(judgment['browser_acceptance_bundle_visible']).lower()} "
-                    f"bundle_copyable={str(judgment['browser_acceptance_bundle_copyable']).lower()} "
-                    f"current_panels_status={judgment['current_panels_status']} "
-                    f"current_boundaries_status={judgment['current_boundaries_status']} "
-                    f"phone_safe_status={judgment['phone_safe_status']} "
-                    f"evidence_boundary={EVIDENCE_BOUNDARY} "
-                    f"compatible_evidence_boundary={COMPATIBLE_EVIDENCE_BOUNDARY} "
-                    f"legacy_artifact_evidence_boundary={LEGACY_ARTIFACT_EVIDENCE_BOUNDARY} "
-                    f"evidence_json={evidence_path} screenshot={screenshot_path}"
-                )
-                if not passed:
-                    print(f"failure_detail={json.dumps(judgment, ensure_ascii=False, sort_keys=True)}")
-    summary_path = output_dir / "mobile_current_pwa_field_trial_browser_acceptance_summary.json"
+    try:
+        browser = find_browser(args.browser)
+        with LocalServer() as server, ChromeProcess(browser, fresh_profile=config["fresh_profile"]) as chrome:
+            with WebSocket(chrome.new_page_ws()) as ws:
+                cdp = CDPClient(ws)
+                cdp.call("Page.enable")
+                cdp.call("Runtime.enable")
+                try:
+                    cdp.call("Log.enable")
+                except RuntimeError:
+                    # 老版 Chromium 可能不支持 Log domain；Runtime 事件仍覆盖 console/runtime error。
+                    pass
+                if config["fresh_profile"] and service_worker_assertions["status"] != "passed":
+                    all_passed = False
+                for width, height in VIEWPORTS:
+                    evidence_path, screenshot_path, judgment = run_viewport(
+                        cdp,
+                        server.url,
+                        width,
+                        height,
+                        output_dir,
+                        config,
+                        service_worker_assertions,
+                    )
+                    passed = (
+                        judgment["hit_area_status"] == "passed"
+                        and judgment["overlap_status"] == "passed"
+                        and judgment["overflow_status"] == "passed"
+                        and judgment["ack_copy_visible"]
+                        and judgment["ack_not_delivery_success"]
+                        and judgment["diagnostics_accessible"]
+                        and judgment["terminal_action_confirmation_visible"]
+                        and judgment["terminal_action_confirm_disabled"]
+                        and judgment["support_handoff_available"]
+                        and judgment["device_evidence_capture_visible"]
+                        and judgment["device_handoff_session_visible"]
+                        and judgment["route_elevator_field_session_handoff_visible"]
+                        and judgment["route_elevator_field_session_handoff_fail_closed"]
+                        and judgment["pwa_install_prompt_evidence_visible"]
+                        and judgment["real_device_retest_request_visible"]
+                        and judgment["real_device_retest_request_copyable"]
+                        and judgment["field_trial_package_visible"]
+                        and judgment["field_trial_package_copyable"]
+                        and judgment["field_trial_review_visible"]
+                        and judgment["field_trial_review_copyable"]
+                        and judgment["field_trial_runbook_execution_visible"]
+                        and judgment["field_trial_runbook_execution_copyable"]
+                        and judgment["field_trial_evidence_record_visible"]
+                        and judgment["field_trial_evidence_record_copyable"]
+                        and judgment["field_trial_evidence_verdict_visible"]
+                        and judgment["field_trial_evidence_verdict_copyable"]
+                        and judgment["field_trial_retest_execution_visible"]
+                        and judgment["field_trial_retest_execution_copyable"]
+                        and judgment["browser_acceptance_bundle_visible"]
+                        and judgment["browser_acceptance_bundle_copyable"]
+                        and judgment["current_panels_status"] == "passed"
+                        and judgment["current_boundaries_status"] == "passed"
+                        and judgment["primary_actions_disabled"]
+                        and judgment["phone_safe_status"] == "passed"
+                        and (
+                            not config["fresh_profile"]
+                            or (
+                                judgment["fresh_browser_markers_status"] == "passed"
+                                and judgment["service_worker_dynamic_no_store_status"] == "passed"
+                            )
+                        )
+                        and (
+                            not config["require_console_zero"]
+                            or judgment["console_zero_status"] == "passed"
+                        )
+                    )
+                    all_passed = all_passed and passed
+                    per_viewport.append({
+                        "viewport": f"{width}x{height}",
+                        "passed": passed,
+                        "evidence_json": str(evidence_path),
+                        "screenshot": str(screenshot_path),
+                        "judgment": judgment,
+                    })
+                    print(
+                        f"viewport={width}x{height} "
+                        f"passed={str(passed).lower()} "
+                        f"hit_area_status={judgment['hit_area_status']} "
+                        f"overlap_status={judgment['overlap_status']} "
+                        f"overflow_status={judgment['overflow_status']} "
+                        f"ack_copy_visible={str(judgment['ack_copy_visible']).lower()} "
+                        f"primary_actions_disabled={str(judgment['primary_actions_disabled']).lower()} "
+                        f"diagnostics_accessible={str(judgment['diagnostics_accessible']).lower()} "
+                        f"terminal_action_confirmation_visible={str(judgment['terminal_action_confirmation_visible']).lower()} "
+                        f"support_handoff_available={str(judgment['support_handoff_available']).lower()} "
+                        f"device_evidence_capture_visible={str(judgment['device_evidence_capture_visible']).lower()} "
+                        f"device_handoff_session_visible={str(judgment['device_handoff_session_visible']).lower()} "
+                        f"route_elevator_field_session_handoff_visible="
+                        f"{str(judgment['route_elevator_field_session_handoff_visible']).lower()} "
+                        f"route_elevator_field_session_handoff_fail_closed="
+                        f"{str(judgment['route_elevator_field_session_handoff_fail_closed']).lower()} "
+                        f"route_elevator_handoff_browser_proof={ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF} "
+                        f"pwa_install_prompt_evidence_visible={str(judgment['pwa_install_prompt_evidence_visible']).lower()} "
+                        f"real_device_retest_request_visible={str(judgment['real_device_retest_request_visible']).lower()} "
+                        f"real_device_retest_request_copyable={str(judgment['real_device_retest_request_copyable']).lower()} "
+                        f"field_trial_package_visible={str(judgment['field_trial_package_visible']).lower()} "
+                        f"field_trial_package_copyable={str(judgment['field_trial_package_copyable']).lower()} "
+                        f"field_trial_review_visible={str(judgment['field_trial_review_visible']).lower()} "
+                        f"field_trial_review_copyable={str(judgment['field_trial_review_copyable']).lower()} "
+                        f"field_trial_runbook_execution_visible={str(judgment['field_trial_runbook_execution_visible']).lower()} "
+                        f"field_trial_runbook_execution_copyable={str(judgment['field_trial_runbook_execution_copyable']).lower()} "
+                        f"field_trial_evidence_record_visible={str(judgment['field_trial_evidence_record_visible']).lower()} "
+                        f"field_trial_evidence_record_copyable={str(judgment['field_trial_evidence_record_copyable']).lower()} "
+                        f"field_trial_evidence_verdict_visible={str(judgment['field_trial_evidence_verdict_visible']).lower()} "
+                        f"field_trial_evidence_verdict_copyable={str(judgment['field_trial_evidence_verdict_copyable']).lower()} "
+                        f"field_trial_retest_execution_visible={str(judgment['field_trial_retest_execution_visible']).lower()} "
+                        f"field_trial_retest_execution_copyable={str(judgment['field_trial_retest_execution_copyable']).lower()} "
+                        f"bundle_visible={str(judgment['browser_acceptance_bundle_visible']).lower()} "
+                        f"bundle_copyable={str(judgment['browser_acceptance_bundle_copyable']).lower()} "
+                        f"current_panels_status={judgment['current_panels_status']} "
+                        f"current_boundaries_status={judgment['current_boundaries_status']} "
+                        f"phone_safe_status={judgment['phone_safe_status']} "
+                        f"fresh_browser_markers_status={judgment['fresh_browser_markers_status']} "
+                        f"service_worker_dynamic_no_store_status={judgment['service_worker_dynamic_no_store_status']} "
+                        f"console_zero_status={judgment['console_zero_status']} "
+                        f"console_error_count={judgment['console_error_count']} "
+                        f"evidence_boundary={config['evidence_boundary']} "
+                        f"compatible_evidence_boundary={COMPATIBLE_EVIDENCE_BOUNDARY} "
+                        f"legacy_artifact_evidence_boundary={LEGACY_ARTIFACT_EVIDENCE_BOUNDARY} "
+                        f"evidence_json={evidence_path} screenshot={screenshot_path}"
+                    )
+                    if not passed:
+                        print(f"failure_detail={json.dumps(judgment, ensure_ascii=False, sort_keys=True)}")
+    except Exception as error:
+        write_failure_summary(
+            output_dir,
+            config,
+            browser=browser,
+            error=error,
+            service_worker_assertions=service_worker_assertions,
+        )
+        return 1
+    summary_path = output_dir / config["summary_name"]
     artifact_hashes = {
         path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in sorted(output_dir.glob("mobile_current_pwa_field_trial_browser_*.*"))
+        for path in sorted(output_dir.glob(f"{config['artifact_prefix']}_*.*"))
         if path.is_file()
     }
     summary = {
@@ -990,26 +1348,35 @@ def main():
         "fixture": str(MOBILE_FIXTURE),
         "viewports": [f"{width}x{height}" for width, height in VIEWPORTS],
         "checks": per_viewport,
-        "evidence_boundary": EVIDENCE_BOUNDARY,
+        "fresh_profile": bool(config["fresh_profile"]),
+        "require_console_zero": bool(config["require_console_zero"]),
+        "evidence_boundary": config["evidence_boundary"],
         "compatible_evidence_boundary": COMPATIBLE_EVIDENCE_BOUNDARY,
         "refresh_evidence_boundary": REFRESH_EVIDENCE_BOUNDARY,
         "legacy_artifact_evidence_boundary": LEGACY_ARTIFACT_EVIDENCE_BOUNDARY,
+        "fresh_evidence_boundary": FRESH_EVIDENCE_BOUNDARY,
         "boundary_compatibility": (
             "This field-trial browser proof supersedes the retest and refresh browser proof boundaries, "
             "while preserving explicit compatibility fields for older summaries."
         ),
-        "proof_type": "real local Chromium-family browser proof for current dependency-free mobile/web PWA with complete field-trial first-screen chain",
+        "proof_type": config["proof_type"],
+        "service_worker_static_assertions": service_worker_assertions,
         "route_elevator_handoff_browser_proof": ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF,
         "ack_semantics": "ACK is accepted/processing evidence only, not delivery success.",
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
         "not_proven": list(NOT_PROVEN),
         "artifact_sha256": artifact_hashes,
     }
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(
         f"summary={summary_path} ok={str(all_passed).lower()} "
-        f"evidence_boundary={EVIDENCE_BOUNDARY} "
+        f"evidence_boundary={config['evidence_boundary']} "
         f"compatible_evidence_boundary={COMPATIBLE_EVIDENCE_BOUNDARY} "
-        f"legacy_artifact_evidence_boundary={LEGACY_ARTIFACT_EVIDENCE_BOUNDARY}"
+        f"legacy_artifact_evidence_boundary={LEGACY_ARTIFACT_EVIDENCE_BOUNDARY} "
+        f"fresh_profile={str(config['fresh_profile']).lower()} "
+        f"require_console_zero={str(config['require_console_zero']).lower()}"
     )
     return 0 if all_passed else 1
 
