@@ -60,6 +60,7 @@ const ROUTE_TASK_TERMINAL_COMPLETION_REHEARSAL_BOUNDARY = "software_proof_docker
 const ROUTE_TASK_TERMINAL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_route_task_terminal_review_decision_gate";
 const TASK_TERMINAL_COMPLETION_MAINLINE_BOUNDARY = "software_proof_docker_task_terminal_completion_mainline_gate";
 const TASK_TERMINAL_FIELD_MATERIAL_INTAKE_BOUNDARY = "software_proof_docker_task_terminal_field_material_intake_gate";
+const MOBILE_PWA_CACHE_RECOVERY_BOUNDARY = "software_proof_docker_mobile_pwa_cache_recovery_gate";
 const ROUTE_TASK_FIELD_RETEST_EXECUTION_PACK_BOUNDARY = "software_proof_docker_route_task_field_retest_execution_pack_gate";
 const ROUTE_TASK_FIELD_RETEST_SESSION_HANDOFF_BOUNDARY = "software_proof_docker_route_task_field_retest_session_handoff_gate";
 const ROUTE_TASK_FIELD_RETEST_RESULT_INTAKE_BOUNDARY = "software_proof_docker_route_task_field_retest_result_intake_gate";
@@ -30304,11 +30305,31 @@ function wireEvents() {
   });
 }
 
-if ("serviceWorker" in navigator) {
-  // 注册范围限制在静态壳；动态控制流量由 service worker 明确绕过缓存。
-  navigator.serviceWorker.register("./service-worker.js", { scope: "./" }).catch(() => {});
+function markMobilePwaCacheRecovery() {
+  const params = new URLSearchParams(window.location.search);
+  const active = params.has("mobile_pwa_cache_recovery");
+  // 该 marker 只帮助 Browser QA 识别当前壳版本，不参与控制授权。
+  document.documentElement.dataset.mobilePwaCacheRecovery = active
+    ? "mobile_pwa_cache_recovery"
+    : "current_app_shell";
+  document.documentElement.dataset.mobilePwaCacheRecoveryBoundary = MOBILE_PWA_CACHE_RECOVERY_BOUNDARY;
 }
 
+if ("serviceWorker" in navigator) {
+  // 注册范围限制在静态壳；动态控制流量由 service worker 明确绕过缓存。
+  navigator.serviceWorker
+    .register("./service-worker.js", { scope: "./", updateViaCache: "none" })
+    .then((registration) => {
+      // update 明确拉取当前 service-worker.js，避免 Browser QA 卡在旧 offline shell。
+      registration.update().catch(() => {});
+      if (registration.active) {
+        registration.active.postMessage({ type: "mobile_pwa_cache_recovery" });
+      }
+    })
+    .catch(() => {});
+}
+
+markMobilePwaCacheRecovery();
 initializePwaInstallPromptEventCapture();
 wireEvents();
 refreshStatus();

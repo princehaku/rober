@@ -22,5 +22,7 @@
     }
   ],
   "evidence_boundary": "software_proof_docker_mobile_web_entrypoint_gate",
-  "installability_evidence_boundary": "software_proof_docker_cloud_hosted_mobile_pwa_installability_gate"
+  "installability_evidence_boundary": "software_proof_docker_cloud_hosted_mobile_pwa_installability_gate",
+  "cache_recovery_evidence_boundary": "software_proof_docker_mobile_pwa_cache_recovery_gate",
+  "cache_recovery_version": "2026.05.19-mobile-pwa-cache-recovery-v2"
 }

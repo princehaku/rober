@@ -540,6 +540,80 @@ class TaskTerminalFieldMaterialIntakeMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, intake_text)
 
 
+class MobilePwaCacheRecoveryGateTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_service_worker_uses_versioned_network_first_shell_recovery(self):
+        service_worker = self.read_web("service-worker.js")
+        app = self.read_web("app.js")
+        manifest = json.loads(self.read_web("manifest.webmanifest"))
+        doc = DOC.read_text(encoding="utf-8")
+
+        # service-worker 必须 bump cache version，并在 activate 只清理旧 shell/offline cache。
+        self.assertIn("2026.05.19-mobile-pwa-cache-recovery-v2", service_worker)
+        self.assertIn("rober-mobile-shell-${CACHE_VERSION}", service_worker)
+        self.assertIn('SHELL_CACHE_PREFIX = "rober-mobile-shell-"', service_worker)
+        self.assertIn("cacheName.startsWith(SHELL_CACHE_PREFIX) && cacheName !== CACHE_NAME", service_worker)
+        self.assertIn("keys.filter(isOldShellCache)", service_worker)
+        self.assertNotIn("keys.filter((key) => key !== CACHE_NAME)", service_worker)
+        self.assertIn("caches.delete(key)", service_worker)
+        self.assertIn("skipWaiting", service_worker)
+        self.assertIn("clients.claim", service_worker)
+
+        # 当前 app shell 和导航请求走 network-first，离线时才回退到本版本 offline.html。
+        self.assertIn("isNavigationRequest", service_worker)
+        self.assertIn("fetchAndRefreshCache(event.request, APP_SHELL_URL)", service_worker)
+        self.assertIn('fetch(request, { cache: "no-store" })', service_worker)
+        self.assertIn("cache.match(OFFLINE_URL)", service_worker)
+        self.assertIn("mobile_pwa_cache_recovery", service_worker)
+
+        # app 注册时绕过 HTTP cache 并请求更新，只作为 Browser QA marker，不改变控制 gate。
+        self.assertIn("MOBILE_PWA_CACHE_RECOVERY_BOUNDARY", app)
+        self.assertIn("software_proof_docker_mobile_pwa_cache_recovery_gate", app)
+        self.assertIn('updateViaCache: "none"', app)
+        self.assertIn("registration.update", app)
+        self.assertIn("markMobilePwaCacheRecovery", app)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 仍按原 gate fail closed", app)
+
+        # manifest 和产品文档必须固定 evidence boundary，避免把本地恢复写成真实手机/PWA 通过。
+        self.assertEqual(
+            manifest["cache_recovery_evidence_boundary"],
+            "software_proof_docker_mobile_pwa_cache_recovery_gate",
+        )
+        self.assertEqual(manifest["cache_recovery_version"], "2026.05.19-mobile-pwa-cache-recovery-v2")
+        self.assertIn("mobile_pwa_cache_recovery", doc)
+        self.assertIn("service-worker", doc)
+        self.assertIn("offline shell", doc)
+        self.assertIn("software_proof", doc)
+        self.assertIn("not_proven", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("safe_to_control=false", doc)
+
+    def test_offline_shell_recovery_stays_fail_closed(self):
+        offline = self.read_web("offline.html")
+        service_worker = self.read_web("service-worker.js")
+
+        # 离线 shell 只能给恢复按钮；三个主操作保持 disabled，不能排队或重放控制请求。
+        self.assertIn("mobile_pwa_cache_recovery", offline)
+        self.assertIn("recoveryButton", offline)
+        self.assertIn("刷新当前入口", offline)
+        self.assertIn("开始送达", offline)
+        self.assertIn("确认投放", offline)
+        self.assertIn("取消任务", offline)
+        self.assertEqual(len(re.findall(r"<button type=\"button\" disabled>", offline)), 3)
+        self.assertIn("不会发送、缓存、排队或重放", offline)
+        self.assertIn("不启用 Start、Confirm 或 Cancel", offline)
+
+        # 动态控制面仍绕过缓存；cache recovery 不新增 Start/Confirm/Cancel fetch 路径。
+        self.assertIn('fetch(event.request, { cache: "no-store" })', service_worker)
+        self.assertIn('path === "/api/collect"', service_worker)
+        self.assertIn('path === "/api/dropoff/confirm"', service_worker)
+        self.assertIn('path === "/api/cancel"', service_worker)
+        self.assertNotRegex(service_worker, r"caches\.(open|match).*api/(collect|dropoff/confirm|cancel)")
+
+
 class HardwareSensorProcurementReceiptIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

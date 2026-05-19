@@ -8,7 +8,21 @@
 
 ## 2026-05-19 系列
 
-更新时间：2026-05-19 12:25 Asia/Shanghai。
+更新时间：2026-05-19 14:20 Asia/Shanghai。
+
+### 2026-05-19 13-14｜mobile-pwa-cache-recovery｜O4 local Browser QA cache recovery software proof
+
+本轮 `sprints/2026.05.19_13-14_mobile-pwa-cache-recovery/` 按 live OKR rerank 后推进 Objective 4 touchpoint bugfix，不继续 O5 local metadata depth，也不继续 O1 hardware metadata wrapper。Full-Stack worker 实现 `mobile_pwa_cache_recovery`：versioned service-worker cache recovery、network-first navigation/current shell、old `rober-mobile-shell-*` cache cleanup、offline shell refresh button；Start Delivery、Confirm Dropoff、Cancel 继续 fail-closed。Browser QA fresh tab DOM proof 显示 `hasCurrentShell=true`、`hasOfflineShell=false`、`marker=mobile_pwa_cache_recovery`、`boundary=software_proof_docker_mobile_pwa_cache_recovery_gate`，Start/Confirm/Cancel disabled。Robot post-diff read-only review 未发现控制面扩大：dynamic control paths (`/api/*`, `/robots/*`, commands, ACK, diagnostics, non-GET) remain no-store/bypass cache；cache recovery marker only DOM dataset/postMessage for static shell cache and no robot command path。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL，不补 PR #5 2D LiDAR / ToF 真实材料；仍缺真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report、真实 UART、真实 HIL-entry、真实 SKU/source/receipt/procurement/installation/wiring/power/calibration。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只修复 PWA service-worker/offline shell recovery，不新增 PR #4 route/elevator wrapper；仍缺真实 dropoff completion、真实 cancel completion、delivery result、delivery_success、真实电梯、真实门状态、真实楼层确认、人工协助记录、真实 Nav2/fixed-route、真实 route/elevator field pass 和现场 task record。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮不新增真实路线采集、Nav2/fixed-route runtime log、route completion signal、现场 task_record 或同一 safe `evidence_ref` 上车实机复账；Browser QA recovery 不得写成 route/elevator field pass。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | 本轮让本地 Browser QA 能看到当前 `mobile/web` shell 而不是旧 offline shell；`docs/product/mobile_user_flow.md` 已记录 `mobile_pwa_cache_recovery`、`service-worker`、`offline shell` 和 `software_proof` 边界。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice、真实 phone/browser acceptance 和现场 phone behavior。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof。 |
+
+本轮验证：Full-Stack 首轮 `python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 124 tests in 0.859s OK`；`py_compile` 通过；`node --check mobile/web/app.js` 通过；`node --check mobile/web/service-worker.js` 通过；required `rg` 与 scoped diff check 通过。Robot review 后 Full-Stack 收窄 service-worker cleanup，并二次验证 `python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 124 tests in 0.920s OK`；`py_compile` 通过；`node --check mobile/web/service-worker.js` 通过；required `rg` 与 scoped diff check 通过。Browser validation 是本地 in-app browser DOM proof；in-app browser dev logs 仍保留一条恢复前旧 cached app shell console error，Chrome headless screenshot/console attempt hung and was terminated without committing artifacts。本轮不证明真实手机、真实 PWA prompt/user choice、production app、真实 route/elevator field pass、真实 Nav2/fixed-route、dropoff/cancel completion、delivery success、WAVE ROVER/UART/HIL、PR #5 真实 2D LiDAR / ToF 材料或 O5 external proof；cache recovery、service-worker marker、offline shell refresh button 和 Browser QA 均保持 `software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
 
 ### 2026-05-19 12-13｜task-terminal-field-material-intake｜O2/O3/O4 terminal field material intake software proof
 
