@@ -99,6 +99,7 @@ const ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_INTAKE_BOUNDARY = "software_proof_d
 const ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_REVIEW_DECISION_BOUNDARY = "software_proof_docker_elevator_field_evidence_trace_callback_review_decision_gate";
 const ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_elevator_field_evidence_trace_callback_review_handoff_gate";
 const ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_INTAKE_BOUNDARY = "software_proof_docker_elevator_field_evidence_trace_material_backfill_intake_gate";
+const ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_decision_gate";
 const PC_ROUTE_ELEVATOR_CONSOLE_INTEGRATION_BOUNDARY = "software_proof_docker_pc_route_elevator_console_integration_gate";
 const ROUTE_ELEVATOR_FIELD_SESSION_HANDOFF_BOUNDARY = "software_proof_docker_route_elevator_field_session_handoff_gate";
 const MOBILE_ROUTE_ELEVATOR_FIELD_DEVICE_PRECHECK_BOUNDARY = "software_proof_docker_mobile_route_elevator_field_device_precheck_gate";
@@ -202,6 +203,7 @@ const UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_INTAKE_TEXT = /(authorizatio
 const UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw callback|raw packet|raw review|raw decision|raw diagnostics|raw internal log|full callback|complete artifact|complete artifacts|execution bundle|ack payload|cursor|diagnostics fetch|robot command|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external proof|真实送达成功|投放完成|取消完成|现场通过|真实电梯通过|真实 nav2)/i;
 const UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_CALLBACK_REVIEW_HANDOFF_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw callback|raw packet|raw review|raw decision|raw handoff|raw diagnostics|raw internal log|full callback|complete artifact|complete artifacts|execution bundle|ack payload|cursor|diagnostics fetch|robot command|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external proof|真实送达成功|投放完成|取消完成|现场通过|真实电梯通过|真实 nav2)/i;
 const UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw callback|raw packet|raw review|raw decision|raw handoff|raw material|raw backfill|raw diagnostics|raw internal log|full callback|full material|complete artifact|complete artifacts|execution bundle|ack payload|cursor|diagnostics fetch|robot command|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external proof|真实送达成功|投放完成|取消完成|现场通过|真实电梯通过|真实 nav2)/i;
+const UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw callback|raw packet|raw review|raw decision|raw handoff|raw material|raw backfill|raw diagnostics|raw internal log|raw path|full callback|full material|full review|complete artifact|complete artifacts|execution bundle|ack payload|cursor|diagnostics fetch|robot command|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil|objective 5 external proof|真实送达成功|投放完成|取消完成|现场通过|真实电梯通过|真实 nav2)/i;
 const UNSAFE_ROUTE_TASK_COMPLETION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw completion|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_ROUTE_TASK_TERMINAL_COMPLETION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw completion|raw rehearsal|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|真实送达成功|投放完成|取消完成|hil_pass|hil)/i;
 const UNSAFE_ROUTE_TASK_TERMINAL_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw review|raw decision|complete bundle|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|completed delivery|真实送达成功|投放完成|取消完成|hil_pass|hil)/i;
@@ -588,6 +590,15 @@ function safeElevatorFieldEvidenceTraceMaterialBackfillIntakeText(value, fallbac
   // material backfill intake 只展示回填入口摘要，拒绝 raw material、路径、控制授权和成功暗示。
   const text = safeText(value, fallback);
   if (UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_INTAKE_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionText(value, fallback = "not_proven") {
+  // material backfill review decision 是现场 owner 的只读复核结论，任何 raw review 或成功暗示都必须降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_DECISION_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -17914,6 +17925,173 @@ function elevatorFieldEvidenceTraceMaterialBackfillIntakeFromStatus(status, read
   };
 }
 
+function elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionCandidate(status, readiness, diagnostics) {
+  // Robot diagnostics safe alias 优先，PC summary / fixture 只作为兼容来源并逐字段过滤。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    readiness?.robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    diagnostics?.robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    diagnosticsReadiness.robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    diagnosticsSummary.robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    statusDiagnosticsSummary.robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    status?.elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    readiness?.elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    diagnostics?.elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    diagnosticsReadiness.elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    diagnosticsSummary.elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    nestedDiagnosticsSummary.elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    nestedDiagnosticsInnerSummary.elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    statusDiagnosticsSummary.elevator_field_evidence_trace_material_backfill_review_decision_summary,
+    status?.elevator_field_evidence_trace_material_backfill_review_decision,
+    readiness?.elevator_field_evidence_trace_material_backfill_review_decision,
+    diagnostics?.elevator_field_evidence_trace_material_backfill_review_decision,
+    diagnosticsReadiness.elevator_field_evidence_trace_material_backfill_review_decision,
+    diagnosticsSummary.elevator_field_evidence_trace_material_backfill_review_decision,
+    nestedDiagnosticsSummary.elevator_field_evidence_trace_material_backfill_review_decision,
+    nestedDiagnosticsInnerSummary.elevator_field_evidence_trace_material_backfill_review_decision,
+    statusDiagnosticsSummary.elevator_field_evidence_trace_material_backfill_review_decision,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionNotProvenList(value) {
+  // 复核决策只证明材料分类可读，不证明现场材料已经真实通过。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "真实 material backfill review decision",
+    "真实电梯",
+    "真实 Nav2/fixed-route",
+    "真实 dropoff/cancel completion",
+    "真实手机设备/browser",
+    "HIL",
+    "Objective 5 external proof",
+    "delivery success",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 16);
+}
+
+function elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionSummaryText(value, fallback) {
+  // 复核字段可能来自数组、owner map 或简短字符串；手机端只合成脱敏短文本。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionText(
+        item?.safe_phone_copy || item?.summary || item?.material || item?.evidence ||
+          item?.owner || item?.action || item?.status || item?.reason || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.safe_summary || value.summary ||
+      value.material_summary || value.owner_handoff || value.status || value.state || value.result ||
+      value.action;
+    if (direct) {
+      return safeElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionText(key, "");
+        const copy = elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safeElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionText(value, fallback);
+}
+
+function elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionFromStatus(status, readiness, diagnostics) {
+  const provided = elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionCandidate(
+    status,
+    readiness,
+    diagnostics,
+  ) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.elevator_field_evidence_trace_material_backfill_review_decision.v1",
+    summary_schema: "trashbot.elevator_field_evidence_trace_material_backfill_review_decision_summary.v1",
+    schema_version: 1,
+    source: safeElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionText(provided.source, "software_proof"),
+    overall_status: safeElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionText(
+      provided.overall_status,
+      "not_proven",
+    ),
+    review_decision: safeElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionText(
+      provided.review_decision || provided.decision_status || provided.status || provided.overall_status,
+      "blocked_missing_elevator_field_evidence_trace_material_backfill_review_decision_not_proven",
+    ),
+    decision_reasons: elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionSummaryText(
+      provided.decision_reasons || provided.reasons || provided.review_reasons,
+      "decision_reasons=missing safe review decision summary",
+    ),
+    accepted_material_refs: elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionSummaryText(
+      provided.accepted_material_refs || provided.accepted_refs || provided.accepted_materials,
+      "accepted_material_refs=none accepted as field proof",
+    ),
+    missing_required_materials: elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionSummaryText(
+      provided.missing_required_materials || provided.missing_materials || provided.missing_backfill_summary,
+      "missing_required_materials=real route/elevator material summaries remain not_proven",
+    ),
+    rejected_materials: elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionSummaryText(
+      provided.rejected_materials || provided.rejected_material_refs || provided.rejected_backfill_materials,
+      "rejected_materials=none accepted as field proof",
+    ),
+    next_required_evidence: elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionSummaryText(
+      provided.next_required_evidence || provided.required_next_evidence || provided.next_steps,
+      "next_required_evidence=backfill missing same safe_evidence_ref materials then rerun review decision",
+    ),
+    owner_handoff: elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionSummaryText(
+      provided.owner_handoff || provided.owner_follow_up || provided.owner_next_steps,
+      "owner_handoff=Autonomy/Robot/Field owner refresh safe material summaries; Full-stack only displays.",
+    ),
+    safe_evidence_ref: safeElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "not_provided",
+    ),
+    safe_phone_copy: safeElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionText(
+      provided.safe_phone_copy || provided.safe_summary,
+      "elevator_field_evidence_trace_material_backfill_review_decision 摘要缺失；手机端只显示 blocked/not_proven，不读取 raw review。",
+    ),
+    recovery_hint: safeElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionText(
+      provided.recovery_hint || provided.retry_hint,
+      "请由 Robot diagnostics/status 提供 robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary。",
+    ),
+    evidence_boundary: safeElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionText(
+      provided.evidence_boundary,
+      ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_DECISION_BOUNDARY,
+    ),
+    boundary_flags: "software_proof / not_proven / delivery_success=false / primary_actions_enabled=false",
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionNotProvenList(provided),
+  };
+}
+
 function commandSafetyFromReadiness(readiness) {
   // 若 command_safety 缺失，前端必须 fail closed，不能用 UI 猜测状态。
   return readiness && typeof readiness.command_safety === "object" ? readiness.command_safety : {};
@@ -23626,6 +23804,82 @@ function renderElevatorFieldEvidenceTraceMaterialBackfillIntake(status) {
   $("elevatorFieldEvidenceTraceMaterialBackfillIntakeHint").textContent = summary.recovery_hint;
 }
 
+function ensureElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionPanel() {
+  // review decision 紧跟 material backfill intake，只解释复核结论，不新增 Start/Confirm/Cancel 路径。
+  let panel = $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("elevatorFieldEvidenceTraceMaterialBackfillIntakeTitle")?.closest("section") ||
+    $("elevatorFieldEvidenceTraceCallbackReviewHandoffTitle")?.closest("section") ||
+    $("elevatorFieldEvidenceTraceCallbackReviewDecisionTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionPanel";
+  panel.className = "elevator-field-evidence-trace-material-backfill-review-decision-panel";
+  panel.setAttribute(
+    "aria-labelledby",
+    "elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionTitle",
+  );
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionTitle">电梯现场证据材料回填复核决策</h2>
+      <span id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionCopy" class="message">等待 robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary。</p>
+    <dl class="elevator-field-evidence-trace-material-backfill-review-decision-grid">
+      <div><dt>Review Decision</dt><dd id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionValue">blocked_missing_elevator_field_evidence_trace_material_backfill_review_decision_not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionEvidenceRef">not_provided</dd></div>
+      <div><dt>Decision Reasons</dt><dd id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionReasons">decision_reasons=not_proven</dd></div>
+      <div><dt>Accepted Materials</dt><dd id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionAccepted">accepted_material_refs=none accepted as field proof</dd></div>
+      <div><dt>Missing Materials</dt><dd id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionMissing">missing_required_materials=not_proven</dd></div>
+      <div><dt>Rejected Materials</dt><dd id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionRejected">rejected_materials=not_proven</dd></div>
+      <div><dt>Next Required Evidence</dt><dd id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionNextEvidence">next_required_evidence=not_proven</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionOwner">owner_handoff=not_proven</dd></div>
+      <div><dt>Boundary</dt><dd id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionControls">software_proof / not_proven / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionBoundary">software_proof_docker_elevator_field_evidence_trace_material_backfill_review_decision_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionNotProven">真实电梯、Nav2/fixed-route、HIL、真实手机/browser 和 delivery success 未证明。</dd></div>
+    </dl>
+    <p id="elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionHint" class="hint">只消费现有 status/diagnostics 中的白名单 review decision summary；敏感原始材料或控制细节命中后会 fail closed。</p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderElevatorFieldEvidenceTraceMaterialBackfillReviewDecision(status) {
+  const panel = ensureElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionFromStatus(
+    status,
+    readiness,
+    latestDiagnostics,
+  );
+  const badge = $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-ready");
+  badge.textContent = summary.missing ? "not_proven" : summary.review_decision;
+  $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionCopy").textContent = summary.safe_phone_copy;
+  $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionValue").textContent = summary.review_decision;
+  $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionReasons").textContent = summary.decision_reasons;
+  $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionAccepted").textContent = summary.accepted_material_refs;
+  $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionMissing").textContent = summary.missing_required_materials;
+  $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionRejected").textContent = summary.rejected_materials;
+  $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionNextEvidence").textContent =
+    summary.next_required_evidence;
+  $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionOwner").textContent = summary.owner_handoff;
+  $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionControls").textContent = summary.boundary_flags;
+  $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionBoundary").textContent = summary.evidence_boundary;
+  $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionNotProven").textContent =
+    summary.not_proven.join("、");
+  $("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionHint").textContent = summary.recovery_hint;
+}
+
 function setBadge(state, copy) {
   const badge = $("connectionBadge");
   badge.className = "badge";
@@ -26283,6 +26537,12 @@ function renderDiagnosticsSummary(payload) {
       readinessFromStatus(latestStatus || {}),
       payload || {},
     );
+  const elevatorFieldEvidenceTraceMaterialBackfillReviewDecision =
+    elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      payload || {},
+    );
   const elevatorRouteReconciliation = elevatorRouteEvidenceReconciliationFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -26474,6 +26734,10 @@ function renderDiagnosticsSummary(payload) {
       "elevator_field_evidence_trace_material_backfill_intake",
       elevatorFieldEvidenceTraceMaterialBackfillIntake.intake_status,
     ],
+    [
+      "elevator_field_evidence_trace_material_backfill_review_decision",
+      elevatorFieldEvidenceTraceMaterialBackfillReviewDecision.review_decision,
+    ],
     ["Elevator-route evidence reconciliation", elevatorRouteReconciliation.reconciliation_verdict],
     ["Route-elevator field session handoff", routeElevatorFieldHandoff.handoff_verdict],
     ["mobile_route_elevator_field_device_precheck", mobileRouteElevatorPrecheck.precheck_status],
@@ -26574,6 +26838,7 @@ function renderOfflineFailure() {
   renderElevatorFieldEvidenceTraceCallbackReviewDecision({});
   renderElevatorFieldEvidenceTraceCallbackReviewHandoff({});
   renderElevatorFieldEvidenceTraceMaterialBackfillIntake({});
+  renderElevatorFieldEvidenceTraceMaterialBackfillReviewDecision({});
   renderElevatorRouteEvidenceReconciliation({});
   renderRouteTaskCompletionSignal({});
   renderRouteTaskTerminalCompletionRehearsal({});
@@ -26678,6 +26943,7 @@ function renderStatus(status) {
   renderElevatorFieldEvidenceTraceCallbackReviewDecision(status);
   renderElevatorFieldEvidenceTraceCallbackReviewHandoff(status);
   renderElevatorFieldEvidenceTraceMaterialBackfillIntake(status);
+  renderElevatorFieldEvidenceTraceMaterialBackfillReviewDecision(status);
   renderElevatorRouteEvidenceReconciliation(status);
   renderRouteTaskCompletionSignal(status);
   renderRouteTaskTerminalCompletionRehearsal(status);
@@ -26962,6 +27228,7 @@ async function openDiagnostics() {
     renderElevatorFieldEvidenceTraceCallbackReviewDecision(latestStatus || {});
     renderElevatorFieldEvidenceTraceCallbackReviewHandoff(latestStatus || {});
     renderElevatorFieldEvidenceTraceMaterialBackfillIntake(latestStatus || {});
+    renderElevatorFieldEvidenceTraceMaterialBackfillReviewDecision(latestStatus || {});
     renderRouteTaskCompletionSignal(latestStatus || {});
     renderRouteTaskTerminalCompletionRehearsal(latestStatus || {});
     renderRouteTaskTerminalReviewDecision(latestStatus || {});

@@ -5552,6 +5552,135 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, backfill_text)
 
+    def test_elevator_field_evidence_trace_material_backfill_review_decision_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # review decision panel 优先消费 Robot diagnostics safe alias，fixture/artifact 仅作白名单回退。
+        self.assertIn("ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_ELEVATOR_FIELD_EVIDENCE_TRACE_MATERIAL_BACKFILL_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionText", app)
+        self.assertIn("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionCandidate", app)
+        self.assertIn("elevatorFieldEvidenceTraceMaterialBackfillReviewDecisionFromStatus", app)
+        self.assertIn(
+            "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary",
+            app,
+        )
+        self.assertIn("elevator_field_evidence_trace_material_backfill_review_decision_summary", app)
+        self.assertIn("status?.elevator_field_evidence_trace_material_backfill_review_decision", app)
+        self.assertIn(
+            "diagnosticsSummary.elevator_field_evidence_trace_material_backfill_review_decision",
+            app,
+        )
+        self.assertIn("电梯现场证据材料回填复核决策", app)
+        self.assertIn("elevatorFieldEvidenceTraceMaterialBackfillIntakeTitle", app)
+        self.assertIn("elevator-field-evidence-trace-material-backfill-review-decision-panel", styles)
+        self.assertIn("elevator-field-evidence-trace-material-backfill-review-decision-grid", styles)
+
+        # panel 展示复核结论和材料分类，但不新增 copy/export、diagnostics fetch 或主操作请求。
+        self.assertIn("review_decision", app)
+        self.assertIn("decision_reasons", app)
+        self.assertIn("accepted_material_refs", app)
+        self.assertIn("missing_required_materials", app)
+        self.assertIn("rejected_materials", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(
+            app,
+            r"elevatorFieldEvidenceTraceMaterialBackfillReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotIn("copyElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionButton", app)
+        self.assertNotIn("downloadElevatorFieldEvidenceTraceMaterialBackfillReviewDecisionButton", app)
+
+        # web/mobile fixture 和产品文档固定 software_proof/not_proven 边界。
+        decision = fixture[
+            "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary"
+        ]
+        self.assertEqual(decision["source"], "software_proof")
+        self.assertEqual(decision["overall_status"], "not_proven")
+        self.assertEqual(
+            decision["review_decision"],
+            "needs_required_material_backfill_not_proven",
+        )
+        self.assertEqual(decision["delivery_success"], False)
+        self.assertEqual(decision["primary_actions_enabled"], False)
+        mobile_decision = mobile_fixture[
+            "elevator_field_evidence_trace_material_backfill_review_decision_summary"
+        ]
+        self.assertEqual(mobile_decision["delivery_success"], False)
+        self.assertEqual(mobile_decision["primary_actions_enabled"], False)
+        self.assertIn(
+            "software_proof_docker_elevator_field_evidence_trace_material_backfill_review_decision_gate",
+            fixture_text,
+        )
+        self.assertIn("review_decision", fixture_text)
+        self.assertIn("missing_required_materials", fixture_text)
+        self.assertIn("next_required_evidence", fixture_text)
+        self.assertIn("elevator_field_evidence_trace_material_backfill_review_decision", doc)
+        self.assertIn(
+            "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary",
+            doc,
+        )
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+
+    def test_elevator_field_evidence_trace_material_backfill_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        decision_text = json.dumps(
+            {
+                "web": fixture[
+                    "robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary"
+                ],
+                "mobile": mobile_fixture[
+                    "elevator_field_evidence_trace_material_backfill_review_decision_summary"
+                ],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # review decision fixture 只能承载脱敏复核材料，不能泄漏 raw review 或成功/控制授权语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw callback",
+            "raw packet",
+            "raw review",
+            "raw decision",
+            "raw handoff",
+            "raw material",
+            "raw backfill",
+            "raw diagnostics",
+            "raw path",
+            "raw internal log",
+            "/users/",
+            "/tmp/",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "authorization",
+            "token",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "ack payload",
+            "cursor",
+            "robot command",
+            "diagnostics fetch",
+            "control grant",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, decision_text)
+
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
         app = self.read_web("app.js")
