@@ -34,6 +34,7 @@ if "threading" not in globals():
 CURSOR_PROTOCOL_VERSION = "trashbot.remote.cursor.v1"
 CLOUD_ACK_OUTAGE_REPLAY_GUARD_BOUNDARY = "software_proof_docker_cloud_ack_outage_replay_guard"
 CLOUD_PENDING_ACK_STATUS_GUARD_BOUNDARY = "software_proof_docker_cloud_pending_ack_status_guard"
+CLOUD_COMMAND_EXPIRY_SAFETY_GUARD_BOUNDARY = "software_proof_docker_cloud_command_expiry_safety_guard"
 PENDING_TERMINAL_ACK_KEY = "pending_terminal_ack"
 SAFE_OPERATOR_STATUS_KEYS = {
     "protocol_version",
@@ -48,6 +49,7 @@ SAFE_OPERATOR_STATUS_KEYS = {
     "retry_hint",
     "safe_phone_copy",
     "pending_terminal_ack_id",
+    "expired_command_id",
     "primary_actions_enabled",
     "proof_boundary",
     "accepted",
@@ -134,6 +136,25 @@ def _phone_safe_pending_ack_status(robot_id, command_id, error):
     )
 
 
+def _phone_safe_expired_command_status(robot_id, command_id):
+    safe_command_id = _safe_state_text_value(command_id)
+    safe_phone_copy = "这条云端指令已经过期，机器人没有执行；请重新提交最新指令。"
+    return make_status(
+        robot_id,
+        "remote_degraded",
+        safe_phone_copy,
+        remote_ready=False,
+        cloud_reachable=True,
+        auth_state="unknown",
+        degradation_state="command_expired",
+        retry_hint="resubmit_command",
+        safe_phone_copy=safe_phone_copy,
+        expired_command_id=safe_command_id,
+        primary_actions_enabled=False,
+        proof_boundary=CLOUD_COMMAND_EXPIRY_SAFETY_GUARD_BOUNDARY,
+    )
+
+
 class RemoteBridgeWorker:
     """Pure-Python HTTP polling worker for the outbound 4G bridge.
 
@@ -198,7 +219,9 @@ class RemoteBridgeWorker:
             self._post_terminal_ack(command["id"], ack, remember=False)
             return True
         if command_expired(command):
-            ack = self._make_ack("ignored", "command expired before robot polling", status)
+            # 过期命令不能只回 ACK；手机首屏也必须看到 fail-closed 原因，避免用户误以为可继续发车。
+            expired_status = self._record_expired_command_status(command["id"])
+            ack = self._make_ack("ignored", "command expired before robot polling", expired_status)
             self._post_terminal_ack(command["id"], ack)
             return True
 
@@ -289,6 +312,11 @@ class RemoteBridgeWorker:
         self._set_operator_status(status)
         return status
 
+    def _record_expired_command_status(self, command_id):
+        status = _phone_safe_expired_command_status(self.robot_id, command_id)
+        self._set_operator_status(status)
+        return status
+
     def _set_operator_status(self, status):
         if hasattr(self.operator_backend, "_set_status"):
             extra = {
@@ -299,7 +327,12 @@ class RemoteBridgeWorker:
                 "retry_hint": status["retry_hint"],
                 "safe_phone_copy": status["safe_phone_copy"],
             }
-            for key in ("pending_terminal_ack_id", "primary_actions_enabled", "proof_boundary"):
+            for key in (
+                "pending_terminal_ack_id",
+                "expired_command_id",
+                "primary_actions_enabled",
+                "proof_boundary",
+            ):
                 if key in status:
                     extra[key] = status[key]
             self.operator_backend._set_status(  # noqa: SLF001 - worker 与 RemoteBridge 同模块协作。

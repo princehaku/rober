@@ -802,6 +802,33 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertFalse(pending["command_safety"]["actions"]["start"]["enabled"])
         self.assertTrue(pending["command_safety"]["actions"]["diagnostics"]["enabled"])
 
+        expired = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "degradation_state": "command_expired",
+                "retry_hint": "resubmit_command",
+                "safe_phone_copy": "这条云端指令已经过期，机器人没有执行；请重新提交最新指令。",
+                "expired_command_id": "cmd-expired",
+                "remote_ready": False,
+                "primary_actions_enabled": False,
+                "proof_boundary": "software_proof_docker_cloud_command_expiry_safety_guard",
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        self.assertEqual(expired["primary_state"], "command_expired")
+        self.assertFalse(expired["can_continue"])
+        self.assertEqual(expired["next_action"], "resubmit_command")
+        self.assertEqual(expired["command_safety"]["global_block_reason"], "command_expired")
+        self.assertFalse(expired["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(expired["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(expired["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(expired["command_safety"]["actions"]["diagnostics"]["enabled"])
+        self.assertEqual(expired["remote_readiness"]["expired_command_id"], "cmd-expired")
+        self.assertEqual(
+            expired["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_command_expiry_safety_guard",
+        )
+
         acked = build_phone_readiness(
             dict(local_status, target="Lobby trash station"),
             remote_readiness={
@@ -1586,6 +1613,125 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         status, payload = self.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=cmd-0001")
         self.assertEqual(status, 200)
         self.assertIsNone(payload["command"])
+
+    def test_mock_cloud_reports_expired_command_as_phone_safe_fail_closed_status(self):
+        expired_command = {
+            "protocol_version": REMOTE_PROTOCOL_VERSION,
+            "id": "cmd-expired-phone-safe",
+            "type": "collect",
+            "expires_at": time.time() - 1,
+            "payload": {"target": "trash_station"},
+        }
+
+        status, payload = self.request("POST", "/robots/trashbot-001/commands", expired_command)
+
+        self.assertEqual(status, 201)
+        self.assertFalse(payload["remote_readiness"]["remote_ready"])
+        self.assertEqual(payload["remote_readiness"]["degradation_state"], "command_expired")
+        self.assertEqual(payload["remote_readiness"]["expired_command_id"], "cmd-expired-phone-safe")
+        self.assertFalse(payload["remote_readiness"]["primary_actions_enabled"])
+        self.assertEqual(payload["remote_readiness"]["retry_hint"], "resubmit_command")
+        self.assertEqual(
+            payload["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_command_expiry_safety_guard",
+        )
+
+        status, payload = self.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=")
+        self.assertEqual(status, 200)
+        self.assertIsNone(payload["command"])
+
+        status, payload = self.request(
+            "POST",
+            "/robots/trashbot-001/commands/cmd-expired-phone-safe/ack",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "ignored",
+                "message": "command expired before robot polling",
+                "updated_at": time.time(),
+                "result": {
+                    "operator_status": {
+                        "degradation_state": "command_expired",
+                        "expired_command_id": "cmd-expired-phone-safe",
+                        "remote_ready": False,
+                        "primary_actions_enabled": False,
+                        "retry_hint": "resubmit_command",
+                        "proof_boundary": "software_proof_docker_cloud_command_expiry_safety_guard",
+                    }
+                },
+            },
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["ack"]["state"], "ignored")
+        self.assertEqual(payload["remote_readiness"]["degradation_state"], "command_expired")
+        self.assertEqual(payload["remote_readiness"]["retry_hint"], "resubmit_command")
+
+        status, payload = self.request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "remote_degraded",
+                "message": "expired command ignored",
+                "updated_at": time.time(),
+                "degradation_state": "command_expired",
+                "expired_command_id": "cmd-expired-phone-safe",
+                "remote_ready": False,
+                "primary_actions_enabled": False,
+                "retry_hint": "resubmit_command",
+                "safe_phone_copy": "这条云端指令已经过期，机器人没有执行；请重新提交最新指令。",
+                "proof_boundary": "software_proof_docker_cloud_command_expiry_safety_guard",
+            },
+        )
+        self.assertEqual(status, 200)
+        self.assertFalse(payload["remote_readiness"]["remote_ready"])
+        self.assertEqual(payload["remote_readiness"]["degradation_state"], "command_expired")
+        self.assertIn("重新提交", payload["remote_readiness"]["safe_phone_copy"])
+
+    def test_mock_cloud_treats_missing_or_null_expires_at_as_pending_not_expired(self):
+        store = MockCloudStore()
+        with store._lock:
+            robot = store._robot("trashbot-legacy")
+            robot["commands"].extend([
+                {
+                    "protocol_version": REMOTE_PROTOCOL_VERSION,
+                    "id": "cmd-no-expiry",
+                    "robot_id": "trashbot-legacy",
+                    "type": "collect",
+                    "payload": {"target": "trash_station"},
+                    "created_at": time.time(),
+                },
+                {
+                    "protocol_version": REMOTE_PROTOCOL_VERSION,
+                    "id": "cmd-null-expiry",
+                    "robot_id": "trashbot-legacy",
+                    "type": "cancel",
+                    "expires_at": None,
+                    "payload": {},
+                    "created_at": time.time(),
+                },
+            ])
+            robot["command_index"] = {command["id"]: command for command in robot["commands"]}
+
+        stale_payload = store.get_status("trashbot-legacy")
+        self.assertEqual(stale_payload["remote_readiness"]["pending_command_count"], 2)
+        self.assertEqual(stale_payload["remote_readiness"]["degradation_state"], "status_stale")
+        self.assertNotIn("expired_command_id", stale_payload["remote_readiness"])
+
+        store.post_status(
+            "trashbot-legacy",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "waiting_for_trash",
+                "message": "fresh status",
+                "updated_at": time.time(),
+            },
+        )
+
+        fresh_payload = store.get_status("trashbot-legacy")
+        self.assertEqual(fresh_payload["remote_readiness"]["pending_command_count"], 2)
+        self.assertEqual(fresh_payload["remote_readiness"]["degradation_state"], "command_pending")
+        self.assertEqual(fresh_payload["remote_readiness"]["retry_hint"], "wait_for_command_ack")
+        self.assertNotIn("expired_command_id", fresh_payload["remote_readiness"])
 
     def test_mock_cloud_bearer_auth_gate_blocks_missing_or_wrong_token(self):
         self.gateway.mock_cloud_bearer_token = "phone-token"

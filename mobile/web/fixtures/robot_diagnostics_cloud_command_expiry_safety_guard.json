@@ -1,0 +1,74 @@
+{
+  "robot_id": "trashbot-alpha",
+  "state": "remote_degraded",
+  "remote_ready": false,
+  "cloud_reachable": true,
+  "auth_state": "authorized",
+  "degradation_state": "command_expired",
+  "expired_command_id": "cmd_expired_20260520_001",
+  "primary_actions_enabled": false,
+  "safe_to_control": false,
+  "safe_phone_copy": "云端命令已过期，机器人已忽略旧命令；请重新下发一次安全指令。",
+  "recovery_hint": "旧命令不会缓存、不会重放，也不会触发 Start Delivery、Confirm Dropoff 或 Cancel；请确认当前状态后重新提交新命令。",
+  "retry_hint": "resubmit_command",
+  "ack_semantics": "ignored_expired_command_not_delivery_success",
+  "proof_boundary": "software_proof_docker_cloud_command_expiry_safety_guard",
+  "evidence_boundary": "software_proof_docker_cloud_command_expiry_safety_guard",
+  "boundary_flags": "source=software_proof / not_proven / remote_ready=false / delivery_success=false / primary_actions_enabled=false",
+  "delivery_success": false,
+  "not_proven": [
+    "真实公网 HTTPS/TLS",
+    "真实 4G/SIM",
+    "production DB/queue",
+    "真实手机/browser",
+    "Nav2/fixed-route",
+    "WAVE ROVER/UART/HIL",
+    "delivery success"
+  ],
+  "phone_readiness": {
+    "primary_state": "blocked",
+    "next_action": "resubmit_command",
+    "support_level": "diagnostics_available",
+    "remote_readiness": {
+      "remote_ready": false,
+      "degradation_state": "command_expired",
+      "expired_command_id": "cmd_expired_20260520_001",
+      "primary_actions_enabled": false,
+      "safe_phone_copy": "云端命令已过期，机器人已忽略旧命令；请重新下发一次安全指令。",
+      "retry_hint": "resubmit_command",
+      "ack_semantics": "ignored_expired_command_not_delivery_success",
+      "proof_boundary": "software_proof_docker_cloud_command_expiry_safety_guard"
+    },
+    "command_safety": {
+      "schema": "trashbot.command_safety.v1",
+      "global_block_reason": "command_expired：旧命令已被 Robot 忽略，remote_ready=false。",
+      "ack_semantics": "ignored_expired_command_not_delivery_success",
+      "actions": {
+        "start": {
+          "enabled": false,
+          "blocking_reason": "command_expired / remote_ready=false / primary_actions_enabled=false"
+        },
+        "confirm_dropoff": {
+          "enabled": false,
+          "blocking_reason": "command_expired / remote_ready=false / primary_actions_enabled=false"
+        },
+        "cancel": {
+          "enabled": false,
+          "blocking_reason": "command_expired / remote_ready=false / primary_actions_enabled=false"
+        },
+        "diagnostics": {
+          "enabled": true,
+          "safe_phone_copy": "诊断可打开；主操作保持 fail closed。"
+        }
+      }
+    }
+  },
+  "action_permissions": {
+    "can_collect": false,
+    "can_confirm_dropoff": false,
+    "can_cancel": false
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

@@ -33,6 +33,7 @@ VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_voice_pr
 PHONE_OFFLINE_RESUME_READINESS_SCHEMA = "trashbot.phone_offline_resume_readiness.v1"
 PHONE_OFFLINE_RESUME_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_offline_resume_gate"
 PHONE_PWA_EVIDENCE_BOUNDARY = "software_proof_docker_phone_pwa_installability_gate"
+PHONE_COMMAND_EXPIRY_SAFETY_GUARD_BOUNDARY = "software_proof_docker_cloud_command_expiry_safety_guard"
 COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 REMOTE_STATUS_STALE_AFTER_SEC = 90.0
@@ -48,6 +49,7 @@ REMOTE_RETRY_HINTS = {
     "ok",
     "wait_for_robot_status",
     "wait_for_command_ack",
+    "resubmit_command",
     "check_auth",
     "retry_cloud",
     "contact_support",
@@ -57,9 +59,23 @@ REMOTE_DEGRADATION_COPY = {
     "ok": "手机远程控制通道可用，可以继续操作。",
     "status_stale": "正在等待小车上报最新状态，请稍后再试。",
     "command_pending": "指令已提交，正在等待小车确认。",
+    "command_expired": "这条云端指令已经过期，机器人没有执行；请重新提交最新指令。",
     "auth_failed": "手机登录已失效，请重新登录或检查访问凭证。",
     "cloud_unreachable": "远程控制通道暂不可用，请稍后重试。",
     "malformed_response": "远程控制返回异常，请联系支持人员。",
+}
+
+REMOTE_STATUS_SAFE_EXTRA_KEYS = {
+    "remote_ready",
+    "cloud_reachable",
+    "auth_state",
+    "degradation_state",
+    "retry_hint",
+    "safe_phone_copy",
+    "pending_terminal_ack_id",
+    "expired_command_id",
+    "primary_actions_enabled",
+    "proof_boundary",
 }
 
 PHONE_READINESS_NOT_PROVEN = [
@@ -78,6 +94,7 @@ PHONE_READINESS_NEXT_ACTION_COPY = {
     "continue_local_or_wait_remote_status": "本地可继续；远程流程请等待小车上报新状态。",
     "wait_for_robot_status": "等待小车上报最新状态后再继续。",
     "wait_for_command_ack": "等待小车确认上一条指令，避免重复发车。",
+    "resubmit_command": "重新提交一条未过期的新指令。",
     "check_auth": "重新登录或检查访问码后再试。",
     "retry_cloud": "稍后重试远程通道，必要时切到本地 fallback。",
     "contact_support": "联系支持人员，并附带 diagnostics。",
@@ -95,6 +112,7 @@ COMMAND_SAFETY_BLOCK_COPY = {
     "not_permitted_by_local_state": "当前机器人状态不允许这个操作。",
     "status_stale": "正在等待小车上报最新状态，主操作暂不可用。",
     "command_pending": "上一条指令仍在等待 ACK，暂不重复下发。",
+    "command_expired": "上一条云端指令已过期，请重新提交新指令。",
     "auth_failed": "手机登录或访问码未通过，主操作暂不可用。",
     "cloud_unreachable": "远程控制通道暂不可用，主操作暂不可用。",
     "malformed_response": "远程控制返回异常，主操作暂不可用。",
@@ -265,6 +283,7 @@ PHONE_READINESS_PRIMARY_COPY = {
     "local_ready_remote_status_waiting": "本地可操作，远程状态仍在等待。",
     "waiting_for_robot_status": "正在等待小车状态。",
     "waiting_for_command_ack": "正在等待小车确认指令。",
+    "command_expired": "上一条云端指令已过期。",
     "login_required": "手机登录或访问码需要处理。",
     "remote_unreachable": "远程通道暂不可用。",
     "remote_response_invalid": "远程通道返回异常。",
@@ -550,7 +569,7 @@ def normalize_remote_status(robot_id, payload, *, now=None):
         raise ValueError(f"protocol_version must be {REMOTE_PROTOCOL_VERSION}")
     if not state:
         raise ValueError("state is required")
-    return {
+    status = {
         "protocol_version": protocol_version,
         "robot_id": str(robot_id or "").strip(),
         "state": state,
@@ -558,6 +577,16 @@ def normalize_remote_status(robot_id, payload, *, now=None):
         "updated_at": _remote_timestamp(payload.get("updated_at", now), "updated_at"),
         "diagnostics": payload.get("diagnostics") if isinstance(payload.get("diagnostics"), dict) else {},
     }
+    # robot bridge 会把 phone-safe 降级字段随 status 一起上报；只保留白名单，避免泄漏底层调试细节。
+    for key in REMOTE_STATUS_SAFE_EXTRA_KEYS:
+        if key not in payload:
+            continue
+        value = payload.get(key)
+        if isinstance(value, str):
+            status[key] = value[:240]
+        elif isinstance(value, (bool, int, float)) or value is None:
+            status[key] = value
+    return status
 
 
 def normalize_remote_ack(robot_id, command_id, payload, *, now=None):
@@ -752,6 +781,16 @@ class MockCloudStore:
         return max(acks, key=lambda ack: float(ack.get("updated_at") or 0.0))
 
     def _readiness_locked(self, robot_id, robot):
+        def _expires_at(command):
+            # 缺省/空 expires_at 表示旧命令格式的“不自动过期”，不能被当成 Unix 0 秒。
+            expires_at = command.get("expires_at")
+            if expires_at is None:
+                return None
+            try:
+                return float(expires_at)
+            except (TypeError, ValueError):
+                return None
+
         now = time.time()
         status = robot.get("status") if isinstance(robot.get("status"), dict) else _default_remote_status(robot_id)
         status_updated_at = float(status.get("updated_at") or 0.0)
@@ -760,24 +799,46 @@ class MockCloudStore:
         last_command_ack = ""
         if latest_ack:
             last_command_ack = str(latest_ack.get("command_id") or "")
-        # command_pending 是手机侧降级态，不等同于任务失败或送达结果。
-        pending_command_count = sum(
-            1
+        # command_pending/command_expired 都是手机侧降级态，不等同于任务失败或送达结果。
+        unacked_commands = [
+            command
             for command in robot.get("commands", [])
             if isinstance(command, dict) and str(command.get("id") or "") not in robot.get("acks", {})
+        ]
+        pending_command_count = sum(
+            1
+            for command in unacked_commands
+            if _expires_at(command) is None or _expires_at(command) >= now
         )
+        expired_command_id = ""
+        for command in unacked_commands:
+            expires_at = _expires_at(command)
+            if expires_at is not None and expires_at < now:
+                expired_command_id = str(command.get("id") or "").strip()
+                break
+        status_degradation = str(status.get("degradation_state") or "").strip()
+        if status_degradation == "command_expired":
+            expired_command_id = str(status.get("expired_command_id") or expired_command_id).strip()
+        ack_operator_status = {}
+        if latest_ack and isinstance((latest_ack.get("result") or {}).get("operator_status"), dict):
+            ack_operator_status = (latest_ack.get("result") or {}).get("operator_status")
+        if not expired_command_id and str(ack_operator_status.get("degradation_state") or "") == "command_expired":
+            expired_command_id = str(ack_operator_status.get("expired_command_id") or last_command_ack).strip()
         retry_hint = "ok"
         degradation_state = "ok"
-        # readiness 优先保护状态新鲜度；状态过旧时不让手机继续下发主流程。
-        if status_stale:
+        # 过期命令优先显示 resubmit；新鲜命令仍沿用既有 status_stale -> pending 顺序。
+        if expired_command_id or status_degradation == "command_expired":
+            retry_hint = "resubmit_command"
+            degradation_state = "command_expired"
+        elif status_stale:
             retry_hint = "wait_for_robot_status"
             degradation_state = "status_stale"
         elif pending_command_count:
-            # 有未 ACK 指令时继续等待，避免手机重复发车或误判任务已经开始。
             retry_hint = "wait_for_command_ack"
             degradation_state = "command_pending"
-        return {
-            "remote_ready": bool(not status_stale),
+        remote_ready = bool(not status_stale and degradation_state != "command_expired")
+        readiness = {
+            "remote_ready": remote_ready,
             "cloud_reachable": True,
             "last_command_ack": last_command_ack,
             "status_stale": bool(status_stale),
@@ -792,6 +853,15 @@ class MockCloudStore:
             "state_path_configured": bool(self.state_path),
             "proof_schema": REMOTE_PERSISTENCE_SCHEMA if self.state_path else "",
         }
+        if degradation_state == "command_expired":
+            readiness["expired_command_id"] = expired_command_id
+            readiness["primary_actions_enabled"] = False
+            readiness["proof_boundary"] = str(
+                status.get("proof_boundary")
+                or ack_operator_status.get("proof_boundary")
+                or PHONE_COMMAND_EXPIRY_SAFETY_GUARD_BOUNDARY
+            )
+        return readiness
 
     def submit_command(self, robot_id, payload):
         command = _remote_safe_value(normalize_remote_command(robot_id, payload))
@@ -2601,6 +2671,7 @@ def _command_safety_block_reason(primary_state, remote_state, manifest_state):
     if remote_state in {
         "status_stale",
         "command_pending",
+        "command_expired",
         "auth_failed",
         "cloud_unreachable",
         "malformed_response",
@@ -3102,6 +3173,8 @@ def _offline_resume_connection_state(primary_state, remote_state, command_safety
         return "status_stale"
     if remote_state == "command_pending":
         return "pending_ack"
+    if remote_state == "command_expired":
+        return "blocked"
     if primary_state in {"login_required", "remote_response_invalid"}:
         return "blocked"
     if primary_state == "manual_takeover_required":
@@ -3164,6 +3237,10 @@ def build_phone_offline_resume_readiness(
     elif connection_state == "pending_ack":
         recovery_hint = "等待上一条指令 ACK；不要重复发车，必要时复制支持交接摘要。"
         safe_phone_copy = "指令正在等待 ACK，主操作暂不可用。"
+    elif remote_state == "command_expired":
+        next_action = "resubmit_command"
+        recovery_hint = PHONE_READINESS_NEXT_ACTION_COPY["resubmit_command"]
+        safe_phone_copy = REMOTE_DEGRADATION_COPY["command_expired"]
     elif connection_state == "manual_takeover":
         recovery_hint = "保持现场安全，按手机提示人工接管，并打开 Support Handoff。"
         safe_phone_copy = "当前需要人工接管，不能通过离线恢复直接继续任务。"
@@ -3345,6 +3422,11 @@ def build_phone_readiness(
         next_action = "wait_for_command_ack"
         can_continue = False
         support_level = "remote_waiting_ack"
+    elif remote_state == "command_expired":
+        primary_state = "command_expired"
+        next_action = "resubmit_command"
+        can_continue = False
+        support_level = "remote_command_expired"
     elif remote_state == "status_stale":
         if can_use_local_action:
             primary_state = "local_ready_remote_status_waiting"

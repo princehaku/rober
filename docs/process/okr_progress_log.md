@@ -8,7 +8,21 @@
 
 ## 2026-05-20 系列
 
-更新时间：2026-05-20 01:41 Asia/Shanghai。
+更新时间：2026-05-20 02:26 Asia/Shanghai。
+
+### 2026-05-20 02-03｜cloud-command-expiry-safety-guard｜expired command status guard software proof
+
+本轮 `sprints/2026.05.20_02-03_cloud-command-expiry-safety-guard/` 继续针对 Objective 5 command/status/ack 主链路的具体安全缺口，而不是继续包装外部材料缺失。Robot worker 完成 `cloud_command_expiry_safety_guard`：过期云端 command 不提交本地 action，ACK `ignored`，并把 operator status/readiness 标准化为 `degradation_state=command_expired`、`remote_ready=false`、`expired_command_id`、`primary_actions_enabled=false`、中文 safe copy、`retry_hint=resubmit_command` 和 `proof_boundary=software_proof_docker_cloud_command_expiry_safety_guard`。`build_phone_readiness` 与 `trashbot.command_safety.v1` 阻断 Start / Confirm Dropoff / Cancel，Diagnostics 保持可用；Robot worker 首轮验证发现 readiness 优先级回归，修复后重跑 combined unittest 通过，并追加 missing/null `expires_at` 回归以保证非过期命令仍 pending。Full-Stack worker 在 existing cloud readiness panel 只读消费 `command_expired`，新增 fixture/test/product doc，展示中文 safe copy 和 `ignored_expired_command_not_delivery_success`，不缓存、不重放、不自动 resubmit 过期控制请求。证据边界为 `software_proof_docker_cloud_command_expiry_safety_guard`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮未触碰 WAVE ROVER/UART/HIL、hardware bridge、2D LiDAR / ToF materials 或 PR #5 真实材料；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `blocked_pending_real_materials`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 route/elevator field material、dropoff/cancel completion、delivery result 或真实电梯 proof；expired command ignored ACK 不等于 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可读状态受益：手机端能展示 command expired 降级状态，并保持 `remote_ready=false`、`primary_actions_enabled=false` 和主操作不可用；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_command_expiry_safety_guard` 只证明 local worker + mobile static fixture 下的 expired command status guard：expired command ignored ACK、不提交本地 action、phone-safe command_expired copy、retry hint 和 fail-closed actions。本轮不证明真实 4G/SIM、公网 HTTPS/TLS、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Robot worker 报告 combined unittest 首轮失败后定位修复并重跑 `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_http.py` 输出 `Ran 170 tests in 88.933s OK`；focused operator rerun 输出 `Ran 44 tests in 23.920s OK`；`py_compile`、required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `PYTHONDONTWRITEBYTECODE=1 python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 145 tests in 1.126s OK`；`node --check mobile/web/app.js`、required `rg` 与 scoped `git diff --check` 通过。Product closeout 复跑 required `rg` 覆盖 sprint/OKR/progress log 和 implementation/product docs，scoped `git diff --check` 通过。本轮不证明真实 O5 external proof、Objective 1 HIL、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` closure、PR #4 route/elevator field pass、真实手机/browser、Nav2/fixed-route、dropoff/cancel completion、production DB/queue 或 delivery success。
 
 ### 2026-05-20 01-02｜cloud-pending-ack-status-guard｜pending ACK status guard software proof
 

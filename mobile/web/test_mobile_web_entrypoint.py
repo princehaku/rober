@@ -8,6 +8,7 @@ WEB_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = WEB_ROOT.parent.parent
 FIXTURE = WEB_ROOT / "fixtures" / "status.json"
 CLOUD_PENDING_ACK_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_pending_ack_status_guard.json"
+CLOUD_COMMAND_EXPIRY_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_expiry_safety_guard.json"
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -57,6 +58,81 @@ class CloudPendingAckStatusGuardMobileTest(unittest.TestCase):
         fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
 
         # pending ACK fixture 只提供手机安全摘要，不能带 raw payload、凭证、底盘控制或成功证明。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "serial device",
+            "baudrate",
+            "wave rover parameter",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
+
+
+class CloudCommandExpirySafetyGuardMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_command_expiry_safety_guard_is_consumed_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_COMMAND_EXPIRY_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # command_expired 复用只读 cloud readiness 面板，手机端只能解释和重新提交新命令。
+        self.assertIn("CLOUD_COMMAND_EXPIRY_BOUNDARY", app)
+        self.assertIn("CLOUD_COMMAND_EXPIRY_COPY", app)
+        self.assertIn("software_proof_docker_cloud_command_expiry_safety_guard", app)
+        self.assertIn("degradation_state", app)
+        self.assertIn("command_expired", app)
+        self.assertIn("expired_command_id", app)
+        self.assertIn("remote_readiness", app)
+        self.assertIn("remote_ready=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"cloudCommandExpiry.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 明确旧命令只会 ignored，不缓存、不重放，也不产生送达成功语义。
+        self.assertEqual(fixture["degradation_state"], "command_expired")
+        self.assertEqual(fixture["expired_command_id"], "cmd_expired_20260520_001")
+        self.assertEqual(fixture["remote_ready"], False)
+        self.assertEqual(fixture["primary_actions_enabled"], False)
+        self.assertEqual(fixture["delivery_success"], False)
+        self.assertEqual(fixture["phone_readiness"]["remote_readiness"]["retry_hint"], "resubmit_command")
+        self.assertIn("云端命令已过期", fixture_text)
+        self.assertIn("不会缓存、不会重放", fixture_text)
+        self.assertIn("ignored_expired_command_not_delivery_success", fixture_text)
+        self.assertIn("remote_ready=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("software_proof_docker_cloud_command_expiry_safety_guard", fixture_text)
+        self.assertNotIn("delivery_success\": true", fixture_text)
+        self.assertNotIn("delivery success claim", fixture_text.lower())
+
+        # 产品文档必须把 expired command 写成 Docker/local fixture proof，而不是真实云或送达证明。
+        self.assertIn("cloud_command_expiry_safety_guard", doc)
+        self.assertIn("command_expired", doc)
+        self.assertIn("expired_command_id", doc)
+        self.assertIn("remote_ready=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("software_proof_docker_cloud_command_expiry_safety_guard", doc)
+        self.assertIn("不缓存、不重放控制请求", doc)
+        self.assertIn("不是真实手机/browser/4G/云/HIL/送达证明", doc)
+
+    def test_cloud_command_expiry_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_COMMAND_EXPIRY_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # expired command fixture 只提供安全摘要，不能泄漏原始命令、凭证、控制面或成功证明。
         for forbidden in (
             "/cmd_vel",
             "raw ros topic",

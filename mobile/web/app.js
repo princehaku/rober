@@ -19,6 +19,8 @@ const ELEVATOR_ACTION_FEEDBACK_TRACE_BOUNDARY = "software_proof_docker_mobile_ac
 const CLOUD_READINESS_BOUNDARY = "software_proof_docker_mobile_cloud_readiness_summary_gate";
 const CLOUD_PENDING_ACK_STATUS_BOUNDARY = "software_proof_docker_cloud_pending_ack_status_guard";
 const CLOUD_PENDING_ACK_STATUS_COPY = "本地命令已终态，但云端 ACK 还没确认，暂不能拉取新命令";
+const CLOUD_COMMAND_EXPIRY_BOUNDARY = "software_proof_docker_cloud_command_expiry_safety_guard";
+const CLOUD_COMMAND_EXPIRY_COPY = "云端命令已过期，机器人已忽略旧命令；请重新下发一次安全指令。";
 const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_acceptance_readiness_gate";
 const MOBILE_DEVICE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_device_evidence_capture_gate";
 const MOBILE_DEVICE_HANDOFF_SESSION_BOUNDARY = "software_proof_docker_mobile_device_handoff_session_gate";
@@ -1395,6 +1397,35 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         ack_semantics: ACK_PROCESSING_COPY,
         evidence_boundary: CLOUD_PENDING_ACK_STATUS_BOUNDARY,
         proof_boundary: CLOUD_PENDING_ACK_STATUS_BOUNDARY,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
+    if (provided.degradation_state === "command_expired" ||
+        provided.proof_boundary === CLOUD_COMMAND_EXPIRY_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_COMMAND_EXPIRY_BOUNDARY) {
+      // command_expired 代表云端旧命令已经被 Robot 忽略；前端只能提示重新下发，不能缓存或重放控制请求。
+      return {
+        ...provided,
+        missing: false,
+        overall_status: "blocked",
+        preflight_status: "command_expired",
+        db_queue_status: "remote_ready=false / primary_actions_enabled=false",
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_COMMAND_EXPIRY_COPY),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "旧命令已过期并被忽略；请确认当前状态后重新下发新命令。",
+        ),
+        ack_semantics: safeText(
+          provided.ack_semantics,
+          "ignored_expired_command_not_delivery_success",
+        ),
+        evidence_boundary: CLOUD_COMMAND_EXPIRY_BOUNDARY,
+        proof_boundary: CLOUD_COMMAND_EXPIRY_BOUNDARY,
+        expired_command_id: safeText(provided.expired_command_id, ""),
         not_proven: notProvenList(provided.not_proven),
       };
     }

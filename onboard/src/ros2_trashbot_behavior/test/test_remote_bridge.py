@@ -291,6 +291,19 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.cloud.ack_posts[0]["command_id"], "cmd-expired")
         self.assertEqual(self.cloud.ack_posts[0]["state"], "ignored")
         self.assertIn("expired", self.cloud.ack_posts[0]["message"])
+        expired_status = self.cloud.ack_posts[0]["result"]["operator_status"]
+        self.assertEqual(expired_status["degradation_state"], "command_expired")
+        self.assertEqual(expired_status["expired_command_id"], "cmd-expired")
+        self.assertFalse(expired_status["remote_ready"])
+        self.assertFalse(expired_status["primary_actions_enabled"])
+        self.assertEqual(expired_status["retry_hint"], "resubmit_command")
+        self.assertEqual(
+            expired_status["proof_boundary"],
+            "software_proof_docker_cloud_command_expiry_safety_guard",
+        )
+        self.assertEqual(self.backend.last_status["degradation_state"], "command_expired")
+        self.assertEqual(self.cloud.status_posts[-1]["degradation_state"], "command_expired")
+        self.assertEqual(self.cloud.status_posts[-1]["expired_command_id"], "cmd-expired")
 
     def test_duplicate_command_reuses_cached_ack_without_resubmitting_action(self):
         command = {

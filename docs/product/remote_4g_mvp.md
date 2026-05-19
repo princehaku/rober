@@ -510,6 +510,30 @@ can still reproduce the issue. ACK text must stay conservative: an ACK is only
 command accepted/processing evidence and does not prove delivery success, real
 4G/cloud, OSS/CDN traffic, WAVE ROVER motion, or HIL.
 
+## Command Expiry Safety Guard
+
+The Robot bridge treats an expired cloud command as a terminal `ignored` ACK and
+does not submit any local behavior action. It also reports a phone-safe
+fail-closed status so operator status, phone readiness, and command safety do
+not look green after the ignored ACK.
+
+When this guard is active, status/readiness must include:
+
+- `degradation_state=command_expired`
+- `remote_ready=false`
+- `expired_command_id=<safe command id or [redacted]>`
+- `primary_actions_enabled=false`
+- `safe_phone_copy=这条云端指令已经过期，机器人没有执行；请重新提交最新指令。`
+- `retry_hint=resubmit_command`
+- `proof_boundary=software_proof_docker_cloud_command_expiry_safety_guard`
+
+`build_phone_readiness` and `trashbot.command_safety.v1` must block Start,
+Confirm Dropoff, and Cancel for `command_expired`; Diagnostics remains available
+so support can inspect the safe command id and proof boundary. This is a local
+software proof only. It does not prove production DB/queue behavior, public
+HTTPS/TLS, real 4G/SIM, OSS/CDN live traffic, real phone browser, Nav2 or fixed
+route delivery, WAVE ROVER motion, HIL, or delivery success.
+
 ## Pending ACK Status Guard
 
 The robot `remote_bridge` now exposes `cloud_pending_ack_status_guard` for the
