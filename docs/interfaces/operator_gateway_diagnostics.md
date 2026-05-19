@@ -30,6 +30,40 @@ Confirm Dropoff, Cancel, ACK, cursor updates, persistence updates, terminal
 ACK, commands, Nav2, WAVE ROVER, HIL, material collection, Objective 5
 external proof, dropoff/cancel completion, or delivery success.
 
+## robot_diagnostics_task_terminal_field_material_intake_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_task_terminal_field_material_intake_summary` as a safe alias
+for the task-terminal field-material intake entrypoint.
+
+- Source artifact schema: `trashbot.task_terminal_field_material_intake.v1`
+- Source summary schema:
+  `trashbot.task_terminal_field_material_intake_summary.v1`
+- Robot alias schema:
+  `trashbot.robot_diagnostics_task_terminal_field_material_intake_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_task_terminal_field_material_intake_gate`
+
+The alias is metadata-only and read-only. It may expose sanitized
+`status`, `source=software_proof`, safe `evidence_ref`, accepted safe refs,
+missing materials, next required evidence, phone-safe copy, `software_proof`,
+`not_proven`, `delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`.
+
+Missing payload, unsupported schema or boundary, unsafe copy, raw artifact or
+local-path fields, checksums, credentials, success wording, field-pass
+wording, HIL/pass wording, Objective 5 external proof wording, control grants,
+`delivery_success=true`, `primary_actions_enabled=true`, or
+`safe_to_control=true` must fail closed as blocked/not_proven.
+
+This alias must not read raw artifacts, hardware, serial/UART, ROS graph,
+cloud resources, mobile browser state, ACK payloads, command envelopes, or
+completion cursors. It must not enable Start Delivery, Confirm Dropoff,
+Cancel, ACK, cursor updates, persistence updates, terminal ACK, commands,
+Nav2, route execution, WAVE ROVER, HIL, material collection, Objective 5
+external proof, dropoff/cancel completion, route/elevator field pass, or
+delivery success.
+
 ## robot_diagnostics_hardware_real_material_escalation_request_summary
 
 Robot diagnostics exposes

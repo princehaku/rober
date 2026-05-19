@@ -63,6 +63,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_completion_signal,
     summarize_route_task_terminal_completion_rehearsal,
     summarize_task_terminal_completion_mainline,
+    summarize_task_terminal_field_material_intake,
     summarize_route_task_terminal_review_decision,
     summarize_route_task_field_run_console,
     summarize_route_task_field_run_evidence_kit,
@@ -425,6 +426,146 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(summary["delivery_success"])
         self.assertFalse(summary["primary_actions_enabled"])
         self.assertFalse(summary["cancel_completion_proven"])
+
+    def test_diagnostics_payload_includes_task_terminal_field_material_intake_summary(self):
+        with tempfile.TemporaryDirectory() as td:
+            task_record_path = Path(td) / "task.json"
+            task_record_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "terminal-field-material-1",
+                        "task_terminal_field_material_intake": {
+                            "schema": "trashbot.task_terminal_field_material_intake.v1",
+                            "schema_version": 1,
+                            "status": "blocked_missing_field_materials",
+                            "source": "software_proof",
+                            "evidence_boundary": (
+                                "software_proof_docker_task_terminal_field_material_intake_gate"
+                            ),
+                            "safe_evidence_ref": "terminal-field-material-1",
+                            "evidence_ref": "terminal-field-material-1",
+                            "accepted_safe_refs": ["safe-task-record-ref"],
+                            "missing_materials": [
+                                "real_task_record",
+                                "real_dropoff_or_cancel_terminal_material",
+                                "real_route_elevator_field_material",
+                            ],
+                            "next_required_evidence": [
+                                "同一 safe evidence_ref 的真实 task record",
+                                "真实 route/elevator field materials",
+                            ],
+                            "phone_safe_copy": (
+                                "现场材料尚未回填；software_proof；not_proven；"
+                                "delivery_success=false；primary_actions_enabled=false；"
+                                "safe_to_control=false。"
+                            ),
+                            "evidence_boundary_flags": [
+                                "software_proof",
+                                "not_proven",
+                                "delivery_success=false",
+                                "primary_actions_enabled=false",
+                                "safe_to_control=false",
+                            ],
+                            "not_proven": ["real_route_elevator_field_pass"],
+                            "metadata_only": True,
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                            "safe_to_control": False,
+                            "ack_post_allowed": False,
+                            "remote_ack_allowed": False,
+                            "cursor_updates_allowed": False,
+                            "terminal_ack_allowed": False,
+                            "nav2_triggered": False,
+                            "hil_pass": False,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "completed", "task_record_path": str(task_record_path)},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )
+            summary = payload["robot_diagnostics_task_terminal_field_material_intake_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, payload["task_terminal_field_material_intake"])
+        self.assertEqual(summary, payload["task_terminal_field_material_intake_summary"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_task_terminal_field_material_intake_summary.v1",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.task_terminal_field_material_intake.v1")
+        self.assertEqual(summary["status"], "blocked_missing_field_materials")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_evidence_ref"], "terminal-field-material-1")
+        self.assertIn("safe-task-record-ref", summary["accepted_safe_refs"])
+        self.assertIn("real_route_elevator_field_material", summary["missing_materials"])
+        self.assertIn("真实 route/elevator field materials", summary["next_required_evidence"])
+        self.assertIn("delivery_success=false", summary["evidence_boundary_flags"])
+        self.assertIn("safe_to_control=false", summary["evidence_boundary_flags"])
+        self.assertIn("real_route_elevator_field_pass", summary["not_proven"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(task_record_path), encoded)
+
+    def test_task_terminal_field_material_intake_fail_closed_on_unsafe_payload(self):
+        summary = summarize_task_terminal_field_material_intake(
+            {
+                "schema": "trashbot.task_terminal_field_material_intake_summary.v1",
+                "evidence_boundary": (
+                    "software_proof_docker_task_terminal_field_material_intake_gate"
+                ),
+                "safe_evidence_ref": "terminal-field-material-unsafe",
+                "status": "field_pass",
+                "accepted_safe_refs": ["safe-ref"],
+                "missing_materials": [],
+                "phone_safe_copy": "Route/elevator field pass complete; HIL pass; control grant.",
+                "delivery_success": True,
+                "primary_actions_enabled": True,
+                "safe_to_control": True,
+                "raw_artifact": "token secret /tmp/raw.json checksum=abc",
+            }
+        )
+        missing = summarize_task_terminal_field_material_intake({})
+
+        self.assertEqual(
+            summary["status"],
+            "blocked_unsafe_task_terminal_field_material_intake_summary",
+        )
+        self.assertEqual(
+            missing["status"],
+            "blocked_missing_task_terminal_field_material_intake",
+        )
+        self.assertEqual(summary["safe_evidence_ref"], "")
+        self.assertEqual(summary["accepted_safe_refs"], [])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["terminal_ack_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("token secret", encoded)
+        self.assertNotIn("/tmp/raw.json", encoded)
 
     def test_elevator_action_feedback_trace_summary_fail_closed_without_trace(self):
         summary = summarize_elevator_action_feedback_trace({})

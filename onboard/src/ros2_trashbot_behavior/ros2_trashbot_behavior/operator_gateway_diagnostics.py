@@ -448,6 +448,18 @@ TASK_TERMINAL_COMPLETION_MAINLINE_SUMMARY_SCHEMA = (
 TASK_TERMINAL_COMPLETION_MAINLINE_GATE = (
     "software_proof_docker_task_terminal_completion_mainline_gate"
 )
+TASK_TERMINAL_FIELD_MATERIAL_INTAKE_SCHEMA = (
+    "trashbot.task_terminal_field_material_intake.v1"
+)
+TASK_TERMINAL_FIELD_MATERIAL_INTAKE_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.task_terminal_field_material_intake_summary.v1"
+)
+TASK_TERMINAL_FIELD_MATERIAL_INTAKE_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_task_terminal_field_material_intake_summary.v1"
+)
+TASK_TERMINAL_FIELD_MATERIAL_INTAKE_GATE = (
+    "software_proof_docker_task_terminal_field_material_intake_gate"
+)
 ROUTE_TASK_TERMINAL_REVIEW_DECISION_SCHEMA = (
     "trashbot.route_task_terminal_review_decision.v1"
 )
@@ -2708,6 +2720,36 @@ def _task_terminal_completion_mainline_not_proven(source=None, summary=None):
         "real_nav2_fixed_route_run",
         "real_route_elevator_field_pass",
         "real_phone_device_or_browser",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "objective_5_external_proof",
+        "delivery_success",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _task_terminal_field_material_intake_not_proven(source=None, summary=None):
+    # 现场材料入口只列出下一步缺口；不能把 accepted refs 当成现场通过或控制授权。
+    source = source if isinstance(source, dict) else {}
+    summary = summary if isinstance(summary, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(source.get("not_proven"), list):
+        source_values.extend(source.get("not_proven"))
+    if isinstance(summary.get("not_proven"), list):
+        source_values.extend(summary.get("not_proven"))
+    required = (
+        "real_task_record",
+        "real_dropoff_or_cancel_terminal_material",
+        "real_route_elevator_field_material",
+        "real_phone_browser_evidence",
+        "real_nav2_fixed_route_run",
+        "real_route_elevator_field_pass",
         "wave_rover_motion",
         "real_serial_or_uart_feedback",
         "real_hil_pass",
@@ -7049,6 +7091,71 @@ def _default_task_terminal_completion_mainline_summary(
     }
 
 
+def _default_task_terminal_field_material_intake_summary(
+    status="blocked_missing_task_terminal_field_material_intake",
+    read_error="",
+):
+    # 缺少现场材料入口时仍输出完整 false 栅栏，方便 Robot/mobile 只读展示且不能触发控制。
+    return {
+        "schema": TASK_TERMINAL_FIELD_MATERIAL_INTAKE_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "source_schema": "",
+        "source_evidence_boundary": "",
+        "evidence_boundary": TASK_TERMINAL_FIELD_MATERIAL_INTAKE_GATE,
+        "status": status,
+        "source": "software_proof",
+        "safe_evidence_ref": "",
+        "accepted_safe_refs": [],
+        "missing_materials": [
+            "real_task_record",
+            "real_dropoff_or_cancel_terminal_material",
+            "real_route_elevator_field_material",
+            "real_phone_browser_evidence",
+        ],
+        "next_required_evidence": [
+            "同一 safe evidence_ref 的真实 task record",
+            "真实 dropoff/cancel terminal materials",
+            "真实 route/elevator field materials",
+            "真实手机/browser evidence",
+        ],
+        "phone_safe_copy": (
+            "现场材料尚未回填，当前只能查看缺口和下一步证据要求；"
+            "software_proof；not_proven；delivery_success=false；"
+            "primary_actions_enabled=false；safe_to_control=false。"
+        ),
+        "phone_safe_summary": {
+            "safe_copy": "Task terminal field material intake is not configured; delivery_success=false; primary_actions_enabled=false; safe_to_control=false.",
+            "safe_phone_copy": "现场材料回填入口未配置；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+        },
+        "evidence_boundary_flags": [
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+        ],
+        "not_proven": _task_terminal_field_material_intake_not_proven(),
+        "failure_reason": read_error or "task terminal field material intake source is not configured",
+        "metadata_only": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
 def _default_route_task_terminal_review_decision_summary(
     path,
     status="blocked_missing_route_task_terminal_review_decision",
@@ -9001,6 +9108,10 @@ def _route_task_field_run_readiness_has_unsafe_fields(value, key_path=""):
         "cancel_triggered",
         "dropoff_completion",
         "cancel_completion",
+        "safe_to_control",
+        "control_grant",
+        "robot_command_allowed",
+        "commands_enabled",
     }
     if isinstance(value, dict):
         for key, item in value.items():
@@ -9055,6 +9166,58 @@ def _route_task_field_run_readiness_copy_is_unsafe(value):
         "confirm dropoff enabled",
         "cancel enabled",
         "ack posted",
+        "cursor advanced",
+        "nav2 started",
+        "dropoff complete",
+        "cancel complete",
+    )
+    guarded_text = text
+    for guard in guarded_phrases:
+        guarded_text = guarded_text.replace(guard, "")
+    for phrase in unsafe_phrases:
+        if phrase in guarded_text:
+            return True
+    return False
+
+
+def _task_terminal_field_material_intake_copy_is_unsafe(value):
+    # 材料入口 copy 面向手机/diagnostics，任何现场通过、HIL、O5 或控制授权暗示都必须整体阻断。
+    text = _redact_route_task_rehearsal_text(value).strip().lower()
+    if not text:
+        return True
+    guarded_phrases = (
+        "not delivery success",
+        "not a delivery success",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false",
+        "not field pass",
+        "not real field pass",
+        "not route/elevator field pass",
+        "not hil",
+        "not proven",
+        "not_proven",
+        "metadata-only",
+        "software_proof",
+        "must not",
+    )
+    unsafe_phrases = (
+        "delivery success",
+        "field pass",
+        "field-pass",
+        "route/elevator field pass",
+        "route elevator field pass",
+        "hil pass",
+        "real hil",
+        "o5 external proof",
+        "external proof passed",
+        "control grant",
+        "safe to control",
+        "start delivery enabled",
+        "confirm dropoff enabled",
+        "cancel enabled",
+        "ack posted",
+        "terminal ack",
         "cursor advanced",
         "nav2 started",
         "dropoff complete",
@@ -9151,6 +9314,10 @@ def _route_task_completion_signal_has_unsafe_control_claims(value):
         "collect_triggered",
         "dropoff_triggered",
         "cancel_triggered",
+        "safe_to_control",
+        "control_grant",
+        "robot_command_allowed",
+        "commands_enabled",
     }
     completion_metadata_keys = {"dropoff_completion", "cancel_completion"}
     if isinstance(value, dict):
@@ -26796,6 +26963,22 @@ def _task_terminal_completion_mainline_source_from_payloads(*payloads):
     return {}
 
 
+def _task_terminal_field_material_intake_source_from_payloads(*payloads):
+    # 只消费已净化的 terminal/material-intake 摘要，避免 diagnostics 主链路展开 raw artifact。
+    for payload in payloads:
+        if not isinstance(payload, dict):
+            continue
+        for key in (
+            "task_terminal_field_material_intake",
+            "task_terminal_field_material_intake_summary",
+            "robot_diagnostics_task_terminal_field_material_intake_summary",
+        ):
+            candidate = payload.get(key)
+            if isinstance(candidate, dict):
+                return candidate
+    return {}
+
+
 def summarize_task_terminal_completion_mainline(source=None):
     # diagnostics 对 mainline 做二次白名单化，保证它仍是只读解释层。
     source = source if isinstance(source, dict) else {}
@@ -26925,6 +27108,163 @@ def summarize_task_terminal_completion_mainline(source=None):
             }
         )
         return summary
+    return summary
+
+
+def summarize_task_terminal_field_material_intake(source=None):
+    # Robot alias 只把现场材料入口转成安全摘要；任何控制、成功或 raw 材料都 fail closed。
+    source = source if isinstance(source, dict) else {}
+    summary = _default_task_terminal_field_material_intake_summary()
+    if not source:
+        return summary
+    source_summary = source
+    for key in (
+        "task_terminal_field_material_intake",
+        "task_terminal_field_material_intake_summary",
+        "robot_diagnostics_task_terminal_field_material_intake_summary",
+        "summary",
+    ):
+        candidate = source.get(key)
+        if isinstance(candidate, dict):
+            source_summary = candidate
+            break
+    source_schema = str(source_summary.get("schema") or source.get("schema") or "")
+    source_boundary = str(
+        source_summary.get("evidence_boundary")
+        or source_summary.get("source_evidence_boundary")
+        or source.get("evidence_boundary")
+        or ""
+    )
+    phone_summary = (
+        source_summary.get("phone_safe_summary")
+        if isinstance(source_summary.get("phone_safe_summary"), dict)
+        else source_summary.get("robot_diagnostics_summary")
+        if isinstance(source_summary.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        source_summary.get("phone_safe_copy")
+        or phone_summary.get("safe_copy")
+        or phone_summary.get("safe_phone_copy")
+        or "Task terminal field material intake is software_proof/not_proven; delivery_success=false; primary_actions_enabled=false; safe_to_control=false."
+    )
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        source_summary.get("safe_evidence_ref")
+        or source_summary.get("evidence_ref")
+        or source.get("safe_evidence_ref")
+        or source.get("evidence_ref")
+    )
+    accepted_safe_refs = _dedupe_ordered(
+        _safe_route_task_rehearsal_list(source_summary.get("accepted_safe_refs"))
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "status": _redact_route_task_rehearsal_text(
+                source_summary.get("status") or "blocked_missing_field_materials"
+            ),
+            "source": "software_proof",
+            "safe_evidence_ref": safe_evidence_ref,
+            "accepted_safe_refs": accepted_safe_refs,
+            "missing_materials": _dedupe_ordered(
+                _safe_route_task_rehearsal_list(source_summary.get("missing_materials"))
+            )
+            or summary["missing_materials"],
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                source_summary.get("next_required_evidence")
+            )
+            or summary["next_required_evidence"],
+            "phone_safe_copy": safe_copy,
+            "phone_safe_summary": {
+                "safe_copy": safe_copy,
+                "safe_phone_copy": safe_copy,
+            },
+            "evidence_boundary_flags": _safe_route_task_rehearsal_list(
+                source_summary.get("evidence_boundary")
+                if isinstance(source_summary.get("evidence_boundary"), list)
+                else source_summary.get("evidence_boundary_flags")
+            )
+            or [
+                "software_proof",
+                "not_proven",
+                "delivery_success=false",
+                "primary_actions_enabled=false",
+                "safe_to_control=false",
+            ],
+            "not_proven": _task_terminal_field_material_intake_not_proven(
+                source,
+                source_summary,
+            ),
+            "failure_reason": _redact_route_task_rehearsal_text(
+                source_summary.get("failure_reason")
+            ),
+            "metadata_only": True,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "collect_triggered": False,
+            "dropoff_triggered": False,
+            "cancel_triggered": False,
+            "ack_post_allowed": False,
+            "remote_ack_allowed": False,
+            "cursor_updates_allowed": False,
+            "persistence_updates_allowed": False,
+            "terminal_ack_allowed": False,
+            "nav2_triggered": False,
+            "hil_pass": False,
+            "production_ready": False,
+            "dropoff_completion": False,
+            "cancel_completion": False,
+        }
+    )
+    accepted_schemas = {
+        TASK_TERMINAL_FIELD_MATERIAL_INTAKE_SCHEMA,
+        TASK_TERMINAL_FIELD_MATERIAL_INTAKE_SOURCE_SUMMARY_SCHEMA,
+        TASK_TERMINAL_FIELD_MATERIAL_INTAKE_SUMMARY_SCHEMA,
+    }
+    if source_schema not in accepted_schemas or source_boundary != TASK_TERMINAL_FIELD_MATERIAL_INTAKE_GATE:
+        summary.update(
+            {
+                "status": "unsupported_schema",
+                "failure_reason": "task terminal field material intake schema or evidence boundary is unsupported",
+                "safe_evidence_ref": "",
+                "accepted_safe_refs": [],
+            }
+        )
+        return summary
+    if (
+        _route_task_field_run_readiness_has_unsafe_fields(source)
+        or _route_task_field_run_readiness_has_unsafe_fields(source_summary)
+        or _route_task_completion_signal_has_unsafe_control_claims(source)
+        or _task_terminal_field_material_intake_copy_is_unsafe(safe_copy)
+        or bool(source_summary.get("delivery_success"))
+        or bool(source_summary.get("primary_actions_enabled"))
+        or bool(source_summary.get("safe_to_control"))
+        or bool(source_summary.get("control_grant"))
+        or not safe_evidence_ref
+        or safe_evidence_ref.startswith("local_path_redacted:")
+    ):
+        # 安全摘要宁可缺失，也不能把现场材料、ACK 或控制授权误传播到 Robot command 面。
+        blocked_copy = (
+            "Task terminal field material intake was blocked because the summary "
+            "could expose raw material/control data or imply success; "
+            "software_proof; not_proven; delivery_success=false; "
+            "primary_actions_enabled=false; safe_to_control=false."
+        )
+        summary.update(
+            {
+                "status": "blocked_unsafe_task_terminal_field_material_intake_summary",
+                "failure_reason": "task terminal field material intake contains unsafe fields, success wording, weak evidence_ref, or enabled actions",
+                "safe_evidence_ref": "",
+                "accepted_safe_refs": [],
+                "phone_safe_copy": blocked_copy,
+                "phone_safe_summary": {
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+            }
+        )
     return summary
 
 
@@ -38533,6 +38873,12 @@ def build_diagnostics_payload(
 ):
     latest_status = dict(latest_status or {})
     diagnostics_source = latest_status.get("diagnostics") if isinstance(latest_status.get("diagnostics"), dict) else {}
+    task_terminal_field_material_intake_source = (
+        _task_terminal_field_material_intake_source_from_payloads(
+            latest_status,
+            diagnostics_source,
+        )
+    )
     elevator_field_evidence_trace_callback_intake_source = (
         latest_status.get("elevator_field_evidence_trace_callback_intake")
         if isinstance(latest_status.get("elevator_field_evidence_trace_callback_intake"), dict)
@@ -40140,6 +40486,9 @@ def build_diagnostics_payload(
     latest_status.pop("task_terminal_completion_mainline", None)
     latest_status.pop("task_terminal_completion_mainline_summary", None)
     latest_status.pop("robot_diagnostics_task_terminal_completion_mainline_summary", None)
+    latest_status.pop("task_terminal_field_material_intake", None)
+    latest_status.pop("task_terminal_field_material_intake_summary", None)
+    latest_status.pop("robot_diagnostics_task_terminal_field_material_intake_summary", None)
     latest_status.pop("route_task_terminal_review_decision", None)
     latest_status.pop("route_task_terminal_review_decision_summary", None)
     latest_status.pop("route_task_terminal_review_decision_copy", None)
@@ -40398,6 +40747,14 @@ def build_diagnostics_payload(
     task_terminal_completion_mainline_source = (
         task_terminal_completion_mainline_source
         or _task_terminal_completion_mainline_source_from_payloads(
+            task_record,
+            latest_status,
+            last_task,
+        )
+    )
+    task_terminal_field_material_intake_source = (
+        task_terminal_field_material_intake_source
+        or _task_terminal_field_material_intake_source_from_payloads(
             task_record,
             latest_status,
             last_task,
@@ -41022,6 +41379,11 @@ def build_diagnostics_payload(
     task_terminal_completion_mainline_summary = summarize_task_terminal_completion_mainline(
         task_terminal_completion_mainline_source
     )
+    task_terminal_field_material_intake_summary = (
+        summarize_task_terminal_field_material_intake(
+            task_terminal_field_material_intake_source
+        )
+    )
     route_task_terminal_review_decision_source = (
         route_task_terminal_review_decision_ref
         or os.environ.get("TRASHBOT_ROUTE_TASK_TERMINAL_REVIEW_DECISION", "")
@@ -41511,6 +41873,13 @@ def build_diagnostics_payload(
         task_terminal_completion_mainline_summary=task_terminal_completion_mainline_summary,
         robot_diagnostics_task_terminal_completion_mainline_summary=(
             task_terminal_completion_mainline_summary
+        ),
+        task_terminal_field_material_intake=task_terminal_field_material_intake_summary,
+        task_terminal_field_material_intake_summary=(
+            task_terminal_field_material_intake_summary
+        ),
+        robot_diagnostics_task_terminal_field_material_intake_summary=(
+            task_terminal_field_material_intake_summary
         ),
         route_task_terminal_review_decision=route_task_terminal_review_decision_summary,
         route_task_terminal_review_decision_summary=route_task_terminal_review_decision_summary,

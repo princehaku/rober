@@ -442,6 +442,104 @@ class TaskTerminalCompletionMainlineMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, mainline_text)
 
 
+class TaskTerminalFieldMaterialIntakeMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_task_terminal_field_material_intake_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 现场材料回填入口只消费 Robot diagnostics safe alias；缺失时 fail closed。
+        self.assertIn("现场材料回填入口", app)
+        self.assertIn("TASK_TERMINAL_FIELD_MATERIAL_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_TASK_TERMINAL_FIELD_MATERIAL_INTAKE_TEXT", app)
+        self.assertIn("safeTaskTerminalFieldMaterialIntakeText", app)
+        self.assertIn("taskTerminalFieldMaterialIntakeCandidate", app)
+        self.assertIn("taskTerminalFieldMaterialIntakeFromStatus", app)
+        self.assertIn("robot_diagnostics_task_terminal_field_material_intake_summary", app)
+        self.assertIn("task-terminal-field-material-intake-panel", styles)
+        self.assertIn("task-terminal-field-material-intake-grid", styles)
+        self.assertIn("accepted_safe_refs", fixture_text)
+        self.assertIn("missing_materials", fixture_text)
+        self.assertIn("next_required_evidence", fixture_text)
+        self.assertIn("safe_to_control", fixture_text)
+        self.assertNotIn("status?.task_terminal_field_material_intake_summary", app)
+        self.assertNotIn("status?.task_terminal_field_material_intake", app)
+        self.assertNotRegex(
+            app,
+            r"taskTerminalFieldMaterialIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+
+        # Web fixture 与 mobile fixture 都固定保持 software_proof / not_proven / safe_to_control=false。
+        summary = fixture["robot_diagnostics_task_terminal_field_material_intake_summary"]
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["intake_status"], "blocked_missing_field_materials")
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(summary["safe_to_control"], False)
+        mobile_summary = mobile_fixture["robot_diagnostics_task_terminal_field_material_intake_summary"]
+        self.assertEqual(mobile_summary["source"], "software_proof")
+        self.assertEqual(mobile_summary["intake_status"], "blocked_missing_field_materials")
+        self.assertEqual(mobile_summary["delivery_success"], False)
+        self.assertEqual(mobile_summary["primary_actions_enabled"], False)
+        self.assertEqual(mobile_summary["safe_to_control"], False)
+        self.assertIn("task_terminal_field_material_intake", doc)
+        self.assertIn("robot_diagnostics_task_terminal_field_material_intake_summary", doc)
+        self.assertIn("现场材料回填入口", doc)
+        self.assertIn("software_proof", doc)
+        self.assertIn("not_proven", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("safe_to_control=false", doc)
+
+    def test_task_terminal_field_material_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        intake_text = json.dumps(
+            {
+                "status": fixture["robot_diagnostics_task_terminal_field_material_intake_summary"],
+                "mobile": mobile_fixture["robot_diagnostics_task_terminal_field_material_intake_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留材料回填白名单摘要，不夹带 raw artifact、控制协议、路径、凭证或成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial path",
+            "serial device",
+            "uart path",
+            "baudrate",
+            "/users/",
+            "/tmp/",
+            "credentials",
+            "authorization",
+            "bearer",
+            "token",
+            "database url",
+            "queue url",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "hil_pass",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, intake_text)
+
+
 class HardwareSensorProcurementReceiptIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

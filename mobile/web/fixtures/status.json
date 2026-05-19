@@ -89,6 +89,45 @@
       "real_phone_browser"
     ]
   },
+  "robot_diagnostics_task_terminal_field_material_intake_summary": {
+    "schema": "trashbot.task_terminal_field_material_intake.v1",
+    "schema_version": 1,
+    "summary_alias": "robot_diagnostics_task_terminal_field_material_intake_summary",
+    "source": "software_proof",
+    "intake_status": "blocked_missing_field_materials",
+    "safe_evidence_ref": "task_terminal_field_material_intake_fixture_20260519_0001",
+    "accepted_safe_refs": [
+      "accepted_safe_ref=task_terminal_completion_mainline_fixture_20260519_0001"
+    ],
+    "missing_materials": [
+      "missing_material=real_task_record",
+      "missing_material=real_terminal_action_material",
+      "missing_material=real_route_elevator_material",
+      "missing_material=real_phone_browser_evidence"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=同一 safe evidence_ref 的真实 task record 摘要",
+      "next_required_evidence=真实 terminal action materials 摘要",
+      "next_required_evidence=真实 route/elevator materials 摘要",
+      "next_required_evidence=真实手机/browser evidence 摘要"
+    ],
+    "phone_safe_copy": "现场材料尚未回填；手机端只读展示 intake status、safe refs、缺口和下一步证据要求，不放行 Start、Confirm 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_task_terminal_field_material_intake_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "real_task_record",
+      "real_terminal_action_material",
+      "real_route_elevator_material",
+      "real_phone_browser"
+    ]
+  },
   "elevator_field_evidence_trace_callback_intake": {
     "schema": "trashbot.elevator_field_evidence_trace_callback_intake.v1",
     "summary_schema": "trashbot.elevator_field_evidence_trace_callback_intake_summary.v1",
