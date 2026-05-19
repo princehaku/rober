@@ -1936,6 +1936,106 @@ class HardwareSensorHilEntryExecutionPackMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, execution_pack_text)
 
 
+class HardwareSensorHilEntryCallbackIntakeMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_hil_entry_callback_intake_panel_is_read_only_and_exportable(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 回调入口 panel 紧跟 execution pack，只展示回传材料和 operator 结果摘要。
+        self.assertIn("hardwareSensorHilEntryCallbackIntakeTitle", app)
+        self.assertIn("传感器 HIL 回调入口", app)
+        self.assertIn("hardwareSensorHilEntryExecutionPackTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertIn("hardware-sensor-hil-entry-callback-intake-panel", styles)
+        self.assertIn("hardware-sensor-hil-entry-callback-intake-grid", styles)
+
+        # 状态来源兼容 status、phone_readiness、diagnostics 和 nested diagnostics summary。
+        self.assertIn("HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_TEXT", app)
+        self.assertIn("safeHardwareSensorHilEntryCallbackIntakeText", app)
+        self.assertIn("hardwareSensorHilEntryCallbackIntakeCandidate", app)
+        self.assertIn("hardwareSensorHilEntryCallbackIntakeFromStatus", app)
+        self.assertIn("hardware_sensor_hil_entry_callback_intake", app)
+        self.assertIn("hardware_sensor_hil_entry_callback_intake_summary", app)
+        self.assertIn("diagnosticsSummary.hardware_sensor_hil_entry_callback_intake", app)
+        self.assertIn("statusDiagnosticsSummary.hardware_sensor_hil_entry_callback_intake", app)
+        self.assertIn("ready_for_hardware_sensor_hil_entry_callback_intake_not_proven", app)
+        self.assertIn("source_execution_pack_status", app)
+        self.assertIn("hardware_material_status", app)
+        self.assertIn("accepted_materials", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("rejected_materials", app)
+        self.assertIn("operator_result_summary", app)
+        self.assertIn("next_required_evidence", app)
+
+        # copy/export whitelist 不新增 diagnostics fetch、ACK、cursor 或主控制端点。
+        self.assertIn("hardwareSensorHilEntryCallbackIntakeCopyPayload", app)
+        self.assertIn("trashbot.hardware_sensor_hil_entry_callback_intake_copy.v1", app)
+        self.assertIn("copyHardwareSensorHilEntryCallbackIntakeButton", app)
+        self.assertIn("downloadHardwareSensorHilEntryCallbackIntakeButton", app)
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertNotRegex(app, r"hardwareSensorHilEntryCallbackIntake.*fetchJson\(ENDPOINTS\.(diagnostics|start|confirm_dropoff|cancel)")
+
+        # fixture 和产品文档必须明确 fixed fields 与 software proof / not_proven 边界。
+        callback_intake = fixture["hardware_sensor_hil_entry_callback_intake"]
+        self.assertEqual(callback_intake["source"], "software_proof")
+        self.assertEqual(callback_intake["hardware_material_status"], "hardware_material_pending")
+        self.assertEqual(callback_intake["evidence_status"], "not_proven")
+        self.assertEqual(
+            callback_intake["intake_status"],
+            "ready_for_hardware_sensor_hil_entry_callback_intake_not_proven",
+        )
+        self.assertEqual(callback_intake["delivery_success"], False)
+        self.assertEqual(callback_intake["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_hardware_sensor_hil_entry_callback_intake_gate", fixture_text)
+        self.assertIn("hardware_sensor_hil_entry_callback_intake", doc)
+        self.assertIn("传感器 HIL 回调入口", doc)
+
+    def test_hil_entry_callback_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        callback_intake_text = json.dumps(
+            fixture["hardware_sensor_hil_entry_callback_intake"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 回调入口 fixture 只能携带脱敏摘要，不能把原始材料、凭证、路径或完成声明带进手机端。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial device",
+            "serial/uart",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "complete artifacts",
+            "raw vendor document",
+            "raw material",
+            "absolute path",
+            "control grant",
+            "hil passed",
+            "field pass",
+            "采购完成",
+            "安装完成",
+            "接线完成",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, callback_intake_text)
+
+
 class WaveRoverFeedbackReplayMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

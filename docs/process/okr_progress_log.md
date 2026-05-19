@@ -8,7 +8,21 @@
 
 ## 2026-05-20 系列
 
-更新时间：2026-05-20 06:21 Asia/Shanghai。
+更新时间：2026-05-20 07:58 Asia/Shanghai。
+
+### 2026-05-20 07-08｜hardware-sensor-hil-entry-callback-intake｜sensor HIL-entry callback intake software proof
+
+本轮 `sprints/2026.05.20_07-08_hardware-sensor-hil-entry-callback-intake/` 在既有 `hardware_sensor_hil_entry_execution_pack` 之后补齐真实现场材料执行后的回调入口。Hardware worker 新增 `pc-tools/evidence/hardware_sensor_hil_entry_callback_intake_gate.py`、focused tests、`pc-tools/README.md` 和 `docs/product/production_hardware_boundary.md` 同步；Robot worker 新增 `hardware_sensor_hil_entry_callback_intake` diagnostics safe alias、tests 和 `docs/interfaces/ros_contracts.md` 同步；Full-Stack worker 在 mobile/web 增加只读“传感器 HIL 回调入口”panel、fixture/test 和 `docs/product/mobile_user_flow.md` 同步。证据边界固定为 `software_proof_docker_hardware_sensor_hil_entry_callback_intake_gate`，所有表面保留 `hardware_material_pending`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮只证明 Docker/local software-proof callback intake 可以承接 sanitized 2D LiDAR / ToF / mounting / wiring / power / calibration / HIL-entry operator result references，并拒绝 unsupported schema、weak boundary、evidence-ref mismatch、raw serial/UART、凭证、本机路径、checksum、HIL pass / field pass / delivery success 文案。它不是真实 2D LiDAR / ToF，不是真实采购/安装/接线/供电/标定/HIL-entry，不是 WAVE ROVER/UART/HIL，也不是 PR #5 thread `PRRT_kwDOSWB9286CJ3tX` resolved。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增真实电梯、Nav2/fixed-route runtime、route completion signal、field task record、dropoff/cancel completion、route/elevator field pass 或 delivery result；callback intake 不等于 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮不采集真实路线、关键帧、Nav2/fixed-route log、route completion signal 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能只读展示“传感器 HIL 回调入口”、accepted/missing/rejected materials、owner handoff、next required evidence 和 fail-closed flags；Start Delivery / Confirm Dropoff / Cancel gating 不变。仍缺真实手机、真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 和 true phone/browser acceptance。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮不涉及 O5 external proof、commands/status/ack、OSS/CDN live traffic、公网 HTTPS/TLS、4G/SIM、production DB/queue、worker/cutover 或真实手机/browser。 |
+
+本轮验证：Product closeout 复跑 integration fence：`py_compile` 覆盖 callback intake gate 和 diagnostics module；Hardware callback intake unittest 输出 `Ran 7 tests ... OK`；Robot diagnostics unittest 输出 `Ran 223 tests ... OK`；mobile/web unittest 输出 `Ran 153 tests ... OK`；`node --check mobile/web/app.js` 通过；required `rg` 覆盖 `hardware_sensor_hil_entry_callback_intake`、`software_proof_docker_hardware_sensor_hil_entry_callback_intake_gate`、`Objective 5`、`Objective 1`、`PRRT_kwDOSWB9286CJ3tX`、`hardware_material_pending`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`真实 2D LiDAR`、`真实手机`、`O5 external proof`；scoped `git diff --check` 与 `git diff --cached --check` 通过。本轮不证明真实 2D LiDAR / ToF、真实采购/安装/接线/供电/标定/HIL-entry、WAVE ROVER/UART/HIL、PR #5 thread resolved、O5 external proof、真实 phone/browser、route/elevator field pass 或 delivery success。
 
 ### 2026-05-20 06-07｜cloud-command-idempotency-visibility-guard｜duplicate command idempotency visibility software proof
 

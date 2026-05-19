@@ -65,6 +65,43 @@ owner 收集真实材料，不访问 ROS graph、Nav2 runtime、serial/UART、WA
 真实手机、外部云、OSS/CDN、DB/queue 或 4G，也不证明 HIL、delivery success、
 PR #5 closure、PR #4 route/elevator completion、O4 phone acceptance 或 O5 external proof。
 
+## hardware sensor HIL-entry callback intake
+
+`pc-tools/evidence/hardware_sensor_hil_entry_callback_intake_gate.py` 是
+`hardware_sensor_hil_entry_execution_pack` 之后的 PC-only callback material
+入口：
+
+```bash
+python3 pc-tools/evidence/hardware_sensor_hil_entry_callback_intake_gate.py \
+  --execution-pack-json /tmp/hardware_sensor_hil_entry_execution_pack.json \
+  --callback-json /tmp/hardware_sensor_hil_entry_callback_materials.json \
+  --output /tmp/hardware_sensor_hil_entry_callback_intake.json \
+  --summary-output /tmp/hardware_sensor_hil_entry_callback_intake_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.hardware_sensor_hil_entry_callback_intake.v1`，
+summary 使用
+`schema=trashbot.hardware_sensor_hil_entry_callback_intake_summary.v1`，证据边界固定为
+`software_proof_docker_hardware_sensor_hil_entry_callback_intake_gate`。该 gate
+只接受 execution pack artifact、summary 或 nested wrapper summary，以及脱敏的
+2D LiDAR SKU/source/receipt、ToF SKU/source/receipt、mounting、wiring、power、
+calibration 和 HIL-entry operator result callback summary/ref。
+
+所有输出都固定保持 `source=software_proof`、`hardware_material_pending`、
+`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+缺 execution pack、缺 callback materials、unsupported schema/boundary、
+`evidence_ref` mismatch、弱 bool/source 合同、raw credentials、raw serial/UART、
+完整本机路径、complete artifacts、checksums、HIL pass / field pass /
+delivery success copy、`delivery_success=true` 或 `primary_actions_enabled=true`
+都会 fail closed。
+
+vendor/source boundary 只引用 `docs/vendor/VENDOR_INDEX.md` 及其列出的本地
+WAVE ROVER / UART JSON / firmware/vendor-app 资料。该 gate 不访问 ROS graph、
+Nav2 runtime、serial/UART、WAVE ROVER、真实 2D LiDAR / ToF、HIL rig、真实手机、
+外部云、OSS/CDN、DB/queue 或 4G；ready 状态只表示脱敏 callback 材料可进入
+下一轮人工 review，不是 HIL pass、PRRT_kwDOSWB9286CJ3tX 关闭、field pass、
+Objective 5 external proof 或 delivery success。
+
 ## PC route debug console
 
 `pc-tools/route/route_debug_web.py` 是本地 PC console，不依赖 ROS2，不 import `ros2_trashbot_*`，不访问硬件、serial/UART、Nav2 runtime、ROS graph 或网络外部服务：

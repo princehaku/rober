@@ -797,6 +797,15 @@ HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_SUMMARY_SCHEMA = (
 HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_GATE = (
     "software_proof_docker_hardware_sensor_hil_entry_execution_pack_gate"
 )
+HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_SCHEMA = (
+    "trashbot.hardware_sensor_hil_entry_callback_intake.v1"
+)
+HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_SUMMARY_SCHEMA = (
+    "trashbot.hardware_sensor_hil_entry_callback_intake_summary.v1"
+)
+HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_GATE = (
+    "software_proof_docker_hardware_sensor_hil_entry_callback_intake_gate"
+)
 PR5_REVIEW_THREAD_CLOSEOUT_SCHEMA = "trashbot.pr5_review_thread_closeout.v1"
 PR5_REVIEW_THREAD_CLOSEOUT_SOURCE_SUMMARY_SCHEMA = (
     "trashbot.pr5_review_thread_closeout_summary.v1"
@@ -3989,6 +3998,44 @@ def _hardware_sensor_hil_entry_execution_pack_not_proven(pack=None, summary_frag
         "software_proof",
         "hardware_material_pending",
         "sensor_hil_entry_execution_pack_only",
+        "real_sensor_device_proof",
+        "sensor_procurement_completed",
+        "sensor_installed_on_robot",
+        "sensor_wiring_verified",
+        "sensor_power_budget_verified",
+        "sensor_calibrated_on_robot",
+        "hil_entry_execution_completed",
+        "real_nav2_fixed_route_run",
+        "wave_rover_motion",
+        "real_serial_or_uart_feedback",
+        "real_hil_pass",
+        "dropoff_completion",
+        "cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _hardware_sensor_hil_entry_callback_intake_not_proven(intake=None, summary_fragment=None):
+    # 回调 intake 只是 Hardware 现场回填后的安全摘要入口；Robot 不能据此打开动作或认定 HIL。
+    intake = intake if isinstance(intake, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    if isinstance(intake.get("not_proven"), list):
+        source_values.extend(intake.get("not_proven"))
+    if isinstance(summary_fragment.get("not_proven"), list):
+        source_values.extend(summary_fragment.get("not_proven"))
+    required = (
+        "not_proven",
+        "software_proof",
+        "hardware_material_pending",
+        "sensor_hil_entry_callback_intake_only",
         "real_sensor_device_proof",
         "sensor_procurement_completed",
         "sensor_installed_on_robot",
@@ -9599,6 +9646,85 @@ def _default_hardware_sensor_hil_entry_execution_pack_summary(
     }
 
 
+def _default_hardware_sensor_hil_entry_callback_intake_summary(
+    path,
+    status="blocked_missing_hardware_sensor_hil_entry_callback_intake",
+    read_error="",
+):
+    # 缺少安全摘要时必须保守失败；callback intake 不能让 Robot 读取原始现场回调包。
+    safe_copy = (
+        "Hardware sensor HIL-entry callback intake is metadata-only; "
+        "source=software_proof, hardware_material_pending, not_proven, "
+        "delivery_success=false and primary_actions_enabled=false."
+    )
+    return {
+        "schema": HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source_contract": {
+            "schema": "",
+            "evidence_boundary": "",
+            "metadata_only": True,
+        },
+        "callback_intake_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": read_error or "hardware sensor HIL-entry callback intake summary is not configured",
+        },
+        "source": "software_proof",
+        "hardware_material_status": "hardware_material_pending",
+        "evidence_status": "not_proven",
+        "status": status,
+        "accepted_materials": [],
+        "missing_materials": [],
+        "rejected_materials": [],
+        "next_required_evidence": [],
+        "owner_handoff": [],
+        "rerun_commands": [],
+        "boundary": HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_GATE,
+        "safe_copy": safe_copy,
+        "safe_evidence_ref": "",
+        "robot_diagnostics_summary": {
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+        },
+        "not_proven": _hardware_sensor_hil_entry_callback_intake_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "real_hardware_observed": False,
+        "hardware_material_pending": True,
+        "sensor_hil_entry_callback_intake_only": True,
+        "sensor_hil_entry_ready": False,
+        "sensor_procurement_completed": False,
+        "sensor_installed_on_robot": False,
+        "sensor_wiring_verified": False,
+        "sensor_power_budget_verified": False,
+        "sensor_calibrated_on_robot": False,
+        "hil_entry_execution_completed": False,
+        "route_elevator_field_pass": False,
+        "nav2_fixed_route_run": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _default_pr5_review_thread_closeout_summary(
     path,
     status="blocked_missing_pr5_review_thread_closeout_summary",
@@ -11660,6 +11786,16 @@ def _hardware_sensor_hil_entry_execution_pack_source_contract(value):
     source_schema = str(value.get("schema") or "")
     source_boundary = str(value.get("evidence_boundary") or "")
     if source_schema == HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or source_schema)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _hardware_sensor_hil_entry_callback_intake_source_contract(value):
+    # 只接受回调 intake 的安全摘要或回指同一 boundary 的 wrapper，避免 Robot 读取原始现场材料。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or source_schema)
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
@@ -37126,6 +37262,245 @@ def summarize_hardware_sensor_hil_entry_execution_pack(source):
     return summary
 
 
+def summarize_hardware_sensor_hil_entry_callback_intake(source):
+    """构建 hardware sensor HIL-entry callback intake 的 metadata-only diagnostics 摘要。"""
+    # Robot 只消费 Hardware 产出的消毒 summary；原始 callback material、串口、ROS graph 和凭证一律不进入摘要。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_hardware_sensor_hil_entry_callback_intake_summary(
+        source_path,
+        read_error="hardware sensor HIL-entry callback intake summary is not configured",
+    )
+    if isinstance(source, dict):
+        intake = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["callback_intake_status"]["reason"] = (
+                "hardware sensor HIL-entry callback intake summary artifact missing"
+            )
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                intake = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading hardware sensor HIL-entry callback intake summary: {exc}"
+            )
+            summary["callback_intake_status"]["reason"] = safe_error
+            summary["read_error"] = safe_error
+            return summary
+
+    if not isinstance(intake, dict):
+        summary["callback_intake_status"]["reason"] = (
+            "hardware sensor HIL-entry callback intake JSON must be an object"
+        )
+        return summary
+
+    summary_fragment = {}
+    for candidate in (
+        intake.get("hardware_sensor_hil_entry_callback_intake_summary"),
+        intake.get("robot_diagnostics_summary"),
+        intake.get("diagnostics_summary"),
+        intake.get("phone_safe_summary"),
+        intake.get("mobile_readonly_summary"),
+        intake.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+    if not summary_fragment and intake.get("schema") == HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_SUMMARY_SCHEMA:
+        summary_fragment = intake
+
+    source_schema, source_boundary = _hardware_sensor_hil_entry_callback_intake_source_contract(
+        summary_fragment if summary_fragment else intake
+    )
+    status_source = (
+        summary_fragment.get("callback_intake_status")
+        if isinstance(summary_fragment.get("callback_intake_status"), dict)
+        else {}
+    )
+    status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or summary_fragment.get("status")
+        or "ready_for_hardware_sensor_hil_entry_callback_intake_not_proven"
+    )
+    safe_copy_source = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or (
+            "Hardware sensor HIL-entry callback intake is metadata-only; "
+            "source=software_proof; hardware_material_pending; not_proven; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or ""
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": summary_fragment.get("source_schema_version")
+            or summary_fragment.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "source_contract": {
+                "schema": _redact_route_task_rehearsal_text(source_schema),
+                "evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "metadata_only": True,
+            },
+            "callback_intake_status": {
+                "status": status,
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or "hardware sensor HIL-entry callback intake consumed without real HIL evidence"
+                ),
+            },
+            "status": status,
+            "source": "software_proof",
+            "hardware_material_status": "hardware_material_pending",
+            "evidence_status": "not_proven",
+            "accepted_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("accepted_materials")
+            ),
+            "missing_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("missing_materials")
+            ),
+            "rejected_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("rejected_materials")
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "owner_handoff": _safe_route_task_rehearsal_list(
+                summary_fragment.get("owner_handoff")
+            ),
+            "rerun_commands": _safe_route_task_rehearsal_list(
+                summary_fragment.get("rerun_commands")
+            ),
+            "boundary": HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_GATE,
+            "safe_copy": _redact_route_task_rehearsal_text(safe_copy_source),
+            "safe_evidence_ref": safe_evidence_ref,
+            "robot_diagnostics_summary": {
+                "safe_copy": _redact_route_task_rehearsal_text(safe_copy_source),
+                "safe_phone_copy": _redact_route_task_rehearsal_text(safe_copy_source),
+            },
+            "not_proven": _hardware_sensor_hil_entry_callback_intake_not_proven(
+                intake, summary_fragment
+            ),
+            "read_error": "",
+            "metadata_only": True,
+            "real_hardware_observed": False,
+            "hardware_material_pending": True,
+            "sensor_hil_entry_callback_intake_only": True,
+            "sensor_hil_entry_ready": False,
+            "sensor_procurement_completed": False,
+            "sensor_installed_on_robot": False,
+            "sensor_wiring_verified": False,
+            "sensor_power_budget_verified": False,
+            "sensor_calibrated_on_robot": False,
+            "hil_entry_execution_completed": False,
+            "route_elevator_field_pass": False,
+            "nav2_fixed_route_run": False,
+            "dropoff_completion": False,
+            "cancel_completion": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "collect_triggered": False,
+            "dropoff_triggered": False,
+            "cancel_triggered": False,
+            "ack_post_allowed": False,
+            "remote_ack_allowed": False,
+            "cursor_updates_allowed": False,
+            "persistence_updates_allowed": False,
+            "terminal_ack_allowed": False,
+            "nav2_triggered": False,
+            "hil_pass": False,
+            "production_ready": False,
+        }
+    )
+
+    accepted_schemas = {
+        HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_SCHEMA,
+        HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_SUMMARY_SCHEMA,
+    }
+    weak_evidence_ref = (
+        not safe_evidence_ref
+        or safe_evidence_ref.startswith("local_path_redacted:")
+        or "[REDACTED" in safe_evidence_ref
+    )
+    unsafe_payload = (
+        not summary_fragment
+        or source_schema not in accepted_schemas
+        or source_boundary != HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_GATE
+        or str(summary_fragment.get("source") or "software_proof") != "software_proof"
+        or str(summary_fragment.get("hardware_material_status") or "hardware_material_pending")
+        != "hardware_material_pending"
+        or str(summary_fragment.get("evidence_status") or "not_proven") != "not_proven"
+        or _mobile_field_material_intake_has_unsafe_fields(intake)
+        or _mobile_field_material_intake_has_unsafe_fields(summary_fragment)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy_source)
+        or bool(summary_fragment.get("delivery_success"))
+        or bool(summary_fragment.get("primary_actions_enabled"))
+    )
+    if source_schema not in accepted_schemas or source_boundary != HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_GATE:
+        summary.update(
+            {
+                "status": "blocked_unsupported_hardware_sensor_hil_entry_callback_intake",
+                "callback_intake_status": {
+                    "status": "blocked_unsupported_hardware_sensor_hil_entry_callback_intake",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware sensor HIL-entry callback intake schema or evidence boundary is unsupported",
+                },
+                "accepted_materials": [],
+                "missing_materials": [],
+                "rejected_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+                "rerun_commands": [],
+                "safe_evidence_ref": "",
+            }
+        )
+        return summary
+    if weak_evidence_ref or unsafe_payload:
+        blocked_copy = (
+            "Hardware sensor HIL-entry callback intake is metadata-only; "
+            "source=software_proof; hardware_material_pending; not_proven; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "status": "blocked_unsafe_hardware_sensor_hil_entry_callback_intake_copy",
+                "callback_intake_status": {
+                    "status": "blocked_unsafe_hardware_sensor_hil_entry_callback_intake_copy",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware sensor HIL-entry callback intake contains missing summary, unsafe fields, weak evidence_ref, or success/control claims",
+                },
+                "accepted_materials": [],
+                "missing_materials": [],
+                "rejected_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+                "rerun_commands": [],
+                "safe_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+                "safe_evidence_ref": "",
+            }
+        )
+        return summary
+
+    return summary
+
+
 def _pr5_review_thread_closeout_copy_is_unsafe(value):
     # 允许安全边界里的 false/not_proven 文案；其余 success/control/HIL/field-pass 语义一律降级。
     redacted = _redact_route_task_rehearsal_text(value)
@@ -42748,6 +43123,7 @@ def build_diagnostics_payload(
     hardware_sensor_hil_entry_config_precheck_ref="",
     hardware_sensor_hil_entry_readiness_review_ref="",
     hardware_sensor_hil_entry_execution_pack_ref="",
+    hardware_sensor_hil_entry_callback_intake_ref="",
     pr5_review_thread_closeout_ref="",
     pr5_vendor_source_review_packet_ref="",
     pr5_vendor_source_review_reply_dispatch_ref="",
@@ -43215,6 +43591,17 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("hardware_sensor_hil_entry_execution_pack"), dict)
         else diagnostics_source.get("hardware_sensor_hil_entry_execution_pack_summary")
         if isinstance(diagnostics_source.get("hardware_sensor_hil_entry_execution_pack_summary"), dict)
+        else {}
+    )
+    hardware_sensor_hil_entry_callback_intake_source = (
+        latest_status.get("hardware_sensor_hil_entry_callback_intake")
+        if isinstance(latest_status.get("hardware_sensor_hil_entry_callback_intake"), dict)
+        else latest_status.get("hardware_sensor_hil_entry_callback_intake_summary")
+        if isinstance(latest_status.get("hardware_sensor_hil_entry_callback_intake_summary"), dict)
+        else diagnostics_source.get("hardware_sensor_hil_entry_callback_intake")
+        if isinstance(diagnostics_source.get("hardware_sensor_hil_entry_callback_intake"), dict)
+        else diagnostics_source.get("hardware_sensor_hil_entry_callback_intake_summary")
+        if isinstance(diagnostics_source.get("hardware_sensor_hil_entry_callback_intake_summary"), dict)
         else {}
     )
     pr5_review_thread_closeout_source = (
@@ -44934,6 +45321,8 @@ def build_diagnostics_payload(
     latest_status.pop("hardware_sensor_hil_entry_readiness_review_copy", None)
     latest_status.pop("hardware_sensor_hil_entry_execution_pack", None)
     latest_status.pop("hardware_sensor_hil_entry_execution_pack_summary", None)
+    latest_status.pop("hardware_sensor_hil_entry_callback_intake", None)
+    latest_status.pop("hardware_sensor_hil_entry_callback_intake_summary", None)
     latest_status.pop("pr5_review_thread_closeout", None)
     latest_status.pop("pr5_review_thread_closeout_summary", None)
     latest_status.pop("robot_diagnostics_pr5_review_thread_closeout_summary", None)
@@ -45957,6 +46346,17 @@ def build_diagnostics_payload(
             hardware_sensor_hil_entry_execution_pack_source
         )
     )
+    hardware_sensor_hil_entry_callback_intake_source = (
+        hardware_sensor_hil_entry_callback_intake_ref
+        or os.environ.get("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE", "")
+        or os.environ.get("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_SUMMARY", "")
+        or hardware_sensor_hil_entry_callback_intake_source
+    )
+    hardware_sensor_hil_entry_callback_intake_summary = (
+        summarize_hardware_sensor_hil_entry_callback_intake(
+            hardware_sensor_hil_entry_callback_intake_source
+        )
+    )
     pr5_review_thread_closeout_source = (
         pr5_review_thread_closeout_ref
         or os.environ.get("TRASHBOT_PR5_REVIEW_THREAD_CLOSEOUT", "")
@@ -46377,6 +46777,8 @@ def build_diagnostics_payload(
         hardware_sensor_hil_entry_readiness_review_summary=hardware_sensor_hil_entry_readiness_review_summary,
         hardware_sensor_hil_entry_execution_pack=hardware_sensor_hil_entry_execution_pack_summary,
         hardware_sensor_hil_entry_execution_pack_summary=hardware_sensor_hil_entry_execution_pack_summary,
+        hardware_sensor_hil_entry_callback_intake=hardware_sensor_hil_entry_callback_intake_summary,
+        hardware_sensor_hil_entry_callback_intake_summary=hardware_sensor_hil_entry_callback_intake_summary,
         pr5_review_thread_closeout=pr5_review_thread_closeout_summary,
         pr5_review_thread_closeout_summary=pr5_review_thread_closeout_summary,
         robot_diagnostics_pr5_review_thread_closeout_summary=(

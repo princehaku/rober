@@ -320,6 +320,52 @@ local source references for WAVE ROVER / UART JSON / firmware/vendor app
 behavior only; they do not prove real 2D LiDAR or ToF procurement,
 installation, wiring, power, calibration, HIL, field, or delivery evidence.
 
+## Hardware Sensor HIL-entry Callback Intake Gate
+
+`hardware_sensor_hil_entry_callback_intake` is the fail-closed PC gate after
+`hardware_sensor_hil_entry_execution_pack`. It emits
+`schema=trashbot.hardware_sensor_hil_entry_callback_intake.v1` and
+`schema=trashbot.hardware_sensor_hil_entry_callback_intake_summary.v1` under
+`software_proof_docker_hardware_sensor_hil_entry_callback_intake_gate`.
+
+The gate consumes only a supported execution pack artifact, summary, or nested
+wrapper summary, plus callback material that has already been reduced to
+sanitized references or short summaries. Accepted material classes are 2D
+LiDAR SKU/source/receipt, ToF SKU/source/receipt, mounting, wiring, power,
+calibration, and HIL-entry operator result. The output reports
+`accepted_callback_materials`, `missing_required_materials`,
+`rejected_callback_materials`, `operator_result_summary`, `owner_handoff`,
+`next_required_evidence`, `rerun_commands`, and `safe_copy`.
+
+The gate must fail closed for missing execution pack JSON, missing callback
+materials, unsupported schema or evidence boundary, execution pack status not
+equal to `ready_for_hardware_sensor_hil_entry_execution_pack_not_proven`,
+missing or unsafe `evidence_ref`, callback `evidence_ref` mismatch, weak
+boolean/source contracts, raw credentials, full local paths, raw serial/UART
+paths, raw JSON artifact copies, complete artifact copies, checksums,
+OSS/DB/queue/token material, HIL passed / field pass / delivery success copy,
+`delivery_success=true`, or `primary_actions_enabled=true`.
+
+Every output must remain `source=software_proof`,
+`hardware_material_pending`, `not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. `ready_for_hardware_sensor_hil_entry_callback_intake_not_proven`
+means only that callback materials are sanitized and ready for a later review
+decision; it is not a procurement pass, receipt acceptance, installation pass,
+wiring pass, power validation, calibration pass, HIL-entry pass, Nav2/SLAM
+field pass, near-field safety pass, PRRT_kwDOSWB9286CJ3tX closure, Objective 5
+external proof, or delivery result.
+
+The explicit vendor/source boundary for this gate is
+`docs/vendor/VENDOR_INDEX.md`,
+`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`,
+`docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`,
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`, and
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`. These files
+are local source references for WAVE ROVER / UART JSON / firmware/vendor app
+behavior only; they do not prove real 2D LiDAR or ToF procurement, mounting,
+wiring, power, calibration, HIL, field, Objective 5 external cloud proof, or
+delivery evidence.
+
 ## Hardware Real Material Escalation Request Gate
 
 `hardware_real_material_escalation_request` is the fail-closed PC gate for the
