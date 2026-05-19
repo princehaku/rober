@@ -3943,18 +3943,25 @@ it contains a sanitized summary wrapper. The evidence boundary must remain
 metadata-only Robot diagnostics support for intake results: it may expose only
 sanitized intake status, safe `evidence_ref`, accepted material labels, missing
 real materials, rejected material labels, owner handoff, next required
-evidence, safe copy, `source=software_proof`, `not_proven`,
-`delivery_success=false`, `primary_actions_enabled=false`, and
+evidence, safe copy, and a `real_material_manifest_template` alias derived
+from Hardware summary fields named `manifest_template`, `template_groups`, or
+`required_item_templates`. The template alias is phone-safe only: allowed keys
+are schema/status/boundary/source/not_proven, `material_group`, required item
+names, `summary_hint`, `material_ref_hint`, `owner_handoff`, `objective_ref`,
+`next_action`, `same_evidence_ref_required=true`, safe `evidence_ref`, and
+safe template `evidence_ref`. It must also keep `source=software_proof`,
+`not_proven`, `delivery_success=false`, `primary_actions_enabled=false`, and
 `safe_to_control=false`. Missing sanitized summary, unreadable input,
-unsupported schema or boundary, unsafe `evidence_ref`, raw manifest/path/JSON,
-credentials, checksums, ROS topics, serial/UART details, success/control
-claims, `delivery_success=true`, `primary_actions_enabled=true`, or
-`safe_to_control=true` sources fail closed as blocked/not_proven. The fields do
-not trigger `/api/collect`, Start Delivery, Confirm Dropoff, Cancel, dropoff,
-cancel, ACK, remote ACK, cursor advance/persistence, terminal ACK, Nav2, WAVE
-ROVER, serial/UART, HIL, material collection, production readiness, real phone
-or browser proof, public cloud proof, dropoff/cancel completion, or delivery
-success, and they are not command/status/ACK robot contract fields.
+unsupported schema or boundary, unsafe `evidence_ref`, unsafe template keys,
+raw manifest/path/JSON, credentials, checksums, ROS topics, serial/UART
+details, success/control claims, `delivery_success=true`,
+`primary_actions_enabled=true`, or `safe_to_control=true` sources fail closed
+as blocked/not_proven. The fields do not trigger `/api/collect`, Start
+Delivery, Confirm Dropoff, Cancel, dropoff, cancel, ACK, remote ACK, cursor
+advance/persistence, terminal ACK, Nav2, WAVE ROVER, serial/UART, HIL,
+material collection, production readiness, real phone or browser proof, public
+cloud proof, dropoff/cancel completion, or delivery success, and they are not
+command/status/ACK robot contract fields.
 
 | Type | Payload | Local action |
 | --- | --- | --- |

@@ -191,14 +191,21 @@ real-material evidence intake.
 The alias is metadata-only and read-only. It may expose only sanitized intake
 status, safe `evidence_ref`, accepted material labels, missing real materials,
 rejected material labels, next required evidence, owner handoff, safe copy,
+and the safe alias `real_material_manifest_template`. That template alias may
+only expose sanitized `manifest_template`, `template_groups`, and
+`required_item_templates` entries containing phone-safe template keys:
+schema/status/boundary/source/not_proven, `material_group`, required item
+names, `summary_hint`, `material_ref_hint`, `owner_handoff`, `objective_ref`,
+`next_action`, `same_evidence_ref_required=true`, safe `evidence_ref`, and
+safe template `evidence_ref`. The alias must continue to expose
 `source=software_proof`, `not_proven`, `delivery_success=false`,
 `primary_actions_enabled=false`, and `safe_to_control=false`.
 
 Missing summary, unreadable input, unsupported schema or evidence boundary,
 `source` other than `software_proof`, status other than `not_proven`, unsafe
-`evidence_ref`, unsafe copy, raw artifact fields, raw JSON, credentials, local
-paths, checksums, raw ROS topics, `/cmd_vel`, serial/UART details,
-success/control claims, `delivery_success=true`,
+`evidence_ref`, unsafe copy, unsafe manifest template keys, raw artifact
+fields, raw JSON, credentials, local paths, checksums, raw ROS topics,
+`/cmd_vel`, serial/UART details, success/control claims, `delivery_success=true`,
 `primary_actions_enabled=true`, or `safe_to_control=true` must fail closed as
 blocked/not_proven.
 

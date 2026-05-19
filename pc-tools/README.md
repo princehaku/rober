@@ -38,6 +38,33 @@
 - `route_csv_to_yaml.py` 仍位于 `onboard/src/ros2_trashbot_nav/`（可选后续再抽到 `pc-tools/route/` 以降低与 colcon 的耦合）。
 - `labeling/`、`training/` 仍为占位与契约说明。
 
+## real material manifest template
+
+`pc-tools/evidence/real_material_evidence_intake.py` 可以生成 field owner
+交付用的真实材料 manifest template / submission pack：
+
+```bash
+python3 pc-tools/evidence/real_material_evidence_intake.py \
+  --template-output sprints/2026.05.19_22-23_real-material-manifest-template/evidence/real_material_manifest_template.json \
+  --template-evidence-ref field-material-template-2026-05-19T22-23Z \
+  --output /tmp/real_material_evidence_intake.json \
+  --summary-output /tmp/real_material_evidence_intake_summary.json
+```
+
+模板输出 `schema=trashbot.real_material_manifest_template.v1`，覆盖
+`o5_external`、`o1_pr5_hardware`、`pr4_route_elevator` 和 `o4_real_phone` 四类
+material group。每个 required item 都带 `summary_hint`、`material_ref_hint`、
+`owner_handoff`、`objective_ref` 和 `next_action`，并固定
+`source=software_proof`、`status=not_proven`、`delivery_success=false`、
+`primary_actions_enabled=false`、`safe_to_control=false`。PR #5 review thread
+继续记录为 `PRRT_kwDOSWB9286CJ3tX`，状态为
+`blocked_pending_real_materials_not_closed`。
+
+生成 template 不会改变原 intake artifact/summary 的 exit code。这个模板只帮助现场
+owner 收集真实材料，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、
+真实手机、外部云、OSS/CDN、DB/queue 或 4G，也不证明 HIL、delivery success、
+PR #5 closure、PR #4 route/elevator completion、O4 phone acceptance 或 O5 external proof。
+
 ## PC route debug console
 
 `pc-tools/route/route_debug_web.py` 是本地 PC console，不依赖 ROS2，不 import `ros2_trashbot_*`，不访问硬件、serial/UART、Nav2 runtime、ROS graph 或网络外部服务：

@@ -40,6 +40,18 @@ Summary schema:
 - `primary_actions_enabled=false`
 - `safe_to_control=false`
 
+Manifest template schema:
+
+- `schema=trashbot.real_material_manifest_template.v1`
+- `real_material_manifest_template=ready_for_field_owner_submission_pack_not_proven`
+- `safe_evidence_ref=<shared safe evidence_ref>`
+- `same_evidence_ref_required=true`
+- `submission_pack.purpose=field_owner_manifest_submission_pack`
+- `material_groups=[...]`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `safe_to_control=false`
+
 ## Material Groups
 
 | material_group | Objective / review ref | Owner handoff | Required material items |
@@ -53,6 +65,41 @@ Summary schema:
 for manual review. It does not prove Objective 5 external readiness, Objective 1
 hardware readiness, PR #5 closure, PR #4 route/elevator completion, or Objective
 4 real phone acceptance.
+
+## Field-Owner Manifest Template
+
+Generate a submission pack for field owners before real material collection:
+
+```bash
+python3 pc-tools/evidence/real_material_evidence_intake.py \
+  --template-output sprints/2026.05.19_22-23_real-material-manifest-template/evidence/real_material_manifest_template.json \
+  --template-evidence-ref field-material-template-2026-05-19T22-23Z \
+  --output /tmp/real_material_evidence_intake.json \
+  --summary-output /tmp/real_material_evidence_intake_summary.json
+```
+
+The template writes `trashbot.real_material_manifest_template.v1` and keeps the
+normal intake artifact/summary exit code unchanged. It lists the four material
+groups `o5_external`, `o1_pr5_hardware`, `pr4_route_elevator`, and
+`o4_real_phone`. Every required item includes:
+
+- `summary_hint`
+- `material_ref_hint`
+- `owner_handoff`
+- `objective_ref`
+- `next_action`
+- `source=software_proof`
+- `status=not_proven`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `safe_to_control=false`
+
+The generated template is a field-owner handoff scaffold. It does not read real
+materials and does not prove Objective 5 external readiness, PR #5 hardware
+closure, PR #4 route/elevator completion, Objective 4 real phone acceptance, HIL,
+WAVE ROVER UART feedback, or delivery success. PR #5 remains recorded as
+`PRRT_kwDOSWB9286CJ3tX` with state
+`blocked_pending_real_materials_not_closed`.
 
 ## Manifest Shape
 

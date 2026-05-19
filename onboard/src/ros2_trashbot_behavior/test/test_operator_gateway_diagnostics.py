@@ -24499,6 +24499,42 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                         "rejected_materials": ["raw_manifest_path"],
                         "next_required_evidence": ["Provide HIL packet from real robot run."],
                         "owner_handoff": ["Robot consumes sanitized summary only."],
+                        "manifest_template": {
+                            "schema": "trashbot.real_material_manifest_template.v1",
+                            "status": "not_proven",
+                            "source": "software_proof",
+                            "boundary": "software_proof_docker_real_material_evidence_intake_gate",
+                            "material_group": "wave_rover_hil_packet",
+                            "required_item_names": ["hil_packet", "operator_photo"],
+                            "summary_hint": (
+                                "metadata-only template; delivery_success=false; "
+                                "primary_actions_enabled=false; safe_to_control=false."
+                            ),
+                            "material_ref_hint": "Use safe evidence_ref labels only.",
+                            "owner_handoff": ["hardware-engineer"],
+                            "objective_ref": "O1",
+                            "next_action": "Collect sanitized packet summary for Robot review.",
+                            "same_evidence_ref_required": True,
+                            "safe_evidence_ref": "evidence://real-material-template-1",
+                            "template_evidence_ref": "evidence://real-material-template-1",
+                            "not_proven": ["real_hil_pass", "delivery_success"],
+                        },
+                        "template_groups": [
+                            {
+                                "material_group": "route_elevator",
+                                "required_item_names": ["field_photo", "operator_note"],
+                                "summary_hint": "metadata-only; not_proven.",
+                                "same_evidence_ref_required": True,
+                                "safe_template_evidence_ref": "evidence://route-template-1",
+                            }
+                        ],
+                        "required_item_templates": [
+                            {
+                                "required_item_name": "hil_packet",
+                                "material_group": "wave_rover_hil_packet",
+                                "summary_hint": "metadata-only; not_proven.",
+                            }
+                        ],
                         "safe_copy": (
                             "real_material_evidence_intake is metadata-only; software_proof, "
                             "not_proven, delivery_success=false, primary_actions_enabled=false, "
@@ -24559,6 +24595,33 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         )
         self.assertEqual(summary["accepted_materials"][0]["material_id"], "redacted-photo-count")
         self.assertIn("real_hil_pass", summary["missing_real_materials"])
+        self.assertEqual(
+            summary["real_material_manifest_template"]["manifest_template"]["material_group"],
+            "wave_rover_hil_packet",
+        )
+        self.assertEqual(
+            summary["real_material_manifest_template"]["manifest_template"][
+                "required_item_names"
+            ],
+            ["hil_packet", "operator_photo"],
+        )
+        self.assertTrue(
+            summary["real_material_manifest_template"]["manifest_template"][
+                "same_evidence_ref_required"
+            ]
+        )
+        self.assertEqual(
+            summary["real_material_manifest_template"]["template_groups"][0][
+                "safe_template_evidence_ref"
+            ],
+            "evidence://route-template-1",
+        )
+        self.assertEqual(
+            summary["real_material_manifest_template"]["required_item_templates"][0][
+                "required_item_name"
+            ],
+            "hil_packet",
+        )
         self.assertIn("real_materials_observed", summary["not_proven"])
         self.assertIn("delivery_success=false", summary["robot_diagnostics_summary"]["safe_copy"])
         self.assertIn("primary_actions_enabled=false", summary["robot_diagnostics_summary"]["safe_copy"])
@@ -24618,6 +24681,17 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                     "delivery_success": True,
                     "primary_actions_enabled": True,
                     "safe_to_control": True,
+                    "manifest_template": {
+                        "schema": "trashbot.real_material_manifest_template.v1",
+                        "status": "not_proven",
+                        "checksum": "sha256:abc",
+                    },
+                    "template_groups": [
+                        {
+                            "material_group": "wave_rover",
+                            "ros_topic": "/cmd_vel",
+                        }
+                    ],
                     "raw_json": {"token": "secret", "ros_topic": "/cmd_vel"},
                     "checksum": "sha256:abc",
                 }
@@ -24655,6 +24729,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn(str(Path(td)), encoded)
         self.assertNotIn("secret-token", encoded)
         self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("ros_topic", encoded)
         self.assertNotIn("raw_json", encoded)
         self.assertNotIn("checksum", encoded)
         self.assertNotIn("Start Delivery control enabled", encoded)

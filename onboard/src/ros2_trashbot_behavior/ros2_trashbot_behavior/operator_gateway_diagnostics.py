@@ -924,6 +924,41 @@ REAL_MATERIAL_EVIDENCE_INTAKE_REQUIRED_NOT_PROVEN = (
     "primary_actions_enabled",
     "safe_to_control",
 )
+REAL_MATERIAL_MANIFEST_TEMPLATE_FIELDS = (
+    "manifest_template",
+    "template_groups",
+    "required_item_templates",
+)
+REAL_MATERIAL_MANIFEST_TEMPLATE_ALLOWED_KEYS = {
+    "schema",
+    "status",
+    "boundary",
+    "evidence_boundary",
+    "source_evidence_boundary",
+    "source",
+    "not_proven",
+    "material_group",
+    "material_groups",
+    "required_item_name",
+    "required_item_names",
+    "required_item_templates",
+    "summary_hint",
+    "material_ref_hint",
+    "owner_handoff",
+    "objective_ref",
+    "next_action",
+    "same_evidence_ref_required",
+    "safe_evidence_ref",
+    "evidence_ref",
+    "template_evidence_ref",
+    "safe_template_evidence_ref",
+}
+REAL_MATERIAL_MANIFEST_TEMPLATE_EVIDENCE_REF_KEYS = {
+    "safe_evidence_ref",
+    "evidence_ref",
+    "template_evidence_ref",
+    "safe_template_evidence_ref",
+}
 ROUTE_TASK_REHEARSAL_TEXT_REDACTIONS = (
     (re.compile(r"(?i)\bAuthorization\s*:\s*(?:Bearer\s+)?[^,\s]+"), "[REDACTED_AUTH_HEADER]"),
     (re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+"), "Bearer [REDACTED]"),
@@ -9693,6 +9728,7 @@ def _default_real_material_evidence_intake_summary(
         "rejected_materials": [],
         "next_required_evidence": [],
         "owner_handoff": [],
+        "real_material_manifest_template": {},
         "safe_copy": safe_copy,
         "robot_diagnostics_summary": {
             "safe_copy": safe_copy,
@@ -11396,6 +11432,94 @@ def _real_material_evidence_ref_is_unsafe(value):
     ):
         return True
     return False
+
+
+def _real_material_manifest_template_scalar_is_unsafe(key, value):
+    # template 字段只作为手机安全提示；路径、凭证、串口、ROS topic 或控制暗示都必须整段拒绝。
+    key_text = str(key or "").strip().lower()
+    if key_text in REAL_MATERIAL_MANIFEST_TEMPLATE_EVIDENCE_REF_KEYS:
+        return _real_material_evidence_ref_is_unsafe(value)
+    if key_text == "same_evidence_ref_required":
+        return value is not True
+    text = _redact_route_task_rehearsal_text(value)
+    if any(
+        marker in text
+        for marker in (
+            "[REDACTED_AUTH_HEADER]",
+            "Bearer [REDACTED]",
+            "[REDACTED_URL]",
+            "/dev/[REDACTED_SERIAL]",
+            "[REDACTED_BAUD]",
+            "[REDACTED_TRACEBACK]",
+            "[REDACTED_LOCAL_PATH]",
+        )
+    ):
+        return True
+    if key_text in {"summary_hint", "material_ref_hint", "next_action"}:
+        return _task_terminal_field_material_intake_copy_is_unsafe(text)
+    return False
+
+
+def _safe_real_material_manifest_template_value(value, key="", depth=0):
+    # 这里不用通用递归透传；manifest template 是跨 worker 合同，必须逐 key 白名单。
+    if depth > 4:
+        return None, True
+    if isinstance(value, dict):
+        safe = {}
+        for raw_key, raw_item in value.items():
+            safe_key = str(raw_key or "").strip()
+            normalized_key = safe_key.lower()
+            if normalized_key not in REAL_MATERIAL_MANIFEST_TEMPLATE_ALLOWED_KEYS:
+                return None, True
+            safe_item, unsafe = _safe_real_material_manifest_template_value(
+                raw_item,
+                normalized_key,
+                depth=depth + 1,
+            )
+            if unsafe:
+                return None, True
+            safe[normalized_key] = safe_item
+        return safe, False
+    if isinstance(value, list):
+        safe_items = []
+        for item in value[:20]:
+            safe_item, unsafe = _safe_real_material_manifest_template_value(
+                item,
+                key,
+                depth=depth + 1,
+            )
+            if unsafe:
+                return None, True
+            safe_items.append(safe_item)
+        return safe_items, False
+    if isinstance(value, bool):
+        if _real_material_manifest_template_scalar_is_unsafe(key, value):
+            return None, True
+        return value, False
+    if value is None:
+        return None, False
+    if isinstance(value, (int, float)):
+        # 模板白名单没有数值型生产材料字段；拒绝数值可避免尺寸、电压、baud 等硬件 raw 值泄露。
+        return None, True
+    if _real_material_manifest_template_scalar_is_unsafe(key, value):
+        return None, True
+    return _redact_route_task_rehearsal_text(value), False
+
+
+def _safe_real_material_manifest_template_alias(intake, summary_fragment):
+    # 兼容 Hardware worker 可能写入的 manifest_template/template_groups/required_item_templates 三种入口。
+    safe_template = {}
+    for source in (summary_fragment, intake):
+        if not isinstance(source, dict):
+            continue
+        for field in REAL_MATERIAL_MANIFEST_TEMPLATE_FIELDS:
+            if field not in source or field in safe_template:
+                continue
+            safe_value, unsafe = _safe_real_material_manifest_template_value(source.get(field))
+            if unsafe:
+                return {}, True
+            safe_template[field] = safe_value
+    return safe_template, False
 
 
 def _elevator_execution_pack_requires_same_evidence_ref(summary_fragment, pack):
@@ -37511,6 +37635,9 @@ def summarize_real_material_evidence_intake(source):
             robot_summary.get("safe_phone_copy") or safe_copy
         ),
     }
+    real_material_manifest_template, manifest_template_unsafe = (
+        _safe_real_material_manifest_template_alias(intake, summary_fragment)
+    )
     summary.update(
         {
             "source_schema": _redact_route_task_rehearsal_text(source_schema),
@@ -37557,6 +37684,7 @@ def summarize_real_material_evidence_intake(source):
             "owner_handoff": _safe_route_task_rehearsal_list(
                 summary_fragment.get("owner_handoff")
             ),
+            "real_material_manifest_template": real_material_manifest_template,
             "safe_copy": _redact_route_task_rehearsal_text(safe_copy),
             "robot_diagnostics_summary": safe_robot_summary,
             "not_proven": _real_material_evidence_intake_not_proven(
@@ -37583,6 +37711,7 @@ def summarize_real_material_evidence_intake(source):
                 "rejected_materials": [],
                 "next_required_evidence": [],
                 "owner_handoff": [],
+                "real_material_manifest_template": {},
             }
         )
         return summary
@@ -37597,6 +37726,7 @@ def summarize_real_material_evidence_intake(source):
                     "reason": "real_material_evidence_intake artifact is missing sanitized summary",
                 },
                 "safe_evidence_ref": "",
+                "real_material_manifest_template": {},
             }
         )
         return summary
@@ -37613,6 +37743,7 @@ def summarize_real_material_evidence_intake(source):
         or summary_fragment.get("delivery_success") is not False
         or summary_fragment.get("primary_actions_enabled") is not False
         or summary_fragment.get("safe_to_control") is not False
+        or manifest_template_unsafe
         or _route_task_field_run_readiness_has_unsafe_fields(intake)
         or _route_task_field_run_readiness_has_unsafe_fields(summary_fragment)
         or _task_terminal_field_material_intake_copy_is_unsafe(safe_copy)
@@ -37640,6 +37771,7 @@ def summarize_real_material_evidence_intake(source):
                 "rejected_materials": [],
                 "next_required_evidence": [],
                 "owner_handoff": [],
+                "real_material_manifest_template": {},
                 "safe_copy": blocked_copy,
                 "robot_diagnostics_summary": {
                     "safe_copy": blocked_copy,

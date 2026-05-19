@@ -123,6 +123,64 @@
         ],
         "next_action": "next_action=Field owner backfills phone-safe summaries under the same safe evidence_ref before review.",
         "owner_handoff": "owner_handoff=Robot owner publishes safe diagnostics alias; Full-stack renders read-only and keeps primary actions unchanged.",
+        "manifest_template": {
+            "schema": "trashbot.real_material_evidence_intake_manifest_template.v1",
+            "submission_pack_status": "submission_pack=not_proven",
+            "same_safe_evidence_ref_required": true,
+            "template_groups": [
+                {
+                    "group_id": "o5_external",
+                    "title": "Objective 5 external",
+                    "owner": "Cloud / Product owner",
+                    "next_action": "Submit external proof phone-safe summaries under the same safe evidence_ref.",
+                    "required_item_templates": [
+                        {"item_id": "public_ingress_tls_summary", "label": "Public HTTPS/TLS summary", "owner": "Cloud owner", "next_action": "Submit redacted endpoint status only."},
+                        {"item_id": "four_g_sim_connectivity_summary", "label": "4G/SIM connectivity summary", "owner": "Field owner", "next_action": "Submit connection result summary only."},
+                        {"item_id": "live_traffic_summary", "label": "Live traffic summary", "owner": "Cloud owner", "next_action": "Submit service traffic summary only."},
+                        {"item_id": "production_db_queue_summary", "label": "Production DB/queue summary", "owner": "Cloud owner", "next_action": "Submit connectivity summary only."}
+                    ]
+                },
+                {
+                    "group_id": "o1_pr5_hardware",
+                    "title": "Objective 1 / PR #5 hardware",
+                    "owner": "Hardware owner",
+                    "next_action": "Submit hardware material summaries under the same safe evidence_ref.",
+                    "required_item_templates": [
+                        {"item_id": "real_2d_lidar_source_receipt_summary", "label": "2D LiDAR source/receipt summary", "owner": "Hardware owner", "next_action": "Submit source and receipt summary."},
+                        {"item_id": "real_tof_source_receipt_summary", "label": "ToF source/receipt summary", "owner": "Hardware owner", "next_action": "Submit source and receipt summary."},
+                        {"item_id": "sensor_install_wiring_power_summary", "label": "Install/wiring/power summary", "owner": "Hardware owner", "next_action": "Submit installation evidence summary."},
+                        {"item_id": "sensor_calibration_entry_summary", "label": "Calibration entry summary", "owner": "Hardware owner", "next_action": "Submit calibration summary."}
+                    ]
+                },
+                {
+                    "group_id": "pr4_route_elevator",
+                    "title": "PR #4 route/elevator",
+                    "owner": "Robot / Autonomy owner",
+                    "next_action": "Submit route/elevator summaries under the same safe evidence_ref.",
+                    "required_item_templates": [
+                        {"item_id": "nav2_or_fixed_route_runtime_summary", "label": "Nav2/fixed-route runtime summary", "owner": "Autonomy owner", "next_action": "Submit runtime summary."},
+                        {"item_id": "route_completion_signal_summary", "label": "Route completion signal summary", "owner": "Robot owner", "next_action": "Submit completion signal summary."},
+                        {"item_id": "field_task_record_summary", "label": "Field task record summary", "owner": "Robot owner", "next_action": "Submit task record summary."},
+                        {"item_id": "elevator_door_floor_human_assist_summary", "label": "Elevator door/floor/human assist summary", "owner": "Field owner", "next_action": "Submit elevator field summary."},
+                        {"item_id": "delivery_result_summary", "label": "Delivery result summary", "owner": "Field owner", "next_action": "Submit accepted/missing/rejected result summary."}
+                    ]
+                },
+                {
+                    "group_id": "o4_real_phone",
+                    "title": "Objective 4 real phone",
+                    "owner": "Full-stack / Field owner",
+                    "next_action": "Submit real phone material summaries under the same safe evidence_ref.",
+                    "required_item_templates": [
+                        {"item_id": "real_phone_browser_summary", "label": "Real phone/browser summary", "owner": "Full-stack owner", "next_action": "Submit real device browser summary."},
+                        {"item_id": "production_app_entry_summary", "label": "Production app/entry summary", "owner": "Full-stack owner", "next_action": "Submit production entry summary."},
+                        {"item_id": "pwa_prompt_user_choice_summary", "label": "PWA prompt/user choice summary", "owner": "Field owner", "next_action": "Submit prompt observation summary."},
+                        {"item_id": "offline_touch_visual_summary", "label": "Offline/touch/visual summary", "owner": "Field owner", "next_action": "Submit phone UX review summary."}
+                    ]
+                }
+            ]
+        },
+        "template_groups": [],
+        "required_item_templates": {},
         "phone_safe_copy": "real_material_evidence_intake_summary 只用于手机只读真实材料回填入口，不放行 Start、Confirm 或 Cancel。",
         "evidence_boundary": "software_proof_docker_real_material_evidence_intake_gate",
         "delivery_success": false,

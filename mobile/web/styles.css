@@ -631,7 +631,21 @@ dd {
   margin-top: 12px;
 }
 
+.real-material-evidence-intake-template-groups {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
 .real-material-readiness-board-group {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fbfa;
+}
+
+.real-material-evidence-intake-template-group {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
@@ -643,10 +657,50 @@ dd {
   font-size: 16px;
 }
 
+.real-material-evidence-intake-template-group h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
 .real-material-readiness-board-group p {
   margin: 4px 0 0;
   color: var(--muted);
   line-height: 1.45;
+}
+
+.real-material-evidence-intake-template-group p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.real-material-evidence-intake-template-group ul {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.real-material-evidence-intake-template-group li {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.real-material-evidence-intake-template-group strong,
+.real-material-evidence-intake-template-group span,
+.real-material-evidence-intake-template-group em {
+  overflow-wrap: anywhere;
+}
+
+.real-material-evidence-intake-template-group em {
+  color: var(--muted);
+  font-style: normal;
 }
 
 .task-terminal-completion-mainline-grid {
@@ -1038,6 +1092,10 @@ dd {
   }
 
   .real-material-readiness-board-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .real-material-evidence-intake-template-groups {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

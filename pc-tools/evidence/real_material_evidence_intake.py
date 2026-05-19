@@ -26,14 +26,17 @@ from typing import Any
 
 SCHEMA = "trashbot.real_material_evidence_intake.v1"
 SUMMARY_SCHEMA = "trashbot.real_material_evidence_intake_summary.v1"
+TEMPLATE_SCHEMA = "trashbot.real_material_manifest_template.v1"
 SCHEMA_VERSION = 1
 SOURCE = "software_proof"
 STATUS = "not_proven"
 EVIDENCE_BOUNDARY = "software_proof_docker_real_material_evidence_intake_gate"
 SAMPLE_MANIFEST_SCHEMA = "trashbot.real_material_evidence_sample_manifest.v1"
 PR5_REVIEW_THREAD_ID = "PRRT_kwDOSWB9286CJ3tX"
+DEFAULT_TEMPLATE_EVIDENCE_REF = "field-material-template-2026-05-19T22-23Z"
 
 READY_STATUS = "ready_for_real_material_evidence_review_not_proven"
+TEMPLATE_READY_STATUS = "ready_for_field_owner_submission_pack_not_proven"
 BLOCKED_MISSING_MANIFEST = "blocked_missing_real_material_manifest"
 BLOCKED_MISSING_ITEMS = "blocked_missing_real_material_items"
 BLOCKED_REJECTED_ITEMS = "blocked_rejected_real_material_items"
@@ -240,6 +243,112 @@ def _sample_manifest() -> dict[str, Any]:
             {"material_group": group_id, "evidence_ref": "sample-real-material-evidence-2026-05-19", "items": []}
             for group_id in MATERIAL_GROUPS
         ],
+    }
+
+
+def _template_item(group_id: str, item_name: str, group_spec: dict[str, Any], evidence_ref: str) -> dict[str, Any]:
+    # template item 是给现场 owner 填写的安全提示，不携带真实路径、凭证或成功结论。
+    return {
+        **_safe_flags(),
+        "name": item_name,
+        "required": True,
+        "safe_evidence_ref": evidence_ref,
+        "summary_hint": (
+            f"fill redacted {item_name} material summary for manual review only; "
+            "state what was collected, source owner, time window, and any missing fields"
+        ),
+        "material_ref_hint": (
+            f"fill redacted handoff reference for {group_id}.{item_name}; "
+            "use a packet id, ticket id, or checksum label, not a raw local path"
+        ),
+        "owner_handoff": group_spec["owner_handoff"],
+        "objective_ref": group_spec["objective_ref"],
+        "next_action": group_spec["next_action"],
+        "safety_markers": [
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+        ],
+    }
+
+
+def build_real_material_manifest_template(evidence_ref: str = DEFAULT_TEMPLATE_EVIDENCE_REF) -> dict[str, Any]:
+    """生成 field owner 可交付的真实材料 manifest template；不制造 proof claim。"""
+    safe_ref, ref_error = _safe_evidence_ref(evidence_ref)
+    if ref_error:
+        raise ValueError(f"unsafe template evidence_ref: {ref_error}")
+
+    material_groups: list[dict[str, Any]] = []
+    for group_id, group_spec in MATERIAL_GROUPS.items():
+        # 每个 group 直接展开 required item，现场 owner 不需要再查脚本常量。
+        material_groups.append(
+            {
+                **_safe_flags(),
+                "material_group": group_id,
+                "title": group_spec["title"],
+                "safe_evidence_ref": safe_ref,
+                "same_evidence_ref_required": True,
+                "objective_ref": group_spec["objective_ref"],
+                "owner_handoff": group_spec["owner_handoff"],
+                "next_action": group_spec["next_action"],
+                "required_items": [
+                    _template_item(group_id, item_name, group_spec, safe_ref)
+                    for item_name in group_spec["required_items"]
+                ],
+                "safety_markers": [
+                    "software_proof",
+                    "not_proven",
+                    "delivery_success=false",
+                    "primary_actions_enabled=false",
+                    "safe_to_control=false",
+                ],
+            }
+        )
+
+    return {
+        "schema": TEMPLATE_SCHEMA,
+        "schema_version": SCHEMA_VERSION,
+        "generated_at": _utc_now(),
+        **_safe_flags(),
+        "real_material_manifest_template": TEMPLATE_READY_STATUS,
+        "template_status": TEMPLATE_READY_STATUS,
+        "evidence_boundary": EVIDENCE_BOUNDARY,
+        "safe_evidence_ref": safe_ref,
+        "same_evidence_ref_required": True,
+        "submission_pack": {
+            **_safe_flags(),
+            "purpose": "field_owner_manifest_submission_pack",
+            "instructions": [
+                "keep the same safe_evidence_ref on every group and item",
+                "replace summary_hint and material_ref_hint with redacted material metadata before intake",
+                "do not paste local paths, serial devices, DB URLs, OSS keys, passwords, tokens, or success/control claims",
+                "rerun real_material_evidence_intake after the field owner fills the manifest",
+            ],
+            "owner_handoff": "product-okr-owner",
+            "next_action": "fill_real_material_manifest_and_rerun_intake",
+        },
+        "material_groups": material_groups,
+        "review_refs": {
+            "objective_5": "Objective 5 remains blocked pending real external proof",
+            "objective_1": "Objective 1 / PR #5 remains blocked pending real hardware materials",
+            "pr5_thread_id": PR5_REVIEW_THREAD_ID,
+            "pr5_state": "blocked_pending_real_materials_not_closed",
+        },
+        "vendor_source_boundary": {
+            "vendor_index": _repo_ref(DEFAULT_VENDOR_INDEX),
+            "vendor_index_exists": DEFAULT_VENDOR_INDEX.exists(),
+            "source_refs": list(VENDOR_SOURCE_REFS),
+            "hardware_conclusion": (
+                "template cites local vendor boundaries only; it does not prove WAVE ROVER UART, HIL, "
+                "real sensor procurement, phone acceptance, route/elevator completion, or cloud readiness"
+            ),
+        },
+        "boundary_note": (
+            "software_proof; not_proven; delivery_success=false; "
+            "primary_actions_enabled=false; safe_to_control=false"
+        ),
     }
 
 
@@ -555,6 +664,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sample-manifest", type=Path, default=None, help="alias for --manifest when validating a sample manifest file")
     parser.add_argument("--output", type=Path, default=Path("real_material_evidence_intake.json"))
     parser.add_argument("--summary-output", type=Path, default=Path("real_material_evidence_intake_summary.json"))
+    parser.add_argument("--template-output", type=Path, default=None, help="write a field-owner manifest template JSON without changing intake exit code")
+    parser.add_argument(
+        "--template-evidence-ref",
+        default=DEFAULT_TEMPLATE_EVIDENCE_REF,
+        help="safe evidence_ref shared by every material group in the generated template",
+    )
     args = parser.parse_args(argv)
 
     # sample-manifest 是显式别名；两者同时给出时优先 manifest，避免隐式覆盖。
@@ -562,6 +677,12 @@ def main(argv: list[str] | None = None) -> int:
     artifact, summary, exit_code = build_real_material_evidence_intake(manifest_path)
     _write_json(args.output, artifact)
     _write_json(args.summary_output, summary)
+    if args.template_output:
+        try:
+            template = build_real_material_manifest_template(args.template_evidence_ref)
+        except ValueError as exc:
+            parser.error(str(exc))
+        _write_json(args.template_output, template)
     return exit_code
 
 

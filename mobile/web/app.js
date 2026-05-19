@@ -17755,6 +17755,147 @@ function realMaterialEvidenceIntakeSummaryText(value, fallback) {
   return safeRealMaterialEvidenceIntakeText(value, fallback);
 }
 
+function realMaterialEvidenceIntakeDefaultTemplateGroups() {
+  // 缺 manifest template 时仍显示四类固定回填包，避免旧 fixture 下现场 owner 看不到该补什么。
+  return [
+    {
+      group_id: "o5_external",
+      title: "Objective 5 external",
+      owner: "Cloud / Product owner",
+      next_action: "提交公网入口、4G/SIM、live traffic、production DB/queue 的 phone-safe 摘要。",
+      required_item_templates: [
+        { item_id: "public_ingress_tls_summary", label: "公网 HTTPS/TLS 摘要", owner: "Cloud owner" },
+        { item_id: "four_g_sim_connectivity_summary", label: "4G/SIM 连通摘要", owner: "Field owner" },
+        { item_id: "live_traffic_summary", label: "live traffic 摘要", owner: "Cloud owner" },
+        { item_id: "production_db_queue_summary", label: "production DB/queue 连通摘要", owner: "Cloud owner" },
+      ],
+    },
+    {
+      group_id: "o1_pr5_hardware",
+      title: "Objective 1 / PR #5 hardware",
+      owner: "Hardware owner",
+      next_action: "提交 2D LiDAR / ToF source、receipt、installation、wiring、power、calibration 的脱敏摘要。",
+      required_item_templates: [
+        { item_id: "real_2d_lidar_source_receipt_summary", label: "2D LiDAR source/receipt 摘要", owner: "Hardware owner" },
+        { item_id: "real_tof_source_receipt_summary", label: "ToF source/receipt 摘要", owner: "Hardware owner" },
+        { item_id: "sensor_install_wiring_power_summary", label: "安装/接线/电源摘要", owner: "Hardware owner" },
+        { item_id: "sensor_calibration_entry_summary", label: "标定与准入摘要", owner: "Hardware owner" },
+      ],
+    },
+    {
+      group_id: "pr4_route_elevator",
+      title: "PR #4 route/elevator",
+      owner: "Robot / Autonomy owner",
+      next_action: "提交 Nav2/fixed-route、task record、电梯门/楼层/人工协助和 delivery result 摘要。",
+      required_item_templates: [
+        { item_id: "nav2_or_fixed_route_runtime_summary", label: "Nav2/fixed-route runtime 摘要", owner: "Autonomy owner" },
+        { item_id: "route_completion_signal_summary", label: "route completion signal 摘要", owner: "Robot owner" },
+        { item_id: "field_task_record_summary", label: "field task record 摘要", owner: "Robot owner" },
+        { item_id: "elevator_door_floor_human_assist_summary", label: "电梯门/楼层/人工协助摘要", owner: "Field owner" },
+        { item_id: "delivery_result_summary", label: "delivery result 摘要", owner: "Field owner" },
+      ],
+    },
+    {
+      group_id: "o4_real_phone",
+      title: "Objective 4 real phone",
+      owner: "Full-stack / Field owner",
+      next_action: "提交真实 iPhone/Android、production app、PWA prompt/user choice、offline/touch/visual 摘要。",
+      required_item_templates: [
+        { item_id: "real_phone_browser_summary", label: "真实手机/browser 摘要", owner: "Full-stack owner" },
+        { item_id: "production_app_entry_summary", label: "production app/entry 摘要", owner: "Full-stack owner" },
+        { item_id: "pwa_prompt_user_choice_summary", label: "PWA prompt/user choice 摘要", owner: "Field owner" },
+        { item_id: "offline_touch_visual_summary", label: "offline/touch/visual 复核摘要", owner: "Field owner" },
+      ],
+    },
+  ];
+}
+
+function realMaterialEvidenceIntakeTemplateItem(item, groupOwner) {
+  // template item 只保留 item id、说明、owner 和下一步，不展示 raw path/token/checksum 或底层协议。
+  if (typeof item === "string") {
+    return {
+      item_id: safeRealMaterialEvidenceIntakeText(item, "material_item=not_proven"),
+      label: safeRealMaterialEvidenceIntakeText(item, "material item"),
+      owner: safeRealMaterialEvidenceIntakeText(groupOwner, "owner=not_proven"),
+      next_action: "提交同一 safe evidence_ref 下的 phone-safe 摘要。",
+    };
+  }
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+  const itemId = safeRealMaterialEvidenceIntakeText(
+    item.item_id || item.id || item.material_item || item.item,
+    "material_item=not_proven",
+  );
+  return {
+    item_id: itemId,
+    label: safeRealMaterialEvidenceIntakeText(
+      item.label || item.title || item.summary || item.safe_phone_copy || item.item,
+      itemId,
+    ),
+    owner: safeRealMaterialEvidenceIntakeText(item.owner || item.owner_handoff || groupOwner, "owner=not_proven"),
+    next_action: realMaterialEvidenceIntakeSummaryText(
+      item.next_action || item.next_required_evidence || item.next_steps,
+      "提交同一 safe evidence_ref 下的 phone-safe 摘要。",
+    ),
+  };
+}
+
+function realMaterialEvidenceIntakeTemplateGroups(value) {
+  // 新旧 contract 兼容：优先 manifest_template.template_groups，其次 template_groups，最后旧 summary 的固定默认包。
+  const manifest = value?.manifest_template && typeof value.manifest_template === "object"
+    ? value.manifest_template
+    : {};
+  const groups = Array.isArray(manifest.template_groups)
+    ? manifest.template_groups
+    : Array.isArray(value?.template_groups)
+      ? value.template_groups
+      : [];
+  const requiredByGroup = value?.required_item_templates && typeof value.required_item_templates === "object"
+    ? value.required_item_templates
+    : {};
+  const allowed = new Set(["o5_external", "objective_5_external", "o1_pr5_hardware", "objective_1_pr5_hardware", "pr4_route_elevator", "route_elevator_pr4", "o4_real_phone", "objective_4_real_phone"]);
+  const normalized = groups
+    .filter((group) => group && typeof group === "object")
+    .map((group) => {
+      const groupId = safeRealMaterialEvidenceIntakeText(group.group_id || group.id, "unknown_group");
+      if (!allowed.has(groupId)) {
+        return null;
+      }
+      const owner = safeRealMaterialEvidenceIntakeText(group.owner || group.owner_handoff, "owner=not_proven");
+      const rawItems = Array.isArray(group.required_item_templates)
+        ? group.required_item_templates
+        : Array.isArray(group.material_items)
+          ? group.material_items
+          : Array.isArray(requiredByGroup[groupId])
+            ? requiredByGroup[groupId]
+            : [];
+      const requiredItems = rawItems
+        .map((item) => realMaterialEvidenceIntakeTemplateItem(item, owner))
+        .filter(Boolean)
+        .slice(0, 8);
+      return {
+        group_id: groupId,
+        title: realMaterialReadinessBoardGroupTitle(
+          groupId,
+          safeRealMaterialEvidenceIntakeText(group.title || group.label, groupId),
+        ),
+        owner,
+        next_action: realMaterialEvidenceIntakeSummaryText(
+          group.next_action || group.next_required_evidence || group.next_steps,
+          "提交同一 safe evidence_ref 下的 phone-safe 摘要。",
+        ),
+        required_item_templates: requiredItems.length
+          ? requiredItems
+          : realMaterialEvidenceIntakeDefaultTemplateGroups()
+            .find((defaultGroup) => defaultGroup.group_id === groupId)?.required_item_templates || [],
+      };
+    })
+    .filter(Boolean);
+  const byId = new Map(normalized.map((group) => [group.group_id, group]));
+  return realMaterialEvidenceIntakeDefaultTemplateGroups().map((group) => byId.get(group.group_id) || group);
+}
+
 function realMaterialEvidenceIntakeNotProvenList(value) {
   // 回填入口是 intake metadata，不是现场通过；固定边界必须始终保留在手机端。
   const provided = notProvenList(value?.not_proven);
@@ -17810,6 +17951,17 @@ function realMaterialEvidenceIntakeFromStatus(status, readiness, diagnostics) {
       provided.owner_handoff || provided.owner_next_action || provided.owner,
       "owner_handoff=Robot owner publishes safe alias; field owner supplies redacted materials; Full-stack stays read-only.",
     ),
+    manifest_template: {
+      schema: "trashbot.real_material_evidence_intake_manifest_template.v1",
+      same_safe_evidence_ref_required: provided.same_safe_evidence_ref_required === false ? false : true,
+      submission_pack_status: safeRealMaterialEvidenceIntakeText(
+        provided.manifest_template?.submission_pack_status ||
+          provided.submission_pack_status ||
+          provided.manifest_status,
+        "submission_pack=not_proven",
+      ),
+      template_groups: realMaterialEvidenceIntakeTemplateGroups(provided),
+    },
     evidence_boundary: safeRealMaterialEvidenceIntakeText(
       provided.evidence_boundary,
       REAL_MATERIAL_EVIDENCE_INTAKE_BOUNDARY,
@@ -24842,16 +24994,68 @@ function ensureRealMaterialEvidenceIntakePanel() {
       <div><dt>Rejected Items</dt><dd id="realMaterialEvidenceIntakeRejected">rejected_items=none</dd></div>
       <div><dt>next_action</dt><dd id="realMaterialEvidenceIntakeNextAction">next_action=not_proven</dd></div>
       <div><dt>owner_handoff</dt><dd id="realMaterialEvidenceIntakeOwnerHandoff">owner_handoff=not_proven</dd></div>
+      <div><dt>Manifest Template</dt><dd id="realMaterialEvidenceIntakeManifestStatus">submission_pack=not_proven</dd></div>
+      <div><dt>Same Safe Evidence Ref</dt><dd id="realMaterialEvidenceIntakeSameRef">same_safe_evidence_ref_required=true</dd></div>
       <div><dt>Evidence Boundary</dt><dd id="realMaterialEvidenceIntakeBoundary">software_proof_docker_real_material_evidence_intake_gate</dd></div>
       <div><dt>Control Boundary</dt><dd id="realMaterialEvidenceIntakeControls">software_proof / not_proven / delivery_success=false / primary_actions_enabled=false / safe_to_control=false</dd></div>
       <div><dt>not_proven</dt><dd id="realMaterialEvidenceIntakeNotProven">真实手机/browser、现场材料通过和真实送达未证明。</dd></div>
     </dl>
+    <div id="realMaterialEvidenceIntakeTemplateGroups" class="real-material-evidence-intake-template-groups" aria-label="manifest template groups"></div>
     <p id="realMaterialEvidenceIntakeHint" class="hint">
-      本入口只消费 phone-safe 白名单字段：intake status、material group、safe evidence_ref、accepted/missing/rejected items、next_action、owner_handoff、evidence boundary 和 not_proven；不展示原始材料、凭证、绝对路径、校验信息或底层通信细节，也不改变 Start Delivery、Confirm Dropoff、Cancel gating。
+      本入口只消费 phone-safe 白名单字段：intake status、material group、safe evidence_ref、manifest template、required item templates、accepted/missing/rejected items、next_action、owner_handoff、evidence boundary 和 not_proven；不展示原始材料、凭证、绝对路径、校验信息或底层通信细节，也不改变 Start Delivery、Confirm Dropoff、Cancel gating。
     </p>
   `;
   anchor.insertAdjacentElement("afterend", panel);
   return panel;
+}
+
+function renderRealMaterialEvidenceIntakeTemplateGroups(summary) {
+  // 四类材料模板是现场 owner 的提交清单；每项只显示名称、owner、下一步和同一 safe evidence_ref 要求。
+  const container = $("realMaterialEvidenceIntakeTemplateGroups");
+  if (!container) {
+    return;
+  }
+  container.innerHTML = "";
+  const groups = Array.isArray(summary.manifest_template?.template_groups)
+    ? summary.manifest_template.template_groups
+    : [];
+  groups.slice(0, 4).forEach((group) => {
+    const item = document.createElement("article");
+    item.className = "real-material-evidence-intake-template-group";
+    const title = document.createElement("h3");
+    title.textContent = safeRealMaterialEvidenceIntakeText(group.title, "真实材料组");
+    const owner = document.createElement("p");
+    owner.textContent = safeRealMaterialEvidenceIntakeText(group.owner, "owner=not_proven");
+    const nextAction = document.createElement("p");
+    nextAction.textContent = realMaterialEvidenceIntakeSummaryText(
+      group.next_action,
+      "提交同一 safe evidence_ref 下的 phone-safe 摘要。",
+    );
+    const sameRef = document.createElement("p");
+    sameRef.textContent =
+      `same_safe_evidence_ref_required=${summary.manifest_template.same_safe_evidence_ref_required} / ${summary.safe_evidence_ref}`;
+    const list = document.createElement("ul");
+    const items = Array.isArray(group.required_item_templates) ? group.required_item_templates : [];
+    const visibleItems = items.length ? items.slice(0, 8) : [{
+      item_id: "material_item=not_proven",
+      label: "material item",
+      owner: "owner=not_proven",
+      next_action: "等待 template_groups",
+    }];
+    visibleItems.forEach((template) => {
+      const row = document.createElement("li");
+      const label = document.createElement("strong");
+      label.textContent = safeRealMaterialEvidenceIntakeText(template.label || template.item_id, "material item");
+      const itemId = document.createElement("span");
+      itemId.textContent = safeRealMaterialEvidenceIntakeText(template.item_id, "item_id=not_proven");
+      const handoff = document.createElement("em");
+      handoff.textContent = `${safeRealMaterialEvidenceIntakeText(template.owner || group.owner, "owner=not_proven")} / ${realMaterialEvidenceIntakeSummaryText(template.next_action, "提交同一 safe evidence_ref 下的 phone-safe 摘要。")}`;
+      row.append(label, itemId, handoff);
+      list.appendChild(row);
+    });
+    item.append(title, owner, nextAction, sameRef, list);
+    container.appendChild(item);
+  });
 }
 
 function renderRealMaterialEvidenceIntake(status) {
@@ -24875,10 +25079,14 @@ function renderRealMaterialEvidenceIntake(status) {
   $("realMaterialEvidenceIntakeRejected").textContent = summary.rejected_items;
   $("realMaterialEvidenceIntakeNextAction").textContent = summary.next_action;
   $("realMaterialEvidenceIntakeOwnerHandoff").textContent = summary.owner_handoff;
+  $("realMaterialEvidenceIntakeManifestStatus").textContent = summary.manifest_template.submission_pack_status;
+  $("realMaterialEvidenceIntakeSameRef").textContent =
+    `same_safe_evidence_ref_required=${summary.manifest_template.same_safe_evidence_ref_required}`;
   $("realMaterialEvidenceIntakeBoundary").textContent = summary.evidence_boundary;
   $("realMaterialEvidenceIntakeControls").textContent =
     `${summary.source} / not_proven / delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled} / safe_to_control=${summary.safe_to_control}`;
   $("realMaterialEvidenceIntakeNotProven").textContent = summary.not_proven.join("、");
+  renderRealMaterialEvidenceIntakeTemplateGroups(summary);
 }
 
 function renderHardwareSensorProcurementIntake(status) {

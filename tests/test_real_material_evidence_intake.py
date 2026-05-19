@@ -11,6 +11,7 @@ from __future__ import annotations
 # 测试约束 06：accepted_items 只表示可人工复核，不代表真实 HIL、公网或手机通过。
 # 测试约束 07：输出必须保持 delivery_success=false。
 # 测试约束 08：输出必须保持 primary_actions_enabled=false 和 safe_to_control=false。
+# 测试约束 09：manifest template 只能引导 field owner 回填材料，不能改变 intake exit code。
 
 import importlib.util
 import json
@@ -127,6 +128,40 @@ class RealMaterialEvidenceIntakeTest(unittest.TestCase):
         self.assertFalse(artifact["delivery_success"])
         self.assertFalse(summary["primary_actions_enabled"])
 
+    def test_manifest_template_lists_all_owner_required_items(self):
+        template = gate.build_real_material_manifest_template("field-material-template-2026-05-19T22-23Z")
+        encoded = json.dumps(template, ensure_ascii=False)
+        group_ids = {group["material_group"] for group in template["material_groups"]}
+
+        self.assertEqual(template["schema"], "trashbot.real_material_manifest_template.v1")
+        self.assertEqual(template["source"], "software_proof")
+        self.assertEqual(template["status"], "not_proven")
+        self.assertEqual(template["template_status"], "ready_for_field_owner_submission_pack_not_proven")
+        self.assertEqual(template["safe_evidence_ref"], "field-material-template-2026-05-19T22-23Z")
+        self.assertEqual(group_ids, {"o5_external", "o1_pr5_hardware", "pr4_route_elevator", "o4_real_phone"})
+        self.assertIn("summary_hint", encoded)
+        self.assertIn("material_ref_hint", encoded)
+        self.assertIn("owner_handoff", encoded)
+        self.assertIn("objective_ref", encoded)
+        self.assertIn("next_action", encoded)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", encoded)
+        self.assertIn("blocked_pending_real_materials_not_closed", encoded)
+        self.assertFalse(template["delivery_success"])
+        self.assertFalse(template["primary_actions_enabled"])
+        self.assertFalse(template["safe_to_control"])
+        for group in template["material_groups"]:
+            spec = gate.MATERIAL_GROUPS[group["material_group"]]
+            self.assertEqual(len(group["required_items"]), len(spec["required_items"]))
+            self.assertEqual(group["safe_evidence_ref"], template["safe_evidence_ref"])
+            for item in group["required_items"]:
+                self.assertTrue(item["required"])
+                self.assertEqual(item["safe_evidence_ref"], template["safe_evidence_ref"])
+                self.assertIn("summary_hint", item)
+                self.assertIn("material_ref_hint", item)
+                self.assertFalse(item["delivery_success"])
+                self.assertFalse(item["primary_actions_enabled"])
+                self.assertFalse(item["safe_to_control"])
+
     def test_cli_writes_artifact_and_summary(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -142,6 +177,39 @@ class RealMaterialEvidenceIntakeTest(unittest.TestCase):
         self.assertFalse(artifact["delivery_success"])
         self.assertFalse(summary["primary_actions_enabled"])
         self.assertFalse(summary["safe_to_control"])
+
+    def test_cli_writes_template_without_changing_intake_exit_code(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            artifact_path = root / "real_material_evidence_intake.json"
+            summary_path = root / "real_material_evidence_intake_summary.json"
+            template_path = root / "real_material_manifest_template.json"
+            exit_code = gate.main(
+                [
+                    "--template-output",
+                    str(template_path),
+                    "--template-evidence-ref",
+                    "field-owner-template-2026-05-19",
+                    "--output",
+                    str(artifact_path),
+                    "--summary-output",
+                    str(summary_path),
+                ]
+            )
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            template = json.loads(template_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(artifact["intake_status"], "blocked_missing_real_material_items")
+        self.assertEqual(template["schema"], "trashbot.real_material_manifest_template.v1")
+        self.assertEqual(template["safe_evidence_ref"], "field-owner-template-2026-05-19")
+        self.assertIn("o5_external", json.dumps(template, ensure_ascii=False))
+        self.assertIn("o1_pr5_hardware", json.dumps(template, ensure_ascii=False))
+        self.assertIn("pr4_route_elevator", json.dumps(template, ensure_ascii=False))
+        self.assertIn("o4_real_phone", json.dumps(template, ensure_ascii=False))
+        self.assertFalse(template["delivery_success"])
+        self.assertFalse(template["primary_actions_enabled"])
+        self.assertFalse(template["safe_to_control"])
 
 
 if __name__ == "__main__":
