@@ -31,6 +31,38 @@ if "threading" not in globals():
     import threading
 
 
+CURSOR_PROTOCOL_VERSION = "trashbot.remote.cursor.v1"
+CLOUD_ACK_OUTAGE_REPLAY_GUARD_BOUNDARY = "software_proof_docker_cloud_ack_outage_replay_guard"
+PENDING_TERMINAL_ACK_KEY = "pending_terminal_ack"
+SAFE_OPERATOR_STATUS_KEYS = {
+    "protocol_version",
+    "robot_id",
+    "state",
+    "message",
+    "updated_at",
+    "remote_ready",
+    "cloud_reachable",
+    "auth_state",
+    "degradation_state",
+    "retry_hint",
+    "safe_phone_copy",
+    "accepted",
+    "service_accepted",
+    "error_code",
+    "final_state",
+}
+SENSITIVE_STATE_MARKERS = (
+    "authorization",
+    "bearer",
+    "/cmd_vel",
+    "wave rover",
+    "serial",
+    "baudrate",
+    "traceback",
+    "delivery_success=true",
+)
+
+
 def _snapshot_status(robot_id, snapshot):
     snapshot = dict(snapshot or {})
     state = snapshot.pop("state", "unknown")
@@ -90,7 +122,9 @@ class RemoteBridgeWorker:
         self.operator_backend = operator_backend
         self.robot_id = robot_id
         self.cursor_state_path = str(cursor_state_path or "").strip()
-        self.last_ack_id = self._load_last_ack_id(str(last_ack_id or ""))
+        cursor_state = self._load_cursor_state(str(last_ack_id or ""))
+        self.last_ack_id = cursor_state["last_terminal_ack_id"]
+        self.pending_terminal_ack = cursor_state[PENDING_TERMINAL_ACK_KEY]
         self.command_results = {}
         self.max_command_results = int(max_command_results)
 
@@ -102,6 +136,9 @@ class RemoteBridgeWorker:
             # status 都提交不上时，本轮不能安全拉取新命令；保持游标不动，等下次轮询重试。
             self._record_degraded_status(exc)
             return False
+        if self.pending_terminal_ack:
+            # pending ACK 是已经执行过的本地终态；先补发它，才能避免重启后重复执行命令。
+            return self._replay_pending_terminal_ack()
         try:
             command = self.cloud.get_next_command(self.last_ack_id)
         except RemoteCloudError as exc:
@@ -167,10 +204,34 @@ class RemoteBridgeWorker:
         try:
             self.cloud.post_ack(command_id, ack["state"], ack["message"], ack["result"])
         except RemoteCloudError as exc:
-            # ACK 未进入云端就不是 terminal ACK，不能推进或落盘 last_terminal_ack_id。
+            # ACK 未进入云端就不是 terminal ACK；先持久化 pending ACK，再暴露降级状态。
+            self._persist_pending_terminal_ack(command_id, ack)
             self._record_degraded_status(exc)
             return False
         self.last_ack_id = command_id
+        self._persist_last_ack_id(command_id)
+        self._post_status_from_ack(ack)
+        return True
+
+    def _replay_pending_terminal_ack(self):
+        pending_ack = dict(self.pending_terminal_ack or {})
+        command_id = str(pending_ack.get("command_id") or "").strip()
+        ack = dict(pending_ack.get("ack") or {})
+        if not command_id or ack.get("state") not in {"acked", "failed", "ignored"}:
+            raise RuntimeError("remote bridge pending ACK state is malformed")
+        try:
+            self.cloud.post_ack(
+                command_id,
+                ack["state"],
+                str(ack.get("message") or ""),
+                ack.get("result") if isinstance(ack.get("result"), dict) else {},
+            )
+        except RemoteCloudError as exc:
+            # 补发失败仍保持 pending ACK，不拉取新命令，避免本地行为被重复触发。
+            self._record_degraded_status(exc)
+            return False
+        self.last_ack_id = command_id
+        self.pending_terminal_ack = None
         self._persist_last_ack_id(command_id)
         self._post_status_from_ack(ack)
         return True
@@ -200,30 +261,73 @@ class RemoteBridgeWorker:
             pass
 
     def _load_last_ack_id(self, fallback):
+        return self._load_cursor_state(fallback)["last_terminal_ack_id"]
+
+    def _load_cursor_state(self, fallback):
+        state = {
+            "last_terminal_ack_id": str(fallback or ""),
+            PENDING_TERMINAL_ACK_KEY: None,
+        }
         if not self.cursor_state_path:
-            return fallback
+            return state
         path = Path(self.cursor_state_path)
         if not path.exists():
-            return fallback
+            return state
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             raise RuntimeError(f"remote bridge cursor state unreadable: {exc}") from exc
         if not isinstance(payload, dict):
             raise RuntimeError("remote bridge cursor state must be a JSON object")
-        # 状态文件只保存游标和时间，不写 token、URL 或硬件细节，避免把运行密钥落盘。
-        return str(payload.get("last_terminal_ack_id") or payload.get("last_ack_id") or fallback or "")
+        # 状态文件只保存游标和安全 pending ACK，不写 token、URL 或硬件细节，避免把运行密钥落盘。
+        state["last_terminal_ack_id"] = str(
+            payload.get("last_terminal_ack_id") or payload.get("last_ack_id") or fallback or ""
+        )
+        pending_ack = payload.get(PENDING_TERMINAL_ACK_KEY)
+        if pending_ack is not None:
+            if not isinstance(pending_ack, dict):
+                raise RuntimeError("remote bridge pending ACK state must be a JSON object")
+            command_id = str(pending_ack.get("command_id") or "").strip()
+            ack = pending_ack.get("ack")
+            if not command_id or not isinstance(ack, dict):
+                raise RuntimeError("remote bridge pending ACK state is malformed")
+            state[PENDING_TERMINAL_ACK_KEY] = {
+                "command_id": command_id,
+                "ack": self._safe_ack_for_state(ack),
+            }
+        return state
 
     def _persist_last_ack_id(self, command_id):
+        self._persist_cursor_state(str(command_id), None)
+
+    def _persist_pending_terminal_ack(self, command_id, ack):
+        self.pending_terminal_ack = {
+            "command_id": str(command_id),
+            "ack": self._safe_ack_for_state(ack),
+        }
+        self._persist_cursor_state(self.last_ack_id, self.pending_terminal_ack)
+
+    def _persist_cursor_state(self, command_id, pending_terminal_ack):
         if not self.cursor_state_path:
             return
         path = Path(self.cursor_state_path)
         payload = {
-            "protocol_version": "trashbot.remote.cursor.v1",
+            "protocol_version": CURSOR_PROTOCOL_VERSION,
             "robot_id": self.robot_id,
             "last_terminal_ack_id": str(command_id),
+            "evidence_boundary": CLOUD_ACK_OUTAGE_REPLAY_GUARD_BOUNDARY,
             "updated_at": time.time(),
         }
+        if pending_terminal_ack:
+            safe_pending_ack = {
+                "protocol_version": CURSOR_PROTOCOL_VERSION,
+                "robot_id": self.robot_id,
+                "command_id": str(pending_terminal_ack["command_id"]),
+                "ack": self._safe_ack_for_state(pending_terminal_ack["ack"]),
+                "evidence_boundary": CLOUD_ACK_OUTAGE_REPLAY_GUARD_BOUNDARY,
+                "updated_at": time.time(),
+            }
+            payload[PENDING_TERMINAL_ACK_KEY] = safe_pending_ack
         # 先写同目录临时文件再原子替换，避免重启时读到半截 JSON 后误用旧游标。
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
@@ -235,6 +339,43 @@ class RemoteBridgeWorker:
                 tmp_path.unlink()
             except FileNotFoundError:
                 pass
+
+    def _safe_ack_for_state(self, ack):
+        result = ack.get("result") if isinstance(ack.get("result"), dict) else {}
+        safe_result = {}
+        if "http_status" in result:
+            try:
+                safe_result["http_status"] = int(result["http_status"])
+            except (TypeError, ValueError):
+                safe_result["http_status"] = 0
+        operator_status = result.get("operator_status")
+        if isinstance(operator_status, dict):
+            safe_result["operator_status"] = self._safe_operator_status(operator_status)
+        # pending ACK 只需要足够重放 terminal envelope，不能把完整后端 payload 当重启状态持久化。
+        return {
+            "state": str(ack.get("state") or "failed"),
+            "message": self._safe_state_text(ack.get("message") or ""),
+            "result": safe_result,
+        }
+
+    def _safe_operator_status(self, operator_status):
+        safe_status = {}
+        for key in SAFE_OPERATOR_STATUS_KEYS:
+            if key not in operator_status:
+                continue
+            value = operator_status[key]
+            if isinstance(value, str):
+                safe_status[key] = self._safe_state_text(value)
+            elif isinstance(value, (bool, int, float)) or value is None:
+                safe_status[key] = value
+        return safe_status
+
+    def _safe_state_text(self, value):
+        text = str(value)
+        lowered = text.lower()
+        if any(marker in lowered for marker in SENSITIVE_STATE_MARKERS):
+            return "[redacted]"
+        return text[:240]
 
     def _post_status_from_ack(self, ack):
         status = (ack.get("result") or {}).get("operator_status")

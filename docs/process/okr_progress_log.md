@@ -6,6 +6,24 @@
 
 ---
 
+## 2026-05-20 系列
+
+更新时间：2026-05-20 00:19 Asia/Shanghai。
+
+### 2026-05-20 00-01｜cloud-ack-outage-replay-guard｜ACK outage replay guard software proof
+
+本轮 `sprints/2026.05.20_00-01_cloud-ack-outage-replay-guard/` 针对 Objective 5 command/status/ack 主链路的一个具体恢复 gap，而不是继续包装外部材料缺失。Robot worker 完成 `cloud_ack_outage_replay_guard`：当本地 command 已执行但 terminal ACK POST 失败或 ACK response malformed 时，`remote_bridge` 持久化 redacted `pending_terminal_ack`，保持 `last_terminal_ack_id` 不推进；worker restart / next poll 会先 replay pending ACK，成功后才推进 cursor 并清理 pending ACK，避免重复执行本地命令。Full-Stack worker 只读确认现有 mobile/web fail-closed copy 足够解释 `waiting_for_command_ack`、`cloud_unreachable`、`malformed_response`、`retry_hint`、`safe_phone_copy`，不会把 ACK 接收误写成 delivery success。证据边界为 `software_proof_docker_cloud_ack_outage_replay_guard`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮未触碰 WAVE ROVER/UART/HIL、hardware bridge、2D LiDAR / ToF materials 或 PR #5 真实材料；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `blocked_pending_real_materials`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 route/elevator field material、dropoff/cancel completion、delivery result 或真实电梯 proof；pending ACK replay 不等于 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | Full-Stack 只读确认现有 fail-closed phone copy 足够，本轮不改 UI；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_ack_outage_replay_guard` 只证明 local worker state file + targeted unit tests 下的 ACK outage replay guard：pending ACK 持久化、restart replay、不重复本地执行、`last_terminal_ack_id` 成功 ACK 后才推进。本轮不证明真实 4G/SIM、公网 HTTPS/TLS、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Product closeout 复跑 `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py` 输出 `Ran 125 tests ... OK`；`PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_bridge.py` 通过；required `rg` 覆盖 implementation、docs、OKR、progress log 和 sprint closeout strings；scoped `git diff --check` 与 staged `git diff --cached --check` 通过。本轮不证明真实 O5 external proof、Objective 1 HIL、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` closure、PR #4 route/elevator field pass、真实手机/browser、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
+
 ## 2026-05-19 系列
 
 更新时间：2026-05-19 23:23 Asia/Shanghai。

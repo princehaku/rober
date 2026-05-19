@@ -716,16 +716,18 @@ executable command.
 
 `remote_bridge` polls with `last_ack_id` and can optionally persist the last
 terminal ACK cursor through `cursor_state_path`. The cursor state file stores
-only `robot_id`, `last_terminal_ack_id`, protocol version, and update time. It
-must not store bearer tokens, cloud URLs with credentials, serial devices,
-hardware parameters, or raw command payloads.
+only `robot_id`, `last_terminal_ack_id`, optional redacted pending ACK,
+protocol version, proof boundary, and update time. It must not store bearer
+tokens, cloud URLs with credentials, serial devices, hardware parameters, raw
+command payloads, raw ROS topics, `/cmd_vel`, WAVE ROVER details, tracebacks,
+or delivery success claims.
 
 On startup, a valid `cursor_state_path` takes precedence over the launch-time
 `last_ack_id` fallback. After a terminal ACK (`acked`, `failed`, or `ignored`)
 is successfully posted to the cloud, the bridge writes the new
 `last_terminal_ack_id` atomically. If ACK posting fails, the cursor is not
-advanced or persisted, so the bridge can retry the same command without
-pretending that the cloud accepted the terminal state.
+advanced as a terminal cursor; only the pending ACK is persisted so the bridge
+can retry without pretending that the cloud accepted the terminal state.
 
 Unknown cursor behavior belongs to the cloud queue contract, not to robot-side
 string ordering. The bridge sends the restored `last_ack_id` exactly as an
@@ -745,12 +747,28 @@ For the network recovery drill compatibility fence, `remote_bridge` treats
 status POST failures as a hard stop for that polling cycle: it records a
 phone-safe degraded state and does not request a command. If the ACK response is
 malformed or the ACK POST fails after local behavior accepted the command, the
-bridge keeps the command result only in memory, leaves `last_ack_id` and
-`cursor_state_path` unchanged, and retries the same command envelope on the next
-poll. Only a successfully posted terminal ACK may advance and persist the
-cursor. This is still local/Docker software proof and does not prove real 4G
-network recovery, production cloud durability, Nav2/fixed-route delivery, WAVE
-ROVER movement, or HIL.
+bridge persists a redacted `pending_terminal_ack`, leaves
+`last_terminal_ack_id` unchanged, and records a degraded state. On worker
+restart or the next polling cycle, the bridge posts the pending ACK before
+requesting a new command. Once that replay succeeds, it advances and persists
+`last_terminal_ack_id` and clears `pending_terminal_ack`; until then it must not
+fetch another command or repeat local command execution.
+
+### cloud_ack_outage_replay_guard
+
+`cloud_ack_outage_replay_guard` is the Robot-side ACK outage guard for the
+Docker/local remote bridge. Its evidence boundary is
+`software_proof_docker_cloud_ack_outage_replay_guard`. It proves only that a
+single local worker state file can preserve a terminal ACK after cloud ACK POST
+outage or malformed ACK response, replay it after restart, and avoid duplicate
+local backend execution before the cloud accepts that ACK.
+
+The pending ACK state is a safe subset: command id, terminal ACK state/message,
+safe result fields, `robot_id`, protocol version, `updated_at`, and
+`evidence_boundary`. It is not a production DB/queue, worker/cutover, real 4G
+or SIM, HTTPS/TLS public ingress, real phone/browser, Nav2/fixed-route, WAVE
+ROVER/HIL, or delivery success proof. A successful replay means only that the
+cloud ACK endpoint accepted the command-processing envelope.
 
 The independent relay stores commands/status/acks in either a single local JSON
 state file or a single local SQLite file. JSON writes through a temporary file
