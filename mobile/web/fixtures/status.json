@@ -2442,5 +2442,50 @@
       "HIL",
       "delivery success"
     ]
+  },
+  "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_review_handoff_summary": {
+    "schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_review_handoff_summary.v1",
+    "schema_version": 1,
+    "callback_review_handoff_schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_callback_review_handoff.v1",
+    "source_alias": "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_review_handoff_summary",
+    "source": "software_proof",
+    "handoff_status": "ready_for_field_owner_handoff_not_proven",
+    "source_review_status": "needs_callback_backfill_not_proven",
+    "safe_evidence_ref": "field_trial_acceptance_review_decision_fixture_20260518_0001",
+    "owner_handoff": "owner_handoff=现场 owner 接收 phone-safe review metadata，补齐真实手机/PWA/production app evidence 后再交 Product/Support 复核。",
+    "next_required_evidence": "next_required_evidence=同一 safe_evidence_ref 的真实手机验收材料、PWA prompt/user choice、production app、route/elevator 现场结果和 redaction result。",
+    "rerun_guidance": "rerun_guidance=补齐真实现场材料后重跑 callback intake、review decision 和 software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_review_handoff_gate。",
+    "blocker_summary": "blocker_summary=真实手机/browser、production app、PWA prompt/user choice、O5 external proof、route/elevator 现场结果、WAVE ROVER/UART/HIL 和 delivery success 均未证明。",
+    "handoff_items": [
+      "handoff_item=只交接 whitelisted phone-safe metadata，不交接原始回调、原始 JSON、校验值或完整材料。",
+      "handoff_item=Start Delivery、Confirm Dropoff、Cancel gating 仍由原状态 gate 控制，handoff metadata 不放行控制。"
+    ],
+    "safe_phone_copy": "现场验收回调交接 fixture 只读展示 source review status、safe evidence_ref、owner handoff、next evidence、rerun guidance 和 blocker summary；这是 source=software_proof / not_proven。",
+    "safe_copy": "现场验收回调交接 phone-safe copy：source=software_proof，not_proven，delivery_success=false，primary_actions_enabled=false，safe_to_control=false。",
+    "safe_copy_status": "safe_copy_available",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "recovery_hint": "handoff 只交接 callback review metadata；缺 summary、fail-closed flags、unsafe copy 或 evidence_ref 不匹配时继续 blocked。",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_review_handoff_gate",
+    "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "真实 iPhone/Android device behavior",
+      "production app",
+      "真实 PWA install prompt/user choice",
+      "真实 phone/browser acceptance",
+      "Objective 5 external proof",
+      "真实 route/elevator 现场材料缺口",
+      "WAVE ROVER/UART/HIL",
+      "dropoff/cancel completion",
+      "delivery success"
+    ]
   }
 }
