@@ -127,6 +127,7 @@ const PR5_REVIEW_THREAD_CLOSEOUT_BOUNDARY = "software_proof_docker_pr5_review_th
 const HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_BOUNDARY = "software_proof_docker_hardware_real_material_escalation_request_gate";
 const REAL_MATERIAL_READINESS_BOARD_BOUNDARY = "software_proof_docker_real_material_readiness_board_gate";
 const REAL_MATERIAL_EVIDENCE_INTAKE_BOUNDARY = "software_proof_docker_real_material_evidence_intake_gate";
+const REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_BOUNDARY = "software_proof_docker_real_material_followup_escalation_status_gate";
 const WAVE_ROVER_FEEDBACK_REPLAY_BOUNDARY = "software_proof_docker_wave_rover_feedback_replay_gate";
 const WAVE_ROVER_HIL_PACKET_INTAKE_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_intake_gate";
 const WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_review_decision_gate";
@@ -282,6 +283,7 @@ const UNSAFE_PR5_REVIEW_THREAD_CLOSEOUT_TEXT = /(authorization|bearer|token|gith
 const UNSAFE_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw request|raw escalation|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|\bhil\b|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_REAL_MATERIAL_READINESS_BOARD_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw board|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|safe_to_control\s*=\s*true|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_REAL_MATERIAL_EVIDENCE_INTAKE_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw diagnostics|raw material|raw intake|raw evidence|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|safe_to_control\s*=\s*true|hil_pass|hil passed|field pass|现场通过|真实手机已验收|真实送达成功|投放完成|取消完成|完整\s*材料)/i;
+const UNSAFE_REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw diagnostics|raw material|raw followup|raw escalation|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|safe_to_control\s*=\s*true|hil_pass|hil passed|field pass|现场通过|真实手机已验收|真实送达成功|投放完成|取消完成|升级完成|材料已完成|完整\s*材料)/i;
 const UNSAFE_WAVE_ROVER_FEEDBACK_REPLAY_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*反馈)/i;
 const UNSAFE_WAVE_ROVER_HIL_PACKET_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial device|uart device|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw packet|raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*packet|完整\s*反馈)/i;
 const UNSAFE_WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial device|uart device|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw packet|raw review|raw feedback|full raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_passed|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*packet|完整\s*反馈)/i;
@@ -355,6 +357,7 @@ let latestPr5ReviewThreadCloseout = null;
 let latestHardwareRealMaterialEscalationRequest = null;
 let latestRealMaterialReadinessBoard = null;
 let latestRealMaterialEvidenceIntake = null;
+let latestRealMaterialFollowupEscalationStatus = null;
 let latestWaveRoverFeedbackReplay = null;
 let latestWaveRoverHilPacketIntake = null;
 let latestWaveRoverHilPacketReviewDecision = null;
@@ -1188,6 +1191,15 @@ function safeRealMaterialEvidenceIntakeText(value, fallback = "not_proven") {
   // 回填入口承接真实材料摘要，但手机端只显示白名单元数据；任何 raw、路径、凭证或成功语义都降级。
   const text = safeText(value, fallback);
   if (UNSAFE_REAL_MATERIAL_EVIDENCE_INTAKE_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeRealMaterialFollowupEscalationStatusText(value, fallback = "not_proven") {
+  // follow-up 升级状态只展示 owner 追踪摘要；命中原始材料、底层控制或完成暗示时降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -17977,6 +17989,247 @@ function realMaterialEvidenceIntakeFromStatus(status, readiness, diagnostics) {
   };
 }
 
+function realMaterialFollowupEscalationStatusCandidate(status, readiness, diagnostics) {
+  // Robot safe alias 优先；兼容 phone-safe summary，但不读取 raw manifest、raw materials 或内部 artifact。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.robot_diagnostics_real_material_followup_escalation_status_summary,
+    readiness?.robot_diagnostics_real_material_followup_escalation_status_summary,
+    diagnostics?.robot_diagnostics_real_material_followup_escalation_status_summary,
+    diagnosticsReadiness.robot_diagnostics_real_material_followup_escalation_status_summary,
+    diagnosticsSummary.robot_diagnostics_real_material_followup_escalation_status_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_real_material_followup_escalation_status_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_real_material_followup_escalation_status_summary,
+    statusDiagnosticsSummary.robot_diagnostics_real_material_followup_escalation_status_summary,
+    status?.real_material_followup_escalation_status_summary,
+    readiness?.real_material_followup_escalation_status_summary,
+    diagnostics?.real_material_followup_escalation_status_summary,
+    diagnosticsReadiness.real_material_followup_escalation_status_summary,
+    diagnosticsSummary.real_material_followup_escalation_status_summary,
+    nestedDiagnosticsSummary.real_material_followup_escalation_status_summary,
+    nestedDiagnosticsInnerSummary.real_material_followup_escalation_status_summary,
+    statusDiagnosticsSummary.real_material_followup_escalation_status_summary,
+    status?.phone_safe_real_material_followup_escalation_status_summary,
+    readiness?.phone_safe_real_material_followup_escalation_status_summary,
+    diagnostics?.phone_safe_real_material_followup_escalation_status_summary,
+    diagnosticsReadiness.phone_safe_real_material_followup_escalation_status_summary,
+    diagnosticsSummary.phone_safe_real_material_followup_escalation_status_summary,
+    nestedDiagnosticsSummary.phone_safe_real_material_followup_escalation_status_summary,
+    nestedDiagnosticsInnerSummary.phone_safe_real_material_followup_escalation_status_summary,
+    statusDiagnosticsSummary.phone_safe_real_material_followup_escalation_status_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function realMaterialFollowupEscalationStatusSummaryText(value, fallback) {
+  // follow-up 状态可能来自数组或 map；手机端只折叠白名单摘要，避免展示完整材料或内部路径。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeRealMaterialFollowupEscalationStatusText(
+        item?.safe_phone_copy || item?.summary || item?.status || item?.state ||
+          item?.reason || item?.evidence || item?.command || item?.owner || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.reason || value.evidence || value.command || value.owner || value.next_required_evidence;
+    if (direct) {
+      return safeRealMaterialFollowupEscalationStatusText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeRealMaterialFollowupEscalationStatusText(key, "");
+        const copy = realMaterialFollowupEscalationStatusSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 8).join("；") : fallback;
+  }
+  return safeRealMaterialFollowupEscalationStatusText(value, fallback);
+}
+
+function realMaterialFollowupEscalationStatusDefaultGroups() {
+  // 缺 summary 时仍显示四个固定追责槽位，避免材料升级状态空白被误解为已完成。
+  return [
+    {
+      material_group: "o5_external",
+      title: "Objective 5 external",
+      field_owner: "Cloud / Product owner",
+      due_status: "blocked_missing_external_materials",
+      blocked_reason: "缺真实公网、4G/SIM、live traffic、production DB/queue 或 cutover 摘要。",
+      next_required_evidence: "提交 external proof phone-safe summary。",
+      escalation_level: "field_owner_followup",
+      rerun_command: "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
+      rerun_status_summary: "rerun_status=waiting_for_real_external_materials",
+    },
+    {
+      material_group: "o1_pr5_hardware",
+      title: "Objective 1 / PR #5 hardware",
+      field_owner: "Hardware owner",
+      due_status: "blocked_pending_real_materials",
+      blocked_reason: "PR #5 PRRT_kwDOSWB9286CJ3tX 仍缺真实 sensor source、receipt、installation 和 bench-entry 摘要。",
+      next_required_evidence: "提交 2D LiDAR / ToF source、receipt、installation、wiring、power、calibration 摘要。",
+      escalation_level: "owner_escalation_required",
+      rerun_command: "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
+      rerun_status_summary: "rerun_status=waiting_for_hardware_owner_materials",
+    },
+    {
+      material_group: "pr4_route_elevator",
+      title: "PR #4 route/elevator",
+      field_owner: "Robot / Autonomy owner",
+      due_status: "blocked_missing_field_run_materials",
+      blocked_reason: "缺真实 route runtime、completion signal、task record、elevator field 和 delivery result 摘要。",
+      next_required_evidence: "提交同一 safe evidence_ref 下的 route/elevator phone-safe summary。",
+      escalation_level: "field_owner_followup",
+      rerun_command: "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
+      rerun_status_summary: "rerun_status=waiting_for_route_elevator_materials",
+    },
+    {
+      material_group: "o4_real_phone",
+      title: "Objective 4 real phone",
+      field_owner: "Full-stack / Field owner",
+      due_status: "blocked_missing_real_phone_materials",
+      blocked_reason: "缺真实 iPhone/Android behavior、production app、PWA prompt/user choice 摘要。",
+      next_required_evidence: "提交真实手机/browser field acceptance phone-safe summary。",
+      escalation_level: "field_owner_followup",
+      rerun_command: "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
+      rerun_status_summary: "rerun_status=waiting_for_real_phone_materials",
+    },
+  ];
+}
+
+function realMaterialFollowupEscalationStatusGroups(value) {
+  // 手机端只渲染 sprint plan 固定四类 material group；未知 group 直接忽略。
+  const allowed = new Set(["o5_external", "objective_5_external", "o1_pr5_hardware", "objective_1_pr5_hardware", "pr4_route_elevator", "route_elevator_pr4", "o4_real_phone", "objective_4_real_phone"]);
+  const groups = Array.isArray(value?.material_groups)
+    ? value.material_groups
+    : Array.isArray(value?.followup_status_groups)
+      ? value.followup_status_groups
+      : [];
+  const normalized = groups
+    .filter((group) => group && typeof group === "object")
+    .map((group) => {
+      const groupId = safeRealMaterialFollowupEscalationStatusText(
+        group.material_group || group.group_id || group.id,
+        "unknown_group",
+      );
+      if (!allowed.has(groupId)) {
+        return null;
+      }
+      return {
+        material_group: groupId,
+        title: realMaterialReadinessBoardGroupTitle(
+          groupId,
+          safeRealMaterialFollowupEscalationStatusText(group.title || group.label, groupId),
+        ),
+        field_owner: realMaterialFollowupEscalationStatusSummaryText(
+          group.field_owner || group.owner || group.owner_handoff,
+          "field_owner=not_proven",
+        ),
+        due_status: safeRealMaterialFollowupEscalationStatusText(
+          group.due_status || group.status || group.followup_status,
+          "due_status=not_proven",
+        ),
+        blocked_reason: realMaterialFollowupEscalationStatusSummaryText(
+          group.blocked_reason || group.blocking_reason || group.blockers || group.missing_materials,
+          "blocked_reason=missing_real_materials",
+        ),
+        next_required_evidence: realMaterialFollowupEscalationStatusSummaryText(
+          group.next_required_evidence || group.next_evidence || group.next_steps,
+          "next_required_evidence=not_proven",
+        ),
+        escalation_level: safeRealMaterialFollowupEscalationStatusText(
+          group.escalation_level || group.escalation || group.review_route,
+          "escalation_level=field_owner_followup",
+        ),
+        rerun_command: realMaterialFollowupEscalationStatusSummaryText(
+          group.rerun_command || group.safe_rerun_command || group.rerun_commands,
+          "rerun_command=not_proven",
+        ),
+        rerun_status_summary: realMaterialFollowupEscalationStatusSummaryText(
+          group.rerun_status_summary || group.rerun_status || group.rerun_summary,
+          "rerun_status_summary=not_proven",
+        ),
+      };
+    })
+    .filter(Boolean);
+  const byId = new Map(normalized.map((group) => [group.material_group, group]));
+  return realMaterialFollowupEscalationStatusDefaultGroups().map((group) => byId.get(group.material_group) || group);
+}
+
+function realMaterialFollowupEscalationStatusNotProvenList(value) {
+  // 该面板是追责状态，不是 proof；固定控制边界必须和 Start/Confirm/Cancel gate 分离。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "safe_to_control=false",
+    "真实 external proof",
+    "真实 hardware material",
+    "真实 route/elevator field material",
+    "真实手机/browser proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 20);
+}
+
+function realMaterialFollowupEscalationStatusFromStatus(status, readiness, diagnostics) {
+  const provided = realMaterialFollowupEscalationStatusCandidate(status, readiness, diagnostics) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.real_material_followup_escalation_status_summary.v1",
+    source_schema: provided.source_schema || "trashbot.real_material_followup_escalation_status.v1",
+    schema_version: 1,
+    source: safeRealMaterialFollowupEscalationStatusText(provided.source, "software_proof"),
+    overall_status: safeRealMaterialFollowupEscalationStatusText(
+      provided.overall_status || provided.status || provided.safe_status,
+      "real_material_followup_escalation_status_not_proven",
+    ),
+    safe_evidence_ref: safeRealMaterialFollowupEscalationStatusText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "evidence_ref=not_proven",
+    ),
+    safe_phone_copy: safeRealMaterialFollowupEscalationStatusText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary,
+      "真实材料升级状态摘要缺失；手机端只显示四类 owner follow-up，主操作保持原 gate。",
+    ),
+    material_groups: realMaterialFollowupEscalationStatusGroups(provided),
+    rerun_status_summary: realMaterialFollowupEscalationStatusSummaryText(
+      provided.rerun_status_summary || provided.rerun_status || provided.rerun_summary,
+      "rerun_status_summary=waiting_for_real_materials",
+    ),
+    evidence_boundary: safeRealMaterialFollowupEscalationStatusText(
+      provided.evidence_boundary,
+      REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    safe_to_control: false,
+    not_proven: realMaterialFollowupEscalationStatusNotProvenList(provided),
+  };
+}
+
 function waveRoverFeedbackReplayCandidate(status, readiness, diagnostics) {
   // 兼容 PC gate、Robot diagnostics 和 status 多层 summary；前端拒绝读取 raw artifact。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -25089,6 +25342,103 @@ function renderRealMaterialEvidenceIntake(status) {
   renderRealMaterialEvidenceIntakeTemplateGroups(summary);
 }
 
+function ensureRealMaterialFollowupEscalationStatusPanel() {
+  // follow-up 状态紧跟回填入口，只读展示 owner、due、rerun，不新增任何控制入口。
+  let panel = $("realMaterialFollowupEscalationStatusPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("realMaterialEvidenceIntakeTitle")?.closest("section") ||
+    $("realMaterialReadinessBoardTitle")?.closest("section") ||
+    $("hardwareRealMaterialEscalationRequestTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "realMaterialFollowupEscalationStatusPanel";
+  panel.className = "real-material-followup-escalation-status-panel";
+  panel.setAttribute("aria-labelledby", "realMaterialFollowupEscalationStatusTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="realMaterialFollowupEscalationStatusTitle">真实材料升级状态</h2>
+      <span id="realMaterialFollowupEscalationStatusBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="realMaterialFollowupEscalationStatusCopy" class="message">
+      等待 robot_diagnostics_real_material_followup_escalation_status_summary。
+    </p>
+    <dl class="real-material-followup-escalation-status-grid">
+      <div><dt>Status</dt><dd id="realMaterialFollowupEscalationStatusOverall">real_material_followup_escalation_status_not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="realMaterialFollowupEscalationStatusEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Rerun Status Summary</dt><dd id="realMaterialFollowupEscalationStatusRerunSummary">rerun_status_summary=waiting_for_real_materials</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="realMaterialFollowupEscalationStatusBoundary">software_proof_docker_real_material_followup_escalation_status_gate</dd></div>
+      <div><dt>Control Boundary</dt><dd id="realMaterialFollowupEscalationStatusControls">software_proof / not_proven / delivery_success=false / primary_actions_enabled=false / safe_to_control=false</dd></div>
+      <div><dt>not_proven</dt><dd id="realMaterialFollowupEscalationStatusNotProven">真实材料、真实手机/browser、HIL 和外部 proof 未证明。</dd></div>
+    </dl>
+    <div id="realMaterialFollowupEscalationStatusGroups" class="real-material-followup-escalation-status-groups" aria-label="真实材料升级状态 group list"></div>
+    <p id="realMaterialFollowupEscalationStatusHint" class="hint">
+      本 panel 只消费 phone-safe follow-up summary：material group、safe evidence_ref、field owner、due_status、blocked_reason、next_required_evidence、escalation_level、rerun command/status summary、boundary 和 not_proven；不展示原始材料、凭证、绝对路径、底层通信或任何完成/控制授权，也不改变 Start Delivery、Confirm Dropoff、Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderRealMaterialFollowupEscalationStatusGroups(summary) {
+  // 每个 group 只渲染脱敏追责字段；后端字符串全部经 textContent 输出，避免扩大展示面。
+  const list = $("realMaterialFollowupEscalationStatusGroups");
+  if (!list) {
+    return;
+  }
+  list.textContent = "";
+  summary.material_groups.forEach((group) => {
+    const item = document.createElement("article");
+    item.className = "real-material-followup-escalation-status-group";
+    const title = document.createElement("h3");
+    const evidenceRef = document.createElement("p");
+    const owner = document.createElement("p");
+    const due = document.createElement("p");
+    const blocker = document.createElement("p");
+    const next = document.createElement("p");
+    const escalation = document.createElement("p");
+    const rerunCommand = document.createElement("p");
+    const rerunStatus = document.createElement("p");
+    title.textContent = group.title;
+    evidenceRef.textContent = `safe_evidence_ref=${summary.safe_evidence_ref}`;
+    owner.textContent = `field_owner=${group.field_owner}`;
+    due.textContent = `due_status=${group.due_status}`;
+    blocker.textContent = `blocked_reason=${group.blocked_reason}`;
+    next.textContent = `next_required_evidence=${group.next_required_evidence}`;
+    escalation.textContent = `escalation_level=${group.escalation_level}`;
+    rerunCommand.textContent = `rerun_command=${group.rerun_command}`;
+    rerunStatus.textContent = `rerun_status_summary=${group.rerun_status_summary}`;
+    item.append(title, evidenceRef, owner, due, blocker, next, escalation, rerunCommand, rerunStatus);
+    list.appendChild(item);
+  });
+}
+
+function renderRealMaterialFollowupEscalationStatus(status) {
+  const panel = ensureRealMaterialFollowupEscalationStatusPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = realMaterialFollowupEscalationStatusFromStatus(status, readiness, latestDiagnostics);
+  latestRealMaterialFollowupEscalationStatus = summary;
+  const badge = $("realMaterialFollowupEscalationStatusBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待真实材料升级状态" : "follow-up not_proven";
+  $("realMaterialFollowupEscalationStatusCopy").textContent = summary.safe_phone_copy;
+  $("realMaterialFollowupEscalationStatusOverall").textContent = `${summary.source} / ${summary.overall_status}`;
+  $("realMaterialFollowupEscalationStatusEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("realMaterialFollowupEscalationStatusRerunSummary").textContent = summary.rerun_status_summary;
+  $("realMaterialFollowupEscalationStatusBoundary").textContent = summary.evidence_boundary;
+  $("realMaterialFollowupEscalationStatusControls").textContent =
+    `${summary.source} / ${summary.overall_status} / delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled} / safe_to_control=${summary.safe_to_control}`;
+  $("realMaterialFollowupEscalationStatusNotProven").textContent = summary.not_proven.join("、");
+  renderRealMaterialFollowupEscalationStatusGroups(summary);
+}
+
 function renderHardwareSensorProcurementIntake(status) {
   const readiness = readinessFromStatus(status);
   const summary = hardwareSensorProcurementIntakeFromStatus(status, readiness, latestDiagnostics);
@@ -29541,6 +29891,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const realMaterialFollowupEscalationStatus = realMaterialFollowupEscalationStatusFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const waveRoverFeedbackReplay = waveRoverFeedbackReplayFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -29705,6 +30060,7 @@ function renderDiagnosticsSummary(payload) {
     ["hardware_real_material_escalation_request", hardwareRealMaterialEscalationRequest.safe_status],
     ["real_material_readiness_board", realMaterialReadinessBoard.status],
     ["real_material_evidence_intake", realMaterialEvidenceIntake.intake_status],
+    ["real_material_followup_escalation_status", realMaterialFollowupEscalationStatus.overall_status],
     ["wave_rover_feedback_replay", waveRoverFeedbackReplay.replay_status],
     ["wave_rover_hil_packet_intake", waveRoverHilPacketIntake.packet_status],
     ["wave_rover_hil_packet_review_decision", waveRoverHilPacketReviewDecision.review_decision],
@@ -29848,6 +30204,7 @@ function renderOfflineFailure() {
   renderHardwareRealMaterialEscalationRequest({});
   renderRealMaterialReadinessBoard({});
   renderRealMaterialEvidenceIntake({});
+  renderRealMaterialFollowupEscalationStatus({});
   renderWaveRoverFeedbackReplay({});
   renderWaveRoverHilPacketIntake({});
   renderWaveRoverHilPacketReviewDecision({});
@@ -29963,6 +30320,7 @@ function renderStatus(status) {
   renderHardwareRealMaterialEscalationRequest(status);
   renderRealMaterialReadinessBoard(status);
   renderRealMaterialEvidenceIntake(status);
+  renderRealMaterialFollowupEscalationStatus(status);
   renderWaveRoverFeedbackReplay(status);
   renderWaveRoverHilPacketIntake(status);
   renderWaveRoverHilPacketReviewDecision(status);
@@ -30251,8 +30609,10 @@ async function openDiagnostics() {
     renderHardwareSensorHilEntryConfigPrecheck(latestStatus || {});
     renderHardwareSensorHilEntryReadinessReview(latestStatus || {});
     renderHardwareSensorHilEntryExecutionPack(latestStatus || {});
+    renderHardwareRealMaterialEscalationRequest(latestStatus || {});
     renderRealMaterialReadinessBoard(latestStatus || {});
     renderRealMaterialEvidenceIntake(latestStatus || {});
+    renderRealMaterialFollowupEscalationStatus(latestStatus || {});
     renderWaveRoverFeedbackReplay(latestStatus || {});
     renderWaveRoverHilPacketIntake(latestStatus || {});
     renderWaveRoverHilPacketReviewDecision(latestStatus || {});

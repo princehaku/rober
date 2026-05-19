@@ -197,6 +197,72 @@
             "real_delivery_result"
         ]
     },
+    "real_material_followup_escalation_status_summary": {
+        "schema": "trashbot.real_material_followup_escalation_status_summary.v1",
+        "schema_version": 1,
+        "source": "software_proof",
+        "overall_status": "real_material_followup_escalation_status_not_proven",
+        "safe_evidence_ref": "real_material_followup_escalation_status_fixture_20260519_0002",
+        "material_groups": [
+            {
+                "material_group": "o5_external",
+                "field_owner": "Cloud / Product owner",
+                "due_status": "blocked_missing_external_materials",
+                "blocked_reason": "Missing public ingress, 4G/SIM, live traffic, production DB/queue, and cutover phone-safe summaries.",
+                "next_required_evidence": "Submit external proof phone-safe summary under the same safe evidence_ref.",
+                "escalation_level": "field_owner_followup",
+                "rerun_command": "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
+                "rerun_status_summary": "rerun_status=waiting_for_real_external_materials"
+            },
+            {
+                "material_group": "o1_pr5_hardware",
+                "field_owner": "Hardware owner",
+                "due_status": "blocked_pending_real_materials",
+                "blocked_reason": "PR #5 PRRT_kwDOSWB9286CJ3tX still lacks real sensor source, receipt, install, wiring, power, calibration, and bench-entry summaries.",
+                "next_required_evidence": "Submit 2D LiDAR / ToF source, receipt, installation, wiring, power, and calibration phone-safe summaries.",
+                "escalation_level": "owner_escalation_required",
+                "rerun_command": "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
+                "rerun_status_summary": "rerun_status=waiting_for_hardware_owner_materials"
+            },
+            {
+                "material_group": "pr4_route_elevator",
+                "field_owner": "Robot / Autonomy owner",
+                "due_status": "blocked_missing_field_run_materials",
+                "blocked_reason": "Missing real route runtime, completion signal, task record, elevator field, and delivery result summaries.",
+                "next_required_evidence": "Submit route/elevator phone-safe summary under the same safe evidence_ref.",
+                "escalation_level": "field_owner_followup",
+                "rerun_command": "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
+                "rerun_status_summary": "rerun_status=waiting_for_route_elevator_materials"
+            },
+            {
+                "material_group": "o4_real_phone",
+                "field_owner": "Full-stack / Field owner",
+                "due_status": "blocked_missing_real_phone_materials",
+                "blocked_reason": "Missing real iPhone/Android behavior, production entry, PWA prompt/user choice, offline, touch, and visual review summaries.",
+                "next_required_evidence": "Submit real phone/browser field acceptance phone-safe summary under the same safe evidence_ref.",
+                "escalation_level": "field_owner_followup",
+                "rerun_command": "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
+                "rerun_status_summary": "rerun_status=waiting_for_real_phone_materials"
+            }
+        ],
+        "rerun_status_summary": "rerun_status=waiting_for_real_materials",
+        "safe_phone_copy": "real_material_followup_escalation_status_summary 只用于手机只读真实材料升级状态，不放行 Start、Confirm 或 Cancel。",
+        "evidence_boundary": "software_proof_docker_real_material_followup_escalation_status_gate",
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "safe_to_control": false,
+        "not_proven": [
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "real_external_proof",
+            "real_hardware_material",
+            "real_route_elevator_field_material",
+            "real_phone_browser"
+        ]
+    },
     "pr5_review_thread_closeout_summary": {
         "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
         "schema_version": 1,

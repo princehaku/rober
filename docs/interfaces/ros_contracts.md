@@ -3963,6 +3963,39 @@ material collection, production readiness, real phone or browser proof, public
 cloud proof, dropoff/cancel completion, or delivery success, and they are not
 command/status/ACK robot contract fields.
 
+Real-material follow-up escalation status diagnostics may expose
+`real_material_followup_escalation_status`,
+`real_material_followup_escalation_status_summary`, and the Robot safe alias
+`robot_diagnostics_real_material_followup_escalation_status_summary` from an
+explicit `real_material_followup_escalation_status_ref`,
+`TRASHBOT_REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS`,
+`TRASHBOT_REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SUMMARY`, top-level status
+fields, or an already sanitized nested diagnostics summary source. The source
+JSON must use
+`schema=trashbot.real_material_followup_escalation_status_summary.v1`; an
+artifact with `schema=trashbot.real_material_followup_escalation_status.v1` is
+accepted only when it contains a sanitized summary wrapper. The evidence
+boundary must remain
+`software_proof_docker_real_material_followup_escalation_status_gate`. This
+field is metadata-only Robot diagnostics support for escalation tracking: it
+may expose only sanitized status, safe `evidence_ref`, `material_group`,
+`field_owner`, `due_status`, `blocked_reason`, `next_required_evidence`,
+`escalation_level`, `rerun_command`, `rerun_status_summary`,
+`source_template_status`, `source_intake_status`, `review_route`,
+`owner_handoff`, `material_groups`, safe copy, `source=software_proof`,
+`not_proven`, `delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`. Missing sanitized summary, unreadable input,
+unsupported schema or boundary, unsafe `evidence_ref`, raw manifest/materials,
+raw JSON, credentials, checksums, ROS topics, serial/UART details,
+success/control claims, `delivery_success=true`,
+`primary_actions_enabled=true`, or `safe_to_control=true` sources fail closed
+as blocked/not_proven. The fields do not trigger `/api/collect`, Start
+Delivery, Confirm Dropoff, Cancel, dropoff, cancel, ACK, remote ACK, cursor
+advance/persistence, terminal ACK, Nav2, WAVE ROVER, serial/UART, HIL,
+material collection, production readiness, real phone or browser proof, public
+cloud proof, route/elevator field pass, dropoff/cancel completion, or delivery
+success, and they are not command/status/ACK robot contract fields.
+
 | Type | Payload | Local action |
 | --- | --- | --- |
 | `collect` | Required `target`, optional `trash_type` | Starts `/trashbot/collect_trash`; malformed commands without a non-empty `target` are failed before any local action goal is sent. |

@@ -153,6 +153,7 @@ h2 {
 .hardware-real-material-escalation-request-panel,
 .real-material-readiness-board-panel,
 .real-material-evidence-intake-panel,
+.real-material-followup-escalation-status-panel,
 .task-terminal-completion-mainline-panel,
 .task-terminal-field-material-intake-panel,
 .task-terminal-field-material-review-decision-panel,
@@ -317,6 +318,7 @@ h2 {
 .hardware-real-material-escalation-request-grid,
 .real-material-readiness-board-grid,
 .real-material-evidence-intake-grid,
+.real-material-followup-escalation-status-grid,
 .task-terminal-completion-mainline-grid,
 .task-terminal-field-material-intake-grid,
 .task-terminal-field-material-review-decision-grid,
@@ -624,6 +626,10 @@ dd {
   grid-template-columns: 1fr;
 }
 
+.real-material-followup-escalation-status-grid {
+  grid-template-columns: 1fr;
+}
+
 .real-material-readiness-board-groups {
   display: grid;
   grid-template-columns: 1fr;
@@ -632,6 +638,13 @@ dd {
 }
 
 .real-material-evidence-intake-template-groups {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.real-material-followup-escalation-status-groups {
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
@@ -652,12 +665,24 @@ dd {
   background: #f8fbfa;
 }
 
+.real-material-followup-escalation-status-group {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fbfa;
+}
+
 .real-material-readiness-board-group h3 {
   margin: 0 0 8px;
   font-size: 16px;
 }
 
 .real-material-evidence-intake-template-group h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.real-material-followup-escalation-status-group h3 {
   margin: 0 0 8px;
   font-size: 16px;
 }
@@ -669,6 +694,13 @@ dd {
 }
 
 .real-material-evidence-intake-template-group p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.real-material-followup-escalation-status-group p {
   margin: 4px 0 0;
   color: var(--muted);
   line-height: 1.45;
@@ -1091,11 +1123,19 @@ dd {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .real-material-followup-escalation-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .real-material-readiness-board-groups {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .real-material-evidence-intake-template-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .real-material-followup-escalation-status-groups {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

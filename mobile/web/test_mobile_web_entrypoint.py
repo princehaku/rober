@@ -674,6 +674,119 @@ class RealMaterialEvidenceIntakeMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, intake_text)
 
 
+class RealMaterialFollowupEscalationStatusMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_real_material_followup_escalation_status_panel_is_read_only_and_grouped(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 升级状态 panel 只消费 phone-safe summary，展示 owner/due/rerun 状态，不新增控制或诊断请求。
+        self.assertIn("真实材料升级状态", app)
+        self.assertIn("REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_BOUNDARY", app)
+        self.assertIn("UNSAFE_REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_TEXT", app)
+        self.assertIn("safeRealMaterialFollowupEscalationStatusText", app)
+        self.assertIn("realMaterialFollowupEscalationStatusCandidate", app)
+        self.assertIn("realMaterialFollowupEscalationStatusFromStatus", app)
+        self.assertIn("robot_diagnostics_real_material_followup_escalation_status_summary", app)
+        self.assertIn("real_material_followup_escalation_status_summary", app)
+        self.assertIn("phone_safe_real_material_followup_escalation_status_summary", app)
+        self.assertIn("material_groups", app)
+        self.assertIn("field_owner", app)
+        self.assertIn("due_status", app)
+        self.assertIn("blocked_reason", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("escalation_level", app)
+        self.assertIn("rerun_command", app)
+        self.assertIn("rerun_status_summary", app)
+        self.assertIn("real-material-followup-escalation-status-panel", styles)
+        self.assertIn("real-material-followup-escalation-status-grid", styles)
+        self.assertIn("real-material-followup-escalation-status-group", styles)
+        self.assertIn("software_proof_docker_real_material_followup_escalation_status_gate", fixture_text)
+        self.assertIn("due_status", fixture_text)
+        self.assertIn("blocked_reason", fixture_text)
+        self.assertIn("next_required_evidence", fixture_text)
+        self.assertIn("escalation_level", fixture_text)
+        self.assertNotRegex(
+            app,
+            r"realMaterialFollowupEscalationStatus.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+
+        # Web fixture、mobile fixture 与产品文档都固定保留 fail-closed 控制边界。
+        summary = fixture["robot_diagnostics_real_material_followup_escalation_status_summary"]
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["overall_status"], "real_material_followup_escalation_status_not_proven")
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(len(summary["material_groups"]), 4)
+        mobile_summary = mobile_fixture["real_material_followup_escalation_status_summary"]
+        self.assertEqual(mobile_summary["source"], "software_proof")
+        self.assertEqual(mobile_summary["overall_status"], "real_material_followup_escalation_status_not_proven")
+        self.assertEqual(mobile_summary["delivery_success"], False)
+        self.assertEqual(mobile_summary["primary_actions_enabled"], False)
+        self.assertEqual(mobile_summary["safe_to_control"], False)
+        self.assertEqual(len(mobile_summary["material_groups"]), 4)
+        self.assertIn("real_material_followup_escalation_status", doc)
+        self.assertIn("robot_diagnostics_real_material_followup_escalation_status_summary", doc)
+        self.assertIn("真实材料升级状态", doc)
+        self.assertIn("due_status", doc)
+        self.assertIn("blocked_reason", doc)
+        self.assertIn("next_required_evidence", doc)
+        self.assertIn("escalation_level", doc)
+        self.assertIn("software_proof_docker_real_material_followup_escalation_status_gate", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("safe_to_control=false", doc)
+
+    def test_real_material_followup_escalation_status_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        followup_text = json.dumps(
+            {
+                "status": fixture["robot_diagnostics_real_material_followup_escalation_status_summary"],
+                "mobile": mobile_fixture["real_material_followup_escalation_status_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # follow-up fixture 只保留追责元数据，不夹带原始材料、路径、凭证、底盘控制或成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial path",
+            "serial device",
+            "uart path",
+            "baudrate",
+            "/users/",
+            "/tmp/",
+            "credentials",
+            "authorization",
+            "bearer",
+            "token",
+            "database url",
+            "queue url",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "hil_pass",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, followup_text)
+
+
 class TaskTerminalFieldMaterialIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

@@ -8,7 +8,21 @@
 
 ## 2026-05-19 系列
 
-更新时间：2026-05-19 22:23 Asia/Shanghai。
+更新时间：2026-05-19 23:23 Asia/Shanghai。
+
+### 2026-05-19 23-24｜real-material-followup-escalation-status｜real material follow-up escalation software proof
+
+本轮 `sprints/2026.05.19_23-24_real-material-followup-escalation-status/` 承接 `real_material_manifest_template` / `real_material_evidence_intake`，把“现场 owner 需要回填真实材料”推进为“每组真实材料缺口都有 owner、due_status、blocked_reason、next_required_evidence、escalation_level、rerun command/status summary 的升级状态”。Engineering workers 完成 `real_material_followup_escalation_status`：Hardware / Autonomy PC gate 生成 `trashbot.real_material_followup_escalation_status.v1` artifact / summary，Robot diagnostics 增加 `robot_diagnostics_real_material_followup_escalation_status_summary` safe alias，Full-Stack 在 mobile/web 增加只读“真实材料升级状态”panel。证据边界保持 `software_proof_docker_real_material_followup_escalation_status_gate`、`source=software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | `o1_pr5_hardware` follow-up group 输出 `field_owner=hardware-engineer`、`due_status=overdue_pending_real_materials`、blocked reason、next required evidence、escalation level 和 rerun command；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `blocked_pending_real_materials`。仍缺真实 WAVE ROVER/UART/HIL、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、operator HIL report、真实 2D LiDAR / ToF source/procurement/installation/wiring/power/calibration/HIL-entry。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | `pr4_route_elevator` follow-up group 继续要求真实 Nav2/fixed-route runtime log、route completion signal、field task record、elevator door state、target floor confirmation、human assistance record、dropoff/cancel material 和 delivery_result；Autonomy 只读咨询确认不得用 pass/complete/success wording。本轮不证明真实 route/elevator field pass、delivery_success、dropoff/cancel completion 或 safe-to-control。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | Follow-up status 把真实 Nav2/fixed-route runtime log、route completion signal、field task record、route/elevator field material、dropoff/cancel material 和 delivery_result 继续作为 required real materials；本轮没有真实路线采集、Nav2/fixed-route 实跑、route completion signal、现场 task_record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读“真实材料升级状态”panel 消费 Robot safe alias，展示四类材料缺口与 owner/due/escalation/rerun 状态；Start Delivery、Confirm Dropoff、Cancel gating 不变。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `o5_external` follow-up group 输出 `field_owner=product-okr-owner`、`due_status=overdue_pending_real_materials`、`escalation_level=ceo_decision_required_after_repeated_real_material_blocker`，但本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover 或 real external proof。 |
+
+本轮验证：Product closeout 复跑 `python3 -m unittest tests/test_real_material_followup_escalation_status.py` 输出 `Ran 6 tests ... OK`；`python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py` 输出 `Ran 217 tests ... OK`；`python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 141 tests ... OK`；`node --check mobile/web/app.js` 通过；`python3 -m py_compile pc-tools/evidence/real_material_followup_escalation_status.py onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py` 通过；artifact regeneration、required `rg` 与 scoped `git diff --check` 通过。本轮不证明真实 O5 external proof、Objective 1 HIL、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` closure、PR #4 route/elevator field pass、真实手机/browser、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
 
 ### 2026-05-19 22-23｜real-material-manifest-template｜field-owner material template software proof
 

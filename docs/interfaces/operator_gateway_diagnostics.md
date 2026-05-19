@@ -216,6 +216,45 @@ cursor updates, persistence updates, terminal ACK, commands, Nav2, WAVE ROVER,
 HIL, material collection, production readiness, real phone/browser proof,
 public cloud proof, dropoff/cancel completion, or delivery success.
 
+## robot_diagnostics_real_material_followup_escalation_status_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_real_material_followup_escalation_status_summary` as a safe
+alias for real-material follow-up escalation status.
+
+- Source artifact schema:
+  `trashbot.real_material_followup_escalation_status.v1`
+- Source summary schema:
+  `trashbot.real_material_followup_escalation_status_summary.v1`
+- Robot alias schema:
+  `trashbot.robot_diagnostics_real_material_followup_escalation_status_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_real_material_followup_escalation_status_gate`
+
+The alias is metadata-only and read-only. It may expose only sanitized follow-up
+status, safe `evidence_ref`, `material_group`, `field_owner`, `due_status`,
+`blocked_reason`, `next_required_evidence`, `escalation_level`,
+`rerun_command`, `rerun_status_summary`, `source_template_status`,
+`source_intake_status`, `review_route`, `owner_handoff`, `material_groups`,
+safe copy, `source=software_proof`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and `safe_to_control=false`.
+
+Missing summary, unreadable input, unsupported schema or evidence boundary,
+`source` other than `software_proof`, status other than `not_proven`, unsafe
+`evidence_ref`, unsafe copy, raw manifest/material fields, raw JSON,
+credentials, local paths, checksums, ROS topics, serial/UART details,
+success/control claims, `delivery_success=true`,
+`primary_actions_enabled=true`, or `safe_to_control=true` must fail closed as
+blocked/not_proven.
+
+This alias must not read raw manifests, raw materials, serial devices, hardware
+devices, the ROS graph, cloud resources, mobile browser state, credentials,
+checksums, or raw JSON. It must not enable Start Delivery, Confirm Dropoff,
+Cancel, ACK, cursor updates, persistence updates, terminal ACK, commands, Nav2,
+WAVE ROVER, HIL, material collection, production readiness, real phone/browser
+proof, public cloud proof, route/elevator field pass, dropoff/cancel
+completion, or delivery success.
+
 ## robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary
 
 Robot diagnostics exposes
