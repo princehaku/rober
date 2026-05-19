@@ -1,0 +1,232 @@
+{
+  "closeout_status": "pr5_review_thread_closeout_not_proven",
+  "delivery_success": false,
+  "evidence_boundary": "software_proof_docker_pr5_review_thread_closeout_gate",
+  "evidence_checks": {
+    "default_section_separates_target": true,
+    "okr_lowest_consistent": true,
+    "target_baseline_pending": true,
+    "vendor_citation_boundary": true
+  },
+  "generated_at": "2026-05-19T07:07:06.197923+00:00",
+  "missing_real_materials": [
+    "real_2d_lidar_sku_source_receipt",
+    "real_tof_sku_source_receipt",
+    "real_install_wiring_power_calibration",
+    "real_hil_entry"
+  ],
+  "non_access_scope": [
+    "github_api_raw_review_body",
+    "ros_graph",
+    "serial_uart",
+    "hardware_bus",
+    "sensor_driver_runtime",
+    "procurement_system",
+    "hil",
+    "field_run",
+    "objective_5_external_infrastructure",
+    "delivery_execution"
+  ],
+  "not_proven": [
+    "real_2d_lidar_sku_source_receipt",
+    "real_tof_sku_source_receipt",
+    "real_install_wiring_power_calibration",
+    "real_sensor_hil_entry",
+    "real_wave_rover_uart_hil",
+    "route_elevator_field_pass",
+    "objective_5_external_proof",
+    "delivery_success"
+  ],
+  "overall_status": "not_proven",
+  "pr": {
+    "number": 5,
+    "title": "Make elevator-assisted delivery mandatory; update agents, OKR and hardware baseline"
+  },
+  "primary_actions_enabled": false,
+  "review_summary": {
+    "closeout_status": "pr5_review_thread_closeout_not_proven",
+    "delivery_success": false,
+    "evidence_boundary": "software_proof_docker_pr5_review_thread_closeout_gate",
+    "evidence_checks": {
+      "default_section_separates_target": true,
+      "okr_lowest_consistent": true,
+      "target_baseline_pending": true,
+      "vendor_citation_boundary": true
+    },
+    "not_proven": [
+      "real_2d_lidar_sku_source_receipt",
+      "real_tof_sku_source_receipt",
+      "real_install_wiring_power_calibration",
+      "real_sensor_hil_entry",
+      "real_wave_rover_uart_hil",
+      "route_elevator_field_pass",
+      "objective_5_external_proof",
+      "delivery_success"
+    ],
+    "overall_status": "not_proven",
+    "pr": {
+      "number": 5,
+      "title": "Make elevator-assisted delivery mandatory; update agents, OKR and hardware baseline"
+    },
+    "primary_actions_enabled": false,
+    "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
+    "schema_version": 1,
+    "source": "software_proof",
+    "source_load_status": {
+      "okr": "loaded",
+      "production_hardware_boundary": "loaded",
+      "thread_summary": "loaded",
+      "vendor_index": "loaded"
+    },
+    "source_schema": "trashbot.pr5_review_thread_closeout.v1",
+    "source_schema_version": 1,
+    "thread_decisions": [
+      {
+        "current_evidence_refs": [
+          "docs/product/production_hardware_boundary.md#Default Hardware Set",
+          "docs/product/production_hardware_boundary.md#Vendor/Source Attribution Boundary",
+          "docs/product/production_hardware_boundary.md#Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)",
+          "docs/vendor/VENDOR_INDEX.md#Complete Material Coverage"
+        ],
+        "decision": "ready_to_close_on_mainline_docs",
+        "decision_reasons": [
+          "default_hardware_set_separated_from_lidar_tof_target",
+          "lidar_tof_target_marked_pending_not_proven"
+        ],
+        "missing_real_materials": [
+          "real_2d_lidar_sku_source_receipt",
+          "real_tof_sku_source_receipt",
+          "real_install_wiring_power_calibration",
+          "real_hil_entry"
+        ],
+        "owner_handoff": "Hardware can ask reviewer to close this docs-only thread; real hardware materials stay not_proven.",
+        "severity": "P1",
+        "thread_key": "p1_production_hardware_boundary_default_vs_mandatory_sensor_baseline",
+        "topic": "production_hardware_boundary default hardware set vs mandatory sensor baseline"
+      },
+      {
+        "current_evidence_refs": [
+          "OKR.md#4.1 当前 OKR 进度快照",
+          "OKR.md#6. 当前最高优先级"
+        ],
+        "decision": "ready_to_close_on_mainline_docs",
+        "decision_reasons": [
+          "okr_table_and_priority_narrative_both_identify_objective_5_as_lowest"
+        ],
+        "missing_real_materials": [
+          "real_2d_lidar_sku_source_receipt",
+          "real_tof_sku_source_receipt",
+          "real_install_wiring_power_calibration",
+          "real_hil_entry"
+        ],
+        "owner_handoff": "Hardware can ask reviewer to close this docs-only thread; real hardware materials stay not_proven.",
+        "severity": "P2",
+        "thread_key": "p2_okr_lowest_objective_narrative_vs_table",
+        "topic": "OKR lowest objective narrative must match progress table"
+      },
+      {
+        "current_evidence_refs": [
+          "docs/product/production_hardware_boundary.md#Vendor/Source Attribution Boundary",
+          "docs/product/production_hardware_boundary.md#Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)",
+          "docs/vendor/VENDOR_INDEX.md#Complete Material Coverage"
+        ],
+        "decision": "blocked_pending_real_materials",
+        "decision_reasons": [
+          "vendor_boundary_is_cited_but_real_lidar_tof_materials_are_still_missing"
+        ],
+        "missing_real_materials": [
+          "real_2d_lidar_sku_source_receipt",
+          "real_tof_sku_source_receipt",
+          "real_install_wiring_power_calibration",
+          "real_hil_entry"
+        ],
+        "owner_handoff": "Hardware cannot claim closure of real material obligations until SKU/source/receipt/install/wiring/calibration/HIL-entry evidence exists.",
+        "severity": "P2",
+        "thread_key": "p2_mandatory_sensor_assumptions_missing_vendor_citation",
+        "topic": "mandatory sensor assumptions require docs/vendor citation and real material boundary"
+      }
+    ]
+  },
+  "schema": "trashbot.pr5_review_thread_closeout.v1",
+  "schema_version": 1,
+  "source": "software_proof",
+  "source_docs": {
+    "okr": "OKR.md",
+    "production_hardware_boundary": "docs/product/production_hardware_boundary.md",
+    "vendor_index": "docs/vendor/VENDOR_INDEX.md"
+  },
+  "source_load_status": {
+    "okr": "loaded",
+    "production_hardware_boundary": "loaded",
+    "thread_summary": "loaded",
+    "vendor_index": "loaded"
+  },
+  "thread_decisions": [
+    {
+      "current_evidence_refs": [
+        "docs/product/production_hardware_boundary.md#Default Hardware Set",
+        "docs/product/production_hardware_boundary.md#Vendor/Source Attribution Boundary",
+        "docs/product/production_hardware_boundary.md#Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)",
+        "docs/vendor/VENDOR_INDEX.md#Complete Material Coverage"
+      ],
+      "decision": "ready_to_close_on_mainline_docs",
+      "decision_reasons": [
+        "default_hardware_set_separated_from_lidar_tof_target",
+        "lidar_tof_target_marked_pending_not_proven"
+      ],
+      "missing_real_materials": [
+        "real_2d_lidar_sku_source_receipt",
+        "real_tof_sku_source_receipt",
+        "real_install_wiring_power_calibration",
+        "real_hil_entry"
+      ],
+      "owner_handoff": "Hardware can ask reviewer to close this docs-only thread; real hardware materials stay not_proven.",
+      "severity": "P1",
+      "thread_key": "p1_production_hardware_boundary_default_vs_mandatory_sensor_baseline",
+      "topic": "production_hardware_boundary default hardware set vs mandatory sensor baseline"
+    },
+    {
+      "current_evidence_refs": [
+        "OKR.md#4.1 当前 OKR 进度快照",
+        "OKR.md#6. 当前最高优先级"
+      ],
+      "decision": "ready_to_close_on_mainline_docs",
+      "decision_reasons": [
+        "okr_table_and_priority_narrative_both_identify_objective_5_as_lowest"
+      ],
+      "missing_real_materials": [
+        "real_2d_lidar_sku_source_receipt",
+        "real_tof_sku_source_receipt",
+        "real_install_wiring_power_calibration",
+        "real_hil_entry"
+      ],
+      "owner_handoff": "Hardware can ask reviewer to close this docs-only thread; real hardware materials stay not_proven.",
+      "severity": "P2",
+      "thread_key": "p2_okr_lowest_objective_narrative_vs_table",
+      "topic": "OKR lowest objective narrative must match progress table"
+    },
+    {
+      "current_evidence_refs": [
+        "docs/product/production_hardware_boundary.md#Vendor/Source Attribution Boundary",
+        "docs/product/production_hardware_boundary.md#Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)",
+        "docs/vendor/VENDOR_INDEX.md#Complete Material Coverage"
+      ],
+      "decision": "blocked_pending_real_materials",
+      "decision_reasons": [
+        "vendor_boundary_is_cited_but_real_lidar_tof_materials_are_still_missing"
+      ],
+      "missing_real_materials": [
+        "real_2d_lidar_sku_source_receipt",
+        "real_tof_sku_source_receipt",
+        "real_install_wiring_power_calibration",
+        "real_hil_entry"
+      ],
+      "owner_handoff": "Hardware cannot claim closure of real material obligations until SKU/source/receipt/install/wiring/calibration/HIL-entry evidence exists.",
+      "severity": "P2",
+      "thread_key": "p2_mandatory_sensor_assumptions_missing_vendor_citation",
+      "topic": "mandatory sensor assumptions require docs/vendor citation and real material boundary"
+    }
+  ],
+  "thread_summary_issues": [],
+  "thread_summary_schema": "trashbot.pr5_review_thread_summary.v1"
+}

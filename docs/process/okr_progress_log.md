@@ -8,7 +8,21 @@
 
 ## 2026-05-19 系列
 
-更新时间：2026-05-19 14:29 Asia/Shanghai。
+更新时间：2026-05-19 15:07 Asia/Shanghai。
+
+### 2026-05-19 15-16｜pr5-github-thread-resolution｜O1/O4 PR #5 GitHub review state closeout
+
+本轮 `sprints/2026.05.19_15-16_pr5-github-thread-resolution/` 把既有 repo-local PR #5 closeout evidence 应用到 GitHub review thread 状态。GitHub 当前状态：`PRRT_kwDOSWB9286CJ3tQ` 已 `resolved`，对应 P1 hardware boundary repo decision `ready_to_close_on_mainline_docs`；`PRRT_kwDOSWB9286CJ3tU` 已 `resolved`，对应 P2 OKR narrative/table repo decision `ready_to_close_on_mainline_docs`；`PRRT_kwDOSWB9286CJ3tX` 仍 `unresolved`，对应 P2 mandatory sensor citation/material repo decision `blocked_pending_real_materials`。本轮保持 `software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`，不把 GitHub thread closeout 写成真实硬件、真实云、真实手机或真实送达。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 两条 PR #5 docs-closeout thread 已 resolved，提升 review-state hygiene；但 `PRRT_kwDOSWB9286CJ3tX` 仍因真实 2D LiDAR / ToF materials 缺失保持 unresolved / `blocked_pending_real_materials`。仍缺真实 WAVE ROVER/UART/HIL、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、真实 SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 PR #4 route/elevator runtime、真实电梯、真实 task record、dropoff/cancel completion、delivery result 或 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮不新增真实路线采集、Nav2/fixed-route runtime log、route completion signal、现场 task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | 本轮只记录 PR #5 review-state visibility，不是 phone/browser acceptance；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 和现场 phone behavior。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实 external proof。 |
+
+本轮验证：Product closeout required file checks、required `rg` 与 scoped `git diff --check` 通过。GitHub thread state 由 connector 读取：`PRRT_kwDOSWB9286CJ3tQ` `resolved=true`，`PRRT_kwDOSWB9286CJ3tU` `resolved=true`，`PRRT_kwDOSWB9286CJ3tX` `unresolved`。本轮不证明真实 2D LiDAR / ToF、WAVE ROVER/UART/HIL、route/elevator field pass、真实手机/browser、Objective 5 external proof、dropoff/cancel completion 或 delivery success。
 
 ### 2026-05-19 14-15｜mobile-pwa-fresh-browser-proof｜O4 local fresh browser software proof
 
