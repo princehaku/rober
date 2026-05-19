@@ -1,0 +1,71 @@
+{
+  "robot_id": "trashbot-alpha",
+  "state": "remote_degraded",
+  "remote_ready": false,
+  "cloud_reachable": false,
+  "auth_state": "unknown",
+  "degradation_state": "command_pending",
+  "pending_terminal_ack_id": "cmd_terminal_ack_pending_001",
+  "primary_actions_enabled": false,
+  "safe_to_control": false,
+  "safe_phone_copy": "本地命令已终态，但云端 ACK 还没确认，暂不能拉取新命令",
+  "recovery_hint": "等待 Robot 成功补发 pending terminal ACK；补发前不要重复提交 Start Delivery、Confirm Dropoff 或 Cancel。",
+  "ack_semantics": "accepted_processing_only_not_delivery_success",
+  "proof_boundary": "software_proof_docker_cloud_pending_ack_status_guard",
+  "evidence_boundary": "software_proof_docker_cloud_pending_ack_status_guard",
+  "boundary_flags": "source=software_proof / not_proven / remote_ready=false / delivery_success=false / primary_actions_enabled=false",
+  "delivery_success": false,
+  "not_proven": [
+    "真实公网 HTTPS/TLS",
+    "真实 4G/SIM",
+    "production DB/queue",
+    "真实手机/browser",
+    "Nav2/fixed-route",
+    "WAVE ROVER/UART/HIL",
+    "delivery success"
+  ],
+  "phone_readiness": {
+    "primary_state": "blocked",
+    "next_action": "command_pending",
+    "support_level": "diagnostics_available",
+    "remote_readiness": {
+      "remote_ready": false,
+      "degradation_state": "command_pending",
+      "primary_actions_enabled": false,
+      "safe_phone_copy": "本地命令已终态，但云端 ACK 还没确认，暂不能拉取新命令",
+      "retry_hint": "wait_for_command_ack",
+      "proof_boundary": "software_proof_docker_cloud_pending_ack_status_guard"
+    },
+    "command_safety": {
+      "schema": "trashbot.command_safety.v1",
+      "global_block_reason": "command_pending：本地命令已终态但云端 ACK 未确认，remote_ready=false。",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "actions": {
+        "start": {
+          "enabled": false,
+          "blocking_reason": "command_pending / remote_ready=false / primary_actions_enabled=false"
+        },
+        "confirm_dropoff": {
+          "enabled": false,
+          "blocking_reason": "command_pending / remote_ready=false / primary_actions_enabled=false"
+        },
+        "cancel": {
+          "enabled": false,
+          "blocking_reason": "command_pending / remote_ready=false / primary_actions_enabled=false"
+        },
+        "diagnostics": {
+          "enabled": true,
+          "safe_phone_copy": "诊断可打开；主操作保持 fail closed。"
+        }
+      }
+    }
+  },
+  "action_permissions": {
+    "can_collect": false,
+    "can_confirm_dropoff": false,
+    "can_cancel": false
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

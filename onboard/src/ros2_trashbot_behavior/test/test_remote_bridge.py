@@ -8108,7 +8108,15 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertEqual(payload["pending_terminal_ack"]["ack"]["state"], "acked")
             self.assertEqual(payload["evidence_boundary"], "software_proof_docker_cloud_ack_outage_replay_guard")
             self.assertEqual(worker.last_ack_id, "")
-            self.assertEqual(worker.operator_backend.last_status["degradation_state"], "cloud_unreachable")
+            self.assertEqual(worker.operator_backend.last_status["degradation_state"], "command_pending")
+            self.assertEqual(worker.operator_backend.last_status["pending_terminal_ack_id"], "cmd-ack-outage")
+            self.assertEqual(
+                worker.operator_backend.last_status["proof_boundary"],
+                "software_proof_docker_cloud_pending_ack_status_guard",
+            )
+            self.assertFalse(worker.operator_backend.last_status["remote_ready"])
+            self.assertFalse(worker.operator_backend.last_status["primary_actions_enabled"])
+            self.assertEqual(self.cloud.status_posts[-1]["degradation_state"], "command_pending")
 
     def test_malformed_ack_response_retries_same_command_before_persisting_cursor(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -8135,7 +8143,8 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertEqual(worker.last_ack_id, "")
             self.assertEqual(self.cloud.ack_posts, [])
             self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
-            self.assertEqual(worker.operator_backend.last_status["degradation_state"], "malformed_response")
+            self.assertEqual(worker.operator_backend.last_status["degradation_state"], "command_pending")
+            self.assertEqual(worker.operator_backend.last_status["retry_hint"], "contact_support")
 
             # ACK 响应不可信时，只能重发 pending ACK，不能再次拉取 command 或触发本地 action。
             self.assertTrue(worker.poll_once())
@@ -8147,6 +8156,95 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
             self.assertEqual(self.cloud.ack_posts[0]["command_id"], "cmd-ack-malformed")
             self.assertEqual(self.cloud.ack_posts[0]["state"], "acked")
+
+    def test_pending_ack_replay_failure_reports_phone_safe_command_pending_status(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            first_backend = FakeOperatorBackend()
+            first_worker = RemoteBridgeWorker(
+                self.client,
+                first_backend,
+                "robot-1",
+                cursor_state_path=state_path,
+            )
+            self.cloud.commands.append({
+                "id": "cmd-pending-status-guard",
+                "type": "collect",
+                "payload": {"target": "trash_station", "trash_type": 0},
+            })
+            self.cloud.fail_ack_count = 1
+
+            self.assertTrue(first_worker.poll_once())
+            get_count_before_replay = len(self.cloud.get_paths)
+            self.cloud.commands.append({
+                "id": "cmd-must-not-run-before-pending-ack",
+                "type": "cancel",
+                "payload": {},
+            })
+            self.cloud.fail_ack_count = 1
+            restart_backend = FakeOperatorBackend()
+            restart_worker = RemoteBridgeWorker(
+                self.client,
+                restart_backend,
+                "robot-1",
+                last_ack_id="cmd-fallback",
+                cursor_state_path=state_path,
+            )
+
+            self.assertFalse(restart_worker.poll_once())
+
+            cursor_payload = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(cursor_payload["last_terminal_ack_id"], "")
+            self.assertEqual(cursor_payload["pending_terminal_ack"]["command_id"], "cmd-pending-status-guard")
+            self.assertEqual(restart_worker.last_ack_id, "")
+            self.assertEqual(restart_backend.calls, [])
+            self.assertEqual(len(self.cloud.get_paths), get_count_before_replay)
+            self.assertEqual(self.cloud.ack_posts, [])
+            status = restart_backend.last_status
+            self.assertEqual(status["degradation_state"], "command_pending")
+            self.assertFalse(status["remote_ready"])
+            self.assertEqual(status["pending_terminal_ack_id"], "cmd-pending-status-guard")
+            self.assertFalse(status["primary_actions_enabled"])
+            self.assertIn("云端 ACK 还没确认", status["safe_phone_copy"])
+            self.assertEqual(status["retry_hint"], "retry_cloud")
+            self.assertEqual(
+                status["proof_boundary"],
+                "software_proof_docker_cloud_pending_ack_status_guard",
+            )
+            self.assertEqual(self.cloud.status_posts[-1]["degradation_state"], "command_pending")
+
+    def test_pending_ack_command_pending_status_redacts_sensitive_markers(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = pathlib.Path(tmpdir) / "remote_cursor.json"
+            worker = RemoteBridgeWorker(
+                self.client,
+                self.backend,
+                "robot-1",
+                cursor_state_path=state_path,
+            )
+            self.cloud.commands.append({
+                "id": "cmd-/cmd_vel-Authorization-Bearer",
+                "type": "collect",
+                "payload": {"target": "trash_station", "trash_type": 0},
+            })
+            self.cloud.fail_ack_count = 1
+
+            self.assertTrue(worker.poll_once())
+
+            encoded_status = json.dumps(worker.operator_backend.last_status, ensure_ascii=False)
+            self.assertEqual(worker.operator_backend.last_status["pending_terminal_ack_id"], "[redacted]")
+            self.assertEqual(worker.operator_backend.last_status["degradation_state"], "command_pending")
+            for marker in (
+                "Bearer",
+                "Authorization",
+                "/cmd_vel",
+                "WAVE ROVER",
+                "serial",
+                "baudrate",
+                "traceback",
+                "delivery_success=true",
+            ):
+                self.assertNotIn(marker, encoded_status)
 
     def test_pending_ack_replays_after_restart_without_duplicate_local_execution(self):
         with tempfile.TemporaryDirectory() as tmpdir:

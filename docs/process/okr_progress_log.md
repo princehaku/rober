@@ -8,7 +8,21 @@
 
 ## 2026-05-20 系列
 
-更新时间：2026-05-20 00:19 Asia/Shanghai。
+更新时间：2026-05-20 01:41 Asia/Shanghai。
+
+### 2026-05-20 01-02｜cloud-pending-ack-status-guard｜pending ACK status guard software proof
+
+本轮 `sprints/2026.05.20_01-02_cloud-pending-ack-status-guard/` 继续针对 Objective 5 command/status/ack 主链路，而不是继续包装外部材料缺失。Robot worker 完成 `cloud_pending_ack_status_guard`：pending terminal ACK post/replay 失败时，`remote_bridge` 输出 `degradation_state=command_pending`、`remote_ready=false`、`pending_terminal_ack_id`、`primary_actions_enabled=false`、`safe_phone_copy`、`retry_hint` 和 `proof_boundary=software_proof_docker_cloud_pending_ack_status_guard`；pending ACK 成功前不推进 `last_terminal_ack_id`，不 fetch new command，不重复本地 action，并修复显式空 `last_terminal_ack_id` 被 fallback 覆盖的 cursor recovery edge case。Full-Stack worker 在 existing cloud readiness panel 只读消费 top-level/readiness `remote_readiness` / `degradation_state=command_pending`，展示中文 copy，归一化 `remote_ready=false` 和 `primary_actions_enabled=false`。证据边界为 `software_proof_docker_cloud_pending_ack_status_guard`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮未触碰 WAVE ROVER/UART/HIL、hardware bridge、2D LiDAR / ToF materials 或 PR #5 真实材料；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `blocked_pending_real_materials`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 route/elevator field material、dropoff/cancel completion、delivery result 或真实电梯 proof；pending ACK status guard 不等于 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可读状态受益：手机端能展示 command pending 降级状态，并保持 `remote_ready=false`、`primary_actions_enabled=false` 和主操作不可用；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_pending_ack_status_guard` 只证明 local worker + mobile static fixture 下的 pending ACK status guard：command pending 降级状态、no cursor advance、no new command fetch、no duplicate local action、phone-safe copy 和 fail-closed actions。本轮不证明真实 4G/SIM、公网 HTTPS/TLS、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Product closeout 复跑 `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_remote_bridge.py` 输出 `Ran 127 tests ... OK`；`PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_bridge.py` 通过；`PYTHONDONTWRITEBYTECODE=1 python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 143 tests ... OK`；`node --check mobile/web/app.js` 通过；required `rg` 覆盖 implementation、docs、OKR、progress log、fixture、mobile tests 和 sprint closeout strings；scoped `git diff --check` 与 staged `git diff --cached --check` 通过。本轮不证明真实 O5 external proof、Objective 1 HIL、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` closure、PR #4 route/elevator field pass、真实手机/browser、Nav2/fixed-route、dropoff/cancel completion、production DB/queue 或 delivery success。
 
 ### 2026-05-20 00-01｜cloud-ack-outage-replay-guard｜ACK outage replay guard software proof
 

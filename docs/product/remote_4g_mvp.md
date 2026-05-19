@@ -510,6 +510,41 @@ can still reproduce the issue. ACK text must stay conservative: an ACK is only
 command accepted/processing evidence and does not prove delivery success, real
 4G/cloud, OSS/CDN traffic, WAVE ROVER motion, or HIL.
 
+## Pending ACK Status Guard
+
+The robot `remote_bridge` now exposes `cloud_pending_ack_status_guard` for the
+specific case where a local command has already reached a terminal ACK state,
+but replaying that terminal ACK to the cloud fails. This usually follows a
+restart or temporary ACK outage after the earlier `cloud_ack_outage_replay_guard`
+has persisted `pending_terminal_ack`.
+
+When this guard is active, status/readiness must remain phone-safe and fail
+closed:
+
+- `degradation_state=command_pending`
+- `remote_ready=false`
+- `pending_terminal_ack_id=<safe command id or [redacted]>`
+- `primary_actions_enabled=false`
+- `safe_phone_copy=本地命令已完成终态，但云端 ACK 还没确认，暂不能拉取新命令。`
+- `retry_hint=retry_cloud` or the cloud client's safer retry hint
+- `proof_boundary=software_proof_docker_cloud_pending_ack_status_guard`
+
+The robot must not advance `last_terminal_ack_id` until the pending terminal ACK
+is accepted by the cloud. While `pending_terminal_ack` exists, the worker must
+not pull a new command, must not execute Start Delivery, Confirm Dropoff, or
+Cancel again, and must not treat any ACK response as delivery success. This
+prevents a phone user from seeing green readiness while the cloud cursor still
+cannot confirm the previous terminal command.
+
+Both the persisted cursor file and the status payload use a safe subset. They
+must not save or expose bearer tokens, Authorization headers, credential-bearing
+cloud URLs, serial devices, baudrate, WAVE ROVER parameters, raw ROS topics,
+`/cmd_vel`, tracebacks, production DB/queue credentials, 4G carrier details, or
+any delivery success claim. The evidence boundary is only
+`software_proof_docker_cloud_pending_ack_status_guard`; it does not prove real
+4G/SIM, production cloud, public HTTPS/TLS, production DB/queue, real phone
+browser, Nav2/fixed-route delivery, WAVE ROVER motion, HIL, or delivery success.
+
 Example Docker deploy proof:
 
 ```bash

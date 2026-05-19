@@ -7,8 +7,77 @@ from pathlib import Path
 WEB_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = WEB_ROOT.parent.parent
 FIXTURE = WEB_ROOT / "fixtures" / "status.json"
+CLOUD_PENDING_ACK_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_pending_ack_status_guard.json"
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
+
+
+class CloudPendingAckStatusGuardMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_pending_ack_status_guard_is_consumed_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_PENDING_ACK_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # command_pending 使用已有 cloud readiness 面板和主操作 gate，不新增 endpoint 或控制动作。
+        self.assertIn("CLOUD_PENDING_ACK_STATUS_BOUNDARY", app)
+        self.assertIn("CLOUD_PENDING_ACK_STATUS_COPY", app)
+        self.assertIn("software_proof_docker_cloud_pending_ack_status_guard", app)
+        self.assertIn("degradation_state", app)
+        self.assertIn("command_pending", app)
+        self.assertIn("remote_readiness", app)
+        self.assertIn("remote_ready=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"cloudPendingAck.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 覆盖 Robot/status readiness 语义：远程未就绪、主操作关闭、没有送达成功语义。
+        self.assertEqual(fixture["degradation_state"], "command_pending")
+        self.assertEqual(fixture["remote_ready"], False)
+        self.assertEqual(fixture["primary_actions_enabled"], False)
+        self.assertEqual(fixture["delivery_success"], False)
+        self.assertIn("本地命令已终态，但云端 ACK 还没确认，暂不能拉取新命令", fixture_text)
+        self.assertIn("remote_ready=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("software_proof_docker_cloud_pending_ack_status_guard", fixture_text)
+        self.assertNotIn("delivery_success\": true", fixture_text)
+        self.assertNotIn("delivery success claim", fixture_text.lower())
+
+        # 产品文档必须把该状态写成 Docker/local fixture proof，而不是真实手机/4G/云/HIL/送达证明。
+        self.assertIn("cloud_pending_ack_status_guard", doc)
+        self.assertIn("command_pending", doc)
+        self.assertIn("remote_ready=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("software_proof_docker_cloud_pending_ack_status_guard", doc)
+        self.assertIn("不是真实手机/browser/4G/云/HIL/送达证明", doc)
+
+    def test_cloud_pending_ack_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_PENDING_ACK_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # pending ACK fixture 只提供手机安全摘要，不能带 raw payload、凭证、底盘控制或成功证明。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "serial device",
+            "baudrate",
+            "wave rover parameter",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
 
 
 class HardwareSensorProcurementExecutionPackMobileTest(unittest.TestCase):

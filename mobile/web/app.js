@@ -17,6 +17,8 @@ const ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_g
 const ELEVATOR_ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
 const ELEVATOR_ACTION_FEEDBACK_TRACE_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
 const CLOUD_READINESS_BOUNDARY = "software_proof_docker_mobile_cloud_readiness_summary_gate";
+const CLOUD_PENDING_ACK_STATUS_BOUNDARY = "software_proof_docker_cloud_pending_ack_status_guard";
+const CLOUD_PENDING_ACK_STATUS_COPY = "本地命令已终态，但云端 ACK 还没确认，暂不能拉取新命令";
 const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_acceptance_readiness_gate";
 const MOBILE_DEVICE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_device_evidence_capture_gate";
 const MOBILE_DEVICE_HANDOFF_SESSION_BOUNDARY = "software_proof_docker_mobile_device_handoff_session_gate";
@@ -1358,13 +1360,44 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
     status?.phone_cloud_readiness_summary,
     status?.mobile_cloud_readiness_summary,
     status?.cloud_readiness_summary,
+    status?.remote_readiness,
+    status?.remote_status,
     readiness?.cloud_readiness,
+    readiness?.remote_readiness,
+    readiness?.remote_status,
     readiness?.phone_cloud_readiness_summary,
     readiness?.mobile_cloud_readiness_summary,
     readiness?.cloud_readiness_summary,
+    (status?.degradation_state || status?.remote_ready === false) ? status : null,
+    (readiness?.degradation_state || readiness?.remote_ready === false) ? readiness : null,
   ];
   const provided = candidates.find((value) => value && typeof value === "object");
   if (provided) {
+    if (provided.degradation_state === "command_pending" ||
+        provided.proof_boundary === CLOUD_PENDING_ACK_STATUS_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_PENDING_ACK_STATUS_BOUNDARY) {
+      // command_pending 代表本地终态命令等待云端 ACK；手机端必须只读展示并维持 fail closed。
+      return {
+        ...provided,
+        missing: false,
+        overall_status: "blocked",
+        preflight_status: "command_pending",
+        db_queue_status: "remote_ready=false / primary_actions_enabled=false",
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        safe_phone_copy: CLOUD_PENDING_ACK_STATUS_COPY,
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "等待 Robot 成功补发 pending terminal ACK；补发前不要重复提交主操作。",
+        ),
+        ack_semantics: ACK_PROCESSING_COPY,
+        evidence_boundary: CLOUD_PENDING_ACK_STATUS_BOUNDARY,
+        proof_boundary: CLOUD_PENDING_ACK_STATUS_BOUNDARY,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
     return { ...provided, missing: false };
   }
   return {

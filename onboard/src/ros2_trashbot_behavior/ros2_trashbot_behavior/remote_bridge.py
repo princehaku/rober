@@ -33,6 +33,7 @@ if "threading" not in globals():
 
 CURSOR_PROTOCOL_VERSION = "trashbot.remote.cursor.v1"
 CLOUD_ACK_OUTAGE_REPLAY_GUARD_BOUNDARY = "software_proof_docker_cloud_ack_outage_replay_guard"
+CLOUD_PENDING_ACK_STATUS_GUARD_BOUNDARY = "software_proof_docker_cloud_pending_ack_status_guard"
 PENDING_TERMINAL_ACK_KEY = "pending_terminal_ack"
 SAFE_OPERATOR_STATUS_KEYS = {
     "protocol_version",
@@ -46,6 +47,9 @@ SAFE_OPERATOR_STATUS_KEYS = {
     "degradation_state",
     "retry_hint",
     "safe_phone_copy",
+    "pending_terminal_ack_id",
+    "primary_actions_enabled",
+    "proof_boundary",
     "accepted",
     "service_accepted",
     "error_code",
@@ -101,6 +105,35 @@ def _phone_safe_degraded_status(robot_id, error):
     )
 
 
+def _safe_state_text_value(value):
+    text = str(value)
+    lowered = text.lower()
+    if any(marker in lowered for marker in SENSITIVE_STATE_MARKERS):
+        return "[redacted]"
+    return text[:240]
+
+
+def _phone_safe_pending_ack_status(robot_id, command_id, error):
+    safe_command_id = _safe_state_text_value(command_id)
+    retry_hint = getattr(error, "retry_hint", "retry_cloud")
+    safe_phone_copy = "本地命令已完成终态，但云端 ACK 还没确认，暂不能拉取新命令。"
+    auth_state = "auth_failed" if getattr(error, "reason", "") == "auth_failed" else "unknown"
+    return make_status(
+        robot_id,
+        "remote_degraded",
+        safe_phone_copy,
+        remote_ready=False,
+        cloud_reachable=bool(getattr(error, "cloud_reachable", False)),
+        auth_state=auth_state,
+        degradation_state="command_pending",
+        retry_hint=retry_hint,
+        safe_phone_copy=safe_phone_copy,
+        pending_terminal_ack_id=safe_command_id,
+        primary_actions_enabled=False,
+        proof_boundary=CLOUD_PENDING_ACK_STATUS_GUARD_BOUNDARY,
+    )
+
+
 class RemoteBridgeWorker:
     """Pure-Python HTTP polling worker for the outbound 4G bridge.
 
@@ -134,7 +167,11 @@ class RemoteBridgeWorker:
             self.cloud.post_status(status)
         except RemoteCloudError as exc:
             # status 都提交不上时，本轮不能安全拉取新命令；保持游标不动，等下次轮询重试。
-            self._record_degraded_status(exc)
+            if self.pending_terminal_ack:
+                # 已有本地终态 ACK 时，手机侧必须看到 command_pending，而不是误以为可继续下发。
+                self._record_pending_ack_degraded_status(self._pending_terminal_ack_id(), exc)
+            else:
+                self._record_degraded_status(exc)
             return False
         if self.pending_terminal_ack:
             # pending ACK 是已经执行过的本地终态；先补发它，才能避免重启后重复执行命令。
@@ -206,7 +243,8 @@ class RemoteBridgeWorker:
         except RemoteCloudError as exc:
             # ACK 未进入云端就不是 terminal ACK；先持久化 pending ACK，再暴露降级状态。
             self._persist_pending_terminal_ack(command_id, ack)
-            self._record_degraded_status(exc)
+            status = self._record_pending_ack_degraded_status(command_id, exc)
+            self._post_status_best_effort(status)
             return False
         self.last_ack_id = command_id
         self._persist_last_ack_id(command_id)
@@ -228,7 +266,8 @@ class RemoteBridgeWorker:
             )
         except RemoteCloudError as exc:
             # 补发失败仍保持 pending ACK，不拉取新命令，避免本地行为被重复触发。
-            self._record_degraded_status(exc)
+            status = self._record_pending_ack_degraded_status(command_id, exc)
+            self._post_status_best_effort(status)
             return False
         self.last_ack_id = command_id
         self.pending_terminal_ack = None
@@ -236,26 +275,47 @@ class RemoteBridgeWorker:
         self._post_status_from_ack(ack)
         return True
 
+    def _pending_terminal_ack_id(self):
+        pending_ack = dict(self.pending_terminal_ack or {})
+        return str(pending_ack.get("command_id") or "").strip()
+
     def _record_degraded_status(self, error):
         status = _phone_safe_degraded_status(self.robot_id, error)
+        self._set_operator_status(status)
+        return status
+
+    def _record_pending_ack_degraded_status(self, command_id, error):
+        status = _phone_safe_pending_ack_status(self.robot_id, command_id, error)
+        self._set_operator_status(status)
+        return status
+
+    def _set_operator_status(self, status):
         if hasattr(self.operator_backend, "_set_status"):
+            extra = {
+                "remote_ready": status["remote_ready"],
+                "cloud_reachable": status["cloud_reachable"],
+                "auth_state": status["auth_state"],
+                "degradation_state": status["degradation_state"],
+                "retry_hint": status["retry_hint"],
+                "safe_phone_copy": status["safe_phone_copy"],
+            }
+            for key in ("pending_terminal_ack_id", "primary_actions_enabled", "proof_boundary"):
+                if key in status:
+                    extra[key] = status[key]
             self.operator_backend._set_status(  # noqa: SLF001 - worker 与 RemoteBridge 同模块协作。
                 status["state"],
                 status["message"],
-                remote_ready=status["remote_ready"],
-                cloud_reachable=status["cloud_reachable"],
-                auth_state=status["auth_state"],
-                degradation_state=status["degradation_state"],
-                retry_hint=status["retry_hint"],
-                safe_phone_copy=status["safe_phone_copy"],
+                **extra,
             )
         elif hasattr(self.operator_backend, "last_status"):
             self.operator_backend.last_status = status
-        return status
 
     def _post_degraded_status_best_effort(self, error):
+        self._post_status_best_effort(_phone_safe_degraded_status(self.robot_id, error))
+
+    def _post_status_best_effort(self, status):
         try:
-            self.cloud.post_status(_phone_safe_degraded_status(self.robot_id, error))
+            self.cloud.post_status(status)
         except Exception:
             # 降级状态本身也是 best-effort；失败时仍然以“不执行命令、不推进游标”为准。
             pass
@@ -280,9 +340,13 @@ class RemoteBridgeWorker:
         if not isinstance(payload, dict):
             raise RuntimeError("remote bridge cursor state must be a JSON object")
         # 状态文件只保存游标和安全 pending ACK，不写 token、URL 或硬件细节，避免把运行密钥落盘。
-        state["last_terminal_ack_id"] = str(
-            payload.get("last_terminal_ack_id") or payload.get("last_ack_id") or fallback or ""
-        )
+        # 状态文件里显式保存的空 cursor 代表 ACK 尚未入云，不能被启动参数 fallback 覆盖。
+        if "last_terminal_ack_id" in payload:
+            state["last_terminal_ack_id"] = str(payload.get("last_terminal_ack_id") or "")
+        elif "last_ack_id" in payload:
+            state["last_terminal_ack_id"] = str(payload.get("last_ack_id") or "")
+        else:
+            state["last_terminal_ack_id"] = str(fallback or "")
         pending_ack = payload.get(PENDING_TERMINAL_ACK_KEY)
         if pending_ack is not None:
             if not isinstance(pending_ack, dict):
@@ -371,11 +435,7 @@ class RemoteBridgeWorker:
         return safe_status
 
     def _safe_state_text(self, value):
-        text = str(value)
-        lowered = text.lower()
-        if any(marker in lowered for marker in SENSITIVE_STATE_MARKERS):
-            return "[redacted]"
-        return text[:240]
+        return _safe_state_text_value(value)
 
     def _post_status_from_ack(self, ack):
         status = (ack.get("result") or {}).get("operator_status")
