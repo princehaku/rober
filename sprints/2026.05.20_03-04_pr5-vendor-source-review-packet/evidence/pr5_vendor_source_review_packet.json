@@ -1,0 +1,238 @@
+{
+  "boundary_rule_checks": [
+    {
+      "matched": true,
+      "pattern": "docs/vendor/VENDOR_INDEX\\.md",
+      "rule_id": "boundary_cites_vendor_index"
+    },
+    {
+      "matched": true,
+      "pattern": "local vendor tree does not prove.*?2D LiDAR or ToF",
+      "rule_id": "lidar_tof_not_vendor_proven"
+    },
+    {
+      "matched": true,
+      "pattern": "hardware_material_pending.*?not_proven",
+      "rule_id": "hardware_material_pending_not_proven"
+    },
+    {
+      "matched": true,
+      "pattern": "monocular camera \\+ one 2D LiDAR \\+ ToF safety ring",
+      "rule_id": "target_combo_declared_pending"
+    },
+    {
+      "matched": true,
+      "pattern": "ToF product target:.*?product acceptance targets",
+      "rule_id": "tof_is_product_target"
+    },
+    {
+      "matched": true,
+      "pattern": "Acceptance rule: do not treat 2D LiDAR or ToF.*?SKU.*?vendor/source.*?HIL",
+      "rule_id": "acceptance_requires_sku_source_hil"
+    }
+  ],
+  "delivery_success": false,
+  "evidence_boundary": "software_proof_docker_pr5_vendor_source_review_packet_gate",
+  "evidence_status": "not_proven",
+  "generated_at": "2026-05-19T19:15:21.358207+00:00",
+  "hardware_material_status": "hardware_material_pending",
+  "missing_materials": [
+    "real_2d_lidar_sku_source_receipt",
+    "real_tof_sku_source_receipt",
+    "real_mounting_wiring_power_plan",
+    "real_calibration_material",
+    "real_sensor_hil_entry",
+    "real_nav2_slam_field_pass"
+  ],
+  "missing_review_context": [],
+  "missing_source_items": [],
+  "next_required_evidence": [
+    "Provide reviewed 2D LiDAR SKU/source/receipt or purchase-order material.",
+    "Provide reviewed ToF SKU/source/channel-count material.",
+    "Link mounting, wiring, power-budget, and calibration plans.",
+    "Run a separate HIL-entry review after real materials exist.",
+    "Only then request reviewer resolution for hardware-material obligations."
+  ],
+  "non_access_scope": [
+    "github_api_raw_review_body",
+    "ros_graph",
+    "serial_uart",
+    "hardware_bus",
+    "procurement_system",
+    "sensor_driver_runtime",
+    "hil",
+    "field_run",
+    "objective_5_external_infrastructure",
+    "delivery_execution"
+  ],
+  "not_proven": [
+    "2d_lidar_procurement",
+    "tof_procurement",
+    "2d_lidar_installation_wiring_power",
+    "tof_installation_wiring_power",
+    "sensor_calibration",
+    "sensor_hil_entry",
+    "wave_rover_uart_hil",
+    "delivery_success"
+  ],
+  "overall_status": "not_proven",
+  "primary_actions_enabled": false,
+  "proof_boundary": "software_proof_docker_pr5_vendor_source_review_packet_gate",
+  "review_packet_status": "ready_for_pr5_vendor_source_review_packet_not_proven",
+  "review_summary": {
+    "delivery_success": false,
+    "evidence_boundary": "software_proof_docker_pr5_vendor_source_review_packet_gate",
+    "evidence_status": "not_proven",
+    "hardware_material_status": "hardware_material_pending",
+    "missing_materials": [
+      "real_2d_lidar_sku_source_receipt",
+      "real_tof_sku_source_receipt",
+      "real_mounting_wiring_power_plan",
+      "real_calibration_material",
+      "real_sensor_hil_entry",
+      "real_nav2_slam_field_pass"
+    ],
+    "missing_review_context": [],
+    "missing_source_items": [],
+    "next_required_evidence": [
+      "Provide reviewed 2D LiDAR SKU/source/receipt or purchase-order material.",
+      "Provide reviewed ToF SKU/source/channel-count material.",
+      "Link mounting, wiring, power-budget, and calibration plans.",
+      "Run a separate HIL-entry review after real materials exist.",
+      "Only then request reviewer resolution for hardware-material obligations."
+    ],
+    "not_proven": [
+      "2d_lidar_procurement",
+      "tof_procurement",
+      "2d_lidar_installation_wiring_power",
+      "tof_installation_wiring_power",
+      "sensor_calibration",
+      "sensor_hil_entry",
+      "wave_rover_uart_hil",
+      "delivery_success"
+    ],
+    "overall_status": "not_proven",
+    "primary_actions_enabled": false,
+    "proof_boundary": "software_proof_docker_pr5_vendor_source_review_packet_gate",
+    "review_packet_status": "ready_for_pr5_vendor_source_review_packet_not_proven",
+    "safe_copy": {
+      "en": "PR #5 thread PRRT_kwDOSWB9286CJ3tX is packaged as a vendor/source review packet. Local docs/vendor material establishes source-boundary context only; 2D LiDAR and ToF remain hardware_material_pending and not_proven, not procurement, installation, calibration, HIL, or delivery proof.",
+      "status": "ready_for_pr5_vendor_source_review_packet_not_proven",
+      "zh": "PR #5 线程 PRRT_kwDOSWB9286CJ3tX 已整理为 vendor/source review packet：本地 docs/vendor 只能证明 Orange Pi、WAVE ROVER、UART/JSON、firmware/vendor app 的资料边界；2D LiDAR / ToF 仍是 hardware_material_pending、not_proven，不能当作真实采购、安装、标定或 HIL 证据。"
+    },
+    "schema": "trashbot.pr5_vendor_source_review_packet_summary.v1",
+    "schema_version": 1,
+    "source": "software_proof",
+    "source_schema": "trashbot.pr5_vendor_source_review_packet.v1",
+    "source_schema_version": 1,
+    "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+    "vendor_source_boundary": {
+      "covered_domains": [
+        "Orange Pi Zero 3 docs listed in vendor index",
+        "WAVE ROVER docs and firmware listed in vendor index",
+        "WAVE ROVER UART newline-delimited JSON source references",
+        "Waveshare vendor app config and optional lidar parser reference"
+      ],
+      "entrypoint": "docs/vendor/VENDOR_INDEX.md",
+      "lidar_tof_boundary": "hardware_material_pending_not_proven",
+      "review_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+      "source_note": "docs/vendor references support source attribution context only; they do not prove project 2D LiDAR/ToF SKU, purchase, install, wiring, calibration, HIL, field pass, or delivery success.",
+      "source_refs": [
+        "docs/vendor/VENDOR_INDEX.md",
+        "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+        "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+        "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+      ]
+    }
+  },
+  "safe_copy": {
+    "en": "PR #5 thread PRRT_kwDOSWB9286CJ3tX is packaged as a vendor/source review packet. Local docs/vendor material establishes source-boundary context only; 2D LiDAR and ToF remain hardware_material_pending and not_proven, not procurement, installation, calibration, HIL, or delivery proof.",
+    "status": "ready_for_pr5_vendor_source_review_packet_not_proven",
+    "zh": "PR #5 线程 PRRT_kwDOSWB9286CJ3tX 已整理为 vendor/source review packet：本地 docs/vendor 只能证明 Orange Pi、WAVE ROVER、UART/JSON、firmware/vendor app 的资料边界；2D LiDAR / ToF 仍是 hardware_material_pending、not_proven，不能当作真实采购、安装、标定或 HIL 证据。"
+  },
+  "schema": "trashbot.pr5_vendor_source_review_packet.v1",
+  "schema_version": 1,
+  "source": "software_proof",
+  "source_docs": {
+    "production_hardware_boundary": "docs/product/production_hardware_boundary.md",
+    "vendor_index": "docs/vendor/VENDOR_INDEX.md",
+    "vendor_refs": [
+      "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+      "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+      "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+    ]
+  },
+  "source_ref_checks": [
+    {
+      "load_status": "loaded",
+      "matched_patterns": [
+        "## Source Of Truth Order",
+        "Orange Pi Zero 3",
+        "WAVE ROVER",
+        "UART.*?newline-delimited JSON"
+      ],
+      "missing_patterns": [],
+      "rule_id": "vendor_index_entrypoint",
+      "source_ref": "docs/vendor/VENDOR_INDEX.md",
+      "status": "covered_not_proven"
+    },
+    {
+      "load_status": "loaded",
+      "matched_patterns": [
+        "serial\\.Serial",
+        "json\\.loads",
+        "json\\.dumps",
+        "/dev/ttyACM\\*",
+        "lidar_ser"
+      ],
+      "missing_patterns": [],
+      "rule_id": "wave_rover_base_ctrl_uart_json_reference",
+      "source_ref": "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+      "status": "covered_not_proven"
+    },
+    {
+      "load_status": "loaded",
+      "matched_patterns": [
+        "use_lidar:\\s*false",
+        "cmd_movition_ctrl:\\s*1",
+        "cmd_pwm_ctrl:\\s*11"
+      ],
+      "missing_patterns": [],
+      "rule_id": "wave_rover_config_source_boundary",
+      "source_ref": "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+      "status": "covered_not_proven"
+    },
+    {
+      "load_status": "loaded",
+      "matched_patterns": [
+        "#define CMD_SPEED_CTRL\\s+1",
+        "#define CMD_ROS_CTRL\\s+13",
+        "#define CMD_BASE_FEEDBACK\\s+130"
+      ],
+      "missing_patterns": [],
+      "rule_id": "wave_rover_json_cmd_firmware_reference",
+      "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+      "status": "covered_not_proven"
+    }
+  ],
+  "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+  "thread_topic": "2D LiDAR / ToF mandatory assumptions require docs/vendor source evidence",
+  "vendor_source_boundary": {
+    "covered_domains": [
+      "Orange Pi Zero 3 docs listed in vendor index",
+      "WAVE ROVER docs and firmware listed in vendor index",
+      "WAVE ROVER UART newline-delimited JSON source references",
+      "Waveshare vendor app config and optional lidar parser reference"
+    ],
+    "entrypoint": "docs/vendor/VENDOR_INDEX.md",
+    "lidar_tof_boundary": "hardware_material_pending_not_proven",
+    "review_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+    "source_note": "docs/vendor references support source attribution context only; they do not prove project 2D LiDAR/ToF SKU, purchase, install, wiring, calibration, HIL, field pass, or delivery success.",
+    "source_refs": [
+      "docs/vendor/VENDOR_INDEX.md",
+      "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+      "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+      "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+    ]
+  }
+}

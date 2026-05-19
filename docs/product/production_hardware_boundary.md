@@ -385,6 +385,30 @@ decision means only that the reviewer can evaluate the current docs-only
 fix; it is not hardware procurement, installation, HIL, route/elevator field
 pass, phone-device proof, Objective 5 external proof, or delivery success.
 
+## PR #5 Vendor Source Review Packet Gate
+
+`pr5_vendor_source_review_packet` is the thread-specific fail-closed PC gate
+for PR #5 unresolved review thread `PRRT_kwDOSWB9286CJ3tX`. It emits
+`schema=trashbot.pr5_vendor_source_review_packet.v1` and
+`schema=trashbot.pr5_vendor_source_review_packet_summary.v1` under
+`software_proof_docker_pr5_vendor_source_review_packet_gate`.
+
+The gate starts from `docs/vendor/VENDOR_INDEX.md` and checks local WAVE ROVER
+UART/JSON references such as `ugv_rpi/base_ctrl.py`, `ugv_rpi/config.yaml`,
+and `WAVE_ROVER_V0.9/json_cmd.h`. These references establish source-boundary
+coverage for Orange Pi, WAVE ROVER, UART newline-delimited JSON, firmware, and
+vendor-app behavior. They do not prove a project 2D LiDAR or ToF SKU, receipt,
+purchase order, mounting, wiring, power budget, calibration, HIL entry,
+Nav2/SLAM field pass, near-field safety pass, Objective 5 external proof, or
+delivery result.
+
+Every output must remain `source=software_proof`, `hardware_material_pending`,
+`not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. `ready_for_pr5_vendor_source_review_packet_not_proven`
+means only that the review thread has a machine-readable source packet, safe
+copy, missing-material list, and next evidence checklist. It is not a real
+hardware-material pass and must not auto-close `PRRT_kwDOSWB9286CJ3tX`.
+
 ## Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)
 
 - Target baseline combo: monocular camera + one 2D LiDAR + ToF safety ring.

@@ -128,6 +128,7 @@ const HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_BOUNDARY = "software_proof_docke
 const HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate";
 const HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_execution_pack_gate";
 const PR5_REVIEW_THREAD_CLOSEOUT_BOUNDARY = "software_proof_docker_pr5_review_thread_closeout_gate";
+const PR5_VENDOR_SOURCE_REVIEW_PACKET_BOUNDARY = "software_proof_docker_pr5_vendor_source_review_packet_gate";
 const HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_BOUNDARY = "software_proof_docker_hardware_real_material_escalation_request_gate";
 const REAL_MATERIAL_READINESS_BOARD_BOUNDARY = "software_proof_docker_real_material_readiness_board_gate";
 const REAL_MATERIAL_EVIDENCE_INTAKE_BOUNDARY = "software_proof_docker_real_material_evidence_intake_gate";
@@ -284,6 +285,7 @@ const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_TEXT = /(authorization|be
 const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|raw vendor docs|vendor document raw|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|hil_pass|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|raw vendor docs|vendor document raw|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_PR5_REVIEW_THREAD_CLOSEOUT_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw review body|raw github|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
+const UNSAFE_PR5_VENDOR_SOURCE_REVIEW_PACKET_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw review packet|raw vendor|raw vendor docs|raw source document|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|标定\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*标定|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw request|raw escalation|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|\bhil\b|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_REAL_MATERIAL_READINESS_BOARD_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw board|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|safe_to_control\s*=\s*true|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_REAL_MATERIAL_EVIDENCE_INTAKE_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw diagnostics|raw material|raw intake|raw evidence|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|safe_to_control\s*=\s*true|hil_pass|hil passed|field pass|现场通过|真实手机已验收|真实送达成功|投放完成|取消完成|完整\s*材料)/i;
@@ -358,6 +360,7 @@ let latestHardwareSensorHilEntryConfigPrecheck = null;
 let latestHardwareSensorHilEntryReadinessReview = null;
 let latestHardwareSensorHilEntryExecutionPack = null;
 let latestPr5ReviewThreadCloseout = null;
+let latestPr5VendorSourceReviewPacket = null;
 let latestHardwareRealMaterialEscalationRequest = null;
 let latestRealMaterialReadinessBoard = null;
 let latestRealMaterialEvidenceIntake = null;
@@ -1168,6 +1171,15 @@ function safePr5ReviewThreadCloseoutText(value, fallback = "not_proven") {
   // PR #5 closeout 只展示 review thread 的脱敏决策，不允许 GitHub/raw JSON/底层控制细节外流。
   const text = safeText(value, fallback);
   if (UNSAFE_PR5_REVIEW_THREAD_CLOSEOUT_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safePr5VendorSourceReviewPacketText(value, fallback = "not_proven") {
+  // vendor/source packet 只展示 Robot alias 的安全摘要；任何 raw vendor/source 或完成暗示都降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_PR5_VENDOR_SOURCE_REVIEW_PACKET_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -17394,6 +17406,132 @@ function pr5ReviewThreadCloseoutFromStatus(status, readiness, diagnostics) {
   };
 }
 
+function pr5VendorSourceReviewPacketCandidate(status, readiness, diagnostics) {
+  // Robot diagnostics safe alias 是主来源；兼容 summary 只为并行 worker schema 对齐留后路。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object" ? diagnostics.diagnostics : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.robot_diagnostics_pr5_vendor_source_review_packet_summary,
+    readiness?.robot_diagnostics_pr5_vendor_source_review_packet_summary,
+    diagnostics?.robot_diagnostics_pr5_vendor_source_review_packet_summary,
+    diagnosticsReadiness.robot_diagnostics_pr5_vendor_source_review_packet_summary,
+    diagnosticsSummary.robot_diagnostics_pr5_vendor_source_review_packet_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_pr5_vendor_source_review_packet_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_pr5_vendor_source_review_packet_summary,
+    statusDiagnosticsSummary.robot_diagnostics_pr5_vendor_source_review_packet_summary,
+    status?.pr5_vendor_source_review_packet_summary,
+    readiness?.pr5_vendor_source_review_packet_summary,
+    diagnostics?.pr5_vendor_source_review_packet_summary,
+    diagnosticsReadiness.pr5_vendor_source_review_packet_summary,
+    diagnosticsSummary.pr5_vendor_source_review_packet_summary,
+    nestedDiagnosticsSummary.pr5_vendor_source_review_packet_summary,
+    nestedDiagnosticsInnerSummary.pr5_vendor_source_review_packet_summary,
+    statusDiagnosticsSummary.pr5_vendor_source_review_packet_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function pr5VendorSourceReviewPacketNotProvenList(value) {
+  // 本 packet 是 review-ready software proof，不补齐采购、安装、标定、HIL 或送达证据。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "不是真实采购",
+    "不是真实安装",
+    "不是真实标定",
+    "不是真实 HIL",
+    "不是送达证明",
+    "真实 2D LiDAR / ToF SKU/source/receipt pending",
+    "真实 install/wiring/power/calibration pending",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 18);
+}
+
+function pr5VendorSourceReviewPacketSummaryText(value, fallback) {
+  // missing_materials/next_required_evidence 可能来自数组或对象；只折叠为 phone-safe 短文本。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safePr5VendorSourceReviewPacketText(
+        item?.safe_phone_copy || item?.summary || item?.status || item?.state ||
+          item?.material || item?.evidence || item?.source || item?.next_required_evidence || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.material || value.evidence || value.source || value.next_required_evidence;
+    if (direct) {
+      return safePr5VendorSourceReviewPacketText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safePr5VendorSourceReviewPacketText(key, "");
+        const copy = pr5VendorSourceReviewPacketSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safePr5VendorSourceReviewPacketText(value, fallback);
+}
+
+function pr5VendorSourceReviewPacketFromStatus(status, readiness, diagnostics) {
+  const provided = pr5VendorSourceReviewPacketCandidate(status, readiness, diagnostics) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.robot_diagnostics_pr5_vendor_source_review_packet_summary.v1",
+    source_schema: provided.source_schema || "trashbot.pr5_vendor_source_review_packet_summary.v1",
+    schema_version: 1,
+    thread_id: safePr5VendorSourceReviewPacketText(
+      provided.thread_id || provided.review_thread_id,
+      "PRRT_kwDOSWB9286CJ3tX",
+    ),
+    source: safePr5VendorSourceReviewPacketText(provided.source, "software_proof"),
+    proof_status: safePr5VendorSourceReviewPacketText(
+      provided.proof_status || provided.status || provided.overall_status,
+      "not_proven",
+    ),
+    vendor_source_boundary: pr5VendorSourceReviewPacketSummaryText(
+      provided.vendor_source_boundary || provided.source_boundary,
+      "vendor_source_boundary=docs/vendor/VENDOR_INDEX.md local vendor materials only; 2D LiDAR / ToF real materials pending.",
+    ),
+    missing_materials: pr5VendorSourceReviewPacketSummaryText(
+      provided.missing_materials || provided.missing_real_materials,
+      "missing_materials=真实 2D LiDAR / ToF SKU/source/receipt、采购、安装、接线、电源、标定、HIL-entry pending",
+    ),
+    next_required_evidence: pr5VendorSourceReviewPacketSummaryText(
+      provided.next_required_evidence || provided.next_evidence || provided.next_steps,
+      "next_required_evidence=现场 owner 提供真实 SKU/source/receipt、采购、安装、接线、电源、标定和 HIL-entry phone-safe 摘要。",
+    ),
+    safe_copy: safePr5VendorSourceReviewPacketText(
+      provided.safe_copy || provided.safe_phone_copy || provided.safe_summary,
+      "PR #5 vendor/source review packet 只读展示；不是真实采购/安装/标定/HIL/送达证明。",
+    ),
+    evidence_boundary: safePr5VendorSourceReviewPacketText(
+      provided.evidence_boundary || provided.proof_boundary,
+      PR5_VENDOR_SOURCE_REVIEW_PACKET_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: pr5VendorSourceReviewPacketNotProvenList(provided),
+  };
+}
+
 function hardwareRealMaterialEscalationRequestCandidate(status, readiness, diagnostics) {
   // Robot diagnostics safe alias 优先；兜底只读主 summary，不主动 fetch diagnostics 或 artifact。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -25123,13 +25261,80 @@ function renderPr5ReviewThreadCloseout(status) {
   renderPr5ReviewThreadCloseoutThreads(summary);
 }
 
+function ensurePr5VendorSourceReviewPacketPanel() {
+  // vendor/source packet 紧跟 PR #5 closeout，提醒用户 unresolved thread 仍缺真实材料。
+  let panel = $("pr5VendorSourceReviewPacketPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("pr5ReviewThreadCloseoutTitle")?.closest("section") ||
+    $("hardwareBaselineSourceAlignmentTitle")?.closest("section") ||
+    $("hardwareBaselineReviewTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "pr5VendorSourceReviewPacketPanel";
+  panel.className = "pr5-vendor-source-review-packet-panel";
+  panel.setAttribute("aria-labelledby", "pr5VendorSourceReviewPacketTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="pr5VendorSourceReviewPacketTitle">PR #5 vendor/source review packet</h2>
+      <span id="pr5VendorSourceReviewPacketBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="pr5VendorSourceReviewPacketCopy" class="message">
+      等待 robot_diagnostics_pr5_vendor_source_review_packet_summary。
+    </p>
+    <dl class="pr5-vendor-source-review-packet-grid">
+      <div><dt>Thread</dt><dd id="pr5VendorSourceReviewPacketThread">PRRT_kwDOSWB9286CJ3tX</dd></div>
+      <div><dt>Proof Status</dt><dd id="pr5VendorSourceReviewPacketStatus">software_proof / not_proven</dd></div>
+      <div><dt>Vendor / Source Boundary</dt><dd id="pr5VendorSourceReviewPacketVendorBoundary">docs/vendor/VENDOR_INDEX.md local source boundary only</dd></div>
+      <div><dt>Missing Materials</dt><dd id="pr5VendorSourceReviewPacketMissing">2D LiDAR / ToF real source and procurement materials pending</dd></div>
+      <div><dt>Next Required Evidence</dt><dd id="pr5VendorSourceReviewPacketNextEvidence">next_required_evidence=not_proven</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="pr5VendorSourceReviewPacketBoundary">software_proof_docker_pr5_vendor_source_review_packet_gate</dd></div>
+      <div><dt>Control Boundary</dt><dd id="pr5VendorSourceReviewPacketControls">software_proof / not_proven / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="pr5VendorSourceReviewPacketNotProven">不是真实采购/安装/标定/HIL/送达证明。</dd></div>
+    </dl>
+    <p id="pr5VendorSourceReviewPacketHint" class="hint">
+      本 panel 只消费 Robot diagnostics safe alias；不读取 raw artifact、raw vendor docs、GitHub token、ACK、cursor、diagnostics fetch 或 robot command，也不改变 Start Delivery、Confirm Dropoff、Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderPr5VendorSourceReviewPacket(status) {
+  const panel = ensurePr5VendorSourceReviewPacketPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = pr5VendorSourceReviewPacketFromStatus(status, readiness, latestDiagnostics);
+  latestPr5VendorSourceReviewPacket = summary;
+  const badge = $("pr5VendorSourceReviewPacketBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 vendor/source packet" : "vendor/source not_proven";
+  $("pr5VendorSourceReviewPacketCopy").textContent = summary.safe_copy;
+  $("pr5VendorSourceReviewPacketThread").textContent = summary.thread_id;
+  $("pr5VendorSourceReviewPacketStatus").textContent = `${summary.source} / ${summary.proof_status}`;
+  $("pr5VendorSourceReviewPacketVendorBoundary").textContent = summary.vendor_source_boundary;
+  $("pr5VendorSourceReviewPacketMissing").textContent = summary.missing_materials;
+  $("pr5VendorSourceReviewPacketNextEvidence").textContent = summary.next_required_evidence;
+  $("pr5VendorSourceReviewPacketBoundary").textContent = summary.evidence_boundary;
+  $("pr5VendorSourceReviewPacketControls").textContent =
+    `${summary.source} / ${summary.proof_status} / delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("pr5VendorSourceReviewPacketNotProven").textContent = summary.not_proven.join("、");
+}
+
 function ensureHardwareRealMaterialEscalationRequestPanel() {
   // 升级请求紧跟 PR #5 closeout，只读说明真实材料缺口，不提供复制、ACK、cursor 或控制入口。
   let panel = $("hardwareRealMaterialEscalationRequestPanel");
   if (panel) {
     return panel;
   }
-  const anchor = $("pr5ReviewThreadCloseoutTitle")?.closest("section") ||
+  const anchor = $("pr5VendorSourceReviewPacketTitle")?.closest("section") ||
+    $("pr5ReviewThreadCloseoutTitle")?.closest("section") ||
     $("hardwareBaselineSourceAlignmentTitle")?.closest("section") ||
     $("hardwareBaselineReviewTitle")?.closest("section");
   if (!anchor || !anchor.parentElement) {
@@ -30121,6 +30326,7 @@ function renderDiagnosticsSummary(payload) {
     ["hardware_sensor_hil_entry_readiness_review", hardwareSensorHilEntryReadinessReview.readiness_status],
     ["hardware_sensor_hil_entry_execution_pack", hardwareSensorHilEntryExecutionPack.execution_status],
     ["pr5_review_thread_closeout", pr5ReviewThreadCloseout.overall_status],
+    ["pr5_vendor_source_review_packet", latestPr5VendorSourceReviewPacket?.proof_status || "not_proven"],
     ["hardware_real_material_escalation_request", hardwareRealMaterialEscalationRequest.safe_status],
     ["real_material_readiness_board", realMaterialReadinessBoard.status],
     ["real_material_evidence_intake", realMaterialEvidenceIntake.intake_status],
@@ -30265,6 +30471,7 @@ function renderOfflineFailure() {
   renderHardwareSensorHilEntryReadinessReview({});
   renderHardwareSensorHilEntryExecutionPack({});
   renderPr5ReviewThreadCloseout({});
+  renderPr5VendorSourceReviewPacket({});
   renderHardwareRealMaterialEscalationRequest({});
   renderRealMaterialReadinessBoard({});
   renderRealMaterialEvidenceIntake({});
@@ -30381,6 +30588,7 @@ function renderStatus(status) {
   renderHardwareSensorHilEntryReadinessReview(status);
   renderHardwareSensorHilEntryExecutionPack(status);
   renderPr5ReviewThreadCloseout(status);
+  renderPr5VendorSourceReviewPacket(status);
   renderHardwareRealMaterialEscalationRequest(status);
   renderRealMaterialReadinessBoard(status);
   renderRealMaterialEvidenceIntake(status);
@@ -30673,6 +30881,7 @@ async function openDiagnostics() {
     renderHardwareSensorHilEntryConfigPrecheck(latestStatus || {});
     renderHardwareSensorHilEntryReadinessReview(latestStatus || {});
     renderHardwareSensorHilEntryExecutionPack(latestStatus || {});
+    renderPr5VendorSourceReviewPacket(latestStatus || {});
     renderHardwareRealMaterialEscalationRequest(latestStatus || {});
     renderRealMaterialReadinessBoard(latestStatus || {});
     renderRealMaterialEvidenceIntake(latestStatus || {});

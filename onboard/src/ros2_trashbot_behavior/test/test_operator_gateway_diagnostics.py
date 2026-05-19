@@ -103,6 +103,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_hardware_sensor_hil_entry_readiness_review,
     summarize_hardware_sensor_hil_entry_execution_pack,
     summarize_pr5_review_thread_closeout,
+    summarize_pr5_vendor_source_review_packet,
     summarize_hardware_real_material_escalation_request,
     summarize_real_material_readiness_board,
     summarize_real_material_evidence_intake,
@@ -24108,6 +24109,175 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("/dev/ttyUSB0", encoded)
         self.assertNotIn("Traceback", encoded)
         self.assertNotIn("raw_review_body", encoded)
+        self.assertNotIn("Start Delivery control enabled", encoded)
+
+    def test_diagnostics_payload_includes_pr5_vendor_source_review_packet_safe_alias(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "pr5_vendor_source_review_packet_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.pr5_vendor_source_review_packet_summary.v1",
+                        "source_schema": "trashbot.pr5_vendor_source_review_packet.v1",
+                        "source_schema_version": 1,
+                        "evidence_boundary": "software_proof_docker_pr5_vendor_source_review_packet_gate",
+                        "source_evidence_boundary": "software_proof_docker_pr5_vendor_source_review_packet_gate",
+                        "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+                        "source": "software_proof",
+                        "proof_boundary": "software_proof_docker_pr5_vendor_source_review_packet_gate",
+                        "vendor_source_boundary": (
+                            "docs/vendor/VENDOR_INDEX.md covers existing vendor sources; "
+                            "2D LiDAR / ToF remain hardware_material_pending."
+                        ),
+                        "status": "not_proven",
+                        "missing_materials": [
+                            "real_2d_lidar_vendor_source",
+                            "real_tof_vendor_source",
+                        ],
+                        "next_required_evidence": [
+                            "Provide real 2D LiDAR / ToF SKU, vendor source, receipt, installation, wiring, power, calibration and HIL-entry materials."
+                        ],
+                        "safe_copy": (
+                            "PR #5 vendor/source review packet is metadata-only; "
+                            "software_proof; not_proven; delivery_success=false; "
+                            "primary_actions_enabled=false."
+                        ),
+                        "not_proven": ["real_2d_lidar_vendor_source", "delivery_success"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "pr5_vendor_source_review_packet": {"delivery_success": True},
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                pr5_vendor_source_review_packet_ref=str(summary_path),
+            )
+            summary = payload["robot_diagnostics_pr5_vendor_source_review_packet_summary"]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, payload["pr5_vendor_source_review_packet"])
+        self.assertEqual(summary, payload["pr5_vendor_source_review_packet_summary"])
+        self.assertNotIn("pr5_vendor_source_review_packet", payload["latest_status"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_pr5_vendor_source_review_packet_summary.v1",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.pr5_vendor_source_review_packet.v1")
+        self.assertEqual(summary["thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(
+            summary["proof_boundary"],
+            "software_proof_docker_pr5_vendor_source_review_packet_gate",
+        )
+        self.assertIn("docs/vendor/VENDOR_INDEX.md", summary["vendor_source_boundary"])
+        self.assertIn("real_2d_lidar_vendor_source", summary["missing_materials"])
+        self.assertIn("real_tof_vendor_source", summary["not_proven"])
+        self.assertIn("delivery_success=false", summary["safe_copy"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertTrue(summary["summary_required"])
+        self.assertFalse(summary["hardware_read"])
+        self.assertFalse(summary["serial_uart_opened"])
+        self.assertFalse(summary["ros_graph_accessed"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["command_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(summary_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_pr5_vendor_source_review_packet_missing_unsupported_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_without_summary = summarize_pr5_vendor_source_review_packet(
+                {
+                    "schema": "trashbot.pr5_vendor_source_review_packet.v1",
+                    "schema_version": 1,
+                    "evidence_boundary": "software_proof_docker_pr5_vendor_source_review_packet_gate",
+                    "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsupported = summarize_pr5_vendor_source_review_packet(
+                {
+                    "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
+                    "evidence_boundary": "software_proof_docker_pr5_review_thread_closeout_gate",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "PR #5 vendor/source review packet is metadata-only.",
+                }
+            )
+            unsafe = summarize_pr5_vendor_source_review_packet(
+                {
+                    "schema": "trashbot.pr5_vendor_source_review_packet_summary.v1",
+                    "source_schema": "trashbot.pr5_vendor_source_review_packet.v1",
+                    "evidence_boundary": "software_proof_docker_pr5_vendor_source_review_packet_gate",
+                    "source_evidence_boundary": "software_proof_docker_pr5_vendor_source_review_packet_gate",
+                    "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+                    "safe_copy": "PR #5 vendor/source review passed; Start Delivery control enabled.",
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "raw_artifact_body": "token secret /dev/ttyUSB0 baudrate=115200",
+                }
+            )
+            missing_path = (
+                Path(td)
+                / "Bearer-secret-token"
+                / "missing_pr5_vendor_source_review_packet.json"
+            )
+            missing = summarize_pr5_vendor_source_review_packet(str(missing_path))
+            encoded = json.dumps(
+                [artifact_without_summary, unsupported, unsafe, missing],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(
+            artifact_without_summary["status"],
+            "blocked_missing_pr5_vendor_source_review_packet_summary",
+        )
+        self.assertEqual(unsupported["status"], "unsupported_schema")
+        self.assertEqual(
+            unsafe["status"],
+            "blocked_unsafe_pr5_vendor_source_review_packet_summary",
+        )
+        self.assertEqual(
+            missing["status"],
+            "blocked_missing_pr5_vendor_source_review_packet_summary",
+        )
+        self.assertIn("software_proof_docker_pr5_vendor_source_review_packet_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", encoded)
+        self.assertIn("primary_actions_enabled", encoded)
+        self.assertFalse(unsafe["delivery_success"])
+        self.assertFalse(unsafe["primary_actions_enabled"])
+        self.assertFalse(unsafe["ack_post_allowed"])
+        self.assertFalse(unsafe["cursor_updates_allowed"])
+        self.assertFalse(unsafe["command_allowed"])
+        self.assertFalse(unsafe["nav2_triggered"])
+        self.assertFalse(unsafe["hil_pass"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("baudrate=115200", encoded)
+        self.assertNotIn("raw_artifact_body", encoded)
         self.assertNotIn("Start Delivery control enabled", encoded)
 
     def test_diagnostics_payload_includes_hardware_real_material_escalation_request_safe_alias(self):

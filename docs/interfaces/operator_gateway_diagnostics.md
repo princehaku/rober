@@ -102,6 +102,45 @@ field pass, PR #5 hardware-material closure, or delivery success. It supports
 Objective 2 and Objective 3 evidence hygiene only as `software_proof` /
 `not_proven` reviewability.
 
+## robot_diagnostics_pr5_vendor_source_review_packet_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_pr5_vendor_source_review_packet_summary` as a safe alias
+for Hardware's PR #5 vendor/source review packet summary.
+
+- Source artifact schema:
+  `trashbot.pr5_vendor_source_review_packet.v1`
+- Source summary schema:
+  `trashbot.pr5_vendor_source_review_packet_summary.v1`
+- Robot alias schema:
+  `trashbot.robot_diagnostics_pr5_vendor_source_review_packet_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_pr5_vendor_source_review_packet_gate`
+
+The alias is metadata-only and read-only. It may expose only sanitized
+`thread_id`, `source=software_proof`, `proof_boundary`,
+`vendor_source_boundary`, missing materials, next required evidence, safe copy,
+`not_proven`, `delivery_success=false`, and `primary_actions_enabled=false`.
+The PR #5 unresolved thread is `PRRT_kwDOSWB9286CJ3tX`; the current packet
+must remain `not_proven` until real 2D LiDAR / ToF SKU, vendor/source,
+receipt, procurement, installation, wiring, power, calibration, and HIL-entry
+materials are independently supplied and reviewed.
+
+Missing summary, unreadable input, unsupported schema or boundary, unsafe
+copy, raw artifact body fields, raw review body, credentials, local paths,
+serial/UART paths, baudrate, ROS topics, `/cmd_vel`, ACK/cursor/command
+fields, success wording, HIL/pass wording, field-pass wording,
+`delivery_success=true`, or `primary_actions_enabled=true` must fail closed as
+blocked/not_proven.
+
+This alias must not read raw artifacts, hardware, serial/UART, ROS graph,
+cloud resources, mobile browser state, ACK payloads, command envelopes, or
+completion cursors. It must not enable Start Delivery, Confirm Dropoff,
+Cancel, ACK, cursor updates, persistence updates, terminal ACK, commands,
+Nav2, WAVE ROVER, HIL, material collection, Objective 5 external proof,
+dropoff/cancel completion, route/elevator field pass, PR #5 material closure,
+or delivery success.
+
 ## robot_diagnostics_hardware_real_material_escalation_request_summary
 
 Robot diagnostics exposes

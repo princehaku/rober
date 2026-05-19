@@ -9,6 +9,9 @@ REPO_ROOT = WEB_ROOT.parent.parent
 FIXTURE = WEB_ROOT / "fixtures" / "status.json"
 CLOUD_PENDING_ACK_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_pending_ack_status_guard.json"
 CLOUD_COMMAND_EXPIRY_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_expiry_safety_guard.json"
+PR5_VENDOR_SOURCE_REVIEW_PACKET_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_pr5_vendor_source_review_packet_summary.json"
+)
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -493,6 +496,92 @@ class HardwareRealMaterialEscalationRequestMobileTest(unittest.TestCase):
             "primary_actions_enabled\": true",
         ):
             self.assertNotIn(forbidden, escalation_text)
+
+
+class Pr5VendorSourceReviewPacketMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_pr5_vendor_source_review_packet_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(PR5_VENDOR_SOURCE_REVIEW_PACKET_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # vendor/source review packet 只消费 Robot diagnostics safe alias，不新增 ACK、cursor 或控制入口。
+        self.assertIn("PR #5 vendor/source review packet", app)
+        self.assertIn("PR5_VENDOR_SOURCE_REVIEW_PACKET_BOUNDARY", app)
+        self.assertIn("UNSAFE_PR5_VENDOR_SOURCE_REVIEW_PACKET_TEXT", app)
+        self.assertIn("safePr5VendorSourceReviewPacketText", app)
+        self.assertIn("pr5VendorSourceReviewPacketCandidate", app)
+        self.assertIn("pr5VendorSourceReviewPacketFromStatus", app)
+        self.assertIn("robot_diagnostics_pr5_vendor_source_review_packet_summary", app)
+        self.assertIn("pr5_vendor_source_review_packet_summary", app)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", app)
+        self.assertIn("pr5-vendor-source-review-packet-panel", styles)
+        self.assertIn("pr5-vendor-source-review-packet-grid", styles)
+        self.assertNotRegex(
+            app,
+            r"pr5VendorSourceReviewPacket.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+
+        # fixture 和产品文档必须固定保留 software_proof/not_proven 控制边界。
+        self.assertEqual(fixture["thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(fixture["source"], "software_proof")
+        self.assertEqual(fixture["proof_status"], "not_proven")
+        self.assertEqual(fixture["delivery_success"], False)
+        self.assertEqual(fixture["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_pr5_vendor_source_review_packet_gate", fixture_text)
+        self.assertIn("2D LiDAR", fixture_text)
+        self.assertIn("ToF", fixture_text)
+        self.assertIn("不是真实采购/安装/标定/HIL/送达证明", fixture_text)
+        self.assertIn("pr5_vendor_source_review_packet", doc)
+        self.assertIn("robot_diagnostics_pr5_vendor_source_review_packet_summary", doc)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", doc)
+        self.assertIn("software_proof", doc)
+        self.assertIn("not_proven", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("不是真实采购/安装/标定/HIL/送达证明", doc)
+
+    def test_pr5_vendor_source_review_packet_fixture_stays_phone_safe(self):
+        fixture = json.loads(PR5_VENDOR_SOURCE_REVIEW_PACKET_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # fixture 只保留 Robot alias 安全摘要，不能夹带 raw vendor/source、凭证、路径或控制成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw vendor docs",
+            "raw source document",
+            "github token",
+            "ghp_",
+            "serial path",
+            "serial device",
+            "uart path",
+            "baudrate",
+            "/users/",
+            "/tmp/",
+            "credentials",
+            "authorization",
+            "bearer",
+            "token",
+            "database url",
+            "queue url",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "hil_pass",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
 
 
 class TaskTerminalCompletionMainlineMobileTest(unittest.TestCase):

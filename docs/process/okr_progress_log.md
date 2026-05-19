@@ -8,7 +8,21 @@
 
 ## 2026-05-20 系列
 
-更新时间：2026-05-20 02:26 Asia/Shanghai。
+更新时间：2026-05-20 03:18 Asia/Shanghai。
+
+### 2026-05-20 03-04｜pr5-vendor-source-review-packet｜PR #5 vendor/source review packet software proof
+
+本轮 `sprints/2026.05.20_03-04_pr5-vendor-source-review-packet/` 不继续 Objective 5 local metadata depth，而是按 live rerank 处理 PR #5 unresolved thread `PRRT_kwDOSWB9286CJ3tX` 的 vendor/source review 风险。Hardware worker 新增 `pr5_vendor_source_review_packet` gate，从 `docs/vendor/VENDOR_INDEX.md`、WAVE ROVER `base_ctrl.py`、`config.yaml` 和 `json_cmd.h` 生成 artifact / summary，结论是本地 vendor tree 只证明 Orange Pi、WAVE ROVER、UART JSON、firmware/vendor app 的 source boundary；不证明项目 2D LiDAR / ToF SKU、采购、收货、安装、接线、电源、标定、HIL-entry、field pass 或 delivery success。Robot worker 新增 `robot_diagnostics_pr5_vendor_source_review_packet_summary` safe alias，只消费 sanitized Hardware summary，并强制 `software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。Full-Stack worker 在 `mobile/web` 只读展示 `PRRT_kwDOSWB9286CJ3tX`、`software_proof/not_proven` 和中文安全文案，不新增 endpoint、ACK、cursor、retry 或控制副作用；Start Delivery / Confirm Dropoff / Cancel 继续 fail-closed。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | `software_proof_docker_pr5_vendor_source_review_packet_gate` 把 PR #5 source-boundary 缺口转成 review-ready packet；source=`software_proof`，`PRRT_kwDOSWB9286CJ3tX` 仍 `not_proven`，不得写成真实材料到位或 thread resolved。仍缺真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report，以及真实 2D LiDAR / ToF SKU/source/receipt/procurement/install/wiring/power/calibration/HIL-entry。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 route/elevator field material、真实电梯、Nav2/fixed-route runtime log、dropoff/cancel completion、field pass 或 delivery result；packet 不等于 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record、关键帧实景材料或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可读状态受益：用户能看到 PR #5 vendor/source packet 当前是 `software_proof` / `not_proven`，并明确不是真实采购、安装、标定、HIL 或送达证明；`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false` 保持。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice、true phone/browser acceptance 和现场手机验收。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮是 O5 external-material blocker 下的 rerank，不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、多实例一致性、真实手机/browser、HIL 或 delivery success；O5 保持约 68%。 |
+
+本轮验证：Hardware worker `test -f docs/vendor/VENDOR_INDEX.md` 通过；`py_compile` 通过；`python3 -m unittest tests/test_pr5_vendor_source_review_packet.py` 输出 `Ran 5 tests ... OK`；artifact status `ready_for_pr5_vendor_source_review_packet_not_proven`；required `rg` 与 scoped `git diff --check` 通过。Robot worker `py_compile` 通过；`python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py` 输出 `Ran 219 tests ... OK`；required `rg` 与 scoped diff check 通过。Full-Stack worker `PYTHONDONTWRITEBYTECODE=1 python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 147 tests in 0.906s OK`；`node --check mobile/web/app.js` 通过；required `rg` 与 scoped diff check 通过。Product closeout 复跑 required `rg`、integration scoped `git diff --check`、`git diff --cached --check`、`git status --short --branch`，并 commit/push 本轮 durable changes。本轮不证明真实 2D LiDAR/ToF procurement/source/receipt/install/wiring/power/calibration/HIL-entry，不证明真实 phone/browser，不证明 O5 external proof，不证明 route/elevator field pass，不证明 delivery success。
 
 ### 2026-05-20 02-03｜cloud-command-expiry-safety-guard｜expired command status guard software proof
 

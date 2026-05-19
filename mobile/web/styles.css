@@ -150,6 +150,7 @@ h2 {
 .hardware-sensor-hil-entry-readiness-review-panel,
 .hardware-sensor-hil-entry-execution-pack-panel,
 .pr5-review-thread-closeout-panel,
+.pr5-vendor-source-review-packet-panel,
 .hardware-real-material-escalation-request-panel,
 .real-material-readiness-board-panel,
 .real-material-evidence-intake-panel,
@@ -315,6 +316,7 @@ h2 {
 .hardware-sensor-hil-entry-readiness-review-grid,
 .hardware-sensor-hil-entry-execution-pack-grid,
 .pr5-review-thread-closeout-grid,
+.pr5-vendor-source-review-packet-grid,
 .hardware-real-material-escalation-request-grid,
 .real-material-readiness-board-grid,
 .real-material-evidence-intake-grid,
@@ -396,6 +398,7 @@ h2 {
 .hardware-sensor-hil-entry-readiness-review-grid div,
 .hardware-sensor-hil-entry-execution-pack-grid div,
 .pr5-review-thread-closeout-grid div,
+.pr5-vendor-source-review-packet-grid div,
 .hardware-real-material-escalation-request-grid div,
 .real-material-readiness-board-grid div,
 .real-material-evidence-intake-grid div,
@@ -611,6 +614,10 @@ dd {
 }
 
 .hardware-sensor-hil-entry-execution-pack-grid {
+  grid-template-columns: 1fr;
+}
+
+.pr5-vendor-source-review-packet-grid {
   grid-template-columns: 1fr;
 }
 
@@ -1108,6 +1115,10 @@ dd {
   }
 
   .pr5-review-thread-closeout-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pr5-vendor-source-review-packet-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

@@ -805,6 +805,16 @@ PR5_REVIEW_THREAD_CLOSEOUT_SUMMARY_SCHEMA = (
     "trashbot.robot_diagnostics_pr5_review_thread_closeout_summary.v1"
 )
 PR5_REVIEW_THREAD_CLOSEOUT_GATE = "software_proof_docker_pr5_review_thread_closeout_gate"
+PR5_VENDOR_SOURCE_REVIEW_PACKET_SCHEMA = "trashbot.pr5_vendor_source_review_packet.v1"
+PR5_VENDOR_SOURCE_REVIEW_PACKET_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.pr5_vendor_source_review_packet_summary.v1"
+)
+PR5_VENDOR_SOURCE_REVIEW_PACKET_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_pr5_vendor_source_review_packet_summary.v1"
+)
+PR5_VENDOR_SOURCE_REVIEW_PACKET_GATE = (
+    "software_proof_docker_pr5_vendor_source_review_packet_gate"
+)
 HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SCHEMA = (
     "trashbot.hardware_real_material_escalation_request.v1"
 )
@@ -898,6 +908,16 @@ PR5_REVIEW_THREAD_CLOSEOUT_REQUIRED_NOT_PROVEN = (
     "route_elevator_field_pass",
     "delivery_success",
     "objective_5_external_proof",
+)
+PR5_VENDOR_SOURCE_REVIEW_PACKET_REQUIRED_NOT_PROVEN = (
+    "real_2d_lidar_vendor_source",
+    "real_tof_vendor_source",
+    "real_procurement_receipt",
+    "real_installation_wiring_power_calibration",
+    "real_hil_entry",
+    "route_elevator_field_pass",
+    "delivery_success",
+    "primary_actions_enabled",
 )
 HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_REQUIRED_NOT_PROVEN = (
     "real_wave_rover",
@@ -3995,6 +4015,26 @@ def _pr5_review_thread_closeout_not_proven(closeout=None, summary_fragment=None)
             if isinstance(decision, dict) and isinstance(decision.get("missing_real_materials"), list):
                 source_values.extend(decision.get("missing_real_materials"))
     for item in list(source_values) + list(PR5_REVIEW_THREAD_CLOSEOUT_REQUIRED_NOT_PROVEN):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _pr5_vendor_source_review_packet_not_proven(packet=None, summary_fragment=None):
+    # vendor/source packet 只复核资料边界，不能被解释为 2D LiDAR/ToF 已采购、安装或实机验证。
+    packet = packet if isinstance(packet, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    for source in (packet, summary_fragment):
+        if isinstance(source.get("not_proven"), list):
+            source_values.extend(source.get("not_proven"))
+        if isinstance(source.get("missing_materials"), list):
+            source_values.extend(source.get("missing_materials"))
+        if isinstance(source.get("missing_real_materials"), list):
+            source_values.extend(source.get("missing_real_materials"))
+    for item in list(source_values) + list(PR5_VENDOR_SOURCE_REVIEW_PACKET_REQUIRED_NOT_PROVEN):
         text = str(item or "").strip()
         if text and text not in values:
             values.append(text)
@@ -9620,6 +9660,52 @@ def _default_pr5_review_thread_closeout_summary(
     }
 
 
+def _default_pr5_vendor_source_review_packet_summary(
+    path,
+    status="blocked_missing_pr5_vendor_source_review_packet_summary",
+    read_error="",
+):
+    # 缺少 Hardware 产出的消毒 summary 时 fail closed；Robot 侧不能读取 raw artifact body 补字段。
+    safe_copy = (
+        "PR #5 vendor/source review packet is metadata-only; software_proof, "
+        "not_proven, delivery_success=false and primary_actions_enabled=false."
+    )
+    return {
+        "schema": PR5_VENDOR_SOURCE_REVIEW_PACKET_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": PR5_VENDOR_SOURCE_REVIEW_PACKET_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "thread_id": "",
+        "source": "software_proof",
+        "proof_boundary": PR5_VENDOR_SOURCE_REVIEW_PACKET_GATE,
+        "vendor_source_boundary": "",
+        "status": status,
+        "overall_status": "not_proven",
+        "missing_materials": [],
+        "next_required_evidence": [],
+        "safe_copy": safe_copy,
+        "not_proven": _pr5_vendor_source_review_packet_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "summary_required": True,
+        "hardware_read": False,
+        "serial_uart_opened": False,
+        "ros_graph_accessed": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "command_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+    }
+
+
 def _default_hardware_real_material_escalation_request_summary(
     path,
     status="blocked_missing_hardware_real_material_escalation_request_summary",
@@ -11514,6 +11600,20 @@ def _pr5_review_thread_closeout_source_contract(value):
     if source_schema == PR5_REVIEW_THREAD_CLOSEOUT_SOURCE_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or PR5_REVIEW_THREAD_CLOSEOUT_SCHEMA)
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _pr5_vendor_source_review_packet_source_contract(value):
+    # Robot 只消费 Hardware 已消毒 packet summary；wrapper 必须回指 PR #5 vendor/source gate。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or value.get("proof_boundary") or "")
+    if source_schema == PR5_VENDOR_SOURCE_REVIEW_PACKET_SOURCE_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or PR5_VENDOR_SOURCE_REVIEW_PACKET_SCHEMA)
+        source_boundary = str(
+            value.get("source_evidence_boundary")
+            or value.get("proof_boundary")
+            or source_boundary
+        )
     return source_schema, source_boundary
 
 
@@ -37280,6 +37380,192 @@ def summarize_pr5_review_thread_closeout(source):
     return summary
 
 
+def summarize_pr5_vendor_source_review_packet(source):
+    """构建 PR #5 vendor/source review packet 的 metadata-only Robot diagnostics 摘要。"""
+    # 这里只允许读取 Hardware 的 summary wrapper；即使 artifact 存在，也不能展开 raw body 或硬件材料正文。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_pr5_vendor_source_review_packet_summary(
+        source_path,
+        read_error="PR #5 vendor/source review packet summary is not configured",
+    )
+    if isinstance(source, dict):
+        packet = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = "PR #5 vendor/source review packet summary artifact missing"
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                packet = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary["read_error"] = _redact_route_task_rehearsal_text(
+                f"failed reading PR #5 vendor/source review packet summary: {exc}"
+            )
+            return summary
+
+    if not isinstance(packet, dict):
+        summary["read_error"] = "PR #5 vendor/source review packet JSON must be an object"
+        return summary
+
+    raw_schema = str(packet.get("schema") or "")
+    summary_fragment = {}
+    source_schema, source_boundary = _pr5_vendor_source_review_packet_source_contract(packet)
+    if raw_schema == PR5_VENDOR_SOURCE_REVIEW_PACKET_SOURCE_SUMMARY_SCHEMA:
+        summary_fragment = packet
+    else:
+        for candidate in (
+            packet.get("pr5_vendor_source_review_packet_summary"),
+            packet.get("robot_diagnostics_pr5_vendor_source_review_packet_summary"),
+            packet.get("diagnostics_summary"),
+            packet.get("robot_diagnostics_summary"),
+            packet.get("summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if isinstance(summary_fragment, dict) and summary_fragment:
+        nested_schema, nested_boundary = _pr5_vendor_source_review_packet_source_contract(
+            summary_fragment
+        )
+        if nested_schema:
+            source_schema, source_boundary = nested_schema, nested_boundary
+
+    accepted_schemas = {
+        PR5_VENDOR_SOURCE_REVIEW_PACKET_SCHEMA,
+        PR5_VENDOR_SOURCE_REVIEW_PACKET_SOURCE_SUMMARY_SCHEMA,
+    }
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or packet.get("safe_copy")
+        or packet.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    proof_boundary = _redact_route_task_rehearsal_text(
+        summary_fragment.get("proof_boundary")
+        or summary_fragment.get("evidence_boundary")
+        or packet.get("proof_boundary")
+        or packet.get("evidence_boundary")
+        or source_boundary
+    )
+    vendor_source_boundary = _redact_route_task_rehearsal_text(
+        summary_fragment.get("vendor_source_boundary")
+        or packet.get("vendor_source_boundary")
+        or "docs/vendor/VENDOR_INDEX.md source boundary; 2D LiDAR / ToF materials pending"
+    )
+    missing_materials = _safe_route_task_rehearsal_list(
+        summary_fragment.get("missing_materials")
+        if isinstance(summary_fragment.get("missing_materials"), list)
+        else packet.get("missing_materials")
+        if isinstance(packet.get("missing_materials"), list)
+        else packet.get("missing_real_materials")
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                packet.get("source_schema_version")
+                if raw_schema == PR5_VENDOR_SOURCE_REVIEW_PACKET_SOURCE_SUMMARY_SCHEMA
+                else packet.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "thread_id": _redact_route_task_rehearsal_text(
+                summary_fragment.get("thread_id")
+                or packet.get("thread_id")
+                or "PRRT_kwDOSWB9286CJ3tX"
+            ),
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or packet.get("source") or "software_proof"
+            ),
+            "proof_boundary": proof_boundary,
+            "vendor_source_boundary": vendor_source_boundary,
+            "status": _redact_route_task_rehearsal_text(
+                summary_fragment.get("status")
+                or summary_fragment.get("overall_status")
+                or packet.get("status")
+                or packet.get("overall_status")
+                or "not_proven"
+            ),
+            "overall_status": "not_proven",
+            "missing_materials": _dedupe_ordered(missing_materials),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+                if isinstance(summary_fragment.get("next_required_evidence"), list)
+                else packet.get("next_required_evidence")
+            ),
+            "safe_copy": _redact_route_task_rehearsal_text(safe_copy),
+            "not_proven": _pr5_vendor_source_review_packet_not_proven(
+                packet,
+                summary_fragment,
+            ),
+            "read_error": "",
+            "metadata_only": True,
+            "summary_required": True,
+            "hardware_read": False,
+            "serial_uart_opened": False,
+            "ros_graph_accessed": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "collect_triggered": False,
+            "dropoff_triggered": False,
+            "cancel_triggered": False,
+            "ack_post_allowed": False,
+            "cursor_updates_allowed": False,
+            "command_allowed": False,
+            "nav2_triggered": False,
+            "hil_pass": False,
+        }
+    )
+    if source_schema not in accepted_schemas or source_boundary != PR5_VENDOR_SOURCE_REVIEW_PACKET_GATE:
+        summary.update(
+            {
+                "status": "unsupported_schema",
+                "thread_id": "",
+                "missing_materials": [],
+                "next_required_evidence": [],
+            }
+        )
+        return summary
+    if not isinstance(summary_fragment, dict) or not summary_fragment:
+        summary.update(
+            {
+                "status": "blocked_missing_pr5_vendor_source_review_packet_summary",
+                "thread_id": "",
+                "missing_materials": [],
+                "next_required_evidence": [],
+            }
+        )
+        return summary
+    if (
+        summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or packet.get("delivery_success") is not False
+        or packet.get("primary_actions_enabled") is not False
+        or _pr5_review_thread_closeout_has_unsafe_fields(packet)
+        or _pr5_review_thread_closeout_has_unsafe_fields(summary_fragment)
+        or _pr5_review_thread_closeout_copy_is_unsafe(safe_copy)
+        or proof_boundary != PR5_VENDOR_SOURCE_REVIEW_PACKET_GATE
+    ):
+        blocked_copy = (
+            "PR #5 vendor/source review packet was blocked because the summary could "
+            "expose raw artifact/control data or imply success; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "status": "blocked_unsafe_pr5_vendor_source_review_packet_summary",
+                "thread_id": "",
+                "missing_materials": [],
+                "next_required_evidence": [],
+                "safe_copy": blocked_copy,
+            }
+        )
+        return summary
+    return summary
+
+
 def summarize_hardware_real_material_escalation_request(source):
     """构建真实硬件材料升级请求的 metadata-only Robot diagnostics 摘要。"""
     # 只读消费 Hardware worker 的 sanitized summary；不能读取串口、ROS graph 或原始硬件材料正文。
@@ -42064,6 +42350,7 @@ def build_diagnostics_payload(
     hardware_sensor_hil_entry_readiness_review_ref="",
     hardware_sensor_hil_entry_execution_pack_ref="",
     pr5_review_thread_closeout_ref="",
+    pr5_vendor_source_review_packet_ref="",
     hardware_real_material_escalation_request_ref="",
     real_material_readiness_board_ref="",
     real_material_evidence_intake_ref="",
@@ -42543,6 +42830,27 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("pr5_review_thread_closeout_summary"), dict)
         else diagnostics_source.get("robot_diagnostics_pr5_review_thread_closeout_summary")
         if isinstance(diagnostics_source.get("robot_diagnostics_pr5_review_thread_closeout_summary"), dict)
+        else {}
+    )
+    pr5_vendor_source_review_packet_source = (
+        latest_status.get("pr5_vendor_source_review_packet")
+        if isinstance(latest_status.get("pr5_vendor_source_review_packet"), dict)
+        else latest_status.get("pr5_vendor_source_review_packet_summary")
+        if isinstance(latest_status.get("pr5_vendor_source_review_packet_summary"), dict)
+        else latest_status.get("robot_diagnostics_pr5_vendor_source_review_packet_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_pr5_vendor_source_review_packet_summary"),
+            dict,
+        )
+        else diagnostics_source.get("pr5_vendor_source_review_packet")
+        if isinstance(diagnostics_source.get("pr5_vendor_source_review_packet"), dict)
+        else diagnostics_source.get("pr5_vendor_source_review_packet_summary")
+        if isinstance(diagnostics_source.get("pr5_vendor_source_review_packet_summary"), dict)
+        else diagnostics_source.get("robot_diagnostics_pr5_vendor_source_review_packet_summary")
+        if isinstance(
+            diagnostics_source.get("robot_diagnostics_pr5_vendor_source_review_packet_summary"),
+            dict,
+        )
         else {}
     )
     hardware_real_material_escalation_request_source = (
@@ -44201,6 +44509,9 @@ def build_diagnostics_payload(
     latest_status.pop("pr5_review_thread_closeout", None)
     latest_status.pop("pr5_review_thread_closeout_summary", None)
     latest_status.pop("robot_diagnostics_pr5_review_thread_closeout_summary", None)
+    latest_status.pop("pr5_vendor_source_review_packet", None)
+    latest_status.pop("pr5_vendor_source_review_packet_summary", None)
+    latest_status.pop("robot_diagnostics_pr5_vendor_source_review_packet_summary", None)
     latest_status.pop("hardware_real_material_escalation_request", None)
     latest_status.pop("hardware_real_material_escalation_request_summary", None)
     latest_status.pop("robot_diagnostics_hardware_real_material_escalation_request_summary", None)
@@ -45221,6 +45532,15 @@ def build_diagnostics_payload(
     pr5_review_thread_closeout_summary = summarize_pr5_review_thread_closeout(
         pr5_review_thread_closeout_source
     )
+    pr5_vendor_source_review_packet_source = (
+        pr5_vendor_source_review_packet_ref
+        or os.environ.get("TRASHBOT_PR5_VENDOR_SOURCE_REVIEW_PACKET", "")
+        or os.environ.get("TRASHBOT_PR5_VENDOR_SOURCE_REVIEW_PACKET_SUMMARY", "")
+        or pr5_vendor_source_review_packet_source
+    )
+    pr5_vendor_source_review_packet_summary = summarize_pr5_vendor_source_review_packet(
+        pr5_vendor_source_review_packet_source
+    )
     hardware_real_material_escalation_request_source = (
         hardware_real_material_escalation_request_ref
         or os.environ.get("TRASHBOT_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST", "")
@@ -45616,6 +45936,11 @@ def build_diagnostics_payload(
         pr5_review_thread_closeout_summary=pr5_review_thread_closeout_summary,
         robot_diagnostics_pr5_review_thread_closeout_summary=(
             pr5_review_thread_closeout_summary
+        ),
+        pr5_vendor_source_review_packet=pr5_vendor_source_review_packet_summary,
+        pr5_vendor_source_review_packet_summary=pr5_vendor_source_review_packet_summary,
+        robot_diagnostics_pr5_vendor_source_review_packet_summary=(
+            pr5_vendor_source_review_packet_summary
         ),
         hardware_real_material_escalation_request=(
             hardware_real_material_escalation_request_summary

@@ -1,0 +1,33 @@
+{
+  "schema": "trashbot.robot_diagnostics_pr5_vendor_source_review_packet_summary.v1",
+  "schema_version": 1,
+  "source_schema": "trashbot.pr5_vendor_source_review_packet_summary.v1",
+  "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+  "source": "software_proof",
+  "proof_status": "not_proven",
+  "proof_boundary": "software_proof_docker_pr5_vendor_source_review_packet_gate",
+  "vendor_source_boundary": "docs/vendor/VENDOR_INDEX.md is the local source boundary; WAVE ROVER, Orange Pi, UART, firmware, camera/tutorial materials have local vendor-source coverage; 2D LiDAR and ToF remain product target materials pending real source/procurement evidence.",
+  "missing_materials": [
+    "real_2d_lidar_sku_source_receipt",
+    "real_tof_sku_source_receipt",
+    "real_procurement_record",
+    "real_installation_wiring_power_calibration_summary",
+    "real_hil_entry_summary"
+  ],
+  "next_required_evidence": [
+    "field owner supplies phone-safe 2D LiDAR / ToF SKU, vendor/source, receipt, procurement record",
+    "field owner supplies phone-safe installation, wiring, power, calibration and HIL-entry summaries"
+  ],
+  "safe_copy": "PR #5 vendor/source review packet 已可在手机端只读查看；这是 software_proof / not_proven，不是真实采购/安装/标定/HIL/送达证明。",
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "not_proven": [
+    "不是真实采购",
+    "不是真实安装",
+    "不是真实标定",
+    "不是真实 HIL",
+    "不是送达证明",
+    "真实 2D LiDAR / ToF SKU/source/receipt pending",
+    "真实 install/wiring/power/calibration pending"
+  ]
+}
