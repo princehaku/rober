@@ -8,7 +8,21 @@
 
 ## 2026-05-19 系列
 
-更新时间：2026-05-19 09:16 Asia/Shanghai。
+更新时间：2026-05-19 10:19 Asia/Shanghai。
+
+### 2026-05-19 10-11｜hardware-real-material-escalation-request｜O1/O4 hardware real material escalation request software proof
+
+本轮 `sprints/2026.05.19_10-11_hardware-real-material-escalation-request/` 改道推进 Objective 1 / Objective 4，不继续第三次消费 PR #4 route/elevator material blocker，也不提高 Objective 5。Hardware worker 新增 `hardware_real_material_escalation_request` PC gate，按 `docs/vendor/VENDOR_INDEX.md` 保持 vendor/source 边界，输出 WAVE ROVER/UART/HIL 与 PR #5 2D LiDAR / ToF 真实材料升级请求、missing materials、next required evidence、owner handoff 和 rerun command。Robot worker 新增 `robot_diagnostics_hardware_real_material_escalation_request_summary` safe alias，只读消费 sanitized summary 并 fail closed。Full-Stack worker 在 mobile/web 新增只读“硬件真实材料升级请求”panel，展示 safe status、safe evidence ref、missing hardware materials、next required evidence、owner handoff、evidence boundary 和 `not_proven`，Start Delivery、Confirm Dropoff、Cancel gating 不变。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保守保持约 81% | 本轮把真实 WAVE ROVER/UART/HIL 与 PR #5 2D LiDAR / ToF 材料缺口转成可执行升级请求链路；仍缺真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report、真实 UART、真实 HIL-entry、真实 SKU/source/receipt/procurement/installation/wiring/power/calibration。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 PR #4 route/elevator wrapper，不证明真实电梯、真实门状态、真实楼层确认、人工协助记录、dropoff/cancel completion、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮未新增真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record、dropoff/cancel completion 或 delivery result。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可只读展示硬件真实材料升级请求和 owner handoff；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 与真实现场 phone behavior。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof。 |
+
+本轮验证：Hardware worker 报告 `test -f docs/vendor/VENDOR_INDEX.md` 通过，`py_compile` 通过，`python3 -m unittest tests/test_hardware_real_material_escalation_request.py` 输出 `Ran 4 tests ... OK`，required `rg` 与 scoped diff check 通过；第一轮修复了临时路径归一化和否定句 HIL pass 误判。Robot worker 报告 `py_compile` 通过，diagnostics unittest 输出 `Ran 202 tests in 0.509s OK`，required `rg` 与 scoped diff check 通过。Full-Stack worker 报告 `python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 118 tests ... OK`，`py_compile` 通过，`node --check mobile/web/app.js` 通过，required `rg` 与 scoped diff check 通过。Product closeout required file check、required `rg` 与 scoped `git diff --check` 通过。本轮不证明真实 HIL、真实 WAVE ROVER/UART、真实 2D LiDAR / ToF、真实手机、PR #4 route/elevator field pass 或 O5 external proof。
 
 ### 2026-05-19 09-10｜elevator-field-evidence-material-backfill-review-handoff｜O2/O3/O4 route/elevator material backfill review handoff software proof
 

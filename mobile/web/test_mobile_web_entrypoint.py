@@ -263,6 +263,93 @@ class Pr5ReviewThreadCloseoutMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, closeout_text)
 
 
+class HardwareRealMaterialEscalationRequestMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_hardware_real_material_escalation_request_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 升级请求 panel 只消费 Robot safe alias；缺失时兼容 safe summary，不新增 fetch 或控制入口。
+        self.assertIn("硬件真实材料升级请求", app)
+        self.assertIn("HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_BOUNDARY", app)
+        self.assertIn("UNSAFE_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_TEXT", app)
+        self.assertIn("safeHardwareRealMaterialEscalationRequestText", app)
+        self.assertIn("hardwareRealMaterialEscalationRequestCandidate", app)
+        self.assertIn("hardwareRealMaterialEscalationRequestFromStatus", app)
+        self.assertIn("robot_diagnostics_hardware_real_material_escalation_request_summary", app)
+        self.assertIn("hardware_real_material_escalation_request_summary", app)
+        self.assertIn("hardware-real-material-escalation-request-panel", styles)
+        self.assertIn("hardware-real-material-escalation-request-grid", styles)
+        self.assertIn("missing_hardware_materials", fixture_text)
+        self.assertIn("next_required_evidence", fixture_text)
+        self.assertIn("owner_handoff", fixture_text)
+        self.assertNotRegex(
+            app,
+            r"hardwareRealMaterialEscalationRequest.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+
+        # Web fixture 与 mobile fixture 都保留 fail-closed evidence boundary，不改变主按钮 gate。
+        summary = fixture["robot_diagnostics_hardware_real_material_escalation_request_summary"]
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_status"], "hardware_real_material_escalation_request_not_proven")
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        mobile_summary = mobile_fixture["hardware_real_material_escalation_request_summary"]
+        self.assertEqual(mobile_summary["source"], "software_proof")
+        self.assertEqual(mobile_summary["safe_status"], "hardware_real_material_escalation_request_not_proven")
+        self.assertEqual(mobile_summary["delivery_success"], False)
+        self.assertEqual(mobile_summary["primary_actions_enabled"], False)
+        self.assertIn("hardware_real_material_escalation_request", doc)
+        self.assertIn("robot_diagnostics_hardware_real_material_escalation_request_summary", doc)
+        self.assertIn("software_proof", doc)
+        self.assertIn("not_proven", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+
+    def test_hardware_real_material_escalation_request_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        escalation_text = json.dumps(
+            {
+                "status": fixture["robot_diagnostics_hardware_real_material_escalation_request_summary"],
+                "mobile": mobile_fixture["hardware_real_material_escalation_request_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留真实材料缺口和 owner handoff，不夹带底层路径、凭证、完整材料或成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "serial path",
+            "serial device",
+            "uart path",
+            "baudrate",
+            "/users/",
+            "/tmp/",
+            "credentials",
+            "authorization",
+            "bearer",
+            "token",
+            "database url",
+            "queue url",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, escalation_text)
+
+
 class HardwareSensorProcurementReceiptIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

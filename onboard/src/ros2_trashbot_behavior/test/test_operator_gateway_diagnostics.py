@@ -97,6 +97,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_hardware_sensor_hil_entry_readiness_review,
     summarize_hardware_sensor_hil_entry_execution_pack,
     summarize_pr5_review_thread_closeout,
+    summarize_hardware_real_material_escalation_request,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
     summarize_cloud_worker_migration_rehearsal,
@@ -22632,6 +22633,188 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("/dev/ttyUSB0", encoded)
         self.assertNotIn("Traceback", encoded)
         self.assertNotIn("raw_review_body", encoded)
+        self.assertNotIn("Start Delivery control enabled", encoded)
+
+    def test_diagnostics_payload_includes_hardware_real_material_escalation_request_safe_alias(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "hardware_real_material_escalation_request_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.hardware_real_material_escalation_request_summary.v1",
+                        "source_schema": "trashbot.hardware_real_material_escalation_request.v1",
+                        "source_schema_version": 1,
+                        "evidence_boundary": "software_proof_docker_hardware_real_material_escalation_request_gate",
+                        "source_evidence_boundary": "software_proof_docker_hardware_real_material_escalation_request_gate",
+                        "evidence_ref": "evidence://hardware-real-material-escalation-request-1",
+                        "status": "blocked_pending_real_materials",
+                        "overall_status": "not_proven",
+                        "missing_real_materials": [
+                            "real_wave_rover_uart_hil_materials",
+                            "real_2d_lidar_tof_sku_source_receipt",
+                        ],
+                        "required_real_materials": [
+                            "WAVE ROVER feedback_T1001.log",
+                            "2D LiDAR / ToF procurement receipt",
+                        ],
+                        "next_required_evidence": [
+                            "Provide WAVE ROVER, UART, HIL, 2D LiDAR and ToF material packet."
+                        ],
+                        "owner_handoff": ["Hardware owns PR #5 material escalation."],
+                        "safe_copy": (
+                            "hardware_real_material_escalation_request is metadata-only; "
+                            "software_proof, not_proven, delivery_success=false, "
+                            "primary_actions_enabled=false."
+                        ),
+                        "robot_diagnostics_summary": {
+                            "safe_copy": (
+                                "Hardware real material escalation request is metadata-only; "
+                                "delivery_success=false; primary_actions_enabled=false."
+                            )
+                        },
+                        "not_proven": ["real_hil_pass", "delivery_success"],
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "hardware_real_material_escalation_request": {
+                        "delivery_success": True
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                hardware_real_material_escalation_request_ref=str(summary_path),
+            )
+            summary = payload[
+                "robot_diagnostics_hardware_real_material_escalation_request_summary"
+            ]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, payload["hardware_real_material_escalation_request"])
+        self.assertEqual(summary, payload["hardware_real_material_escalation_request_summary"])
+        self.assertNotIn("hardware_real_material_escalation_request", payload["latest_status"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_hardware_real_material_escalation_request_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.hardware_real_material_escalation_request.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_hardware_real_material_escalation_request_gate",
+        )
+        self.assertEqual(summary["status"], "blocked_pending_real_materials")
+        self.assertEqual(summary["request_status"]["evidence_source"], "software_proof")
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://hardware-real-material-escalation-request-1",
+        )
+        self.assertIn("real_wave_rover_uart_hil_materials", summary["missing_real_materials"])
+        self.assertIn("real_2d_lidar_tof_sku_source_receipt", summary["not_proven"])
+        self.assertIn("delivery_success=false", summary["robot_diagnostics_summary"]["safe_copy"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn(str(summary_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_hardware_real_material_escalation_request_missing_unsupported_and_unsafe_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_without_summary = summarize_hardware_real_material_escalation_request(
+                {
+                    "schema": "trashbot.hardware_real_material_escalation_request.v1",
+                    "schema_version": 1,
+                    "evidence_boundary": "software_proof_docker_hardware_real_material_escalation_request_gate",
+                    "evidence_ref": "evidence://hardware-real-material-no-summary",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            unsupported = summarize_hardware_real_material_escalation_request(
+                {
+                    "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
+                    "evidence_boundary": "software_proof_docker_pr5_review_thread_closeout_gate",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_copy": "hardware_real_material_escalation_request is metadata-only.",
+                }
+            )
+            unsafe = summarize_hardware_real_material_escalation_request(
+                {
+                    "schema": "trashbot.hardware_real_material_escalation_request_summary.v1",
+                    "source_schema": "trashbot.hardware_real_material_escalation_request.v1",
+                    "evidence_boundary": "software_proof_docker_hardware_real_material_escalation_request_gate",
+                    "source_evidence_boundary": "software_proof_docker_hardware_real_material_escalation_request_gate",
+                    "evidence_ref": "evidence://hardware-real-material-unsafe",
+                    "safe_copy": "Hardware HIL passed; Start Delivery control enabled.",
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "raw_artifact": "token secret /dev/ttyUSB0 baudrate=115200",
+                }
+            )
+            missing_path = (
+                Path(td)
+                / "Bearer-secret-token"
+                / "missing_hardware_real_material_escalation_request.json"
+            )
+            missing = summarize_hardware_real_material_escalation_request(str(missing_path))
+            encoded = json.dumps(
+                [artifact_without_summary, unsupported, unsafe, missing],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(
+            artifact_without_summary["status"],
+            "blocked_missing_hardware_real_material_escalation_request_summary",
+        )
+        self.assertEqual(unsupported["status"], "unsupported_schema")
+        self.assertEqual(
+            unsafe["status"],
+            "blocked_unsafe_hardware_real_material_escalation_request_summary",
+        )
+        self.assertEqual(
+            missing["status"],
+            "blocked_missing_hardware_real_material_escalation_request_summary",
+        )
+        self.assertIn(
+            "software_proof_docker_hardware_real_material_escalation_request_gate",
+            encoded,
+        )
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", encoded)
+        self.assertIn("primary_actions_enabled", encoded)
+        self.assertFalse(unsafe["delivery_success"])
+        self.assertFalse(unsafe["primary_actions_enabled"])
+        self.assertFalse(unsafe["ack_post_allowed"])
+        self.assertFalse(unsafe["cursor_updates_allowed"])
+        self.assertFalse(unsafe["nav2_triggered"])
+        self.assertFalse(unsafe["hil_pass"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("baudrate=115200", encoded)
+        self.assertNotIn("raw_artifact", encoded)
         self.assertNotIn("Start Delivery control enabled", encoded)
 
     def test_diagnostics_payload_includes_phone_safe_oss_cdn_manifest_summary(self):

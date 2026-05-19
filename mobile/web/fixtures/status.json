@@ -695,6 +695,40 @@
             "route_elevator_field_pass"
         ]
     },
+    "robot_diagnostics_hardware_real_material_escalation_request_summary": {
+        "schema": "trashbot.hardware_real_material_escalation_request_summary.v1",
+        "schema_version": 1,
+        "source": "software_proof",
+        "safe_status": "hardware_real_material_escalation_request_not_proven",
+        "safe_evidence_ref": "hardware_real_material_escalation_request_fixture_20260519_0001",
+        "missing_hardware_materials": [
+            "missing_hardware_material=real_2d_lidar_source_receipt",
+            "missing_hardware_material=real_tof_source_receipt",
+            "missing_hardware_material=real_install_wiring_power_calibration",
+            "missing_hardware_material=real_hardware_bench_entry"
+        ],
+        "next_required_evidence": [
+            "next_required_evidence=real 2D LiDAR source and receipt summary",
+            "next_required_evidence=real ToF source and receipt summary",
+            "next_required_evidence=real install/wiring/power/calibration summary",
+            "next_required_evidence=real hardware bench entry summary"
+        ],
+        "owner_handoff": "owner_handoff=Hardware owner supplies real-material summaries; Robot owner republishes sanitized diagnostics alias; Full-stack keeps panel read-only.",
+        "safe_phone_copy": "硬件真实材料升级请求只读展示 safe status、safe evidence ref、missing hardware materials、next required evidence、owner handoff 和 not_proven；不放行 Start Delivery、Confirm Dropoff 或 Cancel。",
+        "evidence_boundary": "software_proof_docker_hardware_real_material_escalation_request_gate",
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "not_proven": [
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "real_2d_lidar",
+            "real_tof",
+            "real_hardware_bench_entry",
+            "real_phone_browser"
+        ]
+    },
     "hardware_baseline_source_alignment": {
         "schema": "trashbot.hardware_baseline_source_alignment.v1",
     "summary_schema": "trashbot.hardware_baseline_source_alignment_summary.v1",

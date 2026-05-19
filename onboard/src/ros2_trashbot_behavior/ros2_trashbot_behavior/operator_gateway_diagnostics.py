@@ -747,6 +747,18 @@ PR5_REVIEW_THREAD_CLOSEOUT_SUMMARY_SCHEMA = (
     "trashbot.robot_diagnostics_pr5_review_thread_closeout_summary.v1"
 )
 PR5_REVIEW_THREAD_CLOSEOUT_GATE = "software_proof_docker_pr5_review_thread_closeout_gate"
+HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SCHEMA = (
+    "trashbot.hardware_real_material_escalation_request.v1"
+)
+HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.hardware_real_material_escalation_request_summary.v1"
+)
+HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_hardware_real_material_escalation_request_summary.v1"
+)
+HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_GATE = (
+    "software_proof_docker_hardware_real_material_escalation_request_gate"
+)
 CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA = "trashbot.cloud_worker_migration_rehearsal.v1"
 CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA = (
     "trashbot.cloud_worker_migration_rehearsal_summary.v1"
@@ -798,6 +810,18 @@ PR5_REVIEW_THREAD_CLOSEOUT_REQUIRED_NOT_PROVEN = (
     "route_elevator_field_pass",
     "delivery_success",
     "objective_5_external_proof",
+)
+HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_REQUIRED_NOT_PROVEN = (
+    "real_wave_rover",
+    "real_uart",
+    "real_hil_pass",
+    "real_2d_lidar",
+    "real_tof",
+    "real_procurement_receipt",
+    "real_install_wiring_power_calibration",
+    "route_elevator_field_pass",
+    "delivery_success",
+    "primary_actions_enabled",
 )
 ROUTE_TASK_REHEARSAL_TEXT_REDACTIONS = (
     (re.compile(r"(?i)\bAuthorization\s*:\s*(?:Bearer\s+)?[^,\s]+"), "[REDACTED_AUTH_HEADER]"),
@@ -3686,6 +3710,29 @@ def _pr5_review_thread_closeout_not_proven(closeout=None, summary_fragment=None)
             if isinstance(decision, dict) and isinstance(decision.get("missing_real_materials"), list):
                 source_values.extend(decision.get("missing_real_materials"))
     for item in list(source_values) + list(PR5_REVIEW_THREAD_CLOSEOUT_REQUIRED_NOT_PROVEN):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _hardware_real_material_escalation_request_not_proven(request=None, summary_fragment=None):
+    # 真实材料升级请求只能说明“还缺哪些材料”，不能被 UI 或诊断层解释为硬件闭环。
+    request = request if isinstance(request, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    for source in (request, summary_fragment):
+        if isinstance(source.get("not_proven"), list):
+            source_values.extend(source.get("not_proven"))
+        if isinstance(source.get("missing_real_materials"), list):
+            source_values.extend(source.get("missing_real_materials"))
+        if isinstance(source.get("required_real_materials"), list):
+            source_values.extend(source.get("required_real_materials"))
+    for item in (
+        list(source_values)
+        + list(HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_REQUIRED_NOT_PROVEN)
+    ):
         text = str(item or "").strip()
         if text and text not in values:
             values.append(text)
@@ -8730,6 +8777,75 @@ def _default_pr5_review_thread_closeout_summary(
     }
 
 
+def _default_hardware_real_material_escalation_request_summary(
+    path,
+    status="blocked_missing_hardware_real_material_escalation_request_summary",
+    read_error="",
+):
+    # 默认缺省态保持 not_proven，防止缺材料请求被误解为已采集真实硬件证据。
+    safe_copy = (
+        "Hardware real material escalation request is metadata-only; "
+        "software_proof, not_proven, delivery_success=false and "
+        "primary_actions_enabled=false."
+    )
+    return {
+        "schema": HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source_contract": {"schema": "", "evidence_boundary": "", "metadata_only": True},
+        "status": status,
+        "overall_status": "not_proven",
+        "request_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": read_error
+            or "hardware_real_material_escalation_request summary is not configured",
+        },
+        "safe_evidence_ref": "",
+        "missing_real_materials": [],
+        "required_real_materials": [],
+        "next_required_evidence": [],
+        "owner_handoff": [],
+        "safe_copy": safe_copy,
+        "robot_diagnostics_summary": {
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+        },
+        "not_proven": _hardware_real_material_escalation_request_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "summary_required": True,
+        "request_only": True,
+        "hardware_material_pending": True,
+        "real_hardware_observed": False,
+        "wave_rover_verified": False,
+        "uart_verified": False,
+        "sensor_procurement_completed": False,
+        "sensor_installed_on_robot": False,
+        "sensor_wiring_verified": False,
+        "sensor_power_budget_verified": False,
+        "sensor_calibrated_on_robot": False,
+        "route_elevator_field_pass": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _safe_pc_route_debug_value(value, depth=0):
     # 递归脱敏只保留支撑人员可读摘要；深层或大列表会截断，避免把完整 artifact 泄露给 phone/support。
     if depth > 3:
@@ -10247,6 +10363,18 @@ def _pr5_review_thread_closeout_source_contract(value):
     source_boundary = str(value.get("evidence_boundary") or "")
     if source_schema == PR5_REVIEW_THREAD_CLOSEOUT_SOURCE_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or PR5_REVIEW_THREAD_CLOSEOUT_SCHEMA)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _hardware_real_material_escalation_request_source_contract(value):
+    # Robot 侧只接受 Hardware worker 已消毒 summary；artifact wrapper 也必须内含同 boundary summary。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SOURCE_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema") or HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SCHEMA
+        )
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
 
@@ -34160,6 +34288,232 @@ def summarize_pr5_review_thread_closeout(source):
     return summary
 
 
+def summarize_hardware_real_material_escalation_request(source):
+    """构建真实硬件材料升级请求的 metadata-only Robot diagnostics 摘要。"""
+    # 只读消费 Hardware worker 的 sanitized summary；不能读取串口、ROS graph 或原始硬件材料正文。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_hardware_real_material_escalation_request_summary(
+        source_path,
+        read_error="hardware_real_material_escalation_request summary is not configured",
+    )
+    if isinstance(source, dict):
+        request = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = "hardware_real_material_escalation_request summary artifact missing"
+            summary["request_status"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                request = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading hardware_real_material_escalation_request summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["request_status"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(request, dict):
+        summary["request_status"]["reason"] = "hardware_real_material_escalation_request JSON must be an object"
+        return summary
+
+    raw_schema = str(request.get("schema") or "")
+    summary_fragment = {}
+    source_schema, source_boundary = _hardware_real_material_escalation_request_source_contract(
+        request
+    )
+    if raw_schema == HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SOURCE_SUMMARY_SCHEMA:
+        summary_fragment = request
+    else:
+        for candidate in (
+            request.get("hardware_real_material_escalation_request_summary"),
+            request.get("robot_diagnostics_hardware_real_material_escalation_request_summary"),
+            request.get("diagnostics_summary"),
+            request.get("robot_diagnostics_summary"),
+            request.get("summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if isinstance(summary_fragment, dict) and summary_fragment:
+        nested_schema, nested_boundary = (
+            _hardware_real_material_escalation_request_source_contract(summary_fragment)
+        )
+        if nested_schema:
+            source_schema, source_boundary = nested_schema, nested_boundary
+
+    accepted_schemas = {
+        HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SCHEMA,
+        HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SOURCE_SUMMARY_SCHEMA,
+    }
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or request.get("safe_copy")
+        or request.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    request_status = (
+        summary_fragment.get("request_status")
+        if isinstance(summary_fragment.get("request_status"), dict)
+        else request.get("request_status")
+        if isinstance(request.get("request_status"), dict)
+        else {}
+    )
+    status = _redact_route_task_rehearsal_text(
+        request_status.get("status")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or request.get("status")
+        or request.get("overall_status")
+        or "not_proven"
+    )
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or request.get("safe_evidence_ref")
+        or request.get("evidence_ref", "")
+    )
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else request.get("robot_diagnostics_summary")
+        if isinstance(request.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    safe_robot_summary = {
+        "safe_copy": _redact_route_task_rehearsal_text(
+            robot_summary.get("safe_copy") or safe_copy
+        ),
+        "safe_phone_copy": _redact_route_task_rehearsal_text(
+            robot_summary.get("safe_phone_copy") or safe_copy
+        ),
+    }
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                summary_fragment.get("source_schema_version")
+                or summary_fragment.get("schema_version")
+                or request.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "source_contract": {
+                "schema": _redact_route_task_rehearsal_text(source_schema),
+                "evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "metadata_only": True,
+            },
+            "status": status,
+            "overall_status": "not_proven",
+            "request_status": {
+                "status": status,
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    request_status.get("reason")
+                    or summary_fragment.get("reason")
+                    or request.get("reason")
+                    or "hardware real material escalation request is software_proof only"
+                ),
+            },
+            "safe_evidence_ref": safe_evidence_ref,
+            "missing_real_materials": _dedupe_ordered(
+                _safe_route_task_rehearsal_list(
+                    summary_fragment.get("missing_real_materials")
+                    if isinstance(summary_fragment.get("missing_real_materials"), list)
+                    else request.get("missing_real_materials")
+                )
+            ),
+            "required_real_materials": _dedupe_ordered(
+                _safe_route_task_rehearsal_list(
+                    summary_fragment.get("required_real_materials")
+                    if isinstance(summary_fragment.get("required_real_materials"), list)
+                    else request.get("required_real_materials")
+                )
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+                if isinstance(summary_fragment.get("next_required_evidence"), list)
+                else request.get("next_required_evidence")
+            ),
+            "owner_handoff": _safe_route_task_rehearsal_list(
+                summary_fragment.get("owner_handoff")
+                if isinstance(summary_fragment.get("owner_handoff"), list)
+                else request.get("owner_handoff")
+            ),
+            "safe_copy": _redact_route_task_rehearsal_text(safe_copy),
+            "robot_diagnostics_summary": safe_robot_summary,
+            "not_proven": _hardware_real_material_escalation_request_not_proven(
+                request,
+                summary_fragment,
+            ),
+            "read_error": "",
+        }
+    )
+    if (
+        source_schema not in accepted_schemas
+        or source_boundary != HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_GATE
+    ):
+        summary["status"] = "unsupported_schema"
+        summary["request_status"] = {
+            "status": "unsupported_schema",
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": "hardware_real_material_escalation_request schema or evidence boundary is unsupported",
+        }
+        summary["safe_evidence_ref"] = ""
+        return summary
+    if not isinstance(summary_fragment, dict) or not summary_fragment:
+        summary["status"] = "blocked_missing_hardware_real_material_escalation_request_summary"
+        summary["request_status"] = {
+            "status": "blocked_missing_hardware_real_material_escalation_request_summary",
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": "hardware_real_material_escalation_request is missing sanitized summary",
+        }
+        summary["safe_evidence_ref"] = ""
+        return summary
+    if (
+        request.get("delivery_success") is not False
+        or request.get("primary_actions_enabled") is not False
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or _pr5_review_thread_closeout_has_unsafe_fields(request)
+        or _pr5_review_thread_closeout_has_unsafe_fields(summary_fragment)
+        or _pr5_review_thread_closeout_copy_is_unsafe(safe_copy)
+        or _pr5_review_thread_closeout_copy_is_unsafe(safe_robot_summary.get("safe_copy", ""))
+        or not safe_evidence_ref
+        or safe_evidence_ref.startswith("local_path_redacted:")
+    ):
+        # 任一 unsafe 字段都降级为 not_proven，避免材料请求变成控制授权或 HIL 通过声明。
+        blocked_copy = (
+            "Hardware real material escalation request was blocked because the summary "
+            "could expose raw hardware/control data or imply success; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "status": "blocked_unsafe_hardware_real_material_escalation_request_summary",
+                "request_status": {
+                    "status": "blocked_unsafe_hardware_real_material_escalation_request_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware_real_material_escalation_request contains unsafe fields, success wording, weak evidence_ref, or enabled actions",
+                },
+                "safe_evidence_ref": "",
+                "safe_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+            }
+        )
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -37907,6 +38261,7 @@ def build_diagnostics_payload(
     hardware_sensor_hil_entry_readiness_review_ref="",
     hardware_sensor_hil_entry_execution_pack_ref="",
     pr5_review_thread_closeout_ref="",
+    hardware_real_material_escalation_request_ref="",
     elevator_field_evidence_trace_callback_intake_ref="",
     elevator_field_evidence_trace_callback_review_decision_ref="",
     elevator_field_evidence_trace_callback_review_handoff_ref="",
@@ -38290,6 +38645,38 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("pr5_review_thread_closeout_summary"), dict)
         else diagnostics_source.get("robot_diagnostics_pr5_review_thread_closeout_summary")
         if isinstance(diagnostics_source.get("robot_diagnostics_pr5_review_thread_closeout_summary"), dict)
+        else {}
+    )
+    hardware_real_material_escalation_request_source = (
+        latest_status.get("hardware_real_material_escalation_request")
+        if isinstance(latest_status.get("hardware_real_material_escalation_request"), dict)
+        else latest_status.get("hardware_real_material_escalation_request_summary")
+        if isinstance(latest_status.get("hardware_real_material_escalation_request_summary"), dict)
+        else latest_status.get(
+            "robot_diagnostics_hardware_real_material_escalation_request_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_hardware_real_material_escalation_request_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("hardware_real_material_escalation_request")
+        if isinstance(diagnostics_source.get("hardware_real_material_escalation_request"), dict)
+        else diagnostics_source.get("hardware_real_material_escalation_request_summary")
+        if isinstance(
+            diagnostics_source.get("hardware_real_material_escalation_request_summary"),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_hardware_real_material_escalation_request_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_hardware_real_material_escalation_request_summary"
+            ),
+            dict,
+        )
         else {}
     )
     mobile_field_material_review_decision_source = (
@@ -39674,6 +40061,9 @@ def build_diagnostics_payload(
     latest_status.pop("pr5_review_thread_closeout", None)
     latest_status.pop("pr5_review_thread_closeout_summary", None)
     latest_status.pop("robot_diagnostics_pr5_review_thread_closeout_summary", None)
+    latest_status.pop("hardware_real_material_escalation_request", None)
+    latest_status.pop("hardware_real_material_escalation_request_summary", None)
+    latest_status.pop("robot_diagnostics_hardware_real_material_escalation_request_summary", None)
     latest_status.pop("elevator_action_feedback_trace", None)
     latest_status.pop("robot_diagnostics_elevator_action_feedback_trace_summary", None)
     latest_status.pop("elevator_field_evidence_trace_callback_intake", None)
@@ -40591,6 +40981,17 @@ def build_diagnostics_payload(
     pr5_review_thread_closeout_summary = summarize_pr5_review_thread_closeout(
         pr5_review_thread_closeout_source
     )
+    hardware_real_material_escalation_request_source = (
+        hardware_real_material_escalation_request_ref
+        or os.environ.get("TRASHBOT_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST", "")
+        or os.environ.get("TRASHBOT_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SUMMARY", "")
+        or hardware_real_material_escalation_request_source
+    )
+    hardware_real_material_escalation_request_summary = (
+        summarize_hardware_real_material_escalation_request(
+            hardware_real_material_escalation_request_source
+        )
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -40898,6 +41299,15 @@ def build_diagnostics_payload(
         pr5_review_thread_closeout_summary=pr5_review_thread_closeout_summary,
         robot_diagnostics_pr5_review_thread_closeout_summary=(
             pr5_review_thread_closeout_summary
+        ),
+        hardware_real_material_escalation_request=(
+            hardware_real_material_escalation_request_summary
+        ),
+        hardware_real_material_escalation_request_summary=(
+            hardware_real_material_escalation_request_summary
+        ),
+        robot_diagnostics_hardware_real_material_escalation_request_summary=(
+            hardware_real_material_escalation_request_summary
         ),
         elevator_action_feedback_trace=elevator_action_feedback_trace_summary,
         robot_diagnostics_elevator_action_feedback_trace_summary=(

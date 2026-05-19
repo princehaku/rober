@@ -55,6 +55,35 @@
             "hil_pass"
         ]
     },
+    "hardware_real_material_escalation_request_summary": {
+        "schema": "trashbot.hardware_real_material_escalation_request_summary.v1",
+        "schema_version": 1,
+        "source": "software_proof",
+        "safe_status": "hardware_real_material_escalation_request_not_proven",
+        "safe_evidence_ref": "hardware_real_material_escalation_request_fixture_20260519_0002",
+        "missing_hardware_materials": [
+            "missing_hardware_material=real_2d_lidar_source_receipt",
+            "missing_hardware_material=real_tof_source_receipt",
+            "missing_hardware_material=real_install_wiring_power_calibration",
+            "missing_hardware_material=real_hardware_bench_entry"
+        ],
+        "next_required_evidence": "next_required_evidence=real source/receipt/install/wiring/power/calibration and hardware bench entry summaries.",
+        "owner_handoff": "owner_handoff=Hardware owner supplies real materials; Robot publishes safe alias; Full-stack renders read-only.",
+        "safe_phone_copy": "hardware_real_material_escalation_request_summary 只用于手机只读硬件真实材料升级请求，不放行 Start、Confirm 或 Cancel。",
+        "evidence_boundary": "software_proof_docker_hardware_real_material_escalation_request_gate",
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "not_proven": [
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "real_2d_lidar",
+            "real_tof",
+            "real_hardware_bench_entry",
+            "real_phone_browser"
+        ]
+    },
     "wave_rover_feedback_replay": {
         "schema": "trashbot.wave_rover_feedback_replay.v1",
     "schema_version": 1,

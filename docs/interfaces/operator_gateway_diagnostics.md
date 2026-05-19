@@ -1,5 +1,43 @@
 # Operator Gateway Diagnostics
 
+## robot_diagnostics_hardware_real_material_escalation_request_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_hardware_real_material_escalation_request_summary` as a
+safe alias for Hardware's real-material escalation request summary.
+
+- Source artifact schema:
+  `trashbot.hardware_real_material_escalation_request.v1`
+- Source summary schema:
+  `trashbot.hardware_real_material_escalation_request_summary.v1`
+- Robot alias schema:
+  `trashbot.robot_diagnostics_hardware_real_material_escalation_request_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_hardware_real_material_escalation_request_gate`
+
+The alias is metadata-only and read-only. It may expose sanitized request
+status, safe `evidence_ref`, missing real materials, required real materials,
+next required evidence, owner handoff, safe copy, `software_proof`,
+`not_proven`, `delivery_success=false`, and `primary_actions_enabled=false`.
+The expected missing-material families include WAVE ROVER, UART, HIL,
+PR #5 2D LiDAR / ToF procurement/source/receipt, installation, wiring, power,
+calibration, and HIL-entry materials.
+
+Missing summary, unreadable input, unsupported schema or boundary, unsafe
+copy, raw artifact fields, raw material body, ROS topics, `/cmd_vel`,
+serial/UART device paths, baudrate, WAVE ROVER raw details, credentials, local
+paths, checksums, tracebacks, ACK/cursor/command/control fields, success
+wording, `delivery_success=true`, or `primary_actions_enabled=true` must fail
+closed as blocked/not_proven.
+
+This alias must not read raw artifacts, serial devices, hardware devices, or
+the ROS graph. It must not enable Start Delivery, Confirm Dropoff, Cancel,
+ACK, cursor updates, persistence updates, terminal ACK, commands, Nav2,
+WAVE ROVER, HIL, material collection, production readiness, dropoff/cancel
+completion, or delivery success. It also does not prove real WAVE ROVER/UART,
+real 2D LiDAR / ToF, real PR #4 route/elevator field pass, real phone/browser
+validation, Objective 5 external proof, or any hardware/HIL result.
+
 ## robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary
 
 Robot diagnostics exposes

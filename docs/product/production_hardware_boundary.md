@@ -320,6 +320,39 @@ local source references for WAVE ROVER / UART JSON / firmware/vendor app
 behavior only; they do not prove real 2D LiDAR or ToF procurement,
 installation, wiring, power, calibration, HIL, field, or delivery evidence.
 
+## Hardware Real Material Escalation Request Gate
+
+`hardware_real_material_escalation_request` is the fail-closed PC gate for the
+Objective 1 / PR #5 real-material gap. It emits
+`schema=trashbot.hardware_real_material_escalation_request.v1` and
+`schema=trashbot.hardware_real_material_escalation_request_summary.v1` under
+`software_proof_docker_hardware_real_material_escalation_request_gate`.
+
+The gate converts missing real materials into a summary-only, phone-safe
+escalation request. It must cover both WAVE ROVER/UART/HIL materials and PR #5
+2D LiDAR / ToF materials:
+
+- WAVE ROVER/UART/HIL: real chassis powered bench evidence, Orange Pi UART
+  device confirmation, serial wiring/power review, JSON command/feedback
+  capture, and HIL packet/operator signoff material.
+- PR #5 2D LiDAR / ToF: SKU/source/receipt or purchase order, mounting plan,
+  wiring path, power budget, calibration plan, ToF channel/source evidence, and
+  HIL-entry material.
+
+The explicit vendor/source boundary is `docs/vendor/VENDOR_INDEX.md` plus the
+local WAVE ROVER / UART JSON / firmware/vendor-app and Orange Pi manual or
+schematic references listed there. These files are source references only; they
+do not prove real WAVE ROVER UART connectivity, HIL packet success, 2D LiDAR
+procurement, ToF procurement, installation, wiring, power, calibration,
+Objective 5 external proof, or delivery success.
+
+Every output must remain `software_proof`, `hardware_material_pending`,
+`not_proven`, `delivery_success=false`, and
+`primary_actions_enabled=false`. `ready_for_hardware_real_material_escalation_request_not_proven`
+means only that the PC gate prepared the escalation request; it is not a HIL
+pass, not a WAVE ROVER/UART pass, not a 2D LiDAR / ToF pass, not Objective 5
+external proof, and not delivery success.
+
 ## PR #5 Review Thread Closeout Gate
 
 `pr5_review_thread_closeout` is the Docker-only repo-local gate for the current
