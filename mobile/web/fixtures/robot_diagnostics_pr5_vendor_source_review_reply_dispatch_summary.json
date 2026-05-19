@@ -1,0 +1,32 @@
+{
+  "schema": "trashbot.robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary.v1",
+  "schema_version": 1,
+  "source_schema": "trashbot.pr5_vendor_source_review_reply_dispatch_summary.v1",
+  "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+  "source": "software_proof",
+  "dispatch_status": "reply_ready_to_publish_not_proven",
+  "reply_readiness": "reply_ready_to_publish_not_real_material_proof",
+  "proof_boundary": "software_proof_docker_pr5_vendor_source_review_reply_dispatch_gate",
+  "publishable_reply_summary": "可发布 reply 只说明 repo-local vendor/source 边界和真实材料缺口；不是真实采购、真实安装、标定、HIL、真实手机验收或送达证明。",
+  "owner_handoff": "Full-stack 只读展示 Robot alias；Hardware/Robot 继续等待真实 2D LiDAR / ToF SKU/source/receipt、安装、接线、电源、标定和 HIL-entry 材料。",
+  "next_required_evidence": [
+    "真实 2D LiDAR / ToF SKU、vendor/source、receipt 和 procurement record",
+    "真实安装、接线、电源、标定和 HIL-entry phone-safe 摘要",
+    "真实手机/browser 验收材料另行回填，不由本 reply-dispatch 证明"
+  ],
+  "safe_copy": "PR #5 vendor/source review reply-dispatch 已可在手机端只读查看；可发布 reply 不是真实采购、真实安装、标定、HIL、真实手机验收或送达证明。",
+  "hardware_material_state": "hardware_material_pending",
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "not_proven": [
+    "不是真实采购",
+    "不是真实安装",
+    "不是真实标定",
+    "不是真实 HIL",
+    "不是真实手机验收",
+    "不是送达证明",
+    "hardware_material_pending",
+    "真实 2D LiDAR / ToF SKU/source/receipt pending",
+    "真实 install/wiring/power/calibration pending"
+  ]
+}

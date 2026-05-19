@@ -1,0 +1,69 @@
+{
+  "blocked_reasons": [],
+  "delivery_success": false,
+  "evidence_boundary": "software_proof_docker_pr5_vendor_source_review_reply_dispatch_gate",
+  "evidence_status": "not_proven",
+  "hardware_material_status": "hardware_material_pending",
+  "markdown_file": "sprints/2026.05.20_04-05_pr5-vendor-source-review-reply-dispatch/evidence/pr5_vendor_source_review_reply.md",
+  "missing_materials": [
+    "real_2d_lidar_sku_source_receipt",
+    "real_tof_sku_source_receipt",
+    "real_mounting_wiring_power_plan",
+    "real_calibration_material",
+    "real_sensor_hil_entry",
+    "real_nav2_slam_field_pass"
+  ],
+  "next_required_evidence": [
+    "Provide reviewed 2D LiDAR SKU/source/receipt or purchase-order material.",
+    "Provide reviewed ToF SKU/source/channel-count material.",
+    "Link mounting, wiring, power-budget, and calibration plans.",
+    "Run a separate HIL-entry review after real materials exist.",
+    "Only then request reviewer resolution for hardware-material obligations."
+  ],
+  "not_proven": [
+    "2d_lidar_procurement",
+    "tof_procurement",
+    "2d_lidar_installation_wiring_power",
+    "tof_installation_wiring_power",
+    "sensor_calibration",
+    "sensor_hil_entry",
+    "wave_rover_uart_hil",
+    "delivery_success"
+  ],
+  "overall_status": "not_proven",
+  "primary_actions_enabled": false,
+  "proof_boundary": "software_proof_docker_pr5_vendor_source_review_reply_dispatch_gate",
+  "reply_status": "ready_for_manual_github_review_reply_not_proven",
+  "safe_copy": {
+    "en": "PR #5 thread PRRT_kwDOSWB9286CJ3tX has a manual vendor/source review reply ready. The reply only cites docs/vendor/VENDOR_INDEX.md and local vendor source-boundary material; 2D LiDAR and ToF remain hardware_material_pending / not_proven, not procurement, installation, calibration, HIL, or delivery proof.",
+    "status": "ready_for_manual_github_review_reply_not_proven",
+    "zh": "PR #5 线程 PRRT_kwDOSWB9286CJ3tX 已生成可人工发布的 vendor/source review reply。该 reply 只说明 docs/vendor/VENDOR_INDEX.md 与本地 vendor 文件的 source boundary；2D LiDAR / ToF 仍是 hardware_material_pending / not_proven，不是采购、安装、标定、HIL 或送达证明。"
+  },
+  "safe_to_control": false,
+  "schema": "trashbot.pr5_vendor_source_review_reply_dispatch_summary.v1",
+  "schema_version": 1,
+  "source": "software_proof",
+  "source_packet_boundary": "software_proof_docker_pr5_vendor_source_review_packet_gate",
+  "source_packet_schema": "trashbot.pr5_vendor_source_review_packet_summary.v1",
+  "source_schema": "trashbot.pr5_vendor_source_review_reply_dispatch.v1",
+  "source_schema_version": 1,
+  "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+  "vendor_source_boundary": {
+    "covered_domains": [
+      "Orange Pi Zero 3 docs listed in vendor index",
+      "WAVE ROVER docs and firmware listed in vendor index",
+      "WAVE ROVER UART newline-delimited JSON source references",
+      "Waveshare vendor app config and optional lidar parser reference"
+    ],
+    "entrypoint": "docs/vendor/VENDOR_INDEX.md",
+    "lidar_tof_boundary": "hardware_material_pending_not_proven",
+    "review_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+    "source_note": "docs/vendor references support source attribution context only; they do not prove project 2D LiDAR/ToF SKU, purchase, install, wiring, calibration, HIL, field pass, or delivery success.",
+    "source_refs": [
+      "docs/vendor/VENDOR_INDEX.md",
+      "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+      "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+      "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+    ]
+  }
+}

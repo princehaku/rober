@@ -141,6 +141,41 @@ Nav2, WAVE ROVER, HIL, material collection, Objective 5 external proof,
 dropoff/cancel completion, route/elevator field pass, PR #5 material closure,
 or delivery success.
 
+## robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary` as a safe
+alias for Hardware's PR #5 vendor/source review reply-dispatch summary.
+
+- Source artifact schema:
+  `trashbot.pr5_vendor_source_review_reply_dispatch.v1`
+- Source summary schema:
+  `trashbot.pr5_vendor_source_review_reply_dispatch_summary.v1`
+- Robot alias schema:
+  `trashbot.robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_pr5_vendor_source_review_reply_dispatch_gate`
+
+The alias is metadata-only and read-only. It may expose only sanitized
+`thread_id=PRRT_kwDOSWB9286CJ3tX`, `source=software_proof`, `proof_boundary`,
+reply-dispatch status, missing materials, next required evidence, owner
+handoff, safe copy, `not_proven`, `hardware_material_pending`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`.
+
+Missing sanitized summary, unreadable input, unsupported schema or boundary,
+raw body fields, credentials, tokens, serial/UART details, ROS/control fields,
+ACK/cursor/command fields, success wording, HIL/pass wording, field-pass
+wording, `delivery_success=true`, `primary_actions_enabled=true`, or
+`safe_to_control=true` must fail closed as blocked/not_proven.
+
+This alias must not read raw reply bodies, raw artifacts, hardware,
+serial/UART, ROS graph, cloud resources, or mobile browser state. It must not
+enable Start Delivery, Confirm Dropoff, Cancel, ACK, cursor updates,
+persistence updates, terminal ACK, commands, Nav2, WAVE ROVER, HIL, material
+collection, Objective 5 external proof, dropoff/cancel completion,
+route/elevator field pass, PR #5 material closure, or delivery success.
+
 ## robot_diagnostics_hardware_real_material_escalation_request_summary
 
 Robot diagnostics exposes

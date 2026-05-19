@@ -815,6 +815,18 @@ PR5_VENDOR_SOURCE_REVIEW_PACKET_SUMMARY_SCHEMA = (
 PR5_VENDOR_SOURCE_REVIEW_PACKET_GATE = (
     "software_proof_docker_pr5_vendor_source_review_packet_gate"
 )
+PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SCHEMA = (
+    "trashbot.pr5_vendor_source_review_reply_dispatch.v1"
+)
+PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.pr5_vendor_source_review_reply_dispatch_summary.v1"
+)
+PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary.v1"
+)
+PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_GATE = (
+    "software_proof_docker_pr5_vendor_source_review_reply_dispatch_gate"
+)
 HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SCHEMA = (
     "trashbot.hardware_real_material_escalation_request.v1"
 )
@@ -9706,6 +9718,66 @@ def _default_pr5_vendor_source_review_packet_summary(
     }
 
 
+def _default_pr5_vendor_source_review_reply_dispatch_summary(
+    path,
+    status="blocked_missing_pr5_vendor_source_review_reply_dispatch_summary",
+    read_error="",
+):
+    # 缺少 Hardware 消毒后的 reply-dispatch summary 时必须阻断，避免 Robot 读取 raw review body。
+    safe_copy = (
+        "PR #5 vendor/source review reply dispatch is metadata-only; "
+        "software_proof, not_proven, hardware_material_pending, delivery_success=false, "
+        "primary_actions_enabled=false and safe_to_control=false."
+    )
+    return {
+        "schema": PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "thread_id": "",
+        "source": "software_proof",
+        "proof_boundary": PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_GATE,
+        "status": status,
+        "overall_status": "not_proven",
+        "reply_dispatch_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": read_error
+            or "PR #5 vendor/source review reply dispatch summary is not configured",
+        },
+        "missing_materials": [],
+        "next_required_evidence": [],
+        "owner_handoff": [],
+        "safe_copy": safe_copy,
+        "not_proven": _pr5_vendor_source_review_packet_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "summary_required": True,
+        "hardware_material_pending": True,
+        "hardware_read": False,
+        "serial_uart_opened": False,
+        "ros_graph_accessed": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "command_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "field_pass": False,
+    }
+
+
 def _default_hardware_real_material_escalation_request_summary(
     path,
     status="blocked_missing_hardware_real_material_escalation_request_summary",
@@ -11609,6 +11681,22 @@ def _pr5_vendor_source_review_packet_source_contract(value):
     source_boundary = str(value.get("evidence_boundary") or value.get("proof_boundary") or "")
     if source_schema == PR5_VENDOR_SOURCE_REVIEW_PACKET_SOURCE_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or PR5_VENDOR_SOURCE_REVIEW_PACKET_SCHEMA)
+        source_boundary = str(
+            value.get("source_evidence_boundary")
+            or value.get("proof_boundary")
+            or source_boundary
+        )
+    return source_schema, source_boundary
+
+
+def _pr5_vendor_source_review_reply_dispatch_source_contract(value):
+    # reply-dispatch 只能来自 Hardware worker 的 sanitized summary，wrapper 也必须回指同一 gate。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or value.get("proof_boundary") or "")
+    if source_schema == PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SOURCE_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema") or PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SCHEMA
+        )
         source_boundary = str(
             value.get("source_evidence_boundary")
             or value.get("proof_boundary")
@@ -37566,6 +37654,317 @@ def summarize_pr5_vendor_source_review_packet(source):
     return summary
 
 
+def _pr5_vendor_source_review_reply_dispatch_has_unsafe_fields(value, key_path=""):
+    # reply-dispatch 只允许消毒元数据；raw body、令牌、串口/ROS/ACK/cursor/控制字段一律 fail closed。
+    unsafe_key_fragments = (
+        "raw",
+        "body",
+        "comment",
+        "credential",
+        "token",
+        "secret",
+        "authorization",
+        "serial",
+        "uart",
+        "baud",
+        "ros",
+        "topic",
+        "cmd_vel",
+        "control",
+        "ack",
+        "cursor",
+        "command",
+        "success",
+        "hil",
+        "field_pass",
+        "field-pass",
+    )
+    unsafe_true_keys = {
+        "delivery_success",
+        "primary_actions_enabled",
+        "safe_to_control",
+        "ack_post_allowed",
+        "remote_ack_allowed",
+        "cursor_updates_allowed",
+        "persistence_updates_allowed",
+        "terminal_ack_allowed",
+        "collect_triggered",
+        "dropoff_triggered",
+        "cancel_triggered",
+        "command_allowed",
+        "nav2_triggered",
+        "hil_pass",
+        "field_pass",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            current_path = f"{key_path}.{key_text}" if key_path else key_text
+            if key_text == "not_proven":
+                continue
+            if key_text in unsafe_true_keys:
+                if item is not False:
+                    return True
+                continue
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if _pr5_vendor_source_review_reply_dispatch_has_unsafe_fields(item, current_path):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _pr5_vendor_source_review_reply_dispatch_has_unsafe_fields(item, key_path)
+            for item in value
+        )
+    if isinstance(value, str):
+        return _pr5_review_thread_closeout_copy_is_unsafe(value)
+    return False
+
+
+def summarize_pr5_vendor_source_review_reply_dispatch(source):
+    """构建 PR #5 vendor/source review reply-dispatch 的 metadata-only Robot 摘要。"""
+    # Robot 只消费 Hardware sanitized summary；raw reply body、credential、ACK/cursor 不能进入 diagnostics。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_pr5_vendor_source_review_reply_dispatch_summary(
+        source_path,
+        read_error="PR #5 vendor/source review reply dispatch summary is not configured",
+    )
+    if isinstance(source, dict):
+        dispatch = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = "PR #5 vendor/source review reply dispatch summary artifact missing"
+            summary["reply_dispatch_status"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                dispatch = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading PR #5 vendor/source review reply dispatch summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["reply_dispatch_status"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(dispatch, dict):
+        summary["read_error"] = "PR #5 vendor/source review reply dispatch JSON must be an object"
+        summary["reply_dispatch_status"]["reason"] = summary["read_error"]
+        return summary
+
+    raw_schema = str(dispatch.get("schema") or "")
+    summary_fragment = {}
+    source_schema, source_boundary = _pr5_vendor_source_review_reply_dispatch_source_contract(
+        dispatch
+    )
+    if raw_schema == PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SOURCE_SUMMARY_SCHEMA:
+        summary_fragment = dispatch
+    else:
+        for candidate in (
+            dispatch.get("pr5_vendor_source_review_reply_dispatch_summary"),
+            dispatch.get("robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary"),
+            dispatch.get("diagnostics_summary"),
+            dispatch.get("robot_diagnostics_summary"),
+            dispatch.get("summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if isinstance(summary_fragment, dict) and summary_fragment:
+        nested_schema, nested_boundary = (
+            _pr5_vendor_source_review_reply_dispatch_source_contract(summary_fragment)
+        )
+        if nested_schema:
+            source_schema, source_boundary = nested_schema, nested_boundary
+
+    accepted_schemas = {
+        PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SCHEMA,
+        PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SOURCE_SUMMARY_SCHEMA,
+    }
+    status_source = (
+        summary_fragment.get("reply_dispatch_status")
+        if isinstance(summary_fragment.get("reply_dispatch_status"), dict)
+        else dispatch.get("reply_dispatch_status")
+        if isinstance(dispatch.get("reply_dispatch_status"), dict)
+        else {}
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or dispatch.get("safe_copy")
+        or dispatch.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    proof_boundary = _redact_route_task_rehearsal_text(
+        summary_fragment.get("proof_boundary")
+        or summary_fragment.get("evidence_boundary")
+        or dispatch.get("proof_boundary")
+        or dispatch.get("evidence_boundary")
+        or source_boundary
+    )
+    status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or dispatch.get("status")
+        or dispatch.get("overall_status")
+        or "not_proven"
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                dispatch.get("source_schema_version")
+                if raw_schema == PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SOURCE_SUMMARY_SCHEMA
+                else dispatch.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "thread_id": _redact_route_task_rehearsal_text(
+                summary_fragment.get("thread_id")
+                or dispatch.get("thread_id")
+                or "PRRT_kwDOSWB9286CJ3tX"
+            ),
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or dispatch.get("source") or "software_proof"
+            ),
+            "proof_boundary": proof_boundary,
+            "status": status,
+            "overall_status": "not_proven",
+            "reply_dispatch_status": {
+                "status": status,
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or dispatch.get("reason")
+                    or "PR #5 vendor/source review reply dispatch is software_proof only"
+                ),
+            },
+            "missing_materials": _dedupe_ordered(
+                _safe_route_task_rehearsal_list(
+                    summary_fragment.get("missing_materials")
+                    if isinstance(summary_fragment.get("missing_materials"), list)
+                    else dispatch.get("missing_materials")
+                    if isinstance(dispatch.get("missing_materials"), list)
+                    else dispatch.get("missing_real_materials")
+                )
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+                if isinstance(summary_fragment.get("next_required_evidence"), list)
+                else dispatch.get("next_required_evidence")
+            ),
+            "owner_handoff": _safe_route_task_rehearsal_list(
+                summary_fragment.get("owner_handoff")
+                if isinstance(summary_fragment.get("owner_handoff"), list)
+                else dispatch.get("owner_handoff")
+            ),
+            "safe_copy": _redact_route_task_rehearsal_text(safe_copy),
+            "not_proven": _pr5_vendor_source_review_packet_not_proven(
+                dispatch,
+                summary_fragment,
+            ),
+            "read_error": "",
+            "metadata_only": True,
+            "summary_required": True,
+            "hardware_material_pending": True,
+            "hardware_read": False,
+            "serial_uart_opened": False,
+            "ros_graph_accessed": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "collect_triggered": False,
+            "dropoff_triggered": False,
+            "cancel_triggered": False,
+            "ack_post_allowed": False,
+            "remote_ack_allowed": False,
+            "cursor_updates_allowed": False,
+            "persistence_updates_allowed": False,
+            "terminal_ack_allowed": False,
+            "command_allowed": False,
+            "nav2_triggered": False,
+            "hil_pass": False,
+            "field_pass": False,
+        }
+    )
+    if source_schema not in accepted_schemas or source_boundary != PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_GATE:
+        summary.update(
+            {
+                "status": "unsupported_schema",
+                "reply_dispatch_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "PR #5 vendor/source review reply dispatch schema or evidence boundary is unsupported",
+                },
+                "thread_id": "",
+                "missing_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+            }
+        )
+        return summary
+    if not isinstance(summary_fragment, dict) or not summary_fragment:
+        summary.update(
+            {
+                "status": "blocked_missing_pr5_vendor_source_review_reply_dispatch_summary",
+                "reply_dispatch_status": {
+                    "status": "blocked_missing_pr5_vendor_source_review_reply_dispatch_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "PR #5 vendor/source review reply dispatch is missing sanitized summary",
+                },
+                "thread_id": "",
+                "missing_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+            }
+        )
+        return summary
+    if (
+        summary_fragment.get("source") != "software_proof"
+        or dispatch.get("source", "software_proof") != "software_proof"
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or summary_fragment.get("safe_to_control") is not False
+        or dispatch.get("delivery_success") is not False
+        or dispatch.get("primary_actions_enabled") is not False
+        or dispatch.get("safe_to_control") is not False
+        or _pr5_vendor_source_review_reply_dispatch_has_unsafe_fields(dispatch)
+        or _pr5_vendor_source_review_reply_dispatch_has_unsafe_fields(summary_fragment)
+        or _pr5_review_thread_closeout_copy_is_unsafe(safe_copy)
+        or proof_boundary != PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_GATE
+    ):
+        blocked_copy = (
+            "PR #5 vendor/source review reply dispatch was blocked because the summary "
+            "could expose raw body/token/serial/UART/ROS/control/ACK/cursor/success/HIL/"
+            "field-pass claims; software_proof; not_proven; hardware_material_pending; "
+            "delivery_success=false; primary_actions_enabled=false; safe_to_control=false."
+        )
+        summary.update(
+            {
+                "status": "blocked_unsafe_pr5_vendor_source_review_reply_dispatch_summary",
+                "reply_dispatch_status": {
+                    "status": "blocked_unsafe_pr5_vendor_source_review_reply_dispatch_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "PR #5 vendor/source review reply dispatch contains unsafe fields, success/control claims, or enabled actions",
+                },
+                "thread_id": "",
+                "missing_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+                "safe_copy": blocked_copy,
+            }
+        )
+        return summary
+    return summary
+
+
 def summarize_hardware_real_material_escalation_request(source):
     """构建真实硬件材料升级请求的 metadata-only Robot diagnostics 摘要。"""
     # 只读消费 Hardware worker 的 sanitized summary；不能读取串口、ROS graph 或原始硬件材料正文。
@@ -42351,6 +42750,7 @@ def build_diagnostics_payload(
     hardware_sensor_hil_entry_execution_pack_ref="",
     pr5_review_thread_closeout_ref="",
     pr5_vendor_source_review_packet_ref="",
+    pr5_vendor_source_review_reply_dispatch_ref="",
     hardware_real_material_escalation_request_ref="",
     real_material_readiness_board_ref="",
     real_material_evidence_intake_ref="",
@@ -42849,6 +43249,34 @@ def build_diagnostics_payload(
         else diagnostics_source.get("robot_diagnostics_pr5_vendor_source_review_packet_summary")
         if isinstance(
             diagnostics_source.get("robot_diagnostics_pr5_vendor_source_review_packet_summary"),
+            dict,
+        )
+        else {}
+    )
+    pr5_vendor_source_review_reply_dispatch_source = (
+        latest_status.get("pr5_vendor_source_review_reply_dispatch")
+        if isinstance(latest_status.get("pr5_vendor_source_review_reply_dispatch"), dict)
+        else latest_status.get("pr5_vendor_source_review_reply_dispatch_summary")
+        if isinstance(latest_status.get("pr5_vendor_source_review_reply_dispatch_summary"), dict)
+        else latest_status.get("robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary"),
+            dict,
+        )
+        else diagnostics_source.get("pr5_vendor_source_review_reply_dispatch")
+        if isinstance(diagnostics_source.get("pr5_vendor_source_review_reply_dispatch"), dict)
+        else diagnostics_source.get("pr5_vendor_source_review_reply_dispatch_summary")
+        if isinstance(
+            diagnostics_source.get("pr5_vendor_source_review_reply_dispatch_summary"),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary"
+            ),
             dict,
         )
         else {}
@@ -44512,6 +44940,12 @@ def build_diagnostics_payload(
     latest_status.pop("pr5_vendor_source_review_packet", None)
     latest_status.pop("pr5_vendor_source_review_packet_summary", None)
     latest_status.pop("robot_diagnostics_pr5_vendor_source_review_packet_summary", None)
+    latest_status.pop("pr5_vendor_source_review_reply_dispatch", None)
+    latest_status.pop("pr5_vendor_source_review_reply_dispatch_summary", None)
+    latest_status.pop(
+        "robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary",
+        None,
+    )
     latest_status.pop("hardware_real_material_escalation_request", None)
     latest_status.pop("hardware_real_material_escalation_request_summary", None)
     latest_status.pop("robot_diagnostics_hardware_real_material_escalation_request_summary", None)
@@ -45541,6 +45975,17 @@ def build_diagnostics_payload(
     pr5_vendor_source_review_packet_summary = summarize_pr5_vendor_source_review_packet(
         pr5_vendor_source_review_packet_source
     )
+    pr5_vendor_source_review_reply_dispatch_source = (
+        pr5_vendor_source_review_reply_dispatch_ref
+        or os.environ.get("TRASHBOT_PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH", "")
+        or os.environ.get("TRASHBOT_PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SUMMARY", "")
+        or pr5_vendor_source_review_reply_dispatch_source
+    )
+    pr5_vendor_source_review_reply_dispatch_summary = (
+        summarize_pr5_vendor_source_review_reply_dispatch(
+            pr5_vendor_source_review_reply_dispatch_source
+        )
+    )
     hardware_real_material_escalation_request_source = (
         hardware_real_material_escalation_request_ref
         or os.environ.get("TRASHBOT_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST", "")
@@ -45941,6 +46386,15 @@ def build_diagnostics_payload(
         pr5_vendor_source_review_packet_summary=pr5_vendor_source_review_packet_summary,
         robot_diagnostics_pr5_vendor_source_review_packet_summary=(
             pr5_vendor_source_review_packet_summary
+        ),
+        pr5_vendor_source_review_reply_dispatch=(
+            pr5_vendor_source_review_reply_dispatch_summary
+        ),
+        pr5_vendor_source_review_reply_dispatch_summary=(
+            pr5_vendor_source_review_reply_dispatch_summary
+        ),
+        robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary=(
+            pr5_vendor_source_review_reply_dispatch_summary
         ),
         hardware_real_material_escalation_request=(
             hardware_real_material_escalation_request_summary

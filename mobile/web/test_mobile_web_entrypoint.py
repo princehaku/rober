@@ -12,6 +12,9 @@ CLOUD_COMMAND_EXPIRY_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_
 PR5_VENDOR_SOURCE_REVIEW_PACKET_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_pr5_vendor_source_review_packet_summary.json"
 )
+PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary.json"
+)
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -573,6 +576,103 @@ class Pr5VendorSourceReviewPacketMobileTest(unittest.TestCase):
             "traceback",
             "checksum",
             "complete artifact",
+            "hil_pass",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
+
+
+class Pr5VendorSourceReviewReplyDispatchMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_pr5_vendor_source_review_reply_dispatch_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # reply-dispatch 只消费 Robot diagnostics alias，展示可发布状态但不新增 endpoint/ACK/cursor/retry。
+        self.assertIn("PR #5 vendor/source review reply-dispatch", app)
+        self.assertIn("PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_BOUNDARY", app)
+        self.assertIn("UNSAFE_PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_TEXT", app)
+        self.assertIn("safePr5VendorSourceReviewReplyDispatchText", app)
+        self.assertIn("pr5VendorSourceReviewReplyDispatchCandidate", app)
+        self.assertIn("pr5VendorSourceReviewReplyDispatchFromStatus", app)
+        self.assertIn("robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary", app)
+        self.assertIn("pr5_vendor_source_review_reply_dispatch_summary", app)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", app)
+        self.assertIn("可发布 reply 不是真实采购、真实安装、标定、HIL、真实手机验收或送达证明", app)
+        self.assertIn("pr5-vendor-source-review-reply-dispatch-panel", styles)
+        self.assertIn("pr5-vendor-source-review-reply-dispatch-grid", styles)
+        self.assertNotRegex(
+            app,
+            r"pr5VendorSourceReviewReplyDispatch.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+
+        # fixture 和产品文档必须固定保留 software_proof/not_proven 和材料未证明边界。
+        self.assertEqual(fixture["thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(fixture["source"], "software_proof")
+        self.assertEqual(fixture["dispatch_status"], "reply_ready_to_publish_not_proven")
+        self.assertEqual(fixture["hardware_material_state"], "hardware_material_pending")
+        self.assertEqual(fixture["delivery_success"], False)
+        self.assertEqual(fixture["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_pr5_vendor_source_review_reply_dispatch_gate", fixture_text)
+        self.assertIn("hardware_material_pending", fixture_text)
+        self.assertIn("可发布 reply", fixture_text)
+        self.assertIn("不是真实采购、真实安装、标定、HIL、真实手机验收或送达证明", fixture_text)
+        self.assertIn("pr5_vendor_source_review_reply_dispatch", doc)
+        self.assertIn("robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary", doc)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", doc)
+        self.assertIn("software_proof", doc)
+        self.assertIn("not_proven", doc)
+        self.assertIn("hardware_material_pending", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("真实采购", doc)
+        self.assertIn("真实安装", doc)
+        self.assertIn("真实手机验收", doc)
+        self.assertIn("送达证明", doc)
+
+    def test_pr5_vendor_source_review_reply_dispatch_fixture_stays_phone_safe(self):
+        fixture = json.loads(PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # reply-dispatch fixture 不能夹带 raw reply、凭证、路径、控制请求或成功证明。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw reply body",
+            "raw review reply",
+            "raw dispatch payload",
+            "raw vendor docs",
+            "github token",
+            "ghp_",
+            "serial path",
+            "serial device",
+            "uart path",
+            "baudrate",
+            "/users/",
+            "/tmp/",
+            "credentials",
+            "authorization",
+            "bearer",
+            "token",
+            "database url",
+            "queue url",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "ack payload",
+            "cursor",
+            "retry request",
             "hil_pass",
             "delivery success",
             "dropoff success",
