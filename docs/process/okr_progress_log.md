@@ -8,7 +8,21 @@
 
 ## 2026-05-20 系列
 
-更新时间：2026-05-20 04:18 Asia/Shanghai。
+更新时间：2026-05-20 05:11 Asia/Shanghai。
+
+### 2026-05-20 05-06｜pr5-review-reply-publication-closeout｜PR #5 GitHub reply publication closeout
+
+本轮 `sprints/2026.05.20_05-06_pr5-review-reply-publication-closeout/` 关闭上一轮 PR #5 review reply 的 publication gap：GitHub reply 已发布到 inline review comment thread `PRRT_kwDOSWB9286CJ3tX`，reply/comment evidence 为 GitHub review reply comment id `3269642220`，URL `https://github.com/princehaku/rober/pull/5#discussion_r3269642220`。GitHub live thread after publication：`PRRT_kwDOSWB9286CJ3tQ` resolved，`PRRT_kwDOSWB9286CJ3tU` resolved，`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `is_resolved=false`，并已有 `princehaku` 的新 reply。Hardware worker 已确认该 reply 仍只能作为 `software_proof` / `not_proven` / `hardware_material_pending`，并继续固定 `delivery_success=false`、`primary_actions_enabled=false`；不证明真实 2D LiDAR / ToF、procurement、install、wiring、power、calibration、HIL-entry、WAVE ROVER/UART/HIL、route/elevator field pass、Objective 5 external proof、phone/browser proof 或 delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | GitHub reply 已发布到 `PRRT_kwDOSWB9286CJ3tX`，但 thread 仍 unresolved / `is_resolved=false` / `hardware_material_pending`；本轮只关闭 publication gap，不证明真实 2D LiDAR / ToF SKU/source/receipt/procurement/install/wiring/power/calibration/HIL-entry，也不证明 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、`/odom`、`/imu/data`、`/battery` 或 operator HIL report。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 route/elevator field material、真实电梯、Nav2/fixed-route runtime log、dropoff/cancel completion、field pass 或 delivery result；GitHub reply publication 不等于 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record、关键帧实景材料或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | 本轮不改 mobile/web，不新增 endpoint、ACK、cursor、retry 或控制副作用；只把产品状态口径更新为“GitHub reply 已发布，但 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending”。真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice、true phone/browser acceptance 和现场手机验收仍缺。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、多实例一致性、真实手机/browser、HIL 或 delivery success；reply comment `3269642220` / `discussion_r3269642220` 不能作为 O5 external proof。 |
+
+本轮验证：Product closeout required `rg` 覆盖 `OKR.md`、`docs/process/okr_progress_log.md` 和 sprint closeout docs 中的 `sprint_type: epic`、`pr5_review_reply_publication_closeout`、`Objective 5`、`Objective 1`、`PRRT_kwDOSWB9286CJ3tX`、`discussion_r3269642220`、`3269642220`、`GitHub reply 已发布`、`is_resolved=false`、`unresolved`、`software_proof`、`not_proven`、`hardware_material_pending`、`delivery_success=false`、`primary_actions_enabled=false`、`OKR 最低优先级核对`；scoped `git diff --check -- OKR.md docs/process/okr_progress_log.md sprints/2026.05.20_05-06_pr5-review-reply-publication-closeout` 通过。本轮不证明真实 2D LiDAR/ToF procurement/source/receipt/install/wiring/power/calibration/HIL-entry，不证明真实 phone/browser，不证明 O5 external proof，不证明 route/elevator field pass，不证明 delivery success，不证明 `PRRT_kwDOSWB9286CJ3tX` resolved。
 
 ### 2026-05-20 04-05｜pr5-vendor-source-review-reply-dispatch｜PR #5 vendor/source review reply-dispatch software proof
 
