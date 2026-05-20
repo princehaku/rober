@@ -27,6 +27,8 @@ const CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY = "software_proof_docker_cloud_command_
 const CLOUD_COMMAND_IDEMPOTENCY_COPY = "重复云指令已去重；机器人没有重复执行；这不是送达成功。";
 const CLOUD_COMMAND_ID_CONFLICT_BOUNDARY = "software_proof_docker_cloud_command_id_conflict_visibility_guard";
 const CLOUD_COMMAND_ID_CONFLICT_COPY = "命令 ID 冲突；机器人已拒绝执行；这不是送达成功。";
+const CLOUD_COMMAND_SEQUENCE_REGRESSION_BOUNDARY = "software_proof_docker_cloud_command_sequence_regression_guard";
+const CLOUD_COMMAND_SEQUENCE_REGRESSION_COPY = "命令队列序号倒退；机器人已拒绝按旧顺序推进；这不是送达成功。";
 // 媒体链路降级和云命令失败共用 cloud readiness 面板，避免新增任何手机端控制通道。
 const CLOUD_MEDIA_DEGRADATION_BOUNDARY = "software_proof_docker_cloud_media_degradation_status_guard";
 // 两类媒体失败都必须显式告诉用户不是送达成功，避免把照片/快照失败误读成任务完成。
@@ -1718,6 +1720,45 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         conflict_command_id: conflictCommandId,
         conflict_reason: conflictReason,
         conflict_fields: conflictFields,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
+    if (provided.degradation_state === "command_sequence_regression" ||
+        provided.proof_boundary === CLOUD_COMMAND_SEQUENCE_REGRESSION_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_COMMAND_SEQUENCE_REGRESSION_BOUNDARY) {
+      // command_sequence_regression 只说明本地/mock 队列检测到序号倒退；前端不能把拒绝 ACK 当成真实队列顺序证明。
+      const regressionCommandId = safeText(provided.regression_command_id, "");
+      const observedSequence = safeText(provided.observed_sequence, "");
+      const previousSequence = safeText(provided.previous_sequence, "");
+      const sequenceContext = [
+        regressionCommandId ? `regression_command_id=${regressionCommandId}` : "",
+        observedSequence ? `observed_sequence=${observedSequence}` : "",
+        previousSequence ? `previous_sequence=${previousSequence}` : "",
+      ].filter(Boolean).join(" / ");
+      return {
+        ...provided,
+        missing: false,
+        overall_status: "blocked",
+        preflight_status: "command_sequence_regression",
+        db_queue_status: `${sequenceContext || "sequence_regression_detected"} / remote_ready=false / primary_actions_enabled=false`,
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_COMMAND_SEQUENCE_REGRESSION_COPY),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "请刷新状态或联系支持；手机端不要自动重放、自动 resubmit 或请求 ACK/cursor。",
+        ),
+        ack_semantics: safeText(
+          provided.ack_semantics,
+          "sequence_regression_not_delivery_success",
+        ),
+        evidence_boundary: CLOUD_COMMAND_SEQUENCE_REGRESSION_BOUNDARY,
+        proof_boundary: CLOUD_COMMAND_SEQUENCE_REGRESSION_BOUNDARY,
+        regression_command_id: regressionCommandId,
+        observed_sequence: observedSequence,
+        previous_sequence: previousSequence,
         not_proven: notProvenList(provided.not_proven),
       };
     }

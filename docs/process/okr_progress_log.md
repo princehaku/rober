@@ -8,6 +8,24 @@
 
 ## 2026-05-20 系列
 
+更新时间：2026-05-20 22:18 Asia/Shanghai。
+
+### 2026-05-20 22-23｜cloud-command-sequence-regression-guard｜command sequence regression fail-closed software proof
+
+本轮 `sprints/2026.05.20_22-23_cloud-command-sequence-regression-guard/` 针对 Objective 5 command/status/ACK 主链路补齐云端命令序号回退的 fail-closed 可见性，不继续重复 O5 external blocker，也不把 Docker-only queue metadata 当作真实 production queue ordering。Robot/API worker 让 `remote_bridge_protocol.validate_command` 和 mock cloud command normalization 保留可选 `queue_sequence`；`RemoteBridgeWorker` 只在 terminal ACK 被云端接受后记录最高 terminal `queue_sequence`，并在后续不同 command id 带有低于或等于最高 terminal sequence 的 `queue_sequence` 时，于 backend 执行前拒绝该命令，ACK `ignored`，输出 `degradation_state=command_sequence_regression`、`sequence_regression_not_delivery_success`、`remote_ready=false`、`primary_actions_enabled=false`、`delivery_success=false` 和 `proof_boundary=software_proof_docker_cloud_command_sequence_regression_guard`。缺失 `queue_sequence` 的命令继续保留 opaque `last_ack_id` cursor 行为，不按 command id 字符串推断顺序。
+
+Full-Stack worker 在 `mobile/web` 增加 `cloud_command_sequence_regression_guard` 只读消费：手机端显示“命令队列序号倒退”，保持 Start Delivery / Confirm Dropoff / Cancel disabled，Diagnostics 可用，并且不自动 replay、resubmit、请求 ACK/cursor、拉 raw diagnostics 或新增控制 endpoint。Product closeout 保持 Objective 5 约 68%，因为本轮只证明 Docker/local Robot/API + mobile static fixture 下的 sequence-regression fail-closed 行为，不是真实 production queue ordering、production DB/queue、external cloud proof、真实手机/browser 或 delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL、hardware bridge、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 route/elevator field material、真实电梯、Nav2/fixed-route runtime log、dropoff/cancel completion、field pass 或 delivery result；sequence regression rejection 不等于 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可读状态受益：手机端能展示命令序号回退并保持主操作不可用；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_command_sequence_regression_guard` 只证明 local worker + mobile static fixture 下的 optional queue metadata fail-closed 防护：序号倒退被安全分类，phone-safe copy 可见，actions fail closed，ACK semantics 明确不是 delivery success。本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、真实 production queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Robot worker 回传 `py_compile` 通过；focused unittest suite 输出 `Ran 184 tests in 95.557s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 回传 `node --check mobile/web/app.js` 通过；`python3 -m unittest mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 183 tests in 1.359s OK`；fixture JSON tool、required `rg`、scoped `git diff --check` 和 fixture sensitive-text scan 通过。Product closeout integration rerun 通过：Robot py_compile、Robot unittest `Ran 184 tests in 95.704s OK`、mobile `node --check`、mobile unittest `Ran 183 tests in 1.356s OK`、JSON check、required `rg` 和 scoped `git diff --check` 均通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、真实 production queue ordering、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
+
 更新时间：2026-05-20 21:23 Asia/Shanghai。
 
 ### 2026-05-20 21-22｜cloud-media-degradation-status-guard｜OSS/CDN media degradation status guard software proof

@@ -41,6 +41,9 @@ CLOUD_COMMAND_IDEMPOTENCY_VISIBILITY_GUARD_BOUNDARY = (
 CLOUD_COMMAND_ID_CONFLICT_VISIBILITY_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_command_id_conflict_visibility_guard"
 )
+CLOUD_COMMAND_SEQUENCE_REGRESSION_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_command_sequence_regression_guard"
+)
 CLOUD_AUTH_FAILURE_STATUS_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_auth_failure_status_guard"
 )
@@ -77,11 +80,15 @@ SAFE_OPERATOR_STATUS_KEYS = {
     "expired_command_id",
     "duplicate_command_id",
     "conflict_command_id",
+    "sequence_regression_command_id",
     "conflict_reason",
     "conflict_fields",
     "cached_ack_state",
+    "queue_sequence",
+    "highest_terminal_queue_sequence",
     "ack_semantics",
     "primary_actions_enabled",
+    "delivery_success",
     "proof_boundary",
     "accepted",
     "service_accepted",
@@ -288,6 +295,29 @@ def _phone_safe_command_conflict_status(robot_id, command_id, conflict_fields):
     )
 
 
+def _phone_safe_sequence_regression_status(robot_id, command_id, queue_sequence, highest_terminal_queue_sequence):
+    safe_command_id = _safe_state_text_value(command_id)
+    safe_phone_copy = "云端指令序号回退，机器人已拒绝执行；这不是送达成功或真实队列排序证明。"
+    return make_status(
+        robot_id,
+        "remote_degraded",
+        safe_phone_copy,
+        remote_ready=False,
+        cloud_reachable=True,
+        auth_state="unknown",
+        degradation_state="command_sequence_regression",
+        retry_hint="contact_support",
+        safe_phone_copy=safe_phone_copy,
+        sequence_regression_command_id=safe_command_id,
+        queue_sequence=int(queue_sequence),
+        highest_terminal_queue_sequence=int(highest_terminal_queue_sequence),
+        ack_semantics="sequence_regression_not_delivery_success",
+        primary_actions_enabled=False,
+        delivery_success=False,
+        proof_boundary=CLOUD_COMMAND_SEQUENCE_REGRESSION_GUARD_BOUNDARY,
+    )
+
+
 def _canonical_command_identity(command):
     # canonical identity 只比较业务执行内容，不把 expires_at/created_at 等队列元数据纳入幂等判断。
     payload = command.get("payload") if isinstance(command.get("payload"), dict) else {}
@@ -336,6 +366,7 @@ class RemoteBridgeWorker:
         cursor_state = self._load_cursor_state(str(last_ack_id or ""))
         self.last_ack_id = cursor_state["last_terminal_ack_id"]
         self.pending_terminal_ack = cursor_state[PENDING_TERMINAL_ACK_KEY]
+        self.highest_terminal_queue_sequence = cursor_state["highest_terminal_queue_sequence"]
         self.command_results = {}
         self.command_identities = {}
         self.max_command_results = int(max_command_results)
@@ -376,7 +407,7 @@ class RemoteBridgeWorker:
             # 过期命令不能只回 ACK；手机首屏也必须看到 fail-closed 原因，避免用户误以为可继续发车。
             expired_status = self._record_expired_command_status(command["id"])
             ack = self._make_ack("ignored", "command expired before robot polling", expired_status)
-            self._post_terminal_ack(command["id"], ack)
+            self._post_terminal_ack(command["id"], ack, queue_sequence=command.get("queue_sequence"))
             return True
         if command["id"] in self.command_results:
             previous_identity = self.command_identities.get(command["id"], {})
@@ -401,6 +432,21 @@ class RemoteBridgeWorker:
             )
             duplicate_ack = self._ack_with_operator_status(cached_ack, duplicate_status)
             self._post_terminal_ack(command["id"], duplicate_ack, remember=False)
+            return True
+        if self._is_sequence_regression(command):
+            # 不同 command id 的低/等序号说明云端队列回退；backend 执行前 fail-closed，避免重复行为。
+            sequence_status = self._record_sequence_regression_status(
+                command["id"],
+                command["queue_sequence"],
+                self.highest_terminal_queue_sequence,
+            )
+            sequence_ack = self._make_ack(
+                "ignored",
+                "command queue_sequence regressed before robot execution",
+                sequence_status,
+            )
+            self.command_identities[command["id"]] = _canonical_command_identity(command)
+            self._post_terminal_ack(command["id"], sequence_ack)
             return True
 
         try:
@@ -427,7 +473,7 @@ class RemoteBridgeWorker:
                 "result": result,
             }
         self.command_identities[command["id"]] = _canonical_command_identity(command)
-        self._post_terminal_ack(command["id"], ack)
+        self._post_terminal_ack(command["id"], ack, queue_sequence=command.get("queue_sequence"))
         return True
 
     def _make_ack(self, state, message, operator_status):
@@ -437,18 +483,19 @@ class RemoteBridgeWorker:
             "result": {"operator_status": operator_status},
         }
 
-    def _post_terminal_ack(self, command_id, ack, remember=True):
+    def _post_terminal_ack(self, command_id, ack, remember=True, queue_sequence=None):
         if remember:
             self._remember_command_result(command_id, ack)
         try:
             self.cloud.post_ack(command_id, ack["state"], ack["message"], ack["result"])
         except RemoteCloudError as exc:
             # ACK 未进入云端就不是 terminal ACK；先持久化 pending ACK，再暴露降级状态。
-            self._persist_pending_terminal_ack(command_id, ack)
+            self._persist_pending_terminal_ack(command_id, ack, queue_sequence=queue_sequence)
             status = self._record_pending_ack_degraded_status(command_id, exc)
             self._post_status_best_effort(status)
             return False
         self.last_ack_id = command_id
+        self._record_terminal_queue_sequence(queue_sequence)
         self._persist_last_ack_id(command_id)
         self._post_status_from_ack(ack)
         return True
@@ -457,6 +504,7 @@ class RemoteBridgeWorker:
         pending_ack = dict(self.pending_terminal_ack or {})
         command_id = str(pending_ack.get("command_id") or "").strip()
         ack = dict(pending_ack.get("ack") or {})
+        queue_sequence = pending_ack.get("queue_sequence")
         if not command_id or ack.get("state") not in {"acked", "failed", "ignored"}:
             raise RuntimeError("remote bridge pending ACK state is malformed")
         try:
@@ -473,6 +521,7 @@ class RemoteBridgeWorker:
             return False
         self.last_ack_id = command_id
         self.pending_terminal_ack = None
+        self._record_terminal_queue_sequence(queue_sequence)
         self._persist_last_ack_id(command_id)
         self._post_status_from_ack(ack)
         return True
@@ -506,6 +555,36 @@ class RemoteBridgeWorker:
         self._set_operator_status(status)
         return status
 
+    def _record_sequence_regression_status(self, command_id, queue_sequence, highest_terminal_queue_sequence):
+        status = _phone_safe_sequence_regression_status(
+            self.robot_id,
+            command_id,
+            queue_sequence,
+            highest_terminal_queue_sequence,
+        )
+        self._set_operator_status(status)
+        return status
+
+    def _is_sequence_regression(self, command):
+        # 没有 queue_sequence 时保留旧 opaque cursor 行为；只有云端显式给出序号才做回退判断。
+        queue_sequence = command.get("queue_sequence")
+        if queue_sequence is None or self.highest_terminal_queue_sequence is None:
+            return False
+        return int(queue_sequence) <= int(self.highest_terminal_queue_sequence)
+
+    def _record_terminal_queue_sequence(self, queue_sequence):
+        # 只有 ACK POST 已被云端接受后才调用；这样不会把本地 pending ACK 误当成云端终态。
+        if queue_sequence is None:
+            return
+        queue_sequence = int(queue_sequence)
+        if self.highest_terminal_queue_sequence is None:
+            self.highest_terminal_queue_sequence = queue_sequence
+            return
+        self.highest_terminal_queue_sequence = max(
+            int(self.highest_terminal_queue_sequence),
+            queue_sequence,
+        )
+
     def _ack_with_operator_status(self, ack, operator_status):
         duplicate_ack = dict(ack or {})
         result = duplicate_ack.get("result") if isinstance(duplicate_ack.get("result"), dict) else {}
@@ -529,10 +608,13 @@ class RemoteBridgeWorker:
                 "expired_command_id",
                 "duplicate_command_id",
                 "conflict_command_id",
+                "sequence_regression_command_id",
                 "conflict_reason",
                 "conflict_fields",
                 "cached_ack_state",
                 "media_state",
+                "queue_sequence",
+                "highest_terminal_queue_sequence",
                 "ack_semantics",
                 "primary_actions_enabled",
                 "delivery_success",
@@ -565,6 +647,7 @@ class RemoteBridgeWorker:
         state = {
             "last_terminal_ack_id": str(fallback or ""),
             PENDING_TERMINAL_ACK_KEY: None,
+            "highest_terminal_queue_sequence": None,
         }
         if not self.cursor_state_path:
             return state
@@ -586,6 +669,11 @@ class RemoteBridgeWorker:
         else:
             state["last_terminal_ack_id"] = str(fallback or "")
         pending_ack = payload.get(PENDING_TERMINAL_ACK_KEY)
+        if payload.get("highest_terminal_queue_sequence") is not None:
+            try:
+                state["highest_terminal_queue_sequence"] = int(payload.get("highest_terminal_queue_sequence"))
+            except (TypeError, ValueError) as exc:
+                raise RuntimeError("remote bridge highest terminal queue sequence is malformed") from exc
         if pending_ack is not None:
             if not isinstance(pending_ack, dict):
                 raise RuntimeError("remote bridge pending ACK state must be a JSON object")
@@ -597,16 +685,23 @@ class RemoteBridgeWorker:
                 "command_id": command_id,
                 "ack": self._safe_ack_for_state(ack),
             }
+            if pending_ack.get("queue_sequence") is not None:
+                try:
+                    state[PENDING_TERMINAL_ACK_KEY]["queue_sequence"] = int(pending_ack.get("queue_sequence"))
+                except (TypeError, ValueError) as exc:
+                    raise RuntimeError("remote bridge pending ACK queue sequence is malformed") from exc
         return state
 
     def _persist_last_ack_id(self, command_id):
         self._persist_cursor_state(str(command_id), None)
 
-    def _persist_pending_terminal_ack(self, command_id, ack):
+    def _persist_pending_terminal_ack(self, command_id, ack, queue_sequence=None):
         self.pending_terminal_ack = {
             "command_id": str(command_id),
             "ack": self._safe_ack_for_state(ack),
         }
+        if queue_sequence is not None:
+            self.pending_terminal_ack["queue_sequence"] = int(queue_sequence)
         self._persist_cursor_state(self.last_ack_id, self.pending_terminal_ack)
 
     def _persist_cursor_state(self, command_id, pending_terminal_ack):
@@ -620,6 +715,8 @@ class RemoteBridgeWorker:
             "evidence_boundary": CLOUD_ACK_OUTAGE_REPLAY_GUARD_BOUNDARY,
             "updated_at": time.time(),
         }
+        if self.highest_terminal_queue_sequence is not None:
+            payload["highest_terminal_queue_sequence"] = int(self.highest_terminal_queue_sequence)
         if pending_terminal_ack:
             safe_pending_ack = {
                 "protocol_version": CURSOR_PROTOCOL_VERSION,
@@ -629,6 +726,8 @@ class RemoteBridgeWorker:
                 "evidence_boundary": CLOUD_ACK_OUTAGE_REPLAY_GUARD_BOUNDARY,
                 "updated_at": time.time(),
             }
+            if pending_terminal_ack.get("queue_sequence") is not None:
+                safe_pending_ack["queue_sequence"] = int(pending_terminal_ack["queue_sequence"])
             payload[PENDING_TERMINAL_ACK_KEY] = safe_pending_ack
         # 先写同目录临时文件再原子替换，避免重启时读到半截 JSON 后误用旧游标。
         path.parent.mkdir(parents=True, exist_ok=True)

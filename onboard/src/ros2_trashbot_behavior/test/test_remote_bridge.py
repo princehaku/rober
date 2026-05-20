@@ -428,6 +428,64 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertNotIn("cmd-/cmd_vel-secret", encoded)
         self.assertNotIn("delivery_success\": true", encoded)
 
+    def test_queue_sequence_regression_is_ignored_before_backend_execution(self):
+        first_command = {
+            "id": "cmd-sequence-10",
+            "type": "collect",
+            "queue_sequence": 10,
+            "payload": {"target": "trash_station"},
+        }
+        regressed_command = {
+            "id": "cmd-sequence-09",
+            "type": "cancel",
+            "queue_sequence": 9,
+            "payload": {},
+        }
+        self.cloud.commands.append(first_command)
+        self.assertTrue(self.worker.poll_once())
+
+        self.cloud.commands.append(regressed_command)
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual([ack["command_id"] for ack in self.cloud.ack_posts], ["cmd-sequence-10", "cmd-sequence-09"])
+        self.assertEqual(self.cloud.ack_posts[-1]["state"], "ignored")
+        sequence_status = self.cloud.ack_posts[-1]["result"]["operator_status"]
+        self.assertEqual(sequence_status["degradation_state"], "command_sequence_regression")
+        self.assertEqual(sequence_status["sequence_regression_command_id"], "cmd-sequence-09")
+        self.assertEqual(sequence_status["queue_sequence"], 9)
+        self.assertEqual(sequence_status["highest_terminal_queue_sequence"], 10)
+        self.assertEqual(
+            sequence_status["ack_semantics"],
+            "sequence_regression_not_delivery_success",
+        )
+        self.assertFalse(sequence_status["remote_ready"])
+        self.assertFalse(sequence_status["primary_actions_enabled"])
+        self.assertFalse(sequence_status["delivery_success"])
+        self.assertEqual(
+            sequence_status["proof_boundary"],
+            "software_proof_docker_cloud_command_sequence_regression_guard",
+        )
+        self.assertEqual(self.worker.last_ack_id, "cmd-sequence-09")
+
+    def test_queue_sequence_records_only_after_cloud_accepts_terminal_ack(self):
+        self.cloud.commands.append({
+            "id": "cmd-sequence-pending",
+            "type": "collect",
+            "queue_sequence": 7,
+            "payload": {"target": "trash_station"},
+        })
+        self.cloud.fail_ack_count = 1
+
+        self.assertTrue(self.worker.poll_once())
+        self.assertIsNone(self.worker.highest_terminal_queue_sequence)
+        self.assertEqual(self.worker.last_ack_id, "")
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+
+        self.assertTrue(self.worker.poll_once())
+        self.assertEqual(self.worker.highest_terminal_queue_sequence, 7)
+        self.assertEqual(self.worker.last_ack_id, "cmd-sequence-pending")
+
     def test_expired_duplicate_command_keeps_expired_priority(self):
         command = {
             "id": "cmd-expired-duplicate",

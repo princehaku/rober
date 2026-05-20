@@ -40,6 +40,9 @@ PHONE_COMMAND_IDEMPOTENCY_VISIBILITY_GUARD_BOUNDARY = (
 PHONE_COMMAND_ID_CONFLICT_VISIBILITY_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_command_id_conflict_visibility_guard"
 )
+PHONE_COMMAND_SEQUENCE_REGRESSION_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_command_sequence_regression_guard"
+)
 PHONE_AUTH_FAILURE_STATUS_GUARD_BOUNDARY = "software_proof_docker_cloud_auth_failure_status_guard"
 PHONE_MEDIA_DEGRADATION_STATUS_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_media_degradation_status_guard"
@@ -74,6 +77,7 @@ REMOTE_DEGRADATION_COPY = {
     "command_expired": "这条云端指令已经过期，机器人没有执行；请重新提交最新指令。",
     "command_duplicate_deduped": "重复云指令已去重，机器人没有重复执行；cached ACK 不是送达成功。",
     "command_id_conflict": "命令 ID 冲突：同一 ID 的 type/payload 不一致，机器人已拒绝执行；这不是送达成功。",
+    "command_sequence_regression": "云端指令序号回退，机器人已拒绝执行；这不是送达成功或真实队列排序证明。",
     "auth_failed": "手机登录已失效，请重新登录或检查访问凭证；这不是送达成功。",
     "media_degraded": "媒体链路降级：OSS 写入或 CDN 拉取不可用；这不是送达成功。",
     "cloud_unreachable": "远程控制通道暂不可用，请稍后重试。",
@@ -91,8 +95,11 @@ REMOTE_STATUS_SAFE_EXTRA_KEYS = {
     "expired_command_id",
     "duplicate_command_id",
     "conflict_command_id",
+    "sequence_regression_command_id",
     "conflict_reason",
     "conflict_fields",
+    "queue_sequence",
+    "highest_terminal_queue_sequence",
     "media_state",
     "cached_ack_state",
     "ack_semantics",
@@ -141,6 +148,7 @@ COMMAND_SAFETY_BLOCK_COPY = {
     "command_expired": "上一条云端指令已过期，请重新提交新指令。",
     "command_duplicate_deduped": "重复云指令已去重，主操作保持不可用。",
     "command_id_conflict": "同一命令 ID 出现不同内容，机器人已拒绝执行；这不是送达成功。",
+    "command_sequence_regression": "云端指令序号回退，主操作保持不可用；这不是送达成功或真实队列排序证明。",
     "auth_failed": "手机登录或访问码未通过，主操作暂不可用。",
     "media_degraded": "媒体链路降级，主操作暂不可用；这不是送达成功。",
     "cloud_unreachable": "远程控制通道暂不可用，主操作暂不可用。",
@@ -573,6 +581,7 @@ def normalize_remote_command(robot_id, payload, *, now=None):
     command_id = str(payload.get("id") or f"cmd-{int(now * 1000)}-{uuid.uuid4().hex[:8]}").strip()
     protocol_version = str(payload.get("protocol_version") or REMOTE_PROTOCOL_VERSION).strip()
     expires_at = _remote_timestamp(payload.get("expires_at", now + 300.0), "expires_at")
+    queue_sequence = payload.get("queue_sequence")
 
     if protocol_version != REMOTE_PROTOCOL_VERSION:
         raise ValueError(f"protocol_version must be {REMOTE_PROTOCOL_VERSION}")
@@ -584,8 +593,19 @@ def normalize_remote_command(robot_id, payload, *, now=None):
         raise ValueError("payload must be an object")
     if command_type == "collect" and not str(command_payload.get("target") or "").strip():
         raise ValueError("collect payload.target is required")
+    if queue_sequence is not None:
+        if isinstance(queue_sequence, bool):
+            raise ValueError("queue_sequence must be an integer")
+        if isinstance(queue_sequence, float) and not queue_sequence.is_integer():
+            raise ValueError("queue_sequence must be an integer")
+        try:
+            queue_sequence = int(queue_sequence)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("queue_sequence must be an integer") from exc
+        if queue_sequence < 0:
+            raise ValueError("queue_sequence must be non-negative")
 
-    return {
+    command = {
         "protocol_version": REMOTE_PROTOCOL_VERSION,
         "id": command_id,
         "robot_id": str(robot_id or "").strip(),
@@ -594,6 +614,10 @@ def normalize_remote_command(robot_id, payload, *, now=None):
         "payload": dict(command_payload),
         "created_at": now,
     }
+    # queue_sequence 只是 mock cloud/robot bridge 的安全元数据；缺失时仍沿用 opaque cursor。
+    if queue_sequence is not None:
+        command["queue_sequence"] = queue_sequence
+    return command
 
 
 def normalize_remote_status(robot_id, payload, *, now=None):
@@ -950,6 +974,9 @@ class MockCloudStore:
         conflict_command_id = ""
         if status_degradation == "command_id_conflict":
             conflict_command_id = str(status.get("conflict_command_id") or "").strip()
+        sequence_regression_command_id = ""
+        if status_degradation == "command_sequence_regression":
+            sequence_regression_command_id = str(status.get("sequence_regression_command_id") or "").strip()
         media_state = ""
         if status_degradation == "media_degraded":
             media_state = str(status.get("media_state") or "").strip()
@@ -968,6 +995,13 @@ class MockCloudStore:
             and str(ack_operator_status.get("degradation_state") or "") == "command_id_conflict"
         ):
             conflict_command_id = str(ack_operator_status.get("conflict_command_id") or last_command_ack).strip()
+        if (
+            not sequence_regression_command_id
+            and str(ack_operator_status.get("degradation_state") or "") == "command_sequence_regression"
+        ):
+            sequence_regression_command_id = str(
+                ack_operator_status.get("sequence_regression_command_id") or last_command_ack
+            ).strip()
         auth_failed = status_degradation == "auth_failed" or str(ack_operator_status.get("auth_state") or "") == "auth_failed"
         retry_hint = "ok"
         degradation_state = "ok"
@@ -981,6 +1015,9 @@ class MockCloudStore:
         elif conflict_command_id or status_degradation == "command_id_conflict":
             retry_hint = "contact_support"
             degradation_state = "command_id_conflict"
+        elif sequence_regression_command_id or status_degradation == "command_sequence_regression":
+            retry_hint = "contact_support"
+            degradation_state = "command_sequence_regression"
         elif duplicate_command_id or status_degradation == "command_duplicate_deduped":
             retry_hint = "refresh_status"
             degradation_state = "command_duplicate_deduped"
@@ -1006,6 +1043,7 @@ class MockCloudStore:
                 "command_expired",
                 "command_duplicate_deduped",
                 "command_id_conflict",
+                "command_sequence_regression",
                 "auth_failed",
                 "media_degraded",
             }
@@ -1067,6 +1105,31 @@ class MockCloudStore:
                 status.get("proof_boundary")
                 or ack_operator_status.get("proof_boundary")
                 or PHONE_COMMAND_ID_CONFLICT_VISIBILITY_GUARD_BOUNDARY
+            )
+        if degradation_state == "command_sequence_regression":
+            readiness["sequence_regression_command_id"] = sequence_regression_command_id
+            if status.get("queue_sequence") is not None or ack_operator_status.get("queue_sequence") is not None:
+                readiness["queue_sequence"] = int(
+                    status.get("queue_sequence")
+                    if status.get("queue_sequence") is not None
+                    else ack_operator_status.get("queue_sequence")
+                )
+            if (
+                status.get("highest_terminal_queue_sequence") is not None
+                or ack_operator_status.get("highest_terminal_queue_sequence") is not None
+            ):
+                readiness["highest_terminal_queue_sequence"] = int(
+                    status.get("highest_terminal_queue_sequence")
+                    if status.get("highest_terminal_queue_sequence") is not None
+                    else ack_operator_status.get("highest_terminal_queue_sequence")
+                )
+            readiness["ack_semantics"] = "sequence_regression_not_delivery_success"
+            readiness["delivery_success"] = False
+            readiness["primary_actions_enabled"] = False
+            readiness["proof_boundary"] = str(
+                status.get("proof_boundary")
+                or ack_operator_status.get("proof_boundary")
+                or PHONE_COMMAND_SEQUENCE_REGRESSION_GUARD_BOUNDARY
             )
         if degradation_state == "auth_failed":
             readiness["auth_state"] = "auth_failed"
@@ -2935,6 +2998,7 @@ def _command_safety_block_reason(primary_state, remote_state, manifest_state):
         "command_expired",
         "command_duplicate_deduped",
         "command_id_conflict",
+        "command_sequence_regression",
         "media_degraded",
         "auth_failed",
         "cloud_unreachable",
@@ -3437,7 +3501,13 @@ def _offline_resume_connection_state(primary_state, remote_state, command_safety
         return "status_stale"
     if remote_state == "command_pending":
         return "pending_ack"
-    if remote_state in {"command_expired", "command_duplicate_deduped", "command_id_conflict", "media_degraded"}:
+    if remote_state in {
+        "command_expired",
+        "command_duplicate_deduped",
+        "command_id_conflict",
+        "command_sequence_regression",
+        "media_degraded",
+    }:
         return "blocked"
     if primary_state in {"login_required", "remote_response_invalid"}:
         return "blocked"
@@ -3513,6 +3583,10 @@ def build_phone_offline_resume_readiness(
         next_action = "contact_support"
         recovery_hint = PHONE_READINESS_NEXT_ACTION_COPY["contact_support"]
         safe_phone_copy = REMOTE_DEGRADATION_COPY["command_id_conflict"]
+    elif remote_state == "command_sequence_regression":
+        next_action = "contact_support"
+        recovery_hint = PHONE_READINESS_NEXT_ACTION_COPY["contact_support"]
+        safe_phone_copy = REMOTE_DEGRADATION_COPY["command_sequence_regression"]
     elif remote_state == "media_degraded":
         media_state = str(remote_readiness.get("media_state") or "oss_write_failed")
         next_action = {
@@ -3720,6 +3794,11 @@ def build_phone_readiness(
         next_action = "contact_support"
         can_continue = False
         support_level = "remote_command_id_conflict"
+    elif remote_state == "command_sequence_regression":
+        primary_state = "remote_response_invalid"
+        next_action = "contact_support"
+        can_continue = False
+        support_level = "remote_command_sequence_regression"
     elif remote_state == "media_degraded":
         media_state = str(remote.get("media_state") or "oss_write_failed")
         primary_state = "media_degraded"

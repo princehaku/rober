@@ -504,8 +504,8 @@ button-level gate for local/fallback phone control. Start Delivery, Confirm
 Dropoff, and Cancel are enabled only when the legacy local action permission and
 the command safety gate both allow the action. The gate blocks primary commands
 for stale robot status, pending ACK, auth failure, cloud unreachable, malformed
-remote response, command ID conflict, missing/invalid/stale manifest summary,
-and manual takeover.
+remote response, command ID conflict, command sequence regression,
+missing/invalid/stale manifest summary, and manual takeover.
 Diagnostics remains available with a phone-safe blocking explanation so support
 can still reproduce the issue. ACK text must stay conservative: an ACK is only
 command accepted/processing evidence and does not prove delivery success, real
@@ -581,6 +581,50 @@ remains available for support. This is only
 prove delivery success, production DB/queue behavior, public HTTPS/TLS, real
 4G/SIM, OSS/CDN live traffic, real phone browser, Nav2 or fixed route delivery,
 WAVE ROVER motion, or HIL.
+
+## Command Sequence Regression Guard
+
+The Robot bridge may receive an optional top-level `queue_sequence` on a cloud
+command. This is safe metadata only: when it is missing, the bridge keeps the
+existing opaque `last_ack_id` cursor behavior and does not infer ordering from
+the command id string. When it is present, the bridge records the highest
+terminal `queue_sequence` only after the terminal ACK POST is accepted by the
+cloud. A local pending ACK, malformed cloud response, or failed ACK POST must
+not advance the highest terminal sequence.
+
+If a later different `command.id` carries a `queue_sequence` lower than or equal
+to the highest terminal sequence already accepted by the cloud, the bridge must
+fail closed before calling the operator backend. The command may be ACKed as
+`ignored`, but the ACK/readiness status must say this is a sequence regression,
+not delivery success.
+
+When this guard is active, status/readiness must include:
+
+- `degradation_state=command_sequence_regression`
+- `remote_ready=false`
+- `sequence_regression_command_id=<safe command id or [redacted]>`
+- `queue_sequence=<incoming sequence>`
+- `highest_terminal_queue_sequence=<highest accepted terminal sequence>`
+- `ack_semantics=sequence_regression_not_delivery_success`
+- `primary_actions_enabled=false`
+- `delivery_success=false`
+- `safe_phone_copy=云端指令序号回退，机器人已拒绝执行；这不是送达成功或真实队列排序证明。`
+- `retry_hint=contact_support`
+- `proof_boundary=software_proof_docker_cloud_command_sequence_regression_guard`
+
+Priority order is conservative: pending terminal ACK replay still blocks all new
+command polling, expired commands still report `command_expired`, same-ID
+conflicts still report `command_id_conflict`, and same-ID same-content repeats
+still report `command_duplicate_deduped`. The sequence regression guard applies
+to later different command ids before any backend action is executed. Phone
+readiness and `trashbot.command_safety.v1` must disable Start Delivery, Confirm
+Dropoff, and Cancel for `command_sequence_regression`; Diagnostics remains
+available for support. This is only
+`software_proof_docker_cloud_command_sequence_regression_guard`; it does not
+prove real production queue ordering, production DB/queue behavior,
+multi-instance consistency, public HTTPS/TLS, real 4G/SIM, OSS/CDN live traffic,
+real phone browser, Nav2 or fixed route delivery, WAVE ROVER motion, HIL, or
+delivery success.
 
 ## Command Expiry Safety Guard
 
@@ -1172,6 +1216,8 @@ processed the command yet.
 - `command.id` is an idempotency key; duplicate IDs reuse the cached ack and
   expose `command_duplicate_deduped` with
   `ack_semantics=duplicate_cached_ack_not_delivery_success`.
+- Optional `queue_sequence` is a fail-closed regression hint only; it is not
+  proof of real production queue ordering.
 - Expired commands are ignored.
 - Malformed `collect` commands without a non-empty `target` fail before any local action goal is sent.
 - New `collect` commands are ignored while a task is already active.

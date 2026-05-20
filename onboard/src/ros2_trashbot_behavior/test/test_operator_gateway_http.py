@@ -901,6 +901,41 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         )
         self.assertNotIn("delivery_success\": true", json.dumps(conflict["remote_readiness"]))
 
+        sequence_regression = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "degradation_state": "command_sequence_regression",
+                "retry_hint": "contact_support",
+                "safe_phone_copy": "云端指令序号回退，机器人已拒绝执行；这不是送达成功或真实队列排序证明。",
+                "sequence_regression_command_id": "cmd-seq-09",
+                "queue_sequence": 9,
+                "highest_terminal_queue_sequence": 10,
+                "ack_semantics": "sequence_regression_not_delivery_success",
+                "remote_ready": False,
+                "primary_actions_enabled": False,
+                "delivery_success": False,
+                "proof_boundary": "software_proof_docker_cloud_command_sequence_regression_guard",
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        self.assertEqual(sequence_regression["primary_state"], "remote_response_invalid")
+        self.assertFalse(sequence_regression["can_continue"])
+        self.assertEqual(sequence_regression["support_level"], "remote_command_sequence_regression")
+        self.assertEqual(sequence_regression["command_safety"]["global_block_reason"], "command_sequence_regression")
+        self.assertFalse(sequence_regression["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(sequence_regression["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(sequence_regression["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(sequence_regression["command_safety"]["actions"]["diagnostics"]["enabled"])
+        self.assertEqual(
+            sequence_regression["remote_readiness"]["ack_semantics"],
+            "sequence_regression_not_delivery_success",
+        )
+        self.assertEqual(
+            sequence_regression["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_command_sequence_regression_guard",
+        )
+        self.assertNotIn("delivery_success\": true", json.dumps(sequence_regression["remote_readiness"]))
+
         media = build_phone_readiness(
             local_status,
             remote_readiness={
@@ -1887,6 +1922,46 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             "software_proof_docker_cloud_command_id_conflict_visibility_guard",
         )
         self.assertNotIn("delivery_success\": true", json.dumps(payload["remote_readiness"]))
+
+    def test_mock_cloud_reports_sequence_regression_status_as_fail_closed(self):
+        status, payload = self.request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "remote_degraded",
+                "message": "sequence regression ignored",
+                "updated_at": time.time(),
+                "degradation_state": "command_sequence_regression",
+                "sequence_regression_command_id": "cmd-seq-09",
+                "queue_sequence": 9,
+                "highest_terminal_queue_sequence": 10,
+                "remote_ready": False,
+                "primary_actions_enabled": False,
+                "delivery_success": False,
+                "retry_hint": "contact_support",
+                "safe_phone_copy": "云端指令序号回退，机器人已拒绝执行；这不是送达成功或真实队列排序证明。",
+                "ack_semantics": "sequence_regression_not_delivery_success",
+                "proof_boundary": "software_proof_docker_cloud_command_sequence_regression_guard",
+            },
+        )
+
+        self.assertEqual(status, 200)
+        self.assertFalse(payload["remote_readiness"]["remote_ready"])
+        self.assertEqual(payload["remote_readiness"]["degradation_state"], "command_sequence_regression")
+        self.assertEqual(payload["remote_readiness"]["sequence_regression_command_id"], "cmd-seq-09")
+        self.assertEqual(payload["remote_readiness"]["queue_sequence"], 9)
+        self.assertEqual(payload["remote_readiness"]["highest_terminal_queue_sequence"], 10)
+        self.assertEqual(
+            payload["remote_readiness"]["ack_semantics"],
+            "sequence_regression_not_delivery_success",
+        )
+        self.assertFalse(payload["remote_readiness"]["primary_actions_enabled"])
+        self.assertFalse(payload["remote_readiness"]["delivery_success"])
+        self.assertEqual(
+            payload["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_command_sequence_regression_guard",
+        )
 
     def test_mock_cloud_treats_missing_or_null_expires_at_as_pending_not_expired(self):
         store = MockCloudStore()

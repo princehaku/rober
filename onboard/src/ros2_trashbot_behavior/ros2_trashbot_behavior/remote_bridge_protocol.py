@@ -60,12 +60,28 @@ def validate_command(command):
             expires_at = float(expires_at)
         except (TypeError, ValueError) as exc:
             raise ValueError("command.expires_at must be a number") from exc
-    return {
+    queue_sequence = command.get("queue_sequence")
+    if queue_sequence is not None:
+        if isinstance(queue_sequence, bool):
+            raise ValueError("command.queue_sequence must be an integer")
+        if isinstance(queue_sequence, float) and not queue_sequence.is_integer():
+            raise ValueError("command.queue_sequence must be an integer")
+        try:
+            queue_sequence = int(queue_sequence)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("command.queue_sequence must be an integer") from exc
+        if queue_sequence < 0:
+            raise ValueError("command.queue_sequence must be non-negative")
+    normalized = {
         "id": command_id,
         "type": command_type,
         "payload": payload,
         "expires_at": expires_at,
     }
+    # queue_sequence 是云端队列的可选安全元数据；缺失时继续依赖 opaque ACK cursor。
+    if queue_sequence is not None:
+        normalized["queue_sequence"] = queue_sequence
+    return normalized
 
 
 def command_expired(command, now=None):

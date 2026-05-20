@@ -580,6 +580,96 @@ class CloudCommandIdConflictVisibilityGuardMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, fixture_text)
 
 
+class CloudCommandSequenceRegressionGuardMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_command_sequence_regression_guard_is_consumed_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # command_sequence_regression 复用 cloud readiness 面板；手机端只能解释序号倒退，不能新增控制 endpoint。
+        self.assertIn("CLOUD_COMMAND_SEQUENCE_REGRESSION_BOUNDARY", app)
+        self.assertIn("CLOUD_COMMAND_SEQUENCE_REGRESSION_COPY", app)
+        self.assertIn("software_proof_docker_cloud_command_sequence_regression_guard", app)
+        self.assertIn("command_sequence_regression", app)
+        self.assertIn("regression_command_id", app)
+        self.assertIn("observed_sequence", app)
+        self.assertIn("previous_sequence", app)
+        self.assertIn("sequence_regression_not_delivery_success", app)
+        self.assertIn("remote_ready=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"cloudCommandSequenceRegression.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 是 phone-safe 示例：序号倒退被拒绝，三类主操作继续关闭，ACK 不是送达成功。
+        self.assertEqual(fixture["degradation_state"], "command_sequence_regression")
+        self.assertEqual(fixture["regression_command_id"], "cmd_sequence_regression_20260520_001")
+        self.assertEqual(fixture["observed_sequence"], "41")
+        self.assertEqual(fixture["previous_sequence"], "42")
+        self.assertEqual(fixture["remote_ready"], False)
+        self.assertEqual(fixture["primary_actions_enabled"], False)
+        self.assertEqual(fixture["delivery_success"], False)
+        self.assertEqual(fixture["ack_semantics"], "sequence_regression_not_delivery_success")
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertIn("命令队列序号倒退", fixture_text)
+        self.assertIn("机器人已拒绝按旧顺序推进", fixture_text)
+        self.assertIn("这不是送达成功", fixture_text)
+        self.assertIn("不自动重放", fixture_text)
+        self.assertIn("不自动 resubmit", fixture_text)
+        self.assertIn("ACK/cursor", fixture_text)
+        self.assertIn("remote_ready=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("software_proof_docker_cloud_command_sequence_regression_guard", fixture_text)
+        self.assertNotIn("delivery_success\": true", fixture_text)
+        self.assertNotIn("primary_actions_enabled\": true", fixture_text)
+
+        # 产品文档必须把序号倒退写成 Docker-only software proof，不是真实生产队列排序或送达证明。
+        self.assertIn("cloud_command_sequence_regression_guard", doc)
+        self.assertIn("command_sequence_regression", doc)
+        self.assertIn("regression_command_id", doc)
+        self.assertIn("observed_sequence", doc)
+        self.assertIn("previous_sequence", doc)
+        self.assertIn("sequence_regression_not_delivery_success", doc)
+        self.assertIn("命令队列序号倒退", doc)
+        self.assertIn("这不是送达成功", doc)
+        self.assertIn("not production queue ordering", doc)
+        self.assertIn("not external cloud proof", doc)
+        self.assertIn("software_proof_docker_cloud_command_sequence_regression_guard", doc)
+
+    def test_cloud_command_sequence_regression_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(
+            fixture["phone_readiness"]["remote_readiness"],
+            ensure_ascii=False,
+        ).lower()
+
+        # sequence regression fixture 只暴露安全摘要，不能携带原始命令、凭证、控制面或成功证明。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "serial device",
+            "uart",
+            "wave rover",
+            "traceback",
+            "local path",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
+
+
 class CloudMediaDegradationStatusGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")
