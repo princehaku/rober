@@ -45,6 +45,70 @@
       ]
     }
   },
+  "cloud_unreachable_malformed_response_guard_examples": [
+    {
+      "schema": "trashbot.remote_readiness_summary.v1",
+      "schema_version": 1,
+      "guard": "cloud_unreachable_malformed_response_guard",
+      "source": "software_proof",
+      "degradation_state": "cloud_unreachable",
+      "remote_ready": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false,
+      "ack_semantics": "cloud_unreachable_not_delivery_success",
+      "proof_boundary": "software_proof_docker_cloud_unreachable_malformed_response_guard",
+      "evidence_boundary": "software_proof_docker_cloud_unreachable_malformed_response_guard",
+      "safe_phone_copy": "云端暂时不可达；当前不能下发主操作，请刷新状态或联系支持。",
+      "recovery_hint": "请刷新状态或联系支持；手机端不重放、不 resubmit、不请求 ACK/cursor，也不提交控制动作。",
+      "not_proven": [
+        "source=software_proof",
+        "not_proven",
+        "remote_ready=false",
+        "safe_to_control=false",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "not public HTTPS/TLS proof",
+        "not real 4G/SIM proof",
+        "not HIL",
+        "not delivery success"
+      ]
+    },
+    {
+      "schema": "trashbot.remote_readiness_summary.v1",
+      "schema_version": 1,
+      "guard": "cloud_unreachable_malformed_response_guard",
+      "source": "software_proof",
+      "degradation_state": "malformed_response",
+      "remote_ready": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false,
+      "ack_semantics": "malformed_response_not_delivery_success",
+      "proof_boundary": "software_proof_docker_cloud_unreachable_malformed_response_guard",
+      "evidence_boundary": "software_proof_docker_cloud_unreachable_malformed_response_guard",
+      "safe_phone_copy": "云端响应格式异常；机器人没有确认执行，请刷新状态或联系支持。",
+      "recovery_hint": "请刷新状态或联系支持；手机端不重放、不 resubmit、不请求 ACK/cursor，也不提交控制动作。",
+      "not_proven": [
+        "source=software_proof",
+        "not_proven",
+        "remote_ready=false",
+        "safe_to_control=false",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "not public HTTPS/TLS proof",
+        "not real 4G/SIM proof",
+        "not HIL",
+        "not delivery success"
+      ]
+    }
+  ],
   "phone_action_feedback": {
     "schema": "trashbot.mobile_action_confirmation.v1",
     "schema_version": 1,

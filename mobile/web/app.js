@@ -31,6 +31,12 @@ const CLOUD_COMMAND_ID_CONFLICT_BOUNDARY = "software_proof_docker_cloud_command_
 const CLOUD_COMMAND_ID_CONFLICT_COPY = "命令 ID 冲突；机器人已拒绝执行；这不是送达成功。";
 const CLOUD_COMMAND_SEQUENCE_REGRESSION_BOUNDARY = "software_proof_docker_cloud_command_sequence_regression_guard";
 const CLOUD_COMMAND_SEQUENCE_REGRESSION_COPY = "命令队列序号倒退；机器人已拒绝按旧顺序推进；这不是送达成功。";
+const CLOUD_UNREACHABLE_MALFORMED_RESPONSE_BOUNDARY = "software_proof_docker_cloud_unreachable_malformed_response_guard";
+// 云端不可达和响应格式异常都只能解释为只读降级，不能触发手机端重试、ACK/cursor 或主操作。
+const CLOUD_UNREACHABLE_MALFORMED_RESPONSE_COPY = {
+  cloud_unreachable: "云端暂时不可达；当前不能下发主操作，请刷新状态或联系支持。",
+  malformed_response: "云端响应格式异常；机器人没有确认执行，请刷新状态或联系支持。",
+};
 // 媒体链路降级和云命令失败共用 cloud readiness 面板，避免新增任何手机端控制通道。
 const CLOUD_MEDIA_DEGRADATION_BOUNDARY = "software_proof_docker_cloud_media_degradation_status_guard";
 // 两类媒体失败都必须显式告诉用户不是送达成功，避免把照片/快照失败误读成任务完成。
@@ -1857,6 +1863,45 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         regression_command_id: regressionCommandId,
         observed_sequence: observedSequence,
         previous_sequence: previousSequence,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
+    if (provided.degradation_state === "cloud_unreachable" ||
+        provided.degradation_state === "malformed_response" ||
+        provided.proof_boundary === CLOUD_UNREACHABLE_MALFORMED_RESPONSE_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_UNREACHABLE_MALFORMED_RESPONSE_BOUNDARY) {
+      // 云端连接和响应解析失败都不能证明机器人执行，前端只展示安全文案并保持所有主操作关闭。
+      const degradationState = provided.degradation_state === "malformed_response"
+        ? "malformed_response"
+        : "cloud_unreachable";
+      const fallbackCopy = CLOUD_UNREACHABLE_MALFORMED_RESPONSE_COPY[degradationState];
+      const ackSemantics = degradationState === "malformed_response"
+        ? "malformed_response_not_delivery_success"
+        : "cloud_unreachable_not_delivery_success";
+      const retryHint = degradationState === "malformed_response"
+        ? "contact_support"
+        : "refresh_status_or_contact_support";
+      return {
+        ...provided,
+        missing: false,
+        overall_status: "blocked",
+        preflight_status: degradationState,
+        degradation_state: degradationState,
+        db_queue_status: `${degradationState} / remote_ready=false / primary_actions_enabled=false`,
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        delivery_success: false,
+        safe_phone_copy: safeText(provided.safe_phone_copy, fallbackCopy),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "请刷新状态或联系支持；手机端不重放、不 resubmit、不请求 ACK/cursor，也不提交控制动作。",
+        ),
+        ack_semantics: safeText(provided.ack_semantics, ackSemantics),
+        retry_hint: safeText(provided.retry_hint, retryHint),
+        evidence_boundary: CLOUD_UNREACHABLE_MALFORMED_RESPONSE_BOUNDARY,
+        proof_boundary: CLOUD_UNREACHABLE_MALFORMED_RESPONSE_BOUNDARY,
         not_proven: notProvenList(provided.not_proven),
       };
     }

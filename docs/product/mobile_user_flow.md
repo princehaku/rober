@@ -1200,8 +1200,10 @@ Recommended phone handling:
 - `command_id_conflict`: show "命令 ID 冲突；机器人已拒绝执行；这不是送达成功。", keep destructive actions disabled, and never automatically replay, automatically resubmit, or request ACK/cursor for the conflicting request.
 - `command_sequence_regression`: show "命令队列序号倒退；机器人已拒绝按旧顺序推进；这不是送达成功。", keep destructive actions disabled, and never automatically replay, automatically resubmit, or request ACK/cursor for the regressed command.
 - `auth_failed`: ask the user to sign in again or check the access code.
-- `cloud_unreachable`: ask the user to retry later or switch to local fallback when available.
-- `malformed_response`: ask the user to contact support and attach diagnostics.
+- `cloud_unreachable`: show "云端暂时不可达；当前不能下发主操作，请刷新状态或联系支持。", keep Start Delivery / Confirm Dropoff / Cancel disabled, keep Diagnostics and Support Handoff visible, and never automatically replay, automatically resubmit, request ACK/cursor, fetch raw diagnostics, or expose raw cloud response details.
+- `malformed_response`: show "云端响应格式异常；机器人没有确认执行，请刷新状态或联系支持。", keep Start Delivery / Confirm Dropoff / Cancel disabled, keep Diagnostics and Support Handoff visible, and never automatically replay, automatically resubmit, request ACK/cursor, fetch raw diagnostics, or expose raw cloud response details.
+
+`cloud_unreachable_malformed_response_guard` is the phone-safe rendering rule for both states. Its evidence boundary is `software_proof_docker_cloud_unreachable_malformed_response_guard`; every payload and UI rendering must preserve `source=software_proof`, `not_proven`, `remote_ready=false`, `safe_to_control=false`, `delivery_success=false`, and `primary_actions_enabled=false`. This is Docker/local software proof only and 不是真实手机/browser/4G/云/HIL/送达证明; it is not public HTTPS/TLS, production DB/queue, OSS/CDN live traffic, WAVE ROVER/UART, route/elevator field pass, dropoff/cancel completion, or delivery success.
 
 ## 4G Remote Product Path
 

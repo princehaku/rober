@@ -511,6 +511,42 @@ can still reproduce the issue. ACK text must stay conservative: an ACK is only
 command accepted/processing evidence and does not prove delivery success, real
 4G/cloud, OSS/CDN traffic, WAVE ROVER motion, or HIL.
 
+## Cloud Unreachable Malformed Response Guard
+
+`cloud_unreachable_malformed_response_guard` covers two remote-control degraded
+states that must stay phone-safe and fail closed: `cloud_unreachable` and
+`malformed_response`. Both states use the same evidence boundary,
+`software_proof_docker_cloud_unreachable_malformed_response_guard`, and must
+preserve `source=software_proof`, `not_proven`, `remote_ready=false`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+
+When `cloud_unreachable` is active, the phone copy is:
+
+```text
+云端暂时不可达；当前不能下发主操作，请刷新状态或联系支持。
+```
+
+When `malformed_response` is active, the phone copy is:
+
+```text
+云端响应格式异常；机器人没有确认执行，请刷新状态或联系支持。
+```
+
+The phone UI must keep Start Delivery, Confirm Dropoff, and Cancel disabled for
+both states. Diagnostics and Support Handoff remain visible so an operator can
+collect a sanitized support summary, but the phone must not add control
+endpoints, ACK/cursor requests, retries, resubmits, raw diagnostics fetches, or
+hidden robot commands. Payloads and UI text must not expose raw JSON,
+credentials, bearer tokens, Authorization headers, DB/queue URLs, OSS AK/SK,
+tracebacks, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details,
+local paths, checksums, or complete artifacts.
+
+This guard is Docker/local software proof only. It does not prove public
+HTTPS/TLS, real 4G/SIM, production DB/queue, OSS/CDN live traffic, true
+phone/browser behavior, WAVE ROVER/UART, HIL, route/elevator field pass,
+dropoff/cancel completion, delivery result, or delivery success.
+
 ## Command Idempotency Visibility Guard
 
 The Robot bridge treats `command.id` as the idempotency key. If the cloud sends

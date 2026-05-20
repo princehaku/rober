@@ -130,6 +130,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_elevator_field_session_handoff,
     summarize_cloud_worker_migration_rehearsal,
     summarize_cloud_worker_cutover_drain,
+    summarize_cloud_unreachable_malformed_response_guard,
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import (
@@ -28478,6 +28479,142 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(offline_resume["next_action"], "check_cdn_reachability")
         for forbidden in ("Authorization", "Bearer", "signed URL", "/cmd_vel"):
             self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_unreachable_malformed_response_guard_summary_is_fail_closed(self):
+        for degradation_state in ("cloud_unreachable", "malformed_response"):
+            summary = summarize_cloud_unreachable_malformed_response_guard(
+                {
+                    "degradation_state": degradation_state,
+                    "safe_phone_copy": "Authorization Bearer token raw response /cmd_vel",
+                    "remote_ready": True,
+                    "safe_to_control": True,
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "retry_hint": "retry_cloud",
+                    "raw_response_body": "Traceback (most recent call last): /tmp/cloud.json",
+                }
+            )
+
+            encoded = json.dumps(summary, ensure_ascii=False)
+            self.assertEqual(summary["guard"], "cloud_unreachable_malformed_response_guard")
+            self.assertEqual(summary["degradation_state"], degradation_state)
+            self.assertEqual(
+                summary["evidence_boundary"],
+                "software_proof_docker_cloud_unreachable_malformed_response_guard",
+            )
+            self.assertEqual(summary["source"], "software_proof")
+            self.assertFalse(summary["remote_ready"])
+            self.assertFalse(summary["safe_to_control"])
+            self.assertFalse(summary["delivery_success"])
+            self.assertFalse(summary["primary_actions_enabled"])
+            self.assertFalse(summary["ack_cursor_fetch_allowed"])
+            self.assertFalse(summary["retry_replay_resubmit_allowed"])
+            self.assertFalse(summary["queue_advancement_allowed"])
+            self.assertFalse(summary["robot_command_side_effects_allowed"])
+            self.assertIn("not_proven", summary["false_states"])
+            self.assertIn("remote_ready=false", summary["false_states"])
+            self.assertIn("delivery_success=false", summary["false_states"])
+            self.assertIn("primary_actions_enabled=false", summary["false_states"])
+            self.assertIn("ack_cursor_fetch", summary["not_proven"])
+            self.assertIn("hil_pass", summary["not_proven"])
+            self.assertTrue(summary["raw_material_redacted"])
+            for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel", "/tmp/"):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_diagnostics_payload_surfaces_cloud_guard_and_sanitizes_remote_readiness(self):
+        payload = self._base_build_payload(
+            {
+                "state": "remote_degraded",
+                "message": "raw cloud response must stay hidden",
+                "can_collect": True,
+                "can_confirm_dropoff": True,
+                "can_cancel": True,
+                "remote_readiness": {
+                    "degradation_state": "cloud_unreachable",
+                    "safe_phone_copy": "Authorization Bearer token raw response /cmd_vel",
+                    "remote_ready": True,
+                    "safe_to_control": True,
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "retry_hint": "retry_cloud",
+                },
+            }
+        )
+
+        summary = payload["robot_diagnostics_cloud_unreachable_malformed_response_guard_summary"]
+        remote_readiness = payload["latest_status"]["remote_readiness"]
+        encoded = json.dumps(payload, ensure_ascii=False)
+
+        self.assertEqual(summary["degradation_state"], "cloud_unreachable")
+        self.assertEqual(summary["status"], "blocked_unsafe_material_not_proven")
+        self.assertEqual(remote_readiness["degradation_state"], "cloud_unreachable")
+        self.assertFalse(remote_readiness["remote_ready"])
+        self.assertFalse(remote_readiness["cloud_reachable"])
+        self.assertFalse(remote_readiness["delivery_success"])
+        self.assertFalse(remote_readiness["primary_actions_enabled"])
+        self.assertEqual(remote_readiness["ack_semantics"], "cloud_guard_not_delivery_success")
+        self.assertEqual(
+            remote_readiness["proof_boundary"],
+            "software_proof_docker_cloud_unreachable_malformed_response_guard",
+        )
+        for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_diagnostics_phone_readiness_surfaces_cloud_unreachable_and_malformed(self):
+        for degradation_state, expected_primary in (
+            ("cloud_unreachable", "remote_unreachable"),
+            ("malformed_response", "remote_response_invalid"),
+        ):
+            class Gateway:
+                def snapshot(self):
+                    return {
+                        "state": "remote_degraded",
+                        "message": "safe cloud guard",
+                        "can_collect": True,
+                        "can_confirm_dropoff": True,
+                        "can_cancel": True,
+                        "remote_readiness": {
+                            "degradation_state": degradation_state,
+                            "remote_ready": False,
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                            "safe_phone_copy": "云端异常，保持 fail-closed。",
+                            "proof_boundary": (
+                                "software_proof_docker_cloud_unreachable_malformed_response_guard"
+                            ),
+                        },
+                    }
+
+                def diagnostics(self):
+                    return build_diagnostics_payload(
+                        self.snapshot(),
+                        software_version="0.1.0",
+                        map_version="map-a",
+                        route_version="route-a",
+                        log_refs=[],
+                        vision_sample_manifest_ref="",
+                        review_decision_log_ref="",
+                        operator_status_file="/tmp/status.json",
+                    )
+
+            payload = _diagnostics_with_phone_task_flow(Gateway(), MockCloudStore())
+            readiness = payload["latest_status"]["phone_readiness"]
+            remote_readiness = readiness["remote_readiness"]
+
+            self.assertIn(readiness["primary_state"], {expected_primary, "diagnostic_refs_missing"})
+            self.assertEqual(readiness["remote_readiness"]["degradation_state"], degradation_state)
+            self.assertEqual(readiness["command_safety"]["global_block_reason"], degradation_state)
+            self.assertFalse(readiness["command_safety"]["actions"]["start"]["enabled"])
+            self.assertFalse(readiness["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+            self.assertFalse(readiness["command_safety"]["actions"]["cancel"]["enabled"])
+            self.assertTrue(readiness["command_safety"]["actions"]["diagnostics"]["enabled"])
+            self.assertFalse(remote_readiness["remote_ready"])
+            self.assertFalse(remote_readiness["delivery_success"])
+            self.assertFalse(remote_readiness["primary_actions_enabled"])
+            self.assertEqual(
+                remote_readiness["proof_boundary"],
+                "software_proof_docker_cloud_unreachable_malformed_response_guard",
+            )
 
     def test_diagnostics_payload_does_not_forward_preexisting_support_bundle(self):
         payload = build_diagnostics_payload(

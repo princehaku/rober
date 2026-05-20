@@ -672,6 +672,87 @@ class CloudMediaDegradationStatusGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")
 
+    def test_cloud_unreachable_malformed_response_guard_is_consumed_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # cloud_unreachable 和 malformed_response 复用 cloud readiness 面板；手机端只展示安全文案，不新增控制副作用。
+        self.assertIn("CLOUD_UNREACHABLE_MALFORMED_RESPONSE_BOUNDARY", app)
+        self.assertIn("CLOUD_UNREACHABLE_MALFORMED_RESPONSE_COPY", app)
+        self.assertIn("software_proof_docker_cloud_unreachable_malformed_response_guard", app)
+        self.assertIn("cloud_unreachable", app)
+        self.assertIn("malformed_response", app)
+        self.assertIn("cloud_unreachable_not_delivery_success", app)
+        self.assertIn("malformed_response_not_delivery_success", app)
+        self.assertIn("remote_ready=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"cloudUnreachableMalformed.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 同时覆盖两类 degraded state；两类都必须关闭 Start/Confirm/Cancel 且不能声称执行确认。
+        examples = fixture["cloud_unreachable_malformed_response_guard_examples"]
+        self.assertEqual({item["degradation_state"] for item in examples}, {"cloud_unreachable", "malformed_response"})
+        for example in examples:
+            self.assertEqual(example["guard"], "cloud_unreachable_malformed_response_guard")
+            self.assertEqual(example["source"], "software_proof")
+            self.assertEqual(example["remote_ready"], False)
+            self.assertEqual(example["safe_to_control"], False)
+            self.assertEqual(example["delivery_success"], False)
+            self.assertEqual(example["primary_actions_enabled"], False)
+            self.assertEqual(example["can_collect"], False)
+            self.assertEqual(example["can_confirm_dropoff"], False)
+            self.assertEqual(example["can_cancel"], False)
+            self.assertEqual(
+                example["proof_boundary"],
+                "software_proof_docker_cloud_unreachable_malformed_response_guard",
+            )
+        self.assertIn("云端暂时不可达；当前不能下发主操作，请刷新状态或联系支持。", fixture_text)
+        self.assertIn("云端响应格式异常；机器人没有确认执行，请刷新状态或联系支持。", fixture_text)
+        self.assertIn("source=software_proof", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("remote_ready=false", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+
+        # 产品文档必须把两个状态写成 Docker/local software proof，不是真实云、真实手机、HIL 或送达证明。
+        self.assertIn("cloud_unreachable_malformed_response_guard", doc)
+        self.assertIn("cloud_unreachable", doc)
+        self.assertIn("malformed_response", doc)
+        self.assertIn("云端暂时不可达；当前不能下发主操作，请刷新状态或联系支持。", doc)
+        self.assertIn("云端响应格式异常；机器人没有确认执行，请刷新状态或联系支持。", doc)
+        self.assertIn("software_proof_docker_cloud_unreachable_malformed_response_guard", doc)
+        self.assertIn("不是真实手机/browser/4G/云/HIL/送达证明", doc)
+
+    def test_cloud_unreachable_malformed_response_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(
+            fixture["cloud_unreachable_malformed_response_guard_examples"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 云不可达/格式异常 fixture 只保留 phone-safe 摘要，不能带原始响应、凭证、底盘控制或成功证明。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "serial device",
+            "baudrate",
+            "wave rover parameter",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
+
     def test_cloud_media_degradation_status_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
         fixture = json.loads(CLOUD_MEDIA_DEGRADATION_FIXTURE.read_text(encoding="utf-8"))

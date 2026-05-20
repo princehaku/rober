@@ -1,5 +1,22 @@
 # ROS Runtime Contracts
 
+## robot_diagnostics_cloud_unreachable_malformed_response_guard_summary
+
+`robot_diagnostics_cloud_unreachable_malformed_response_guard_summary` is the Robot diagnostics safe alias for the `cloud_unreachable_malformed_response_guard` gate. It consumes only phone-safe `remote_readiness` metadata for the degradation states `cloud_unreachable` and `malformed_response`; the evidence boundary must remain `software_proof_docker_cloud_unreachable_malformed_response_guard`.
+
+The alias is diagnostics-only and fail-closed:
+
+- `source=software_proof`
+- `not_proven`
+- `remote_ready=false`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+
+Allowed Robot-visible fields are limited to sanitized guard metadata: `guard`, `degradation_state`, `status`, `evidence_boundary`, `retry_hint`, `safe_copy`, `safe_phone_copy`, `false_states`, `not_proven`, `remote_ready=false`, `safe_to_control=false`, `delivery_success=false`, `primary_actions_enabled=false`, `ack_cursor_fetch_allowed=false`, `retry_replay_resubmit_allowed=false`, `queue_advancement_allowed=false`, and `robot_command_side_effects_allowed=false`.
+
+The alias must not expose bearer tokens, Authorization headers, credentials, DB/queue URLs, OSS AK/SK, raw cloud response bodies, tracebacks, local paths, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details, HIL/pass wording, delivery success wording, ACK/cursor state, retry/replay/resubmit requests, queue advancement, or hidden robot command side effects. Missing safe metadata, unsupported degradation state, unsafe copy, raw response markers, enabled action flags, `delivery_success=true`, `primary_actions_enabled=true`, `safe_to_control=true`, or `remote_ready=true` keeps the summary blocked/not_proven and leaves Start, Confirm Dropoff, Cancel, ACK, cursor fetch, retry, replay, resubmit, queue advancement, dropoff/cancel completion, delivery result, and primary robot actions disabled.
+
 ## robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary
 
 `robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary` is the Robot diagnostics safe alias for the `pr5_mandatory_sensor_source_alignment` gate. It consumes only the sanitized summary schema `trashbot.pr5_mandatory_sensor_source_alignment_summary.v1`, whose `source_schema` must point back to `trashbot.pr5_mandatory_sensor_source_alignment.v1` and whose evidence boundary must remain `software_proof_docker_pr5_mandatory_sensor_source_alignment_gate`.

@@ -15,8 +15,10 @@ class OperatorGatewayStaticTest(unittest.TestCase):
     def test_gateway_exposes_minimum_http_contract(self):
         source = GATEWAY.read_text(encoding="utf-8")
         http_source = HTTP.read_text(encoding="utf-8")
+        diagnostics_source = DIAGNOSTICS.read_text(encoding="utf-8")
         ast.parse(source)
         ast.parse(http_source)
+        ast.parse(diagnostics_source)
 
         for route in (
             '"/api/status"',
@@ -87,6 +89,11 @@ class OperatorGatewayStaticTest(unittest.TestCase):
         self.assertIn('"degradation_state"', http_source)
         self.assertIn('"safe_phone_copy"', http_source)
         self.assertIn("REMOTE_DEGRADATION_COPY", http_source)
+        self.assertIn("cloud_unreachable", http_source)
+        self.assertIn("malformed_response", http_source)
+        self.assertIn("software_proof_docker_cloud_unreachable_malformed_response_guard", diagnostics_source)
+        self.assertIn("summarize_cloud_unreachable_malformed_response_guard", diagnostics_source)
+        self.assertIn("robot_diagnostics_cloud_unreachable_malformed_response_guard_summary", diagnostics_source)
         self.assertIn("PHONE_READINESS_SCHEMA", http_source)
         self.assertIn("PHONE_READINESS_EVIDENCE_BOUNDARY", http_source)
         self.assertIn("PHONE_TASK_FLOW_SCHEMA", http_source)
@@ -111,13 +118,17 @@ class OperatorGatewayStaticTest(unittest.TestCase):
             http_source.index("def normalize_remote_command"):
             http_source.index("SENSITIVE_REMOTE_KEYS")
         ]
+        remote_command_source = http_source[
+            http_source.index("def normalize_remote_command"):
+            http_source.index("def normalize_remote_status")
+        ]
         self.assertIn("REMOTE_COMMAND_TYPES", remote_source)
         self.assertIn('"collect"', http_source)
         self.assertIn('"confirm_dropoff"', http_source)
         self.assertIn('"cancel"', http_source)
-        self.assertNotIn("/cmd_vel", remote_source)
-        self.assertNotIn("serial_port", remote_source)
-        self.assertNotIn("baudrate", remote_source)
+        self.assertNotIn("/cmd_vel", remote_command_source)
+        self.assertNotIn("serial_port", remote_command_source)
+        self.assertNotIn("baudrate", remote_command_source)
 
     def test_gateway_diagnostics_exposes_minimum_remote_support_package(self):
         source = GATEWAY.read_text(encoding="utf-8")

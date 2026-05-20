@@ -8,7 +8,25 @@
 
 ## 2026-05-21 系列
 
-更新时间：2026-05-21 04:21 Asia/Shanghai。
+更新时间：2026-05-21 05:18 Asia/Shanghai。
+
+### 2026-05-21 05-06｜cloud-unreachable-malformed-response-guard｜cloud unreachable and malformed response software proof
+
+本轮 `sprints/2026.05.21_05-06_cloud-unreachable-malformed-response-guard/` 执行 `cloud_unreachable_malformed_response_guard` epic closeout。Objective 5 仍约 68%，是当前数值最低 Objective；本轮只补 Docker/local cloud unreachable 与 malformed response 的 fail-closed guard，不提高百分比。真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或 true phone/browser external proof 仍未出现，因此该 sprint is not real external cloud proof。Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending。
+
+Robot worker 新增 `robot_diagnostics_cloud_unreachable_malformed_response_guard_summary`，把 `cloud_unreachable` 与 `malformed_response` 标准化为 `source=software_proof`、`not_proven`、`remote_ready=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。Full-Stack worker 在 mobile/web 增加 phone-safe rendering 和中文文案：云端暂时不可达或云端响应格式异常时，Start Delivery / Confirm Dropoff / Cancel 保持 disabled，diagnostics/support 仍可见。Robot docs 与 product docs 已同步更新。
+
+证据边界保持 `software_proof_docker_cloud_unreachable_malformed_response_guard`、`source=software_proof`、`not_proven`、`remote_ready=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL、hardware bridge、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只处理 cloud unreachable / malformed response fail-closed 状态，不新增 route/elevator field material、真实电梯、Nav2/fixed-route runtime log、dropoff/cancel completion、field pass、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可读状态受益：手机端能展示 cloud unreachable / malformed response 中文安全文案，并保持 `remote_ready=false`、`primary_actions_enabled=false` 和主操作不可用；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_unreachable_malformed_response_guard` 只证明 Docker/local Robot/API + mobile static fixture 下的云不可达/响应畸形可见性：通信失败被安全分类、phone-safe copy 可见、actions fail closed、ACK/delivery 语义明确不是 delivery success。本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Product planning docs `pre_start.md`、`prd.md`、`tech-plan.md` 已创建且 planning validation passed。Robot worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 308 tests in 28.289s OK`；required `rg` 与 scoped `git diff --check` 通过；计划里的 `test_operator_gateway.py` 不存在，worker 改用现有 `test_operator_gateway_http.py`、`test_operator_gateway_static.py`、`test_operator_gateway_diagnostics.py`。Full-Stack worker 报告 `node --check` 通过；mobile unittest 输出 `Ran 195 tests ... OK`；JSON fixture check、required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
 
 ### 2026-05-21 04-05｜pr5-mandatory-sensor-source-alignment｜PR #5 mandatory sensor source alignment software proof
 

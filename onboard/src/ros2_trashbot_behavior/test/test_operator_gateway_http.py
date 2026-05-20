@@ -971,6 +971,63 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         )
         self.assertNotIn("delivery_success\": true", json.dumps(media["remote_readiness"]))
 
+        cloud_unreachable = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "degradation_state": "cloud_unreachable",
+                "retry_hint": "retry_cloud",
+                "safe_phone_copy": "云端暂时不可达；当前不能下发主操作，请刷新状态或联系支持。",
+                "remote_ready": False,
+                "safe_to_control": False,
+                "primary_actions_enabled": False,
+                "delivery_success": False,
+                "proof_boundary": "software_proof_docker_cloud_unreachable_malformed_response_guard",
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        self.assertEqual(cloud_unreachable["primary_state"], "remote_unreachable")
+        self.assertEqual(cloud_unreachable["next_action"], "retry_cloud")
+        self.assertEqual(cloud_unreachable["support_level"], "local_fallback_only")
+        self.assertEqual(cloud_unreachable["command_safety"]["global_block_reason"], "cloud_unreachable")
+        self.assertFalse(cloud_unreachable["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(cloud_unreachable["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(cloud_unreachable["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(cloud_unreachable["command_safety"]["actions"]["diagnostics"]["enabled"])
+        self.assertEqual(
+            cloud_unreachable["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_unreachable_malformed_response_guard",
+        )
+        self.assertNotIn("delivery_success\": true", json.dumps(cloud_unreachable["remote_readiness"]))
+
+        malformed = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "degradation_state": "malformed_response",
+                "retry_hint": "contact_support",
+                "safe_phone_copy": "云端响应格式异常；机器人没有确认执行，请刷新状态或联系支持。",
+                "remote_ready": False,
+                "safe_to_control": False,
+                "primary_actions_enabled": False,
+                "delivery_success": False,
+                "proof_boundary": "software_proof_docker_cloud_unreachable_malformed_response_guard",
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        self.assertEqual(malformed["primary_state"], "remote_response_invalid")
+        self.assertFalse(malformed["can_continue"])
+        self.assertEqual(malformed["next_action"], "contact_support")
+        self.assertEqual(malformed["support_level"], "support_required")
+        self.assertEqual(malformed["command_safety"]["global_block_reason"], "malformed_response")
+        self.assertFalse(malformed["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(malformed["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(malformed["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(malformed["command_safety"]["actions"]["diagnostics"]["enabled"])
+        self.assertEqual(
+            malformed["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_unreachable_malformed_response_guard",
+        )
+        self.assertNotIn("delivery_success\": true", json.dumps(malformed["remote_readiness"]))
+
         acked = build_phone_readiness(
             dict(local_status, target="Lobby trash station"),
             remote_readiness={

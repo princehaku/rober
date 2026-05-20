@@ -1065,6 +1065,38 @@ CLOUD_WORKER_CUTOVER_DRAIN_REQUIRED_NOT_PROVEN = (
     "cursor_advance_or_persistence",
     "delivery_success",
 )
+CLOUD_UNREACHABLE_MALFORMED_RESPONSE_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_unreachable_malformed_response_guard"
+)
+CLOUD_UNREACHABLE_MALFORMED_RESPONSE_GUARD_SCHEMA = (
+    "trashbot.cloud_unreachable_malformed_response_guard_summary.v1"
+)
+CLOUD_UNREACHABLE_MALFORMED_RESPONSE_STATES = {"cloud_unreachable", "malformed_response"}
+CLOUD_UNREACHABLE_MALFORMED_RESPONSE_FALSE_STATES = (
+    "source=software_proof",
+    "not_proven",
+    "remote_ready=false",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+)
+CLOUD_UNREACHABLE_MALFORMED_RESPONSE_REQUIRED_NOT_PROVEN = (
+    "real_public_https_tls",
+    "real_4g_or_sim",
+    "production_db_queue",
+    "oss_cdn_live_traffic",
+    "ack_cursor_fetch",
+    "retry_replay_resubmit",
+    "queue_advancement",
+    "robot_command_side_effects",
+    "dropoff_or_cancel_completion",
+    "route_elevator_field_pass",
+    "real_phone_device_or_browser",
+    "hil_pass",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
+)
 PR5_REVIEW_THREAD_CLOSEOUT_REQUIRED_NOT_PROVEN = (
     "real_2d_lidar",
     "real_tof",
@@ -1233,6 +1265,212 @@ def _dedupe_ordered(values):
         if text and text not in items:
             items.append(text)
     return items
+
+
+def _cloud_guard_safe_text(value, fallback):
+    # 云端异常会进入 diagnostics 和手机摘要；命中敏感信息时用固定文案替代，不回显原始响应。
+    text = _redact_route_task_rehearsal_text(value).strip()
+    if not text:
+        return fallback
+    lowered = text.lower()
+    forbidden = (
+        "[redacted_auth_header]",
+        "bearer [redacted]",
+        "[redacted_url]",
+        "[redacted_traceback]",
+        "[redacted_local_path]",
+        "[redacted_serial]",
+        "[redacted_baud]",
+        "authorization",
+        "bearer",
+        "token",
+        "credential",
+        "raw response",
+        "raw_response",
+        "raw body",
+        "raw_body",
+        "ros topic",
+        "/cmd_vel",
+        "serial",
+        "uart",
+        "wave rover",
+        "hil pass",
+    )
+    if any(marker in lowered for marker in forbidden):
+        return fallback
+    return text[:240]
+
+
+def _cloud_guard_has_unsafe_material(value):
+    # 任何控制成功布尔值、原始响应或硬件/凭证字段都让 summary 保持 blocked_not_proven。
+    unsafe_true_keys = {
+        "remote_ready",
+        "safe_to_control",
+        "delivery_success",
+        "primary_actions_enabled",
+        "ack_cursor_fetch_allowed",
+        "cursor_fetch_allowed",
+        "retry_allowed",
+        "replay_allowed",
+        "resubmit_allowed",
+        "queue_advancement_allowed",
+        "robot_command_side_effects_allowed",
+        "dropoff_completion",
+        "cancel_completion",
+        "hil_pass",
+    }
+    unsafe_key_fragments = (
+        "authorization",
+        "bearer",
+        "token",
+        "credential",
+        "password",
+        "secret",
+        "access_key",
+        "oss_ak",
+        "oss_sk",
+        "db_url",
+        "database_url",
+        "queue_url",
+        "raw_response",
+        "raw_body",
+        "traceback",
+        "local_path",
+        "ros_topic",
+        "cmd_vel",
+        "serial",
+        "uart",
+        "wave_rover",
+    )
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text in unsafe_true_keys and bool(item):
+                return True
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if _cloud_guard_has_unsafe_material(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_cloud_guard_has_unsafe_material(item) for item in value)
+    if isinstance(value, str):
+        redacted = _redact_route_task_rehearsal_text(value)
+        lowered = redacted.lower()
+        guarded = lowered
+        for phrase in (
+            "not_delivery_success",
+            "not delivery success",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not_proven",
+            "not proven",
+            "不证明",
+            "不是送达成功",
+        ):
+            guarded = guarded.replace(phrase, "")
+        return (
+            "[redacted_auth_header]" in lowered
+            or "bearer [redacted]" in lowered
+            or "[redacted_url]" in lowered
+            or "[redacted_traceback]" in lowered
+            or "[redacted_local_path]" in lowered
+            or "raw response" in guarded
+            or "raw body" in guarded
+            or "credential" in guarded
+            or "ros topic" in guarded
+            or "/cmd_vel" in guarded
+            or "serial" in guarded
+            or "uart" in guarded
+            or "wave rover" in guarded
+            or "hil pass" in guarded
+            or "delivery success" in guarded
+            or "primary actions enabled" in guarded
+        )
+    return False
+
+
+def summarize_cloud_unreachable_malformed_response_guard(value):
+    """为云端不可达/畸形响应构建 Robot diagnostics 安全摘要。"""
+    source = value if isinstance(value, dict) else {}
+    degradation_state = str(
+        source.get("degradation_state")
+        or source.get("state")
+        or source.get("status")
+        or ""
+    ).strip()
+    fallback_copy = {
+        "cloud_unreachable": "云端暂时不可达；当前不能下发主操作，请刷新状态或联系支持。",
+        "malformed_response": "云端响应格式异常；机器人没有确认执行，请刷新状态或联系支持。",
+    }.get(degradation_state, "云端响应不可用；Robot/API 保持 fail-closed。")
+    unsupported = degradation_state not in CLOUD_UNREACHABLE_MALFORMED_RESPONSE_STATES
+    unsafe = _cloud_guard_has_unsafe_material(source)
+    status = (
+        "not_applicable"
+        if unsupported and not source
+        else "unsupported_degradation_not_proven"
+        if unsupported
+        else "blocked_unsafe_material_not_proven"
+        if unsafe
+        else f"{degradation_state}_not_proven"
+    )
+    safe_copy = _cloud_guard_safe_text(source.get("safe_phone_copy"), fallback_copy)
+    return {
+        "schema": CLOUD_UNREACHABLE_MALFORMED_RESPONSE_GUARD_SCHEMA,
+        "schema_version": 1,
+        "guard": "cloud_unreachable_malformed_response_guard",
+        "source": "software_proof",
+        "evidence_boundary": CLOUD_UNREACHABLE_MALFORMED_RESPONSE_GUARD_BOUNDARY,
+        "status": status,
+        "degradation_state": degradation_state if not unsupported else "not_applicable",
+        "remote_ready": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "ack_cursor_fetch_allowed": False,
+        "retry_replay_resubmit_allowed": False,
+        "queue_advancement_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "retry_hint": (
+            str(source.get("retry_hint") or "contact_support").strip()
+            if degradation_state == "malformed_response"
+            else str(source.get("retry_hint") or "retry_cloud").strip()
+        ),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "false_states": list(CLOUD_UNREACHABLE_MALFORMED_RESPONSE_FALSE_STATES),
+        "not_proven": list(CLOUD_UNREACHABLE_MALFORMED_RESPONSE_REQUIRED_NOT_PROVEN),
+        "raw_material_redacted": bool(unsafe),
+    }
+
+
+def _remote_readiness_for_cloud_guard(summary):
+    # phone_readiness 仍需要 remote_readiness；这里只回填安全字段，不带 raw cloud body。
+    if not isinstance(summary, dict):
+        return {}
+    degradation_state = str(summary.get("degradation_state") or "")
+    if degradation_state not in CLOUD_UNREACHABLE_MALFORMED_RESPONSE_STATES:
+        return {}
+    return {
+        "remote_ready": False,
+        "cloud_reachable": degradation_state != "cloud_unreachable",
+        "last_command_ack": "",
+        "status_stale": True,
+        "retry_hint": summary.get("retry_hint", "contact_support"),
+        "auth_state": "required",
+        "degradation_state": degradation_state,
+        "safe_phone_copy": summary.get("safe_phone_copy", ""),
+        "status_age_sec": None,
+        "pending_command_count": 0,
+        "queue_persisted": False,
+        "state_path_configured": False,
+        "proof_schema": "",
+        "ack_semantics": "cloud_guard_not_delivery_success",
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "proof_boundary": CLOUD_UNREACHABLE_MALFORMED_RESPONSE_GUARD_BOUNDARY,
+    }
 
 
 def _route_task_rehearsal_not_proven(artifact=None):
@@ -51812,6 +52050,24 @@ def build_diagnostics_payload(
 ):
     latest_status = dict(latest_status or {})
     diagnostics_source = latest_status.get("diagnostics") if isinstance(latest_status.get("diagnostics"), dict) else {}
+    cloud_guard_source = (
+        latest_status.get("remote_readiness")
+        if isinstance(latest_status.get("remote_readiness"), dict)
+        else diagnostics_source.get("remote_readiness")
+        if isinstance(diagnostics_source.get("remote_readiness"), dict)
+        else latest_status.get("cloud_unreachable_malformed_response_guard")
+        if isinstance(latest_status.get("cloud_unreachable_malformed_response_guard"), dict)
+        else latest_status.get("robot_diagnostics_cloud_unreachable_malformed_response_guard_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_cloud_unreachable_malformed_response_guard_summary"),
+            dict,
+        )
+        else {}
+    )
+    cloud_guard_summary = summarize_cloud_unreachable_malformed_response_guard(cloud_guard_source)
+    safe_cloud_remote_readiness = _remote_readiness_for_cloud_guard(cloud_guard_summary)
+    if safe_cloud_remote_readiness:
+        latest_status["remote_readiness"] = safe_cloud_remote_readiness
     task_terminal_field_material_intake_source = (
         _task_terminal_field_material_intake_source_from_payloads(
             latest_status,
@@ -54080,6 +54336,12 @@ def build_diagnostics_payload(
     latest_status.pop("phone_support_bundle", None)
     latest_status.pop("voice_prompt_readiness", None)
     latest_status.pop("phone_offline_resume_readiness", None)
+    latest_status.pop("cloud_unreachable_malformed_response_guard", None)
+    latest_status.pop("cloud_unreachable_malformed_response_guard_summary", None)
+    latest_status.pop(
+        "robot_diagnostics_cloud_unreachable_malformed_response_guard_summary",
+        None,
+    )
     latest_status.pop("mobile_route_elevator_field_device_precheck", None)
     latest_status.pop("mobile_route_elevator_field_device_precheck_summary", None)
     latest_status.pop("mobile_route_elevator_field_device_precheck_copy", None)
@@ -55992,6 +56254,9 @@ def build_diagnostics_payload(
         ),
         route_proof_summary=route_proof_summary,
         route_proof_status=route_proof_status,
+        cloud_unreachable_malformed_response_guard=cloud_guard_summary,
+        cloud_unreachable_malformed_response_guard_summary=cloud_guard_summary,
+        robot_diagnostics_cloud_unreachable_malformed_response_guard_summary=cloud_guard_summary,
         route_task_rehearsal=summarize_route_task_rehearsal_artifact(
             route_task_rehearsal_artifact_ref
             or os.environ.get("TRASHBOT_ROUTE_TASK_REHEARSAL_ARTIFACT", "")
