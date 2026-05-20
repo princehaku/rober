@@ -505,6 +505,25 @@ python3 pc-tools/evidence/field_evidence_rerun_material_dispatch.py \
 
 Mapping 固定包含 `ready_for_field_evidence_rerun_material_dispatch_not_proven`、`evidence_ref_mismatch_field_evidence_rerun_material_dispatch_blocked`、`blocked_unsafe_field_evidence_rerun_material_dispatch_copy` 和 `blocked_unsupported_field_evidence_rerun_material_dispatch_source`。缺输入、bad JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、证据号不一致、unsafe copy、raw path、credential、DB/queue URL、ROS topic、serial/UART/WAVE ROVER detail、checksum、完整 artifact、success/control claim、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_evidence_rerun_material_dispatch_not_proven` 只表示同一 safe `evidence_ref` 的现场复跑材料派发包已准备好，不是真实 route/elevator field pass、真实 Nav2/fixed-route proof、dropoff/cancel completion、delivery success、HIL、O5 external proof、PR #5 resolved 或真实 phone/browser 证据。
 
+### field evidence rerun callback intake
+
+`pc-tools/evidence/field_evidence_rerun_callback_intake.py` 只读上一节 `field_evidence_rerun_material_dispatch` artifact/summary，以及现场 owner 回传的 safe callback packet，把十类真实材料回执归类为 `accepted`、`missing`、`rejected` 或 `blocked`：
+
+```bash
+python3 pc-tools/evidence/field_evidence_rerun_callback_intake.py \
+  --dispatch-json /tmp/field_evidence_rerun_material_dispatch_summary.json \
+  --callback-json /tmp/field_evidence_rerun_callback_packet.json \
+  --evidence-ref /tmp/same_evidence_ref.json \
+  --output /tmp/field_evidence_rerun_callback_intake.json \
+  --summary-output /tmp/field_evidence_rerun_callback_intake_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.field_evidence_rerun_callback_intake.v1`，summary 使用 `schema=trashbot.field_evidence_rerun_callback_intake_summary.v1`，证据边界固定为 `software_proof_docker_field_evidence_rerun_callback_intake_gate`。核心字段包括 `callback_intake_status`、safe `evidence_ref`、same-evidence-ref status、`accepted_materials`、`missing_materials`、`rejected_materials`、`blocked_materials`、`material_counts`、`next_required_evidence`、`safe_copy`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+required material classes 固定覆盖 `real route completion signal`、`real field task record`、`real Nav2/fixed-route runtime log`、`real elevator door summary`、`real target floor / floor arrival summary`、`real human-assistance summary`、`real dropoff completion`、`real cancel completion`、`real delivery result` 和 `real phone/browser evidence`。顶层验收可用 `python3 -m unittest tests.test_field_evidence_rerun_callback_intake` 复用离线围栏测试；该入口只证明本地 callback-intake gate 的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
+
+Mapping 固定包含 `ready_for_field_evidence_rerun_callback_intake_not_proven`、`blocked_field_evidence_rerun_callback_materials_not_ready`、`evidence_ref_mismatch_field_evidence_rerun_callback_intake_blocked`、`blocked_unsafe_field_evidence_rerun_callback_intake_copy` 和 `blocked_unsupported_field_evidence_rerun_callback_intake_source`。缺 dispatch 输入、缺 callback packet、bad JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、证据号不一致、弱类型 `same_evidence_ref_required`、unknown material class、非法 classification、unsafe copy、raw path、credential、DB/queue URL、ROS topic、serial/UART/WAVE ROVER detail、checksum、完整 artifact、traceback、success/control claim、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_evidence_rerun_callback_intake_not_proven` 只表示同一 safe `evidence_ref` 的现场 owner 回执已被复账成只读摘要，不是真实 route/elevator field pass、真实 Nav2/fixed-route proof、dropoff/cancel completion、delivery success、HIL、O5 external proof、PR #5 resolved 或真实 phone/browser 证据。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

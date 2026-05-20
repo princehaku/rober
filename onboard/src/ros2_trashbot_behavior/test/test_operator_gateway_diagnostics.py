@@ -43,6 +43,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_acceptance_execution_rerun_result_review_decision,
     summarize_route_task_field_retest_acceptance_execution_rerun_result_review_handoff,
     summarize_field_evidence_rerun_material_dispatch,
+    summarize_field_evidence_rerun_callback_intake,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -11261,6 +11262,219 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(summary["dropoff_triggered"])
         self.assertFalse(summary["cancel_triggered"])
         self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("WAVE ROVER serial material", encoded)
+
+    def test_field_evidence_rerun_callback_intake_alias_and_fail_closed(self):
+        def callback_intake_summary(status, evidence_ref, **overrides):
+            base = {
+                "schema": "trashbot.field_evidence_rerun_callback_intake_summary.v1",
+                "schema_version": 1,
+                "source_schema": "trashbot.field_evidence_rerun_callback_intake.v1",
+                "evidence_boundary": "software_proof_docker_field_evidence_rerun_callback_intake_gate",
+                "source_evidence_boundary": "software_proof_docker_field_evidence_rerun_callback_intake_gate",
+                "safe_evidence_ref": evidence_ref,
+                "intake_status": {
+                    "status": status,
+                    "verdict": "not_proven",
+                    "reason": "sanitized field rerun callback intake was received",
+                },
+                "material_counts": {
+                    "accepted": 2,
+                    "missing": 3,
+                    "rejected": 1,
+                    "blocked": 4,
+                },
+                "next_required_evidence": [
+                    "same evidence_ref real route completion signal",
+                    "same evidence_ref real phone/browser evidence",
+                ],
+                "same_evidence_ref_required": True,
+                "same_evidence_ref_status": {
+                    "status": "matched",
+                    "verdict": "not_proven",
+                    "reason": "callback packet kept the same evidence_ref",
+                },
+                "boundary_flags": {
+                    "metadata_only": True,
+                    "source": "software_proof",
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "raw_artifact_consumed": False,
+                    "control_entrypoint_enabled": False,
+                },
+                "robot_diagnostics_summary": {
+                    "status": "metadata_only",
+                    "reason": "Robot diagnostics mirrors callback intake metadata only.",
+                },
+                "safe_copy": (
+                    "Field evidence rerun callback intake is metadata-only; "
+                    "source=software_proof; not_proven; safe_to_control=false; "
+                    "delivery_success=false; primary_actions_enabled=false."
+                ),
+                "not_proven": ["delivery_success", "real_hil_pass"],
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            }
+            base.update(overrides)
+            return base
+
+        with tempfile.TemporaryDirectory() as td:
+            callback_path = Path(td) / "field_evidence_rerun_callback_intake_summary.json"
+            callback_path.write_text(
+                json.dumps(
+                    callback_intake_summary(
+                        "needs_field_owner_material_backfill",
+                        "evidence://field-evidence-rerun-callback-intake-1",
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                field_evidence_rerun_callback_intake_ref=str(callback_path),
+            )
+            summary = payload["field_evidence_rerun_callback_intake"]
+            summary_alias = payload["field_evidence_rerun_callback_intake_summary"]
+            robot_alias = payload[
+                "robot_diagnostics_field_evidence_rerun_callback_intake_summary"
+            ]
+            nested_summary = summarize_field_evidence_rerun_callback_intake(
+                {
+                    "schema": "trashbot.field_evidence_rerun_callback_intake.v1",
+                    "evidence_boundary": "software_proof_docker_field_evidence_rerun_callback_intake_gate",
+                    "evidence_ref": "evidence://field-evidence-rerun-callback-intake-2",
+                    "diagnostics": {
+                        "robot_diagnostics_field_evidence_rerun_callback_intake_summary": callback_intake_summary(
+                            "callback_packet_received_with_gaps",
+                            "evidence://field-evidence-rerun-callback-intake-2",
+                        )
+                    },
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            status_diagnostics_summary = build_diagnostics_payload(
+                {
+                    "diagnostics": {
+                        "field_evidence_rerun_callback_intake_summary": callback_intake_summary(
+                            "needs_field_owner_material_backfill",
+                            "evidence://field-evidence-rerun-callback-intake-3",
+                        )
+                    }
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )["robot_diagnostics_field_evidence_rerun_callback_intake_summary"]
+            unsafe_summary = summarize_field_evidence_rerun_callback_intake(
+                callback_intake_summary(
+                    "callback_packet_received_with_gaps",
+                    "evidence://field-evidence-rerun-callback-intake-4",
+                    safe_copy="Callback intake confirms delivery success and ACK posted.",
+                    safe_to_control=True,
+                    delivery_success=True,
+                    primary_actions_enabled=True,
+                )
+            )
+            unsupported_summary = summarize_field_evidence_rerun_callback_intake(
+                callback_intake_summary(
+                    "callback_packet_received_with_gaps",
+                    "evidence://field-evidence-rerun-callback-intake-5",
+                    source_schema="trashbot.field_evidence_rerun_material_dispatch.v1",
+                    evidence_boundary=(
+                        "software_proof_docker_field_evidence_rerun_material_dispatch_gate"
+                    ),
+                )
+            )
+            encoded = json.dumps(
+                [
+                    summary,
+                    summary_alias,
+                    robot_alias,
+                    nested_summary,
+                    status_diagnostics_summary,
+                    unsafe_summary,
+                    unsupported_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.field_evidence_rerun_callback_intake_summary.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_field_evidence_rerun_callback_intake_gate",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_rerun_callback_intake.v1",
+        )
+        self.assertEqual(summary["intake_status"]["status"], "needs_field_owner_material_backfill")
+        self.assertEqual(
+            nested_summary["intake_status"]["status"],
+            "callback_packet_received_with_gaps",
+        )
+        self.assertEqual(
+            status_diagnostics_summary["intake_status"]["status"],
+            "needs_field_owner_material_backfill",
+        )
+        self.assertEqual(
+            unsafe_summary["intake_status"]["status"],
+            "blocked_unsafe_field_evidence_rerun_callback_intake",
+        )
+        self.assertEqual(
+            unsupported_summary["intake_status"]["status"],
+            "blocked_unsupported_field_evidence_rerun_callback_intake",
+        )
+        self.assertEqual(summary["accepted_material_count"], 2)
+        self.assertEqual(summary["missing_material_count"], 3)
+        self.assertEqual(summary["rejected_material_count"], 1)
+        self.assertEqual(summary["blocked_material_count"], 4)
+        self.assertIn("same evidence_ref real route completion signal", summary["next_required_evidence"])
+        self.assertIn("software_proof_docker_field_evidence_rerun_callback_intake_gate", encoded)
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("safe_to_control=false", summary["safe_phone_copy"])
+        self.assertIn("delivery_success=false", summary["safe_phone_copy"])
+        self.assertIn("primary_actions_enabled=false", summary["safe_phone_copy"])
+        self.assertEqual(summary["same_evidence_ref_status"]["status"], "matched")
+        self.assertTrue(summary["boundary_flags"]["metadata_only"])
+        self.assertEqual(summary["boundary_flags"]["source"], "software_proof")
+        self.assertFalse(summary["boundary_flags"]["safe_to_control"])
+        self.assertFalse(summary["boundary_flags"]["delivery_success"])
+        self.assertFalse(summary["boundary_flags"]["primary_actions_enabled"])
+        self.assertFalse(summary["boundary_flags"]["raw_artifact_consumed"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["remote_ack_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
         self.assertFalse(summary["nav2_triggered"])
         self.assertFalse(summary["hil_pass"])
         self.assertNotIn("/cmd_vel", encoded)

@@ -1332,6 +1332,34 @@ dropoff/cancel completion, real phone/browser proof, Objective 5 external
 proof, or delivery success.
 
 Operator diagnostics may also expose
+`field_evidence_rerun_callback_intake`, the alias
+`field_evidence_rerun_callback_intake_summary`, and the Robot safe alias
+`robot_diagnostics_field_evidence_rerun_callback_intake_summary` from an
+explicit `field_evidence_rerun_callback_intake_ref`,
+`TRASHBOT_FIELD_EVIDENCE_RERUN_CALLBACK_INTAKE`,
+`TRASHBOT_FIELD_EVIDENCE_RERUN_CALLBACK_INTAKE_SUMMARY`, top-level status
+fields, an artifact nested summary, status diagnostics summary, or diagnostics
+nested summary. The source JSON must use
+`schema=trashbot.field_evidence_rerun_callback_intake.v1` or
+`schema=trashbot.field_evidence_rerun_callback_intake_summary.v1` and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_callback_intake_gate`.
+This alias is Robot diagnostics read-only consumption of Autonomy's safe field
+evidence rerun callback intake summary: it may expose only intake status, safe
+`evidence_ref`, accepted / missing / rejected / blocked material counts, next
+required evidence, same-`evidence_ref` status, safe copy, boundary flags,
+`source=software_proof`, `not_proven`, `safe_to_control=false`,
+`delivery_success=false`, and `primary_actions_enabled=false`. Missing
+sanitized summary, unreadable input, unsupported schema or boundary, unsafe
+copy, raw artifact consumption, control-entrypoint enablement, same
+`evidence_ref` mismatch, success/control claims, `safe_to_control=true`,
+`delivery_success=true`, or `primary_actions_enabled=true` fail closed as
+blocked/not_proven. This alias is not control authorization,
+collect/dropoff/cancel, ACK, cursor, ROS runtime, Nav2/fixed-route runtime,
+serial/UART, WAVE ROVER, HIL, delivery result, dropoff/cancel completion,
+field pass, real phone/browser proof, Objective 5 external proof, or delivery
+success.
+
+Operator diagnostics may also expose
 `route_task_field_retest_result_review_decision`, the alias
 `route_task_field_retest_result_review_decision_summary`, and the Robot alias
 `robot_diagnostics_route_task_field_retest_result_review_decision_summary`

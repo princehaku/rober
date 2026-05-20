@@ -3147,5 +3147,119 @@
       "HIL",
       "O5 external proof"
     ]
+  },
+  "robot_diagnostics_field_evidence_rerun_callback_intake_summary": {
+    "schema": "trashbot.field_evidence_rerun_callback_intake_summary.v1",
+    "schema_version": 1,
+    "intake_schema": "trashbot.field_evidence_rerun_callback_intake.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_callback_intake_summary",
+    "source": "software_proof",
+    "intake_status": "blocked_missing_field_evidence_rerun_callback_materials_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_callback_intake_fixture_20260520_0001",
+    "accepted_material_groups": [
+      "accepted=none accepted as field proof"
+    ],
+    "missing_material_groups": [
+      "missing=real route completion signal",
+      "missing=real field task record",
+      "missing=real Nav2/fixed-route runtime log",
+      "missing=real elevator door summary",
+      "missing=real target floor / floor arrival summary",
+      "missing=real human-assistance summary",
+      "missing=real dropoff completion",
+      "missing=real cancel completion",
+      "missing=real delivery result",
+      "missing=real phone/browser evidence"
+    ],
+    "rejected_material_groups": [
+      "rejected=unsafe_or_mismatched_materials_not_proven"
+    ],
+    "blocked_material_groups": [
+      "blocked=same safe evidence_ref callback packet not yet accepted"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=submit phone-safe callback packet with the same safe evidence_ref",
+      "next_required_evidence=include accepted/missing/rejected/blocked material groups only"
+    ],
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "safe_copy": "现场证据复跑回执入口 safe copy：source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑回执入口 fixture 只读展示 intake status、safe evidence_ref、accepted/missing/rejected/blocked material groups、next required evidence、same-evidence-ref status 和 evidence boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_callback_intake_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
+  },
+  "field_evidence_rerun_callback_intake_summary": {
+    "schema": "trashbot.field_evidence_rerun_callback_intake_summary.v1",
+    "schema_version": 1,
+    "intake_schema": "trashbot.field_evidence_rerun_callback_intake.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_callback_intake_summary",
+    "source": "software_proof",
+    "intake_status": "blocked_missing_field_evidence_rerun_callback_materials_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_callback_intake_fixture_20260520_0001",
+    "accepted_material_groups": [
+      "accepted=none accepted as field proof"
+    ],
+    "missing_material_groups": [
+      "missing=real route completion signal",
+      "missing=real field task record",
+      "missing=real Nav2/fixed-route runtime log",
+      "missing=real elevator door summary",
+      "missing=real target floor / floor arrival summary",
+      "missing=real human-assistance summary",
+      "missing=real dropoff completion",
+      "missing=real cancel completion",
+      "missing=real delivery result",
+      "missing=real phone/browser evidence"
+    ],
+    "rejected_material_groups": [
+      "rejected=unsafe_or_mismatched_materials_not_proven"
+    ],
+    "blocked_material_groups": [
+      "blocked=same safe evidence_ref callback packet not yet accepted"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=submit phone-safe callback packet with the same safe evidence_ref",
+      "next_required_evidence=include accepted/missing/rejected/blocked material groups only"
+    ],
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "safe_copy": "现场证据复跑回执入口 safe copy：source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑回执入口 fixture 只读展示 intake status、safe evidence_ref、accepted/missing/rejected/blocked material groups、next required evidence、same-evidence-ref status 和 evidence boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_callback_intake_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
   }
 }

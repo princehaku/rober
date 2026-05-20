@@ -647,6 +647,76 @@ real route/elevator field pass, prove dropoff/cancel completion, prove delivery
 success, prove HIL, prove O5 external cloud/4G/OSS/CDN/DB/queue readiness,
 resolve PR #5, prove a real phone/browser run, or enable primary robot actions.
 
+## field_evidence_rerun_callback_intake
+
+`pc-tools/evidence/field_evidence_rerun_callback_intake.py` generates a
+dependency-free PC callback-intake gate after
+`field_evidence_rerun_material_dispatch`. It consumes only the previous
+dispatch artifact or summary plus a field-owner safe callback packet for the
+same safe `evidence_ref`.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_callback_intake.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_callback_intake_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_callback_intake_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_material_dispatch.v1` and
+  `trashbot.field_evidence_rerun_material_dispatch_summary.v1` under
+  `software_proof_docker_field_evidence_rerun_material_dispatch_gate` only.
+  Wrapper or nested JSON is allowed only through whitelisted `summary`,
+  `artifact`, `safe_copy`, diagnostics, mobile, `payload`, or `data` keys.
+- Callback input:
+  an optional-schema `trashbot.field_evidence_rerun_callback_packet.v1` or
+  `trashbot.field_evidence_rerun_callback_packet_summary.v1` style object with
+  `source=software_proof`, `not_proven`, safe `evidence_ref`,
+  `same_evidence_ref_required=true`, and material classifications.
+- Callback intake status values:
+  `ready_for_field_evidence_rerun_callback_intake_not_proven`,
+  `blocked_field_evidence_rerun_callback_materials_not_ready`,
+  `evidence_ref_mismatch_field_evidence_rerun_callback_intake_blocked`,
+  `blocked_unsafe_field_evidence_rerun_callback_intake_copy`, and
+  `blocked_unsupported_field_evidence_rerun_callback_intake_source`.
+
+The output always includes `source=software_proof`, safe `evidence_ref`,
+same-evidence-ref status, `accepted_materials`, `missing_materials`,
+`rejected_materials`, `blocked_materials`, `material_counts`,
+`next_required_evidence`, `safe_copy`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_callback_intake_gate`.
+Required material classes are `real route completion signal`, `real field task
+record`, `real Nav2/fixed-route runtime log`, `real elevator door summary`,
+`real target floor / floor arrival summary`, `real human-assistance summary`,
+`real dropoff completion`, `real cancel completion`, `real delivery result`,
+and `real phone/browser evidence`. Each class must classify as `accepted`,
+`missing`, `rejected`, or `blocked`; omitted classes default to `missing`.
+
+Mapping is fail-closed. A supported dispatch and callback packet with matching
+safe evidence_ref, safe copy, and all ten classes marked `accepted` maps to
+`ready_for_field_evidence_rerun_callback_intake_not_proven`. Missing,
+rejected, blocked, unknown, or invalid material classifications map to
+`blocked_field_evidence_rerun_callback_materials_not_ready`. Mismatched
+evidence_ref, missing evidence_ref, or weak `same_evidence_ref_required` maps
+to `evidence_ref_mismatch_field_evidence_rerun_callback_intake_blocked`.
+Unsafe copy, raw artifact text, local paths, checksum text, credentials,
+DB/queue URLs, ROS topic names, `/cmd_vel`, serial/UART/WAVE ROVER text,
+traceback text, success/control claims, `safe_to_control=true`,
+`delivery_success=true`, or `primary_actions_enabled=true` maps to
+`blocked_unsafe_field_evidence_rerun_callback_intake_copy`. Missing JSON, bad
+JSON, unreadable JSON, non-object JSON, unsupported dispatch schema/boundary,
+unsupported callback schema/boundary, non-`software_proof` source, or missing
+`not_proven` maps to
+`blocked_unsupported_field_evidence_rerun_callback_intake_source`.
+
+This contract is software proof only. It does not read material directories,
+parse raw artifacts, access local paths/checksums/credentials/DB/queue URLs,
+read ROS topics, touch serial/UART, trigger Nav2/fixed-route actions, prove a
+real route/elevator field pass, prove dropoff/cancel completion, prove delivery
+success, prove HIL, prove O5 external cloud/4G/OSS/CDN/DB/queue readiness,
+resolve PR #5, prove a real phone/browser run, or enable primary robot actions.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

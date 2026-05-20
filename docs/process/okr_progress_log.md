@@ -8,7 +8,23 @@
 
 ## 2026-05-20 系列
 
-更新时间：2026-05-20 12:21 Asia/Shanghai。
+更新时间：2026-05-20 13:40 Asia/Shanghai。
+
+### 2026-05-20 13-14｜field-evidence-rerun-callback-intake｜field evidence rerun callback intake software proof
+
+本轮 `sprints/2026.05.20_13-14_field-evidence-rerun-callback-intake/` 执行 `field_evidence_rerun_callback_intake` epic closeout，不继续 O5 external blocker、本地 O1/HIL wrapper 或重复 dispatch package。Autonomy worker 新增 `trashbot.field_evidence_rerun_callback_intake.v1` / summary schema，读取上一轮 dispatch summary 和现场 owner callback packet，把真实 route completion signal、field task record、Nav2/fixed-route runtime log、电梯门/楼层/人工协助 summaries、dropoff/cancel completion、delivery result、真实 phone/browser evidence 归类为 `accepted`、`missing`、`rejected` 或 `blocked`。Robot worker 新增 `robot_diagnostics_field_evidence_rerun_callback_intake_summary` safe alias，兼容 explicit ref、top-level、nested、status diagnostics 和 diagnostics nested summary。Full-Stack worker 在 mobile/web 增加只读“现场证据复跑回执入口”panel，消费 Robot safe alias 或兼容 summary，不 fetch raw artifact，Start Delivery / Confirm Dropoff / Cancel gating 不变。证据边界保持 `software_proof_docker_field_evidence_rerun_callback_intake_gate`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+GitHub PR #5 thread state 同步记录：`PRRT_kwDOSWB9286CJ3tQ` 与 `PRRT_kwDOSWB9286CJ3tU` 已 resolved；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / material pending；manual reply `3269642220` 不是真实硬件 proof。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL、hardware bridge、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮把现场 callback packet 中的电梯门、楼层、人工协助、dropoff/cancel completion 和 delivery result 材料归类为 accepted/missing/rejected/blocked；这只是 callback-intake software proof，不证明真实电梯、真实 route/elevator field pass、dropoff/cancel completion、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮校验真实 Nav2/fixed-route runtime log、route completion signal、field task record 和同一 safe `evidence_ref` 的回执状态；没有真实路线采集、Nav2/fixed-route 实跑、route completion signal、现场 task_record 或上车复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读“现场证据复跑回执入口”panel 让现场 owner 和支持同学能看到 intake status、safe `evidence_ref`、accepted/missing/rejected/blocked material groups、next required evidence、same-evidence-ref status 和 fail-closed boundary；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮不改 cloud commands/status/ack、不新增公网入口、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或 external proof；`software_proof_docker_field_evidence_rerun_callback_intake_gate` 不能计为 O5 external proof。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；`python3 -m unittest tests.test_field_evidence_rerun_callback_intake` 输出 `Ran 5 tests in 0.051s OK`；CLI `--help`、required `rg` 与 scoped diff check 通过。Robot worker 报告 `py_compile` 通过；`PYTHONPATH=onboard/src/ros2_trashbot_behavior python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py` 输出 `Ran 229 tests in 0.695s OK`；required `rg` 与 scoped diff check 通过。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；`python3 -m unittest mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 165 tests in 1.157s OK`；fixture JSON checks、required `rg` 与 scoped diff check 通过。Product closeout required file check、required `rg`、scoped `git diff --check` 和 integration fence 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
 
 ### 2026-05-20 12-13｜field-evidence-rerun-material-dispatch｜field evidence rerun material dispatch software proof
 

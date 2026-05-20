@@ -105,6 +105,90 @@ class FieldEvidenceRerunMaterialDispatchMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, summary_text)
 
 
+class FieldEvidenceRerunCallbackIntakeMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_field_evidence_rerun_callback_intake_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        mobile_fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 现场证据复跑回执入口只消费 safe summary，不读取 raw artifact 或改变主操作 gate。
+        self.assertIn("现场证据复跑回执入口", app)
+        self.assertIn("FIELD_EVIDENCE_RERUN_CALLBACK_INTAKE_BOUNDARY", app)
+        self.assertIn("robot_diagnostics_field_evidence_rerun_callback_intake_summary", app)
+        self.assertIn("field_evidence_rerun_callback_intake_summary", app)
+        self.assertIn("software_proof_docker_field_evidence_rerun_callback_intake_gate", app)
+        self.assertIn("safe_to_control=false / delivery_success=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"fieldEvidenceRerunCallbackIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 明确 callback intake 仍是 not_proven 软件证明，不能打开 Start/Confirm/Cancel。
+        summary = fixture["robot_diagnostics_field_evidence_rerun_callback_intake_summary"]
+        self.assertEqual(summary["intake_status"], "blocked_missing_field_evidence_rerun_callback_materials_not_proven")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertIn("accepted=none accepted as field proof", fixture_text)
+        self.assertIn("missing=real route completion signal", fixture_text)
+        self.assertIn("rejected=unsafe_or_mismatched_materials_not_proven", fixture_text)
+        self.assertIn("blocked=same safe evidence_ref callback packet not yet accepted", fixture_text)
+        self.assertIn("not_proven", fixture_text)
+        self.assertIn("software_proof_docker_field_evidence_rerun_callback_intake_gate", fixture_text)
+        self.assertEqual(
+            mobile_fixture["robot_diagnostics_field_evidence_rerun_callback_intake_summary"]["safe_to_control"],
+            False,
+        )
+
+        # 产品文档必须写清它不是现场通过、真实手机/browser、投放/取消完成、送达、HIL 或 O5 external proof。
+        self.assertIn("现场证据复跑回执入口", doc)
+        self.assertIn("robot_diagnostics_field_evidence_rerun_callback_intake_summary", doc)
+        self.assertIn("software_proof_docker_field_evidence_rerun_callback_intake_gate", doc)
+        self.assertIn("not real phone/browser proof", doc)
+        self.assertIn("not a real route/elevator field pass", doc)
+        self.assertIn("not dropoff/cancel completion", doc)
+        self.assertIn("not delivery success", doc)
+        self.assertIn("not HIL", doc)
+        self.assertIn("not Objective 5 external proof", doc)
+
+    def test_field_evidence_rerun_callback_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        summary_text = json.dumps(
+            fixture["robot_diagnostics_field_evidence_rerun_callback_intake_summary"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 回执入口 fixture 只保留 accepted/missing/rejected/blocked 摘要，不泄漏 raw packet 或控制授权。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw callback",
+            "raw packet",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "serial device",
+            "baudrate",
+            "wave rover detail",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, summary_text)
+
+
 class CloudPendingAckStatusGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")
