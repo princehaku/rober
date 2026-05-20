@@ -40,6 +40,7 @@ PHONE_COMMAND_IDEMPOTENCY_VISIBILITY_GUARD_BOUNDARY = (
 PHONE_COMMAND_ID_CONFLICT_VISIBILITY_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_command_id_conflict_visibility_guard"
 )
+PHONE_AUTH_FAILURE_STATUS_GUARD_BOUNDARY = "software_proof_docker_cloud_auth_failure_status_guard"
 COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 REMOTE_STATUS_STALE_AFTER_SEC = 90.0
@@ -68,7 +69,7 @@ REMOTE_DEGRADATION_COPY = {
     "command_expired": "这条云端指令已经过期，机器人没有执行；请重新提交最新指令。",
     "command_duplicate_deduped": "重复云指令已去重，机器人没有重复执行；cached ACK 不是送达成功。",
     "command_id_conflict": "命令 ID 冲突：同一 ID 的 type/payload 不一致，机器人已拒绝执行；这不是送达成功。",
-    "auth_failed": "手机登录已失效，请重新登录或检查访问凭证。",
+    "auth_failed": "手机登录已失效，请重新登录或检查访问凭证；这不是送达成功。",
     "cloud_unreachable": "远程控制通道暂不可用，请稍后重试。",
     "malformed_response": "远程控制返回异常，请联系支持人员。",
 }
@@ -590,7 +591,7 @@ def normalize_remote_status(robot_id, payload, *, now=None):
         "protocol_version": protocol_version,
         "robot_id": str(robot_id or "").strip(),
         "state": state,
-        "message": str(payload.get("message") or "").strip(),
+        "message": _remote_safe_status_text(payload.get("message") or ""),
         "updated_at": _remote_timestamp(payload.get("updated_at", now), "updated_at"),
         "diagnostics": payload.get("diagnostics") if isinstance(payload.get("diagnostics"), dict) else {},
     }
@@ -600,7 +601,7 @@ def normalize_remote_status(robot_id, payload, *, now=None):
             continue
         value = payload.get(key)
         if isinstance(value, str):
-            status[key] = value[:240]
+            status[key] = _remote_safe_status_text(value)
         elif isinstance(value, (bool, int, float)) or value is None:
             status[key] = value
     return status
@@ -693,6 +694,42 @@ SENSITIVE_REMOTE_KEYS = {
     "url",
     "cloud_url",
 }
+SENSITIVE_REMOTE_TEXT_MARKERS = (
+    "authorization",
+    "bearer",
+    "token",
+    "traceback",
+    "ros topic",
+    "/cmd_vel",
+    "serial",
+    "uart",
+    "wave rover",
+    "/tmp/",
+    "/users/",
+    "/home/",
+    "http://",
+    "https://",
+)
+
+
+def _remote_safe_status_text(value):
+    # status/readiness 会直接进入手机和 diagnostics；命中敏感词时宁可丢文案也不回显凭证或底层路径。
+    text = str(value or "").strip()
+    lowered = text.lower()
+    if any(marker in lowered for marker in SENSITIVE_REMOTE_TEXT_MARKERS):
+        return "[redacted]"
+    return text[:240]
+
+
+def _remote_safe_diagnostics_value(value):
+    # diagnostics 是面向人和手机的安全摘要；递归清洗值，但保留既有 schema key 兼容旧客户端。
+    if isinstance(value, dict):
+        return {str(key): _remote_safe_diagnostics_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_remote_safe_diagnostics_value(item) for item in value]
+    if isinstance(value, str):
+        return _remote_safe_status_text(value)
+    return value
 
 
 def _remote_safe_value(value):
@@ -906,6 +943,7 @@ class MockCloudStore:
             and str(ack_operator_status.get("degradation_state") or "") == "command_id_conflict"
         ):
             conflict_command_id = str(ack_operator_status.get("conflict_command_id") or last_command_ack).strip()
+        auth_failed = status_degradation == "auth_failed" or str(ack_operator_status.get("auth_state") or "") == "auth_failed"
         retry_hint = "ok"
         degradation_state = "ok"
         # 过期和 pending 都比 duplicate/conflict 更需要用户立即处理，不能被 cached ACK 或冲突摘要覆盖。
@@ -921,6 +959,9 @@ class MockCloudStore:
         elif duplicate_command_id or status_degradation == "command_duplicate_deduped":
             retry_hint = "refresh_status"
             degradation_state = "command_duplicate_deduped"
+        elif auth_failed:
+            retry_hint = "check_auth"
+            degradation_state = "auth_failed"
         elif status_stale:
             retry_hint = "wait_for_robot_status"
             degradation_state = "status_stale"
@@ -929,7 +970,8 @@ class MockCloudStore:
             degradation_state = "command_pending"
         remote_ready = bool(
             not status_stale
-            and degradation_state not in {"command_expired", "command_duplicate_deduped", "command_id_conflict"}
+            and degradation_state
+            not in {"command_expired", "command_duplicate_deduped", "command_id_conflict", "auth_failed"}
         )
         readiness = {
             "remote_ready": remote_ready,
@@ -988,6 +1030,15 @@ class MockCloudStore:
                 status.get("proof_boundary")
                 or ack_operator_status.get("proof_boundary")
                 or PHONE_COMMAND_ID_CONFLICT_VISIBILITY_GUARD_BOUNDARY
+            )
+        if degradation_state == "auth_failed":
+            readiness["auth_state"] = "auth_failed"
+            readiness["ack_semantics"] = "auth_failed_not_delivery_success"
+            readiness["primary_actions_enabled"] = False
+            readiness["proof_boundary"] = str(
+                status.get("proof_boundary")
+                or ack_operator_status.get("proof_boundary")
+                or PHONE_AUTH_FAILURE_STATUS_GUARD_BOUNDARY
             )
         return readiness
 
@@ -2720,6 +2771,9 @@ def _remote_readiness_for_auth_failure():
         "queue_persisted": False,
         "state_path_configured": False,
         "proof_schema": "",
+        "ack_semantics": "auth_failed_not_delivery_success",
+        "primary_actions_enabled": False,
+        "proof_boundary": PHONE_AUTH_FAILURE_STATUS_GUARD_BOUNDARY,
     }
 
 
@@ -2759,6 +2813,9 @@ def _with_remote_auth_state(payload, auth_state):
             readiness["degradation_state"] = "auth_failed"
             readiness["retry_hint"] = "check_auth"
             readiness["safe_phone_copy"] = REMOTE_DEGRADATION_COPY["auth_failed"]
+            readiness["ack_semantics"] = "auth_failed_not_delivery_success"
+            readiness["primary_actions_enabled"] = False
+            readiness["proof_boundary"] = PHONE_AUTH_FAILURE_STATUS_GUARD_BOUNDARY
     return payload
 
 
@@ -3804,6 +3861,9 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
         latest_status["phone_support_bundle"] = phone_support_bundle
         latest_status["voice_prompt_readiness"] = voice_prompt_readiness
         latest_status["phone_offline_resume_readiness"] = offline_resume_readiness
+    remote_state = _remote_degradation(phone_readiness.get("remote_readiness"))
+    if remote_state == "auth_failed":
+        return _remote_safe_diagnostics_value(diagnostics_payload)
     return diagnostics_payload
 
 

@@ -27655,6 +27655,66 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("/cmd_vel", encoded)
         self.assertNotIn("token", encoded)
 
+    def test_diagnostics_phone_readiness_surfaces_auth_failure_guard(self):
+        class Gateway:
+            def snapshot(self):
+                return {
+                    "state": "remote_degraded",
+                    "message": "Authorization Bearer token failed on /cmd_vel",
+                    "can_collect": True,
+                    "can_confirm_dropoff": True,
+                    "can_cancel": True,
+                    "remote_readiness": {
+                        "degradation_state": "auth_failed",
+                        "auth_state": "auth_failed",
+                        "ack_semantics": "auth_failed_not_delivery_success",
+                        "remote_ready": False,
+                        "primary_actions_enabled": False,
+                        "retry_hint": "check_auth",
+                        "safe_phone_copy": "手机登录已失效，请重新登录或检查访问凭证；这不是送达成功。",
+                        "proof_boundary": "software_proof_docker_cloud_auth_failure_status_guard",
+                    },
+                }
+
+            def diagnostics(self):
+                return {
+                    "state": "diagnostics_ready",
+                    "software_version": "0.1.0",
+                    "map_version": "map-a",
+                    "route_version": "route-a",
+                    "source": "software_proof",
+                    "latest_status": self.snapshot(),
+                    "failure": {
+                        "state": "remote_degraded",
+                        "message": "raw Authorization Bearer token /cmd_vel must stay hidden",
+                        "error_code": "REMOTE_AUTH_FAILED",
+                    },
+                }
+
+        payload = _diagnostics_with_phone_task_flow(Gateway(), MockCloudStore())
+        readiness = payload["latest_status"]["phone_readiness"]
+        remote_readiness = readiness["remote_readiness"]
+        encoded = json.dumps(payload, ensure_ascii=False)
+
+        self.assertFalse(remote_readiness["remote_ready"])
+        self.assertEqual(remote_readiness["auth_state"], "auth_failed")
+        self.assertEqual(remote_readiness["degradation_state"], "auth_failed")
+        self.assertEqual(remote_readiness["retry_hint"], "check_auth")
+        self.assertEqual(remote_readiness["ack_semantics"], "auth_failed_not_delivery_success")
+        self.assertFalse(remote_readiness["primary_actions_enabled"])
+        self.assertEqual(
+            remote_readiness["proof_boundary"],
+            "software_proof_docker_cloud_auth_failure_status_guard",
+        )
+        self.assertEqual(readiness["command_safety"]["global_block_reason"], "auth_failed")
+        self.assertFalse(readiness["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertNotIn("Authorization", encoded)
+        self.assertNotIn("Bearer", encoded)
+        self.assertNotIn("token", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+
     def test_diagnostics_payload_does_not_forward_preexisting_support_bundle(self):
         payload = build_diagnostics_payload(
             {

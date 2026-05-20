@@ -17,6 +17,8 @@ const ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_g
 const ELEVATOR_ACTION_FEEDBACK_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
 const ELEVATOR_ACTION_FEEDBACK_TRACE_BOUNDARY = "software_proof_docker_mobile_action_feedback_gate";
 const CLOUD_READINESS_BOUNDARY = "software_proof_docker_mobile_cloud_readiness_summary_gate";
+const CLOUD_AUTH_FAILURE_STATUS_BOUNDARY = "software_proof_docker_cloud_auth_failure_status_guard";
+const CLOUD_AUTH_FAILURE_STATUS_COPY = "登录或访问码未通过；请重新登录或检查凭证；这不是送达成功。";
 const CLOUD_PENDING_ACK_STATUS_BOUNDARY = "software_proof_docker_cloud_pending_ack_status_guard";
 const CLOUD_PENDING_ACK_STATUS_COPY = "本地命令已终态，但云端 ACK 还没确认，暂不能拉取新命令";
 const CLOUD_COMMAND_EXPIRY_BOUNDARY = "software_proof_docker_cloud_command_expiry_safety_guard";
@@ -1544,6 +1546,37 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
   ];
   const provided = candidates.find((value) => value && typeof value === "object");
   if (provided) {
+    if (provided.degradation_state === "auth_failed" ||
+        provided.auth_state === "auth_failed" ||
+        provided.proof_boundary === CLOUD_AUTH_FAILURE_STATUS_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_AUTH_FAILURE_STATUS_BOUNDARY) {
+      // auth_failed 只说明登录/访问码没有通过；手机端不能暴露凭证，也不能把失败 ACK 当成送达结果。
+      return {
+        ...provided,
+        missing: false,
+        overall_status: "blocked",
+        preflight_status: "auth_failed",
+        auth_state: "auth_failed",
+        db_queue_status: "auth_failed / remote_ready=false / primary_actions_enabled=false",
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        retry_hint: "check_auth",
+        safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_AUTH_FAILURE_STATUS_COPY),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "请重新登录或检查访问码/凭证；手机端不重放、不请求 ACK/cursor，也不提交控制动作。",
+        ),
+        ack_semantics: safeText(
+          provided.ack_semantics,
+          "auth_failed_not_delivery_success",
+        ),
+        evidence_boundary: CLOUD_AUTH_FAILURE_STATUS_BOUNDARY,
+        proof_boundary: CLOUD_AUTH_FAILURE_STATUS_BOUNDARY,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
     if (provided.degradation_state === "command_pending" ||
         provided.proof_boundary === CLOUD_PENDING_ACK_STATUS_BOUNDARY ||
         provided.evidence_boundary === CLOUD_PENDING_ACK_STATUS_BOUNDARY) {

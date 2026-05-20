@@ -575,9 +575,24 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.backend.last_status["auth_state"], "auth_failed")
         self.assertEqual(self.backend.last_status["degradation_state"], "auth_failed")
         self.assertEqual(self.backend.last_status["retry_hint"], "check_auth")
+        self.assertFalse(self.backend.last_status["remote_ready"])
+        self.assertFalse(self.backend.last_status["primary_actions_enabled"])
+        self.assertEqual(
+            self.backend.last_status["ack_semantics"],
+            "auth_failed_not_delivery_success",
+        )
+        self.assertEqual(
+            self.backend.last_status["proof_boundary"],
+            "software_proof_docker_cloud_auth_failure_status_guard",
+        )
         self.assertNotIn("Authorization", json.dumps(self.backend.last_status))
         self.assertNotIn("Bearer", json.dumps(self.backend.last_status))
+        self.assertNotIn("/cmd_vel", json.dumps(self.backend.last_status))
         self.assertEqual(self.cloud.status_posts[-1]["degradation_state"], "auth_failed")
+        self.assertEqual(
+            self.cloud.status_posts[-1]["ack_semantics"],
+            "auth_failed_not_delivery_success",
+        )
 
     def test_malformed_cloud_response_does_not_start_action_or_advance_cursor(self):
         self.cloud.commands.append({

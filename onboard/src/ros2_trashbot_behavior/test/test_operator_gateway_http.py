@@ -1908,9 +1908,21 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["remote_readiness"]["auth_state"], "auth_failed")
         self.assertEqual(payload["remote_readiness"]["degradation_state"], "auth_failed")
         self.assertEqual(payload["remote_readiness"]["retry_hint"], "check_auth")
+        self.assertFalse(payload["remote_readiness"]["remote_ready"])
+        self.assertFalse(payload["remote_readiness"]["primary_actions_enabled"])
+        self.assertEqual(
+            payload["remote_readiness"]["ack_semantics"],
+            "auth_failed_not_delivery_success",
+        )
+        self.assertEqual(
+            payload["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_auth_failure_status_guard",
+        )
         self.assertIn("手机登录已失效", payload["remote_readiness"]["safe_phone_copy"])
         self.assertNotIn("phone-token", json.dumps(payload, ensure_ascii=False))
         self.assertNotIn("Authorization", json.dumps(payload, ensure_ascii=False))
+        self.assertNotIn("Bearer", json.dumps(payload, ensure_ascii=False))
+        self.assertNotIn("/cmd_vel", json.dumps(payload, ensure_ascii=False))
 
         status, payload = self.request(
             "POST",
@@ -1926,6 +1938,41 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         )
         self.assertEqual(status, 401)
         self.assertEqual(payload["remote_readiness"]["auth_state"], "auth_failed")
+        self.assertEqual(payload["remote_readiness"]["ack_semantics"], "auth_failed_not_delivery_success")
+        self.assertFalse(payload["remote_readiness"]["primary_actions_enabled"])
+
+    def test_mock_cloud_auth_failed_status_remains_fail_closed(self):
+        store = MockCloudStore(auth_required=True)
+        payload = store.post_status(
+            "trashbot-auth",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "remote_degraded",
+                "message": "Authorization Bearer token failed on /cmd_vel",
+                "updated_at": time.time(),
+                "remote_ready": True,
+                "auth_state": "auth_failed",
+                "degradation_state": "auth_failed",
+                "retry_hint": "retry_cloud",
+                "safe_phone_copy": "token Authorization Bearer /cmd_vel",
+            },
+        )
+
+        readiness = payload["remote_readiness"]
+        encoded = json.dumps(payload, ensure_ascii=False)
+        self.assertFalse(readiness["remote_ready"])
+        self.assertEqual(readiness["auth_state"], "auth_failed")
+        self.assertEqual(readiness["degradation_state"], "auth_failed")
+        self.assertEqual(readiness["retry_hint"], "check_auth")
+        self.assertEqual(readiness["ack_semantics"], "auth_failed_not_delivery_success")
+        self.assertFalse(readiness["primary_actions_enabled"])
+        self.assertEqual(
+            readiness["proof_boundary"],
+            "software_proof_docker_cloud_auth_failure_status_guard",
+        )
+        self.assertNotIn("Authorization", encoded)
+        self.assertNotIn("Bearer", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
 
     def test_mock_cloud_bearer_auth_gate_allows_authorized_phone_flow(self):
         self.gateway.mock_cloud_bearer_token = "phone-token"

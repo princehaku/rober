@@ -41,6 +41,9 @@ CLOUD_COMMAND_IDEMPOTENCY_VISIBILITY_GUARD_BOUNDARY = (
 CLOUD_COMMAND_ID_CONFLICT_VISIBILITY_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_command_id_conflict_visibility_guard"
 )
+CLOUD_AUTH_FAILURE_STATUS_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_auth_failure_status_guard"
+)
 PENDING_TERMINAL_ACK_KEY = "pending_terminal_ack"
 SAFE_OPERATOR_STATUS_KEYS = {
     "protocol_version",
@@ -72,11 +75,19 @@ SAFE_OPERATOR_STATUS_KEYS = {
 SENSITIVE_STATE_MARKERS = (
     "authorization",
     "bearer",
+    "token",
+    "ros topic",
     "/cmd_vel",
     "wave rover",
     "serial",
+    "uart",
     "baudrate",
     "traceback",
+    "/tmp/",
+    "/users/",
+    "/home/",
+    "http://",
+    "https://",
     "delivery_success=true",
 )
 
@@ -96,8 +107,7 @@ def _phone_safe_degraded_status(robot_id, error):
     retry_hint = getattr(error, "retry_hint", "retry_cloud")
     cloud_reachable = bool(getattr(error, "cloud_reachable", False))
     if reason == "auth_failed":
-        auth_state = "auth_failed"
-        safe_phone_copy = "远程鉴权失败，请检查登录或机器人云端授权。"
+        return _phone_safe_auth_failure_status(robot_id, retry_hint=retry_hint)
     elif reason == "malformed_response":
         auth_state = "unknown"
         safe_phone_copy = "远程服务响应异常，请稍后重试或联系支持。"
@@ -116,6 +126,25 @@ def _phone_safe_degraded_status(robot_id, error):
         degradation_state=reason,
         retry_hint=retry_hint,
         safe_phone_copy=safe_phone_copy,
+    )
+
+
+def _phone_safe_auth_failure_status(robot_id, *, retry_hint="check_auth"):
+    # 鉴权失败不是云端送达失败或成功；单独 proof boundary 能让手机和 diagnostics 明确禁用主操作。
+    safe_phone_copy = "远程鉴权失败，请检查登录或机器人云端授权；这不是送达成功。"
+    return make_status(
+        robot_id,
+        "remote_degraded",
+        safe_phone_copy,
+        remote_ready=False,
+        cloud_reachable=True,
+        auth_state="auth_failed",
+        degradation_state="auth_failed",
+        retry_hint="check_auth" if retry_hint != "check_auth" else retry_hint,
+        safe_phone_copy=safe_phone_copy,
+        ack_semantics="auth_failed_not_delivery_success",
+        primary_actions_enabled=False,
+        proof_boundary=CLOUD_AUTH_FAILURE_STATUS_GUARD_BOUNDARY,
     )
 
 

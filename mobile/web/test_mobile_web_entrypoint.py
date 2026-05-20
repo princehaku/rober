@@ -15,6 +15,9 @@ CLOUD_COMMAND_IDEMPOTENCY_FIXTURE = (
 CLOUD_COMMAND_ID_CONFLICT_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_id_conflict_visibility_guard.json"
 )
+CLOUD_AUTH_FAILURE_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_auth_failure_status_guard.json"
+)
 PR5_VENDOR_SOURCE_REVIEW_PACKET_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_pr5_vendor_source_review_packet_summary.json"
 )
@@ -234,6 +237,84 @@ class CloudPendingAckStatusGuardMobileTest(unittest.TestCase):
         fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
 
         # pending ACK fixture 只提供手机安全摘要，不能带 raw payload、凭证、底盘控制或成功证明。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "serial device",
+            "baudrate",
+            "wave rover parameter",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
+
+
+class CloudAuthFailureStatusGuardMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_auth_failure_status_guard_is_consumed_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_AUTH_FAILURE_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # auth_failed 复用 cloud readiness / command safety；手机端只解释凭证失败，不新增控制 endpoint。
+        self.assertIn("CLOUD_AUTH_FAILURE_STATUS_BOUNDARY", app)
+        self.assertIn("CLOUD_AUTH_FAILURE_STATUS_COPY", app)
+        self.assertIn("software_proof_docker_cloud_auth_failure_status_guard", app)
+        self.assertIn("degradation_state", app)
+        self.assertIn("auth_state", app)
+        self.assertIn("auth_failed", app)
+        self.assertIn("check_auth", app)
+        self.assertIn("auth_failed_not_delivery_success", app)
+        self.assertIn("remote_ready=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"cloudAuthFailure.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 明确登录/访问码未通过，三类主操作关闭，ACK 语义不能被误读为送达成功。
+        self.assertEqual(fixture["degradation_state"], "auth_failed")
+        self.assertEqual(fixture["auth_state"], "auth_failed")
+        self.assertEqual(fixture["remote_ready"], False)
+        self.assertEqual(fixture["primary_actions_enabled"], False)
+        self.assertEqual(fixture["delivery_success"], False)
+        self.assertEqual(fixture["retry_hint"], "check_auth")
+        self.assertEqual(fixture["ack_semantics"], "auth_failed_not_delivery_success")
+        self.assertEqual(fixture["phone_readiness"]["remote_readiness"]["retry_hint"], "check_auth")
+        self.assertIn("登录或访问码未通过", fixture_text)
+        self.assertIn("重新登录或检查凭证", fixture_text)
+        self.assertIn("这不是送达成功", fixture_text)
+        self.assertIn("auth_failed_not_delivery_success", fixture_text)
+        self.assertIn("remote_ready=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("software_proof_docker_cloud_auth_failure_status_guard", fixture_text)
+        self.assertNotIn("delivery_success\": true", fixture_text)
+
+        # 产品文档必须把 auth_failed 写成 Docker/local fixture proof，不是真实云、真实手机或送达证明。
+        self.assertIn("cloud_auth_failure_status_guard", doc)
+        self.assertIn("auth_failed", doc)
+        self.assertIn("check_auth", doc)
+        self.assertIn("auth_failed_not_delivery_success", doc)
+        self.assertIn("登录或访问码未通过", doc)
+        self.assertIn("这不是送达成功", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("software_proof_docker_cloud_auth_failure_status_guard", doc)
+
+    def test_cloud_auth_failure_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_AUTH_FAILURE_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # auth failure fixture 只暴露安全摘要，不能携带凭证、原始请求、ROS/串口细节或成功证明。
         for forbidden in (
             "/cmd_vel",
             "raw ros topic",

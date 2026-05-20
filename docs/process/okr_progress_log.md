@@ -8,7 +8,23 @@
 
 ## 2026-05-20 系列
 
-更新时间：2026-05-20 18:22 Asia/Shanghai。
+更新时间：2026-05-20 19:33 Asia/Shanghai。
+
+### 2026-05-20 19-20｜cloud-auth-failure-status-guard｜auth failure status guard software proof
+
+本轮 `sprints/2026.05.20_19-20_cloud-auth-failure-status-guard/` 针对 Objective 5 command/status/ack 主链路补齐鉴权失败的 fail-closed 可见性，不继续 O5 external blocker、不推进 O1/HIL wrapper，也不把现场复跑 execution pack 当作真实现场结果。Robot worker 将 `auth_failed` 从泛化 remote degradation 收敛为 phone-safe 状态：`degradation_state=auth_failed`、`auth_state=auth_failed`、`remote_ready=false`、`primary_actions_enabled=false`、`retry_hint=check_auth`、`ack_semantics=auth_failed_not_delivery_success`、`proof_boundary=software_proof_docker_cloud_auth_failure_status_guard`，并只在 auth-failure diagnostics 路径递归清洗 Authorization/Bearer/token/runtime 文本，保留非 auth diagnostics `log_refs` 兼容性。Full-Stack worker 新增 `mobile/web/fixtures/robot_diagnostics_cloud_auth_failure_status_guard.json`，让 mobile/web 通过既有 cloud readiness / command safety gate 展示“登录或访问码未通过；请重新登录或检查凭证；这不是送达成功。”，Start Delivery / Confirm Dropoff / Cancel 继续 disabled，且不新增 replay、resubmit、ACK、cursor、diagnostics fetch 或控制副作用。
+
+OKR 最低优先级核对仍成立：Objective 5 约 68% 是数值最低，本轮针对 O5 的凭证失败 graceful degradation；但真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof 仍不在 Docker-only 主机。Objective 1 约 81%，PR #5 已于 2026-05-14 merge，但 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending，manual reply `3269642220` 不是 hardware proof；PR #6 于 2026-05-20 merge，是 README docs-only，没有 runtime/hardware/HIL/true phone/browser/O5 external tests。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL、hardware bridge、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending，`3269642220` 不是 hardware proof。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 route/elevator field material、真实电梯、Nav2/fixed-route runtime log、dropoff/cancel completion、field pass 或 delivery result；auth failure rejection 不等于 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可读状态受益：手机端能展示 auth failure 降级状态、重新登录/检查凭证 guidance，并保持 `remote_ready=false`、`primary_actions_enabled=false` 和主操作不可用；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_auth_failure_status_guard` 只证明 local worker + mobile static fixture 下的 auth failure status guard：鉴权失败被安全分类，phone-safe copy 可见，actions fail closed，ACK semantics 明确不是 delivery success。本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Robot worker 回传 `py_compile` 通过；focused unittest suite 输出 `Ran 413 tests in 93.203s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 回传 `node --check mobile/web/app.js` 通过；`python3 -m unittest mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 177 tests in 1.309s OK`；fixture JSON tool、required `rg` 与 scoped `git diff --check` 通过。Product closeout integration rerun 通过：Robot py_compile 通过、Robot unittest `Ran 413 tests in 93.162s OK`、mobile unittest `Ran 177 tests in 1.279s OK`、JSON check、required `rg` 和 scoped `git diff --check` 均通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
 
 ### 2026-05-20 18-19｜field-evidence-rerun-execution-pack｜field evidence rerun execution pack software proof
 

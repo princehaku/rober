@@ -1023,14 +1023,44 @@ details.
 | `remote_ready` | `true` only means the current local/mock control-plane conditions allow the phone flow to continue; it is not real cloud, 4G, HIL, or delivery proof. |
 | `cloud_reachable` | Whether the configured local/mock control-plane is reachable from the caller's point of view. |
 | `auth_state` | Phone-safe auth state such as `mock_not_required`, `required`, `authorized`, or `auth_failed`. |
-| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `auth_failed`, `cloud_unreachable`, or `malformed_response`. |
+| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `auth_failed`, `cloud_unreachable`, or `malformed_response`. |
 | `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `retry_cloud`, or `contact_support`. |
 | `safe_phone_copy` | Plain-language UI copy that must not include raw JSON, ROS topic names, secrets, serial devices, or hardware parameters. |
+| `ack_semantics` | Explicit non-delivery wording for degraded ACK/status states; `auth_failed_not_delivery_success` means failed auth is not delivery success. |
+| `primary_actions_enabled` | `false` for fail-closed degraded states, including `auth_failed`, so Start/Confirm/Cancel remain disabled. |
+| `proof_boundary` | The exact software-proof boundary string for the degraded state, never a claim of real cloud, phone, HIL, or delivery proof. |
 
 `auth_state=authorized` means the local/mock request passed the configured bearer
 gate. `degradation_state=ok` means the control-plane contract is healthy enough
 for the next software step. Neither value proves the robot delivered trash,
 reached a Nav2/fixed-route target, moved the WAVE ROVER base, or passed HIL.
+
+## Cloud Auth Failure Status Guard
+
+The robot bridge and local/mock HTTP gateway expose
+`cloud_auth_failure_status_guard` when the remote control path fails auth. This
+state is intentionally fail-closed: it does not parse cloud commands, does not
+advance the cursor, does not submit behavior actions, and does not turn a 401
+or credential mismatch into delivery success.
+
+When this guard is active, Robot status, HTTP `remote_readiness`, diagnostics,
+and phone command-safety summaries must include:
+
+- `degradation_state=auth_failed`
+- `auth_state=auth_failed`
+- `remote_ready=false`
+- `primary_actions_enabled=false`
+- `retry_hint=check_auth`
+- `ack_semantics=auth_failed_not_delivery_success`
+- `proof_boundary=software_proof_docker_cloud_auth_failure_status_guard`
+
+The safe output must not expose Authorization headers, Bearer values, tokens,
+raw credential URLs, tracebacks, local paths, ROS topic names, `/cmd_vel`,
+serial/UART details, or WAVE ROVER details. Diagnostics remains available for
+support, but Start Delivery, Confirm Dropoff, and Cancel stay disabled. This is
+Docker/local software proof only; it is not public HTTPS/TLS, 4G/SIM, OSS/CDN
+live traffic, production DB/queue, real phone/browser validation, WAVE ROVER
+motion, HIL, or delivery success.
 
 The independent Docker relay also exposes process-level readiness:
 
