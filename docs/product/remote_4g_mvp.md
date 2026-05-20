@@ -505,7 +505,8 @@ Dropoff, and Cancel are enabled only when the legacy local action permission and
 the command safety gate both allow the action. The gate blocks primary commands
 for stale robot status, pending ACK, auth failure, cloud unreachable, malformed
 remote response, command ID conflict, command sequence regression,
-missing/invalid/stale manifest summary, and manual takeover.
+cloud poll backoff, missing/invalid/stale manifest summary, and manual
+takeover.
 Diagnostics remains available with a phone-safe blocking explanation so support
 can still reproduce the issue. ACK text must stay conservative: an ACK is only
 command accepted/processing evidence and does not prove delivery success, real
@@ -541,6 +542,39 @@ hidden robot commands. Payloads and UI text must not expose raw JSON,
 credentials, bearer tokens, Authorization headers, DB/queue URLs, OSS AK/SK,
 tracebacks, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details,
 local paths, checksums, or complete artifacts.
+
+## Cloud Poll Backoff Rate Limit Guard
+
+`cloud_poll_backoff_rate_limit_guard` covers the Robot-side state where outbound
+polling has hit repeated poll failure or consecutive empty-poll pressure and is
+waiting for a bounded retry window. The canonical degraded state is
+`cloud_poll_backoff` with evidence boundary
+`software_proof_docker_cloud_poll_backoff_rate_limit_guard`.
+
+The Robot status and diagnostics surface only safe fields:
+
+- `degradation_state=cloud_poll_backoff`
+- `remote_ready=false`
+- `safe_to_control=false`
+- `primary_actions_enabled=false`
+- `delivery_success=false`
+- `retry_hint=wait_for_backoff_window`
+- `proof_boundary=software_proof_docker_cloud_poll_backoff_rate_limit_guard`
+- optional redacted `backoff_until` / `backoff_duration_sec`
+
+The state must not override more specific O5 failures. `auth_failed`,
+`media_degraded`, `cloud_unreachable`, `malformed_response`,
+`command_expired`, `command_pending`, `command_duplicate_deduped`,
+`command_id_conflict`, and `command_sequence_regression` keep their own
+recovery paths and proof boundaries.
+
+This guard is Docker/local software proof only. It is not real public
+HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production DB/queue, not
+true phone/browser proof, not HIL, not route/elevator field pass, not delivery
+success, and not PR #5 `PRRT_kwDOSWB9286CJ3tX` reviewer resolution. Payloads
+must not expose raw base URLs, tokens, Authorization headers, local state paths,
+tracebacks, `/cmd_vel`, ROS topics, serial devices, WAVE ROVER details, or
+`delivery_success=true`.
 
 This guard is Docker/local software proof only. It does not prove public
 HTTPS/TLS, real 4G/SIM, production DB/queue, OSS/CDN live traffic, true
@@ -1129,9 +1163,9 @@ details.
 | `remote_ready` | `true` only means the current local/mock control-plane conditions allow the phone flow to continue; it is not real cloud, 4G, HIL, or delivery proof. |
 | `cloud_reachable` | Whether the configured local/mock control-plane is reachable from the caller's point of view. |
 | `auth_state` | Phone-safe auth state such as `mock_not_required`, `required`, `authorized`, or `auth_failed`. |
-| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `auth_failed`, `media_degraded`, `cloud_unreachable`, or `malformed_response`. |
+| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `auth_failed`, `media_degraded`, `cloud_poll_backoff`, `cloud_unreachable`, or `malformed_response`. |
 | `media_state` | Present only for `media_degraded`; values are `oss_write_failed` or `cdn_unavailable`. |
-| `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `check_oss_write`, `check_cdn_reachability`, `retry_cloud`, or `contact_support`. |
+| `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `check_oss_write`, `check_cdn_reachability`, `wait_for_backoff_window`, `retry_cloud`, or `contact_support`. |
 | `safe_phone_copy` | Plain-language UI copy that must not include raw JSON, ROS topic names, secrets, serial devices, or hardware parameters. |
 | `ack_semantics` | Explicit non-delivery wording for degraded ACK/status states; `stale_status_not_delivery_success` means stale robot status is not delivery success. |
 | `primary_actions_enabled` | `false` for fail-closed degraded states, including `auth_failed`, so Start/Confirm/Cancel remain disabled. |

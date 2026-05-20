@@ -8,6 +8,9 @@ WEB_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = WEB_ROOT.parent.parent
 FIXTURE = WEB_ROOT / "fixtures" / "status.json"
 CLOUD_PENDING_ACK_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_pending_ack_status_guard.json"
+CLOUD_POLL_BACKOFF_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_poll_backoff_rate_limit_guard.json"
+)
 CLOUD_COMMAND_EXPIRY_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_expiry_safety_guard.json"
 CLOUD_COMMAND_IDEMPOTENCY_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_idempotency_visibility_guard.json"
@@ -492,6 +495,89 @@ class CloudCommandIdempotencyVisibilityGuardMobileTest(unittest.TestCase):
             "wave rover parameter",
             "traceback",
             "checksum",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
+
+
+class CloudPollBackoffRateLimitGuardMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_poll_backoff_rate_limit_guard_is_consumed_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_POLL_BACKOFF_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # cloud_poll_backoff 复用 cloud readiness 面板；手机端只解释等待窗口，不新增控制 endpoint。
+        self.assertIn("CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY", app)
+        self.assertIn("CLOUD_POLL_BACKOFF_RATE_LIMIT_COPY", app)
+        self.assertIn("software_proof_docker_cloud_poll_backoff_rate_limit_guard", app)
+        self.assertIn("cloud_poll_backoff", app)
+        self.assertIn("wait_for_backoff_window", app)
+        self.assertIn("poll_backoff_not_delivery_success", app)
+        self.assertIn("remote_ready=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"cloudPollBackoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 明确远程控制处于退避/限频等待，Start/Confirm/Cancel 继续 fail closed。
+        self.assertEqual(fixture["degradation_state"], "cloud_poll_backoff")
+        self.assertEqual(fixture["poll_state"], "backoff_waiting")
+        self.assertEqual(fixture["rate_limit_state"], "limited")
+        self.assertEqual(fixture["remote_ready"], False)
+        self.assertEqual(fixture["safe_to_control"], False)
+        self.assertEqual(fixture["primary_actions_enabled"], False)
+        self.assertEqual(fixture["delivery_success"], False)
+        self.assertEqual(fixture["retry_hint"], "wait_for_backoff_window")
+        self.assertEqual(fixture["ack_semantics"], "poll_backoff_not_delivery_success")
+        self.assertEqual(
+            fixture["proof_boundary"],
+            "software_proof_docker_cloud_poll_backoff_rate_limit_guard",
+        )
+        self.assertIn("远程控制正在等待重试退避窗口", fixture_text)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 保持禁用", fixture_text)
+        self.assertIn("wait_for_backoff_window", fixture_text)
+        self.assertIn("remote_ready=false", fixture_text)
+        self.assertIn("safe_to_control=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("software_proof_docker_cloud_poll_backoff_rate_limit_guard", fixture_text)
+        self.assertNotIn("delivery_success\": true", fixture_text)
+
+        # 产品文档必须把 poll backoff 写成 Docker/local 可见性，不是真实公网、4G、真机或送达证明。
+        self.assertIn("cloud_poll_backoff", doc)
+        self.assertIn("wait_for_backoff_window", doc)
+        self.assertIn("poll_backoff_not_delivery_success", doc)
+        self.assertIn("远程控制正在等待重试退避窗口", doc)
+        self.assertIn("remote_ready=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("software_proof_docker_cloud_poll_backoff_rate_limit_guard", doc)
+
+    def test_cloud_poll_backoff_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_POLL_BACKOFF_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # backoff fixture 只暴露安全摘要，不能携带原始响应、凭证、控制面或成功证明。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "cloud base url",
+            "serial",
+            "uart",
+            "wave rover",
+            "traceback",
+            "local path",
             "complete artifact",
             "delivery_success\": true",
             "primary_actions_enabled\": true",

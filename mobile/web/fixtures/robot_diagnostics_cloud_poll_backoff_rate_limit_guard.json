@@ -1,0 +1,80 @@
+{
+  "robot_id": "trashbot-alpha",
+  "state": "remote_degraded",
+  "remote_ready": false,
+  "cloud_reachable": true,
+  "auth_state": "authorized",
+  "degradation_state": "cloud_poll_backoff",
+  "poll_state": "backoff_waiting",
+  "rate_limit_state": "limited",
+  "retry_hint": "wait_for_backoff_window",
+  "primary_actions_enabled": false,
+  "safe_to_control": false,
+  "safe_phone_copy": "远程控制正在等待重试退避窗口；窗口结束前 Start Delivery、Confirm Dropoff、Cancel 保持禁用。",
+  "recovery_hint": "等待重试退避窗口结束后刷新状态；手机端不自动重放、不 resubmit，也不提交主操作。",
+  "ack_semantics": "poll_backoff_not_delivery_success",
+  "proof_boundary": "software_proof_docker_cloud_poll_backoff_rate_limit_guard",
+  "evidence_boundary": "software_proof_docker_cloud_poll_backoff_rate_limit_guard",
+  "boundary_flags": "source=software_proof / not_proven / remote_ready=false / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / retry_hint=wait_for_backoff_window",
+  "delivery_success": false,
+  "not_proven": [
+    "真实公网 HTTPS/TLS",
+    "真实 4G/SIM",
+    "OSS/CDN live traffic",
+    "production DB/queue",
+    "真实手机/browser",
+    "Nav2/fixed-route",
+    "delivery success",
+    "PR #5 resolved"
+  ],
+  "phone_readiness": {
+    "primary_state": "blocked",
+    "next_action": "wait_for_backoff_window",
+    "support_level": "diagnostics_available",
+    "remote_readiness": {
+      "remote_ready": false,
+      "degradation_state": "cloud_poll_backoff",
+      "poll_state": "backoff_waiting",
+      "rate_limit_state": "limited",
+      "primary_actions_enabled": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "safe_phone_copy": "远程控制正在等待重试退避窗口；窗口结束前 Start Delivery、Confirm Dropoff、Cancel 保持禁用。",
+      "recovery_hint": "等待重试退避窗口结束后刷新状态；手机端不自动重放、不 resubmit，也不提交主操作。",
+      "retry_hint": "wait_for_backoff_window",
+      "ack_semantics": "poll_backoff_not_delivery_success",
+      "proof_boundary": "software_proof_docker_cloud_poll_backoff_rate_limit_guard"
+    },
+    "command_safety": {
+      "schema": "trashbot.command_safety.v1",
+      "global_block_reason": "cloud_poll_backoff：远程控制正在等待重试退避窗口，remote_ready=false。",
+      "ack_semantics": "poll_backoff_not_delivery_success",
+      "actions": {
+        "start": {
+          "enabled": false,
+          "blocking_reason": "cloud_poll_backoff / remote_ready=false / primary_actions_enabled=false"
+        },
+        "confirm_dropoff": {
+          "enabled": false,
+          "blocking_reason": "cloud_poll_backoff / remote_ready=false / primary_actions_enabled=false"
+        },
+        "cancel": {
+          "enabled": false,
+          "blocking_reason": "cloud_poll_backoff / remote_ready=false / primary_actions_enabled=false"
+        },
+        "diagnostics": {
+          "enabled": true,
+          "safe_phone_copy": "诊断可打开；主操作保持 fail closed。"
+        }
+      }
+    }
+  },
+  "action_permissions": {
+    "can_collect": false,
+    "can_confirm_dropoff": false,
+    "can_cancel": false
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

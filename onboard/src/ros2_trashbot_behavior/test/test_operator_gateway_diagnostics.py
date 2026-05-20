@@ -131,6 +131,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_cloud_worker_migration_rehearsal,
     summarize_cloud_worker_cutover_drain,
     summarize_cloud_unreachable_malformed_response_guard,
+    summarize_cloud_poll_backoff_rate_limit_guard,
     summarize_vision_manifest,
 )
 from ros2_trashbot_behavior.operator_gateway_http import (
@@ -28615,6 +28616,104 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                 remote_readiness["proof_boundary"],
                 "software_proof_docker_cloud_unreachable_malformed_response_guard",
             )
+
+    def test_cloud_poll_backoff_rate_limit_guard_summary_is_fail_closed(self):
+        summary = summarize_cloud_poll_backoff_rate_limit_guard(
+            {
+                "degradation_state": "cloud_poll_backoff",
+                "safe_phone_copy": "Authorization Bearer token raw response /cmd_vel",
+                "remote_ready": True,
+                "safe_to_control": True,
+                "delivery_success": True,
+                "primary_actions_enabled": True,
+                "retry_hint": "retry_cloud",
+                "backoff_duration_sec": 5.0,
+                "raw_response_body": "Traceback (most recent call last): /tmp/cloud.json",
+            }
+        )
+
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertEqual(summary["guard"], "cloud_poll_backoff_rate_limit_guard")
+        self.assertEqual(summary["degradation_state"], "cloud_poll_backoff")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_cloud_poll_backoff_rate_limit_guard",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertFalse(summary["remote_ready"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_cursor_fetch_allowed"])
+        self.assertFalse(summary["retry_replay_resubmit_allowed"])
+        self.assertFalse(summary["queue_advancement_allowed"])
+        self.assertFalse(summary["robot_command_side_effects_allowed"])
+        self.assertEqual(summary["retry_hint"], "wait_for_backoff_window")
+        self.assertIn("remote_ready=false", summary["false_states"])
+        self.assertIn("delivery_success=false", summary["false_states"])
+        self.assertIn("primary_actions_enabled=false", summary["false_states"])
+        self.assertTrue(summary["raw_material_redacted"])
+        for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel", "/tmp/"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_diagnostics_payload_surfaces_cloud_poll_backoff_and_phone_readiness(self):
+        class Gateway:
+            def snapshot(self):
+                return {
+                    "state": "remote_degraded",
+                    "message": "raw poll backoff details must stay hidden",
+                    "can_collect": True,
+                    "can_confirm_dropoff": True,
+                    "can_cancel": True,
+                    "remote_readiness": {
+                        "degradation_state": "cloud_poll_backoff",
+                        "safe_phone_copy": "Authorization Bearer token raw response /cmd_vel",
+                        "remote_ready": True,
+                        "safe_to_control": True,
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                        "retry_hint": "retry_cloud",
+                        "backoff_duration_sec": 2.0,
+                    },
+                }
+
+            def diagnostics(self):
+                return build_diagnostics_payload(
+                    self.snapshot(),
+                    software_version="0.1.0",
+                    map_version="map-a",
+                    route_version="route-a",
+                    log_refs=[],
+                    vision_sample_manifest_ref="",
+                    review_decision_log_ref="",
+                    operator_status_file="/tmp/status.json",
+                )
+
+        payload = _diagnostics_with_phone_task_flow(Gateway(), MockCloudStore())
+
+        summary = payload["robot_diagnostics_cloud_poll_backoff_rate_limit_guard_summary"]
+        remote_readiness = payload["latest_status"]["remote_readiness"]
+        readiness = payload["latest_status"]["phone_readiness"]
+        encoded = json.dumps(payload, ensure_ascii=False)
+
+        self.assertEqual(summary["degradation_state"], "cloud_poll_backoff")
+        self.assertEqual(summary["status"], "blocked_unsafe_material_not_proven")
+        self.assertEqual(remote_readiness["degradation_state"], "cloud_poll_backoff")
+        self.assertEqual(remote_readiness["retry_hint"], "wait_for_backoff_window")
+        self.assertFalse(remote_readiness["remote_ready"])
+        self.assertFalse(remote_readiness["delivery_success"])
+        self.assertFalse(remote_readiness["primary_actions_enabled"])
+        self.assertEqual(remote_readiness["ack_semantics"], "poll_backoff_not_delivery_success")
+        self.assertEqual(
+            remote_readiness["proof_boundary"],
+            "software_proof_docker_cloud_poll_backoff_rate_limit_guard",
+        )
+        self.assertEqual(readiness["command_safety"]["global_block_reason"], "cloud_poll_backoff")
+        self.assertFalse(readiness["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["cancel"]["enabled"])
+        for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel"):
+            self.assertNotIn(forbidden, encoded)
 
     def test_diagnostics_payload_does_not_forward_preexisting_support_bundle(self):
         payload = build_diagnostics_payload(

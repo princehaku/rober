@@ -971,6 +971,40 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         )
         self.assertNotIn("delivery_success\": true", json.dumps(media["remote_readiness"]))
 
+        poll_backoff = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "degradation_state": "cloud_poll_backoff",
+                "retry_hint": "wait_for_backoff_window",
+                "safe_phone_copy": "远程轮询正在等待重试窗口，主操作保持不可用；这不是送达成功。",
+                "ack_semantics": "poll_backoff_not_delivery_success",
+                "remote_ready": False,
+                "primary_actions_enabled": False,
+                "delivery_success": False,
+                "backoff_duration_sec": 3.0,
+                "proof_boundary": "software_proof_docker_cloud_poll_backoff_rate_limit_guard",
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        self.assertEqual(poll_backoff["primary_state"], "cloud_poll_backoff")
+        self.assertFalse(poll_backoff["can_continue"])
+        self.assertEqual(poll_backoff["next_action"], "wait_for_backoff_window")
+        self.assertEqual(poll_backoff["support_level"], "remote_poll_backoff")
+        self.assertEqual(poll_backoff["command_safety"]["global_block_reason"], "cloud_poll_backoff")
+        self.assertFalse(poll_backoff["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(poll_backoff["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(poll_backoff["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(poll_backoff["command_safety"]["actions"]["diagnostics"]["enabled"])
+        self.assertEqual(
+            poll_backoff["remote_readiness"]["ack_semantics"],
+            "poll_backoff_not_delivery_success",
+        )
+        self.assertEqual(
+            poll_backoff["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_poll_backoff_rate_limit_guard",
+        )
+        self.assertNotIn("delivery_success\": true", json.dumps(poll_backoff["remote_readiness"]))
+
         cloud_unreachable = build_phone_readiness(
             local_status,
             remote_readiness={

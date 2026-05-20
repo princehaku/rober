@@ -773,6 +773,86 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.assertFalse(state_path.exists())
             self.assertEqual(self.backend.last_status["degradation_state"], "cloud_unreachable")
 
+    def test_repeated_poll_failure_enters_cloud_poll_backoff_without_sensitive_fields(self):
+        class FlakyPollCloud:
+            def __init__(self):
+                self.status_posts = []
+                self.command_polls = 0
+
+            def post_status(self, status):
+                self.status_posts.append(status)
+
+            def get_next_command(self, _last_ack_id=""):
+                self.command_polls += 1
+                raise RemoteCloudError(
+                    "poll_transport_pressure",
+                    "Authorization Bearer token https://cloud.example.test /cmd_vel /Users/m4/path",
+                    retry_hint="retry_cloud",
+                    cloud_reachable=True,
+                )
+
+            def post_ack(self, *_args, **_kwargs):
+                raise AssertionError("poll backoff must not ACK commands")
+
+        cloud = FlakyPollCloud()
+        worker = RemoteBridgeWorker(
+            cloud,
+            self.backend,
+            "robot-1",
+            poll_backoff_threshold=2,
+            poll_backoff_sec=4.0,
+        )
+
+        self.assertFalse(worker.poll_once())
+        self.assertEqual(self.backend.last_status["degradation_state"], "cloud_unreachable")
+        self.assertFalse(worker.poll_once())
+
+        status = self.backend.last_status
+        encoded = json.dumps(status, ensure_ascii=False)
+        self.assertEqual(status["degradation_state"], "cloud_poll_backoff")
+        self.assertEqual(status["retry_hint"], "wait_for_backoff_window")
+        self.assertFalse(status["remote_ready"])
+        self.assertFalse(status["primary_actions_enabled"])
+        self.assertFalse(status["delivery_success"])
+        self.assertEqual(status["ack_semantics"], "poll_backoff_not_delivery_success")
+        self.assertEqual(
+            status["proof_boundary"],
+            "software_proof_docker_cloud_poll_backoff_rate_limit_guard",
+        )
+        self.assertIn("backoff_until", status)
+        self.assertEqual(cloud.command_polls, 2)
+        self.assertEqual(cloud.status_posts[-1]["degradation_state"], "cloud_poll_backoff")
+        for forbidden in ("Authorization", "Bearer", "https://", "/cmd_vel", "/Users/m4", "delivery_success\": true"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_empty_poll_pressure_enters_backoff_and_specific_cloud_errors_still_win(self):
+        worker = RemoteBridgeWorker(
+            self.client,
+            self.backend,
+            "robot-1",
+            empty_poll_backoff_threshold=2,
+            poll_backoff_sec=3.0,
+        )
+
+        self.assertFalse(worker.poll_once())
+        self.assertFalse(worker.poll_once())
+
+        self.assertEqual(self.backend.last_status["degradation_state"], "cloud_poll_backoff")
+        self.assertEqual(self.backend.last_status["retry_hint"], "wait_for_backoff_window")
+        self.assertFalse(self.backend.last_status["delivery_success"])
+        self.assertEqual(self.cloud.status_posts[-1]["degradation_state"], "cloud_poll_backoff")
+
+        self.cloud.malformed_get_count = 1
+        specific_worker = RemoteBridgeWorker(
+            self.client,
+            self.backend,
+            "robot-1",
+            poll_backoff_threshold=1,
+        )
+        self.assertFalse(specific_worker.poll_once())
+        self.assertEqual(self.backend.last_status["degradation_state"], "malformed_response")
+        self.assertNotEqual(self.backend.last_status["degradation_state"], "cloud_poll_backoff")
+
     def test_credential_rotation_fields_are_ignored_by_command_status_ack_envelope(self):
         self.cloud.response_extras.update({
             "status_response": {

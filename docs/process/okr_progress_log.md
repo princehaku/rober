@@ -8,7 +8,25 @@
 
 ## 2026-05-21 系列
 
-更新时间：2026-05-21 05:18 Asia/Shanghai。
+更新时间：2026-05-21 06:26 Asia/Shanghai。
+
+### 2026-05-21 06-07｜cloud-poll-backoff-rate-limit-guard｜cloud poll backoff rate-limit software proof
+
+本轮 `sprints/2026.05.21_06-07_cloud-poll-backoff-rate-limit-guard/` 执行 `cloud_poll_backoff_rate_limit_guard` epic closeout。Objective 5 仍约 68%，是当前数值最低 Objective；本轮只补 Docker/local cloud poll backoff / rate-limit 的 fail-closed guard，不提高百分比。真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或 true phone/browser external proof 仍未出现，因此该 sprint is not real external cloud proof。Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending。
+
+Robot worker 在 `RemoteBridgeWorker` 增加 bounded poll pressure / backoff tracking，并让 operator gateway status / diagnostics 暴露 `cloud_poll_backoff` safe readiness 和 `robot_diagnostics_cloud_poll_backoff_rate_limit_guard_summary`。该状态保持 `source=software_proof`、`not_proven`、`remote_ready=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`retry_hint=wait_for_backoff_window` 和 `proof_boundary=software_proof_docker_cloud_poll_backoff_rate_limit_guard`。Robot worker 同时修复首轮 diagnostics failure：wrapper 之前会从 raw status 重新计算 `phone_readiness` 并保留 unsafe `safe_phone_copy`；修复后 `phone_readiness.remote_readiness` 对 `cloud_poll_backoff` 使用 sanitized safe summary。Full-Stack worker 在 mobile/web 增加 phone-safe rendering、fixture 和中文文案：远程控制等待重试退避窗口时，Start Delivery / Confirm Dropoff / Cancel 保持 disabled，diagnostics/support 仍可见。
+
+证据边界保持 `software_proof_docker_cloud_poll_backoff_rate_limit_guard`、`source=software_proof`、`not_proven`、`remote_ready=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`retry_hint=wait_for_backoff_window`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL、hardware bridge、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只处理 cloud poll backoff / rate-limit fail-closed 状态，不新增 route/elevator field material、真实电梯、Nav2/fixed-route runtime log、dropoff/cancel completion、field pass、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可读状态受益：手机端能展示 cloud poll backoff 中文安全文案，并保持 `remote_ready=false`、`primary_actions_enabled=false` 和主操作不可用；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_poll_backoff_rate_limit_guard` 只证明 Docker/local Robot/API + mobile static fixture 下的轮询退避/限频可见性：poll pressure 被安全分类、phone-safe copy 可见、actions fail closed、ACK/delivery 语义明确不是 delivery success。本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Robot worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 437 tests in 99.553s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；mobile unittest 输出 `Ran 197 tests ... OK`；JSON fixture check、required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
 
 ### 2026-05-21 05-06｜cloud-unreachable-malformed-response-guard｜cloud unreachable and malformed response software proof
 

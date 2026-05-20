@@ -23,6 +23,8 @@ const CLOUD_STATUS_STALE_BOUNDARY = "software_proof_docker_cloud_status_stale_gu
 const CLOUD_STATUS_STALE_COPY = "正在等待小车上报最新状态；当前状态已过期，不能作为送达成功依据。";
 const CLOUD_PENDING_ACK_STATUS_BOUNDARY = "software_proof_docker_cloud_pending_ack_status_guard";
 const CLOUD_PENDING_ACK_STATUS_COPY = "本地命令已终态，但云端 ACK 还没确认，暂不能拉取新命令";
+const CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY = "software_proof_docker_cloud_poll_backoff_rate_limit_guard";
+const CLOUD_POLL_BACKOFF_RATE_LIMIT_COPY = "远程控制正在等待重试退避窗口；窗口结束前 Start Delivery、Confirm Dropoff、Cancel 保持禁用。";
 const CLOUD_COMMAND_EXPIRY_BOUNDARY = "software_proof_docker_cloud_command_expiry_safety_guard";
 const CLOUD_COMMAND_EXPIRY_COPY = "云端命令已过期，机器人已忽略旧命令；请重新下发一次安全指令。";
 const CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY = "software_proof_docker_cloud_command_idempotency_visibility_guard";
@@ -1724,6 +1726,36 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         ack_semantics: ACK_PROCESSING_COPY,
         evidence_boundary: CLOUD_PENDING_ACK_STATUS_BOUNDARY,
         proof_boundary: CLOUD_PENDING_ACK_STATUS_BOUNDARY,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
+    if (provided.degradation_state === "cloud_poll_backoff" ||
+        provided.proof_boundary === CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY) {
+      // cloud_poll_backoff 只说明远程轮询进入退避/限频窗口；手机端必须等待后端窗口结束，不能主动补发控制。
+      return {
+        ...provided,
+        missing: false,
+        overall_status: "blocked",
+        preflight_status: "cloud_poll_backoff",
+        db_queue_status: "cloud_poll_backoff / remote_ready=false / primary_actions_enabled=false",
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        delivery_success: false,
+        retry_hint: "wait_for_backoff_window",
+        safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_POLL_BACKOFF_RATE_LIMIT_COPY),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "等待重试退避窗口结束后刷新状态；手机端不自动重放、不 resubmit，也不提交主操作。",
+        ),
+        ack_semantics: safeText(
+          provided.ack_semantics,
+          "poll_backoff_not_delivery_success",
+        ),
+        evidence_boundary: CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY,
+        proof_boundary: CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY,
         not_proven: notProvenList(provided.not_proven),
       };
     }

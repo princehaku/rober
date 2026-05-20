@@ -1097,6 +1097,33 @@ CLOUD_UNREACHABLE_MALFORMED_RESPONSE_REQUIRED_NOT_PROVEN = (
     "primary_actions_enabled",
     "safe_to_control",
 )
+CLOUD_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_poll_backoff_rate_limit_guard"
+)
+CLOUD_POLL_BACKOFF_RATE_LIMIT_GUARD_SCHEMA = (
+    "trashbot.cloud_poll_backoff_rate_limit_guard_summary.v1"
+)
+CLOUD_POLL_BACKOFF_FALSE_STATES = (
+    "source=software_proof",
+    "not_proven",
+    "remote_ready=false",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+)
+CLOUD_POLL_BACKOFF_REQUIRED_NOT_PROVEN = (
+    "real_public_https_tls",
+    "real_4g_or_sim",
+    "production_db_queue",
+    "oss_cdn_live_traffic",
+    "ack_cursor_fetch",
+    "robot_command_side_effects",
+    "dropoff_or_cancel_completion",
+    "route_elevator_field_pass",
+    "real_phone_device_or_browser",
+    "hil_pass",
+    "delivery_success",
+)
 PR5_REVIEW_THREAD_CLOSEOUT_REQUIRED_NOT_PROVEN = (
     "real_2d_lidar",
     "real_tof",
@@ -1471,6 +1498,85 @@ def _remote_readiness_for_cloud_guard(summary):
         "primary_actions_enabled": False,
         "proof_boundary": CLOUD_UNREACHABLE_MALFORMED_RESPONSE_GUARD_BOUNDARY,
     }
+
+
+def summarize_cloud_poll_backoff_rate_limit_guard(value):
+    """为 cloud poll backoff / rate-limit 构建 Robot diagnostics 安全摘要。"""
+    source = value if isinstance(value, dict) else {}
+    degradation_state = str(source.get("degradation_state") or source.get("state") or "").strip()
+    applicable = degradation_state == "cloud_poll_backoff"
+    unsafe = _cloud_guard_has_unsafe_material(source)
+    fallback_copy = "远程轮询正在等待重试窗口，主操作保持不可用；这不是送达成功。"
+    status = (
+        "not_applicable"
+        if not source
+        else "unsupported_degradation_not_proven"
+        if not applicable
+        else "blocked_unsafe_material_not_proven"
+        if unsafe
+        else "cloud_poll_backoff_not_proven"
+    )
+    safe_copy = _cloud_guard_safe_text(source.get("safe_phone_copy"), fallback_copy)
+    summary = {
+        "schema": CLOUD_POLL_BACKOFF_RATE_LIMIT_GUARD_SCHEMA,
+        "schema_version": 1,
+        "guard": "cloud_poll_backoff_rate_limit_guard",
+        "source": "software_proof",
+        "evidence_boundary": CLOUD_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY,
+        "status": status,
+        "degradation_state": "cloud_poll_backoff" if applicable else "not_applicable",
+        "remote_ready": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "ack_cursor_fetch_allowed": False,
+        "retry_replay_resubmit_allowed": False,
+        "queue_advancement_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "retry_hint": "wait_for_backoff_window",
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "false_states": list(CLOUD_POLL_BACKOFF_FALSE_STATES),
+        "not_proven": list(CLOUD_POLL_BACKOFF_REQUIRED_NOT_PROVEN),
+        "raw_material_redacted": bool(unsafe),
+    }
+    for key in ("backoff_until", "backoff_duration_sec"):
+        if source.get(key) is None:
+            continue
+        try:
+            summary[key] = float(source.get(key))
+        except (TypeError, ValueError):
+            pass
+    return summary
+
+
+def _remote_readiness_for_poll_backoff_guard(summary):
+    # phone_readiness 只需要脱敏后的 backoff 元数据，不能带入 URL、token 或 traceback。
+    if not isinstance(summary, dict) or summary.get("degradation_state") != "cloud_poll_backoff":
+        return {}
+    readiness = {
+        "remote_ready": False,
+        "cloud_reachable": True,
+        "last_command_ack": "",
+        "status_stale": True,
+        "retry_hint": "wait_for_backoff_window",
+        "auth_state": "required",
+        "degradation_state": "cloud_poll_backoff",
+        "safe_phone_copy": summary.get("safe_phone_copy", ""),
+        "status_age_sec": None,
+        "pending_command_count": 0,
+        "queue_persisted": False,
+        "state_path_configured": False,
+        "proof_schema": "",
+        "ack_semantics": "poll_backoff_not_delivery_success",
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "proof_boundary": CLOUD_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY,
+    }
+    for key in ("backoff_until", "backoff_duration_sec"):
+        if summary.get(key) is not None:
+            readiness[key] = summary[key]
+    return readiness
 
 
 def _route_task_rehearsal_not_proven(artifact=None):
@@ -52068,6 +52174,24 @@ def build_diagnostics_payload(
     safe_cloud_remote_readiness = _remote_readiness_for_cloud_guard(cloud_guard_summary)
     if safe_cloud_remote_readiness:
         latest_status["remote_readiness"] = safe_cloud_remote_readiness
+    poll_backoff_source = (
+        latest_status.get("remote_readiness")
+        if isinstance(latest_status.get("remote_readiness"), dict)
+        else diagnostics_source.get("remote_readiness")
+        if isinstance(diagnostics_source.get("remote_readiness"), dict)
+        else latest_status.get("cloud_poll_backoff_rate_limit_guard")
+        if isinstance(latest_status.get("cloud_poll_backoff_rate_limit_guard"), dict)
+        else latest_status.get("robot_diagnostics_cloud_poll_backoff_rate_limit_guard_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_cloud_poll_backoff_rate_limit_guard_summary"),
+            dict,
+        )
+        else {}
+    )
+    poll_backoff_summary = summarize_cloud_poll_backoff_rate_limit_guard(poll_backoff_source)
+    safe_poll_backoff_remote_readiness = _remote_readiness_for_poll_backoff_guard(poll_backoff_summary)
+    if safe_poll_backoff_remote_readiness:
+        latest_status["remote_readiness"] = safe_poll_backoff_remote_readiness
     task_terminal_field_material_intake_source = (
         _task_terminal_field_material_intake_source_from_payloads(
             latest_status,
@@ -56257,6 +56381,9 @@ def build_diagnostics_payload(
         cloud_unreachable_malformed_response_guard=cloud_guard_summary,
         cloud_unreachable_malformed_response_guard_summary=cloud_guard_summary,
         robot_diagnostics_cloud_unreachable_malformed_response_guard_summary=cloud_guard_summary,
+        cloud_poll_backoff_rate_limit_guard=poll_backoff_summary,
+        cloud_poll_backoff_rate_limit_guard_summary=poll_backoff_summary,
+        robot_diagnostics_cloud_poll_backoff_rate_limit_guard_summary=poll_backoff_summary,
         route_task_rehearsal=summarize_route_task_rehearsal_artifact(
             route_task_rehearsal_artifact_ref
             or os.environ.get("TRASHBOT_ROUTE_TASK_REHEARSAL_ARTIFACT", "")

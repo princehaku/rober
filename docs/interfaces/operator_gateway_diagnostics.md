@@ -1,5 +1,42 @@
 # Operator Gateway Diagnostics
 
+## robot_diagnostics_cloud_poll_backoff_rate_limit_guard_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_cloud_poll_backoff_rate_limit_guard_summary` as the safe
+alias for O5 poll backoff / rate-limit visibility.
+
+- Source state: `remote_readiness.degradation_state=cloud_poll_backoff`
+- Robot alias schema:
+  `trashbot.cloud_poll_backoff_rate_limit_guard_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_cloud_poll_backoff_rate_limit_guard`
+
+The alias is metadata-only and read-only. It may expose sanitized
+`degradation_state=cloud_poll_backoff`, phone-safe copy,
+`retry_hint=wait_for_backoff_window`, optional redacted `backoff_until` or
+`backoff_duration_sec`, `source=software_proof`, `not_proven`,
+`remote_ready=false`, `safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+
+This state must not weaken more specific O5 states: `auth_failed`,
+`media_degraded`, `cloud_unreachable`, `malformed_response`,
+`command_expired`, `command_pending`, `command_duplicate_deduped`,
+`command_id_conflict`, and `command_sequence_regression` keep their own proof
+boundaries and recovery hints.
+
+Unsafe copy, raw cloud bodies, raw base URL, bearer token, Authorization header,
+local state path, traceback, ROS topic, `/cmd_vel`, serial/UART details,
+WAVE ROVER details, success wording, `delivery_success=true`,
+`primary_actions_enabled=true`, or `safe_to_control=true` must fail closed as
+blocked/not_proven.
+
+This alias must not enable Start Delivery, Confirm Dropoff, Cancel, ACK, cursor
+updates, persistence updates, terminal ACK, commands, Nav2, route execution,
+WAVE ROVER, HIL, Objective 5 external proof, true phone/browser proof,
+production DB/queue, OSS/CDN live traffic, PR #5 reviewer resolution, or
+delivery success.
+
 ## robot_diagnostics_task_terminal_completion_mainline_summary
 
 Robot diagnostics exposes

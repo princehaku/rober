@@ -50,6 +50,9 @@ CLOUD_AUTH_FAILURE_STATUS_GUARD_BOUNDARY = (
 CLOUD_MEDIA_DEGRADATION_STATUS_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_media_degradation_status_guard"
 )
+CLOUD_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_poll_backoff_rate_limit_guard"
+)
 MEDIA_DEGRADATION_STATES = {
     "oss_write_failed": (
         "check_oss_write",
@@ -81,6 +84,8 @@ SAFE_OPERATOR_STATUS_KEYS = {
     "duplicate_command_id",
     "conflict_command_id",
     "sequence_regression_command_id",
+    "backoff_until",
+    "backoff_duration_sec",
     "conflict_reason",
     "conflict_fields",
     "cached_ack_state",
@@ -137,6 +142,8 @@ def _phone_safe_degraded_status(robot_id, error):
         return _phone_safe_auth_failure_status(robot_id, retry_hint=retry_hint)
     elif reason in MEDIA_DEGRADATION_STATES:
         return _phone_safe_media_degradation_status(robot_id, reason, cloud_reachable=cloud_reachable)
+    elif reason == "cloud_poll_backoff":
+        return _phone_safe_poll_backoff_status(robot_id, getattr(error, "backoff_until", None))
     elif reason == "malformed_response":
         auth_state = "unknown"
         safe_phone_copy = "远程服务响应异常，请稍后重试或联系支持。"
@@ -199,6 +206,38 @@ def _phone_safe_auth_failure_status(robot_id, *, retry_hint="check_auth"):
         ack_semantics="auth_failed_not_delivery_success",
         primary_actions_enabled=False,
         proof_boundary=CLOUD_AUTH_FAILURE_STATUS_GUARD_BOUNDARY,
+    )
+
+
+def _phone_safe_poll_backoff_status(robot_id, backoff_until=None, *, backoff_duration_sec=None):
+    # poll backoff 只说明本地轮询被限速或等待重试窗口，不能覆盖鉴权、媒体、云不可达等更具体原因。
+    safe_phone_copy = "远程轮询正在等待重试窗口，主操作保持不可用；这不是送达成功。"
+    extra = {}
+    if backoff_until is not None:
+        try:
+            extra["backoff_until"] = round(float(backoff_until), 3)
+        except (TypeError, ValueError):
+            pass
+    if backoff_duration_sec is not None:
+        try:
+            extra["backoff_duration_sec"] = max(0.0, round(float(backoff_duration_sec), 3))
+        except (TypeError, ValueError):
+            pass
+    return make_status(
+        robot_id,
+        "remote_degraded",
+        safe_phone_copy,
+        remote_ready=False,
+        cloud_reachable=True,
+        auth_state="unknown",
+        degradation_state="cloud_poll_backoff",
+        retry_hint="wait_for_backoff_window",
+        safe_phone_copy=safe_phone_copy,
+        ack_semantics="poll_backoff_not_delivery_success",
+        primary_actions_enabled=False,
+        delivery_success=False,
+        proof_boundary=CLOUD_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY,
+        **extra,
     )
 
 
@@ -358,6 +397,9 @@ class RemoteBridgeWorker:
         max_command_results=200,
         last_ack_id="",
         cursor_state_path="",
+        poll_backoff_threshold=3,
+        empty_poll_backoff_threshold=3,
+        poll_backoff_sec=30.0,
     ):
         self.cloud = cloud_client
         self.operator_backend = operator_backend
@@ -370,6 +412,12 @@ class RemoteBridgeWorker:
         self.command_results = {}
         self.command_identities = {}
         self.max_command_results = int(max_command_results)
+        self.poll_backoff_threshold = max(1, int(poll_backoff_threshold))
+        self.empty_poll_backoff_threshold = max(1, int(empty_poll_backoff_threshold))
+        self.poll_backoff_sec = max(0.0, float(poll_backoff_sec))
+        self.consecutive_poll_failures = 0
+        self.consecutive_empty_polls = 0
+        self.poll_backoff_until = 0.0
 
     def poll_once(self):
         status = _snapshot_status(self.robot_id, self.operator_backend.snapshot())
@@ -386,12 +434,21 @@ class RemoteBridgeWorker:
         if self.pending_terminal_ack:
             # pending ACK 是已经执行过的本地终态；先补发它，才能避免重启后重复执行命令。
             return self._replay_pending_terminal_ack()
+        if self._poll_backoff_active():
+            # 重试窗口内不继续拉命令，避免空轮询或限速压力扩大成低价值高频请求。
+            status = self._record_poll_backoff_status()
+            self._post_status_best_effort(status)
+            return False
         try:
             command = self.cloud.get_next_command(self.last_ack_id)
         except RemoteCloudError as exc:
             # 云端响应不可信或鉴权失败时，不解析 payload、不提交本地 action、不推进 cursor。
-            self._record_degraded_status(exc)
-            self._post_degraded_status_best_effort(exc)
+            if self._should_convert_poll_failure_to_backoff(exc):
+                status = self._record_poll_backoff_status()
+                self._post_status_best_effort(status)
+            else:
+                self._record_degraded_status(exc)
+                self._post_degraded_status_best_effort(exc)
             return False
         except InvalidRemoteCommand as exc:
             command = exc.command if isinstance(exc.command, dict) else {}
@@ -402,7 +459,11 @@ class RemoteBridgeWorker:
             self._post_terminal_ack(command_id, ack)
             return True
         if command is None:
+            backoff_status = self._record_empty_poll()
+            if backoff_status:
+                self._post_status_best_effort(backoff_status)
             return False
+        self._reset_poll_pressure()
         if command_expired(command):
             # 过期命令不能只回 ACK；手机首屏也必须看到 fail-closed 原因，避免用户误以为可继续发车。
             expired_status = self._record_expired_command_status(command["id"])
@@ -565,6 +626,49 @@ class RemoteBridgeWorker:
         self._set_operator_status(status)
         return status
 
+    def _record_poll_backoff_status(self):
+        now = time.time()
+        if self.poll_backoff_until <= now:
+            self.poll_backoff_until = now + self.poll_backoff_sec
+        status = _phone_safe_poll_backoff_status(
+            self.robot_id,
+            self.poll_backoff_until,
+            backoff_duration_sec=max(0.0, self.poll_backoff_until - now),
+        )
+        self._set_operator_status(status)
+        return status
+
+    def _poll_backoff_active(self):
+        return bool(self.poll_backoff_until and time.time() < self.poll_backoff_until)
+
+    def _record_empty_poll(self):
+        # 空轮询连续出现时只进入可见 backoff，不推进 cursor，也不伪造 ACK 或 delivery result。
+        self.consecutive_poll_failures = 0
+        self.consecutive_empty_polls += 1
+        if self.consecutive_empty_polls >= self.empty_poll_backoff_threshold:
+            return self._record_poll_backoff_status()
+        return None
+
+    def _should_convert_poll_failure_to_backoff(self, error):
+        reason = str(getattr(error, "reason", "") or "").strip()
+        # 这些状态有更明确的恢复路径，必须保留原分类，不能被泛化成 poll backoff。
+        if reason in {"auth_failed", "cloud_unreachable", "malformed_response", *MEDIA_DEGRADATION_STATES}:
+            self.consecutive_poll_failures = 0
+            return False
+        if reason in {"cloud_poll_backoff", "rate_limited", "too_many_requests"}:
+            self.consecutive_poll_failures += self.poll_backoff_threshold
+        else:
+            self.consecutive_poll_failures += 1
+        if self.consecutive_poll_failures < self.poll_backoff_threshold:
+            return False
+        self.poll_backoff_until = time.time() + self.poll_backoff_sec
+        return True
+
+    def _reset_poll_pressure(self):
+        self.consecutive_poll_failures = 0
+        self.consecutive_empty_polls = 0
+        self.poll_backoff_until = 0.0
+
     def _is_sequence_regression(self, command):
         # 没有 queue_sequence 时保留旧 opaque cursor 行为；只有云端显式给出序号才做回退判断。
         queue_sequence = command.get("queue_sequence")
@@ -609,6 +713,8 @@ class RemoteBridgeWorker:
                 "duplicate_command_id",
                 "conflict_command_id",
                 "sequence_regression_command_id",
+                "backoff_until",
+                "backoff_duration_sec",
                 "conflict_reason",
                 "conflict_fields",
                 "cached_ack_state",
