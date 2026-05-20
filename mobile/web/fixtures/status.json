@@ -2891,5 +2891,62 @@
       "dropoff/cancel completion",
       "delivery success"
     ]
+  },
+  "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_handoff_review_handoff_summary": {
+    "schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_handoff_review_handoff_summary.v1",
+    "schema_version": 1,
+    "handoff_review_handoff_schema": "trashbot.mobile_real_device_field_trial_acceptance_execution_handoff_review_handoff.v1",
+    "source_alias": "robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_handoff_review_handoff_summary",
+    "source": "software_proof",
+    "current_decision": "needs_field_owner_follow_up_not_proven",
+    "handoff_owner": "handoff_owner=现场 owner 继续补齐真实手机/browser、production app、PWA prompt/user choice、route/elevator field outcome。",
+    "handoff_reason": "handoff_reason=复核决策仍为 not_proven；当前只交接 phone-safe software_proof metadata。",
+    "safe_evidence_ref": "field_trial_acceptance_review_decision_fixture_20260518_0001",
+    "accepted_summaries": [
+      "accepted=handoff review decision metadata accepted for software_proof handoff only"
+    ],
+    "missing_summaries": [
+      "missing=真实手机/PWA/production app 验收材料仍缺。",
+      "missing=真实 route/elevator field outcome、dropoff/cancel completion 和 delivery result 仍缺。"
+    ],
+    "rejected_summaries": [
+      "rejected=unsafe structured material、credential 或 control wording 会被拒绝。"
+    ],
+    "blocked_summaries": [
+      "blocked=not_proven；safe_to_control=false；delivery_success=false；primary_actions_enabled=false。"
+    ],
+    "next_required_evidence": [
+      "required=真实 iPhone/Android browser/device behavior 材料。",
+      "required=production app、PWA prompt/user choice、route/elevator field outcome、dropoff/cancel completion 和 delivery result。"
+    ],
+    "rerun_guidance": "rerun_guidance=补齐真实材料后重跑 handoff review decision，再运行 software_proof_docker_mobile_real_device_field_trial_acceptance_execution_handoff_review_handoff_gate。",
+    "blocker_summary": "blocker_summary=真实手机/browser、production app、PWA prompt/user choice、O5 external、route/elevator field outcome、WAVE ROVER/UART、dropoff/cancel completion 和 delivery result 均未证明。",
+    "safe_phone_copy": "现场验收交接复核交接 fixture 只读展示 current decision、handoff owner、handoff reason、accepted/missing/rejected/blocked summaries、next required evidence、rerun guidance 和 evidence boundary；这是 source=software_proof / not_proven。",
+    "safe_copy": "现场验收交接复核交接 phone-safe copy：source=software_proof，not_proven，delivery_success=false，primary_actions_enabled=false，safe_to_control=false。",
+    "safe_copy_status": "safe_copy_available",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "recovery_hint": "handoff review handoff 只交接 phone-safe review metadata；缺 summary、fail-closed flags、unsafe copy 或 evidence_ref 不匹配时继续 blocked。",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_handoff_review_handoff_gate",
+    "source_evidence_boundary": "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_handoff_review_decision_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "真实 iPhone/Android device behavior",
+      "production app",
+      "真实 PWA prompt/user choice",
+      "真实 phone/browser acceptance",
+      "O5 external proof",
+      "真实 route/elevator 现场材料缺口",
+      "WAVE ROVER/UART",
+      "dropoff/cancel completion",
+      "delivery success"
+    ]
   }
 }
