@@ -772,6 +772,65 @@ completion, real cancel completion, real delivery result, real phone/browser
 evidence, HIL pass, Objective 5 external proof, PR #5 resolution, or any
 primary robot action being enabled.
 
+## field_evidence_rerun_callback_review_handoff
+
+`pc-tools/evidence/field_evidence_rerun_callback_review_handoff.py` generates
+the PC-only handoff gate after `field_evidence_rerun_callback_review_decision`.
+It consumes only the review-decision artifact, summary, or wrapper/nested JSON;
+it does not read field material directories, execute field reruns, or open raw
+materials.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_callback_review_handoff.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_callback_review_handoff_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_callback_review_handoff_gate`
+- Allowed inputs:
+  `trashbot.field_evidence_rerun_callback_review_decision.v1` and
+  `trashbot.field_evidence_rerun_callback_review_decision_summary.v1` under
+  `software_proof_docker_field_evidence_rerun_callback_review_decision_gate`.
+  Wrapper, summary, artifact, robot diagnostics, mobile read-only, payload, and
+  nested diagnostics JSON are allowed only through known safe wrapper keys.
+- Handoff status values:
+  `ready_for_field_evidence_rerun_callback_review_handoff`,
+  `needs_owner_follow_up`,
+  `needs_field_evidence_rerun_callback_rerun`,
+  `evidence_ref_mismatch_rerun`, and `blocked_unsafe_review_handoff`.
+
+The output always includes `source=software_proof`, `handoff_status`, source
+`review_decision`, safe `evidence_ref`, `same_evidence_ref_required=true`,
+`same_evidence_ref_status`, `owner_handoff`, `handoff_package`,
+`next_required_evidence`, `rerun_guidance`, `blocker_summary`, `safe_copy`,
+`not_proven`, `safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_callback_review_handoff_gate`.
+The summary mirrors the artifact and is the intended read-only consumer surface
+for Robot diagnostics and mobile/web follow-through.
+
+Handoff mapping is fail-closed. A supported, safe review-decision input with
+`review_decision=accepted`, matched safe `evidence_ref`,
+`same_evidence_ref_required=true`, `same_evidence_ref_status=matched`,
+`source=software_proof`, `not_proven`, and all action flags false maps to
+`ready_for_field_evidence_rerun_callback_review_handoff`.
+`review_decision=missing` or `review_decision=rejected` maps to
+`needs_owner_follow_up`; `review_decision=blocked` maps to
+`needs_field_evidence_rerun_callback_rerun`. Missing input, bad JSON,
+unsupported schema or boundary, missing safe evidence_ref, mismatched evidence
+refs, weak same-ref typing, unsupported review decision, unsafe copy, raw paths,
+credentials, ROS topic text, `/cmd_vel`, serial/UART/WAVE ROVER text, checksum
+text, complete artifact text, traceback text, success/control claims,
+`safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` fail closed to a rerun, mismatch, or unsafe
+handoff status.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, real Nav2/fixed-route execution, real field task record, real
+elevator door or floor arrival evidence, real human assistance, real dropoff
+completion, real cancel completion, real delivery result, real phone/browser
+evidence, HIL pass, Objective 5 external cloud/4G/OSS/CDN/DB/queue proof, PR #5
+resolution, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

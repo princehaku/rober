@@ -157,6 +157,8 @@ h2 {
 .real-material-readiness-board-panel,
 .real-material-evidence-intake-panel,
 .real-material-followup-escalation-status-panel,
+.field-evidence-rerun-callback-review-decision-panel,
+.field-evidence-rerun-callback-review-handoff-panel,
 .task-terminal-completion-mainline-panel,
 .task-terminal-field-material-intake-panel,
 .task-terminal-field-material-review-decision-panel,
@@ -799,6 +801,14 @@ dd {
 }
 
 .elevator-field-evidence-trace-callback-review-handoff-grid {
+  grid-template-columns: 1fr;
+}
+
+.field-evidence-rerun-callback-review-decision-grid {
+  grid-template-columns: 1fr;
+}
+
+.field-evidence-rerun-callback-review-handoff-grid {
   grid-template-columns: 1fr;
 }
 
