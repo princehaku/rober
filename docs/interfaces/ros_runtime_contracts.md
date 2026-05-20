@@ -17,6 +17,24 @@ Allowed Robot-visible fields are limited to safe review metadata: `safe_evidence
 
 The alias must not expose raw callback/review artifacts, ROS topic names, ACK/cursor state, Nav2/HIL triggers, serial/UART or WAVE ROVER details, credentials, local paths, checksum values, or success/control claims. Missing sanitized summary, unsupported schema or boundary, weak `safe_evidence_ref`, `same_evidence_ref_required=false`, unsafe copy, raw markers, enabled action flags, `delivery_success=true`, `primary_actions_enabled=true`, or `safe_to_control=true` keeps the summary blocked/not_proven and leaves Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
 
+## robot_diagnostics_hardware_sensor_hil_entry_callback_review_handoff_summary
+
+`robot_diagnostics_hardware_sensor_hil_entry_callback_review_handoff_summary` is the Robot diagnostics safe alias for the `hardware_sensor_hil_entry_callback_review_handoff` gate. It consumes only the sanitized summary schema `trashbot.hardware_sensor_hil_entry_callback_review_handoff_summary.v1`, whose `source_schema` must point back to `trashbot.hardware_sensor_hil_entry_callback_review_handoff.v1` and whose evidence boundary must remain `software_proof_docker_hardware_sensor_hil_entry_callback_review_handoff_gate`.
+
+The alias is metadata-only and fail-closed:
+
+- `source=software_proof`
+- `hardware_material_status=hardware_material_pending`
+- `not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `metadata_only=true`
+
+Allowed Robot-visible fields are limited to safe handoff metadata: `safe_evidence_ref`, `handoff_status`, `handoff_decision`, `source_review_decision_status`, `missing_materials`, `next_required_evidence`, `owner_handoff`, `rerun_guidance`, `same_evidence_ref_required`, `same_evidence_ref_status`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
+
+The alias must not expose raw material payloads, raw JSON, raw callback/review/handoff artifacts, ROS topic names, ACK/cursor state, Nav2/HIL triggers, serial/UART or WAVE ROVER details, credentials, local paths, checksum values, complete internal logs, or success/control claims. Missing sanitized summary, malformed input, unsupported schema or boundary, wrong `source`, weak `safe_evidence_ref`, `same_evidence_ref_required=false`, unsafe copy, raw markers, enabled action flags, `delivery_success=true`, `primary_actions_enabled=true`, or `safe_to_control=true` keeps the summary blocked/not_proven and leaves Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
+
 ## robot_diagnostics_field_evidence_rerun_handoff_intake_summary
 
 `robot_diagnostics_field_evidence_rerun_handoff_intake_summary` is the Robot diagnostics safe alias for the `field_evidence_rerun_handoff_intake` gate. It consumes only the sanitized summary schema `trashbot.field_evidence_rerun_handoff_intake_summary.v1`, whose `source_schema` must point back to `trashbot.field_evidence_rerun_handoff_intake.v1` and whose evidence boundary must remain `software_proof_docker_field_evidence_rerun_handoff_intake_gate`.

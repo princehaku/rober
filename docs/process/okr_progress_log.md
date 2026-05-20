@@ -6,6 +6,28 @@
 
 ---
 
+## 2026-05-21 系列
+
+更新时间：2026-05-21 00:18 Asia/Shanghai。
+
+### 2026-05-21 00-01｜hardware-sensor-hil-entry-callback-review-handoff｜HIL-entry callback review handoff software proof
+
+本轮 `sprints/2026.05.21_00-01_hardware-sensor-hil-entry-callback-review-handoff/` 在 Objective 5 仍约 68% 且缺真实 external proof 的前提下，转向下一低项 Objective 1 的 HIL-entry callback material handoff。O5 仍缺真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实 phone/browser external proof；继续堆本地 O5 metadata 不会提高 O5。Objective 1 约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending，上一轮 `hardware_sensor_hil_entry_callback_review_decision` 已完成，本轮进入 `hardware_sensor_hil_entry_callback_review_handoff`。
+
+Hardware worker 新增 `trashbot.hardware_sensor_hil_entry_callback_review_handoff.v1` / `trashbot.hardware_sensor_hil_entry_callback_review_handoff_summary.v1` PC gate，消费上一轮 callback review decision artifact / summary，把 accepted handoff、blocked missing materials、rejected source decision、unsafe input、evidence-ref mismatch、unsupported schema 和 malformed input 转成 owner handoff、missing required materials、next required evidence、安全 rerun guidance 和 sanitized safe copy。Hardware worker 已读 `docs/vendor/VENDOR_INDEX.md`、`base_ctrl.py`、`config.yaml`、`json_cmd.h`、`uart_ctrl.h`、`movtion_module.h`；本轮只证明 source-boundary，不证明真实材料或 HIL。
+
+Robot worker 新增 `robot_diagnostics_hardware_sensor_hil_entry_callback_review_handoff_summary` safe alias，只消费 sanitized summary / artifact wrappers，缺失、unsupported、unsafe、弱化 boolean boundary 或 success/control claim 均 fail closed，不触发 task_orchestrator、Start、Confirm Dropoff、Cancel、ACK、cursor、Nav2、HIL、dropoff/cancel completion、delivery result 或 primary actions。Full-Stack worker 在 mobile/web 新增只读“传感器 HIL 回调复核交接”panel，消费 Robot safe alias 或 fixture safe summary，展示 handoff status、source review decision status、safe evidence ref、owner handoff、missing required materials、next required evidence、evidence boundary 和 `not_proven`，同时保持 Start Delivery / Confirm Dropoff / Cancel disabled。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | `software_proof_docker_hardware_sensor_hil_entry_callback_review_handoff_gate` 让 PR #5 / HIL-entry callback review decision 进入 owner handoff，可被 PC gate、Robot diagnostics 和 mobile/web 只读消费；但没有真实 2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、真实 WAVE ROVER/UART、真实 `feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 `PRRT_kwDOSWB9286CJ3tX` reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增真实 route/elevator field material、真实电梯、Nav2/fixed-route runtime log、dropoff/cancel completion、field pass 或 delivery result。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 新增只读 HIL-entry callback review handoff 可见性，但它是 local fixture / diagnostics software proof，不是真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice 或 true phone/browser acceptance。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮不改 cloud commands/status/ack、不新增公网入口、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或 external proof；该 gate 不能计为 O5 external proof。 |
+
+本轮验证：Hardware worker 报告 `py_compile` 通过；`python3 -m unittest tests.test_hardware_sensor_hil_entry_callback_review_handoff` 输出 `Ran 7 tests ... OK`；CLI `--help`、required `rg` 与 scoped diff check 通过。Robot worker 报告 `py_compile` 通过；`PYTHONPATH=onboard/src/ros2_trashbot_behavior PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py` 输出 `Ran 240 tests in 0.803s OK`；required `rg` 与 scoped diff check 通过。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 185 tests in 1.392s OK`；status JSON check、新 fixture JSON check、required `rg` 与 scoped diff check 通过。Product closeout integration rerun 通过：required file check、py_compile、Hardware unittest `Ran 7 tests in 0.009s OK`、Robot diagnostics unittest `Ran 240 tests in 0.748s OK`、node check、mobile unittest `Ran 185 tests in 1.355s OK`、JSON checks、CLI help、required `rg` 和 scoped `git diff --check` 均完成。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
+
 ## 2026-05-20 系列
 
 更新时间：2026-05-20 23:11 Asia/Shanghai。

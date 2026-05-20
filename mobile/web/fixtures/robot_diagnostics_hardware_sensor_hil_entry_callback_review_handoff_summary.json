@@ -1,0 +1,52 @@
+{
+  "schema": "trashbot.hardware_sensor_hil_entry_callback_review_handoff_summary.v1",
+  "summary_alias": "robot_diagnostics_hardware_sensor_hil_entry_callback_review_handoff_summary",
+  "schema_version": 1,
+  "source": "software_proof",
+  "source_schema": "trashbot.hardware_sensor_hil_entry_callback_review_handoff.v1",
+  "handoff_status": "blocked_missing_real_hardware_review_handoff_materials_not_proven",
+  "source_review_decision_status": "blocked_missing_real_hardware_callback_materials_not_proven",
+  "safe_evidence_ref": "hardware_sensor_hil_entry_callback_review_handoff_fixture_20260521_0001",
+  "owner_handoff": [
+    "owner_handoff=Hardware owner backfills phone-safe install, wiring, power, calibration, and HIL-entry handoff summaries",
+    "owner_handoff=Robot owner mirrors robot_diagnostics_hardware_sensor_hil_entry_callback_review_handoff_summary only",
+    "owner_handoff=Full-stack keeps mobile/web read-only and primary actions unchanged"
+  ],
+  "missing_required_materials": [
+    "missing_required_material=real sensor install handoff summary",
+    "missing_required_material=real wiring handoff summary",
+    "missing_required_material=real power handoff summary",
+    "missing_required_material=real calibration handoff summary",
+    "missing_required_material=real HIL-entry operator handoff summary"
+  ],
+  "next_required_evidence": [
+    "next_required_evidence=同一 safe evidence_ref 的真实 sensor install handoff 摘要",
+    "next_required_evidence=同一 safe evidence_ref 的真实 wiring handoff 摘要",
+    "next_required_evidence=同一 safe evidence_ref 的真实 power handoff 摘要",
+    "next_required_evidence=同一 safe evidence_ref 的真实 calibration handoff 摘要",
+    "next_required_evidence=同一 safe evidence_ref 的真实 HIL-entry operator handoff 摘要"
+  ],
+  "boundary": "boundary=software_proof / not_proven / safe_to_control=false",
+  "safe_copy": "传感器 HIL 回调复核交接只读展示 handoff status、source review decision status、safe evidence ref、owner handoff、missing required materials、next required evidence、evidence boundary 和 not_proven；这是 software proof only。",
+  "evidence_boundary": "software_proof_docker_hardware_sensor_hil_entry_callback_review_handoff_gate",
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "safe_to_control": false,
+  "not_proven": [
+    "software_proof",
+    "not_proven",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "safe_to_control=false",
+    "真实 HIL",
+    "真实 2D LiDAR / ToF",
+    "真实 sensor install/power/calibration",
+    "真实 operator callback result",
+    "真实手机/browser",
+    "真实 Nav2/fixed-route",
+    "真实 route/elevator field evidence",
+    "真实 dropoff outcome",
+    "真实 cancel outcome",
+    "Objective 5 external proof"
+  ]
+}

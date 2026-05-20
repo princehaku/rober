@@ -903,6 +903,15 @@ HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_DECISION_SUMMARY_SCHEMA = (
 HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_DECISION_GATE = (
     "software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate"
 )
+HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_SCHEMA = (
+    "trashbot.hardware_sensor_hil_entry_callback_review_handoff.v1"
+)
+HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_SUMMARY_SCHEMA = (
+    "trashbot.hardware_sensor_hil_entry_callback_review_handoff_summary.v1"
+)
+HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_GATE = (
+    "software_proof_docker_hardware_sensor_hil_entry_callback_review_handoff_gate"
+)
 PR5_REVIEW_THREAD_CLOSEOUT_SCHEMA = "trashbot.pr5_review_thread_closeout.v1"
 PR5_REVIEW_THREAD_CLOSEOUT_SOURCE_SUMMARY_SCHEMA = (
     "trashbot.pr5_review_thread_closeout_summary.v1"
@@ -4401,6 +4410,46 @@ def _hardware_sensor_hil_entry_callback_review_decision_not_proven(
         "wave_rover_motion",
         "real_serial_or_uart_feedback",
         "real_hil_pass",
+        "dropoff_completion",
+        "cancel_completion",
+        "delivery_success",
+        "objective_5_external_proof",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _hardware_sensor_hil_entry_callback_review_handoff_not_proven(
+    handoff=None,
+    summary_fragment=None,
+):
+    # 交接摘要只说明 owner 后续材料动作；Robot 不能把交接状态解释成 HIL、实物或控制已通过。
+    handoff = handoff if isinstance(handoff, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    for source in (handoff, summary_fragment):
+        if isinstance(source.get("not_proven"), list):
+            source_values.extend(source.get("not_proven"))
+        for key in ("missing_materials", "next_required_evidence", "owner_handoff"):
+            if isinstance(source.get(key), list):
+                source_values.extend(source.get(key))
+    required = (
+        "not_proven",
+        "software_proof",
+        "hardware_material_pending",
+        "sensor_hil_entry_callback_review_handoff_only",
+        "real_sensor_device_proof",
+        "sensor_procurement_completed",
+        "sensor_installed_on_robot",
+        "sensor_wiring_verified",
+        "sensor_power_budget_verified",
+        "sensor_calibrated_on_robot",
+        "real_hil_pass",
+        "route_elevator_field_pass",
         "dropoff_completion",
         "cancel_completion",
         "delivery_success",
@@ -11029,6 +11078,95 @@ def _default_hardware_sensor_hil_entry_callback_review_decision_summary(
     }
 
 
+def _default_hardware_sensor_hil_entry_callback_review_handoff_summary(
+    path,
+    status="blocked_missing_hardware_sensor_hil_entry_callback_review_handoff",
+    read_error="",
+):
+    # 缺省状态必须 fail closed；没有 Hardware PC safe summary 时不暴露任何原始材料或控制入口。
+    reason = read_error or "hardware sensor HIL-entry callback review handoff summary is not configured"
+    safe_copy = (
+        "Hardware sensor HIL-entry callback review handoff is metadata-only; "
+        "source=software_proof, hardware_material_pending, not_proven, "
+        "safe_to_control=false, delivery_success=false and primary_actions_enabled=false."
+    )
+    return {
+        "schema": HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source_contract": {"schema": "", "evidence_boundary": "", "metadata_only": True},
+        "handoff_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": reason,
+        },
+        "source_review_decision_status": {
+            "status": "blocked",
+            "verdict": "not_proven",
+        },
+        "source": "software_proof",
+        "hardware_material_status": "hardware_material_pending",
+        "evidence_status": "not_proven",
+        "status": status,
+        "handoff_decision": "blocked",
+        "missing_materials": [],
+        "next_required_evidence": [],
+        "owner_handoff": [],
+        "rerun_guidance": [],
+        "same_evidence_ref_required": True,
+        "same_evidence_ref_status": {
+            "status": "blocked",
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "boundary": HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_GATE,
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "safe_evidence_ref": "",
+        "robot_diagnostics_summary": {
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "status": "blocked",
+            "reason": reason,
+        },
+        "not_proven": _hardware_sensor_hil_entry_callback_review_handoff_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "real_hardware_observed": False,
+        "hardware_material_pending": True,
+        "sensor_hil_entry_callback_review_handoff_only": True,
+        "sensor_hil_entry_ready": False,
+        "sensor_procurement_completed": False,
+        "sensor_installed_on_robot": False,
+        "sensor_wiring_verified": False,
+        "sensor_power_budget_verified": False,
+        "sensor_calibrated_on_robot": False,
+        "hil_entry_execution_completed": False,
+        "route_elevator_field_pass": False,
+        "nav2_fixed_route_run": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+    }
+
+
 def _default_pr5_review_thread_closeout_summary(
     path,
     status="blocked_missing_pr5_review_thread_closeout_summary",
@@ -13317,6 +13455,19 @@ def _hardware_sensor_hil_entry_callback_review_decision_source_contract(value):
         source_schema = str(
             value.get("source_schema")
             or HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_DECISION_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _hardware_sensor_hil_entry_callback_review_handoff_source_contract(value):
+    # handoff wrapper 必须回指 handoff gate；Robot 只消费 PC 侧消毒摘要，不接收 raw review/callback。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema")
+            or HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_SCHEMA
         )
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
@@ -43481,6 +43632,329 @@ def summarize_hardware_sensor_hil_entry_callback_review_decision(source):
     return summary
 
 
+def summarize_hardware_sensor_hil_entry_callback_review_handoff(source):
+    """构建 hardware sensor HIL-entry callback review handoff 的 Robot-safe 只读摘要。"""
+    # Robot 只消费 Hardware PC gate 的 safe summary；handoff 不能反向触发 ACK、Nav2、HIL 或控制链路。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_hardware_sensor_hil_entry_callback_review_handoff_summary(
+        source_path,
+        read_error="hardware sensor HIL-entry callback review handoff summary is not configured",
+    )
+    if isinstance(source, dict):
+        handoff = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["handoff_status"]["reason"] = (
+                "hardware sensor HIL-entry callback review handoff summary artifact missing"
+            )
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                handoff = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading hardware sensor HIL-entry callback review handoff summary: {exc}"
+            )
+            summary.update(
+                {
+                    "status": "blocked_malformed_hardware_sensor_hil_entry_callback_review_handoff",
+                    "handoff_status": {
+                        "status": "blocked_malformed_hardware_sensor_hil_entry_callback_review_handoff",
+                        "verdict": "not_proven",
+                        "evidence_source": "software_proof",
+                        "reason": safe_error,
+                    },
+                    "read_error": safe_error,
+                }
+            )
+            return summary
+
+    if not isinstance(handoff, dict):
+        summary.update(
+            {
+                "status": "blocked_malformed_hardware_sensor_hil_entry_callback_review_handoff",
+                "handoff_status": {
+                    "status": "blocked_malformed_hardware_sensor_hil_entry_callback_review_handoff",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware sensor HIL-entry callback review handoff JSON must be an object",
+                },
+            }
+        )
+        return summary
+
+    diagnostics = handoff.get("diagnostics") if isinstance(handoff.get("diagnostics"), dict) else {}
+    summary_fragment = (
+        handoff
+        if handoff.get("schema") == HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_SUMMARY_SCHEMA
+        else {}
+    )
+    for candidate in (
+        handoff.get("robot_diagnostics_hardware_sensor_hil_entry_callback_review_handoff_summary"),
+        handoff.get("hardware_sensor_hil_entry_callback_review_handoff_summary"),
+        handoff.get("robot_diagnostics_summary"),
+        handoff.get("robot_compatible_summary"),
+        handoff.get("diagnostics_summary"),
+        handoff.get("mobile_readonly_summary"),
+        handoff.get("phone_safe_summary"),
+        handoff.get("summary"),
+        diagnostics.get("robot_diagnostics_hardware_sensor_hil_entry_callback_review_handoff_summary"),
+        diagnostics.get("hardware_sensor_hil_entry_callback_review_handoff_summary"),
+        diagnostics.get("robot_diagnostics_summary"),
+        diagnostics.get("diagnostics_summary"),
+        diagnostics.get("summary"),
+    ):
+        if summary_fragment:
+            break
+        if isinstance(candidate, dict) and candidate:
+            summary_fragment = candidate
+            break
+
+    contract_source = summary_fragment if summary_fragment else handoff
+    source_schema, source_boundary = (
+        _hardware_sensor_hil_entry_callback_review_handoff_source_contract(contract_source)
+    )
+    if not summary_fragment:
+        summary.update(
+            {
+                "source_schema": _redact_route_task_rehearsal_text(source_schema),
+                "source_schema_version": handoff.get("schema_version"),
+                "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "handoff_status": {
+                    "status": "blocked_missing_hardware_sensor_hil_entry_callback_review_handoff_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware sensor HIL-entry callback review handoff lacks a sanitized summary",
+                },
+                "status": "blocked_missing_hardware_sensor_hil_entry_callback_review_handoff_summary",
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing sanitized hardware sensor HIL-entry callback review handoff summary",
+                },
+            }
+        )
+        return summary
+
+    status_source = (
+        summary_fragment.get("handoff_status")
+        if isinstance(summary_fragment.get("handoff_status"), dict)
+        else summary_fragment.get("review_status")
+        if isinstance(summary_fragment.get("review_status"), dict)
+        else {}
+    )
+    source_review_status = (
+        summary_fragment.get("source_review_decision_status")
+        if isinstance(summary_fragment.get("source_review_decision_status"), dict)
+        else summary_fragment.get("source_review_status")
+        if isinstance(summary_fragment.get("source_review_status"), dict)
+        else {}
+    )
+    status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or summary_fragment.get("status")
+        or "blocked_hardware_sensor_hil_entry_callback_review_handoff_not_proven"
+    )
+    handoff_decision = _redact_route_task_rehearsal_text(
+        summary_fragment.get("handoff_decision")
+        or summary_fragment.get("handoff")
+        or summary_fragment.get("decision")
+        or "blocked"
+    )
+    if handoff_decision not in ("accepted", "missing", "rejected", "blocked"):
+        handoff_decision = "blocked"
+    safe_copy_source = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or (
+            "Hardware sensor HIL-entry callback review handoff is metadata-only; "
+            "source=software_proof; hardware_material_pending; not_proven; "
+            "safe_to_control=false; delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    safe_copy = _redact_route_task_rehearsal_text(safe_copy_source)
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref") or summary_fragment.get("evidence_ref") or ""
+    )
+    same_ref_status = (
+        summary_fragment.get("same_evidence_ref_status")
+        if isinstance(summary_fragment.get("same_evidence_ref_status"), dict)
+        else {}
+    )
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": summary_fragment.get("source_schema_version")
+            or summary_fragment.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "source_contract": {
+                "schema": _redact_route_task_rehearsal_text(source_schema),
+                "evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "metadata_only": True,
+            },
+            "handoff_status": {
+                "status": status,
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or "hardware sensor HIL-entry callback review handoff consumed without real HIL evidence"
+                ),
+            },
+            "source_review_decision_status": _safe_pc_route_debug_dict(source_review_status)
+            or {"status": "blocked", "verdict": "not_proven"},
+            "status": status,
+            "handoff_decision": handoff_decision,
+            "source": "software_proof",
+            "hardware_material_status": "hardware_material_pending",
+            "evidence_status": "not_proven",
+            "missing_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("missing_materials")
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "owner_handoff": _safe_route_task_rehearsal_list(
+                summary_fragment.get("owner_handoff")
+            ),
+            "rerun_guidance": _safe_route_task_rehearsal_list(
+                summary_fragment.get("rerun_guidance") or summary_fragment.get("rerun_commands")
+            ),
+            "same_evidence_ref_required": summary_fragment.get("same_evidence_ref_required") is True,
+            "same_evidence_ref_status": _safe_pc_route_debug_dict(same_ref_status)
+            or {"status": "blocked", "verdict": "not_proven"},
+            "boundary": HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_GATE,
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "safe_evidence_ref": safe_evidence_ref,
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {"safe_copy": safe_copy, "safe_phone_copy": safe_copy, "status": status},
+            "not_proven": _hardware_sensor_hil_entry_callback_review_handoff_not_proven(
+                handoff, summary_fragment
+            ),
+            "read_error": "",
+            "metadata_only": True,
+            "real_hardware_observed": False,
+            "hardware_material_pending": True,
+            "sensor_hil_entry_callback_review_handoff_only": True,
+            "sensor_hil_entry_ready": False,
+            "sensor_procurement_completed": False,
+            "sensor_installed_on_robot": False,
+            "sensor_wiring_verified": False,
+            "sensor_power_budget_verified": False,
+            "sensor_calibrated_on_robot": False,
+            "hil_entry_execution_completed": False,
+            "route_elevator_field_pass": False,
+            "nav2_fixed_route_run": False,
+            "dropoff_completion": False,
+            "cancel_completion": False,
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "collect_triggered": False,
+            "dropoff_triggered": False,
+            "cancel_triggered": False,
+            "ack_post_allowed": False,
+            "remote_ack_allowed": False,
+            "cursor_updates_allowed": False,
+            "persistence_updates_allowed": False,
+            "terminal_ack_allowed": False,
+            "nav2_triggered": False,
+            "hil_pass": False,
+            "production_ready": False,
+        }
+    )
+
+    accepted_schemas = {
+        HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_SCHEMA,
+        HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+    }
+    weak_contract = (
+        not safe_evidence_ref
+        or safe_evidence_ref.startswith("local_path_redacted:")
+        or "[REDACTED" in safe_evidence_ref
+        or summary["same_evidence_ref_required"] is not True
+        or str(summary_fragment.get("source") or "software_proof") != "software_proof"
+        or str(summary_fragment.get("hardware_material_status") or "hardware_material_pending")
+        != "hardware_material_pending"
+        or str(summary_fragment.get("evidence_status") or "not_proven") != "not_proven"
+    )
+    unsafe_payload = (
+        _mobile_field_material_intake_has_unsafe_fields(handoff)
+        or _mobile_field_material_intake_has_unsafe_fields(summary_fragment)
+        or _route_task_field_run_intake_has_unsafe_control_claims(summary_fragment)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy_source)
+        or _route_task_field_retest_execution_pack_has_success_wording(summary_fragment)
+        or bool(summary_fragment.get("delivery_success"))
+        or bool(summary_fragment.get("primary_actions_enabled"))
+        or bool(summary_fragment.get("safe_to_control"))
+    )
+    if (
+        source_schema not in accepted_schemas
+        or source_boundary != HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_GATE
+    ):
+        summary.update(
+            {
+                "status": "blocked_unsupported_hardware_sensor_hil_entry_callback_review_handoff",
+                "handoff_status": {
+                    "status": "blocked_unsupported_hardware_sensor_hil_entry_callback_review_handoff",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware sensor HIL-entry callback review handoff schema or evidence boundary is unsupported",
+                },
+                "handoff_decision": "blocked",
+                "missing_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+                "rerun_guidance": [],
+                "safe_evidence_ref": "",
+            }
+        )
+        return summary
+    if weak_contract or unsafe_payload:
+        blocked_copy = (
+            "Hardware sensor HIL-entry callback review handoff is metadata-only; "
+            "source=software_proof; hardware_material_pending; not_proven; "
+            "safe_to_control=false; delivery_success=false; primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "status": "blocked_unsafe_hardware_sensor_hil_entry_callback_review_handoff",
+                "handoff_status": {
+                    "status": "blocked_unsafe_hardware_sensor_hil_entry_callback_review_handoff",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "hardware sensor HIL-entry callback review handoff contains unsafe fields, weak contract, wrong source, or success/control claims",
+                },
+                "handoff_decision": "blocked",
+                "missing_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+                "rerun_guidance": [],
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                    "status": "blocked",
+                },
+                "safe_evidence_ref": "",
+            }
+        )
+        return summary
+
+    return summary
+
+
 def _pr5_review_thread_closeout_copy_is_unsafe(value):
     # 允许安全边界里的 false/not_proven 文案；其余 success/control/HIL/field-pass 语义一律降级。
     redacted = _redact_route_task_rehearsal_text(value)
@@ -49115,6 +49589,7 @@ def build_diagnostics_payload(
     hardware_sensor_hil_entry_execution_pack_ref="",
     hardware_sensor_hil_entry_callback_intake_ref="",
     hardware_sensor_hil_entry_callback_review_decision_ref="",
+    hardware_sensor_hil_entry_callback_review_handoff_ref="",
     pr5_review_thread_closeout_ref="",
     pr5_vendor_source_review_packet_ref="",
     pr5_vendor_source_review_reply_dispatch_ref="",
@@ -49608,6 +50083,21 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("hardware_sensor_hil_entry_callback_review_decision_summary"), dict)
         else diagnostics_source.get("robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary")
         if isinstance(diagnostics_source.get("robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary"), dict)
+        else {}
+    )
+    hardware_sensor_hil_entry_callback_review_handoff_source = (
+        latest_status.get("hardware_sensor_hil_entry_callback_review_handoff")
+        if isinstance(latest_status.get("hardware_sensor_hil_entry_callback_review_handoff"), dict)
+        else latest_status.get("hardware_sensor_hil_entry_callback_review_handoff_summary")
+        if isinstance(latest_status.get("hardware_sensor_hil_entry_callback_review_handoff_summary"), dict)
+        else latest_status.get("robot_diagnostics_hardware_sensor_hil_entry_callback_review_handoff_summary")
+        if isinstance(latest_status.get("robot_diagnostics_hardware_sensor_hil_entry_callback_review_handoff_summary"), dict)
+        else diagnostics_source.get("hardware_sensor_hil_entry_callback_review_handoff")
+        if isinstance(diagnostics_source.get("hardware_sensor_hil_entry_callback_review_handoff"), dict)
+        else diagnostics_source.get("hardware_sensor_hil_entry_callback_review_handoff_summary")
+        if isinstance(diagnostics_source.get("hardware_sensor_hil_entry_callback_review_handoff_summary"), dict)
+        else diagnostics_source.get("robot_diagnostics_hardware_sensor_hil_entry_callback_review_handoff_summary")
+        if isinstance(diagnostics_source.get("robot_diagnostics_hardware_sensor_hil_entry_callback_review_handoff_summary"), dict)
         else {}
     )
     pr5_review_thread_closeout_source = (
@@ -51731,6 +52221,9 @@ def build_diagnostics_payload(
     latest_status.pop("hardware_sensor_hil_entry_callback_review_decision", None)
     latest_status.pop("hardware_sensor_hil_entry_callback_review_decision_summary", None)
     latest_status.pop("robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary", None)
+    latest_status.pop("hardware_sensor_hil_entry_callback_review_handoff", None)
+    latest_status.pop("hardware_sensor_hil_entry_callback_review_handoff_summary", None)
+    latest_status.pop("robot_diagnostics_hardware_sensor_hil_entry_callback_review_handoff_summary", None)
     latest_status.pop("pr5_review_thread_closeout", None)
     latest_status.pop("pr5_review_thread_closeout_summary", None)
     latest_status.pop("robot_diagnostics_pr5_review_thread_closeout_summary", None)
@@ -52951,6 +53444,17 @@ def build_diagnostics_payload(
             hardware_sensor_hil_entry_callback_review_decision_source
         )
     )
+    hardware_sensor_hil_entry_callback_review_handoff_source = (
+        hardware_sensor_hil_entry_callback_review_handoff_ref
+        or os.environ.get("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF", "")
+        or os.environ.get("TRASHBOT_HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_SUMMARY", "")
+        or hardware_sensor_hil_entry_callback_review_handoff_source
+    )
+    hardware_sensor_hil_entry_callback_review_handoff_summary = (
+        summarize_hardware_sensor_hil_entry_callback_review_handoff(
+            hardware_sensor_hil_entry_callback_review_handoff_source
+        )
+    )
     pr5_review_thread_closeout_source = (
         pr5_review_thread_closeout_ref
         or os.environ.get("TRASHBOT_PR5_REVIEW_THREAD_CLOSEOUT", "")
@@ -53459,6 +53963,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary=(
             hardware_sensor_hil_entry_callback_review_decision_summary
+        ),
+        hardware_sensor_hil_entry_callback_review_handoff=(
+            hardware_sensor_hil_entry_callback_review_handoff_summary
+        ),
+        hardware_sensor_hil_entry_callback_review_handoff_summary=(
+            hardware_sensor_hil_entry_callback_review_handoff_summary
+        ),
+        robot_diagnostics_hardware_sensor_hil_entry_callback_review_handoff_summary=(
+            hardware_sensor_hil_entry_callback_review_handoff_summary
         ),
         pr5_review_thread_closeout=pr5_review_thread_closeout_summary,
         pr5_review_thread_closeout_summary=pr5_review_thread_closeout_summary,

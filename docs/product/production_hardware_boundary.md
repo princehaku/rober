@@ -411,6 +411,57 @@ behavior only; they do not prove real 2D LiDAR or ToF procurement, mounting,
 wiring, power, calibration, HIL, field, Objective 5 external cloud proof, PR
 #5 resolution, or delivery evidence.
 
+## Hardware Sensor HIL-entry Callback Review Handoff Gate
+
+`hardware_sensor_hil_entry_callback_review_handoff` is the fail-closed PC
+handoff gate after `hardware_sensor_hil_entry_callback_review_decision`. It
+emits `schema=trashbot.hardware_sensor_hil_entry_callback_review_handoff.v1`
+and
+`schema=trashbot.hardware_sensor_hil_entry_callback_review_handoff_summary.v1`
+under
+`software_proof_docker_hardware_sensor_hil_entry_callback_review_handoff_gate`.
+
+The gate consumes only a supported callback review-decision artifact, summary,
+or nested safe wrapper. It packages the prior review status into
+`handoff_status`, safe `evidence_ref`, `owner_handoff`,
+`missing_required_materials`, `next_required_evidence`, `evidence_boundary`,
+and non-claim flags. It does not copy the original review-decision body into
+the summary and does not read real hardware material directories.
+
+The handoff states cover accepted/ready handoff, blocked missing materials,
+rejected source decision, unsafe input, evidence-ref mismatch, unsupported
+schema, and malformed input. The gate must fail closed for missing or invalid
+review-decision JSON, unsupported schema or evidence boundary, missing or
+unsafe `evidence_ref`, requested `evidence_ref` mismatch, weak boolean/source
+contracts, raw credentials, full local paths, raw serial/UART paths, raw JSON
+artifact copies, complete artifact copies, checksums, OSS/DB/queue/token
+material, HIL passed / field pass / delivery success copy,
+`delivery_success=true`, `primary_actions_enabled=true`, or
+`safe_to_control=true`.
+
+Every output must remain `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+`accepted_ready_hardware_sensor_hil_entry_callback_review_handoff_not_proven`
+means only that the Hardware owner has a safe follow-up package for the prior
+software review decision; it is not a procurement pass, receipt acceptance,
+installation pass, wiring pass, power validation, calibration pass, HIL-entry
+pass, Nav2/SLAM field pass, near-field safety pass, PRRT_kwDOSWB9286CJ3tX
+closure, Objective 5 external proof, real phone/browser proof, route/elevator
+field pass, or delivery result.
+
+The explicit vendor/source boundary for this gate is
+`docs/vendor/VENDOR_INDEX.md`,
+`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`,
+`docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`,
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`,
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`, and
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h`. These
+files are local source references for WAVE ROVER / UART JSON /
+firmware/vendor-app behavior only; they do not prove real 2D LiDAR or ToF SKU,
+mounting, wiring, power, calibration, WAVE ROVER/UART/HIL evidence, field
+evidence, Objective 5 external cloud proof, or delivery evidence.
+
 ## Hardware Real Material Escalation Request Gate
 
 `hardware_real_material_escalation_request` is the fail-closed PC gate for the
