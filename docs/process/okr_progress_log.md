@@ -8,6 +8,26 @@
 
 ## 2026-05-21 系列
 
+更新时间：2026-05-21 03:19 Asia/Shanghai。
+
+### 2026-05-21 03-04｜field-evidence-rerun-execution-callback-review-handoff｜field evidence rerun execution callback review handoff software proof
+
+本轮 `sprints/2026.05.21_03-04_field-evidence-rerun-execution-callback-review-handoff/` 执行 `field_evidence_rerun_execution_callback_review_handoff` epic closeout。Objective 5 仍约 68%，但真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实 phone/browser external proof 不在 Docker-only 主机；Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending，PR #5 已合并且 reply comment id `3269642220` 存在，但这不等于硬件材料到位或 reviewer resolved；PR #6 仍是 README/docs-only 边界。本轮选择 O2/O3/O4 field evidence rerun execution callback review handoff，是为了把上一轮 execution callback review decision 转成 owner handoff、next evidence、rerun guidance 和 reconciliation guidance，而不是宣称真实现场通过。
+
+Autonomy worker 新增 `trashbot.field_evidence_rerun_execution_callback_review_handoff.v1` / `trashbot.field_evidence_rerun_execution_callback_review_handoff_summary.v1` PC gate，消费上一轮 execution callback review decision artifact/summary 或 Robot safe alias，输出 owner handoff、next required evidence、rerun guidance、reconciliation guidance、blocker summary 和 safe copy。Robot worker 新增 `robot_diagnostics_field_evidence_rerun_execution_callback_review_handoff_summary` safe alias，只读消费 sanitized summary，并修复首轮 raw artifact / serial / WAVE ROVER wording 泄漏后复验通过。Full-Stack worker 在 mobile/web 新增只读“现场证据复跑执行回执复核交接”panel，展示 safe `evidence_ref`、owner handoff、next required evidence、rerun guidance、reconciliation guidance、blocker summary 和 fail-closed boundary，不触发 Start Delivery / Confirm Dropoff / Cancel / ACK / cursor / diagnostics fetch / robot command。
+
+证据边界保持 `software_proof_docker_field_evidence_rerun_execution_callback_review_handoff_gate`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL、hardware bridge、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending，`3269642220` 不是 hardware proof。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮把 execution callback review decision 转成 owner handoff、next required evidence、rerun guidance 和 reconciliation guidance；这只是 execution-callback-review-handoff software proof，不证明真实电梯、真实 route/elevator field pass、dropoff/cancel completion、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮继续要求真实 Nav2/fixed-route runtime log、route completion signal、field task record 和同一 safe `evidence_ref` 的现场材料；没有真实路线采集、Nav2/fixed-route 实跑、route completion signal、现场 task_record 或上车复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读“现场证据复跑执行回执复核交接”panel 让现场 owner 和支持同学能看到 safe `evidence_ref`、owner handoff、next required evidence、rerun guidance、reconciliation guidance、blocker summary 和 fail-closed boundary；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮不改 cloud commands/status/ack、不新增公网入口、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或 external proof；`software_proof_docker_field_evidence_rerun_execution_callback_review_handoff_gate` 不能计为 O5 external proof。 |
+
+本轮验证：Autonomy worker 报告 `python3 -m unittest tests.test_field_evidence_rerun_execution_callback_review_handoff` 输出 `Ran 5 tests in 0.102s OK`；Robot worker 报告 diagnostics unittest 输出 `Ran 243 tests ... OK`，并修复 raw artifact / serial / WAVE ROVER wording 泄漏；Full-Stack worker 报告 `python3 -m unittest mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 191 tests in 1.416s OK`。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、PR #6 runtime proof、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
+
 更新时间：2026-05-21 02:17 Asia/Shanghai。
 
 ### 2026-05-21 02-03｜field-evidence-rerun-execution-callback-review-decision｜field evidence rerun execution callback review decision software proof

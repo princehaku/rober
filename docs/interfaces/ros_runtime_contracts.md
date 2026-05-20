@@ -119,3 +119,20 @@ The alias is metadata-only and fail-closed:
 Allowed Robot-visible fields are limited to sanitized review-decision metadata: `safe_evidence_ref`, `source_callback_intake_schema`, `source_callback_intake_status`, `review_status`, `review_decision`, `same_evidence_ref_status`, `accepted_materials`, `missing_materials`, `rejected_materials`, `blocked_materials`, `decision_reasons`, `owner_handoff`, `next_required_evidence`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
 
 The alias must not expose raw callback/review artifacts, complete artifact bodies, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, local paths, checksum values, tracebacks, ACK/cursor state, HIL/pass wording, dropoff/cancel completion, delivery result success, or success/control claims. Missing sanitized summary, unsupported schema or boundary, same-`safe_evidence_ref` mismatch, missing required safe metadata, enabled action flag, unsafe copy, raw marker, local path, checksum, credential, traceback marker, HIL/pass wording, or hardware/control wording keeps the summary blocked/not_proven and leaves task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
+
+## robot_diagnostics_field_evidence_rerun_execution_callback_review_handoff_summary
+
+`robot_diagnostics_field_evidence_rerun_execution_callback_review_handoff_summary` is the Robot diagnostics safe alias for the `field_evidence_rerun_execution_callback_review_handoff` gate. It consumes only the sanitized summary schema `trashbot.field_evidence_rerun_execution_callback_review_handoff_summary.v1`, whose `source_schema` must point back to `trashbot.field_evidence_rerun_execution_callback_review_handoff.v1` and whose evidence boundary must remain `software_proof_docker_field_evidence_rerun_execution_callback_review_handoff_gate`.
+
+The alias is metadata-only and fail-closed:
+
+- `source=software_proof`
+- `not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `metadata_only=true`
+
+Allowed Robot-visible fields are limited to sanitized handoff metadata: `safe_evidence_ref`, `handoff_status`, `review_decision`, `owner_handoff`, `next_required_evidence`, `rerun_guidance`, `reconciliation_guidance`, `blocker_summary`, `same_evidence_ref_required`, `same_evidence_ref_status`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
+
+The alias must not expose raw callback, review, or handoff artifacts, complete artifact bodies, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, local paths, checksum values, tracebacks, ACK/cursor state, HIL/pass wording, dropoff/cancel completion, delivery result success, PR #5 resolved claims, or success/control claims. Missing sanitized summary, unsupported schema or boundary, same-`safe_evidence_ref` mismatch, missing required safe metadata, enabled action flag, unsafe copy, raw marker, local path, checksum, credential, traceback marker, HIL/pass wording, or hardware/control wording keeps the summary blocked/not_proven and leaves task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.

@@ -374,6 +374,15 @@ FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_DECISION_SUMMARY_SCHEMA = (
 FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_DECISION_GATE = (
     "software_proof_docker_field_evidence_rerun_execution_callback_review_decision_gate"
 )
+FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_SCHEMA = (
+    "trashbot.field_evidence_rerun_execution_callback_review_handoff.v1"
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_SUMMARY_SCHEMA = (
+    "trashbot.field_evidence_rerun_execution_callback_review_handoff_summary.v1"
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_GATE = (
+    "software_proof_docker_field_evidence_rerun_execution_callback_review_handoff_gate"
+)
 ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SCHEMA = (
     "trashbot.route_task_field_retest_evidence_dispatch.v1"
 )
@@ -3130,6 +3139,40 @@ def _field_evidence_rerun_execution_callback_review_decision_not_proven(
             source_values.extend(item.get("not_proven"))
     required = (
         "field_evidence_rerun_execution_callback_review_decision_only",
+        "field_rerun_not_executed_by_robot",
+        "real_route_completion_not_verified",
+        "real_field_task_record_not_verified",
+        "real_nav2_fixed_route_runtime_not_verified",
+        "real_elevator_operation_not_verified",
+        "real_dropoff_cancel_completion_not_verified",
+        "real_delivery_result_not_verified",
+        "real_phone_browser_not_verified",
+        "real_hardware_runtime_not_verified",
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "hardware_transport_control",
+        "delivery_success",
+    )
+    values = []
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _field_evidence_rerun_execution_callback_review_handoff_not_proven(
+    handoff=None,
+    summary_fragment=None,
+):
+    # execution handoff 只交接复跑回执复核后的待办，不能被解读成现场复跑或投递成功。
+    source_values = []
+    for item in (handoff, summary_fragment):
+        if isinstance(item, dict) and isinstance(item.get("not_proven"), list):
+            source_values.extend(item.get("not_proven"))
+    required = (
+        "field_evidence_rerun_execution_callback_review_handoff_only",
         "field_rerun_not_executed_by_robot",
         "real_route_completion_not_verified",
         "real_field_task_record_not_verified",
@@ -8356,6 +8399,101 @@ def _default_field_evidence_rerun_execution_callback_review_decision_summary(
         "dropoff_completion": False,
         "cancel_completion": False,
     }
+
+
+def _execution_callback_review_handoff_replace(value, replacements):
+    # 复用旧 handoff 安全逻辑时只做名称和边界映射，不放宽任何字段白名单。
+    if isinstance(value, dict):
+        converted = {}
+        for key, item in value.items():
+            new_key = str(key)
+            for old, new in replacements.items():
+                new_key = new_key.replace(old, new)
+            converted[new_key] = _execution_callback_review_handoff_replace(
+                item,
+                replacements,
+            )
+        return converted
+    if isinstance(value, list):
+        return [
+            _execution_callback_review_handoff_replace(item, replacements)
+            for item in value
+        ]
+    if isinstance(value, str):
+        text = value
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+        return text
+    return value
+
+
+_EXECUTION_CALLBACK_REVIEW_HANDOFF_TO_BASE_HANDOFF = {
+    "field_evidence_rerun_execution_callback_review_handoff": (
+        "field_evidence_rerun_callback_review_handoff"
+    ),
+    "FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF": (
+        "FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_HANDOFF"
+    ),
+    FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_SUMMARY_SCHEMA: (
+        FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_HANDOFF_SUMMARY_SCHEMA
+    ),
+    FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_SCHEMA: (
+        FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_HANDOFF_SCHEMA
+    ),
+    FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_GATE: (
+        FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_HANDOFF_GATE
+    ),
+}
+_BASE_HANDOFF_TO_EXECUTION_CALLBACK_REVIEW_HANDOFF = {
+    value: key for key, value in _EXECUTION_CALLBACK_REVIEW_HANDOFF_TO_BASE_HANDOFF.items()
+}
+
+
+def _strip_execution_callback_review_handoff_forbidden_terms(summary):
+    # 新 alias 只保留任务交接元数据；串口、UART、WAVE ROVER 字段名本身也不能外露。
+    if not isinstance(summary, dict):
+        return summary
+    summary.pop("serial_uart_triggered", None)
+    summary.pop("wave_rover_triggered", None)
+    if isinstance(summary.get("not_proven"), list):
+        summary["not_proven"] = [
+            item
+            for item in summary["not_proven"]
+            if "serial" not in str(item).lower()
+            and "uart" not in str(item).lower()
+            and "wave_rover" not in str(item).lower()
+        ]
+    return summary
+
+
+def _default_field_evidence_rerun_execution_callback_review_handoff_summary(
+    path,
+    handoff_status="blocked_missing_field_evidence_rerun_execution_callback_review_handoff",
+    read_error="",
+):
+    # 新 alias 的缺省态沿用 handoff 的 fail-closed 结构，但 gate/schema 必须是 execution rung。
+    summary = _default_field_evidence_rerun_callback_review_handoff_summary(
+        path,
+        handoff_status=handoff_status.replace(
+            "field_evidence_rerun_execution_callback_review_handoff",
+            "field_evidence_rerun_callback_review_handoff",
+        ),
+        read_error=read_error.replace(
+            "field evidence rerun execution callback review handoff",
+            "field evidence rerun callback review handoff",
+        ),
+    )
+    summary = _execution_callback_review_handoff_replace(
+        summary,
+        _BASE_HANDOFF_TO_EXECUTION_CALLBACK_REVIEW_HANDOFF,
+    )
+    if isinstance(summary.get("boundary_flags"), dict):
+        # 默认摘要也不能出现 raw-artifact 字样，避免 diagnostics alias 泄露 raw 材料语义。
+        summary["boundary_flags"].pop("raw_artifact_consumed", None)
+    summary["not_proven"] = (
+        _field_evidence_rerun_execution_callback_review_handoff_not_proven()
+    )
+    return _strip_execution_callback_review_handoff_forbidden_terms(summary)
 
 
 def _default_route_task_field_retest_result_callback_review_handoff_summary(
@@ -33297,6 +33435,121 @@ def summarize_field_evidence_rerun_execution_callback_review_decision(source):
     return summary
 
 
+def summarize_field_evidence_rerun_execution_callback_review_handoff(source):
+    """构建 field evidence rerun execution callback review handoff 的 Robot-safe 只读摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        handoff = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_field_evidence_rerun_execution_callback_review_handoff_summary(
+            source_path,
+            read_error=(
+                "field evidence rerun execution callback review handoff is not configured"
+            ),
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "handoff_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": (
+                            "field evidence rerun execution callback review handoff summary missing"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": (
+                            "field evidence rerun execution callback review handoff summary missing"
+                        ),
+                    },
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                handoff = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "handoff_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            "failed reading field evidence rerun execution callback "
+                            f"review handoff: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": (
+                            "field evidence rerun execution callback review handoff JSON read error"
+                        ),
+                    },
+                }
+            )
+            return summary
+
+    if not isinstance(handoff, dict):
+        summary = _default_field_evidence_rerun_execution_callback_review_handoff_summary(
+            source_path,
+            read_error="field evidence rerun execution callback review handoff is invalid",
+        )
+        summary.update(
+            {
+                "handoff_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "field evidence rerun execution callback review handoff JSON must be an object"
+                    ),
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": (
+                        "field evidence rerun execution callback review handoff JSON shape is invalid"
+                    ),
+                },
+            }
+        )
+        return summary
+
+    # 旧 handoff 路径已有严格白名单和 raw-material 拒绝逻辑；这里仅映射新 rung 名称后复用。
+    base_handoff = _execution_callback_review_handoff_replace(
+        handoff,
+        _EXECUTION_CALLBACK_REVIEW_HANDOFF_TO_BASE_HANDOFF,
+    )
+    base_summary = summarize_field_evidence_rerun_callback_review_handoff(base_handoff)
+    summary = _execution_callback_review_handoff_replace(
+        base_summary,
+        _BASE_HANDOFF_TO_EXECUTION_CALLBACK_REVIEW_HANDOFF,
+    )
+    summary["schema"] = FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_SUMMARY_SCHEMA
+    summary["evidence_boundary"] = FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_GATE
+    summary["boundary"] = FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_GATE
+    if summary.get("source_schema") == FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_HANDOFF_SCHEMA:
+        summary["source_schema"] = FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_SCHEMA
+    if summary.get("source_evidence_boundary") == FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_HANDOFF_GATE:
+        summary["source_evidence_boundary"] = (
+            FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_GATE
+        )
+    if isinstance(summary.get("boundary_flags"), dict):
+        # 新 execution alias 不向 diagnostics 暴露任何 raw-artifact 词面，哪怕值为 false。
+        summary["boundary_flags"].pop("raw_artifact_consumed", None)
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    summary["not_proven"] = (
+        _field_evidence_rerun_execution_callback_review_handoff_not_proven(
+            handoff,
+            summary,
+        )
+    )
+    return _strip_execution_callback_review_handoff_forbidden_terms(summary)
+
+
 def summarize_route_task_field_retest_result_callback_review_handoff(source):
     """构建 route-task field retest result callback review handoff 的 metadata-only diagnostics 摘要。"""
     source_path = ""
@@ -50938,6 +51191,7 @@ def build_diagnostics_payload(
     field_evidence_rerun_execution_pack_ref="",
     field_evidence_rerun_execution_callback_intake_ref="",
     field_evidence_rerun_execution_callback_review_decision_ref="",
+    field_evidence_rerun_execution_callback_review_handoff_ref="",
     route_task_field_retest_evidence_dispatch_ref="",
     route_task_field_retest_callback_intake_ref="",
     route_task_field_retest_callback_review_decision_ref="",
@@ -53610,6 +53864,16 @@ def build_diagnostics_payload(
         None,
     )
     latest_status.pop("field_evidence_rerun_execution_callback_review_decision_copy", None)
+    latest_status.pop("field_evidence_rerun_execution_callback_review_handoff", None)
+    latest_status.pop(
+        "field_evidence_rerun_execution_callback_review_handoff_summary",
+        None,
+    )
+    latest_status.pop(
+        "robot_diagnostics_field_evidence_rerun_execution_callback_review_handoff_summary",
+        None,
+    )
+    latest_status.pop("field_evidence_rerun_execution_callback_review_handoff_copy", None)
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -54397,6 +54661,68 @@ def build_diagnostics_payload(
     field_evidence_rerun_execution_callback_review_decision_summary = (
         summarize_field_evidence_rerun_execution_callback_review_decision(
             field_evidence_rerun_execution_callback_review_decision_source
+        )
+    )
+    field_evidence_rerun_execution_callback_review_handoff_status_source = (
+        latest_status.get(
+            "robot_diagnostics_field_evidence_rerun_execution_callback_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_field_evidence_rerun_execution_callback_review_handoff_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "field_evidence_rerun_execution_callback_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get("field_evidence_rerun_execution_callback_review_handoff_summary"),
+            dict,
+        )
+        else latest_status.get("field_evidence_rerun_execution_callback_review_handoff")
+        if isinstance(
+            latest_status.get("field_evidence_rerun_execution_callback_review_handoff"),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_field_evidence_rerun_execution_callback_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_field_evidence_rerun_execution_callback_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "field_evidence_rerun_execution_callback_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get("field_evidence_rerun_execution_callback_review_handoff_summary"),
+            dict,
+        )
+        else diagnostics_source.get("field_evidence_rerun_execution_callback_review_handoff")
+        if isinstance(
+            diagnostics_source.get("field_evidence_rerun_execution_callback_review_handoff"),
+            dict,
+        )
+        else {}
+    )
+    field_evidence_rerun_execution_callback_review_handoff_source = (
+        field_evidence_rerun_execution_callback_review_handoff_ref
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_SUMMARY",
+            "",
+        )
+        or field_evidence_rerun_execution_callback_review_handoff_status_source
+    )
+    field_evidence_rerun_execution_callback_review_handoff_summary = (
+        summarize_field_evidence_rerun_execution_callback_review_handoff(
+            field_evidence_rerun_execution_callback_review_handoff_source
         )
     )
     route_task_field_retest_evidence_dispatch_source = (
@@ -55294,6 +55620,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_field_evidence_rerun_execution_callback_review_decision_summary=(
             field_evidence_rerun_execution_callback_review_decision_summary
+        ),
+        field_evidence_rerun_execution_callback_review_handoff=(
+            field_evidence_rerun_execution_callback_review_handoff_summary
+        ),
+        field_evidence_rerun_execution_callback_review_handoff_summary=(
+            field_evidence_rerun_execution_callback_review_handoff_summary
+        ),
+        robot_diagnostics_field_evidence_rerun_execution_callback_review_handoff_summary=(
+            field_evidence_rerun_execution_callback_review_handoff_summary
         ),
         route_task_field_retest_evidence_dispatch=route_task_field_retest_evidence_dispatch_summary,
         route_task_field_retest_evidence_dispatch_summary=route_task_field_retest_evidence_dispatch_summary,
