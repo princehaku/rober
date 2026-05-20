@@ -3551,5 +3551,113 @@
       "HIL",
       "O5 external proof"
     ]
+  },
+  "robot_diagnostics_field_evidence_rerun_queue_summary": {
+    "schema": "trashbot.field_evidence_rerun_queue_summary.v1",
+    "schema_version": 1,
+    "queue_schema": "trashbot.field_evidence_rerun_queue.v1",
+    "source_handoff_intake_schema": "trashbot.field_evidence_rerun_handoff_intake.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_queue_summary",
+    "source": "software_proof",
+    "queue_status": "ready_for_field_owner_rerun_queue_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_callback_intake_fixture_20260520_0001",
+    "source_handoff_intake_status": "ready_for_field_owner_handoff_intake_not_proven",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "blocker_summary": [
+      "blocked=real route completion signal missing",
+      "blocked=real task record missing",
+      "blocked=real phone/browser evidence missing"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real route completion signal",
+      "next_required_evidence=real field task record",
+      "next_required_evidence=real phone/browser evidence"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field owner receives software_proof queue metadata",
+      "owner_handoff=Robot owner keeps diagnostics summary sanitized",
+      "owner_handoff=Full-stack keeps mobile panel read-only"
+    ],
+    "rerun_guidance": [
+      "rerun_guidance=keep same safe evidence_ref before field rerun",
+      "rerun_guidance=collect real route/elevator and phone evidence before review"
+    ],
+    "safe_rerun_hint": "safe_rerun_hint=manual field rerun scheduling metadata only; no control request is sent",
+    "safe_copy": "现场证据复跑队列 safe copy：queue_status=ready_for_field_owner_rerun_queue_not_proven，source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑队列 fixture 只读展示 queue status、source handoff intake status、same evidence_ref、blocker summary、next required evidence、owner handoff 和 rerun guidance；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_queue_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
+  },
+  "field_evidence_rerun_queue_summary": {
+    "schema": "trashbot.field_evidence_rerun_queue_summary.v1",
+    "schema_version": 1,
+    "queue_schema": "trashbot.field_evidence_rerun_queue.v1",
+    "source_handoff_intake_schema": "trashbot.field_evidence_rerun_handoff_intake.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_queue_summary",
+    "source": "software_proof",
+    "queue_status": "ready_for_field_owner_rerun_queue_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_callback_intake_fixture_20260520_0001",
+    "source_handoff_intake_status": "ready_for_field_owner_handoff_intake_not_proven",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "blocker_summary": [
+      "blocked=real route completion signal missing",
+      "blocked=real task record missing",
+      "blocked=real phone/browser evidence missing"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real route completion signal",
+      "next_required_evidence=real field task record",
+      "next_required_evidence=real phone/browser evidence"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field owner receives software_proof queue metadata",
+      "owner_handoff=Robot owner keeps diagnostics summary sanitized",
+      "owner_handoff=Full-stack keeps mobile panel read-only"
+    ],
+    "rerun_guidance": [
+      "rerun_guidance=keep same safe evidence_ref before field rerun",
+      "rerun_guidance=collect real route/elevator and phone evidence before review"
+    ],
+    "safe_rerun_hint": "safe_rerun_hint=manual field rerun scheduling metadata only; no control request is sent",
+    "safe_copy": "现场证据复跑队列 safe copy：queue_status=ready_for_field_owner_rerun_queue_not_proven，source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑队列 fixture 只读展示 queue status、source handoff intake status、same evidence_ref、blocker summary、next required evidence、owner handoff 和 rerun guidance；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_queue_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
   }
 }

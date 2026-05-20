@@ -8508,6 +8508,121 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, intake_text)
 
+    def test_field_evidence_rerun_queue_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 复跑队列 panel 只消费 safe summary，不新增 queue scheduling、diagnostics fetch 或控制请求。
+        self.assertIn("FIELD_EVIDENCE_RERUN_QUEUE_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_RERUN_QUEUE_TEXT", app)
+        self.assertIn("safeFieldEvidenceRerunQueueText", app)
+        self.assertIn("fieldEvidenceRerunQueueCandidate", app)
+        self.assertIn("fieldEvidenceRerunQueueFromStatus", app)
+        self.assertIn("renderFieldEvidenceRerunQueue", app)
+        self.assertIn("现场证据复跑队列", app)
+        self.assertIn("robot_diagnostics_field_evidence_rerun_queue_summary", app)
+        self.assertIn("field_evidence_rerun_queue_summary", app)
+        self.assertIn("field_evidence_rerun_queue?.summary", app)
+        self.assertIn("queue_status", app)
+        self.assertIn("source_handoff_intake_status", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("safe_rerun_hint", app)
+        self.assertIn("rerun_guidance", app)
+        self.assertIn("blocker_summary", app)
+        self.assertIn("same_evidence_ref_status", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"fieldEvidenceRerunQueue.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+        self.assertNotIn("copyFieldEvidenceRerunQueueButton", app)
+        self.assertNotIn("downloadFieldEvidenceRerunQueueButton", app)
+        self.assertNotIn("scheduleFieldEvidenceRerunQueue", app)
+
+        # Web fixture 和文档必须固定 software proof / not_proven / not-control 边界。
+        queue = fixture["robot_diagnostics_field_evidence_rerun_queue_summary"]
+        fallback = fixture["field_evidence_rerun_queue_summary"]
+        self.assertEqual(queue["queue_status"], "ready_for_field_owner_rerun_queue_not_proven")
+        self.assertEqual(queue["source"], "software_proof")
+        self.assertEqual(queue["safe_to_control"], False)
+        self.assertEqual(queue["delivery_success"], False)
+        self.assertEqual(queue["primary_actions_enabled"], False)
+        self.assertIn("source_handoff_intake_status", queue)
+        self.assertIn("same_evidence_ref_status", queue)
+        self.assertIn("blocker_summary", queue)
+        self.assertIn("next_required_evidence", queue)
+        self.assertIn("owner_handoff", queue)
+        self.assertIn("rerun_guidance", queue)
+        self.assertIn("safe_rerun_hint", queue)
+        self.assertEqual(fallback["source"], "software_proof")
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertIn("software_proof_docker_field_evidence_rerun_queue_gate", fixture_text)
+        self.assertIn("field_evidence_rerun_queue", doc)
+        self.assertIn("现场证据复跑队列", doc)
+        self.assertIn("not PR #5 hardware proof", doc)
+        self.assertIn("not Objective 5 external proof", doc)
+
+    def test_field_evidence_rerun_queue_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        queue_text = json.dumps(
+            {
+                "queue": fixture["robot_diagnostics_field_evidence_rerun_queue_summary"],
+                "fallback": fixture["field_evidence_rerun_queue_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # 队列 fixture 只能承载脱敏排队摘要，不能泄漏 raw queue、底层控制或现场通过语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw review",
+            "raw handoff",
+            "raw intake",
+            "raw packet",
+            "raw queue",
+            "full callback",
+            "full review",
+            "complete callback",
+            "complete review",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "automatic retry",
+            "queue scheduling",
+            "robot command",
+            "robot/internal",
+            "control authorization",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, queue_text)
+
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
         app = self.read_web("app.js")

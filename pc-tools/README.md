@@ -579,6 +579,25 @@ python3 pc-tools/evidence/field_evidence_rerun_handoff_intake.py \
 
 该 gate 不读取真实材料目录、不触发现场复跑、不访问 ROS graph、Nav2/fixed-route runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺 callback-review-handoff 输入、缺 owner-safe packet、bad JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、source handoff 不是 `ready_for_field_evidence_rerun_callback_review_handoff`、packet 缺 `owner` / `handoff_received=true` / `intake_notes` / `next_required_evidence`、证据号不一致、弱类型 `same_evidence_ref_required`、unsafe copy、raw path、credential、ROS topic、serial/UART/WAVE ROVER detail、checksum、完整 artifact、traceback、success/control claim、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_evidence_rerun_handoff_intake_not_proven` 只表示 Docker/local `software_proof_docker_field_evidence_rerun_handoff_intake_gate` 已把上一轮 handoff 和 owner-safe packet 复账成只读 intake summary，不是真实 route/elevator field pass、真实 Nav2/fixed-route proof、dropoff/cancel completion、delivery success、HIL、O5 external proof、PR #5 resolved 或真实 phone/browser 证据。
 
+## field evidence rerun queue
+
+`pc-tools/evidence/field_evidence_rerun_queue.py` 只读上一节 `field_evidence_rerun_handoff_intake` artifact、summary 或 wrapper/nested JSON，并可选读取 owner-safe queue request JSON，把 owner-safe handoff intake 转成 metadata-only 受控现场复跑队列候选：
+
+```bash
+python3 pc-tools/evidence/field_evidence_rerun_queue.py \
+  --handoff-intake-json /tmp/field_evidence_rerun_handoff_intake_summary.json \
+  --queue-request-json /tmp/field_evidence_rerun_queue_request.json \
+  --evidence-ref ev-field-queue-001 \
+  --output /tmp/field_evidence_rerun_queue.json \
+  --summary-output /tmp/field_evidence_rerun_queue_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.field_evidence_rerun_queue.v1`，summary 使用 `schema=trashbot.field_evidence_rerun_queue_summary.v1`，证据边界固定为 `software_proof_docker_field_evidence_rerun_queue_gate`。核心字段包括 `queue_status`、source handoff intake status、safe `evidence_ref`、`same_evidence_ref_status`、owner-safe queue request、`blocker_summary`、`next_required_evidence`、`owner_handoff`、`safe_rerun_hint` / `rerun_guidance`、`safe_copy`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+`queue_status` 固定包含 `queued_for_controlled_field_rerun_not_proven`、`needs_owner_safe_queue_request_before_rerun_queue`、`needs_field_evidence_rerun_queue_backfill`、`evidence_ref_mismatch_field_evidence_rerun_queue`、`blocked_unsafe_field_evidence_rerun_queue` 和 `blocked_unsupported_field_evidence_rerun_handoff_intake`。顶层 acceptance command 可用 `python3 -m unittest tests.test_field_evidence_rerun_queue` 复用离线围栏测试；该入口只证明本地 queue gate 的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
+
+该 gate 不读取真实材料目录、不触发现场复跑、不访问 ROS graph、Nav2/fixed-route runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺 handoff-intake 输入、缺 owner-safe queue request、bad JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、source intake 不是 `ready_for_field_evidence_rerun_handoff_intake_not_proven`、queue request 缺 acknowledged owner state、证据号不一致、弱类型 `same_evidence_ref_required`、`same_evidence_ref_status` 非 matched/ready、unsafe copy、raw path、credential、ROS topic、`/cmd_vel`、serial/UART/WAVE ROVER detail、checksum、完整/raw artifact、traceback、success/control wording、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`queued_for_controlled_field_rerun_not_proven` 只表示 Docker/local `software_proof_docker_field_evidence_rerun_queue_gate` 已把 owner-safe handoff intake 转成受控现场复跑队列候选，不是真实 route/elevator field pass、真实现场复跑、Nav2/fixed-route proof、task record/completion signal、dropoff/cancel completion、delivery success、HIL、O5 external proof、PR #5 resolved 或真实 phone/browser 证据。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

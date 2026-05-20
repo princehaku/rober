@@ -907,6 +907,78 @@ completion, real cancel completion, real delivery result, real phone/browser
 evidence, HIL pass, Objective 5 external cloud/4G/OSS/CDN/DB/queue proof, PR #5
 resolution, or any primary robot action being enabled.
 
+## field_evidence_rerun_queue
+
+`pc-tools/evidence/field_evidence_rerun_queue.py` generates the PC-only
+controlled rerun queue gate after `field_evidence_rerun_handoff_intake.py`.
+It consumes only a supported handoff-intake artifact/summary/wrapper JSON and
+an optional owner-safe queue request JSON; it does not read field material
+directories, execute field reruns, or open raw materials.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_queue.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_queue_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_queue_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_handoff_intake.v1` and
+  `trashbot.field_evidence_rerun_handoff_intake_summary.v1` under
+  `software_proof_docker_field_evidence_rerun_handoff_intake_gate`.
+  Wrapper, summary, artifact, robot diagnostics, mobile read-only, payload, and
+  nested diagnostics JSON are allowed only through known safe wrapper keys.
+- Owner-safe queue request:
+  optional CLI input, but required for `queued_for_controlled_field_rerun_not_proven`.
+  Missing request still emits a blocked/not-proven summary. A supported request
+  must carry the same safe `evidence_ref`, `source=software_proof`,
+  `not_proven`, `same_evidence_ref_required=true`, acknowledged owner queue
+  state, `safe_to_control=false`, `delivery_success=false`, and
+  `primary_actions_enabled=false`.
+- Queue status values:
+  `queued_for_controlled_field_rerun_not_proven`,
+  `needs_owner_safe_queue_request_before_rerun_queue`,
+  `needs_field_evidence_rerun_queue_backfill`,
+  `evidence_ref_mismatch_field_evidence_rerun_queue`,
+  `blocked_unsafe_field_evidence_rerun_queue`, and
+  `blocked_unsupported_field_evidence_rerun_handoff_intake`.
+
+The output always includes `source=software_proof`, `queue_status`, source
+handoff intake status, safe `evidence_ref`, `same_evidence_ref_required=true`,
+`same_evidence_ref_status`, owner-safe queue request, `blocker_summary`,
+`next_required_evidence`, `owner_handoff`, `safe_rerun_hint` /
+`rerun_guidance`, `safe_copy`, `not_proven`, `safe_to_control=false`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_queue_gate`.
+The summary mirrors the artifact and is the intended read-only consumer surface
+for Robot diagnostics and mobile/web follow-through.
+
+Queue mapping is fail-closed. A supported, safe source handoff intake with
+`intake_status=ready_for_field_evidence_rerun_handoff_intake_not_proven`,
+matched safe `evidence_ref`, `same_evidence_ref_required=true`,
+`same_evidence_ref_status=matched`, `source=software_proof`, `not_proven`, all
+action flags false, and a supported owner-safe acknowledged request maps to
+`queued_for_controlled_field_rerun_not_proven`. Missing source input, bad JSON,
+unsupported source schema or boundary, or missing software-proof/not-proven
+fields fails closed to `blocked_unsupported_field_evidence_rerun_handoff_intake`.
+Missing owner-safe queue request, unsupported request, or missing owner queue
+acknowledgement fails closed to
+`needs_owner_safe_queue_request_before_rerun_queue`. A non-ready source intake
+maps to `needs_field_evidence_rerun_queue_backfill`. Mismatched evidence refs,
+missing safe evidence_ref, weak same-ref typing, or non-matched same-ref status
+maps to `evidence_ref_mismatch_field_evidence_rerun_queue`. Unsafe copy, raw
+paths, credentials, ROS topic text, `/cmd_vel`, serial/UART/WAVE ROVER text,
+checksum text, complete/raw artifact text, traceback text, success/control
+wording, `safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` fail closed to
+`blocked_unsafe_field_evidence_rerun_queue`.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, real controlled field rerun, real Nav2/fixed-route execution, real
+field task record, real route completion signal, real dropoff or cancel
+completion, real delivery result, real phone/browser evidence, HIL pass,
+Objective 5 external cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, or any
+primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`
