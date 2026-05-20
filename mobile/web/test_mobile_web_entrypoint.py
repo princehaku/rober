@@ -6949,6 +6949,136 @@ class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, intake_text)
 
+    def test_mobile_real_device_field_trial_acceptance_execution_handoff_review_decision_is_fail_closed_and_exportable(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        web_fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # handoff review decision 只消费 Robot safe alias/summary；它不提交 ACK、diagnostics fetch 或控制请求。
+        self.assertIn("MOBILE_REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_HANDOFF_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_HANDOFF_REVIEW_DECISION_SCHEMA", app)
+        self.assertIn("UNSAFE_REAL_DEVICE_ACCEPTANCE_EXECUTION_HANDOFF_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeRealDeviceAcceptanceExecutionHandoffReviewDecisionText", app)
+        self.assertIn("mobileRealDeviceFieldTrialAcceptanceExecutionHandoffReviewDecisionCandidate", app)
+        self.assertIn("mobileRealDeviceFieldTrialAcceptanceExecutionHandoffReviewDecisionFromStatus", app)
+        self.assertIn("realDeviceFieldTrialAcceptanceExecutionHandoffReviewDecisionCopyPayload", app)
+        self.assertIn("mobileRealDeviceFieldTrialAcceptanceExecutionHandoffReviewDecisionTitle", app)
+        self.assertIn("现场验收交接复核决策", app)
+        self.assertIn("robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_handoff_review_decision_summary", app)
+        self.assertIn("review_decision", app)
+        self.assertIn("source_handoff_intake_status", app)
+        self.assertIn("accepted_summaries", app)
+        self.assertIn("missing_summaries", app)
+        self.assertIn("rejected_summaries", app)
+        self.assertIn("blocked_summaries", app)
+        self.assertIn("next_owner", app)
+        self.assertIn("rerun_guidance", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("real-device-field-trial-acceptance-execution-handoff-review-decision-panel", styles)
+        self.assertIn("real-device-field-trial-acceptance-execution-handoff-review-decision-grid", styles)
+        self.assertNotRegex(
+            app,
+            r"mobileRealDeviceFieldTrialAcceptanceExecutionHandoffReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+
+        # copy/export 只输出 whitelist payload，复核决策 metadata 不能解锁 Start/Confirm/Cancel。
+        self.assertIn("copyMobileRealDeviceFieldTrialAcceptanceExecutionHandoffReviewDecisionButton", app)
+        self.assertIn("downloadMobileRealDeviceFieldTrialAcceptanceExecutionHandoffReviewDecisionButton", app)
+        self.assertIn("trashbot.mobile_real_device_field_trial_acceptance_execution_handoff_review_decision_copy.v1", app)
+        self.assertIn("mobile_real_device_field_trial_acceptance_execution_handoff_review_decision_copy.json", app)
+        self.assertNotRegex(app, r"HandoffReviewDecision.*latestStartGate\.(startEnabled|can_collect|can_confirm_dropoff|can_cancel)")
+
+        # fixture、Web fixture 和文档必须固定 review decision 的 software proof / not_proven / not-control 边界。
+        decision = fixture["phone_readiness"]["mobile_real_device_field_trial_acceptance_execution_handoff_review_decision"]
+        alias = fixture["phone_readiness"]["robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_handoff_review_decision_summary"]
+        web_alias = web_fixture["robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_handoff_review_decision_summary"]
+        self.assertEqual(decision["review_decision"], "needs_field_owner_follow_up_not_proven")
+        self.assertEqual(decision["source"], "software_proof")
+        self.assertEqual(decision["safe_to_control"], False)
+        self.assertEqual(decision["delivery_success"], False)
+        self.assertEqual(decision["primary_actions_enabled"], False)
+        self.assertIn("accepted_summaries", decision)
+        self.assertIn("missing_summaries", decision)
+        self.assertIn("rejected_summaries", decision)
+        self.assertIn("blocked_summaries", decision)
+        self.assertEqual(alias["source"], "software_proof")
+        self.assertEqual(web_alias["primary_actions_enabled"], False)
+        self.assertIn(
+            "software_proof_docker_mobile_real_device_field_trial_acceptance_execution_handoff_review_decision_gate",
+            fixture_text,
+        )
+        self.assertIn("mobile_real_device_field_trial_acceptance_execution_handoff_review_decision", doc)
+        self.assertIn("现场验收交接复核决策", doc)
+
+    def test_mobile_real_device_field_trial_acceptance_execution_handoff_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        web_fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        decision_text = json.dumps(
+            {
+                "handoff_review_decision": fixture["phone_readiness"]["mobile_real_device_field_trial_acceptance_execution_handoff_review_decision"],
+                "alias": fixture["phone_readiness"]["robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_handoff_review_decision_summary"],
+                "web_alias": web_fixture["robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_handoff_review_decision_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # review decision fixture 只能携带脱敏复核摘要，不能带 raw JSON、完整 artifact、控制授权或现场通过语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw review",
+            "raw decision",
+            "raw handoff",
+            "raw intake",
+            "raw owner ack",
+            "raw ack",
+            "full callback",
+            "full review",
+            "full handoff",
+            "full intake",
+            "complete callback",
+            "complete review",
+            "complete handoff",
+            "complete intake",
+            "complete artifact",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "robot command",
+            "robot/internal",
+            "control authorization",
+            "control grant",
+            "field pass",
+            "hil_pass",
+            "hil passed",
+            "真实手机已验收",
+            "验收通过",
+            "现场通过",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, decision_text)
+
 class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")
