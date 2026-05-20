@@ -9238,6 +9238,124 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, pack_text)
 
+    def test_field_evidence_rerun_execution_callback_intake_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 执行回执入口只消费 Robot safe alias 和兼容 summary，不新增 callback submission、ACK 或控制请求。
+        self.assertIn("FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_INTAKE_TEXT", app)
+        self.assertIn("safeFieldEvidenceRerunExecutionCallbackIntakeText", app)
+        self.assertIn("fieldEvidenceRerunExecutionCallbackIntakeCandidate", app)
+        self.assertIn("fieldEvidenceRerunExecutionCallbackIntakeFromStatus", app)
+        self.assertIn("renderFieldEvidenceRerunExecutionCallbackIntake", app)
+        self.assertIn("现场证据复跑执行回执入口", app)
+        self.assertIn("robot_diagnostics_field_evidence_rerun_execution_callback_intake_summary", app)
+        self.assertIn("field_evidence_rerun_execution_callback_intake_summary", app)
+        self.assertIn("field_evidence_rerun_execution_callback_intake?.summary", app)
+        self.assertIn("callback_packet_status", app)
+        self.assertIn("source_execution_pack_status", app)
+        self.assertIn("accepted_materials", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("rejected_materials", app)
+        self.assertIn("blocked_materials", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceRerunExecutionCallbackIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotIn("copyFieldEvidenceRerunExecutionCallbackIntakeButton", app)
+        self.assertNotIn("downloadFieldEvidenceRerunExecutionCallbackIntakeButton", app)
+        self.assertNotIn("submitFieldEvidenceRerunExecutionCallbackIntake", app)
+        self.assertNotIn("scheduleFieldEvidenceRerunExecutionCallbackIntake", app)
+
+        # fixture 明确执行回执入口仍是 not_proven 软件证明，不能打开 Start/Confirm/Cancel。
+        summary = fixture["robot_diagnostics_field_evidence_rerun_execution_callback_intake_summary"]
+        fallback = fixture["field_evidence_rerun_execution_callback_intake_summary"]
+        self.assertEqual(
+            summary["callback_packet_status"],
+            "blocked_missing_field_evidence_rerun_execution_callback_materials_not_proven",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("accepted_materials", summary)
+        self.assertIn("missing_materials", summary)
+        self.assertIn("rejected_materials", summary)
+        self.assertIn("blocked_materials", summary)
+        self.assertIn("owner_handoff", summary)
+        self.assertIn("next_required_evidence", summary)
+        self.assertEqual(fallback["source"], "software_proof")
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertIn("software_proof_docker_field_evidence_rerun_execution_callback_intake_gate", fixture_text)
+        self.assertIn("field_evidence_rerun_execution_callback_intake", doc)
+        self.assertIn("现场证据复跑执行回执入口", doc)
+        self.assertIn("not PR #5 hardware proof", doc)
+        self.assertIn("not Objective 5 external proof", doc)
+
+    def test_field_evidence_rerun_execution_callback_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        intake_text = json.dumps(
+            {
+                "execution_callback_intake":
+                    fixture["robot_diagnostics_field_evidence_rerun_execution_callback_intake_summary"],
+                "fallback": fixture["field_evidence_rerun_execution_callback_intake_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # 执行回执入口 fixture 只保留材料分类和下一步证据，不泄漏 raw callback、ACK/cursor 或调度语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw packet",
+            "raw execution",
+            "full execution pack",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "automatic retry",
+            "queue scheduling",
+            "execution scheduling",
+            "callback submission",
+            "robot command",
+            "robot/internal",
+            "control authorization",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, intake_text)
+
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
         app = self.read_web("app.js")

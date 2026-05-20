@@ -1045,6 +1045,90 @@ delivery result, real phone/browser evidence, HIL pass, Objective 5 external
 cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, or any primary robot action
 being enabled.
 
+## field_evidence_rerun_execution_callback_intake
+
+`pc-tools/evidence/field_evidence_rerun_execution_callback_intake.py`
+generates the PC-only execution callback intake gate after
+`field_evidence_rerun_execution_pack.py`. It consumes only a supported
+execution-pack artifact/summary/wrapper JSON and a field owner execution
+callback packet; it does not read field material directories, execute field
+reruns, schedule robot actions, or expose raw callback material.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_callback_intake.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_callback_intake_summary.v1`
+- Robot safe alias:
+  `robot_diagnostics_field_evidence_rerun_execution_callback_intake_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_callback_intake_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_pack.v1` and
+  `trashbot.field_evidence_rerun_execution_pack_summary.v1` under
+  `software_proof_docker_field_evidence_rerun_execution_pack_gate`.
+- Allowed callback inputs:
+  an optional-schema
+  `trashbot.field_evidence_rerun_execution_callback_packet.v1` or
+  `_summary.v1` object with `source=software_proof`, `not_proven`,
+  same safe `evidence_ref`, and all action flags false.
+- Callback intake status values:
+  `ready_for_field_evidence_rerun_execution_callback_intake_not_proven`,
+  `blocked_field_evidence_rerun_execution_callback_materials_not_ready`,
+  `blocked_field_evidence_rerun_execution_pack_not_ready`,
+  `evidence_ref_mismatch_field_evidence_rerun_execution_callback_intake_blocked`,
+  `blocked_unsafe_field_evidence_rerun_execution_callback_intake_copy`, and
+  `blocked_unsupported_field_evidence_rerun_execution_callback_intake_source`.
+
+The output always includes `source=software_proof`, `callback_intake_status`,
+`source_execution_pack_schema`, `source_execution_pack_status`,
+`callback_packet_schema`, `callback_packet_status`, safe `evidence_ref`,
+`same_evidence_ref_required=true`, `same_evidence_ref_status`,
+`accepted_materials`, `missing_materials`, `rejected_materials`,
+`blocked_materials`, `owner_handoff`, `next_required_evidence`, `safe_copy`,
+`not_proven`, `safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_callback_intake_gate`.
+The required material categories are `task_record`,
+`nav2_fixed_route_runtime_log`, `route_completion_signal`,
+`elevator_door_state`, `target_floor_confirmation`,
+`human_assistance_record`, `dropoff_completion`, `cancel_completion`,
+`delivery_result`, and `phone_browser_evidence`.
+The gate accepts the prior execution-pack template groups as coverage for
+these categories, including combined elevator context and terminal completion
+templates, but the callback packet itself must still classify the ten
+categories explicitly.
+
+Execution callback mapping is fail-closed. A supported, safe execution pack
+with `execution_pack_status=ready_for_field_evidence_rerun_execution_pack_not_proven`,
+matched safe `evidence_ref`, `same_evidence_ref_required=true`,
+`same_evidence_ref_status=matched`, `source=software_proof`, `not_proven`, and
+all action flags false can map to
+`ready_for_field_evidence_rerun_execution_callback_intake_not_proven` only
+when the callback packet marks all required categories as `accepted`. Missing,
+rejected, blocked, unknown, or invalid material classifications map to
+`blocked_field_evidence_rerun_execution_callback_materials_not_ready`.
+Non-ready execution packs map to
+`blocked_field_evidence_rerun_execution_pack_not_ready`. Mismatched evidence
+refs, missing safe evidence_ref, weak same-ref typing, or non-matched same-ref
+status maps to
+`evidence_ref_mismatch_field_evidence_rerun_execution_callback_intake_blocked`.
+Missing source or callback JSON, bad JSON, unsupported schema or boundary, or
+missing software-proof/not-proven fields fails closed to
+`blocked_unsupported_field_evidence_rerun_execution_callback_intake_source`.
+Unsafe copy, raw paths, credentials, ROS topic text, `/cmd_vel`, serial/UART or
+WAVE ROVER text, checksum text, complete/raw artifact text, traceback text,
+success/control wording, `safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` fail closed to
+`blocked_unsafe_field_evidence_rerun_execution_callback_intake_copy`.
+
+This contract is software proof only. It does not prove a real field rerun,
+real route/elevator field pass, real Nav2/fixed-route execution, real field
+task record, real route completion signal, real elevator door/floor material,
+real human assistance, real dropoff or cancel completion, real delivery
+result, real phone/browser evidence, HIL pass, Objective 5 external
+cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, or any primary robot action
+being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

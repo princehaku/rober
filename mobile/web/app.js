@@ -164,6 +164,7 @@ const FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_HANDOFF_BOUNDARY = "software_proof_do
 const FIELD_EVIDENCE_RERUN_HANDOFF_INTAKE_BOUNDARY = "software_proof_docker_field_evidence_rerun_handoff_intake_gate";
 const FIELD_EVIDENCE_RERUN_QUEUE_BOUNDARY = "software_proof_docker_field_evidence_rerun_queue_gate";
 const FIELD_EVIDENCE_RERUN_EXECUTION_PACK_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_pack_gate";
+const FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_INTAKE_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_callback_intake_gate";
 const WAVE_ROVER_FEEDBACK_REPLAY_BOUNDARY = "software_proof_docker_wave_rover_feedback_replay_gate";
 const WAVE_ROVER_HIL_PACKET_INTAKE_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_intake_gate";
 const WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_review_decision_gate";
@@ -255,6 +256,7 @@ const UNSAFE_FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_HANDOFF_TEXT = /(authorization
 const UNSAFE_FIELD_EVIDENCE_RERUN_HANDOFF_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw callback|raw review|raw handoff|raw intake|raw packet|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true|hil_pass)/i;
 const UNSAFE_FIELD_EVIDENCE_RERUN_QUEUE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw callback|raw review|raw handoff|raw intake|raw packet|raw queue|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true|hil_pass)/i;
 const UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw callback|raw review|raw handoff|raw intake|raw packet|raw queue|raw execution|raw execution pack|full execution pack|execution scheduling|schedule execution|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
+const UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw callback|raw packet|raw execution|raw execution pack|full execution pack|execution scheduling|schedule execution|callback submission|submit callback|ack payload|cursor|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_RUN_READINESS_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_FIELD_RUN_CONSOLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw route response|raw robot response|complete bundle|complete artifact|field run artifact|execution bundle|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_FIELD_RUN_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|dropoff success|cancel completed|hil_pass)/i;
@@ -427,6 +429,7 @@ let latestFieldEvidenceRerunCallbackReviewHandoff = null;
 let latestFieldEvidenceRerunHandoffIntake = null;
 let latestFieldEvidenceRerunQueue = null;
 let latestFieldEvidenceRerunExecutionPack = null;
+let latestFieldEvidenceRerunExecutionCallbackIntake = null;
 let latestWaveRoverFeedbackReplay = null;
 let latestWaveRoverHilPacketIntake = null;
 let latestWaveRoverHilPacketReviewDecision = null;
@@ -1086,6 +1089,15 @@ function safeFieldEvidenceRerunExecutionPackText(value, fallback = "not_proven")
   // 执行包只展示现场 owner 可读的安全步骤；raw execution pack、调度和机器人控制语义全部降级。
   const text = safeText(value, fallback);
   if (UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_PACK_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeFieldEvidenceRerunExecutionCallbackIntakeText(value, fallback = "not_proven") {
+  // 执行回执入口只展示 Robot safe summary；raw callback、ACK/cursor、排程或控制语义全部降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_INTAKE_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -21429,6 +21441,172 @@ function fieldEvidenceRerunExecutionPackFromStatus(status, readiness, diagnostic
   };
 }
 
+function fieldEvidenceRerunExecutionCallbackIntakeCandidate(status, readiness, diagnostics) {
+  // Robot diagnostics safe alias 优先；fallback 只兼容已经脱敏的 summary，不读取 raw callback 或执行包。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifactSummary = status?.field_evidence_rerun_execution_callback_intake?.summary ||
+    readiness?.field_evidence_rerun_execution_callback_intake?.summary ||
+    diagnostics?.field_evidence_rerun_execution_callback_intake?.summary ||
+    diagnosticsSummary.field_evidence_rerun_execution_callback_intake?.summary ||
+    nestedDiagnosticsSummary.field_evidence_rerun_execution_callback_intake?.summary ||
+    nestedDiagnosticsInnerSummary.field_evidence_rerun_execution_callback_intake?.summary ||
+    statusDiagnosticsSummary.field_evidence_rerun_execution_callback_intake?.summary;
+  const candidates = [
+    status?.robot_diagnostics_field_evidence_rerun_execution_callback_intake_summary,
+    readiness?.robot_diagnostics_field_evidence_rerun_execution_callback_intake_summary,
+    diagnostics?.robot_diagnostics_field_evidence_rerun_execution_callback_intake_summary,
+    diagnosticsReadiness.robot_diagnostics_field_evidence_rerun_execution_callback_intake_summary,
+    diagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_callback_intake_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_callback_intake_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_field_evidence_rerun_execution_callback_intake_summary,
+    statusDiagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_callback_intake_summary,
+    status?.field_evidence_rerun_execution_callback_intake_summary,
+    readiness?.field_evidence_rerun_execution_callback_intake_summary,
+    diagnostics?.field_evidence_rerun_execution_callback_intake_summary,
+    diagnosticsReadiness.field_evidence_rerun_execution_callback_intake_summary,
+    diagnosticsSummary.field_evidence_rerun_execution_callback_intake_summary,
+    nestedDiagnosticsSummary.field_evidence_rerun_execution_callback_intake_summary,
+    nestedDiagnosticsInnerSummary.field_evidence_rerun_execution_callback_intake_summary,
+    statusDiagnosticsSummary.field_evidence_rerun_execution_callback_intake_summary,
+    artifactSummary,
+    status?.diagnostics_summary?.field_evidence_rerun_execution_callback_intake_summary,
+    diagnostics?.diagnostics_summary?.field_evidence_rerun_execution_callback_intake_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function fieldEvidenceRerunExecutionCallbackIntakeSummaryList(value, fallback) {
+  // 四类材料列表只压缩为安全短摘要，避免 callback 原文、路径、ACK 或执行排程进入手机端。
+  const list = Array.isArray(value) ? value : value && typeof value === "object" ? Object.values(value) : [];
+  const safeItems = list
+    .map((item) => {
+      if (item && typeof item === "object") {
+        return safeFieldEvidenceRerunExecutionCallbackIntakeText(
+          item.safe_phone_copy || item.summary || item.title || item.material_group || item.group ||
+            item.material_class || item.status || item.state || item.reason || item.next_required_evidence,
+          "",
+        );
+      }
+      return safeFieldEvidenceRerunExecutionCallbackIntakeText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 12) : [fallback];
+}
+
+function fieldEvidenceRerunExecutionCallbackIntakeNotProvenList(value) {
+  // 执行回执入口只说明 callback materials 已被安全分流，不证明现场执行或任何控制结果。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "真实 route/elevator field pass",
+    "真实 Nav2/fixed-route runtime log",
+    "真实 task record",
+    "真实 dropoff/cancel completion",
+    "真实 delivery result",
+    "真实手机/browser",
+    "HIL",
+    "O5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 18);
+}
+
+function fieldEvidenceRerunExecutionCallbackIntakeFromStatus(status, readiness, diagnostics) {
+  const provided = fieldEvidenceRerunExecutionCallbackIntakeCandidate(status, readiness, diagnostics) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.field_evidence_rerun_execution_callback_intake_summary.v1",
+    source_schema: safeFieldEvidenceRerunExecutionCallbackIntakeText(
+      provided.source_schema || provided.intake_schema || provided.callback_packet_schema,
+      "trashbot.field_evidence_rerun_execution_callback_intake.v1",
+    ),
+    source_execution_pack_schema: safeFieldEvidenceRerunExecutionCallbackIntakeText(
+      provided.source_execution_pack_schema || provided.execution_pack_schema,
+      "trashbot.field_evidence_rerun_execution_pack.v1",
+    ),
+    source_execution_pack_status: safeFieldEvidenceRerunExecutionCallbackIntakeText(
+      provided.source_execution_pack_status || provided.execution_status || provided.execution_pack_status,
+      "source_execution_pack_status=not_proven",
+    ),
+    callback_packet_status: safeFieldEvidenceRerunExecutionCallbackIntakeText(
+      provided.callback_packet_status || provided.intake_status || provided.status || provided.overall_status,
+      "blocked_missing_field_evidence_rerun_execution_callback_intake_summary_not_proven",
+    ),
+    source: safeFieldEvidenceRerunExecutionCallbackIntakeText(provided.source, "software_proof"),
+    safe_evidence_ref: safeFieldEvidenceRerunExecutionCallbackIntakeText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    same_evidence_ref_status: safeFieldEvidenceRerunExecutionCallbackIntakeText(
+      provided.same_evidence_ref_status || provided.same_safe_evidence_ref_status ||
+        provided.same_evidence_ref_required,
+      "same_evidence_ref_status=required_not_proven",
+    ),
+    accepted_materials: fieldEvidenceRerunExecutionCallbackIntakeSummaryList(
+      provided.accepted_materials || provided.accepted_material_groups || provided.accepted,
+      "accepted=none accepted as field proof",
+    ),
+    missing_materials: fieldEvidenceRerunExecutionCallbackIntakeSummaryList(
+      provided.missing_materials || provided.missing_material_groups || provided.missing,
+      "missing=真实 task record、Nav2/fixed-route runtime log、route completion、elevator、terminal 和 phone/browser 材料仍需补齐。",
+    ),
+    rejected_materials: fieldEvidenceRerunExecutionCallbackIntakeSummaryList(
+      provided.rejected_materials || provided.rejected_material_groups || provided.rejected,
+      "rejected=unsafe_or_mismatched_execution_callback_materials_not_proven",
+    ),
+    blocked_materials: fieldEvidenceRerunExecutionCallbackIntakeSummaryList(
+      provided.blocked_materials || provided.blocked_material_groups || provided.blocked,
+      "blocked=等待同一 safe evidence_ref 的执行回执材料。",
+    ),
+    owner_handoff: fieldEvidenceRerunExecutionCallbackIntakeSummaryList(
+      provided.owner_handoff || provided.handoff_owner || provided.owner || provided.field_owner,
+      "owner_handoff=field owner 补齐真实复跑执行回执材料；Full-stack 保持手机 panel 只读。",
+    ),
+    next_required_evidence: fieldEvidenceRerunExecutionCallbackIntakeSummaryList(
+      provided.next_required_evidence || provided.next_evidence || provided.owner_next_steps,
+      "next_required_evidence=提交同一 safe evidence_ref 的真实 task record、route/elevator 和 phone/browser evidence 摘要。",
+    ),
+    safe_copy: safeFieldEvidenceRerunExecutionCallbackIntakeText(
+      provided.safe_copy || provided.safe_phone_copy || provided.safe_summary,
+      "现场证据复跑执行回执入口摘要缺失；手机端只显示 not_proven，不改变主操作 gate。",
+    ),
+    safe_phone_copy: safeFieldEvidenceRerunExecutionCallbackIntakeText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary || provided.safe_copy,
+      "现场证据复跑执行回执入口只读摘要缺失；等待 Robot diagnostics safe summary。",
+    ),
+    evidence_boundary: safeFieldEvidenceRerunExecutionCallbackIntakeText(
+      provided.evidence_boundary,
+      FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_INTAKE_BOUNDARY,
+    ),
+    boundary_flags: "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: fieldEvidenceRerunExecutionCallbackIntakeNotProvenList(provided),
+  };
+}
+
 function waveRoverFeedbackReplayCandidate(status, readiness, diagnostics) {
   // 兼容 PC gate、Robot diagnostics 和 status 多层 summary；前端拒绝读取 raw artifact。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -29544,6 +29722,133 @@ function renderFieldEvidenceRerunExecutionPack(status) {
   );
 }
 
+function ensureFieldEvidenceRerunExecutionCallbackIntakePanel() {
+  // 执行回执入口紧跟执行包，只展示现场回填摘要，不新增 callback submission 或机器人命令按钮。
+  let panel = $("fieldEvidenceRerunExecutionCallbackIntakePanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("fieldEvidenceRerunExecutionPackPanel") ||
+    $("fieldEvidenceRerunExecutionPackTitle")?.closest("section") ||
+    $("fieldEvidenceRerunQueueTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "fieldEvidenceRerunExecutionCallbackIntakePanel";
+  panel.className = "field-evidence-rerun-execution-callback-intake-panel";
+  panel.setAttribute("aria-labelledby", "fieldEvidenceRerunExecutionCallbackIntakeTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="fieldEvidenceRerunExecutionCallbackIntakeTitle">现场证据复跑执行回执入口</h2>
+      <span id="fieldEvidenceRerunExecutionCallbackIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="fieldEvidenceRerunExecutionCallbackIntakeCopy" class="message">
+      等待 robot_diagnostics_field_evidence_rerun_execution_callback_intake_summary。
+    </p>
+    <dl class="field-evidence-rerun-execution-callback-intake-grid">
+      <div><dt>Callback Intake Status</dt><dd id="fieldEvidenceRerunExecutionCallbackIntakeStatus">blocked_missing_field_evidence_rerun_execution_callback_intake_summary_not_proven</dd></div>
+      <div><dt>Source Execution Pack</dt><dd id="fieldEvidenceRerunExecutionCallbackIntakeSourcePack">source_execution_pack_status=not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="fieldEvidenceRerunExecutionCallbackIntakeEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Same Evidence Ref</dt><dd id="fieldEvidenceRerunExecutionCallbackIntakeSameRef">same_evidence_ref_status=required_not_proven</dd></div>
+      <div><dt>Safe Copy</dt><dd id="fieldEvidenceRerunExecutionCallbackIntakeSafeCopy">blocked copy unavailable</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="fieldEvidenceRerunExecutionCallbackIntakeBoundary">software_proof_docker_field_evidence_rerun_execution_callback_intake_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="fieldEvidenceRerunExecutionCallbackIntakeFlags">source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="fieldEvidenceRerunExecutionCallbackIntakeNotProven">真实现场复跑、真实手机/browser、HIL 和 O5 external proof 未证明。</dd></div>
+    </dl>
+    <div class="review-quads">
+      <section>
+        <h3>Accepted Materials</h3>
+        <ol id="fieldEvidenceRerunExecutionCallbackIntakeAccepted" class="handoff-checklist">
+          <li>等待 accepted materials。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Missing Materials</h3>
+        <ol id="fieldEvidenceRerunExecutionCallbackIntakeMissing" class="handoff-checklist">
+          <li>等待 missing materials。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Rejected Materials</h3>
+        <ol id="fieldEvidenceRerunExecutionCallbackIntakeRejected" class="handoff-checklist">
+          <li>等待 rejected materials。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Blocked Materials</h3>
+        <ol id="fieldEvidenceRerunExecutionCallbackIntakeBlocked" class="handoff-checklist">
+          <li>等待 blocked materials。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Owner Handoff</h3>
+        <ol id="fieldEvidenceRerunExecutionCallbackIntakeOwnerHandoff" class="handoff-checklist">
+          <li>等待 owner handoff。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Next Required Evidence</h3>
+        <ol id="fieldEvidenceRerunExecutionCallbackIntakeNextEvidence" class="handoff-checklist">
+          <li>等待 next required evidence。</li>
+        </ol>
+      </section>
+    </div>
+    <p id="fieldEvidenceRerunExecutionCallbackIntakeHint" class="hint">
+      本 panel 只消费 safe execution callback intake summary，不 fetch raw artifact，不展示 raw JSON、local path、checksum、credential、ROS topic、serial/UART、WAVE ROVER detail、完整 artifact、traceback、success copy、ACK、cursor、diagnostics fetch、queue scheduling、execution scheduling、callback submission、automatic retry 或 control authorization；Start Delivery、Confirm Dropoff、Cancel gating 不变。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderFieldEvidenceRerunExecutionCallbackIntake(status) {
+  const panel = ensureFieldEvidenceRerunExecutionCallbackIntakePanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = fieldEvidenceRerunExecutionCallbackIntakeFromStatus(status, readiness, latestDiagnostics);
+  latestFieldEvidenceRerunExecutionCallbackIntake = summary;
+  const badge = $("fieldEvidenceRerunExecutionCallbackIntakeBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待执行回执" : "execution callback intake not_proven";
+  $("fieldEvidenceRerunExecutionCallbackIntakeCopy").textContent = summary.safe_phone_copy;
+  $("fieldEvidenceRerunExecutionCallbackIntakeStatus").textContent = summary.callback_packet_status;
+  $("fieldEvidenceRerunExecutionCallbackIntakeSourcePack").textContent = summary.source_execution_pack_status;
+  $("fieldEvidenceRerunExecutionCallbackIntakeEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("fieldEvidenceRerunExecutionCallbackIntakeSameRef").textContent = summary.same_evidence_ref_status;
+  $("fieldEvidenceRerunExecutionCallbackIntakeSafeCopy").textContent = summary.safe_copy;
+  $("fieldEvidenceRerunExecutionCallbackIntakeBoundary").textContent = summary.evidence_boundary;
+  $("fieldEvidenceRerunExecutionCallbackIntakeFlags").textContent = summary.boundary_flags;
+  $("fieldEvidenceRerunExecutionCallbackIntakeNotProven").textContent = summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionCallbackIntakeAccepted",
+    summary.accepted_materials,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionCallbackIntakeMissing",
+    summary.missing_materials,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionCallbackIntakeRejected",
+    summary.rejected_materials,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionCallbackIntakeBlocked",
+    summary.blocked_materials,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionCallbackIntakeOwnerHandoff",
+    summary.owner_handoff,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionCallbackIntakeNextEvidence",
+    summary.next_required_evidence,
+  );
+}
+
 function renderHardwareSensorProcurementIntake(status) {
   const readiness = readinessFromStatus(status);
   const summary = hardwareSensorProcurementIntakeFromStatus(status, readiness, latestDiagnostics);
@@ -34764,6 +35069,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const fieldEvidenceRerunExecutionCallbackIntake = fieldEvidenceRerunExecutionCallbackIntakeFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const waveRoverFeedbackReplay = waveRoverFeedbackReplayFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -34979,6 +35289,7 @@ function renderDiagnosticsSummary(payload) {
     ["field_evidence_rerun_handoff_intake", fieldEvidenceRerunHandoffIntake.intake_status],
     ["field_evidence_rerun_queue", fieldEvidenceRerunQueue.queue_status],
     ["field_evidence_rerun_execution_pack", fieldEvidenceRerunExecutionPack.execution_status],
+    ["field_evidence_rerun_execution_callback_intake", fieldEvidenceRerunExecutionCallbackIntake.callback_packet_status],
     ["wave_rover_feedback_replay", waveRoverFeedbackReplay.replay_status],
     ["wave_rover_hil_packet_intake", waveRoverHilPacketIntake.packet_status],
     ["wave_rover_hil_packet_review_decision", waveRoverHilPacketReviewDecision.review_decision],
@@ -35138,6 +35449,7 @@ function renderOfflineFailure() {
   renderFieldEvidenceRerunHandoffIntake({});
   renderFieldEvidenceRerunQueue({});
   renderFieldEvidenceRerunExecutionPack({});
+  renderFieldEvidenceRerunExecutionCallbackIntake({});
   renderWaveRoverFeedbackReplay({});
   renderWaveRoverHilPacketIntake({});
   renderWaveRoverHilPacketReviewDecision({});
@@ -35266,6 +35578,7 @@ function renderStatus(status) {
   renderFieldEvidenceRerunHandoffIntake(status);
   renderFieldEvidenceRerunQueue(status);
   renderFieldEvidenceRerunExecutionPack(status);
+  renderFieldEvidenceRerunExecutionCallbackIntake(status);
   renderWaveRoverFeedbackReplay(status);
   renderWaveRoverHilPacketIntake(status);
   renderWaveRoverHilPacketReviewDecision(status);
@@ -35572,6 +35885,7 @@ async function openDiagnostics() {
     renderFieldEvidenceRerunHandoffIntake(latestStatus || {});
     renderFieldEvidenceRerunQueue(latestStatus || {});
     renderFieldEvidenceRerunExecutionPack(latestStatus || {});
+    renderFieldEvidenceRerunExecutionCallbackIntake(latestStatus || {});
     renderWaveRoverFeedbackReplay(latestStatus || {});
     renderWaveRoverHilPacketIntake(latestStatus || {});
     renderWaveRoverHilPacketReviewDecision(latestStatus || {});
