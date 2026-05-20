@@ -982,6 +982,32 @@ returns `status_missing`; a stale status returns `status_stale` with the last
 safe status payload. A phone UI must treat both as degraded states and wait for
 fresh robot status before implying that the task is healthy.
 
+## Cloud Status Stale Guard
+
+The Robot/mock HTTP gateway exposes `cloud_status_stale_guard` when the last
+robot status is missing, unknown, or older than the local freshness window. This
+guard is read-only and fail-closed: it does not submit behavior actions, does
+not infer delivery state from a previous status payload, and does not let stale
+`delivery_success` or `primary_actions_enabled` fields keep phone controls
+enabled.
+
+When this guard is active, Robot status, HTTP `remote_readiness`, diagnostics,
+and phone command-safety summaries must include:
+
+- `degradation_state=status_stale`
+- `remote_ready=false`
+- `status_stale=true`
+- `retry_hint=wait_for_robot_status`
+- `ack_semantics=stale_status_not_delivery_success`
+- `primary_actions_enabled=false`
+- `delivery_success=false`
+- `proof_boundary=software_proof_docker_cloud_status_stale_guard`
+
+This boundary is only `software_proof_docker_cloud_status_stale_guard`. It does
+not prove public HTTPS/TLS, real 4G/SIM, production DB/queue freshness, real
+phone/browser validation, Nav2 or fixed-route delivery, WAVE ROVER motion, HIL,
+or delivery success.
+
 For the cloud-hosted static shell only, `GET /api/status` and
 `GET /api/diagnostics` wrap that store status into a blocked phone-safe summary
 instead of surfacing the store's 404 to the browser. This adapter is a
@@ -1071,7 +1097,7 @@ details.
 | `media_state` | Present only for `media_degraded`; values are `oss_write_failed` or `cdn_unavailable`. |
 | `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `check_oss_write`, `check_cdn_reachability`, `retry_cloud`, or `contact_support`. |
 | `safe_phone_copy` | Plain-language UI copy that must not include raw JSON, ROS topic names, secrets, serial devices, or hardware parameters. |
-| `ack_semantics` | Explicit non-delivery wording for degraded ACK/status states; `auth_failed_not_delivery_success` means failed auth is not delivery success. |
+| `ack_semantics` | Explicit non-delivery wording for degraded ACK/status states; `stale_status_not_delivery_success` means stale robot status is not delivery success. |
 | `primary_actions_enabled` | `false` for fail-closed degraded states, including `auth_failed`, so Start/Confirm/Cancel remain disabled. |
 | `proof_boundary` | The exact software-proof boundary string for the degraded state, never a claim of real cloud, phone, HIL, or delivery proof. |
 

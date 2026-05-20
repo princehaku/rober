@@ -47,6 +47,7 @@ PHONE_AUTH_FAILURE_STATUS_GUARD_BOUNDARY = "software_proof_docker_cloud_auth_fai
 PHONE_MEDIA_DEGRADATION_STATUS_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_media_degradation_status_guard"
 )
+PHONE_STATUS_STALE_GUARD_BOUNDARY = "software_proof_docker_cloud_status_stale_guard"
 COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 REMOTE_STATUS_STALE_AFTER_SEC = 90.0
@@ -1163,6 +1164,13 @@ class MockCloudStore:
                 or ack_operator_status.get("proof_boundary")
                 or PHONE_MEDIA_DEGRADATION_STATUS_GUARD_BOUNDARY
             )
+        if degradation_state == "status_stale":
+            # stale 状态只证明手机端需要等新状态，不能被上游 payload 的成功字段染成送达成功。
+            readiness["remote_ready"] = False
+            readiness["delivery_success"] = False
+            readiness["primary_actions_enabled"] = False
+            readiness["ack_semantics"] = "stale_status_not_delivery_success"
+            readiness["proof_boundary"] = PHONE_STATUS_STALE_GUARD_BOUNDARY
         return readiness
 
     def submit_command(self, robot_id, payload):

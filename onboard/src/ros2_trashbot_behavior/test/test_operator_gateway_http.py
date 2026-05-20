@@ -1963,6 +1963,36 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             "software_proof_docker_cloud_command_sequence_regression_guard",
         )
 
+    def test_mock_cloud_reports_stale_status_as_dedicated_fail_closed_guard(self):
+        store = MockCloudStore()
+        payload = store.post_status(
+            "trashbot-stale",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "delivering",
+                "message": "old status must not enable delivery success",
+                "updated_at": time.time() - 120,
+                "remote_ready": True,
+                "primary_actions_enabled": True,
+                "delivery_success": True,
+                "proof_boundary": "legacy_delivery_status",
+            },
+        )
+
+        readiness = payload["remote_readiness"]
+        self.assertFalse(readiness["remote_ready"])
+        self.assertTrue(readiness["status_stale"])
+        self.assertEqual(readiness["degradation_state"], "status_stale")
+        self.assertEqual(readiness["retry_hint"], "wait_for_robot_status")
+        self.assertEqual(readiness["ack_semantics"], "stale_status_not_delivery_success")
+        self.assertFalse(readiness["delivery_success"])
+        self.assertFalse(readiness["primary_actions_enabled"])
+        self.assertEqual(
+            readiness["proof_boundary"],
+            "software_proof_docker_cloud_status_stale_guard",
+        )
+        self.assertNotIn("delivery_success\": true", json.dumps(readiness))
+
     def test_mock_cloud_treats_missing_or_null_expires_at_as_pending_not_expired(self):
         store = MockCloudStore()
         with store._lock:
@@ -2247,6 +2277,13 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertTrue(payload["remote_readiness"]["status_stale"])
         self.assertEqual(payload["remote_readiness"]["retry_hint"], "wait_for_robot_status")
         self.assertEqual(payload["remote_readiness"]["auth_state"], "mock_not_required")
+        self.assertEqual(payload["remote_readiness"]["ack_semantics"], "stale_status_not_delivery_success")
+        self.assertFalse(payload["remote_readiness"]["delivery_success"])
+        self.assertFalse(payload["remote_readiness"]["primary_actions_enabled"])
+        self.assertEqual(
+            payload["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_status_stale_guard",
+        )
 
     def test_mock_cloud_next_command_uses_queue_order_not_string_order(self):
         for command_id in ("cmd-9", "cmd-10"):

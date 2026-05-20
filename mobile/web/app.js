@@ -19,6 +19,8 @@ const ELEVATOR_ACTION_FEEDBACK_TRACE_BOUNDARY = "software_proof_docker_mobile_ac
 const CLOUD_READINESS_BOUNDARY = "software_proof_docker_mobile_cloud_readiness_summary_gate";
 const CLOUD_AUTH_FAILURE_STATUS_BOUNDARY = "software_proof_docker_cloud_auth_failure_status_guard";
 const CLOUD_AUTH_FAILURE_STATUS_COPY = "登录或访问码未通过；请重新登录或检查凭证；这不是送达成功。";
+const CLOUD_STATUS_STALE_BOUNDARY = "software_proof_docker_cloud_status_stale_guard";
+const CLOUD_STATUS_STALE_COPY = "正在等待小车上报最新状态；当前状态已过期，不能作为送达成功依据。";
 const CLOUD_PENDING_ACK_STATUS_BOUNDARY = "software_proof_docker_cloud_pending_ack_status_guard";
 const CLOUD_PENDING_ACK_STATUS_COPY = "本地命令已终态，但云端 ACK 还没确认，暂不能拉取新命令";
 const CLOUD_COMMAND_EXPIRY_BOUNDARY = "software_proof_docker_cloud_command_expiry_safety_guard";
@@ -1595,6 +1597,42 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         ),
         evidence_boundary: CLOUD_AUTH_FAILURE_STATUS_BOUNDARY,
         proof_boundary: CLOUD_AUTH_FAILURE_STATUS_BOUNDARY,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
+    if (provided.degradation_state === "status_stale" ||
+        provided.status_stale === true ||
+        provided.proof_boundary === CLOUD_STATUS_STALE_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_STATUS_STALE_BOUNDARY) {
+      // status_stale 只说明云端看到的小车状态过期；手机端必须等待新状态，不能把旧状态当成可控或成功。
+      const statusAgeSeconds = safeText(provided.status_age_seconds, "");
+      const staleContext = statusAgeSeconds
+        ? `status_age_seconds=${statusAgeSeconds} / remote_ready=false / primary_actions_enabled=false`
+        : "status_stale=true / remote_ready=false / primary_actions_enabled=false";
+      return {
+        ...provided,
+        missing: false,
+        overall_status: "blocked",
+        preflight_status: "status_stale",
+        db_queue_status: staleContext,
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        delivery_success: false,
+        status_stale: true,
+        safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_STATUS_STALE_COPY),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "请等待机器人重新上报状态或打开 Diagnostics；手机端不重放、不 resubmit，也不提交控制动作。",
+        ),
+        ack_semantics: safeText(
+          provided.ack_semantics,
+          "stale_status_not_delivery_success",
+        ),
+        evidence_boundary: CLOUD_STATUS_STALE_BOUNDARY,
+        proof_boundary: CLOUD_STATUS_STALE_BOUNDARY,
+        status_age_seconds: statusAgeSeconds,
         not_proven: notProvenList(provided.not_proven),
       };
     }

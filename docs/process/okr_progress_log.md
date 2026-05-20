@@ -8,6 +8,24 @@
 
 ## 2026-05-20 系列
 
+更新时间：2026-05-20 23:11 Asia/Shanghai。
+
+### 2026-05-20 23-24｜cloud-status-stale-guard｜stale cloud status fail-closed software proof
+
+本轮 `sprints/2026.05.20_23-24_cloud-status-stale-guard/` 针对 Objective 5 command/status/ack readiness 主链路补齐 stale robot/cloud status 的专用 fail-closed 可见性，不重复 O5 external blocker，也不把 Docker/local stale-status proof 当作真实公网、4G、production DB/queue 或真实手机/browser 材料。Robot/API worker 在 `operator_gateway_http.py`、focused test 和 `docs/product/remote_4g_mvp.md` 中新增 `software_proof_docker_cloud_status_stale_guard`、`stale_status_not_delivery_success`、fail-closed stale readiness，并保持 `remote_ready=false`、`primary_actions_enabled=false`、`delivery_success=false`。Full-Stack worker 在 `mobile/web` 四个文件和 `docs/product/mobile_user_flow.md` 中消费 stale guard / fixture，手机端只读展示陈旧云状态，保持 Start Delivery / Confirm Dropoff / Cancel disabled，Diagnostics 仍可用。
+
+Product closeout 保守保持 Objective 5 约 68%，因为本轮只证明 local Robot/API + mobile static fixture 下的 status-stale fail-closed 行为，不是真实 public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、production worker/migration/cutover、真实 phone/browser 或 delivery success。PR #5 thread `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending；PR #6 是 README/docs-only，不是 runtime、hardware、HIL、true phone/browser 或 O5 external proof。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL、hardware bridge、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 route/elevator field material、真实电梯、Nav2/fixed-route runtime log、dropoff/cancel completion、field pass 或 delivery result；stale status 不是 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可读状态受益：手机端能展示 stale cloud/robot status 并保持 `remote_ready=false`、`primary_actions_enabled=false` 和主操作不可用；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_status_stale_guard` 只证明 local worker + mobile static fixture 下的 stale status fail-closed 防护：陈旧状态被安全分类，phone-safe copy 可见，actions fail closed，ACK semantics 明确不是 delivery success。本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、真实 production queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Robot/API worker 回传 `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_http.py` 输出 `Ran 50 tests in 26.838s OK`；Full-Stack worker 回传 `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 183 tests in 1.336s OK`。Product closeout required file checks、required `rg`、scoped `git diff --check` 和只读 `git diff --name-only` 集成核对完成。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、PR #6 runtime proof、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
+
 更新时间：2026-05-20 22:18 Asia/Shanghai。
 
 ### 2026-05-20 22-23｜cloud-command-sequence-regression-guard｜command sequence regression fail-closed software proof
