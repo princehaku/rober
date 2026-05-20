@@ -44,6 +44,21 @@ CLOUD_COMMAND_ID_CONFLICT_VISIBILITY_GUARD_BOUNDARY = (
 CLOUD_AUTH_FAILURE_STATUS_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_auth_failure_status_guard"
 )
+CLOUD_MEDIA_DEGRADATION_STATUS_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_media_degradation_status_guard"
+)
+MEDIA_DEGRADATION_STATES = {
+    "oss_write_failed": (
+        "check_oss_write",
+        "media_not_persisted_not_delivery_success",
+        "OSS 写入失败，媒体未持久化；这不是送达成功。",
+    ),
+    "cdn_unavailable": (
+        "check_cdn_reachability",
+        "media_not_fetchable_not_delivery_success",
+        "CDN 暂不可达，媒体不可拉取；这不是送达成功。",
+    ),
+}
 PENDING_TERMINAL_ACK_KEY = "pending_terminal_ack"
 SAFE_OPERATOR_STATUS_KEYS = {
     "protocol_version",
@@ -55,6 +70,7 @@ SAFE_OPERATOR_STATUS_KEYS = {
     "cloud_reachable",
     "auth_state",
     "degradation_state",
+    "media_state",
     "retry_hint",
     "safe_phone_copy",
     "pending_terminal_ack_id",
@@ -76,6 +92,10 @@ SENSITIVE_STATE_MARKERS = (
     "authorization",
     "bearer",
     "token",
+    "oss ak",
+    "oss sk",
+    "signed url",
+    "bucket secret",
     "ros topic",
     "/cmd_vel",
     "wave rover",
@@ -108,6 +128,8 @@ def _phone_safe_degraded_status(robot_id, error):
     cloud_reachable = bool(getattr(error, "cloud_reachable", False))
     if reason == "auth_failed":
         return _phone_safe_auth_failure_status(robot_id, retry_hint=retry_hint)
+    elif reason in MEDIA_DEGRADATION_STATES:
+        return _phone_safe_media_degradation_status(robot_id, reason, cloud_reachable=cloud_reachable)
     elif reason == "malformed_response":
         auth_state = "unknown"
         safe_phone_copy = "远程服务响应异常，请稍后重试或联系支持。"
@@ -126,6 +148,31 @@ def _phone_safe_degraded_status(robot_id, error):
         degradation_state=reason,
         retry_hint=retry_hint,
         safe_phone_copy=safe_phone_copy,
+    )
+
+
+def _phone_safe_media_degradation_status(robot_id, media_state, *, cloud_reachable=True):
+    # 媒体降级只说明 OSS/CDN 证据不可用；它不能开启主操作，也不能被解释成 ACK 或送达成功。
+    media_state = str(media_state or "").strip()
+    retry_hint, ack_semantics, safe_phone_copy = MEDIA_DEGRADATION_STATES.get(
+        media_state,
+        MEDIA_DEGRADATION_STATES["oss_write_failed"],
+    )
+    return make_status(
+        robot_id,
+        "remote_degraded",
+        safe_phone_copy,
+        remote_ready=False,
+        cloud_reachable=bool(cloud_reachable),
+        auth_state="unknown",
+        degradation_state="media_degraded",
+        media_state=media_state if media_state in MEDIA_DEGRADATION_STATES else "oss_write_failed",
+        retry_hint=retry_hint,
+        safe_phone_copy=safe_phone_copy,
+        ack_semantics=ack_semantics,
+        primary_actions_enabled=False,
+        delivery_success=False,
+        proof_boundary=CLOUD_MEDIA_DEGRADATION_STATUS_GUARD_BOUNDARY,
     )
 
 
@@ -485,8 +532,10 @@ class RemoteBridgeWorker:
                 "conflict_reason",
                 "conflict_fields",
                 "cached_ack_state",
+                "media_state",
                 "ack_semantics",
                 "primary_actions_enabled",
+                "delivery_success",
                 "proof_boundary",
             ):
                 if key in status:

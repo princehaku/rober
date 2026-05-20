@@ -1023,8 +1023,9 @@ details.
 | `remote_ready` | `true` only means the current local/mock control-plane conditions allow the phone flow to continue; it is not real cloud, 4G, HIL, or delivery proof. |
 | `cloud_reachable` | Whether the configured local/mock control-plane is reachable from the caller's point of view. |
 | `auth_state` | Phone-safe auth state such as `mock_not_required`, `required`, `authorized`, or `auth_failed`. |
-| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `auth_failed`, `cloud_unreachable`, or `malformed_response`. |
-| `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `retry_cloud`, or `contact_support`. |
+| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `auth_failed`, `media_degraded`, `cloud_unreachable`, or `malformed_response`. |
+| `media_state` | Present only for `media_degraded`; values are `oss_write_failed` or `cdn_unavailable`. |
+| `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `check_oss_write`, `check_cdn_reachability`, `retry_cloud`, or `contact_support`. |
 | `safe_phone_copy` | Plain-language UI copy that must not include raw JSON, ROS topic names, secrets, serial devices, or hardware parameters. |
 | `ack_semantics` | Explicit non-delivery wording for degraded ACK/status states; `auth_failed_not_delivery_success` means failed auth is not delivery success. |
 | `primary_actions_enabled` | `false` for fail-closed degraded states, including `auth_failed`, so Start/Confirm/Cancel remain disabled. |
@@ -1061,6 +1062,45 @@ support, but Start Delivery, Confirm Dropoff, and Cancel stay disabled. This is
 Docker/local software proof only; it is not public HTTPS/TLS, 4G/SIM, OSS/CDN
 live traffic, production DB/queue, real phone/browser validation, WAVE ROVER
 motion, HIL, or delivery success.
+
+## Cloud Media Degradation Status Guard
+
+The robot bridge and local/mock HTTP gateway expose
+`cloud_media_degradation_status_guard` when media evidence cannot be persisted
+to OSS or fetched through CDN. This guard is intentionally read-only and
+fail-closed: it does not create replay, resubmit, ACK success, cursor movement,
+diagnostics fetch side effects, ROS commands, hardware interaction, or any
+control endpoint.
+
+All media degradation statuses must include:
+
+- `degradation_state=media_degraded`
+- `remote_ready=false`
+- `primary_actions_enabled=false`
+- `delivery_success=false`
+- `proof_boundary=software_proof_docker_cloud_media_degradation_status_guard`
+
+For OSS write failure, the status must include:
+
+- `media_state=oss_write_failed`
+- `retry_hint=check_oss_write`
+- `ack_semantics=media_not_persisted_not_delivery_success`
+
+For CDN unavailable, the status must include:
+
+- `media_state=cdn_unavailable`
+- `retry_hint=check_cdn_reachability`
+- `ack_semantics=media_not_fetchable_not_delivery_success`
+
+Diagnostics and phone readiness must stay redacted. They must not expose
+Authorization headers, bearer tokens, OSS AK/SK, signed URLs, bucket secrets,
+tracebacks, local absolute paths, ROS topic names, `/cmd_vel`, serial/UART
+details, or WAVE ROVER details. Start Delivery, Confirm Dropoff, and Cancel
+stay disabled; Diagnostics remains available with the same
+`software_proof_docker_cloud_media_degradation_status_guard` boundary. This is
+Docker/local software proof only, not real OSS write, real CDN fetch,
+OSS/CDN live traffic, public HTTPS/TLS, 4G/SIM, production DB/queue, real
+phone/browser validation, WAVE ROVER motion, HIL, or delivery success.
 
 The independent Docker relay also exposes process-level readiness:
 

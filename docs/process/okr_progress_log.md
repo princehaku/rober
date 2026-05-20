@@ -8,6 +8,24 @@
 
 ## 2026-05-20 系列
 
+更新时间：2026-05-20 21:23 Asia/Shanghai。
+
+### 2026-05-20 21-22｜cloud-media-degradation-status-guard｜OSS/CDN media degradation status guard software proof
+
+本轮 `sprints/2026.05.20_21-22_cloud-media-degradation-status-guard/` 针对 Objective 5 KR6 的 OSS 写失败 / CDN 不可达 graceful degradation 做 Product closeout，不重复上一轮 `cloud_auth_failure_status_guard`，也不把 Docker-only fixture 当作真实外部云材料。Robot/API worker 将 `oss_write_failed` / `cdn_unavailable` 归一为 `degradation_state=media_degraded`，输出 `remote_ready=false`、`primary_actions_enabled=false`、`delivery_success=false`、`retry_hint=check_oss_write` / `check_cdn_reachability`、`ack_semantics=media_not_persisted_not_delivery_success` / `media_not_fetchable_not_delivery_success` 和 `proof_boundary=software_proof_docker_cloud_media_degradation_status_guard`。Robot/API worker 同时修复 media degraded diagnostics redaction，确保 Authorization、Bearer、OSS AK/SK、signed URL、traceback、本地路径、ROS topic、`/cmd_vel`、serial/UART、WAVE ROVER 细节不会泄漏到 phone-safe output。
+
+Full-Stack worker 在 `mobile/web` 增加 `cloud_media_degradation_status_guard` fixture 和只读展示，手机端可以看到 `OSS 写失败` / `CDN 不可达` 两类 copy，并保持 Start Delivery / Confirm Dropoff / Cancel disabled；该 panel 只消费 phone-safe readiness，不新增 replay、resubmit、ACK、cursor、diagnostics fetch 或 robot control side effect。Product closeout 保持 Objective 5 约 68%，因为本轮只证明 `software_proof_docker_cloud_media_degradation_status_guard`，不是真实 OSS 写入、真实 CDN fetch、OSS/CDN live traffic、真实公网 HTTPS/TLS、4G/SIM、production DB/queue、真实手机/browser、WAVE ROVER/UART/HIL、route/elevator field pass、delivery result 或 delivery success。Objective 1 仍约 81%，PR #5 thread `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / material pending；PR #6 是 README docs-only，不是 runtime/hardware/O5 external proof。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL、hardware bridge、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 route/elevator field material、真实电梯、Nav2/fixed-route runtime log、dropoff/cancel completion、field pass 或 delivery result；media degradation status 不等于 delivery success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可读状态受益：手机端能展示 OSS 写失败 / CDN 不可达，并保持 `remote_ready=false`、`primary_actions_enabled=false` 和主操作不可用；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_media_degradation_status_guard` 只证明 Docker/local Robot/API + mobile static fixture 下的媒体降级可见性：OSS 写失败 / CDN 不可达被安全分类、phone-safe copy 可见、actions fail closed、ACK semantics 明确不是 delivery success。本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Robot/API worker 回传 `py_compile` 通过；first full unittest 暴露 media degraded diagnostics redaction gap，修复后 targeted regression `Ran 1 test in 0.001s OK`，final full Robot/API unittest `Ran 419 tests in 94.741s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 回传 `node --check mobile/web/app.js` 通过；`python3 -m unittest mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 181 tests in 1.309s OK`；fixture JSON check、required `rg` 与 scoped `git diff --check` 通过。Product closeout integration rerun 通过：required file check、Robot py_compile、Robot unittest `Ran 419 tests in 95.338s OK`、`node --check`、mobile unittest `Ran 181 tests in 1.308s OK`、fixture JSON check、required `rg`、scoped `git diff --check` 和 `git status` 均完成。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
+
 更新时间：2026-05-20 20:22 Asia/Shanghai。
 
 ### 2026-05-20 20-21｜hardware-sensor-hil-entry-callback-review-decision｜HIL-entry callback review decision software proof

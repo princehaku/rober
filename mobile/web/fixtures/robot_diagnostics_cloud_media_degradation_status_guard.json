@@ -1,0 +1,151 @@
+{
+  "schema": "trashbot.cloud_media_degradation_status_guard_examples.v1",
+  "topic": "cloud_media_degradation_status_guard",
+  "proof_boundary": "software_proof_docker_cloud_media_degradation_status_guard",
+  "examples": [
+    {
+      "robot_id": "trashbot-alpha",
+      "state": "remote_degraded",
+      "degradation_state": "media_degraded",
+      "media_state": "oss_write_failed",
+      "remote_ready": false,
+      "primary_actions_enabled": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "safe_phone_copy": "OSS 写失败：媒体没有持久化，远程图片/快照不可作为任务完成依据；这不是送达成功。",
+      "recovery_hint": "保留本地 operator gateway fallback 和只读诊断摘要；不要自动重放、自动 resubmit、请求 ACK/cursor 或触发 Start Delivery、Confirm Dropoff、Cancel。",
+      "ack_semantics": "media_not_persisted_not_delivery_success",
+      "proof_boundary": "software_proof_docker_cloud_media_degradation_status_guard",
+      "evidence_boundary": "software_proof_docker_cloud_media_degradation_status_guard",
+      "boundary_flags": "source=software_proof / not_proven / remote_ready=false / delivery_success=false / primary_actions_enabled=false",
+      "not_proven": [
+        "真实 OSS 写入",
+        "真实 CDN live traffic",
+        "真实公网 HTTPS/TLS",
+        "真实 4G/SIM",
+        "production DB/queue",
+        "真实手机/browser",
+        "Nav2/fixed-route",
+        "WAVE ROVER/UART/HIL",
+        "delivery success"
+      ],
+      "phone_readiness": {
+        "primary_state": "blocked",
+        "next_action": "check_media_pipeline",
+        "support_level": "diagnostics_available",
+        "remote_readiness": {
+          "degradation_state": "media_degraded",
+          "media_state": "oss_write_failed",
+          "remote_ready": false,
+          "primary_actions_enabled": false,
+          "safe_phone_copy": "OSS 写失败：媒体没有持久化，远程图片/快照不可作为任务完成依据；这不是送达成功。",
+          "ack_semantics": "media_not_persisted_not_delivery_success",
+          "proof_boundary": "software_proof_docker_cloud_media_degradation_status_guard"
+        },
+        "command_safety": {
+          "schema": "trashbot.command_safety.v1",
+          "global_block_reason": "media_degraded / oss_write_failed：媒体没有持久化，remote_ready=false。",
+          "ack_semantics": "media_not_persisted_not_delivery_success",
+          "actions": {
+            "start": {
+              "enabled": false,
+              "blocking_reason": "media_degraded / oss_write_failed / remote_ready=false / primary_actions_enabled=false"
+            },
+            "confirm_dropoff": {
+              "enabled": false,
+              "blocking_reason": "media_degraded / oss_write_failed / remote_ready=false / primary_actions_enabled=false"
+            },
+            "cancel": {
+              "enabled": false,
+              "blocking_reason": "media_degraded / oss_write_failed / remote_ready=false / primary_actions_enabled=false"
+            },
+            "diagnostics": {
+              "enabled": true,
+              "safe_phone_copy": "诊断可打开；主操作保持 fail closed。"
+            }
+          }
+        }
+      },
+      "action_permissions": {
+        "can_collect": false,
+        "can_confirm_dropoff": false,
+        "can_cancel": false
+      },
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false
+    },
+    {
+      "robot_id": "trashbot-alpha",
+      "state": "remote_degraded",
+      "degradation_state": "media_degraded",
+      "media_state": "cdn_unavailable",
+      "remote_ready": false,
+      "primary_actions_enabled": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "safe_phone_copy": "CDN 不可达：媒体暂时不能通过公开只读入口获取；这不是送达成功。",
+      "recovery_hint": "继续展示本地 operator gateway fallback 和只读诊断摘要；不要自动重放、自动 resubmit、请求 ACK/cursor 或触发 Start Delivery、Confirm Dropoff、Cancel。",
+      "ack_semantics": "media_not_fetchable_not_delivery_success",
+      "proof_boundary": "software_proof_docker_cloud_media_degradation_status_guard",
+      "evidence_boundary": "software_proof_docker_cloud_media_degradation_status_guard",
+      "boundary_flags": "source=software_proof / not_proven / remote_ready=false / delivery_success=false / primary_actions_enabled=false",
+      "not_proven": [
+        "真实 OSS 写入",
+        "真实 CDN live traffic",
+        "真实公网 HTTPS/TLS",
+        "真实 4G/SIM",
+        "production DB/queue",
+        "真实手机/browser",
+        "Nav2/fixed-route",
+        "WAVE ROVER/UART/HIL",
+        "delivery success"
+      ],
+      "phone_readiness": {
+        "primary_state": "blocked",
+        "next_action": "check_cdn_or_use_local_fallback",
+        "support_level": "diagnostics_available",
+        "remote_readiness": {
+          "degradation_state": "media_degraded",
+          "media_state": "cdn_unavailable",
+          "remote_ready": false,
+          "primary_actions_enabled": false,
+          "safe_phone_copy": "CDN 不可达：媒体暂时不能通过公开只读入口获取；这不是送达成功。",
+          "ack_semantics": "media_not_fetchable_not_delivery_success",
+          "proof_boundary": "software_proof_docker_cloud_media_degradation_status_guard"
+        },
+        "command_safety": {
+          "schema": "trashbot.command_safety.v1",
+          "global_block_reason": "media_degraded / cdn_unavailable：媒体不可通过公开只读入口获取，remote_ready=false。",
+          "ack_semantics": "media_not_fetchable_not_delivery_success",
+          "actions": {
+            "start": {
+              "enabled": false,
+              "blocking_reason": "media_degraded / cdn_unavailable / remote_ready=false / primary_actions_enabled=false"
+            },
+            "confirm_dropoff": {
+              "enabled": false,
+              "blocking_reason": "media_degraded / cdn_unavailable / remote_ready=false / primary_actions_enabled=false"
+            },
+            "cancel": {
+              "enabled": false,
+              "blocking_reason": "media_degraded / cdn_unavailable / remote_ready=false / primary_actions_enabled=false"
+            },
+            "diagnostics": {
+              "enabled": true,
+              "safe_phone_copy": "诊断可打开；主操作保持 fail closed。"
+            }
+          }
+        }
+      },
+      "action_permissions": {
+        "can_collect": false,
+        "can_confirm_dropoff": false,
+        "can_cancel": false
+      },
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false
+    }
+  ]
+}

@@ -41,6 +41,9 @@ PHONE_COMMAND_ID_CONFLICT_VISIBILITY_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_command_id_conflict_visibility_guard"
 )
 PHONE_AUTH_FAILURE_STATUS_GUARD_BOUNDARY = "software_proof_docker_cloud_auth_failure_status_guard"
+PHONE_MEDIA_DEGRADATION_STATUS_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_media_degradation_status_guard"
+)
 COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 REMOTE_STATUS_STALE_AFTER_SEC = 90.0
@@ -60,6 +63,8 @@ REMOTE_RETRY_HINTS = {
     "check_auth",
     "retry_cloud",
     "contact_support",
+    "check_oss_write",
+    "check_cdn_reachability",
 }
 # safe_phone_copy 是正式手机端可直接展示的中文文案，不能包含 raw JSON 或凭证。
 REMOTE_DEGRADATION_COPY = {
@@ -70,6 +75,7 @@ REMOTE_DEGRADATION_COPY = {
     "command_duplicate_deduped": "重复云指令已去重，机器人没有重复执行；cached ACK 不是送达成功。",
     "command_id_conflict": "命令 ID 冲突：同一 ID 的 type/payload 不一致，机器人已拒绝执行；这不是送达成功。",
     "auth_failed": "手机登录已失效，请重新登录或检查访问凭证；这不是送达成功。",
+    "media_degraded": "媒体链路降级：OSS 写入或 CDN 拉取不可用；这不是送达成功。",
     "cloud_unreachable": "远程控制通道暂不可用，请稍后重试。",
     "malformed_response": "远程控制返回异常，请联系支持人员。",
 }
@@ -87,9 +93,11 @@ REMOTE_STATUS_SAFE_EXTRA_KEYS = {
     "conflict_command_id",
     "conflict_reason",
     "conflict_fields",
+    "media_state",
     "cached_ack_state",
     "ack_semantics",
     "primary_actions_enabled",
+    "delivery_success",
     "proof_boundary",
 }
 
@@ -114,6 +122,8 @@ PHONE_READINESS_NEXT_ACTION_COPY = {
     "check_auth": "重新登录或检查访问码后再试。",
     "retry_cloud": "稍后重试远程通道，必要时切到本地 fallback。",
     "contact_support": "联系支持人员，并附带 diagnostics。",
+    "check_oss_write": "检查 OSS 写入链路；媒体未持久化前不要当成送达成功。",
+    "check_cdn_reachability": "检查 CDN 可达性；媒体不可拉取前不要当成送达成功。",
     "manual_takeover": "保持现场安全，按提示人工接管。",
     "watch_progress": "继续观察任务状态，必要时取消。",
     "refresh_diagnostics_ref": "刷新状态；如果仍不可用，请重新生成诊断引用。",
@@ -132,6 +142,7 @@ COMMAND_SAFETY_BLOCK_COPY = {
     "command_duplicate_deduped": "重复云指令已去重，主操作保持不可用。",
     "command_id_conflict": "同一命令 ID 出现不同内容，机器人已拒绝执行；这不是送达成功。",
     "auth_failed": "手机登录或访问码未通过，主操作暂不可用。",
+    "media_degraded": "媒体链路降级，主操作暂不可用；这不是送达成功。",
     "cloud_unreachable": "远程控制通道暂不可用，主操作暂不可用。",
     "malformed_response": "远程控制返回异常，主操作暂不可用。",
     "diagnostic_refs_missing": "诊断对象引用缺失，主操作暂不可用。",
@@ -177,6 +188,8 @@ PHONE_SUPPORT_BUNDLE_FORBIDDEN_MARKERS = (
     "bearer",
     "oss ak",
     "oss sk",
+    "signed url",
+    "bucket secret",
     "access_key",
     "secret",
     "password",
@@ -206,6 +219,8 @@ VOICE_PROMPT_FORBIDDEN_MARKERS = (
     "bearer",
     "oss ak",
     "oss sk",
+    "signed url",
+    "bucket secret",
     "access_key",
     "secret",
     "password",
@@ -235,6 +250,8 @@ PHONE_OFFLINE_RESUME_FORBIDDEN_MARKERS = (
     "bearer",
     "oss ak",
     "oss sk",
+    "signed url",
+    "bucket secret",
     "access_key",
     "secret",
     "password",
@@ -303,6 +320,7 @@ PHONE_READINESS_PRIMARY_COPY = {
     "waiting_for_command_ack": "正在等待小车确认指令。",
     "command_expired": "上一条云端指令已过期。",
     "login_required": "手机登录或访问码需要处理。",
+    "media_degraded": "媒体链路降级。",
     "remote_unreachable": "远程通道暂不可用。",
     "remote_response_invalid": "远程通道返回异常。",
     "manual_takeover_required": "需要人工接管。",
@@ -698,6 +716,10 @@ SENSITIVE_REMOTE_TEXT_MARKERS = (
     "authorization",
     "bearer",
     "token",
+    "oss ak",
+    "oss sk",
+    "signed url",
+    "bucket secret",
     "traceback",
     "ros topic",
     "/cmd_vel",
@@ -928,6 +950,9 @@ class MockCloudStore:
         conflict_command_id = ""
         if status_degradation == "command_id_conflict":
             conflict_command_id = str(status.get("conflict_command_id") or "").strip()
+        media_state = ""
+        if status_degradation == "media_degraded":
+            media_state = str(status.get("media_state") or "").strip()
         ack_operator_status = {}
         if latest_ack and isinstance((latest_ack.get("result") or {}).get("operator_status"), dict):
             ack_operator_status = (latest_ack.get("result") or {}).get("operator_status")
@@ -962,6 +987,12 @@ class MockCloudStore:
         elif auth_failed:
             retry_hint = "check_auth"
             degradation_state = "auth_failed"
+        elif media_state or status_degradation == "media_degraded":
+            degradation_state = "media_degraded"
+            retry_hint = {
+                "cdn_unavailable": "check_cdn_reachability",
+                "oss_write_failed": "check_oss_write",
+            }.get(media_state, str(status.get("retry_hint") or "check_oss_write"))
         elif status_stale:
             retry_hint = "wait_for_robot_status"
             degradation_state = "status_stale"
@@ -971,7 +1002,13 @@ class MockCloudStore:
         remote_ready = bool(
             not status_stale
             and degradation_state
-            not in {"command_expired", "command_duplicate_deduped", "command_id_conflict", "auth_failed"}
+            not in {
+                "command_expired",
+                "command_duplicate_deduped",
+                "command_id_conflict",
+                "auth_failed",
+                "media_degraded",
+            }
         )
         readiness = {
             "remote_ready": remote_ready,
@@ -1039,6 +1076,29 @@ class MockCloudStore:
                 status.get("proof_boundary")
                 or ack_operator_status.get("proof_boundary")
                 or PHONE_AUTH_FAILURE_STATUS_GUARD_BOUNDARY
+            )
+        if degradation_state == "media_degraded":
+            media_state = media_state if media_state in {"oss_write_failed", "cdn_unavailable"} else "oss_write_failed"
+            readiness["media_state"] = media_state
+            readiness["remote_ready"] = False
+            readiness["delivery_success"] = False
+            readiness["primary_actions_enabled"] = False
+            readiness["ack_semantics"] = {
+                "cdn_unavailable": "media_not_fetchable_not_delivery_success",
+                "oss_write_failed": "media_not_persisted_not_delivery_success",
+            }[media_state]
+            readiness["retry_hint"] = {
+                "cdn_unavailable": "check_cdn_reachability",
+                "oss_write_failed": "check_oss_write",
+            }[media_state]
+            readiness["safe_phone_copy"] = {
+                "cdn_unavailable": "CDN 暂不可达，媒体不可拉取；这不是送达成功。",
+                "oss_write_failed": "OSS 写入失败，媒体未持久化；这不是送达成功。",
+            }[media_state]
+            readiness["proof_boundary"] = str(
+                status.get("proof_boundary")
+                or ack_operator_status.get("proof_boundary")
+                or PHONE_MEDIA_DEGRADATION_STATUS_GUARD_BOUNDARY
             )
         return readiness
 
@@ -2875,6 +2935,7 @@ def _command_safety_block_reason(primary_state, remote_state, manifest_state):
         "command_expired",
         "command_duplicate_deduped",
         "command_id_conflict",
+        "media_degraded",
         "auth_failed",
         "cloud_unreachable",
         "malformed_response",
@@ -3376,7 +3437,7 @@ def _offline_resume_connection_state(primary_state, remote_state, command_safety
         return "status_stale"
     if remote_state == "command_pending":
         return "pending_ack"
-    if remote_state in {"command_expired", "command_duplicate_deduped", "command_id_conflict"}:
+    if remote_state in {"command_expired", "command_duplicate_deduped", "command_id_conflict", "media_degraded"}:
         return "blocked"
     if primary_state in {"login_required", "remote_response_invalid"}:
         return "blocked"
@@ -3452,6 +3513,17 @@ def build_phone_offline_resume_readiness(
         next_action = "contact_support"
         recovery_hint = PHONE_READINESS_NEXT_ACTION_COPY["contact_support"]
         safe_phone_copy = REMOTE_DEGRADATION_COPY["command_id_conflict"]
+    elif remote_state == "media_degraded":
+        media_state = str(remote_readiness.get("media_state") or "oss_write_failed")
+        next_action = {
+            "cdn_unavailable": "check_cdn_reachability",
+            "oss_write_failed": "check_oss_write",
+        }.get(media_state, "check_oss_write")
+        recovery_hint = PHONE_READINESS_NEXT_ACTION_COPY[next_action]
+        safe_phone_copy = _offline_resume_safe_text(
+            remote_readiness.get("safe_phone_copy"),
+            REMOTE_DEGRADATION_COPY["media_degraded"],
+        )
     elif connection_state == "manual_takeover":
         recovery_hint = "保持现场安全，按手机提示人工接管，并打开 Support Handoff。"
         safe_phone_copy = "当前需要人工接管，不能通过离线恢复直接继续任务。"
@@ -3648,6 +3720,15 @@ def build_phone_readiness(
         next_action = "contact_support"
         can_continue = False
         support_level = "remote_command_id_conflict"
+    elif remote_state == "media_degraded":
+        media_state = str(remote.get("media_state") or "oss_write_failed")
+        primary_state = "media_degraded"
+        next_action = {
+            "cdn_unavailable": "check_cdn_reachability",
+            "oss_write_failed": "check_oss_write",
+        }.get(media_state, "check_oss_write")
+        can_continue = False
+        support_level = "remote_media_degraded"
     elif remote_state == "status_stale":
         if can_use_local_action:
             primary_state = "local_ready_remote_status_waiting"
@@ -3671,6 +3752,11 @@ def build_phone_readiness(
     safe_phone_copy = PHONE_READINESS_PRIMARY_COPY[primary_state]
     if remote_state in REMOTE_DEGRADATION_COPY and remote_state != "ok":
         safe_phone_copy = REMOTE_DEGRADATION_COPY[remote_state]
+    if remote_state == "media_degraded":
+        safe_phone_copy = _phone_safe_user_text(
+            remote.get("safe_phone_copy"),
+            REMOTE_DEGRADATION_COPY["media_degraded"],
+        )
     if primary_state == "local_ready_remote_status_waiting":
         safe_phone_copy = "本地手机入口可继续；远程状态仍在等待小车上报。"
 
@@ -3862,7 +3948,7 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
         latest_status["voice_prompt_readiness"] = voice_prompt_readiness
         latest_status["phone_offline_resume_readiness"] = offline_resume_readiness
     remote_state = _remote_degradation(phone_readiness.get("remote_readiness"))
-    if remote_state == "auth_failed":
+    if remote_state in {"auth_failed", "media_degraded"}:
         return _remote_safe_diagnostics_value(diagnostics_payload)
     return diagnostics_payload
 

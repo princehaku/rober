@@ -27,6 +27,13 @@ const CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY = "software_proof_docker_cloud_command_
 const CLOUD_COMMAND_IDEMPOTENCY_COPY = "重复云指令已去重；机器人没有重复执行；这不是送达成功。";
 const CLOUD_COMMAND_ID_CONFLICT_BOUNDARY = "software_proof_docker_cloud_command_id_conflict_visibility_guard";
 const CLOUD_COMMAND_ID_CONFLICT_COPY = "命令 ID 冲突；机器人已拒绝执行；这不是送达成功。";
+// 媒体链路降级和云命令失败共用 cloud readiness 面板，避免新增任何手机端控制通道。
+const CLOUD_MEDIA_DEGRADATION_BOUNDARY = "software_proof_docker_cloud_media_degradation_status_guard";
+// 两类媒体失败都必须显式告诉用户不是送达成功，避免把照片/快照失败误读成任务完成。
+const CLOUD_MEDIA_DEGRADATION_COPY = {
+  oss_write_failed: "OSS 写失败：媒体没有持久化，远程图片/快照不可作为任务完成依据；这不是送达成功。",
+  cdn_unavailable: "CDN 不可达：媒体暂时不能通过公开只读入口获取；这不是送达成功。",
+};
 const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_acceptance_readiness_gate";
 const MOBILE_DEVICE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_device_evidence_capture_gate";
 const MOBILE_DEVICE_HANDOFF_SESSION_BOUNDARY = "software_proof_docker_mobile_device_handoff_session_gate";
@@ -1711,6 +1718,41 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         conflict_command_id: conflictCommandId,
         conflict_reason: conflictReason,
         conflict_fields: conflictFields,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
+    if (provided.degradation_state === "media_degraded" ||
+        provided.proof_boundary === CLOUD_MEDIA_DEGRADATION_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_MEDIA_DEGRADATION_BOUNDARY) {
+      // media_degraded 只说明 OSS/CDN 媒体链路降级；媒体失败不能被解释成送达、投放或远程可用。
+      const mediaState = safeText(provided.media_state, "media_degraded");
+      // 未知 media_state 也按保守文案处理，保证新增枚举不会意外打开成功语义。
+      const fallbackCopy = CLOUD_MEDIA_DEGRADATION_COPY[mediaState] ||
+        "媒体链路降级：远程媒体不可作为任务完成依据；这不是送达成功。";
+      // ACK 文案只描述媒体持久化/获取失败，不能触发下游 ACK success 或 cursor 推进。
+      const ackSemantics = mediaState === "cdn_unavailable"
+        ? "media_not_fetchable_not_delivery_success"
+        : "media_not_persisted_not_delivery_success";
+      return {
+        ...provided,
+        missing: false,
+        overall_status: "blocked",
+        preflight_status: "media_degraded",
+        media_state: mediaState,
+        db_queue_status: `media_state=${mediaState} / remote_ready=false / primary_actions_enabled=false`,
+        // 媒体失败属于只读降级状态，所有主操作 gate 必须继续 fail closed。
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        safe_phone_copy: safeText(provided.safe_phone_copy, fallbackCopy),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "媒体链路降级时仅展示只读状态；手机端不重放、不 resubmit、不请求 ACK/cursor，也不提交控制动作。",
+        ),
+        ack_semantics: safeText(provided.ack_semantics, ackSemantics),
+        evidence_boundary: CLOUD_MEDIA_DEGRADATION_BOUNDARY,
+        proof_boundary: CLOUD_MEDIA_DEGRADATION_BOUNDARY,
         not_proven: notProvenList(provided.not_proven),
       };
     }

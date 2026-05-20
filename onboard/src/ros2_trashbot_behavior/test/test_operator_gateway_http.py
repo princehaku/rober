@@ -901,6 +901,41 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         )
         self.assertNotIn("delivery_success\": true", json.dumps(conflict["remote_readiness"]))
 
+        media = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "degradation_state": "media_degraded",
+                "media_state": "oss_write_failed",
+                "retry_hint": "check_oss_write",
+                "safe_phone_copy": "OSS 写入失败，媒体未持久化；这不是送达成功。",
+                "ack_semantics": "media_not_persisted_not_delivery_success",
+                "remote_ready": False,
+                "primary_actions_enabled": False,
+                "delivery_success": False,
+                "proof_boundary": "software_proof_docker_cloud_media_degradation_status_guard",
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        self.assertEqual(media["primary_state"], "media_degraded")
+        self.assertFalse(media["can_continue"])
+        self.assertEqual(media["next_action"], "check_oss_write")
+        self.assertEqual(media["support_level"], "remote_media_degraded")
+        self.assertEqual(media["command_safety"]["global_block_reason"], "media_degraded")
+        self.assertFalse(media["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(media["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(media["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(media["command_safety"]["actions"]["diagnostics"]["enabled"])
+        self.assertEqual(media["remote_readiness"]["media_state"], "oss_write_failed")
+        self.assertEqual(
+            media["remote_readiness"]["ack_semantics"],
+            "media_not_persisted_not_delivery_success",
+        )
+        self.assertEqual(
+            media["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_media_degradation_status_guard",
+        )
+        self.assertNotIn("delivery_success\": true", json.dumps(media["remote_readiness"]))
+
         acked = build_phone_readiness(
             dict(local_status, target="Lobby trash station"),
             remote_readiness={
@@ -1973,6 +2008,45 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertNotIn("Authorization", encoded)
         self.assertNotIn("Bearer", encoded)
         self.assertNotIn("/cmd_vel", encoded)
+
+    def test_mock_cloud_media_degraded_status_remains_redacted_and_fail_closed(self):
+        store = MockCloudStore()
+        payload = store.post_status(
+            "trashbot-media",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "remote_degraded",
+                "message": "Authorization Bearer token signed url /cmd_vel",
+                "updated_at": time.time(),
+                "remote_ready": True,
+                "degradation_state": "media_degraded",
+                "media_state": "cdn_unavailable",
+                "retry_hint": "retry_cloud",
+                "safe_phone_copy": "CDN signed URL Authorization /cmd_vel unavailable",
+                "ack_semantics": "delivery_success",
+                "primary_actions_enabled": True,
+                "delivery_success": True,
+            },
+        )
+
+        readiness = payload["remote_readiness"]
+        encoded = json.dumps(payload, ensure_ascii=False)
+        self.assertEqual(readiness["degradation_state"], "media_degraded")
+        self.assertEqual(readiness["media_state"], "cdn_unavailable")
+        self.assertEqual(readiness["retry_hint"], "check_cdn_reachability")
+        self.assertEqual(
+            readiness["ack_semantics"],
+            "media_not_fetchable_not_delivery_success",
+        )
+        self.assertFalse(readiness["remote_ready"])
+        self.assertFalse(readiness["primary_actions_enabled"])
+        self.assertFalse(readiness["delivery_success"])
+        self.assertEqual(
+            readiness["proof_boundary"],
+            "software_proof_docker_cloud_media_degradation_status_guard",
+        )
+        for forbidden in ("Authorization", "Bearer", "token", "signed URL", "/cmd_vel"):
+            self.assertNotIn(forbidden, encoded)
 
     def test_mock_cloud_bearer_auth_gate_allows_authorized_phone_flow(self):
         self.gateway.mock_cloud_bearer_token = "phone-token"

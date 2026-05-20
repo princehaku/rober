@@ -11,7 +11,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "ros2_trashbot_behavior"))
 
 from ros2_trashbot_behavior.remote_bridge import RemoteBridge, RemoteBridgeWorker
-from ros2_trashbot_behavior.remote_bridge_protocol import RemoteCloudClient
+from ros2_trashbot_behavior.remote_bridge_protocol import RemoteCloudClient, RemoteCloudError
 
 
 class MockCloud:
@@ -593,6 +593,77 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             self.cloud.status_posts[-1]["ack_semantics"],
             "auth_failed_not_delivery_success",
         )
+
+    def test_oss_write_failure_posts_media_degraded_status_without_command_poll(self):
+        class MediaFailCloud:
+            def __init__(self):
+                self.status_posts = []
+                self.command_polls = 0
+
+            def post_status(self, _status):
+                raise RemoteCloudError(
+                    "oss_write_failed",
+                    "Authorization Bearer oss ak signed url /cmd_vel /Users/m4/path hidden",
+                    retry_hint="check_oss_write",
+                    cloud_reachable=True,
+                )
+
+            def get_next_command(self, _last_ack_id=""):
+                self.command_polls += 1
+                return None
+
+        media_cloud = MediaFailCloud()
+        worker = RemoteBridgeWorker(media_cloud, self.backend, "robot-1")
+
+        handled = worker.poll_once()
+
+        self.assertFalse(handled)
+        self.assertEqual(media_cloud.command_polls, 0)
+        self.assertEqual(self.backend.calls, [])
+        self.assertEqual(self.backend.last_status["degradation_state"], "media_degraded")
+        self.assertEqual(self.backend.last_status["media_state"], "oss_write_failed")
+        self.assertEqual(self.backend.last_status["retry_hint"], "check_oss_write")
+        self.assertEqual(
+            self.backend.last_status["ack_semantics"],
+            "media_not_persisted_not_delivery_success",
+        )
+        self.assertFalse(self.backend.last_status["remote_ready"])
+        self.assertFalse(self.backend.last_status["primary_actions_enabled"])
+        self.assertFalse(self.backend.last_status["delivery_success"])
+        self.assertEqual(
+            self.backend.last_status["proof_boundary"],
+            "software_proof_docker_cloud_media_degradation_status_guard",
+        )
+        encoded = json.dumps(self.backend.last_status, ensure_ascii=False)
+        for forbidden in ("Authorization", "Bearer", "oss ak", "signed url", "/cmd_vel", "/Users/m4"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_cdn_unavailable_posts_media_degraded_status_without_command_poll(self):
+        class MediaFailCloud:
+            def post_status(self, _status):
+                raise RemoteCloudError(
+                    "cdn_unavailable",
+                    "cdn signed url unavailable",
+                    retry_hint="check_cdn_reachability",
+                    cloud_reachable=False,
+                )
+
+            def get_next_command(self, _last_ack_id=""):
+                raise AssertionError("media degradation must not poll commands")
+
+        worker = RemoteBridgeWorker(MediaFailCloud(), self.backend, "robot-1")
+
+        self.assertFalse(worker.poll_once())
+
+        self.assertEqual(self.backend.last_status["degradation_state"], "media_degraded")
+        self.assertEqual(self.backend.last_status["media_state"], "cdn_unavailable")
+        self.assertEqual(self.backend.last_status["retry_hint"], "check_cdn_reachability")
+        self.assertEqual(
+            self.backend.last_status["ack_semantics"],
+            "media_not_fetchable_not_delivery_success",
+        )
+        self.assertFalse(self.backend.last_status["cloud_reachable"])
+        self.assertFalse(self.backend.last_status["delivery_success"])
 
     def test_malformed_cloud_response_does_not_start_action_or_advance_cursor(self):
         self.cloud.commands.append({

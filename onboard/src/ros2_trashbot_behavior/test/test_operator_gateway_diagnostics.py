@@ -27936,6 +27936,72 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("token", encoded)
         self.assertNotIn("/cmd_vel", encoded)
 
+    def test_diagnostics_phone_readiness_surfaces_media_degradation_guard(self):
+        class Gateway:
+            def snapshot(self):
+                return {
+                    "state": "remote_degraded",
+                    "message": "Authorization Bearer signed URL /cmd_vel must stay hidden",
+                    "can_collect": True,
+                    "can_confirm_dropoff": True,
+                    "can_cancel": True,
+                    "remote_readiness": {
+                        "degradation_state": "media_degraded",
+                        "media_state": "cdn_unavailable",
+                        "ack_semantics": "media_not_fetchable_not_delivery_success",
+                        "remote_ready": False,
+                        "primary_actions_enabled": False,
+                        "delivery_success": False,
+                        "retry_hint": "check_cdn_reachability",
+                        "safe_phone_copy": "CDN 暂不可达，媒体不可拉取；这不是送达成功。",
+                        "proof_boundary": "software_proof_docker_cloud_media_degradation_status_guard",
+                    },
+                }
+
+            def diagnostics(self):
+                return {
+                    "state": "diagnostics_ready",
+                    "software_version": "0.1.0",
+                    "map_version": "map-a",
+                    "route_version": "route-a",
+                    "source": "software_proof",
+                    "latest_status": self.snapshot(),
+                    "failure": {
+                        "state": "remote_degraded",
+                        "message": "raw Authorization Bearer signed URL /cmd_vel must stay hidden",
+                        "error_code": "REMOTE_MEDIA_DEGRADED",
+                    },
+                }
+
+        payload = _diagnostics_with_phone_task_flow(Gateway(), MockCloudStore())
+        readiness = payload["latest_status"]["phone_readiness"]
+        remote_readiness = readiness["remote_readiness"]
+        offline_resume = payload["phone_offline_resume_readiness"]
+        encoded = json.dumps(payload, ensure_ascii=False)
+
+        self.assertFalse(remote_readiness["remote_ready"])
+        self.assertEqual(remote_readiness["degradation_state"], "media_degraded")
+        self.assertEqual(remote_readiness["media_state"], "cdn_unavailable")
+        self.assertEqual(remote_readiness["retry_hint"], "check_cdn_reachability")
+        self.assertEqual(
+            remote_readiness["ack_semantics"],
+            "media_not_fetchable_not_delivery_success",
+        )
+        self.assertFalse(remote_readiness["primary_actions_enabled"])
+        self.assertFalse(remote_readiness["delivery_success"])
+        self.assertEqual(
+            remote_readiness["proof_boundary"],
+            "software_proof_docker_cloud_media_degradation_status_guard",
+        )
+        self.assertEqual(readiness["command_safety"]["global_block_reason"], "media_degraded")
+        self.assertFalse(readiness["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertEqual(offline_resume["connection_state"], "blocked")
+        self.assertEqual(offline_resume["next_action"], "check_cdn_reachability")
+        for forbidden in ("Authorization", "Bearer", "signed URL", "/cmd_vel"):
+            self.assertNotIn(forbidden, encoded)
+
     def test_diagnostics_payload_does_not_forward_preexisting_support_bundle(self):
         payload = build_diagnostics_payload(
             {
