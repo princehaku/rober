@@ -3659,5 +3659,133 @@
       "HIL",
       "O5 external proof"
     ]
+  },
+  "robot_diagnostics_field_evidence_rerun_execution_pack_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_pack_summary.v1",
+    "schema_version": 1,
+    "execution_pack_schema": "trashbot.field_evidence_rerun_execution_pack.v1",
+    "source_queue_schema": "trashbot.field_evidence_rerun_queue.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_execution_pack_summary",
+    "source": "software_proof",
+    "execution_status": "ready_for_field_owner_execution_pack_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_callback_intake_fixture_20260520_0001",
+    "source_queue_status": "ready_for_field_owner_rerun_queue_not_proven",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "execution_steps": [
+      "execution_step=field owner records real task record summary under the same safe evidence_ref",
+      "execution_step=Autonomy owner captures real Nav2/fixed-route runtime log and route completion signal",
+      "execution_step=Full-stack owner captures real phone/browser evidence summary without credentials"
+    ],
+    "material_templates": [
+      "material_template=real_task_record.summary.json",
+      "material_template=nav2_fixed_route_runtime.summary.json",
+      "material_template=route_completion_signal.summary.json",
+      "material_template=dropoff_cancel_completion.summary.json",
+      "material_template=phone_browser_evidence.summary.json"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field owner executes the real-world rerun outside mobile/web",
+      "owner_handoff=Robot owner keeps diagnostics summary sanitized",
+      "owner_handoff=Full-stack keeps mobile panel read-only"
+    ],
+    "fail_thresholds": [
+      "fail_threshold=missing same safe evidence_ref",
+      "fail_threshold=missing real task record or route completion signal",
+      "fail_threshold=any success/control claim before review"
+    ],
+    "pass_thresholds": [
+      "pass_threshold=all required real material summaries present under same safe evidence_ref",
+      "pass_threshold=subsequent review accepts material; current execution pack remains not_proven"
+    ],
+    "backfill_instructions": [
+      "backfill_instruction=submit real materials to the next field evidence intake/review step",
+      "backfill_instruction=do not schedule robot motion from mobile/web"
+    ],
+    "safe_copy": "现场证据复跑执行包 safe copy：execution_status=ready_for_field_owner_execution_pack_not_proven，source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑执行包 fixture 只读展示 execution status、execution steps、material templates、owner handoff、fail/pass thresholds 和 backfill instructions；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_pack_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
+  },
+  "field_evidence_rerun_execution_pack_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_pack_summary.v1",
+    "schema_version": 1,
+    "execution_pack_schema": "trashbot.field_evidence_rerun_execution_pack.v1",
+    "source_queue_schema": "trashbot.field_evidence_rerun_queue.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_execution_pack_summary",
+    "source": "software_proof",
+    "execution_status": "ready_for_field_owner_execution_pack_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_callback_intake_fixture_20260520_0001",
+    "source_queue_status": "ready_for_field_owner_rerun_queue_not_proven",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "execution_steps": [
+      "execution_step=field owner records real task record summary under the same safe evidence_ref",
+      "execution_step=Autonomy owner captures real Nav2/fixed-route runtime log and route completion signal",
+      "execution_step=Full-stack owner captures real phone/browser evidence summary without credentials"
+    ],
+    "material_templates": [
+      "material_template=real_task_record.summary.json",
+      "material_template=nav2_fixed_route_runtime.summary.json",
+      "material_template=route_completion_signal.summary.json",
+      "material_template=dropoff_cancel_completion.summary.json",
+      "material_template=phone_browser_evidence.summary.json"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field owner executes the real-world rerun outside mobile/web",
+      "owner_handoff=Robot owner keeps diagnostics summary sanitized",
+      "owner_handoff=Full-stack keeps mobile panel read-only"
+    ],
+    "fail_thresholds": [
+      "fail_threshold=missing same safe evidence_ref",
+      "fail_threshold=missing real task record or route completion signal",
+      "fail_threshold=any success/control claim before review"
+    ],
+    "pass_thresholds": [
+      "pass_threshold=all required real material summaries present under same safe evidence_ref",
+      "pass_threshold=subsequent review accepts material; current execution pack remains not_proven"
+    ],
+    "backfill_instructions": [
+      "backfill_instruction=submit real materials to the next field evidence intake/review step",
+      "backfill_instruction=do not schedule robot motion from mobile/web"
+    ],
+    "safe_copy": "现场证据复跑执行包 safe copy：execution_status=ready_for_field_owner_execution_pack_not_proven，source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑执行包 fixture 只读展示 execution status、execution steps、material templates、owner handoff、fail/pass thresholds 和 backfill instructions；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_pack_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
   }
 }

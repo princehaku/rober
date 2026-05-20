@@ -48,6 +48,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_field_evidence_rerun_callback_review_handoff,
     summarize_field_evidence_rerun_handoff_intake,
     summarize_field_evidence_rerun_queue,
+    summarize_field_evidence_rerun_execution_pack,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -28677,6 +28678,187 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("raw_artifact", encoded)
         self.assertNotIn("checksum", encoded)
         self.assertNotIn("/tmp/raw.json", encoded)
+        self.assertNotIn("hil_pass", encoded)
+        self.assertNotIn("WAVE ROVER", encoded)
+        self.assertNotIn("serial", encoded.lower())
+        self.assertNotIn("uart", encoded.lower())
+        self.assertIn("not_proven", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+
+    def test_field_evidence_rerun_execution_pack_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": "trashbot.field_evidence_rerun_execution_pack_summary.v1",
+            "source_schema": "trashbot.field_evidence_rerun_execution_pack.v1",
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_pack_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_pack_gate"
+            ),
+            "execution_pack_status": {
+                "status": "ready_not_proven",
+                "verdict": "not_proven",
+                "reason": "execution package is ready for a real field owner only",
+            },
+            "safe_evidence_ref": "field-rerun-execution-pack-001",
+            "source_queue_schema": "trashbot.field_evidence_rerun_queue.v1",
+            "source_queue_status": {
+                "status": "queued_not_proven",
+                "verdict": "not_proven",
+            },
+            "same_evidence_ref_status": {"status": "matched", "verdict": "not_proven"},
+            "execution_steps": [
+                "collect real task record under same safe_evidence_ref",
+                "collect Nav2 or fixed-route runtime log under same safe_evidence_ref",
+            ],
+            "material_templates": [
+                "route_completion_signal_template",
+                "dropoff_cancel_completion_template",
+            ],
+            "owner_handoff": ["Autonomy receives a same-ref field rerun package"],
+            "fail_thresholds": ["missing route completion keeps not_proven"],
+            "pass_thresholds": ["all same-ref materials present before review"],
+            "backfill_instructions": ["backfill only safe summary metadata"],
+            "robot_diagnostics_summary": {
+                "status": "blocked",
+                "reason": "execution pack is software_proof only",
+            },
+            "safe_copy": (
+                "Field evidence rerun execution pack is metadata-only; "
+                "source=software_proof; not_proven; safe_to_control=false; "
+                "delivery_success=false; primary_actions_enabled=false."
+            ),
+            "not_proven": ["field rerun has not executed"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+        artifact = {
+            "schema": "trashbot.field_evidence_rerun_execution_pack.v1",
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_pack_gate"
+            ),
+            "safe_evidence_ref": "field-rerun-execution-pack-001",
+            "raw_artifact": {"checksum": "abc", "local_path": "/tmp/raw.json"},
+            "diagnostics": {
+                "robot_diagnostics_field_evidence_rerun_execution_pack_summary": safe_summary
+            },
+        }
+        with tempfile.TemporaryDirectory() as td:
+            pack_path = Path(td) / "field_evidence_rerun_execution_pack.json"
+            pack_path.write_text(json.dumps(artifact), encoding="utf-8")
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "field_evidence_rerun_execution_pack": {
+                        "raw_artifact": {"checksum": "abc", "local_path": "/tmp/raw.json"}
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                field_evidence_rerun_execution_pack_ref=str(pack_path),
+            )
+            from_nested = summarize_field_evidence_rerun_execution_pack(
+                {
+                    "schema": "trashbot.field_evidence_rerun_execution_pack.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_rerun_execution_pack_gate"
+                    ),
+                    "field_evidence_rerun_execution_pack_summary": safe_summary,
+                }
+            )
+            missing = summarize_field_evidence_rerun_execution_pack(
+                Path(td) / "missing_field_evidence_rerun_execution_pack.json"
+            )
+            unsupported = summarize_field_evidence_rerun_execution_pack(
+                dict(
+                    safe_summary,
+                    source_schema="trashbot.field_evidence_rerun_queue.v1",
+                    source_evidence_boundary=(
+                        "software_proof_docker_field_evidence_rerun_queue_gate"
+                    ),
+                )
+            )
+            mismatch = summarize_field_evidence_rerun_execution_pack(
+                dict(artifact, field_evidence_rerun_execution_pack_summary=safe_summary)
+                | {"safe_evidence_ref": "different-ref"}
+            )
+            unsafe = summarize_field_evidence_rerun_execution_pack(
+                dict(
+                    safe_summary,
+                    safe_to_control=True,
+                    delivery_success=True,
+                    raw_artifact_checksum="abc",
+                )
+            )
+            raw_only = summarize_field_evidence_rerun_execution_pack(
+                {
+                    "schema": "trashbot.field_evidence_rerun_execution_pack.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_rerun_execution_pack_gate"
+                    ),
+                    "safe_evidence_ref": "field-rerun-execution-pack-001",
+                    "raw_ros_topic": "/cmd_vel",
+                }
+            )
+
+        summary = payload["robot_diagnostics_field_evidence_rerun_execution_pack_summary"]
+        self.assertEqual(payload["field_evidence_rerun_execution_pack"], summary)
+        self.assertEqual(payload["field_evidence_rerun_execution_pack_summary"], summary)
+        self.assertNotIn("field_evidence_rerun_execution_pack", payload["latest_status"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.field_evidence_rerun_execution_pack_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_rerun_execution_pack.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_field_evidence_rerun_execution_pack_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertEqual(summary["source_queue_schema"], "trashbot.field_evidence_rerun_queue.v1")
+        self.assertIn("real task record", summary["execution_steps"][0])
+        self.assertIn("route_completion_signal_template", summary["material_templates"])
+        self.assertIn("same-ref field rerun package", summary["owner_handoff"][0])
+        self.assertIn("missing route completion", summary["fail_thresholds"][0])
+        self.assertIn("same-ref materials", summary["pass_thresholds"][0])
+        self.assertIn("safe summary metadata", summary["backfill_instructions"][0])
+        self.assertIn("field_evidence_rerun_execution_pack_only", summary["not_proven"])
+        self.assertIn("hardware_transport_control", summary["not_proven"])
+        self.assertEqual(from_nested["execution_pack_status"]["status"], "ready_not_proven")
+        self.assertEqual(missing["execution_pack_status"]["status"], "missing")
+        self.assertEqual(
+            unsupported["execution_pack_status"]["status"],
+            "blocked_unsupported_field_evidence_rerun_execution_pack",
+        )
+        self.assertEqual(
+            mismatch["execution_pack_status"]["status"],
+            "evidence_ref_mismatch_field_evidence_rerun_execution_pack_blocked",
+        )
+        self.assertEqual(
+            unsafe["execution_pack_status"]["status"],
+            "blocked_unsafe_field_evidence_rerun_execution_pack",
+        )
+        self.assertEqual(raw_only["execution_pack_status"]["status"], "missing_summary")
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("checksum", encoded)
+        self.assertNotIn("/tmp/raw.json", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("traceback", encoded.lower())
         self.assertNotIn("hil_pass", encoded)
         self.assertNotIn("WAVE ROVER", encoded)
         self.assertNotIn("serial", encoded.lower())

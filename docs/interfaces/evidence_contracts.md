@@ -979,6 +979,72 @@ completion, real delivery result, real phone/browser evidence, HIL pass,
 Objective 5 external cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, or any
 primary robot action being enabled.
 
+## field_evidence_rerun_execution_pack
+
+`pc-tools/evidence/field_evidence_rerun_execution_pack.py` generates the
+PC-only field owner execution-pack gate after `field_evidence_rerun_queue.py`.
+It consumes only a supported queue artifact/summary/wrapper JSON; it does not
+read field material directories, execute field reruns, schedule robot actions,
+or open raw materials.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_pack.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_pack_summary.v1`
+- Robot safe alias:
+  `robot_diagnostics_field_evidence_rerun_execution_pack_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_pack_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_queue.v1` and
+  `trashbot.field_evidence_rerun_queue_summary.v1` under
+  `software_proof_docker_field_evidence_rerun_queue_gate`.
+  Wrapper, summary, artifact, robot diagnostics, mobile read-only, payload, and
+  nested diagnostics JSON are allowed only through known safe wrapper keys.
+- Execution-pack status values:
+  `ready_for_field_evidence_rerun_execution_pack_not_proven`,
+  `needs_field_evidence_rerun_execution_pack_backfill`,
+  `evidence_ref_mismatch_field_evidence_rerun_execution_pack`,
+  `blocked_unsafe_field_evidence_rerun_execution_pack`, and
+  `blocked_unsupported_field_evidence_rerun_queue`.
+
+The output always includes `source=software_proof`, `execution_pack_status`,
+`source_queue_schema`, `source_queue_status`, safe `evidence_ref`,
+`same_evidence_ref_required=true`, `same_evidence_ref_status`,
+`execution_steps`, `material_templates`, `owner_handoff`, `fail_thresholds`,
+`pass_thresholds`, `backfill_instructions`, `safe_copy`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_pack_gate`.
+The summary mirrors the artifact and is the intended read-only consumer surface
+for Robot diagnostics and mobile/web follow-through.
+
+Execution-pack mapping is fail-closed. A supported, safe queue source with
+`queue_status=queued_for_controlled_field_rerun_not_proven`, matched safe
+`evidence_ref`, `same_evidence_ref_required=true`,
+`same_evidence_ref_status=matched`, `source=software_proof`, `not_proven`, and
+all action flags false maps to
+`ready_for_field_evidence_rerun_execution_pack_not_proven`. Missing source
+input, bad JSON, unsupported source schema or boundary, or missing
+software-proof/not-proven fields fails closed to
+`blocked_unsupported_field_evidence_rerun_queue`. A non-queued source maps to
+`needs_field_evidence_rerun_execution_pack_backfill`. Mismatched evidence refs,
+missing safe evidence_ref, weak same-ref typing, or non-matched same-ref status
+maps to `evidence_ref_mismatch_field_evidence_rerun_execution_pack`. Unsafe
+copy, raw paths, credentials, ROS topic text, `/cmd_vel`, serial/UART/WAVE
+ROVER text, checksum text, complete/raw artifact text, traceback text,
+success/control wording, `safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` fail closed to
+`blocked_unsafe_field_evidence_rerun_execution_pack`.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, real controlled field rerun, real Nav2/fixed-route execution, real
+field task record, real route completion signal, real elevator door/floor
+material, real human assistance, real dropoff or cancel completion, real
+delivery result, real phone/browser evidence, HIL pass, Objective 5 external
+cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, or any primary robot action
+being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

@@ -33,3 +33,20 @@ The alias is metadata-only and fail-closed:
 Allowed Robot-visible fields are limited to safe queue and routing metadata: `safe_evidence_ref`, `queue_status`, `source_handoff_intake_schema`, `source_handoff_intake_status`, `same_evidence_ref_status`, `blocker_summary`, `next_required_evidence`, `owner_handoff`, `safe_rerun_hint`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
 
 The alias must not expose raw artifact data, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, local paths, checksum values, tracebacks, ACK/cursor state, HIL/pass wording, or success/control claims. Any missing sanitized summary, unsupported schema or boundary, `safe_evidence_ref` mismatch, missing required safe metadata, enabled action flag, unsafe copy, raw marker, local path, checksum, credential, or hardware/control wording keeps the summary blocked/not_proven and leaves primary robot actions disabled.
+
+## robot_diagnostics_field_evidence_rerun_execution_pack_summary
+
+`robot_diagnostics_field_evidence_rerun_execution_pack_summary` is the Robot diagnostics safe alias for the `field_evidence_rerun_execution_pack` gate. It consumes only the sanitized summary schema `trashbot.field_evidence_rerun_execution_pack_summary.v1`, whose `source_schema` must point back to `trashbot.field_evidence_rerun_execution_pack.v1` and whose evidence boundary must remain `software_proof_docker_field_evidence_rerun_execution_pack_gate`.
+
+The alias is metadata-only and fail-closed:
+
+- `source=software_proof`
+- `not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `metadata_only=true`
+
+Allowed Robot-visible fields are limited to safe execution-pack metadata: `safe_evidence_ref`, `execution_pack_status`, `source_queue_schema`, `source_queue_status`, `same_evidence_ref_status`, `execution_steps`, `material_templates`, `owner_handoff`, `fail_thresholds`, `pass_thresholds`, `backfill_instructions`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
+
+The alias must not expose raw artifact data, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, local paths, checksum values, tracebacks, ACK/cursor state, HIL/pass wording, or success/control claims. Any missing sanitized summary, unsupported schema or boundary, `safe_evidence_ref` mismatch, missing required safe metadata, enabled action flag, unsafe copy, raw marker, local path, checksum, credential, traceback marker, HIL/pass wording, or hardware/control wording keeps the summary blocked/not_proven and leaves primary robot actions disabled. It does not prove real field rerun, Nav2, route/elevator field pass, phone/browser validation, WAVE ROVER/UART/HIL, dropoff/cancel completion, or delivery success.

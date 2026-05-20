@@ -598,6 +598,24 @@ python3 pc-tools/evidence/field_evidence_rerun_queue.py \
 
 该 gate 不读取真实材料目录、不触发现场复跑、不访问 ROS graph、Nav2/fixed-route runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺 handoff-intake 输入、缺 owner-safe queue request、bad JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、source intake 不是 `ready_for_field_evidence_rerun_handoff_intake_not_proven`、queue request 缺 acknowledged owner state、证据号不一致、弱类型 `same_evidence_ref_required`、`same_evidence_ref_status` 非 matched/ready、unsafe copy、raw path、credential、ROS topic、`/cmd_vel`、serial/UART/WAVE ROVER detail、checksum、完整/raw artifact、traceback、success/control wording、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`queued_for_controlled_field_rerun_not_proven` 只表示 Docker/local `software_proof_docker_field_evidence_rerun_queue_gate` 已把 owner-safe handoff intake 转成受控现场复跑队列候选，不是真实 route/elevator field pass、真实现场复跑、Nav2/fixed-route proof、task record/completion signal、dropoff/cancel completion、delivery success、HIL、O5 external proof、PR #5 resolved 或真实 phone/browser 证据。
 
+## field evidence rerun execution pack
+
+`pc-tools/evidence/field_evidence_rerun_execution_pack.py` 只读上一节 `field_evidence_rerun_queue` artifact、summary 或 wrapper/nested JSON，把受控现场复跑队列候选转成 field owner 可执行的 metadata-only execution pack：
+
+```bash
+python3 pc-tools/evidence/field_evidence_rerun_execution_pack.py \
+  --queue-json /tmp/field_evidence_rerun_queue_summary.json \
+  --evidence-ref ev-field-queue-001 \
+  --output /tmp/field_evidence_rerun_execution_pack.json \
+  --summary-output /tmp/field_evidence_rerun_execution_pack_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.field_evidence_rerun_execution_pack.v1`，summary 使用 `schema=trashbot.field_evidence_rerun_execution_pack_summary.v1`，Robot safe alias 为 `robot_diagnostics_field_evidence_rerun_execution_pack_summary`，证据边界固定为 `software_proof_docker_field_evidence_rerun_execution_pack_gate`。核心字段包括 `execution_pack_status`、`source_queue_schema`、`source_queue_status`、safe `evidence_ref`、`same_evidence_ref_status`、`execution_steps`、`material_templates`、`owner_handoff`、`fail_thresholds`、`pass_thresholds`、`backfill_instructions`、`safe_copy`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+`execution_pack_status` 固定包含 `ready_for_field_evidence_rerun_execution_pack_not_proven`、`needs_field_evidence_rerun_execution_pack_backfill`、`evidence_ref_mismatch_field_evidence_rerun_execution_pack`、`blocked_unsafe_field_evidence_rerun_execution_pack` 和 `blocked_unsupported_field_evidence_rerun_queue`。顶层 acceptance command 可用 `python3 -m unittest tests.test_field_evidence_rerun_execution_pack` 运行离线围栏测试；该入口只证明本地 execution-pack gate 的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
+
+该 gate 不读取真实材料目录、不触发现场复跑、不访问 ROS graph、Nav2/fixed-route runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺 queue 输入、bad JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、source queue 不是 `queued_for_controlled_field_rerun_not_proven`、证据号不一致、弱类型 `same_evidence_ref_required`、`same_evidence_ref_status` 非 matched/ready、unsafe copy、raw path、credential、ROS topic、`/cmd_vel`、serial/UART/WAVE ROVER detail、checksum、完整/raw artifact、traceback、success/control wording、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_evidence_rerun_execution_pack_not_proven` 只表示 Docker/local `software_proof_docker_field_evidence_rerun_execution_pack_gate` 已把 queue candidate 转成现场材料步骤、模板、owner handoff、同一 safe evidence_ref 规则、fail/pass thresholds 和 backfill instructions，不是真实现场复跑、真实 Nav2/fixed-route proof、真实 route/elevator field pass、task record/completion signal、dropoff/cancel completion、delivery success、HIL、O5 external proof、PR #5 resolved 或真实 phone/browser 证据。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

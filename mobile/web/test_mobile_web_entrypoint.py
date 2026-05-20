@@ -8623,6 +8623,125 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, queue_text)
 
+    def test_field_evidence_rerun_execution_pack_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 执行包 panel 只消费 safe execution-pack summary，不新增 execution scheduling、diagnostics fetch 或控制请求。
+        self.assertIn("FIELD_EVIDENCE_RERUN_EXECUTION_PACK_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_PACK_TEXT", app)
+        self.assertIn("safeFieldEvidenceRerunExecutionPackText", app)
+        self.assertIn("fieldEvidenceRerunExecutionPackCandidate", app)
+        self.assertIn("fieldEvidenceRerunExecutionPackFromStatus", app)
+        self.assertIn("renderFieldEvidenceRerunExecutionPack", app)
+        self.assertIn("现场证据复跑执行包", app)
+        self.assertIn("robot_diagnostics_field_evidence_rerun_execution_pack_summary", app)
+        self.assertIn("field_evidence_rerun_execution_pack_summary", app)
+        self.assertIn("field_evidence_rerun_execution_pack?.summary", app)
+        self.assertIn("execution_status", app)
+        self.assertIn("source_queue_status", app)
+        self.assertIn("execution_steps", app)
+        self.assertIn("material_templates", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("fail_thresholds", app)
+        self.assertIn("pass_thresholds", app)
+        self.assertIn("backfill_instructions", app)
+        self.assertIn("same_evidence_ref_status", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"fieldEvidenceRerunExecutionPack.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+        self.assertNotIn("copyFieldEvidenceRerunExecutionPackButton", app)
+        self.assertNotIn("downloadFieldEvidenceRerunExecutionPackButton", app)
+        self.assertNotIn("scheduleFieldEvidenceRerunExecutionPack", app)
+        self.assertNotIn("executionSchedulingFieldEvidenceRerunExecutionPack", app)
+
+        # Web fixture 和文档必须固定 software proof / not_proven / not-control 边界。
+        pack = fixture["robot_diagnostics_field_evidence_rerun_execution_pack_summary"]
+        fallback = fixture["field_evidence_rerun_execution_pack_summary"]
+        self.assertEqual(pack["execution_status"], "ready_for_field_owner_execution_pack_not_proven")
+        self.assertEqual(pack["source"], "software_proof")
+        self.assertEqual(pack["safe_to_control"], False)
+        self.assertEqual(pack["delivery_success"], False)
+        self.assertEqual(pack["primary_actions_enabled"], False)
+        self.assertIn("source_queue_status", pack)
+        self.assertIn("same_evidence_ref_status", pack)
+        self.assertIn("execution_steps", pack)
+        self.assertIn("material_templates", pack)
+        self.assertIn("owner_handoff", pack)
+        self.assertIn("fail_thresholds", pack)
+        self.assertIn("pass_thresholds", pack)
+        self.assertIn("backfill_instructions", pack)
+        self.assertEqual(fallback["source"], "software_proof")
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertIn("software_proof_docker_field_evidence_rerun_execution_pack_gate", fixture_text)
+        self.assertIn("field_evidence_rerun_execution_pack", doc)
+        self.assertIn("现场证据复跑执行包", doc)
+        self.assertIn("not PR #5 hardware proof", doc)
+        self.assertIn("not Objective 5 external proof", doc)
+
+    def test_field_evidence_rerun_execution_pack_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        pack_text = json.dumps(
+            {
+                "execution_pack": fixture["robot_diagnostics_field_evidence_rerun_execution_pack_summary"],
+                "fallback": fixture["field_evidence_rerun_execution_pack_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # 执行包 fixture 只能承载脱敏步骤/模板/阈值，不泄漏 raw execution pack、调度或机器人控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw review",
+            "raw handoff",
+            "raw intake",
+            "raw packet",
+            "raw queue",
+            "raw execution",
+            "full execution pack",
+            "complete callback",
+            "complete review",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "automatic retry",
+            "queue scheduling",
+            "execution scheduling",
+            "robot command",
+            "robot/internal",
+            "control authorization",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, pack_text)
+
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
         app = self.read_web("app.js")
