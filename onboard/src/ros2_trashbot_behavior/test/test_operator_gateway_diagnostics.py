@@ -42,6 +42,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_acceptance_execution_rerun_result_intake,
     summarize_route_task_field_retest_acceptance_execution_rerun_result_review_decision,
     summarize_route_task_field_retest_acceptance_execution_rerun_result_review_handoff,
+    summarize_field_evidence_rerun_material_dispatch,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -11054,6 +11055,214 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(summary["nav2_triggered"])
         self.assertFalse(summary["hil_pass"])
         self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("WAVE ROVER serial material", encoded)
+
+    def test_field_evidence_rerun_material_dispatch_alias_and_fail_closed(self):
+        def dispatch_summary(status, evidence_ref, **overrides):
+            base = {
+                "schema": "trashbot.field_evidence_rerun_material_dispatch_summary.v1",
+                "schema_version": 1,
+                "source_schema": "trashbot.field_evidence_rerun_material_dispatch.v1",
+                "evidence_boundary": "software_proof_docker_field_evidence_rerun_material_dispatch_gate",
+                "source_evidence_boundary": "software_proof_docker_field_evidence_rerun_material_dispatch_gate",
+                "safe_evidence_ref": evidence_ref,
+                "dispatch_status": {
+                    "status": status,
+                    "verdict": "not_proven",
+                    "reason": "sanitized field rerun material dispatch was received",
+                },
+                "owner_work_orders": [
+                    {"owner": "field_owner", "material": "real route completion signal"}
+                ],
+                "required_material_groups": [
+                    "real route completion signal",
+                    "real field task record",
+                    "real Nav2/fixed-route runtime log",
+                    "real phone/browser evidence",
+                ],
+                "rerun_commands": ["rerun field evidence capture with same evidence_ref"],
+                "callback_packet_requirements": ["callback packet must keep same evidence_ref"],
+                "same_evidence_ref_required": True,
+                "boundary_flags": {
+                    "metadata_only": True,
+                    "source": "software_proof",
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "raw_artifact_consumed": False,
+                    "control_entrypoint_enabled": False,
+                },
+                "robot_diagnostics_summary": {
+                    "status": "metadata_only",
+                    "reason": "Robot diagnostics mirrors dispatch metadata only.",
+                },
+                "safe_copy": (
+                    "Field evidence rerun material dispatch is metadata-only; "
+                    "source=software_proof; not_proven; safe_to_control=false; "
+                    "delivery_success=false; primary_actions_enabled=false."
+                ),
+                "not_proven": ["delivery_success", "real_hil_pass"],
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            }
+            base.update(overrides)
+            return base
+
+        with tempfile.TemporaryDirectory() as td:
+            dispatch_path = Path(td) / "field_evidence_rerun_material_dispatch_summary.json"
+            dispatch_path.write_text(
+                json.dumps(
+                    dispatch_summary(
+                        "ready_for_field_owner_material_dispatch",
+                        "evidence://field-evidence-rerun-material-dispatch-1",
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {"state": "waiting_for_trash"},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                field_evidence_rerun_material_dispatch_ref=str(dispatch_path),
+            )
+            summary = payload["field_evidence_rerun_material_dispatch"]
+            summary_alias = payload["field_evidence_rerun_material_dispatch_summary"]
+            robot_alias = payload[
+                "robot_diagnostics_field_evidence_rerun_material_dispatch_summary"
+            ]
+            nested_summary = summarize_field_evidence_rerun_material_dispatch(
+                {
+                    "schema": "trashbot.field_evidence_rerun_material_dispatch.v1",
+                    "evidence_boundary": "software_proof_docker_field_evidence_rerun_material_dispatch_gate",
+                    "evidence_ref": "evidence://field-evidence-rerun-material-dispatch-2",
+                    "diagnostics": {
+                        "robot_diagnostics_field_evidence_rerun_material_dispatch_summary": dispatch_summary(
+                            "needs_field_owner_material_backfill",
+                            "evidence://field-evidence-rerun-material-dispatch-2",
+                        )
+                    },
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                }
+            )
+            status_diagnostics_summary = build_diagnostics_payload(
+                {
+                    "diagnostics": {
+                        "field_evidence_rerun_material_dispatch_summary": dispatch_summary(
+                            "ready_for_field_owner_material_dispatch",
+                            "evidence://field-evidence-rerun-material-dispatch-3",
+                        )
+                    }
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )["robot_diagnostics_field_evidence_rerun_material_dispatch_summary"]
+            unsafe_summary = summarize_field_evidence_rerun_material_dispatch(
+                dispatch_summary(
+                    "ready_for_field_owner_material_dispatch",
+                    "evidence://field-evidence-rerun-material-dispatch-4",
+                    safe_copy="Dispatch confirms delivery success and ACK posted.",
+                    safe_to_control=True,
+                    delivery_success=True,
+                    primary_actions_enabled=True,
+                )
+            )
+            unsupported_summary = summarize_field_evidence_rerun_material_dispatch(
+                dispatch_summary(
+                    "ready_for_field_owner_material_dispatch",
+                    "evidence://field-evidence-rerun-material-dispatch-5",
+                    source_schema=(
+                        "trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff.v1"
+                    ),
+                    evidence_boundary=(
+                        "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate"
+                    ),
+                )
+            )
+            encoded = json.dumps(
+                [
+                    summary,
+                    summary_alias,
+                    robot_alias,
+                    nested_summary,
+                    status_diagnostics_summary,
+                    unsafe_summary,
+                    unsupported_summary,
+                ],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(summary, summary_alias)
+        self.assertEqual(summary, robot_alias)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.field_evidence_rerun_material_dispatch_summary.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_field_evidence_rerun_material_dispatch_gate",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_rerun_material_dispatch.v1",
+        )
+        self.assertEqual(
+            summary["dispatch_status"]["status"],
+            "ready_for_field_owner_material_dispatch",
+        )
+        self.assertEqual(
+            nested_summary["dispatch_status"]["status"],
+            "needs_field_owner_material_backfill",
+        )
+        self.assertEqual(
+            status_diagnostics_summary["dispatch_status"]["status"],
+            "ready_for_field_owner_material_dispatch",
+        )
+        self.assertEqual(
+            unsafe_summary["dispatch_status"]["status"],
+            "blocked_unsafe_field_evidence_rerun_material_dispatch",
+        )
+        self.assertEqual(
+            unsupported_summary["dispatch_status"]["status"],
+            "blocked_unsupported_field_evidence_rerun_material_dispatch",
+        )
+        self.assertIn("real route completion signal", summary["required_material_groups"])
+        self.assertIn("real phone/browser evidence", summary["required_material_groups"])
+        self.assertIn("software_proof_docker_field_evidence_rerun_material_dispatch_gate", encoded)
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("safe_to_control=false", summary["safe_phone_copy"])
+        self.assertIn("delivery_success=false", summary["safe_phone_copy"])
+        self.assertIn("primary_actions_enabled=false", summary["safe_phone_copy"])
+        self.assertTrue(summary["boundary_flags"]["metadata_only"])
+        self.assertEqual(summary["boundary_flags"]["source"], "software_proof")
+        self.assertFalse(summary["boundary_flags"]["safe_to_control"])
+        self.assertFalse(summary["boundary_flags"]["delivery_success"])
+        self.assertFalse(summary["boundary_flags"]["primary_actions_enabled"])
+        self.assertFalse(summary["boundary_flags"]["raw_artifact_consumed"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
         self.assertNotIn("/cmd_vel", encoded)
         self.assertNotIn("WAVE ROVER serial material", encoded)
 

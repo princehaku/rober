@@ -295,6 +295,15 @@ ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_RESULT_REVIEW_HANDOFF_SUMMARY
 ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_RESULT_REVIEW_HANDOFF_GATE = (
     "software_proof_docker_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_gate"
 )
+FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH_SCHEMA = (
+    "trashbot.field_evidence_rerun_material_dispatch.v1"
+)
+FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH_SUMMARY_SCHEMA = (
+    "trashbot.field_evidence_rerun_material_dispatch_summary.v1"
+)
+FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH_GATE = (
+    "software_proof_docker_field_evidence_rerun_material_dispatch_gate"
+)
 ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SCHEMA = (
     "trashbot.route_task_field_retest_evidence_dispatch.v1"
 )
@@ -2771,6 +2780,31 @@ def _route_task_field_retest_acceptance_execution_rerun_result_review_handoff_no
     ):
         if item not in values:
             values.append(item)
+    return values
+
+
+def _field_evidence_rerun_material_dispatch_not_proven(dispatch=None, summary_fragment=None):
+    # 现场材料派发只说明还缺哪些真实材料；Robot diagnostics 不能把派发包解释成执行结果。
+    source_values = []
+    for item in (dispatch, summary_fragment):
+        if isinstance(item, dict) and isinstance(item.get("not_proven"), list):
+            source_values.extend(item.get("not_proven"))
+    required = (
+        "field_evidence_rerun_material_dispatch_only",
+        "real_route_completion_not_verified",
+        "real_field_task_record_not_verified",
+        "real_nav2_fixed_route_runtime_not_verified",
+        "real_dropoff_cancel_completion_not_verified",
+        "real_delivery_result_not_verified",
+        "real_phone_browser_not_verified",
+        "hil_pass_not_verified",
+        "delivery_success",
+    )
+    values = []
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
     return values
 
 
@@ -7190,6 +7224,76 @@ def _default_route_task_field_retest_acceptance_execution_rerun_result_review_ha
         "dropoff_triggered": False,
         "cancel_triggered": False,
         "ack_post_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
+def _default_field_evidence_rerun_material_dispatch_summary(
+    path,
+    dispatch_status="blocked_missing_field_evidence_rerun_material_dispatch",
+    read_error="",
+):
+    # 默认摘要必须 fail closed；缺材料派发包时不得启用控制、ACK、Nav2 或 HIL 语义。
+    reason = read_error or "field evidence rerun material dispatch is not configured"
+    return {
+        "schema": FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "dispatch_status": {
+            "status": dispatch_status,
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "owner_work_orders": [],
+        "required_material_groups": [],
+        "rerun_commands": [],
+        "callback_packet_requirements": [],
+        "same_evidence_ref_required": True,
+        "boundary_flags": {
+            "metadata_only": True,
+            "source": EVIDENCE_SOURCE_SOFTWARE,
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "raw_artifact_consumed": False,
+            "control_entrypoint_enabled": False,
+        },
+        "robot_diagnostics_summary": {"status": "blocked", "reason": reason},
+        "boundary": FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH_GATE,
+        "not_proven": _field_evidence_rerun_material_dispatch_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": (
+            "Field evidence rerun material dispatch is metadata-only; "
+            "source=software_proof; not_proven; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        ),
+        "safe_phone_copy": (
+            "Field evidence rerun material dispatch is metadata-only; "
+            "source=software_proof; not_proven; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        ),
+        "metadata_only": True,
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
         "nav2_triggered": False,
         "hil_pass": False,
         "dropoff_completion": False,
@@ -11859,6 +11963,18 @@ def _route_task_field_retest_acceptance_execution_rerun_result_review_handoff_so
         source_schema = str(
             value.get("source_schema")
             or ROUTE_TASK_FIELD_RETEST_ACCEPTANCE_EXECUTION_RERUN_RESULT_REVIEW_HANDOFF_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _field_evidence_rerun_material_dispatch_source_contract(value):
+    # summary wrapper 必须保留原始 Autonomy schema/boundary，防止 Robot 接受其他 gate 的近似字段。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema") or FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH_SCHEMA
         )
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
@@ -27740,6 +27856,363 @@ def summarize_route_task_field_retest_acceptance_execution_rerun_result_review_h
                     "Route-task field retest acceptance execution rerun result review handoff "
                     "was blocked because summary fields could imply control, ACK, Nav2/HIL, "
                     "raw artifact access, hardware material, or delivery success."
+                ),
+            }
+        )
+    return summary
+
+
+def summarize_field_evidence_rerun_material_dispatch(source):
+    """构建 field evidence rerun material dispatch 的 Robot-safe metadata-only 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        dispatch = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_field_evidence_rerun_material_dispatch_summary(
+            source_path,
+            read_error="field evidence rerun material dispatch is not configured",
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "dispatch_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": "field evidence rerun material dispatch summary missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "field evidence rerun material dispatch summary missing",
+                    },
+                    "safe_copy": (
+                        "Field evidence rerun material dispatch is missing; "
+                        "metadata remains blocked/not_proven; safe_to_control=false; "
+                        "delivery_success=false; primary_actions_enabled=false."
+                    ),
+                    "safe_phone_copy": (
+                        "Field evidence rerun material dispatch is missing; "
+                        "metadata remains blocked/not_proven; safe_to_control=false; "
+                        "delivery_success=false; primary_actions_enabled=false."
+                    ),
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                dispatch = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "dispatch_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            f"failed reading field evidence rerun material dispatch: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "field evidence rerun material dispatch JSON read error",
+                    },
+                }
+            )
+            return summary
+
+    summary = _default_field_evidence_rerun_material_dispatch_summary(
+        source_path,
+        read_error="field evidence rerun material dispatch is not configured",
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(dispatch, dict):
+        summary.update(
+            {
+                "dispatch_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "field evidence rerun material dispatch JSON must be an object",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "field evidence rerun material dispatch JSON shape is invalid",
+                },
+            }
+        )
+        return summary
+
+    diagnostics = dispatch.get("diagnostics") if isinstance(dispatch.get("diagnostics"), dict) else {}
+    # 只白名单读取 Autonomy 产出的 summary/robot alias；完整 artifact 只能作为包裹层。
+    summary_fragment = (
+        dispatch
+        if str(dispatch.get("schema") or "")
+        == FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH_SUMMARY_SCHEMA
+        else {}
+    )
+    if not summary_fragment:
+        for candidate in (
+            dispatch.get("robot_diagnostics_field_evidence_rerun_material_dispatch_summary"),
+            dispatch.get("field_evidence_rerun_material_dispatch_summary"),
+            dispatch.get("summary"),
+            dispatch.get("diagnostics_summary"),
+            dispatch.get("robot_diagnostics_summary"),
+            dispatch.get("robot_compatible_summary"),
+            dispatch.get("mobile_readonly_summary"),
+            dispatch.get("phone_safe_summary"),
+            diagnostics.get("robot_diagnostics_field_evidence_rerun_material_dispatch_summary"),
+            diagnostics.get("field_evidence_rerun_material_dispatch_summary"),
+            diagnostics.get("summary"),
+            diagnostics.get("diagnostics_summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+
+    contract_source = summary_fragment if summary_fragment else dispatch
+    source_schema, source_boundary = _field_evidence_rerun_material_dispatch_source_contract(
+        contract_source
+    )
+    if not summary_fragment:
+        summary.update(
+            {
+                "source_schema": _redact_route_task_rehearsal_text(source_schema),
+                "source_schema_version": dispatch.get("schema_version"),
+                "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "dispatch_status": {
+                    "status": "missing_summary",
+                    "verdict": "not_proven",
+                    "reason": "field evidence rerun material dispatch lacks a sanitized summary",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing sanitized field evidence rerun material dispatch summary",
+                },
+            }
+        )
+        return summary
+
+    status_source = summary_fragment.get("dispatch_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("status_summary")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    dispatch_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or status_source.get("verdict")
+        or summary_fragment.get("dispatch_status")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or "blocked"
+    )
+    dispatch_reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or status_source.get("summary")
+        or summary_fragment.get("blocked_reason")
+        or summary_fragment.get("reason")
+        or "field evidence rerun material dispatch consumed without explicit reason"
+    )
+    safe_copy = _safe_pc_route_debug_value(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or (
+            "Field evidence rerun material dispatch is metadata-only; "
+            "source=software_proof; not_proven; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    safe_copy_text = (
+        json.dumps(safe_copy, ensure_ascii=False, sort_keys=True)
+        if isinstance(safe_copy, (dict, list))
+        else str(safe_copy or "")
+    )
+    if "safe_to_control=false" not in safe_copy_text:
+        # phone/Robot 两侧都用 literal false 做围栏，避免派发包被误读为控制授权。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; primary_actions_enabled=false."
+        )
+    source_ref = str(dispatch.get("safe_evidence_ref") or dispatch.get("evidence_ref") or "").strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref") or summary_fragment.get("evidence_ref") or ""
+    ).strip()
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else diagnostics.get("robot_diagnostics_summary")
+        if isinstance(diagnostics.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    boundary_flags = _safe_pc_route_debug_dict(summary_fragment.get("boundary_flags")) or {}
+    owner_work_orders = _safe_pc_route_debug_value(summary_fragment.get("owner_work_orders"))
+    required_material_groups = _safe_pc_route_debug_value(
+        summary_fragment.get("required_material_groups")
+    )
+    rerun_commands = _safe_pc_route_debug_value(summary_fragment.get("rerun_commands"))
+    callback_packet_requirements = _safe_pc_route_debug_value(
+        summary_fragment.get("callback_packet_requirements")
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": contract_source.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "dispatch_status": {
+                "status": dispatch_status or "blocked",
+                "verdict": "not_proven",
+                "reason": dispatch_reason,
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(summary_ref or source_ref),
+            "owner_work_orders": owner_work_orders,
+            "required_material_groups": required_material_groups,
+            "rerun_commands": rerun_commands,
+            "callback_packet_requirements": callback_packet_requirements,
+            "same_evidence_ref_required": summary_fragment.get("same_evidence_ref_required") is True,
+            "boundary_flags": dict(
+                boundary_flags,
+                metadata_only=True,
+                source=EVIDENCE_SOURCE_SOFTWARE,
+                safe_to_control=False,
+                delivery_success=False,
+                primary_actions_enabled=False,
+                raw_artifact_consumed=False,
+                control_entrypoint_enabled=False,
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": dispatch_status or "blocked",
+                "reason": "dispatch consumed without robot diagnostics summary",
+            },
+            "boundary": FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH_GATE,
+            "not_proven": _field_evidence_rerun_material_dispatch_not_proven(
+                dispatch,
+                summary_fragment,
+            ),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy_text,
+            "read_error": "",
+        }
+    )
+    required_summary_fields = (
+        bool(summary["safe_evidence_ref"]),
+        isinstance(owner_work_orders, list),
+        isinstance(required_material_groups, list),
+        isinstance(rerun_commands, list),
+        isinstance(callback_packet_requirements, list),
+        summary["same_evidence_ref_required"],
+    )
+    unsafe_material = any(
+        _route_task_field_retest_acceptance_execution_rerun_result_intake_has_unsafe_material(
+            item
+        )
+        for item in (
+            status_source,
+            owner_work_orders,
+            required_material_groups,
+            rerun_commands,
+            callback_packet_requirements,
+            safe_copy,
+            safe_copy_text,
+            robot_summary,
+        )
+    )
+    disabled_flags = (
+        summary_fragment.get("safe_to_control") is False
+        and summary_fragment.get("delivery_success") is False
+        and summary_fragment.get("primary_actions_enabled") is False
+    )
+    if (
+        source_schema != FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH_SCHEMA
+        or source_boundary != FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH_GATE
+    ):
+        summary.update(
+            {
+                "dispatch_status": {
+                    "status": "blocked_unsupported_field_evidence_rerun_material_dispatch",
+                    "verdict": "not_proven",
+                    "reason": "field evidence rerun material dispatch schema or boundary is unsupported",
+                },
+                "owner_work_orders": [],
+                "required_material_groups": [],
+                "rerun_commands": [],
+                "callback_packet_requirements": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary.update(
+            {
+                "dispatch_status": {
+                    "status": "evidence_ref_mismatch_field_evidence_rerun_material_dispatch_blocked",
+                    "verdict": "not_proven",
+                    "reason": "field evidence rerun material dispatch evidence_ref mismatch",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "same evidence_ref mismatch",
+                },
+            }
+        )
+        return summary
+    if not all(required_summary_fields):
+        summary.update(
+            {
+                "dispatch_status": {
+                    "status": "blocked_missing_field_evidence_rerun_material_dispatch_materials",
+                    "verdict": "not_proven",
+                    "reason": "field evidence rerun material dispatch is missing required safe metadata",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing required safe dispatch fields",
+                },
+            }
+        )
+        return summary
+    if (
+        not disabled_flags
+        or bool(summary["boundary_flags"].get("raw_artifact_consumed"))
+        or bool(summary["boundary_flags"].get("control_entrypoint_enabled"))
+        or unsafe_material
+        or _route_task_field_run_intake_has_unsafe_control_claims(summary_fragment)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy_text)
+        or _route_task_field_retest_execution_pack_has_success_wording(summary_fragment)
+    ):
+        summary.update(
+            {
+                "dispatch_status": {
+                    "status": "blocked_unsafe_field_evidence_rerun_material_dispatch",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "field evidence rerun material dispatch contains unsafe fields, "
+                        "enabled actions, raw details, or success wording"
+                    ),
+                },
+                "owner_work_orders": [],
+                "required_material_groups": [],
+                "rerun_commands": [],
+                "callback_packet_requirements": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe field evidence rerun material dispatch fields",
+                },
+                "safe_copy": (
+                    "Field evidence rerun material dispatch was blocked because summary "
+                    "fields could imply control, ACK, Nav2/HIL, raw artifact access, "
+                    "or delivery success."
+                ),
+                "safe_phone_copy": (
+                    "Field evidence rerun material dispatch was blocked because summary "
+                    "fields could imply control, ACK, Nav2/HIL, raw artifact access, "
+                    "or delivery success."
                 ),
             }
         )
@@ -44746,6 +45219,7 @@ def build_diagnostics_payload(
     route_task_field_retest_acceptance_execution_rerun_result_intake_ref="",
     route_task_field_retest_acceptance_execution_rerun_result_review_decision_ref="",
     route_task_field_retest_acceptance_execution_rerun_result_review_handoff_ref="",
+    field_evidence_rerun_material_dispatch_ref="",
     route_task_field_retest_evidence_dispatch_ref="",
     route_task_field_retest_callback_intake_ref="",
     route_task_field_retest_callback_review_decision_ref="",
@@ -46629,6 +47103,31 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
         else {}
     )
+    field_evidence_rerun_material_dispatch_source = (
+        latest_status.get("robot_diagnostics_field_evidence_rerun_material_dispatch_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_field_evidence_rerun_material_dispatch_summary"),
+            dict,
+        )
+        else latest_status.get("field_evidence_rerun_material_dispatch_summary")
+        if isinstance(latest_status.get("field_evidence_rerun_material_dispatch_summary"), dict)
+        else latest_status.get("field_evidence_rerun_material_dispatch")
+        if isinstance(latest_status.get("field_evidence_rerun_material_dispatch"), dict)
+        else diagnostics_source.get("robot_diagnostics_field_evidence_rerun_material_dispatch_summary")
+        if isinstance(
+            diagnostics_source.get("robot_diagnostics_field_evidence_rerun_material_dispatch_summary"),
+            dict,
+        )
+        else diagnostics_source.get("field_evidence_rerun_material_dispatch_summary")
+        if isinstance(diagnostics_source.get("field_evidence_rerun_material_dispatch_summary"), dict)
+        else diagnostics_source.get("field_evidence_rerun_material_dispatch")
+        if isinstance(diagnostics_source.get("field_evidence_rerun_material_dispatch"), dict)
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
+        else {}
+    )
     route_task_field_retest_evidence_dispatch_source = (
         latest_status.get("route_task_field_retest_evidence_dispatch")
         if isinstance(latest_status.get("route_task_field_retest_evidence_dispatch"), dict)
@@ -47750,6 +48249,17 @@ def build_diagnostics_payload(
             route_task_field_retest_acceptance_execution_rerun_result_review_handoff_source
         )
     )
+    field_evidence_rerun_material_dispatch_source = (
+        field_evidence_rerun_material_dispatch_ref
+        or os.environ.get("TRASHBOT_FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH", "")
+        or os.environ.get("TRASHBOT_FIELD_EVIDENCE_RERUN_MATERIAL_DISPATCH_SUMMARY", "")
+        or field_evidence_rerun_material_dispatch_source
+    )
+    field_evidence_rerun_material_dispatch_summary = (
+        summarize_field_evidence_rerun_material_dispatch(
+            field_evidence_rerun_material_dispatch_source
+        )
+    )
     route_task_field_retest_evidence_dispatch_source = (
         route_task_field_retest_evidence_dispatch_ref
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH", "")
@@ -48554,6 +49064,11 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary=(
             route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary
+        ),
+        field_evidence_rerun_material_dispatch=field_evidence_rerun_material_dispatch_summary,
+        field_evidence_rerun_material_dispatch_summary=field_evidence_rerun_material_dispatch_summary,
+        robot_diagnostics_field_evidence_rerun_material_dispatch_summary=(
+            field_evidence_rerun_material_dispatch_summary
         ),
         route_task_field_retest_evidence_dispatch=route_task_field_retest_evidence_dispatch_summary,
         route_task_field_retest_evidence_dispatch_summary=route_task_field_retest_evidence_dispatch_summary,

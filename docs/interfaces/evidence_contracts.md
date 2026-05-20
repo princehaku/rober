@@ -582,6 +582,71 @@ read ROS topics, touch serial/UART, trigger Nav2/fixed-route actions, prove a
 real route/elevator field pass, prove PR #4 field backfill, prove HIL, prove a
 real phone/browser run, prove O5/O1, or enable primary robot actions.
 
+## field_evidence_rerun_material_dispatch
+
+`pc-tools/evidence/field_evidence_rerun_material_dispatch.py` generates a
+dependency-free PC material-dispatch gate after the route/elevator rerun review
+handoff or real-material followup/status family. It packages what the field
+owners must collect for a real rerun, not a real field pass or delivery result.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_material_dispatch.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_material_dispatch_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_material_dispatch_gate`
+- Allowed source inputs:
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff.v1`,
+  `trashbot.route_task_field_retest_acceptance_execution_rerun_result_review_handoff_summary.v1`,
+  `trashbot.real_material_followup_escalation_status.v1`,
+  `trashbot.real_material_followup_escalation_status_summary.v1`,
+  `trashbot.real_material_evidence_intake.v1`,
+  `trashbot.real_material_evidence_intake_summary.v1`,
+  `trashbot.real_material_manifest_template.v1`, and
+  `trashbot.real_material_manifest_template_summary.v1` under their matching
+  software-proof boundaries only. Wrapper or nested JSON is allowed only through
+  whitelisted `summary`, `artifact`, `safe_copy`, diagnostics, mobile,
+  `payload`, or `data` keys.
+- Dispatch status values:
+  `ready_for_field_evidence_rerun_material_dispatch_not_proven`,
+  `evidence_ref_mismatch_field_evidence_rerun_material_dispatch_blocked`,
+  `blocked_unsafe_field_evidence_rerun_material_dispatch_copy`, and
+  `blocked_unsupported_field_evidence_rerun_material_dispatch_source`.
+
+The output always includes `source=software_proof`, safe `evidence_ref`,
+`same_evidence_ref_required=true`, source schema/boundary/status metadata,
+required material groups, `owner_work_orders`, `rerun_commands`,
+`callback_packet_requirements`, `safe_copy`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_material_dispatch_gate`.
+Required material groups are `real route completion signal`, `real field task
+record`, `real Nav2/fixed-route runtime log`, `real elevator door summary`,
+`real target floor / floor arrival summary`, `real human-assistance summary`,
+`real dropoff completion`, `real cancel completion`, `real delivery result`,
+and `real phone/browser evidence`.
+
+Mapping is fail-closed. A supported software-proof/not-proven source with a
+matching safe evidence_ref maps to
+`ready_for_field_evidence_rerun_material_dispatch_not_proven`. Mismatched
+evidence_ref, missing evidence_ref, or weak `same_evidence_ref_required` maps
+to `evidence_ref_mismatch_field_evidence_rerun_material_dispatch_blocked`.
+Unsafe copy, raw artifact text, local paths, checksum text, credentials,
+DB/queue URLs, ROS topic names, `/cmd_vel`, serial/UART/WAVE ROVER text,
+success/control claims, `safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` maps to
+`blocked_unsafe_field_evidence_rerun_material_dispatch_copy`. Missing JSON, bad
+JSON, unreadable JSON, non-object JSON, unsupported schema, unsupported
+boundary, non-`software_proof` source, or missing `not_proven` maps to
+`blocked_unsupported_field_evidence_rerun_material_dispatch_source`.
+
+This contract is software proof only. It does not read material directories,
+parse raw artifacts, access local paths/checksums/credentials/DB/queue URLs,
+read ROS topics, touch serial/UART, trigger Nav2/fixed-route actions, prove a
+real route/elevator field pass, prove dropoff/cancel completion, prove delivery
+success, prove HIL, prove O5 external cloud/4G/OSS/CDN/DB/queue readiness,
+resolve PR #5, prove a real phone/browser run, or enable primary robot actions.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

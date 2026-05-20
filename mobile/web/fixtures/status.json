@@ -26,8 +26,8 @@
       "delivery success"
     ]
   },
-    "robot_diagnostics_elevator_action_feedback_trace_summary": {
-        "schema": "trashbot.elevator_action_feedback_trace_summary.v1",
+  "robot_diagnostics_elevator_action_feedback_trace_summary": {
+    "schema": "trashbot.elevator_action_feedback_trace_summary.v1",
     "schema_version": 1,
     "status": "not_proven",
     "source_boundary": "software_proof",
@@ -54,9 +54,9 @@
       "primary_actions_enabled=false",
       "真实电梯",
       "真实 Nav2/fixed-route",
-            "HIL"
-        ]
-    },
+      "HIL"
+    ]
+  },
   "robot_diagnostics_task_terminal_completion_mainline_summary": {
     "schema": "trashbot.task_terminal_completion_mainline.v1",
     "schema_version": 1,
@@ -760,369 +760,454 @@
       "delivery success"
     ]
   },
-    "robot_diagnostics_pr5_review_thread_closeout_summary": {
-        "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
-        "schema_version": 1,
-        "source": "software_proof",
-        "overall_status": "not_proven",
-        "pr": {
-            "number": 5,
-            "title": "PR #5 review thread closeout"
-        },
-        "safe_evidence_ref": "pr5_review_thread_closeout_fixture_20260519_0001",
-        "thread_decisions": [
-            {
-                "thread_key": "p1_production_hardware_boundary_default_vs_mandatory_sensor_baseline",
-                "severity": "P1",
-                "decision": "ready_to_close_on_mainline_docs",
-                "current_evidence_refs": [
-                    "production_hardware_boundary default hardware set summary",
-                    "production_hardware_boundary vendor/source attribution boundary",
-                    "docs/vendor/VENDOR_INDEX.md material coverage summary"
-                ],
-                "missing_real_materials": [
-                    "real_2d_lidar_sku_source_receipt",
-                    "real_tof_sku_source_receipt",
-                    "real_install_wiring_power_calibration",
-                    "real_hil_entry"
-                ],
-                "owner_handoff": "Hardware owner may close docs-only mismatch after reviewer accepts; real materials remain open."
-            },
-            {
-                "thread_key": "p2_sensor_materials_missing_real_receipt_and_hil_entry",
-                "severity": "P2",
-                "decision": "blocked_pending_real_materials",
-                "current_evidence_refs": [
-                    "hardware_baseline_source_alignment summary",
-                    "hardware_sensor_hil_entry_execution_pack summary"
-                ],
-                "missing_real_materials": [
-                    "real_2d_lidar_receipt",
-                    "real_tof_receipt",
-                    "real_installation_photo_summary",
-                    "real_hil_entry_summary"
-                ],
-                "owner_handoff": "Hardware owner supplies real material summaries before this thread can change state."
-            }
+  "robot_diagnostics_pr5_review_thread_closeout_summary": {
+    "schema": "trashbot.pr5_review_thread_closeout_summary.v1",
+    "schema_version": 1,
+    "source": "software_proof",
+    "overall_status": "not_proven",
+    "pr": {
+      "number": 5,
+      "title": "PR #5 review thread closeout"
+    },
+    "safe_evidence_ref": "pr5_review_thread_closeout_fixture_20260519_0001",
+    "thread_decisions": [
+      {
+        "thread_key": "p1_production_hardware_boundary_default_vs_mandatory_sensor_baseline",
+        "severity": "P1",
+        "decision": "ready_to_close_on_mainline_docs",
+        "current_evidence_refs": [
+          "production_hardware_boundary default hardware set summary",
+          "production_hardware_boundary vendor/source attribution boundary",
+          "docs/vendor/VENDOR_INDEX.md material coverage summary"
         ],
         "missing_real_materials": [
-            "real_2d_lidar_sku_source_receipt",
-            "real_tof_sku_source_receipt",
-            "real_install_wiring_power_calibration",
-            "real_hil_entry"
+          "real_2d_lidar_sku_source_receipt",
+          "real_tof_sku_source_receipt",
+          "real_install_wiring_power_calibration",
+          "real_hil_entry"
         ],
-        "owner_handoff": "Hardware owns reviewer closeout and real material follow-up; Robot and Full-stack keep summaries read-only.",
-        "safe_phone_copy": "PR #5 review thread closeout 只读展示每条 thread 的 decision、当前证据、缺失真实材料和 owner handoff；这是 software_proof / not_proven。",
-        "recovery_hint": "缺真实材料前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
-        "evidence_boundary": "software_proof_docker_pr5_review_thread_closeout_gate",
-        "delivery_success": false,
-        "primary_actions_enabled": false,
-        "not_proven": [
-            "software_proof",
-            "not_proven",
-            "delivery_success=false",
-            "primary_actions_enabled=false",
-            "real_2d_lidar",
-            "real_tof",
-            "hil_pass",
-            "route_elevator_field_pass"
-        ]
-    },
-    "robot_diagnostics_hardware_real_material_escalation_request_summary": {
-        "schema": "trashbot.hardware_real_material_escalation_request_summary.v1",
-        "schema_version": 1,
-        "source": "software_proof",
-        "safe_status": "hardware_real_material_escalation_request_not_proven",
-        "safe_evidence_ref": "hardware_real_material_escalation_request_fixture_20260519_0001",
-        "missing_hardware_materials": [
-            "missing_hardware_material=real_2d_lidar_source_receipt",
-            "missing_hardware_material=real_tof_source_receipt",
-            "missing_hardware_material=real_install_wiring_power_calibration",
-            "missing_hardware_material=real_hardware_bench_entry"
+        "owner_handoff": "Hardware owner may close docs-only mismatch after reviewer accepts; real materials remain open."
+      },
+      {
+        "thread_key": "p2_sensor_materials_missing_real_receipt_and_hil_entry",
+        "severity": "P2",
+        "decision": "blocked_pending_real_materials",
+        "current_evidence_refs": [
+          "hardware_baseline_source_alignment summary",
+          "hardware_sensor_hil_entry_execution_pack summary"
         ],
+        "missing_real_materials": [
+          "real_2d_lidar_receipt",
+          "real_tof_receipt",
+          "real_installation_photo_summary",
+          "real_hil_entry_summary"
+        ],
+        "owner_handoff": "Hardware owner supplies real material summaries before this thread can change state."
+      }
+    ],
+    "missing_real_materials": [
+      "real_2d_lidar_sku_source_receipt",
+      "real_tof_sku_source_receipt",
+      "real_install_wiring_power_calibration",
+      "real_hil_entry"
+    ],
+    "owner_handoff": "Hardware owns reviewer closeout and real material follow-up; Robot and Full-stack keep summaries read-only.",
+    "safe_phone_copy": "PR #5 review thread closeout 只读展示每条 thread 的 decision、当前证据、缺失真实材料和 owner handoff；这是 software_proof / not_proven。",
+    "recovery_hint": "缺真实材料前保持 not_proven；Start Delivery、Confirm Dropoff、Cancel gating 不变。",
+    "evidence_boundary": "software_proof_docker_pr5_review_thread_closeout_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "real_2d_lidar",
+      "real_tof",
+      "hil_pass",
+      "route_elevator_field_pass"
+    ]
+  },
+  "robot_diagnostics_hardware_real_material_escalation_request_summary": {
+    "schema": "trashbot.hardware_real_material_escalation_request_summary.v1",
+    "schema_version": 1,
+    "source": "software_proof",
+    "safe_status": "hardware_real_material_escalation_request_not_proven",
+    "safe_evidence_ref": "hardware_real_material_escalation_request_fixture_20260519_0001",
+    "missing_hardware_materials": [
+      "missing_hardware_material=real_2d_lidar_source_receipt",
+      "missing_hardware_material=real_tof_source_receipt",
+      "missing_hardware_material=real_install_wiring_power_calibration",
+      "missing_hardware_material=real_hardware_bench_entry"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real 2D LiDAR source and receipt summary",
+      "next_required_evidence=real ToF source and receipt summary",
+      "next_required_evidence=real install/wiring/power/calibration summary",
+      "next_required_evidence=real hardware bench entry summary"
+    ],
+    "owner_handoff": "owner_handoff=Hardware owner supplies real-material summaries; Robot owner republishes sanitized diagnostics alias; Full-stack keeps panel read-only.",
+    "safe_phone_copy": "硬件真实材料升级请求只读展示 safe status、safe evidence ref、missing hardware materials、next required evidence、owner handoff 和 not_proven；不放行 Start Delivery、Confirm Dropoff 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_hardware_real_material_escalation_request_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "real_2d_lidar",
+      "real_tof",
+      "real_hardware_bench_entry",
+      "real_phone_browser"
+    ]
+  },
+  "robot_diagnostics_real_material_readiness_board_summary": {
+    "schema": "trashbot.real_material_readiness_board_summary.v1",
+    "schema_version": 1,
+    "summary_alias": "robot_diagnostics_real_material_readiness_board_summary",
+    "source": "software_proof",
+    "status": "not_proven",
+    "safe_evidence_ref": "real_material_readiness_board_fixture_20260519_0001",
+    "material_groups": [
+      {
+        "group_id": "o5_external",
+        "title": "Objective 5 external",
+        "owner": "Product / Cloud owner",
+        "readiness_status": "not_proven",
+        "blocking_reason": "missing_real_external_proof",
         "next_required_evidence": [
-            "next_required_evidence=real 2D LiDAR source and receipt summary",
-            "next_required_evidence=real ToF source and receipt summary",
-            "next_required_evidence=real install/wiring/power/calibration summary",
-            "next_required_evidence=real hardware bench entry summary"
+          "public_https_tls_summary",
+          "4g_sim_summary",
+          "oss_cdn_live_traffic_summary",
+          "production_db_queue_summary"
         ],
-        "owner_handoff": "owner_handoff=Hardware owner supplies real-material summaries; Robot owner republishes sanitized diagnostics alias; Full-stack keeps panel read-only.",
-        "safe_phone_copy": "硬件真实材料升级请求只读展示 safe status、safe evidence ref、missing hardware materials、next required evidence、owner handoff 和 not_proven；不放行 Start Delivery、Confirm Dropoff 或 Cancel。",
-        "evidence_boundary": "software_proof_docker_hardware_real_material_escalation_request_gate",
-        "delivery_success": false,
-        "primary_actions_enabled": false,
-        "not_proven": [
-            "software_proof",
-            "not_proven",
-            "delivery_success=false",
-            "primary_actions_enabled=false",
-            "real_2d_lidar",
-            "real_tof",
-            "real_hardware_bench_entry",
-            "real_phone_browser"
+        "source_refs": [
+          "Objective 5",
+          "OKR.md 4.1"
         ]
-    },
-    "robot_diagnostics_real_material_readiness_board_summary": {
-        "schema": "trashbot.real_material_readiness_board_summary.v1",
-        "schema_version": 1,
-        "summary_alias": "robot_diagnostics_real_material_readiness_board_summary",
-        "source": "software_proof",
-        "status": "not_proven",
-        "safe_evidence_ref": "real_material_readiness_board_fixture_20260519_0001",
-        "material_groups": [
+      },
+      {
+        "group_id": "o1_pr5_hardware",
+        "title": "Objective 1 / PR #5 hardware",
+        "owner": "Hardware owner",
+        "readiness_status": "not_proven",
+        "blocking_reason": "PR #5 PRRT_kwDOSWB9286CJ3tX blocked_pending_real_materials",
+        "next_required_evidence": [
+          "real_2d_lidar_source_receipt_summary",
+          "real_tof_source_receipt_summary",
+          "real_install_wiring_power_calibration_summary",
+          "real_hardware_bench_entry_summary"
+        ],
+        "source_refs": [
+          "Objective 1",
+          "PR #5",
+          "PRRT_kwDOSWB9286CJ3tX"
+        ]
+      },
+      {
+        "group_id": "pr4_route_elevator",
+        "title": "PR #4 route/elevator",
+        "owner": "Autonomy / Robot owner",
+        "readiness_status": "not_proven",
+        "blocking_reason": "missing_real_route_elevator_materials",
+        "next_required_evidence": [
+          "real_nav2_or_fixed_route_runtime_summary",
+          "real_route_completion_signal_summary",
+          "real_task_record_summary",
+          "real_elevator_door_floor_human_assist_summary"
+        ],
+        "source_refs": [
+          "PR #4",
+          "route/elevator material review"
+        ]
+      },
+      {
+        "group_id": "o4_real_phone",
+        "title": "Objective 4 real phone",
+        "owner": "Full-stack / Field owner",
+        "readiness_status": "not_proven",
+        "blocking_reason": "missing_real_phone_acceptance_materials",
+        "next_required_evidence": [
+          "real_iphone_or_android_browser_summary",
+          "production_app_entry_summary",
+          "pwa_prompt_user_choice_summary",
+          "offline_touch_visual_summary"
+        ],
+        "source_refs": [
+          "Objective 4",
+          "mobile real phone review"
+        ]
+      }
+    ],
+    "safe_phone_copy": "真实材料就绪看板只读展示 O5 external、O1 / PR #5 hardware、PR #4 route/elevator、O4 real phone 四类 owner 路由；不放行 Start Delivery、Confirm Dropoff 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_real_material_readiness_board_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "Objective 5 external proof",
+      "Objective 1 PR #5 hardware material",
+      "PR #4 route/elevator material",
+      "Objective 4 real phone material"
+    ]
+  },
+  "robot_diagnostics_real_material_evidence_intake_summary": {
+    "schema": "trashbot.real_material_evidence_intake_summary.v1",
+    "schema_version": 1,
+    "summary_alias": "robot_diagnostics_real_material_evidence_intake_summary",
+    "source": "software_proof",
+    "intake_status": "blocked_missing_real_material_evidence_not_proven",
+    "material_group": "pr4_route_elevator",
+    "safe_evidence_ref": "real_material_evidence_intake_fixture_20260519_0001",
+    "accepted_items": [
+      "accepted_item=real_material_readiness_board_summary_metadata_only"
+    ],
+    "missing_items": [
+      "missing_item=real_nav2_or_fixed_route_runtime_summary",
+      "missing_item=real_route_completion_signal_summary",
+      "missing_item=real_task_record_summary",
+      "missing_item=real_elevator_door_floor_human_assist_summary",
+      "missing_item=real_phone_browser_summary"
+    ],
+    "rejected_items": [
+      "rejected_item=unsafe_or_unredacted_material_summary"
+    ],
+    "next_action": "next_action=Field owner backfills phone-safe summaries under the same safe evidence_ref before review.",
+    "owner_handoff": "owner_handoff=Robot owner publishes safe diagnostics alias; Full-stack renders read-only and keeps primary actions unchanged.",
+    "manifest_template": {
+      "schema": "trashbot.real_material_evidence_intake_manifest_template.v1",
+      "submission_pack_status": "submission_pack=not_proven",
+      "same_safe_evidence_ref_required": true,
+      "template_groups": [
+        {
+          "group_id": "o5_external",
+          "title": "Objective 5 external",
+          "owner": "Cloud / Product owner",
+          "next_action": "Submit public ingress, 4G/SIM, live traffic, and production DB/queue phone-safe summaries under the same safe evidence_ref.",
+          "required_item_templates": [
             {
-                "group_id": "o5_external",
-                "title": "Objective 5 external",
-                "owner": "Product / Cloud owner",
-                "readiness_status": "not_proven",
-                "blocking_reason": "missing_real_external_proof",
-                "next_required_evidence": [
-                    "public_https_tls_summary",
-                    "4g_sim_summary",
-                    "oss_cdn_live_traffic_summary",
-                    "production_db_queue_summary"
-                ],
-                "source_refs": [
-                    "Objective 5",
-                    "OKR.md 4.1"
-                ]
+              "item_id": "public_ingress_tls_summary",
+              "label": "Public HTTPS/TLS summary",
+              "owner": "Cloud owner",
+              "next_action": "Submit redacted endpoint status only."
             },
             {
-                "group_id": "o1_pr5_hardware",
-                "title": "Objective 1 / PR #5 hardware",
-                "owner": "Hardware owner",
-                "readiness_status": "not_proven",
-                "blocking_reason": "PR #5 PRRT_kwDOSWB9286CJ3tX blocked_pending_real_materials",
-                "next_required_evidence": [
-                    "real_2d_lidar_source_receipt_summary",
-                    "real_tof_source_receipt_summary",
-                    "real_install_wiring_power_calibration_summary",
-                    "real_hardware_bench_entry_summary"
-                ],
-                "source_refs": [
-                    "Objective 1",
-                    "PR #5",
-                    "PRRT_kwDOSWB9286CJ3tX"
-                ]
+              "item_id": "four_g_sim_connectivity_summary",
+              "label": "4G/SIM connectivity summary",
+              "owner": "Field owner",
+              "next_action": "Submit connection result summary only."
             },
             {
-                "group_id": "pr4_route_elevator",
-                "title": "PR #4 route/elevator",
-                "owner": "Autonomy / Robot owner",
-                "readiness_status": "not_proven",
-                "blocking_reason": "missing_real_route_elevator_materials",
-                "next_required_evidence": [
-                    "real_nav2_or_fixed_route_runtime_summary",
-                    "real_route_completion_signal_summary",
-                    "real_task_record_summary",
-                    "real_elevator_door_floor_human_assist_summary"
-                ],
-                "source_refs": [
-                    "PR #4",
-                    "route/elevator material review"
-                ]
+              "item_id": "live_traffic_summary",
+              "label": "Live traffic summary",
+              "owner": "Cloud owner",
+              "next_action": "Submit service traffic summary only."
             },
             {
-                "group_id": "o4_real_phone",
-                "title": "Objective 4 real phone",
-                "owner": "Full-stack / Field owner",
-                "readiness_status": "not_proven",
-                "blocking_reason": "missing_real_phone_acceptance_materials",
-                "next_required_evidence": [
-                    "real_iphone_or_android_browser_summary",
-                    "production_app_entry_summary",
-                    "pwa_prompt_user_choice_summary",
-                    "offline_touch_visual_summary"
-                ],
-                "source_refs": [
-                    "Objective 4",
-                    "mobile real phone review"
-                ]
+              "item_id": "production_db_queue_summary",
+              "label": "Production DB/queue summary",
+              "owner": "Cloud owner",
+              "next_action": "Submit connectivity summary only."
             }
-        ],
-        "safe_phone_copy": "真实材料就绪看板只读展示 O5 external、O1 / PR #5 hardware、PR #4 route/elevator、O4 real phone 四类 owner 路由；不放行 Start Delivery、Confirm Dropoff 或 Cancel。",
-        "evidence_boundary": "software_proof_docker_real_material_readiness_board_gate",
-        "delivery_success": false,
-        "primary_actions_enabled": false,
-        "safe_to_control": false,
-        "not_proven": [
-            "software_proof",
-            "not_proven",
-            "delivery_success=false",
-            "primary_actions_enabled=false",
-            "safe_to_control=false",
-            "Objective 5 external proof",
-            "Objective 1 PR #5 hardware material",
-            "PR #4 route/elevator material",
-            "Objective 4 real phone material"
-        ]
-    },
-    "robot_diagnostics_real_material_evidence_intake_summary": {
-        "schema": "trashbot.real_material_evidence_intake_summary.v1",
-        "schema_version": 1,
-        "summary_alias": "robot_diagnostics_real_material_evidence_intake_summary",
-        "source": "software_proof",
-        "intake_status": "blocked_missing_real_material_evidence_not_proven",
-        "material_group": "pr4_route_elevator",
-        "safe_evidence_ref": "real_material_evidence_intake_fixture_20260519_0001",
-        "accepted_items": [
-            "accepted_item=real_material_readiness_board_summary_metadata_only"
-        ],
-        "missing_items": [
-            "missing_item=real_nav2_or_fixed_route_runtime_summary",
-            "missing_item=real_route_completion_signal_summary",
-            "missing_item=real_task_record_summary",
-            "missing_item=real_elevator_door_floor_human_assist_summary",
-            "missing_item=real_phone_browser_summary"
-        ],
-        "rejected_items": [
-            "rejected_item=unsafe_or_unredacted_material_summary"
-        ],
-        "next_action": "next_action=Field owner backfills phone-safe summaries under the same safe evidence_ref before review.",
-        "owner_handoff": "owner_handoff=Robot owner publishes safe diagnostics alias; Full-stack renders read-only and keeps primary actions unchanged.",
-        "manifest_template": {
-            "schema": "trashbot.real_material_evidence_intake_manifest_template.v1",
-            "submission_pack_status": "submission_pack=not_proven",
-            "same_safe_evidence_ref_required": true,
-            "template_groups": [
-                {
-                    "group_id": "o5_external",
-                    "title": "Objective 5 external",
-                    "owner": "Cloud / Product owner",
-                    "next_action": "Submit public ingress, 4G/SIM, live traffic, and production DB/queue phone-safe summaries under the same safe evidence_ref.",
-                    "required_item_templates": [
-                        {"item_id": "public_ingress_tls_summary", "label": "Public HTTPS/TLS summary", "owner": "Cloud owner", "next_action": "Submit redacted endpoint status only."},
-                        {"item_id": "four_g_sim_connectivity_summary", "label": "4G/SIM connectivity summary", "owner": "Field owner", "next_action": "Submit connection result summary only."},
-                        {"item_id": "live_traffic_summary", "label": "Live traffic summary", "owner": "Cloud owner", "next_action": "Submit service traffic summary only."},
-                        {"item_id": "production_db_queue_summary", "label": "Production DB/queue summary", "owner": "Cloud owner", "next_action": "Submit connectivity summary only."}
-                    ]
-                },
-                {
-                    "group_id": "o1_pr5_hardware",
-                    "title": "Objective 1 / PR #5 hardware",
-                    "owner": "Hardware owner",
-                    "next_action": "Submit 2D LiDAR / ToF source, receipt, installation, wiring, power, and calibration summaries under the same safe evidence_ref.",
-                    "required_item_templates": [
-                        {"item_id": "real_2d_lidar_source_receipt_summary", "label": "2D LiDAR source/receipt summary", "owner": "Hardware owner", "next_action": "Submit source and receipt summary."},
-                        {"item_id": "real_tof_source_receipt_summary", "label": "ToF source/receipt summary", "owner": "Hardware owner", "next_action": "Submit source and receipt summary."},
-                        {"item_id": "sensor_install_wiring_power_summary", "label": "Install/wiring/power summary", "owner": "Hardware owner", "next_action": "Submit installation evidence summary."},
-                        {"item_id": "sensor_calibration_entry_summary", "label": "Calibration entry summary", "owner": "Hardware owner", "next_action": "Submit calibration summary."}
-                    ]
-                },
-                {
-                    "group_id": "pr4_route_elevator",
-                    "title": "PR #4 route/elevator",
-                    "owner": "Robot / Autonomy owner",
-                    "next_action": "Submit route runtime, completion signal, task record, elevator field, and delivery result summaries under the same safe evidence_ref.",
-                    "required_item_templates": [
-                        {"item_id": "nav2_or_fixed_route_runtime_summary", "label": "Nav2/fixed-route runtime summary", "owner": "Autonomy owner", "next_action": "Submit runtime summary."},
-                        {"item_id": "route_completion_signal_summary", "label": "Route completion signal summary", "owner": "Robot owner", "next_action": "Submit completion signal summary."},
-                        {"item_id": "field_task_record_summary", "label": "Field task record summary", "owner": "Robot owner", "next_action": "Submit task record summary."},
-                        {"item_id": "elevator_door_floor_human_assist_summary", "label": "Elevator door/floor/human assist summary", "owner": "Field owner", "next_action": "Submit elevator field summary."},
-                        {"item_id": "delivery_result_summary", "label": "Delivery result summary", "owner": "Field owner", "next_action": "Submit accepted/missing/rejected result summary."}
-                    ]
-                },
-                {
-                    "group_id": "o4_real_phone",
-                    "title": "Objective 4 real phone",
-                    "owner": "Full-stack / Field owner",
-                    "next_action": "Submit real phone/browser, production entry, PWA prompt/user choice, offline/touch/visual summaries under the same safe evidence_ref.",
-                    "required_item_templates": [
-                        {"item_id": "real_phone_browser_summary", "label": "Real phone/browser summary", "owner": "Full-stack owner", "next_action": "Submit real device browser summary."},
-                        {"item_id": "production_app_entry_summary", "label": "Production app/entry summary", "owner": "Full-stack owner", "next_action": "Submit production entry summary."},
-                        {"item_id": "pwa_prompt_user_choice_summary", "label": "PWA prompt/user choice summary", "owner": "Field owner", "next_action": "Submit prompt observation summary."},
-                        {"item_id": "offline_touch_visual_summary", "label": "Offline/touch/visual summary", "owner": "Field owner", "next_action": "Submit phone UX review summary."}
-                    ]
-                }
-            ]
+          ]
         },
-        "template_groups": [],
-        "required_item_templates": {},
-        "phone_safe_copy": "真实材料回填入口只读展示 intake status、material group、safe evidence_ref、accepted/missing/rejected items、next_action、owner_handoff 和 not_proven；不放行 Start Delivery、Confirm Dropoff 或 Cancel。",
-        "evidence_boundary": "software_proof_docker_real_material_evidence_intake_gate",
-        "delivery_success": false,
-        "primary_actions_enabled": false,
-        "safe_to_control": false,
-        "not_proven": [
-            "software_proof",
-            "not_proven",
-            "delivery_success=false",
-            "primary_actions_enabled=false",
-            "safe_to_control=false",
-            "real_phone_browser",
-            "real_route_elevator_field_material",
-            "real_delivery_result"
-        ]
-    },
-    "robot_diagnostics_real_material_followup_escalation_status_summary": {
-        "schema": "trashbot.real_material_followup_escalation_status_summary.v1",
-        "schema_version": 1,
-        "summary_alias": "robot_diagnostics_real_material_followup_escalation_status_summary",
-        "source": "software_proof",
-        "overall_status": "real_material_followup_escalation_status_not_proven",
-        "safe_evidence_ref": "real_material_followup_escalation_status_fixture_20260519_0001",
-        "material_groups": [
+        {
+          "group_id": "o1_pr5_hardware",
+          "title": "Objective 1 / PR #5 hardware",
+          "owner": "Hardware owner",
+          "next_action": "Submit 2D LiDAR / ToF source, receipt, installation, wiring, power, and calibration summaries under the same safe evidence_ref.",
+          "required_item_templates": [
             {
-                "material_group": "o5_external",
-                "field_owner": "Cloud / Product owner",
-                "due_status": "blocked_missing_external_materials",
-                "blocked_reason": "Missing public ingress, 4G/SIM, live traffic, production DB/queue, and cutover phone-safe summaries.",
-                "next_required_evidence": "Submit external proof phone-safe summary under the same safe evidence_ref.",
-                "escalation_level": "field_owner_followup",
-                "rerun_command": "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
-                "rerun_status_summary": "rerun_status=waiting_for_real_external_materials"
+              "item_id": "real_2d_lidar_source_receipt_summary",
+              "label": "2D LiDAR source/receipt summary",
+              "owner": "Hardware owner",
+              "next_action": "Submit source and receipt summary."
             },
             {
-                "material_group": "o1_pr5_hardware",
-                "field_owner": "Hardware owner",
-                "due_status": "blocked_pending_real_materials",
-                "blocked_reason": "PR #5 PRRT_kwDOSWB9286CJ3tX still lacks real sensor source, receipt, install, wiring, power, calibration, and bench-entry summaries.",
-                "next_required_evidence": "Submit 2D LiDAR / ToF source, receipt, installation, wiring, power, and calibration phone-safe summaries.",
-                "escalation_level": "owner_escalation_required",
-                "rerun_command": "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
-                "rerun_status_summary": "rerun_status=waiting_for_hardware_owner_materials"
+              "item_id": "real_tof_source_receipt_summary",
+              "label": "ToF source/receipt summary",
+              "owner": "Hardware owner",
+              "next_action": "Submit source and receipt summary."
             },
             {
-                "material_group": "pr4_route_elevator",
-                "field_owner": "Robot / Autonomy owner",
-                "due_status": "blocked_missing_field_run_materials",
-                "blocked_reason": "Missing real route runtime, completion signal, task record, elevator field, and delivery result summaries.",
-                "next_required_evidence": "Submit route/elevator phone-safe summary under the same safe evidence_ref.",
-                "escalation_level": "field_owner_followup",
-                "rerun_command": "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
-                "rerun_status_summary": "rerun_status=waiting_for_route_elevator_materials"
+              "item_id": "sensor_install_wiring_power_summary",
+              "label": "Install/wiring/power summary",
+              "owner": "Hardware owner",
+              "next_action": "Submit installation evidence summary."
             },
             {
-                "material_group": "o4_real_phone",
-                "field_owner": "Full-stack / Field owner",
-                "due_status": "blocked_missing_real_phone_materials",
-                "blocked_reason": "Missing real iPhone/Android behavior, production entry, PWA prompt/user choice, offline, touch, and visual review summaries.",
-                "next_required_evidence": "Submit real phone/browser field acceptance phone-safe summary under the same safe evidence_ref.",
-                "escalation_level": "field_owner_followup",
-                "rerun_command": "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
-                "rerun_status_summary": "rerun_status=waiting_for_real_phone_materials"
+              "item_id": "sensor_calibration_entry_summary",
+              "label": "Calibration entry summary",
+              "owner": "Hardware owner",
+              "next_action": "Submit calibration summary."
             }
-        ],
-        "rerun_status_summary": "rerun_status=waiting_for_real_materials",
-        "safe_phone_copy": "真实材料升级状态只读展示 material groups、safe evidence_ref、field owner、due_status、blocked_reason、next_required_evidence、escalation_level、rerun command/status summary 和 not_proven；不放行 Start Delivery、Confirm Dropoff 或 Cancel。",
-        "evidence_boundary": "software_proof_docker_real_material_followup_escalation_status_gate",
-        "delivery_success": false,
-        "primary_actions_enabled": false,
-        "safe_to_control": false,
-        "not_proven": [
-            "software_proof",
-            "not_proven",
-            "delivery_success=false",
-            "primary_actions_enabled=false",
-            "safe_to_control=false",
-            "real_external_proof",
-            "real_hardware_material",
-            "real_route_elevator_field_material",
-            "real_phone_browser"
-        ]
+          ]
+        },
+        {
+          "group_id": "pr4_route_elevator",
+          "title": "PR #4 route/elevator",
+          "owner": "Robot / Autonomy owner",
+          "next_action": "Submit route runtime, completion signal, task record, elevator field, and delivery result summaries under the same safe evidence_ref.",
+          "required_item_templates": [
+            {
+              "item_id": "nav2_or_fixed_route_runtime_summary",
+              "label": "Nav2/fixed-route runtime summary",
+              "owner": "Autonomy owner",
+              "next_action": "Submit runtime summary."
+            },
+            {
+              "item_id": "route_completion_signal_summary",
+              "label": "Route completion signal summary",
+              "owner": "Robot owner",
+              "next_action": "Submit completion signal summary."
+            },
+            {
+              "item_id": "field_task_record_summary",
+              "label": "Field task record summary",
+              "owner": "Robot owner",
+              "next_action": "Submit task record summary."
+            },
+            {
+              "item_id": "elevator_door_floor_human_assist_summary",
+              "label": "Elevator door/floor/human assist summary",
+              "owner": "Field owner",
+              "next_action": "Submit elevator field summary."
+            },
+            {
+              "item_id": "delivery_result_summary",
+              "label": "Delivery result summary",
+              "owner": "Field owner",
+              "next_action": "Submit accepted/missing/rejected result summary."
+            }
+          ]
+        },
+        {
+          "group_id": "o4_real_phone",
+          "title": "Objective 4 real phone",
+          "owner": "Full-stack / Field owner",
+          "next_action": "Submit real phone/browser, production entry, PWA prompt/user choice, offline/touch/visual summaries under the same safe evidence_ref.",
+          "required_item_templates": [
+            {
+              "item_id": "real_phone_browser_summary",
+              "label": "Real phone/browser summary",
+              "owner": "Full-stack owner",
+              "next_action": "Submit real device browser summary."
+            },
+            {
+              "item_id": "production_app_entry_summary",
+              "label": "Production app/entry summary",
+              "owner": "Full-stack owner",
+              "next_action": "Submit production entry summary."
+            },
+            {
+              "item_id": "pwa_prompt_user_choice_summary",
+              "label": "PWA prompt/user choice summary",
+              "owner": "Field owner",
+              "next_action": "Submit prompt observation summary."
+            },
+            {
+              "item_id": "offline_touch_visual_summary",
+              "label": "Offline/touch/visual summary",
+              "owner": "Field owner",
+              "next_action": "Submit phone UX review summary."
+            }
+          ]
+        }
+      ]
     },
-    "hardware_baseline_source_alignment": {
-        "schema": "trashbot.hardware_baseline_source_alignment.v1",
+    "template_groups": [],
+    "required_item_templates": {},
+    "phone_safe_copy": "真实材料回填入口只读展示 intake status、material group、safe evidence_ref、accepted/missing/rejected items、next_action、owner_handoff 和 not_proven；不放行 Start Delivery、Confirm Dropoff 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_real_material_evidence_intake_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "real_phone_browser",
+      "real_route_elevator_field_material",
+      "real_delivery_result"
+    ]
+  },
+  "robot_diagnostics_real_material_followup_escalation_status_summary": {
+    "schema": "trashbot.real_material_followup_escalation_status_summary.v1",
+    "schema_version": 1,
+    "summary_alias": "robot_diagnostics_real_material_followup_escalation_status_summary",
+    "source": "software_proof",
+    "overall_status": "real_material_followup_escalation_status_not_proven",
+    "safe_evidence_ref": "real_material_followup_escalation_status_fixture_20260519_0001",
+    "material_groups": [
+      {
+        "material_group": "o5_external",
+        "field_owner": "Cloud / Product owner",
+        "due_status": "blocked_missing_external_materials",
+        "blocked_reason": "Missing public ingress, 4G/SIM, live traffic, production DB/queue, and cutover phone-safe summaries.",
+        "next_required_evidence": "Submit external proof phone-safe summary under the same safe evidence_ref.",
+        "escalation_level": "field_owner_followup",
+        "rerun_command": "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
+        "rerun_status_summary": "rerun_status=waiting_for_real_external_materials"
+      },
+      {
+        "material_group": "o1_pr5_hardware",
+        "field_owner": "Hardware owner",
+        "due_status": "blocked_pending_real_materials",
+        "blocked_reason": "PR #5 PRRT_kwDOSWB9286CJ3tX still lacks real sensor source, receipt, install, wiring, power, calibration, and bench-entry summaries.",
+        "next_required_evidence": "Submit 2D LiDAR / ToF source, receipt, installation, wiring, power, and calibration phone-safe summaries.",
+        "escalation_level": "owner_escalation_required",
+        "rerun_command": "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
+        "rerun_status_summary": "rerun_status=waiting_for_hardware_owner_materials"
+      },
+      {
+        "material_group": "pr4_route_elevator",
+        "field_owner": "Robot / Autonomy owner",
+        "due_status": "blocked_missing_field_run_materials",
+        "blocked_reason": "Missing real route runtime, completion signal, task record, elevator field, and delivery result summaries.",
+        "next_required_evidence": "Submit route/elevator phone-safe summary under the same safe evidence_ref.",
+        "escalation_level": "field_owner_followup",
+        "rerun_command": "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
+        "rerun_status_summary": "rerun_status=waiting_for_route_elevator_materials"
+      },
+      {
+        "material_group": "o4_real_phone",
+        "field_owner": "Full-stack / Field owner",
+        "due_status": "blocked_missing_real_phone_materials",
+        "blocked_reason": "Missing real iPhone/Android behavior, production entry, PWA prompt/user choice, offline, touch, and visual review summaries.",
+        "next_required_evidence": "Submit real phone/browser field acceptance phone-safe summary under the same safe evidence_ref.",
+        "escalation_level": "field_owner_followup",
+        "rerun_command": "python3 pc-tools/evidence/real_material_followup_escalation_status.py --summary-output <summary.json>",
+        "rerun_status_summary": "rerun_status=waiting_for_real_phone_materials"
+      }
+    ],
+    "rerun_status_summary": "rerun_status=waiting_for_real_materials",
+    "safe_phone_copy": "真实材料升级状态只读展示 material groups、safe evidence_ref、field owner、due_status、blocked_reason、next_required_evidence、escalation_level、rerun command/status summary 和 not_proven；不放行 Start Delivery、Confirm Dropoff 或 Cancel。",
+    "evidence_boundary": "software_proof_docker_real_material_followup_escalation_status_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "real_external_proof",
+      "real_hardware_material",
+      "real_route_elevator_field_material",
+      "real_phone_browser"
+    ]
+  },
+  "hardware_baseline_source_alignment": {
+    "schema": "trashbot.hardware_baseline_source_alignment.v1",
     "summary_schema": "trashbot.hardware_baseline_source_alignment_summary.v1",
     "schema_version": 1,
     "alignment_status": "hardware_baseline_source_alignment_not_proven",
@@ -2947,6 +3032,120 @@
       "WAVE ROVER/UART",
       "dropoff/cancel completion",
       "delivery success"
+    ]
+  },
+  "robot_diagnostics_field_evidence_rerun_material_dispatch_summary": {
+    "schema": "trashbot.field_evidence_rerun_material_dispatch_summary.v1",
+    "schema_version": 1,
+    "dispatch_schema": "trashbot.field_evidence_rerun_material_dispatch.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_material_dispatch_summary",
+    "source": "software_proof",
+    "dispatch_status": "ready_for_field_owner_material_dispatch_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_material_dispatch_fixture_20260520_0001",
+    "owner_work_orders": [
+      "owner_work_order=Autonomy owner reruns real Nav2/fixed-route route completion and runtime log on the same safe evidence_ref.",
+      "owner_work_order=Robot owner collects real field task record, dropoff completion, cancel completion and delivery result summaries.",
+      "owner_work_order=Field owner records real elevator door, target floor, human assistance and phone/browser evidence summaries."
+    ],
+    "required_material_groups": [
+      "real route completion signal",
+      "real field task record",
+      "real Nav2/fixed-route runtime log",
+      "real elevator door summary",
+      "real target floor / floor arrival summary",
+      "real human-assistance summary",
+      "real dropoff completion",
+      "real cancel completion",
+      "real delivery result",
+      "real phone/browser evidence"
+    ],
+    "rerun_commands": [
+      "safe_rerun_command=rerun field evidence material dispatch gate after field owner submits phone-safe summaries.",
+      "safe_rerun_command=rerun callback review only after the same safe evidence_ref is present in every material group."
+    ],
+    "callback_packet_requirements": [
+      "callback_packet_requirement=same safe evidence_ref across route, task, elevator, terminal and phone/browser summaries.",
+      "callback_packet_requirement=phone-safe accepted/missing/rejected groups only; sanitized material metadata only."
+    ],
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "safe_copy": "现场证据复跑材料派发 safe copy：source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑材料派发 fixture 只读展示 dispatch status、safe evidence_ref、owner work orders、required material groups、rerun commands、callback packet requirements、same-evidence-ref status 和 evidence boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_material_dispatch_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
+  },
+  "field_evidence_rerun_material_dispatch_summary": {
+    "schema": "trashbot.field_evidence_rerun_material_dispatch_summary.v1",
+    "schema_version": 1,
+    "dispatch_schema": "trashbot.field_evidence_rerun_material_dispatch.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_material_dispatch_summary",
+    "source": "software_proof",
+    "dispatch_status": "ready_for_field_owner_material_dispatch_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_material_dispatch_fixture_20260520_0001",
+    "owner_work_orders": [
+      "owner_work_order=Autonomy owner reruns real Nav2/fixed-route route completion and runtime log on the same safe evidence_ref.",
+      "owner_work_order=Robot owner collects real field task record, dropoff completion, cancel completion and delivery result summaries.",
+      "owner_work_order=Field owner records real elevator door, target floor, human assistance and phone/browser evidence summaries."
+    ],
+    "required_material_groups": [
+      "real route completion signal",
+      "real field task record",
+      "real Nav2/fixed-route runtime log",
+      "real elevator door summary",
+      "real target floor / floor arrival summary",
+      "real human-assistance summary",
+      "real dropoff completion",
+      "real cancel completion",
+      "real delivery result",
+      "real phone/browser evidence"
+    ],
+    "rerun_commands": [
+      "safe_rerun_command=rerun field evidence material dispatch gate after field owner submits phone-safe summaries.",
+      "safe_rerun_command=rerun callback review only after the same safe evidence_ref is present in every material group."
+    ],
+    "callback_packet_requirements": [
+      "callback_packet_requirement=same safe evidence_ref across route, task, elevator, terminal and phone/browser summaries.",
+      "callback_packet_requirement=phone-safe accepted/missing/rejected groups only; sanitized material metadata only."
+    ],
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "safe_copy": "现场证据复跑材料派发 safe copy：source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑材料派发 fixture 只读展示 dispatch status、safe evidence_ref、owner work orders、required material groups、rerun commands、callback packet requirements、same-evidence-ref status 和 evidence boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_material_dispatch_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
     ]
   }
 }
