@@ -1129,6 +1129,71 @@ result, real phone/browser evidence, HIL pass, Objective 5 external
 cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, or any primary robot action
 being enabled.
 
+## field_evidence_rerun_execution_callback_review_decision
+
+`pc-tools/evidence/field_evidence_rerun_execution_callback_review_decision.py`
+generates the PC-only canonical review-decision gate after
+`field_evidence_rerun_execution_callback_intake.py`. It consumes only a
+supported callback-intake artifact/summary/wrapper JSON or Robot safe alias; it
+does not read field material directories, execute field reruns, schedule robot
+actions, or expose raw callback material.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_callback_review_decision.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_callback_review_decision_summary.v1`
+- Robot safe alias:
+  `robot_diagnostics_field_evidence_rerun_execution_callback_review_decision_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_callback_review_decision_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_callback_intake.v1` and
+  `trashbot.field_evidence_rerun_execution_callback_intake_summary.v1` under
+  `software_proof_docker_field_evidence_rerun_execution_callback_intake_gate`.
+- Review decision values:
+  `ready`, `missing`, `rejected`, `blocked`, `unsupported`, `unsafe`,
+  `evidence_ref_mismatch`, and `source_not_ready`.
+
+The output always includes `source=software_proof`, `review_decision`,
+`decision_reasons`, `source_callback_intake_status`, safe `evidence_ref`,
+`same_evidence_ref_required=true`, `same_evidence_ref_status`,
+`accepted_materials`, `missing_materials`, `rejected_materials`,
+`blocked_materials`, `owner_handoff`, `next_required_evidence`,
+`rerun_guidance`, `safe_copy`, `not_proven`, `safe_to_control=false`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_callback_review_decision_gate`.
+The required material categories remain `task_record`,
+`nav2_fixed_route_runtime_log`, `route_completion_signal`,
+`elevator_door_state`, `target_floor_confirmation`,
+`human_assistance_record`, `dropoff_completion`, `cancel_completion`,
+`delivery_result`, and `phone_browser_evidence`.
+
+Review-decision mapping is fail-closed. A supported, safe callback-intake
+source with
+`callback_intake_status=ready_for_field_evidence_rerun_execution_callback_intake_not_proven`,
+matched safe `evidence_ref`, `same_evidence_ref_required=true`,
+`same_evidence_ref_status=matched`, `source=software_proof`, `not_proven`, and
+all action flags false can map to `ready` only when every required category is
+accepted. Missing categories map to `missing`; rejected categories map to
+`rejected`; blocked categories map to `blocked`. Non-ready callback-intake
+sources map to `source_not_ready`. Mismatched evidence refs, missing safe
+evidence_ref, weak same-ref typing, or non-matched same-ref status map to
+`evidence_ref_mismatch`. Missing input, bad JSON, unsupported schema or
+boundary, missing software-proof/not-proven fields, unknown categories, or
+category groups that conflict map to `unsupported`. Unsafe copy, raw paths,
+credentials, ROS topic text, `/cmd_vel`, serial/UART or WAVE ROVER text,
+checksum text, complete/raw artifact text, traceback text, success/control
+wording, `safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` map to `unsafe`.
+
+This contract is software proof only. It does not prove a real field rerun,
+real route/elevator field pass, real Nav2/fixed-route execution, real field
+task record, real route completion signal, real elevator door/floor material,
+real human assistance, real dropoff or cancel completion, real delivery
+result, real phone/browser evidence, HIL pass, Objective 5 external
+cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, or any primary robot action
+being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`
