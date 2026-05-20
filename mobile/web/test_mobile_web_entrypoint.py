@@ -8183,6 +8183,109 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, handoff_text)
 
+    def test_field_evidence_rerun_callback_review_decision_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        web_fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 回执复核 panel 只消费 Robot safe alias/summary，不新增 raw fetch、ACK、cursor 或控制请求。
+        self.assertIn("FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeFieldEvidenceRerunCallbackReviewDecisionText", app)
+        self.assertIn("fieldEvidenceRerunCallbackReviewDecisionCandidate", app)
+        self.assertIn("fieldEvidenceRerunCallbackReviewDecisionFromStatus", app)
+        self.assertIn("renderFieldEvidenceRerunCallbackReviewDecision", app)
+        self.assertIn("现场证据复跑回执复核", app)
+        self.assertIn("robot_diagnostics_field_evidence_rerun_callback_review_decision_summary", app)
+        self.assertIn("field_evidence_rerun_callback_review_decision_summary", app)
+        self.assertIn("field_evidence_rerun_callback_review_decision?.summary", app)
+        self.assertIn("review_decision", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("rerun_guidance", app)
+        self.assertIn("blocker_summary", app)
+        self.assertIn("same_evidence_ref_status", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"fieldEvidenceRerunCallbackReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+        self.assertNotIn("copyFieldEvidenceRerunCallbackReviewDecisionButton", app)
+        self.assertNotIn("downloadFieldEvidenceRerunCallbackReviewDecisionButton", app)
+
+        # fixture、Web fixture 和文档必须固定 software proof / not_proven / not-control 边界。
+        decision = fixture["robot_diagnostics_field_evidence_rerun_callback_review_decision_summary"]
+        fallback = fixture["field_evidence_rerun_callback_review_decision_summary"]
+        web_alias = web_fixture["robot_diagnostics_field_evidence_rerun_callback_review_decision_summary"]
+        self.assertEqual(decision["review_decision"], "missing")
+        self.assertEqual(decision["source"], "software_proof")
+        self.assertEqual(decision["safe_to_control"], False)
+        self.assertEqual(decision["delivery_success"], False)
+        self.assertEqual(decision["primary_actions_enabled"], False)
+        self.assertIn("owner_handoff", decision)
+        self.assertIn("next_required_evidence", decision)
+        self.assertIn("rerun_guidance", decision)
+        self.assertIn("blocker_summary", decision)
+        self.assertEqual(fallback["source"], "software_proof")
+        self.assertEqual(web_alias["primary_actions_enabled"], False)
+        self.assertIn("software_proof_docker_field_evidence_rerun_callback_review_decision_gate", fixture_text)
+        self.assertIn("field_evidence_rerun_callback_review_decision", doc)
+        self.assertIn("现场证据复跑回执复核", doc)
+
+    def test_field_evidence_rerun_callback_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        web_fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        decision_text = json.dumps(
+            {
+                "decision": fixture["robot_diagnostics_field_evidence_rerun_callback_review_decision_summary"],
+                "fallback": fixture["field_evidence_rerun_callback_review_decision_summary"],
+                "web_alias": web_fixture["robot_diagnostics_field_evidence_rerun_callback_review_decision_summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # 回执复核 fixture 只能承载脱敏复核结论，不能泄漏 raw review、控制授权或现场通过语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw review",
+            "raw decision",
+            "full callback",
+            "full review",
+            "complete callback",
+            "complete review",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "robot command",
+            "robot/internal",
+            "control authorization",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, decision_text)
+
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
         app = self.read_web("app.js")

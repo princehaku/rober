@@ -8,7 +8,23 @@
 
 ## 2026-05-20 系列
 
-更新时间：2026-05-20 13:40 Asia/Shanghai。
+更新时间：2026-05-20 14:55 Asia/Shanghai。
+
+### 2026-05-20 14-15｜field-evidence-rerun-callback-review-decision｜field evidence rerun callback review decision software proof
+
+本轮 `sprints/2026.05.20_14-15_field-evidence-rerun-callback-review-decision/` 执行 `field_evidence_rerun_callback_review_decision` epic closeout，不继续 O5 external blocker、本地 O1/HIL wrapper，也不是第三个 blocker wrapper。Autonomy worker 新增 `trashbot.field_evidence_rerun_callback_review_decision.v1` / summary schema，读取上一轮 callback-intake output，把 accepted / missing / rejected / blocked material groups 转成 review decision、owner handoff、next required evidence、rerun guidance、blocker summary 和 same-evidence-ref status。Robot worker 新增 `robot_diagnostics_field_evidence_rerun_callback_review_decision_summary` safe alias，兼容 explicit ref、top-level、nested、status diagnostics 和 diagnostics nested summary。Full-Stack worker 在 mobile/web 增加只读“现场证据复跑回执复核”panel，消费 Robot safe alias 或兼容 summary，不 fetch raw artifact，Start Delivery / Confirm Dropoff / Cancel gating 不变。证据边界保持 `software_proof_docker_field_evidence_rerun_callback_review_decision_gate`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+OKR 最低优先级核对仍成立：Objective 5 约 68% 仍是数值最低，但真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof 不在 Docker-only 主机；Objective 1 约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / material pending；本轮是 O2/O3/O4 callback-review-decision functional rung，不是重复 O5/O1 blocker wrapper。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL、hardware bridge、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮把现场 callback-intake output 中的电梯门、楼层、人工协助、dropoff/cancel completion 和 delivery result 材料转成 accepted/missing/rejected/blocked review decision、owner handoff、next required evidence 和 rerun guidance；这只是 callback-review-decision software proof，不证明真实电梯、真实 route/elevator field pass、dropoff/cancel completion、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮复核真实 Nav2/fixed-route runtime log、route completion signal、field task record 和同一 safe `evidence_ref` 的回执状态；没有真实路线采集、Nav2/fixed-route 实跑、route completion signal、现场 task_record 或上车复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读“现场证据复跑回执复核”panel 让现场 owner 和支持同学能看到 review decision、safe `evidence_ref`、owner handoff、next required evidence、rerun guidance、blocker summary、same-evidence-ref status 和 fail-closed boundary；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮不改 cloud commands/status/ack、不新增公网入口、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或 external proof；`software_proof_docker_field_evidence_rerun_callback_review_decision_gate` 不能计为 O5 external proof。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；`python3 -m unittest tests.test_field_evidence_rerun_callback_review_decision` 输出 `Ran 5 tests in 0.062s OK`；CLI `--help`、required `rg` 与 scoped diff check 通过。Robot worker 报告 `py_compile` 通过；`PYTHONPATH=onboard/src/ros2_trashbot_behavior python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py` 输出 `Ran 230 tests in 0.713s OK`；required `rg` 与 scoped diff check 通过。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；`python3 -m unittest mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 167 tests ... OK`；fixture JSON checks、required `rg` 与 scoped diff check 通过。Integration worker 复跑 PC py_compile + unittest `Ran 5 tests in 0.060s OK`、Robot diagnostics `Ran 230 tests in 0.706s OK`、`node --check`、mobile unittest `Ran 167 tests in 1.141s OK`、两份 fixture JSON tool、required `rg` 和 scoped `git diff --check` 均通过。Product closeout required file check、required `rg` 和 scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
 
 ### 2026-05-20 13-14｜field-evidence-rerun-callback-intake｜field evidence rerun callback intake software proof
 

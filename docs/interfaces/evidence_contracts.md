@@ -717,6 +717,61 @@ real route/elevator field pass, prove dropoff/cancel completion, prove delivery
 success, prove HIL, prove O5 external cloud/4G/OSS/CDN/DB/queue readiness,
 resolve PR #5, prove a real phone/browser run, or enable primary robot actions.
 
+## field_evidence_rerun_callback_review_decision
+
+`pc-tools/evidence/field_evidence_rerun_callback_review_decision.py` generates
+the PC-only review decision gate after `field_evidence_rerun_callback_intake`.
+It consumes only the callback-intake summary or a wrapper/nested artifact that
+contains that summary; it does not read field material directories or raw
+materials.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_callback_review_decision.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_callback_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_callback_review_decision_gate`
+- Allowed inputs:
+  `trashbot.field_evidence_rerun_callback_intake_summary.v1` under
+  `software_proof_docker_field_evidence_rerun_callback_intake_gate`, or
+  `trashbot.field_evidence_rerun_callback_intake.v1` only when wrapper/nested
+  JSON exposes the same summary. Missing summary fails closed.
+- Review decision values:
+  `accepted`, `missing`, `rejected`, and `blocked`.
+
+The output always includes `source=software_proof`, `review_decision`, safe
+`evidence_ref`, `same_evidence_ref_status`, `owner_handoff`,
+`next_required_evidence`, `rerun_guidance`, `blocker_summary`,
+`accepted_materials`, `missing_materials`, `rejected_materials`,
+`blocked_materials`, `safe_copy`, `not_proven`, `safe_to_control=false`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_callback_review_decision_gate`.
+Required material classes are `real route completion signal`, `real field task
+record`, `real Nav2/fixed-route runtime log`, `real elevator door summary`,
+`real target floor / floor arrival summary`, `real human-assistance summary`,
+`real dropoff completion`, `real cancel completion`, `real delivery result`,
+and `real phone/browser evidence`.
+
+Decision mapping is fail-closed. A supported, safe callback-intake summary with
+matched safe `evidence_ref`, `same_evidence_ref_required=true`,
+`same_evidence_ref_status=matched`, `source=software_proof`, `not_proven`, and
+all ten required material classes in `accepted` maps to
+`review_decision=accepted`. Any missing required class maps to `missing`;
+rejected classes map to `rejected`; blocked classes, unsupported schema or
+boundary, missing input, bad JSON, missing summary, evidence_ref mismatch,
+unsafe copy, raw paths, credentials, ROS topic text, `/cmd_vel`,
+serial/UART/WAVE ROVER text, checksum text, complete artifact text, traceback
+text, success/control claims, `safe_to_control=true`,
+`delivery_success=true`, or `primary_actions_enabled=true` map to
+`review_decision=blocked`.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, real Nav2/fixed-route execution, real field task record, real
+elevator door or floor arrival evidence, real human assistance, real dropoff
+completion, real cancel completion, real delivery result, real phone/browser
+evidence, HIL pass, Objective 5 external proof, PR #5 resolution, or any
+primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

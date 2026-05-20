@@ -8487,5 +8487,101 @@
       "HIL",
       "O5 external proof"
     ]
+  },
+  "robot_diagnostics_field_evidence_rerun_callback_review_decision_summary": {
+    "schema": "trashbot.field_evidence_rerun_callback_review_decision_summary.v1",
+    "schema_version": 1,
+    "review_decision_schema": "trashbot.field_evidence_rerun_callback_review_decision.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_callback_review_decision_summary",
+    "source": "software_proof",
+    "review_decision": "missing",
+    "safe_evidence_ref": "field_evidence_rerun_callback_intake_fixture_20260520_0001",
+    "owner_handoff": [
+      "owner_handoff=field owner must backfill missing real route/elevator/phone evidence"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real route completion signal",
+      "next_required_evidence=real field task record",
+      "next_required_evidence=real phone/browser evidence"
+    ],
+    "rerun_guidance": [
+      "rerun_guidance=rerun callback intake with same safe evidence_ref",
+      "rerun_guidance=rerun field_evidence_rerun_callback_review_decision after backfill"
+    ],
+    "blocker_summary": [
+      "blocked=missing real route/elevator field materials",
+      "blocked=missing real phone/browser evidence"
+    ],
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "safe_copy": "现场证据复跑回执复核 safe copy：review_decision=missing，source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑回执复核 fixture 只读展示 review decision、safe evidence_ref、owner handoff、next required evidence、rerun guidance、blocker summary、same-evidence-ref status 和 evidence boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_callback_review_decision_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
+  },
+  "field_evidence_rerun_callback_review_decision_summary": {
+    "schema": "trashbot.field_evidence_rerun_callback_review_decision_summary.v1",
+    "schema_version": 1,
+    "review_decision_schema": "trashbot.field_evidence_rerun_callback_review_decision.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_callback_review_decision_summary",
+    "source": "software_proof",
+    "review_decision": "missing",
+    "safe_evidence_ref": "field_evidence_rerun_callback_intake_fixture_20260520_0001",
+    "owner_handoff": [
+      "owner_handoff=field owner must backfill missing real route/elevator/phone evidence"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real route completion signal",
+      "next_required_evidence=real field task record",
+      "next_required_evidence=real phone/browser evidence"
+    ],
+    "rerun_guidance": [
+      "rerun_guidance=rerun callback intake with same safe evidence_ref",
+      "rerun_guidance=rerun field_evidence_rerun_callback_review_decision after backfill"
+    ],
+    "blocker_summary": [
+      "blocked=missing real route/elevator field materials",
+      "blocked=missing real phone/browser evidence"
+    ],
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "safe_copy": "现场证据复跑回执复核 safe copy：review_decision=missing，source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑回执复核 fixture 只读展示 review decision、safe evidence_ref、owner handoff、next required evidence、rerun guidance、blocker summary、same-evidence-ref status 和 evidence boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_callback_review_decision_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
   }
 }

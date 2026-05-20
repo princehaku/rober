@@ -313,6 +313,15 @@ FIELD_EVIDENCE_RERUN_CALLBACK_INTAKE_SUMMARY_SCHEMA = (
 FIELD_EVIDENCE_RERUN_CALLBACK_INTAKE_GATE = (
     "software_proof_docker_field_evidence_rerun_callback_intake_gate"
 )
+FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_SCHEMA = (
+    "trashbot.field_evidence_rerun_callback_review_decision.v1"
+)
+FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_SUMMARY_SCHEMA = (
+    "trashbot.field_evidence_rerun_callback_review_decision_summary.v1"
+)
+FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_GATE = (
+    "software_proof_docker_field_evidence_rerun_callback_review_decision_gate"
+)
 ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SCHEMA = (
     "trashbot.route_task_field_retest_evidence_dispatch.v1"
 )
@@ -2825,6 +2834,38 @@ def _field_evidence_rerun_callback_intake_not_proven(intake=None, summary_fragme
             source_values.extend(item.get("not_proven"))
     required = (
         "field_evidence_rerun_callback_intake_only",
+        "real_route_completion_not_verified",
+        "real_field_task_record_not_verified",
+        "real_nav2_fixed_route_runtime_not_verified",
+        "real_elevator_operation_not_verified",
+        "real_dropoff_cancel_completion_not_verified",
+        "real_delivery_result_not_verified",
+        "real_phone_browser_not_verified",
+        "hil_pass_not_verified",
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "delivery_success",
+    )
+    values = []
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _field_evidence_rerun_callback_review_decision_not_proven(
+    decision=None,
+    summary_fragment=None,
+):
+    # 复核决策只把 Autonomy 的白名单结论转给 Robot diagnostics；不能把 accepted 写成实地通过。
+    source_values = []
+    for item in (decision, summary_fragment):
+        if isinstance(item, dict) and isinstance(item.get("not_proven"), list):
+            source_values.extend(item.get("not_proven"))
+    required = (
+        "field_evidence_rerun_callback_review_decision_only",
         "real_route_completion_not_verified",
         "real_field_task_record_not_verified",
         "real_nav2_fixed_route_runtime_not_verified",
@@ -7394,6 +7435,83 @@ def _default_field_evidence_rerun_callback_intake_summary(
         ),
         "safe_phone_copy": (
             "Field evidence rerun callback intake is metadata-only; "
+            "source=software_proof; not_proven; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        ),
+        "metadata_only": True,
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
+def _default_field_evidence_rerun_callback_review_decision_summary(
+    path,
+    review_status="blocked_missing_field_evidence_rerun_callback_review_decision",
+    read_error="",
+):
+    # 缺省 blocked 保证 Robot diagnostics 在没有复核决策时不会猜测现场复跑可交付。
+    reason = read_error or "field evidence rerun callback review decision is not configured"
+    return {
+        "schema": FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "review_status": {
+            "status": review_status,
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "review_decision": "blocked",
+        "owner_handoff": [],
+        "next_required_evidence": [],
+        "rerun_guidance": [],
+        "blocker_summary": [],
+        "same_evidence_ref_required": True,
+        "same_evidence_ref_status": {
+            "status": "blocked",
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "boundary_flags": {
+            "metadata_only": True,
+            "source": EVIDENCE_SOURCE_SOFTWARE,
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "raw_artifact_consumed": False,
+            "control_entrypoint_enabled": False,
+        },
+        "robot_diagnostics_summary": {"status": "blocked", "reason": reason},
+        "robot_compatible_summary": {"status": "blocked", "reason": reason},
+        "boundary": FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_GATE,
+        "not_proven": _field_evidence_rerun_callback_review_decision_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": (
+            "Field evidence rerun callback review decision is metadata-only; "
+            "source=software_proof; not_proven; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        ),
+        "safe_phone_copy": (
+            "Field evidence rerun callback review decision is metadata-only; "
             "source=software_proof; not_proven; safe_to_control=false; "
             "delivery_success=false; primary_actions_enabled=false."
         ),
@@ -12103,6 +12221,18 @@ def _field_evidence_rerun_callback_intake_source_contract(value):
     if source_schema == FIELD_EVIDENCE_RERUN_CALLBACK_INTAKE_SUMMARY_SCHEMA:
         source_schema = str(
             value.get("source_schema") or FIELD_EVIDENCE_RERUN_CALLBACK_INTAKE_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _field_evidence_rerun_callback_review_decision_source_contract(value):
+    # summary wrapper 必须回指 review decision gate；Robot 不能把 callback intake 当复核决策展示。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema") or FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_SCHEMA
         )
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
@@ -28761,6 +28891,419 @@ def summarize_field_evidence_rerun_callback_intake(source):
                     "Field evidence rerun callback intake was blocked because summary "
                     "fields could imply control, ACK, Nav2/HIL, raw artifact access, "
                     "or delivery success."
+                ),
+            }
+        )
+    return summary
+
+
+def summarize_field_evidence_rerun_callback_review_decision(source):
+    """构建 field evidence rerun callback review decision 的 Robot-safe 只读摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        decision = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_field_evidence_rerun_callback_review_decision_summary(
+            source_path,
+            read_error="field evidence rerun callback review decision is not configured",
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "review_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": "field evidence rerun callback review decision summary missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "field evidence rerun callback review decision summary missing",
+                    },
+                    "safe_copy": (
+                        "Field evidence rerun callback review decision is missing; "
+                        "metadata remains blocked/not_proven; safe_to_control=false; "
+                        "delivery_success=false; primary_actions_enabled=false."
+                    ),
+                    "safe_phone_copy": (
+                        "Field evidence rerun callback review decision is missing; "
+                        "metadata remains blocked/not_proven; safe_to_control=false; "
+                        "delivery_success=false; primary_actions_enabled=false."
+                    ),
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                decision = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "review_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            f"failed reading field evidence rerun callback review decision: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "field evidence rerun callback review decision JSON read error",
+                    },
+                }
+            )
+            return summary
+
+    summary = _default_field_evidence_rerun_callback_review_decision_summary(
+        source_path,
+        read_error="field evidence rerun callback review decision is not configured",
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(decision, dict):
+        summary.update(
+            {
+                "review_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "field evidence rerun callback review decision JSON must be an object",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "field evidence rerun callback review decision JSON shape is invalid",
+                },
+            }
+        )
+        return summary
+
+    diagnostics = decision.get("diagnostics") if isinstance(decision.get("diagnostics"), dict) else {}
+    # 完整 artifact 只能作为包裹层；Robot 真正消费的字段必须来自 sanitized summary。
+    summary_fragment = (
+        decision
+        if str(decision.get("schema") or "")
+        == FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_SUMMARY_SCHEMA
+        else {}
+    )
+    if not summary_fragment:
+        for candidate in (
+            decision.get("robot_diagnostics_field_evidence_rerun_callback_review_decision_summary"),
+            decision.get("field_evidence_rerun_callback_review_decision_summary"),
+            decision.get("summary"),
+            decision.get("diagnostics_summary"),
+            decision.get("robot_diagnostics_summary"),
+            decision.get("robot_compatible_summary"),
+            decision.get("mobile_readonly_summary"),
+            decision.get("phone_safe_summary"),
+            diagnostics.get("robot_diagnostics_field_evidence_rerun_callback_review_decision_summary"),
+            diagnostics.get("field_evidence_rerun_callback_review_decision_summary"),
+            diagnostics.get("summary"),
+            diagnostics.get("diagnostics_summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+
+    contract_source = summary_fragment if summary_fragment else decision
+    source_schema, source_boundary = _field_evidence_rerun_callback_review_decision_source_contract(
+        contract_source
+    )
+    if not summary_fragment:
+        summary.update(
+            {
+                "source_schema": _redact_route_task_rehearsal_text(source_schema),
+                "source_schema_version": decision.get("schema_version"),
+                "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "review_status": {
+                    "status": "missing_summary",
+                    "verdict": "not_proven",
+                    "reason": "field evidence rerun callback review decision lacks a sanitized summary",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing sanitized field evidence rerun callback review decision summary",
+                },
+            }
+        )
+        return summary
+
+    status_source = summary_fragment.get("review_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("decision_status")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    review_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or status_source.get("verdict")
+        or summary_fragment.get("review_status")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or "blocked"
+    )
+    review_reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or status_source.get("summary")
+        or summary_fragment.get("blocker_summary")
+        or summary_fragment.get("blocked_reason")
+        or "field evidence rerun callback review decision consumed without explicit reason"
+    )
+    safe_copy = _safe_pc_route_debug_value(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or (
+            "Field evidence rerun callback review decision is metadata-only; "
+            "source=software_proof; not_proven; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    safe_copy_text = (
+        json.dumps(safe_copy, ensure_ascii=False, sort_keys=True)
+        if isinstance(safe_copy, (dict, list))
+        else str(safe_copy or "")
+    )
+    if "safe_to_control=false" not in safe_copy_text:
+        # 下游 mobile panel 用 literal false 边界做文案和按钮安全判断。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; primary_actions_enabled=false."
+        )
+    source_ref = str(decision.get("safe_evidence_ref") or decision.get("evidence_ref") or "").strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref") or summary_fragment.get("evidence_ref") or ""
+    ).strip()
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else diagnostics.get("robot_diagnostics_summary")
+        if isinstance(diagnostics.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    same_ref_source = (
+        summary_fragment.get("same_evidence_ref_status")
+        if isinstance(summary_fragment.get("same_evidence_ref_status"), dict)
+        else summary_fragment.get("same_evidence_ref_match")
+        if isinstance(summary_fragment.get("same_evidence_ref_match"), dict)
+        else summary_fragment.get("same_evidence_ref_result")
+        if isinstance(summary_fragment.get("same_evidence_ref_result"), dict)
+        else {}
+    )
+    boundary_flags = _safe_pc_route_debug_dict(summary_fragment.get("boundary_flags")) or {}
+    owner_handoff = _safe_route_task_rehearsal_list(
+        summary_fragment.get("owner_handoff")
+        if isinstance(summary_fragment.get("owner_handoff"), list)
+        else [summary_fragment.get("owner_handoff")]
+        if summary_fragment.get("owner_handoff")
+        else []
+    )
+    next_required_evidence = _safe_route_task_rehearsal_list(
+        summary_fragment.get("next_required_evidence")
+        if isinstance(summary_fragment.get("next_required_evidence"), list)
+        else []
+    )
+    rerun_guidance = _safe_route_task_rehearsal_list(
+        summary_fragment.get("rerun_guidance")
+        if isinstance(summary_fragment.get("rerun_guidance"), list)
+        else summary_fragment.get("rerun_commands")
+        if isinstance(summary_fragment.get("rerun_commands"), list)
+        else []
+    )
+    blocker_source = summary_fragment.get("blocker_summary")
+    blocker_summary = _safe_route_task_rehearsal_list(
+        blocker_source
+        if isinstance(blocker_source, list)
+        else [blocker_source]
+        if blocker_source
+        else []
+    )
+    review_decision = _redact_route_task_rehearsal_text(
+        summary_fragment.get("review_decision")
+        or summary_fragment.get("decision")
+        or "blocked"
+    )
+    if review_decision not in ("accepted", "missing", "rejected", "blocked"):
+        review_decision = "blocked"
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": contract_source.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "review_status": {
+                "status": review_status or "blocked",
+                "verdict": "not_proven",
+                "reason": review_reason,
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(summary_ref or source_ref),
+            "review_decision": review_decision,
+            "owner_handoff": owner_handoff,
+            "next_required_evidence": next_required_evidence,
+            "rerun_guidance": rerun_guidance,
+            "blocker_summary": blocker_summary,
+            "same_evidence_ref_required": summary_fragment.get("same_evidence_ref_required") is True,
+            "same_evidence_ref_status": _safe_pc_route_debug_dict(same_ref_source)
+            or {
+                "status": review_status or "blocked",
+                "verdict": "not_proven",
+                "reason": "callback review decision lacks same evidence_ref status",
+            },
+            "boundary_flags": dict(
+                boundary_flags,
+                metadata_only=True,
+                source=EVIDENCE_SOURCE_SOFTWARE,
+                safe_to_control=False,
+                delivery_success=False,
+                primary_actions_enabled=False,
+                raw_artifact_consumed=False,
+                control_entrypoint_enabled=False,
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": review_status or "blocked",
+                "reason": "callback review decision consumed without robot diagnostics summary",
+            },
+            "robot_compatible_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": review_status or "blocked",
+                "reason": "callback review decision consumed without robot diagnostics summary",
+            },
+            "boundary": FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_GATE,
+            "not_proven": _field_evidence_rerun_callback_review_decision_not_proven(
+                decision,
+                summary_fragment,
+            ),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy_text,
+            "read_error": "",
+        }
+    )
+    disabled_flags = (
+        summary_fragment.get("safe_to_control") is False
+        and summary_fragment.get("delivery_success") is False
+        and summary_fragment.get("primary_actions_enabled") is False
+    )
+    required_summary_fields = (
+        bool(summary["safe_evidence_ref"]),
+        isinstance(owner_handoff, list),
+        isinstance(next_required_evidence, list),
+        isinstance(rerun_guidance, list),
+        summary["same_evidence_ref_required"],
+    )
+    unsafe_material = any(
+        _route_task_field_retest_acceptance_execution_rerun_result_intake_has_unsafe_material(
+            item
+        )
+        for item in (
+            status_source,
+            owner_handoff,
+            next_required_evidence,
+            rerun_guidance,
+            blocker_summary,
+            same_ref_source,
+            safe_copy,
+            safe_copy_text,
+            robot_summary,
+        )
+    )
+    if (
+        source_schema != FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_SCHEMA
+        or source_boundary != FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_GATE
+    ):
+        summary.update(
+            {
+                "review_status": {
+                    "status": "blocked_unsupported_field_evidence_rerun_callback_review_decision",
+                    "verdict": "not_proven",
+                    "reason": "field evidence rerun callback review decision schema or boundary is unsupported",
+                },
+                "review_decision": "blocked",
+                "owner_handoff": [],
+                "next_required_evidence": [],
+                "rerun_guidance": [],
+                "blocker_summary": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported schema or evidence boundary",
+                },
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary.update(
+            {
+                "review_status": {
+                    "status": "evidence_ref_mismatch_field_evidence_rerun_callback_review_decision_blocked",
+                    "verdict": "not_proven",
+                    "reason": "field evidence rerun callback review decision evidence_ref mismatch",
+                },
+                "review_decision": "blocked",
+                "same_evidence_ref_status": {
+                    "status": "mismatch",
+                    "verdict": "not_proven",
+                    "reason": "same evidence_ref mismatch",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "same evidence_ref mismatch",
+                },
+            }
+        )
+        return summary
+    if not all(required_summary_fields):
+        summary.update(
+            {
+                "review_status": {
+                    "status": "blocked_missing_field_evidence_rerun_callback_review_decision_materials",
+                    "verdict": "not_proven",
+                    "reason": "field evidence rerun callback review decision is missing required safe metadata",
+                },
+                "review_decision": "blocked",
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing required safe callback review decision fields",
+                },
+            }
+        )
+        return summary
+    if (
+        not disabled_flags
+        or bool(boundary_flags.get("raw_artifact_consumed"))
+        or bool(boundary_flags.get("control_entrypoint_enabled"))
+        or unsafe_material
+        or _route_task_field_run_intake_has_unsafe_control_claims(summary_fragment)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy_text)
+        or _route_task_field_retest_execution_pack_has_success_wording(summary_fragment)
+    ):
+        summary.update(
+            {
+                "review_status": {
+                    "status": "blocked_unsafe_field_evidence_rerun_callback_review_decision",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "field evidence rerun callback review decision contains unsafe "
+                        "fields, enabled actions, raw details, or success wording"
+                    ),
+                },
+                "review_decision": "blocked",
+                "owner_handoff": [],
+                "next_required_evidence": [],
+                "rerun_guidance": [],
+                "blocker_summary": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsafe field evidence rerun callback review decision fields",
+                },
+                "safe_copy": (
+                    "Field evidence rerun callback review decision was blocked because "
+                    "summary fields could imply control, ACK, Nav2/HIL, raw artifact "
+                    "access, or delivery success."
+                ),
+                "safe_phone_copy": (
+                    "Field evidence rerun callback review decision was blocked because "
+                    "summary fields could imply control, ACK, Nav2/HIL, raw artifact "
+                    "access, or delivery success."
                 ),
             }
         )
@@ -45769,6 +46312,7 @@ def build_diagnostics_payload(
     route_task_field_retest_acceptance_execution_rerun_result_review_handoff_ref="",
     field_evidence_rerun_material_dispatch_ref="",
     field_evidence_rerun_callback_intake_ref="",
+    field_evidence_rerun_callback_review_decision_ref="",
     route_task_field_retest_evidence_dispatch_ref="",
     route_task_field_retest_callback_intake_ref="",
     route_task_field_retest_callback_review_decision_ref="",
@@ -47702,6 +48246,42 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
         else {}
     )
+    field_evidence_rerun_callback_review_decision_source = (
+        latest_status.get("robot_diagnostics_field_evidence_rerun_callback_review_decision_summary")
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_field_evidence_rerun_callback_review_decision_summary"
+            ),
+            dict,
+        )
+        else latest_status.get("field_evidence_rerun_callback_review_decision_summary")
+        if isinstance(
+            latest_status.get("field_evidence_rerun_callback_review_decision_summary"), dict
+        )
+        else latest_status.get("field_evidence_rerun_callback_review_decision")
+        if isinstance(latest_status.get("field_evidence_rerun_callback_review_decision"), dict)
+        else diagnostics_source.get(
+            "robot_diagnostics_field_evidence_rerun_callback_review_decision_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_field_evidence_rerun_callback_review_decision_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("field_evidence_rerun_callback_review_decision_summary")
+        if isinstance(
+            diagnostics_source.get("field_evidence_rerun_callback_review_decision_summary"),
+            dict,
+        )
+        else diagnostics_source.get("field_evidence_rerun_callback_review_decision")
+        if isinstance(diagnostics_source.get("field_evidence_rerun_callback_review_decision"), dict)
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
+        else {}
+    )
     route_task_field_retest_evidence_dispatch_source = (
         latest_status.get("route_task_field_retest_evidence_dispatch")
         if isinstance(latest_status.get("route_task_field_retest_evidence_dispatch"), dict)
@@ -48262,6 +48842,13 @@ def build_diagnostics_payload(
         None,
     )
     latest_status.pop("route_task_field_retest_result_callback_review_handoff_copy", None)
+    latest_status.pop("field_evidence_rerun_callback_review_decision", None)
+    latest_status.pop("field_evidence_rerun_callback_review_decision_summary", None)
+    latest_status.pop(
+        "robot_diagnostics_field_evidence_rerun_callback_review_decision_summary",
+        None,
+    )
+    latest_status.pop("field_evidence_rerun_callback_review_decision_copy", None)
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -48843,6 +49430,20 @@ def build_diagnostics_payload(
     field_evidence_rerun_callback_intake_summary = (
         summarize_field_evidence_rerun_callback_intake(
             field_evidence_rerun_callback_intake_source
+        )
+    )
+    field_evidence_rerun_callback_review_decision_source = (
+        field_evidence_rerun_callback_review_decision_ref
+        or os.environ.get("TRASHBOT_FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION", "")
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_RERUN_CALLBACK_REVIEW_DECISION_SUMMARY",
+            "",
+        )
+        or field_evidence_rerun_callback_review_decision_source
+    )
+    field_evidence_rerun_callback_review_decision_summary = (
+        summarize_field_evidence_rerun_callback_review_decision(
+            field_evidence_rerun_callback_review_decision_source
         )
     )
     route_task_field_retest_evidence_dispatch_source = (
@@ -49659,6 +50260,15 @@ def build_diagnostics_payload(
         field_evidence_rerun_callback_intake_summary=field_evidence_rerun_callback_intake_summary,
         robot_diagnostics_field_evidence_rerun_callback_intake_summary=(
             field_evidence_rerun_callback_intake_summary
+        ),
+        field_evidence_rerun_callback_review_decision=(
+            field_evidence_rerun_callback_review_decision_summary
+        ),
+        field_evidence_rerun_callback_review_decision_summary=(
+            field_evidence_rerun_callback_review_decision_summary
+        ),
+        robot_diagnostics_field_evidence_rerun_callback_review_decision_summary=(
+            field_evidence_rerun_callback_review_decision_summary
         ),
         route_task_field_retest_evidence_dispatch=route_task_field_retest_evidence_dispatch_summary,
         route_task_field_retest_evidence_dispatch_summary=route_task_field_retest_evidence_dispatch_summary,

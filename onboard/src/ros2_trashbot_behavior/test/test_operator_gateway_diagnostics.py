@@ -44,6 +44,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_task_field_retest_acceptance_execution_rerun_result_review_handoff,
     summarize_field_evidence_rerun_material_dispatch,
     summarize_field_evidence_rerun_callback_intake,
+    summarize_field_evidence_rerun_callback_review_decision,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -28125,6 +28126,131 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(vision_samples["decision_distribution"]["needs_retry"]["count"], 0)
         self.assertEqual(vision_samples["next_pending_sample"]["sample_id"], "sample-2")
         self.assertEqual(vision_samples["review_queue"][0]["last_decision"]["decision"], "rejected")
+
+    def test_field_evidence_rerun_callback_review_decision_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": "trashbot.field_evidence_rerun_callback_review_decision_summary.v1",
+            "source_schema": "trashbot.field_evidence_rerun_callback_review_decision.v1",
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_callback_review_decision_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_callback_review_decision_gate"
+            ),
+            "review_status": {
+                "status": "missing",
+                "verdict": "not_proven",
+                "reason": "missing real route/elevator field materials",
+            },
+            "safe_evidence_ref": "field-rerun-callback-review-001",
+            "review_decision": "missing",
+            "owner_handoff": ["Autonomy collects same-ref field rerun callback evidence"],
+            "next_required_evidence": ["real route completion signal"],
+            "rerun_guidance": ["rerun field_evidence_rerun_callback_review_decision"],
+            "blocker_summary": ["missing real dropoff/cancel completion"],
+            "same_evidence_ref_required": True,
+            "same_evidence_ref_status": {"status": "matched", "verdict": "not_proven"},
+            "robot_diagnostics_summary": {"status": "missing", "reason": "software proof only"},
+            "safe_copy": (
+                "Field evidence rerun callback review decision is metadata-only; "
+                "source=software_proof; not_proven; safe_to_control=false; "
+                "delivery_success=false; primary_actions_enabled=false."
+            ),
+            "not_proven": ["real route/elevator field pass not proven"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+        artifact = {
+            "schema": "trashbot.field_evidence_rerun_callback_review_decision.v1",
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_callback_review_decision_gate"
+            ),
+            "safe_evidence_ref": "field-rerun-callback-review-001",
+            "diagnostics": {
+                "robot_diagnostics_field_evidence_rerun_callback_review_decision_summary": safe_summary
+            },
+        }
+        with tempfile.TemporaryDirectory() as td:
+            decision_path = Path(td) / "field_evidence_rerun_callback_review_decision.json"
+            decision_path.write_text(json.dumps(artifact), encoding="utf-8")
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "field_evidence_rerun_callback_review_decision": {
+                        "delivery_success": True
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                field_evidence_rerun_callback_review_decision_ref=str(decision_path),
+            )
+            from_nested = summarize_field_evidence_rerun_callback_review_decision(
+                {
+                    "schema": "trashbot.field_evidence_rerun_callback_review_decision.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_rerun_callback_review_decision_gate"
+                    ),
+                    "field_evidence_rerun_callback_review_decision_summary": safe_summary,
+                }
+            )
+            missing = summarize_field_evidence_rerun_callback_review_decision(
+                Path(td) / "missing_review_decision.json"
+            )
+            unsupported = summarize_field_evidence_rerun_callback_review_decision(
+                dict(
+                    safe_summary,
+                    source_schema="trashbot.field_evidence_rerun_callback_intake.v1",
+                    source_evidence_boundary=(
+                        "software_proof_docker_field_evidence_rerun_callback_intake_gate"
+                    ),
+                )
+            )
+            unsafe = summarize_field_evidence_rerun_callback_review_decision(
+                dict(safe_summary, safe_to_control=True, review_decision="accepted")
+            )
+
+        summary = payload["robot_diagnostics_field_evidence_rerun_callback_review_decision_summary"]
+        self.assertEqual(payload["field_evidence_rerun_callback_review_decision"], summary)
+        self.assertEqual(payload["field_evidence_rerun_callback_review_decision_summary"], summary)
+        self.assertNotIn("field_evidence_rerun_callback_review_decision", payload["latest_status"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.field_evidence_rerun_callback_review_decision_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_rerun_callback_review_decision.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_field_evidence_rerun_callback_review_decision_gate",
+        )
+        self.assertEqual(summary["review_decision"], "missing")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertIn("real route completion signal", summary["next_required_evidence"])
+        self.assertIn("Autonomy collects same-ref", summary["owner_handoff"][0])
+        self.assertIn("review_decision", summary["rerun_guidance"][0])
+        self.assertIn("missing real dropoff", summary["blocker_summary"][0])
+        self.assertEqual(from_nested["review_decision"], "missing")
+        self.assertEqual(missing["review_decision"], "blocked")
+        self.assertEqual(
+            unsupported["review_status"]["status"],
+            "blocked_unsupported_field_evidence_rerun_callback_review_decision",
+        )
+        self.assertEqual(
+            unsafe["review_status"]["status"],
+            "blocked_unsafe_field_evidence_rerun_callback_review_decision",
+        )
+        self.assertIn("not_proven", json.dumps(summary, ensure_ascii=False))
 
 
 if __name__ == "__main__":
