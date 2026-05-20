@@ -74,3 +74,48 @@
 - Objective 5 保持约 68%，仍缺真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 和真实手机/browser external proof。
 - Objective 1 保持约 81%，仍缺 WAVE ROVER/UART/HIL、`feedback_T1001`、真实 `/odom`、`/imu`、`/battery`、PR #5 2D LiDAR / ToF 真实材料。
 - Objective 2 / Objective 3 / Objective 4 只记录 `task_terminal_completion_mainline` software-proof 主链路可观察性和 phone-safe visibility；不证明真实 dropoff completion、真实 cancel completion、delivery success、真实 route/elevator field pass、真实 Nav2/fixed-route 或真实手机。
+
+
+## README 更新留档（2026-05-19）
+
+### 实际改动
+- 更新仓库根 `README.md`，重写项目结构、ROS2 包结构、macOS + Docker Humble 优先构建路径、运行流程与验证边界说明。
+- 明确 `software_proof` 与真实 HIL/现场证据边界，避免将容器验证误判为硬件闭环完成。
+
+### 验证结果
+- `git status --short`：通过，显示仅 `README.md` 与本 sprint `tech-done.md` 两处改动。
+- `git diff -- README.md`：通过，确认 README 已按 macOS + Docker Humble 优先、运行流程与验证边界重写。
+- `git diff -- sprints`：通过，确认仅追加当前 sprint 留档，无跨 sprint 误改。
+
+### 剩余风险
+- 本轮仅文档更新，未新增代码级或硬件级验证；真实串口、WAVE ROVER、场地与电梯链路仍需独立实测证据。
+
+
+## README 术语修正留档（2026-05-20）
+
+### 实际改动
+- 基于 `OKR.md` 北极星与战略定位，修正 `README.md` 顶部定位：项目名统一为 `rober`，并将核心任务明确为“垃圾投递/送达”而非“自主捡垃圾”。
+- 同步将 README 主链路流程文案从“巡逻导向”调整为“装载确认 -> 送达 -> 返回/待命”导向，且保留原有构建方式与验证边界说明。
+
+### 验证结果
+- `git status --short`：通过，显示仅 `README.md` 与当前 sprint `tech-done.md` 两处改动。
+- `git diff -- README.md`：通过，确认顶部门牌与主链路描述已按 OKR 语义修正。
+- `git diff -- sprints/2026.05.19_11-12_task-terminal-completion-mainline/tech-done.md`：通过，确认仅追加本次修正留档。
+
+### 剩余风险
+- 本轮仅做 README 术语与定位修正，未新增代码、仿真或硬件验证；真实投递完成度仍以各 Objective 的既有证据边界为准。
+
+
+## README 愿景化改写留档（2026-05-20）
+
+### 实际改动
+- 将 `README.md` 改写为愿景与方向导向表达，保留项目名 `rober`，并对齐 `OKR.md` 的“垃圾投递/送达”高层定位。
+- 主动收敛实现细节、命令细节与硬件细节暴露，避免 README 成为操作手册或硬件说明书。
+
+### 验证结果
+- `git status --short`：通过，显示仅 `README.md` 与当前 sprint `tech-done.md` 改动。
+- `git diff -- README.md`：通过，确认 README 已改为愿景/方向性表述并降低细节暴露。
+- `git diff -- sprints/2026.05.19_11-12_task-terminal-completion-mainline/tech-done.md`：通过，确认本次留档仅追加当前条目。
+
+### 剩余风险
+- 本轮为文档表达层优化，不提供新增功能或硬件验证证据；实际交付能力仍以既有测试与实机材料为准。
