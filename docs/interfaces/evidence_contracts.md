@@ -831,6 +831,82 @@ completion, real cancel completion, real delivery result, real phone/browser
 evidence, HIL pass, Objective 5 external cloud/4G/OSS/CDN/DB/queue proof, PR #5
 resolution, or any primary robot action being enabled.
 
+## field_evidence_rerun_handoff_intake
+
+`pc-tools/evidence/field_evidence_rerun_handoff_intake.py` generates the
+PC-only owner handoff-intake gate after
+`field_evidence_rerun_callback_review_handoff`. It consumes only the
+callback-review-handoff artifact/summary/wrapper JSON and an owner-safe
+handoff intake packet; it does not read field material directories, execute
+field reruns, or open raw materials.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_handoff_intake.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_handoff_intake_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_handoff_intake_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_callback_review_handoff.v1` and
+  `trashbot.field_evidence_rerun_callback_review_handoff_summary.v1` under
+  `software_proof_docker_field_evidence_rerun_callback_review_handoff_gate`.
+  Wrapper, summary, artifact, robot diagnostics, mobile read-only, payload, and
+  nested diagnostics JSON are allowed only through known safe wrapper keys.
+- Allowed packet inputs:
+  a safe owner packet with optional
+  `trashbot.field_evidence_rerun_handoff_intake_packet.v1` or `_summary.v1`
+  schema. The packet must include `owner`, `handoff_received=true`,
+  `intake_notes`, `next_required_evidence`, `source=software_proof`,
+  `not_proven`, `safe_to_control=false`, `delivery_success=false`,
+  `primary_actions_enabled=false`, `same_evidence_ref_required=true`, and the
+  same safe `evidence_ref`.
+- Intake status values:
+  `ready_for_field_evidence_rerun_handoff_intake_not_proven`,
+  `blocked_missing_field_evidence_rerun_handoff_intake_packet`,
+  `blocked_unsupported_field_evidence_rerun_handoff_intake_source`,
+  `blocked_field_evidence_rerun_review_handoff_not_ready`,
+  `evidence_ref_mismatch_field_evidence_rerun_handoff_intake_blocked`, and
+  `blocked_unsafe_field_evidence_rerun_handoff_intake_copy`.
+
+The output always includes `source=software_proof`, `intake_status`, source
+`handoff_status`, safe `evidence_ref`, `same_evidence_ref_required=true`,
+`same_evidence_ref_status`, `owner_intake`, `next_required_evidence`,
+`rerun_guidance`, `blocker_summary`, `safe_copy`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_handoff_intake_gate`.
+The summary mirrors the artifact and is the intended read-only consumer surface
+for Robot diagnostics and mobile/web follow-through.
+
+Intake mapping is fail-closed. A supported, safe source handoff with
+`handoff_status=ready_for_field_evidence_rerun_callback_review_handoff`,
+matched safe `evidence_ref`, `same_evidence_ref_required=true`,
+`same_evidence_ref_status=matched`, `source=software_proof`, `not_proven`, all
+action flags false, and a supported owner-safe packet maps to
+`ready_for_field_evidence_rerun_handoff_intake_not_proven`. Missing source
+input, bad JSON, unsupported source schema or boundary, or missing
+software-proof/not-proven fields fails closed to
+`blocked_unsupported_field_evidence_rerun_handoff_intake_source`. Missing
+packet input, unsupported packet schema/boundary, `handoff_received` not true,
+or missing required owner packet fields fails closed to
+`blocked_missing_field_evidence_rerun_handoff_intake_packet`. A non-ready
+source handoff maps to `blocked_field_evidence_rerun_review_handoff_not_ready`.
+Mismatched evidence refs, missing safe evidence_ref, weak same-ref typing, or
+non-matched same-ref status maps to
+`evidence_ref_mismatch_field_evidence_rerun_handoff_intake_blocked`. Unsafe
+copy, raw paths, credentials, ROS topic text, `/cmd_vel`, serial/UART/WAVE
+ROVER text, checksum text, complete artifact text, traceback text,
+success/control claims, `safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` fail closed to
+`blocked_unsafe_field_evidence_rerun_handoff_intake_copy`.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, real Nav2/fixed-route execution, real field task record, real
+elevator door or floor arrival evidence, real human assistance, real dropoff
+completion, real cancel completion, real delivery result, real phone/browser
+evidence, HIL pass, Objective 5 external cloud/4G/OSS/CDN/DB/queue proof, PR #5
+resolution, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

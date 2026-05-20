@@ -8681,5 +8681,101 @@
       "HIL",
       "O5 external proof"
     ]
+  },
+  "robot_diagnostics_field_evidence_rerun_handoff_intake_summary": {
+    "schema": "trashbot.field_evidence_rerun_handoff_intake_summary.v1",
+    "schema_version": 1,
+    "intake_schema": "trashbot.field_evidence_rerun_handoff_intake.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_handoff_intake_summary",
+    "source": "software_proof",
+    "intake_status": "ready_for_field_owner_handoff_intake_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_callback_intake_fixture_20260520_0001",
+    "handoff_owner": "handoff_owner=field_owner",
+    "intake_receipt": "intake_receipt=field owner acknowledged handoff packet_not_proven",
+    "next_required_evidence": [
+      "next_required_evidence=real route completion signal",
+      "next_required_evidence=real field task record",
+      "next_required_evidence=real phone/browser evidence"
+    ],
+    "rerun_guidance": [
+      "rerun_guidance=rerun field_evidence_rerun_handoff_intake with same safe evidence_ref",
+      "rerun_guidance=rerun field_evidence_rerun_callback_review_handoff after backfill"
+    ],
+    "blocker_summary": [
+      "blocked=PR5 material pending is not O1 proof",
+      "blocked=O5 external proof still unavailable",
+      "blocked=route/elevator/phone field evidence still not_proven"
+    ],
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "safe_copy": "现场证据复跑交接回执 safe copy：intake_status=ready_for_field_owner_handoff_intake_not_proven，source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑交接回执 fixture 只读展示 intake status、handoff owner、intake receipt、next required evidence、rerun guidance、blocker summary、same-evidence-ref status 和固定 boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_handoff_intake_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
+  },
+  "field_evidence_rerun_handoff_intake_summary": {
+    "schema": "trashbot.field_evidence_rerun_handoff_intake_summary.v1",
+    "schema_version": 1,
+    "intake_schema": "trashbot.field_evidence_rerun_handoff_intake.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_handoff_intake_summary",
+    "source": "software_proof",
+    "intake_status": "ready_for_field_owner_handoff_intake_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_callback_intake_fixture_20260520_0001",
+    "handoff_owner": "handoff_owner=field_owner",
+    "intake_receipt": "intake_receipt=field owner acknowledged handoff packet_not_proven",
+    "next_required_evidence": [
+      "next_required_evidence=real route completion signal",
+      "next_required_evidence=real field task record",
+      "next_required_evidence=real phone/browser evidence"
+    ],
+    "rerun_guidance": [
+      "rerun_guidance=rerun field_evidence_rerun_handoff_intake with same safe evidence_ref",
+      "rerun_guidance=rerun field_evidence_rerun_callback_review_handoff after backfill"
+    ],
+    "blocker_summary": [
+      "blocked=PR5 material pending is not O1 proof",
+      "blocked=O5 external proof still unavailable",
+      "blocked=route/elevator/phone field evidence still not_proven"
+    ],
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "safe_copy": "现场证据复跑交接回执 safe copy：intake_status=ready_for_field_owner_handoff_intake_not_proven，source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑交接回执 fixture 只读展示 intake status、handoff owner、intake receipt、next required evidence、rerun guidance、blocker summary、same-evidence-ref status 和固定 boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_handoff_intake_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator field pass",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
   }
 }

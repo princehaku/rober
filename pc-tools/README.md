@@ -560,6 +560,25 @@ python3 pc-tools/evidence/field_evidence_rerun_callback_review_handoff.py \
 
 该 gate 不读取真实材料目录、不触发现场复跑、不访问 ROS graph、Nav2/fixed-route runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺 review-decision 输入、bad JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、证据号不一致、弱类型 `same_evidence_ref_required`、unsupported `review_decision`、unsafe copy、raw path、credential、ROS topic、serial/UART/WAVE ROVER detail、checksum、完整 artifact、traceback、success/control claim、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_evidence_rerun_callback_review_handoff` 只表示 Docker/local `software_proof_docker_field_evidence_rerun_callback_review_handoff_gate` 已把上一轮 review decision 交接成只读 handoff package，不是真实 route/elevator field pass、真实 Nav2/fixed-route proof、dropoff/cancel completion、delivery success、HIL、O5 external proof、PR #5 resolved 或真实 phone/browser 证据。
 
+## field evidence rerun handoff intake
+
+`pc-tools/evidence/field_evidence_rerun_handoff_intake.py` 只读上一节 `field_evidence_rerun_callback_review_handoff` artifact/summary/wrapper JSON，以及现场 owner 回填的 owner-safe handoff intake packet，把“交接包已被安全接收”复账成 metadata-only artifact / summary：
+
+```bash
+python3 pc-tools/evidence/field_evidence_rerun_handoff_intake.py \
+  --callback-review-handoff-json /tmp/field_evidence_rerun_callback_review_handoff_summary.json \
+  --handoff-intake-packet-json /tmp/field_evidence_rerun_handoff_intake_packet.json \
+  --evidence-ref ev-field-intake-001 \
+  --output /tmp/field_evidence_rerun_handoff_intake.json \
+  --summary-output /tmp/field_evidence_rerun_handoff_intake_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.field_evidence_rerun_handoff_intake.v1`，summary 使用 `schema=trashbot.field_evidence_rerun_handoff_intake_summary.v1`，证据边界固定为 `software_proof_docker_field_evidence_rerun_handoff_intake_gate`。核心字段包括 `intake_status`、source `handoff_status`、safe `evidence_ref`、`owner_intake`、`next_required_evidence`、`rerun_guidance`、`blocker_summary`、`safe_copy`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+`intake_status` 固定包含 `ready_for_field_evidence_rerun_handoff_intake_not_proven`、`blocked_missing_field_evidence_rerun_handoff_intake_packet`、`blocked_unsupported_field_evidence_rerun_handoff_intake_source`、`blocked_field_evidence_rerun_review_handoff_not_ready`、`evidence_ref_mismatch_field_evidence_rerun_handoff_intake_blocked` 和 `blocked_unsafe_field_evidence_rerun_handoff_intake_copy`。顶层验收可用 `python3 -m unittest tests.test_field_evidence_rerun_handoff_intake` 复用离线围栏测试；该入口只证明本地 handoff-intake gate 的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
+
+该 gate 不读取真实材料目录、不触发现场复跑、不访问 ROS graph、Nav2/fixed-route runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺 callback-review-handoff 输入、缺 owner-safe packet、bad JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、source handoff 不是 `ready_for_field_evidence_rerun_callback_review_handoff`、packet 缺 `owner` / `handoff_received=true` / `intake_notes` / `next_required_evidence`、证据号不一致、弱类型 `same_evidence_ref_required`、unsafe copy、raw path、credential、ROS topic、serial/UART/WAVE ROVER detail、checksum、完整 artifact、traceback、success/control claim、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_evidence_rerun_handoff_intake_not_proven` 只表示 Docker/local `software_proof_docker_field_evidence_rerun_handoff_intake_gate` 已把上一轮 handoff 和 owner-safe packet 复账成只读 intake summary，不是真实 route/elevator field pass、真实 Nav2/fixed-route proof、dropoff/cancel completion、delivery success、HIL、O5 external proof、PR #5 resolved 或真实 phone/browser 证据。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：
