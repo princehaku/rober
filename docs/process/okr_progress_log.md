@@ -8,6 +8,26 @@
 
 ## 2026-05-20 系列
 
+更新时间：2026-05-20 20:22 Asia/Shanghai。
+
+### 2026-05-20 20-21｜hardware-sensor-hil-entry-callback-review-decision｜HIL-entry callback review decision software proof
+
+本轮 `sprints/2026.05.20_20-21_hardware-sensor-hil-entry-callback-review-decision/` 按 live OKR rerank 后推进 Objective 1，不继续 O5 external blocker，也不把前置 callback intake 当作真实硬件材料。Objective 5 仍约 68%，但缺真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实手机/browser external proof；本机只有 Docker。Objective 1 约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / material pending，适合继续把真实 2D LiDAR / ToF 和 HIL-entry callback material chain 做成可复核软件入口。
+
+Hardware worker 新增 `trashbot.hardware_sensor_hil_entry_callback_review_decision.v1` / `trashbot.hardware_sensor_hil_entry_callback_review_decision_summary.v1` PC gate，消费上一轮 `hardware_sensor_hil_entry_callback_intake` artifact/summary/wrapper，把 accepted / missing / rejected callback materials、unsafe copy、unsupported schema、weak contract 和 evidence-ref mismatch 转成 fail-closed review decision、decision reasons、next required evidence、owner handoff、safe rerun command 和 sanitized safe copy。Hardware worker 已读 `AGENTS.md`、`docs/vendor/VENDOR_INDEX.md`、`base_ctrl.py`、`config.yaml`、`json_cmd.h`、`uart_ctrl.h`；结论是本地 vendor 材料确认 WAVE ROVER UART newline-delimited UTF-8 JSON、Raspberry Pi vendor default `/dev/ttyAMA0` at `115200` 和 `T=1` / `T=13` / `T=130` / `T=131` / `T=142` / `T=143` 命令参考，但不证明 Orange Pi 实际 UART、真实 2D LiDAR、真实 ToF、WAVE ROVER runtime 或 HIL。
+
+Robot worker 新增 `robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary` safe alias，只消费 sanitized summary/artifact wrappers，缺失/unsupported/unsafe/weak/success-control claim 均 fail closed，不触发 task_orchestrator、Start、Confirm Dropoff、Cancel、ACK、cursor、Nav2、HIL、dropoff/cancel completion、delivery result 或 primary actions。Full-Stack worker 新增 mobile/web “传感器 HIL 回调复核决策”只读 panel，优先消费 Robot safe alias 并兼容 direct safe summary fallback；它展示 review decision、source callback intake status、accepted/missing/rejected materials、decision reasons、owner handoff、next required evidence、safe rerun command、safe evidence ref、boundary 和 `not_proven`，但不新增 fetch、ACK、cursor 或 robot command。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | `software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate` 让 PR #5 / HIL-entry callback materials 从 intake 进入 review decision，可被 PC gate、Robot diagnostics 和 mobile/web 只读消费；但没有真实 2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、真实 WAVE ROVER/UART、真实 `feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 `PRRT_kwDOSWB9286CJ3tX` reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增真实 route/elevator field material、真实电梯、Nav2/fixed-route runtime log、dropoff/cancel completion、field pass 或 delivery result。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 新增只读 HIL-entry callback review decision 可见性，但它是 local fixture software proof，不是真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice 或 true phone/browser acceptance。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮不改 cloud commands/status/ack、不新增公网入口、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或 external proof；该 gate 不能计为 O5 external proof。 |
+
+本轮验证：Hardware worker 报告 `py_compile` 通过；`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest pc-tools/evidence/test_hardware_sensor_hil_entry_callback_review_decision_gate.py` 输出 `Ran 7 tests ... OK`；CLI `--help`、required `rg` 与 scoped diff check 通过。Robot worker 报告 `py_compile` 通过；`PYTHONPATH=onboard/src/ros2_trashbot_behavior PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py` 输出 `Ran 237 tests ... OK`；required `rg` 与 scoped diff check 通过。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 179 tests ... OK`；fixture JSON checks、required `rg` 与 scoped diff check 通过。Product closeout integration rerun 通过：PC gate `Ran 7 tests in 0.009s OK`、Robot diagnostics `Ran 237 tests in 0.728s OK`、mobile web `Ran 179 tests in 1.300s OK`、py_compile、node check、JSON checks、CLI help、required `rg` 和 scoped `git diff --check` 均通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
+
 更新时间：2026-05-20 19:33 Asia/Shanghai。
 
 ### 2026-05-20 19-20｜cloud-auth-failure-status-guard｜auth failure status guard software proof

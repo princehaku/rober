@@ -18,6 +18,9 @@ CLOUD_COMMAND_ID_CONFLICT_FIXTURE = (
 CLOUD_AUTH_FAILURE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_auth_failure_status_guard.json"
 )
+HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_DECISION_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary.json"
+)
 PR5_VENDOR_SOURCE_REVIEW_PACKET_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_pr5_vendor_source_review_packet_summary.json"
 )
@@ -2365,6 +2368,124 @@ class HardwareSensorHilEntryCallbackIntakeMobileTest(unittest.TestCase):
             "primary_actions_enabled\": true",
         ):
             self.assertNotIn(forbidden, callback_intake_text)
+
+
+class HardwareSensorHilEntryCallbackReviewDecisionMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_hil_entry_callback_review_decision_panel_is_read_only_and_prefers_robot_alias(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        alias_fixture = json.loads(
+            HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_DECISION_FIXTURE.read_text(encoding="utf-8"),
+        )
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 回调复核决策 panel 紧跟 callback intake，优先消费 Robot safe alias，direct summary 只作兼容回退。
+        self.assertIn("hardwareSensorHilEntryCallbackReviewDecisionTitle", app)
+        self.assertIn("传感器 HIL 回调复核决策", app)
+        self.assertIn("hardwareSensorHilEntryCallbackIntakeTitle", app)
+        self.assertIn("robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary", app)
+        self.assertIn("hardware_sensor_hil_entry_callback_review_decision_summary", app)
+        self.assertLess(
+            app.index("status?.robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary"),
+            app.index("status?.hardware_sensor_hil_entry_callback_review_decision_summary"),
+        )
+
+        # 展示字段覆盖复核决策、source intake、三类材料、原因、handoff、下一步证据、重跑命令和边界。
+        self.assertIn("HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeHardwareSensorHilEntryCallbackReviewDecisionText", app)
+        self.assertIn("hardwareSensorHilEntryCallbackReviewDecisionFromStatus", app)
+        self.assertIn("review_decision", app)
+        self.assertIn("source_callback_intake_status", app)
+        self.assertIn("accepted_callback_materials", app)
+        self.assertIn("missing_callback_materials", app)
+        self.assertIn("rejected_callback_materials", app)
+        self.assertIn("decision_reasons", app)
+        self.assertIn("safe_rerun_command", app)
+        self.assertIn("software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate", app)
+
+        # copy/export 仍是 whitelist-only，不新增 diagnostics fetch、ACK、cursor 或主控制端点。
+        self.assertIn("hardwareSensorHilEntryCallbackReviewDecisionCopyPayload", app)
+        self.assertIn("trashbot.hardware_sensor_hil_entry_callback_review_decision_copy.v1", app)
+        self.assertIn("copyHardwareSensorHilEntryCallbackReviewDecisionButton", app)
+        self.assertIn("downloadHardwareSensorHilEntryCallbackReviewDecisionButton", app)
+        self.assertIn("safe_to_control: false", app)
+        self.assertNotRegex(
+            app,
+            r"hardwareSensorHilEntryCallbackReviewDecision.*fetchJson\(ENDPOINTS\.(diagnostics|start|confirm_dropoff|cancel)",
+        )
+
+        # fixture 同时覆盖 direct safe summary 和 Robot alias，主操作 gating 保持关闭。
+        robot_alias = fixture["robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary"]
+        direct = fixture["hardware_sensor_hil_entry_callback_review_decision_summary"]
+        self.assertEqual(robot_alias["summary_alias"], "robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary")
+        self.assertEqual(robot_alias["review_decision"], "blocked_missing_real_hardware_callback_materials_not_proven")
+        self.assertEqual(direct["review_decision"], "direct_summary_should_not_override_robot_alias_not_proven")
+        self.assertEqual(robot_alias["delivery_success"], False)
+        self.assertEqual(robot_alias["primary_actions_enabled"], False)
+        self.assertEqual(robot_alias["safe_to_control"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertEqual(
+            alias_fixture["summary_alias"],
+            "robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary",
+        )
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate", fixture_text)
+        self.assertIn("robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary", doc)
+        self.assertIn("传感器 HIL 回调复核决策", doc)
+
+    def test_hil_entry_callback_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        summary_text = json.dumps(
+            fixture["robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 回调复核 fixture 只保留安全复核摘要，不泄漏 raw review、硬件细节、凭证、路径或控制授权。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw callback",
+            "raw review",
+            "raw decision",
+            "serial device",
+            "serial/uart",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "complete artifacts",
+            "raw vendor document",
+            "raw material",
+            "absolute path",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "robot command",
+            "control grant",
+            "control enabled",
+            "safe_to_control\": true",
+            "hil passed",
+            "field pass",
+            "采购完成",
+            "安装完成",
+            "接线完成",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, summary_text)
 
 
 class WaveRoverFeedbackReplayMobileTest(unittest.TestCase):

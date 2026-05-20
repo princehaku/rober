@@ -1502,6 +1502,124 @@
       "Objective 5 external proof"
     ]
   },
+  "hardware_sensor_hil_entry_callback_review_decision_summary": {
+    "schema": "trashbot.hardware_sensor_hil_entry_callback_review_decision_summary.v1",
+    "summary_alias": "hardware_sensor_hil_entry_callback_review_decision_summary",
+    "schema_version": 1,
+    "source": "software_proof",
+    "source_schema": "trashbot.hardware_sensor_hil_entry_callback_review_decision.v1",
+    "source_callback_intake_schema": "trashbot.hardware_sensor_hil_entry_callback_intake_summary.v1",
+    "review_decision": "direct_summary_should_not_override_robot_alias_not_proven",
+    "source_callback_intake_status": "ready_for_hardware_sensor_hil_entry_callback_intake_not_proven",
+    "safe_evidence_ref": "hardware_sensor_hil_entry_callback_review_decision_fixture_20260520_direct",
+    "accepted_callback_materials": [
+      "accepted_callback_material=direct safe summary metadata only"
+    ],
+    "missing_callback_materials": [
+      "missing_callback_material=real hardware callback evidence"
+    ],
+    "rejected_callback_materials": [
+      "rejected_callback_material=none in direct safe summary"
+    ],
+    "decision_reasons": [
+      "decision_reason=direct safe summary fallback only"
+    ],
+    "owner_handoff": [
+      "owner_handoff=Robot diagnostics alias should be preferred when present"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=同一 safe evidence_ref 的真实 HIL-entry callback 摘要"
+    ],
+    "safe_rerun_command": "safe_rerun_command=run callback review decision gate after missing callback materials arrive",
+    "boundary": "boundary=software_proof / not_proven / safe_to_control=false",
+    "safe_copy": "direct safe summary fallback for 传感器 HIL 回调复核决策；手机端仍只读展示 not_proven。",
+    "evidence_boundary": "software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "真实 HIL",
+      "真实 2D LiDAR / ToF",
+      "真实 sensor install/power/calibration",
+      "真实 operator callback result",
+      "真实手机/browser",
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field evidence",
+      "真实 dropoff outcome",
+      "真实 cancel outcome",
+      "Objective 5 external proof"
+    ]
+  },
+  "robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary": {
+    "schema": "trashbot.hardware_sensor_hil_entry_callback_review_decision_summary.v1",
+    "summary_alias": "robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary",
+    "schema_version": 1,
+    "source": "software_proof",
+    "source_schema": "trashbot.hardware_sensor_hil_entry_callback_review_decision.v1",
+    "source_callback_intake_schema": "trashbot.hardware_sensor_hil_entry_callback_intake_summary.v1",
+    "review_decision": "blocked_missing_real_hardware_callback_materials_not_proven",
+    "source_callback_intake_status": "ready_for_hardware_sensor_hil_entry_callback_intake_not_proven",
+    "safe_evidence_ref": "hardware_sensor_hil_entry_callback_review_decision_fixture_20260520_0001",
+    "accepted_callback_materials": [
+      "accepted_callback_material=callback intake envelope metadata only",
+      "accepted_callback_material=source execution pack reference accepted for review only"
+    ],
+    "missing_callback_materials": [
+      "missing_callback_material=real sensor install callback summary",
+      "missing_callback_material=real power callback summary",
+      "missing_callback_material=real calibration callback summary",
+      "missing_callback_material=real HIL-entry operator callback summary"
+    ],
+    "rejected_callback_materials": [
+      "rejected_callback_material=unsafe callback packet rejected",
+      "rejected_callback_material=mismatched evidence_ref callback summary rejected"
+    ],
+    "decision_reasons": [
+      "decision_reason=only software-proof callback metadata is present",
+      "decision_reason=real hardware callback evidence is still missing",
+      "decision_reason=primary actions must remain fail-closed"
+    ],
+    "owner_handoff": [
+      "owner_handoff=Hardware owner backfills phone-safe install, power, calibration, and HIL-entry callback summaries",
+      "owner_handoff=Robot owner mirrors robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary only",
+      "owner_handoff=Full-stack keeps mobile/web read-only and primary actions unchanged"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=同一 safe evidence_ref 的真实 sensor install callback 摘要",
+      "next_required_evidence=同一 safe evidence_ref 的真实 power callback 摘要",
+      "next_required_evidence=同一 safe evidence_ref 的真实 calibration callback 摘要",
+      "next_required_evidence=同一 safe evidence_ref 的真实 HIL-entry operator callback 摘要"
+    ],
+    "safe_rerun_command": "safe_rerun_command=python3 pc-tools/evidence/hardware_sensor_hil_entry_callback_review_decision_gate.py --input <phone-safe-callback-intake-summary>",
+    "boundary": "boundary=software_proof / not_proven / safe_to_control=false",
+    "safe_copy": "传感器 HIL 回调复核决策只读展示 review decision、source callback intake status、accepted/missing/rejected callback materials、decision reasons、owner handoff、next required evidence、safe rerun command、safe evidence ref、boundary 和 not_proven；这是 software proof only。",
+    "evidence_boundary": "software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "真实 HIL",
+      "真实 2D LiDAR / ToF",
+      "真实 sensor install/power/calibration",
+      "真实 operator callback result",
+      "真实手机/browser",
+      "真实 Nav2/fixed-route",
+      "真实 route/elevator field evidence",
+      "真实 dropoff outcome",
+      "真实 cancel outcome",
+      "Objective 5 external proof"
+    ]
+  },
   "route_task_terminal_completion_rehearsal": {
     "schema": "trashbot.route_task_terminal_completion_rehearsal.v1",
     "summary_schema": "trashbot.route_task_terminal_completion_rehearsal_summary.v1",

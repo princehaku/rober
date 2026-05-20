@@ -137,6 +137,7 @@ const HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_BOUNDARY = "software_proof_docke
 const HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_readiness_review_gate";
 const HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_execution_pack_gate";
 const HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_callback_intake_gate";
+const HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_DECISION_BOUNDARY = "software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate";
 const PR5_REVIEW_THREAD_CLOSEOUT_BOUNDARY = "software_proof_docker_pr5_review_thread_closeout_gate";
 const PR5_VENDOR_SOURCE_REVIEW_PACKET_BOUNDARY = "software_proof_docker_pr5_vendor_source_review_packet_gate";
 const PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_BOUNDARY = "software_proof_docker_pr5_vendor_source_review_reply_dispatch_gate";
@@ -316,6 +317,7 @@ const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CONFIG_PRECHECK_TEXT = /(authorization|be
 const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_READINESS_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|raw vendor docs|vendor document raw|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|hil_pass|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|raw vendor docs|vendor document raw|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw vendor document|raw vendor docs|vendor document raw|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
+const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw review|raw decision|raw callback|raw vendor document|raw vendor docs|vendor document raw|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|ack payload|cursor|diagnostics fetch|robot command|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|safe_to_control\s*=\s*true|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|标定\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*标定|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_PR5_REVIEW_THREAD_CLOSEOUT_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw review body|raw github|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_PR5_VENDOR_SOURCE_REVIEW_PACKET_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw review packet|raw vendor|raw vendor docs|raw source document|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|标定\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*标定|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw reply body|raw review reply|raw dispatch payload|raw vendor|raw vendor docs|raw source document|complete artifact|complete artifacts|full execution bundle|execution bundle|ack payload|cursor|retry request|diagnostics fetch|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|标定\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*标定|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料|真实\s*手机\s*验收\s*通过|真实\s*送达)/i;
@@ -396,6 +398,7 @@ let latestHardwareSensorHilEntryConfigPrecheck = null;
 let latestHardwareSensorHilEntryReadinessReview = null;
 let latestHardwareSensorHilEntryExecutionPack = null;
 let latestHardwareSensorHilEntryCallbackIntake = null;
+let latestHardwareSensorHilEntryCallbackReviewDecision = null;
 let latestPr5ReviewThreadCloseout = null;
 let latestPr5VendorSourceReviewPacket = null;
 let latestPr5VendorSourceReviewReplyDispatch = null;
@@ -1285,6 +1288,15 @@ function safeHardwareSensorHilEntryCallbackIntakeText(value, fallback = "not_pro
   // 回调入口只能给手机端看脱敏结果摘要；任何 raw artifact、底盘细节或成功暗示都回退。
   const text = safeText(value, fallback);
   if (UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_INTAKE_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeHardwareSensorHilEntryCallbackReviewDecisionText(value, fallback = "not_proven") {
+  // 回调复核决策只消费 Robot safe alias 或 direct safe summary，raw callback/review/control 字段一律降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_DECISION_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -18520,6 +18532,191 @@ function hardwareSensorHilEntryCallbackIntakeFromStatus(status, readiness, diagn
   };
 }
 
+function hardwareSensorHilEntryCallbackReviewDecisionCandidate(status, readiness, diagnostics) {
+  // 复核决策优先读取 Robot diagnostics safe alias；direct safe summary 仅作为兼容回退。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary,
+    readiness?.robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary,
+    diagnostics?.robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary,
+    diagnosticsReadiness.robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary,
+    diagnosticsSummary.robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary,
+    statusDiagnosticsSummary.robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary,
+    status?.hardware_sensor_hil_entry_callback_review_decision,
+    status?.hardware_sensor_hil_entry_callback_review_decision_summary,
+    readiness?.hardware_sensor_hil_entry_callback_review_decision,
+    readiness?.hardware_sensor_hil_entry_callback_review_decision_summary,
+    diagnostics?.hardware_sensor_hil_entry_callback_review_decision,
+    diagnostics?.hardware_sensor_hil_entry_callback_review_decision_summary,
+    diagnosticsReadiness.hardware_sensor_hil_entry_callback_review_decision,
+    diagnosticsReadiness.hardware_sensor_hil_entry_callback_review_decision_summary,
+    diagnosticsSummary.hardware_sensor_hil_entry_callback_review_decision,
+    diagnosticsSummary.hardware_sensor_hil_entry_callback_review_decision_summary,
+    nestedDiagnosticsSummary.hardware_sensor_hil_entry_callback_review_decision,
+    nestedDiagnosticsSummary.hardware_sensor_hil_entry_callback_review_decision_summary,
+    nestedDiagnosticsInnerSummary.hardware_sensor_hil_entry_callback_review_decision,
+    nestedDiagnosticsInnerSummary.hardware_sensor_hil_entry_callback_review_decision_summary,
+    statusDiagnosticsSummary.hardware_sensor_hil_entry_callback_review_decision,
+    statusDiagnosticsSummary.hardware_sensor_hil_entry_callback_review_decision_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function hardwareSensorHilEntryCallbackReviewDecisionNotProvenList(value) {
+  // 复核决策只说明回调材料还没证明硬件/HIL/现场闭环，不能被解释成可控制或已通过。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "safe_to_control=false",
+    "真实 HIL",
+    "真实 2D LiDAR / ToF",
+    "真实 sensor install/wiring/power/calibration",
+    "真实 operator callback result",
+    "真实手机/browser",
+    "真实 Nav2/fixed-route",
+    "真实 route/elevator field pass",
+    "真实 dropoff completion",
+    "真实 cancel completion",
+    "Objective 5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 20);
+}
+
+function hardwareSensorHilEntryCallbackReviewDecisionSummaryText(value, fallback) {
+  // 复核字段可能来自列表、对象或短字符串；统一压成手机安全短摘要，避免 raw review 决策外流。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeHardwareSensorHilEntryCallbackReviewDecisionText(
+        item?.safe_phone_copy || item?.summary || item?.status || item?.state ||
+          item?.reason || item?.category || item?.owner || item?.next_required_evidence ||
+          item?.handoff || item?.decision || item?.result || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.reason || value.category || value.owner || value.next_action ||
+      value.next_required_evidence || value.handoff || value.decision || value.result;
+    if (direct) {
+      return safeHardwareSensorHilEntryCallbackReviewDecisionText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeHardwareSensorHilEntryCallbackReviewDecisionText(key, "");
+        const copy = hardwareSensorHilEntryCallbackReviewDecisionSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safeHardwareSensorHilEntryCallbackReviewDecisionText(value, fallback);
+}
+
+function hardwareSensorHilEntryCallbackReviewDecisionFromStatus(status, readiness, diagnostics) {
+  const provided = hardwareSensorHilEntryCallbackReviewDecisionCandidate(status, readiness, diagnostics) || {};
+  const accepted = provided.accepted_callback_materials || provided.accepted_materials ||
+    provided.accepted_material_summary || {};
+  const missing = provided.missing_callback_materials || provided.missing_materials ||
+    provided.missing_material_summary || provided.blockers || {};
+  const rejected = provided.rejected_callback_materials || provided.rejected_materials ||
+    provided.rejected_material_summary || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.hardware_sensor_hil_entry_callback_review_decision_summary.v1",
+    source_schema: provided.source_schema || "trashbot.hardware_sensor_hil_entry_callback_review_decision.v1",
+    source_callback_intake_schema: safeHardwareSensorHilEntryCallbackReviewDecisionText(
+      provided.source_callback_intake_schema,
+      "trashbot.hardware_sensor_hil_entry_callback_intake_summary.v1",
+    ),
+    schema_version: 1,
+    summary_alias: safeHardwareSensorHilEntryCallbackReviewDecisionText(
+      provided.summary_alias,
+      "robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary",
+    ),
+    review_decision: safeHardwareSensorHilEntryCallbackReviewDecisionText(
+      provided.review_decision || provided.decision_status || provided.overall_status || provided.status,
+      "blocked_missing_hardware_sensor_hil_entry_callback_review_decision_not_proven",
+    ),
+    source_callback_intake_status: safeHardwareSensorHilEntryCallbackReviewDecisionText(
+      provided.source_callback_intake_status || provided.callback_intake_status || provided.intake_status,
+      "ready_for_hardware_sensor_hil_entry_callback_intake_not_proven",
+    ),
+    safe_evidence_ref: safeHardwareSensorHilEntryCallbackReviewDecisionText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "evidence_ref=not_proven",
+    ),
+    accepted_callback_materials: hardwareSensorHilEntryCallbackReviewDecisionSummaryText(
+      accepted,
+      "accepted_callback_materials=not_proven",
+    ),
+    missing_callback_materials: hardwareSensorHilEntryCallbackReviewDecisionSummaryText(
+      missing,
+      "missing_callback_materials=real sensor install, power, calibration, and HIL-entry callback summaries pending.",
+    ),
+    rejected_callback_materials: hardwareSensorHilEntryCallbackReviewDecisionSummaryText(
+      rejected,
+      "rejected_callback_materials=none reported in phone-safe summary.",
+    ),
+    decision_reasons: hardwareSensorHilEntryCallbackReviewDecisionSummaryText(
+      provided.decision_reasons || provided.reason_summary || provided.review_reasons,
+      "decision_reasons=missing real hardware callback materials; keep not_proven.",
+    ),
+    owner_handoff: hardwareSensorHilEntryCallbackReviewDecisionSummaryText(
+      provided.owner_handoff || provided.owner_next_action || provided.owner_next_steps,
+      "owner_handoff=Hardware owner backfills phone-safe callback review evidence; Robot owner mirrors safe alias。",
+    ),
+    next_required_evidence: hardwareSensorHilEntryCallbackReviewDecisionSummaryText(
+      provided.next_required_evidence || provided.next_evidence || provided.next_steps,
+      "next_required_evidence=同一 safe evidence_ref 下的真实安装、电源、标定和 HIL-entry callback 摘要。",
+    ),
+    safe_rerun_command: safeHardwareSensorHilEntryCallbackReviewDecisionText(
+      provided.safe_rerun_command || provided.rerun_command || provided.rerun_guidance,
+      "safe_rerun_command=run hardware_sensor_hil_entry_callback_review_decision_gate after callback materials arrive",
+    ),
+    boundary: hardwareSensorHilEntryCallbackReviewDecisionSummaryText(
+      provided.boundary || provided.boundary_summary || provided.safe_boundary || provided.control_boundary,
+      "boundary=software_proof / not_proven / safe_to_control=false",
+    ),
+    safe_copy: safeHardwareSensorHilEntryCallbackReviewDecisionText(
+      provided.safe_copy || provided.safe_phone_copy || provided.safe_summary,
+      "传感器 HIL 回调复核决策只读展示 review decision、source callback intake status、材料复核、owner handoff、下一步证据、safe rerun command 和边界；这是 software proof only。",
+    ),
+    evidence_boundary: safeHardwareSensorHilEntryCallbackReviewDecisionText(
+      provided.evidence_boundary,
+      HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_DECISION_BOUNDARY,
+    ),
+    source: "software_proof",
+    delivery_success: false,
+    primary_actions_enabled: false,
+    safe_to_control: false,
+    not_proven: hardwareSensorHilEntryCallbackReviewDecisionNotProvenList(provided),
+  };
+}
+
 function pr5ReviewThreadCloseoutCandidate(status, readiness, diagnostics) {
   // PR #5 closeout 兼容 PC gate、Robot diagnostics alias 和 status nested summary，但只读取对象摘要。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -29577,13 +29774,100 @@ function renderHardwareSensorHilEntryCallbackIntake(status) {
   $("hardwareSensorHilEntryCallbackIntakeHint").textContent = summary.boundary_summary;
 }
 
+function ensureHardwareSensorHilEntryCallbackReviewDecisionPanel() {
+  // 复核决策紧跟 callback intake，只读展示 Robot safe alias；不新增 fetch、ACK、cursor 或控制按钮。
+  let panel = $("hardwareSensorHilEntryCallbackReviewDecisionPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("hardwareSensorHilEntryCallbackReviewDecisionTitle")?.closest("section") ||
+    $("hardwareSensorHilEntryCallbackIntakeTitle")?.closest("section") ||
+    $("hardwareSensorHilEntryExecutionPackTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "hardwareSensorHilEntryCallbackReviewDecisionPanel";
+  panel.className = "hardware-sensor-hil-entry-callback-review-decision-panel";
+  panel.setAttribute("aria-labelledby", "hardwareSensorHilEntryCallbackReviewDecisionTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="hardwareSensorHilEntryCallbackReviewDecisionTitle">传感器 HIL 回调复核决策</h2>
+      <span id="hardwareSensorHilEntryCallbackReviewDecisionBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="hardwareSensorHilEntryCallbackReviewDecisionCopy" class="message">
+      robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary 只读展示 review decision、source callback intake status、accepted/missing/rejected callback materials、decision reasons、owner handoff、next required evidence、safe rerun command、safe evidence ref、boundary 和 not_proven。
+    </p>
+    <dl class="hardware-sensor-hil-entry-callback-review-decision-grid">
+      <div><dt>Review Decision</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionState">blocked_missing_hardware_sensor_hil_entry_callback_review_decision_not_proven</dd></div>
+      <div><dt>Source Callback Intake</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionSourceIntake">ready_for_hardware_sensor_hil_entry_callback_intake_not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Accepted Callback Materials</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionAccepted">accepted_callback_materials=not_proven</dd></div>
+      <div><dt>Missing Callback Materials</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionMissing">missing_callback_materials=not_proven</dd></div>
+      <div><dt>Rejected Callback Materials</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionRejected">rejected_callback_materials=not_proven</dd></div>
+      <div><dt>Decision Reasons</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionReasons">decision_reasons=not_proven</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionOwnerHandoff">owner_handoff=Hardware / Robot owner 补齐 metadata-only summary。</dd></div>
+      <div><dt>Next Required Evidence</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionNextEvidence">next_required_evidence=not_proven</dd></div>
+      <div><dt>Safe Rerun Command</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionRerun">safe_rerun_command=not_proven</dd></div>
+      <div><dt>Boundary</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionBoundarySummary">boundary=software proof only</dd></div>
+      <div><dt>Control Boundary</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionControls">delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionBoundary">software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="hardwareSensorHilEntryCallbackReviewDecisionNotProven">真实 HIL、真实 operator callback、真实手机/browser 和 delivery outcome 未证明。</dd></div>
+    </dl>
+    <div class="bundle-copy-row">
+      <button id="copyHardwareSensorHilEntryCallbackReviewDecisionButton" type="button">复制 HIL callback review decision</button>
+      <button id="downloadHardwareSensorHilEntryCallbackReviewDecisionButton" type="button">导出 HIL callback review decision</button>
+      <span id="hardwareSensorHilEntryCallbackReviewDecisionCopyStatus" class="hint">whitelist-only phone-safe metadata</span>
+    </div>
+    <pre id="hardwareSensorHilEntryCallbackReviewDecisionSafeCopy" class="safe-copy" aria-label="hardware_sensor_hil_entry_callback_review_decision safe_copy">blocked copy unavailable</pre>
+    <p id="hardwareSensorHilEntryCallbackReviewDecisionHint" class="hint">
+      callback review decision panel 优先消费 Robot diagnostics safe alias，direct safe summary 只作兼容；它不新增 fetch、ACK、cursor、robot command、Start Delivery、Confirm Dropoff 或 Cancel 行为，现有主操作 gating 不变。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderHardwareSensorHilEntryCallbackReviewDecision(status) {
+  const panel = ensureHardwareSensorHilEntryCallbackReviewDecisionPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = hardwareSensorHilEntryCallbackReviewDecisionFromStatus(status, readiness, latestDiagnostics);
+  latestHardwareSensorHilEntryCallbackReviewDecision = summary;
+  const badge = $("hardwareSensorHilEntryCallbackReviewDecisionBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 callback review decision" : "not_proven";
+  $("hardwareSensorHilEntryCallbackReviewDecisionCopy").textContent = summary.safe_copy;
+  $("hardwareSensorHilEntryCallbackReviewDecisionState").textContent = summary.review_decision;
+  $("hardwareSensorHilEntryCallbackReviewDecisionSourceIntake").textContent = summary.source_callback_intake_status;
+  $("hardwareSensorHilEntryCallbackReviewDecisionEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("hardwareSensorHilEntryCallbackReviewDecisionAccepted").textContent = summary.accepted_callback_materials;
+  $("hardwareSensorHilEntryCallbackReviewDecisionMissing").textContent = summary.missing_callback_materials;
+  $("hardwareSensorHilEntryCallbackReviewDecisionRejected").textContent = summary.rejected_callback_materials;
+  $("hardwareSensorHilEntryCallbackReviewDecisionReasons").textContent = summary.decision_reasons;
+  $("hardwareSensorHilEntryCallbackReviewDecisionOwnerHandoff").textContent = summary.owner_handoff;
+  $("hardwareSensorHilEntryCallbackReviewDecisionNextEvidence").textContent = summary.next_required_evidence;
+  $("hardwareSensorHilEntryCallbackReviewDecisionRerun").textContent = summary.safe_rerun_command;
+  $("hardwareSensorHilEntryCallbackReviewDecisionBoundarySummary").textContent = summary.boundary;
+  $("hardwareSensorHilEntryCallbackReviewDecisionControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("hardwareSensorHilEntryCallbackReviewDecisionBoundary").textContent = summary.evidence_boundary;
+  $("hardwareSensorHilEntryCallbackReviewDecisionNotProven").textContent = summary.not_proven.join("、");
+  $("hardwareSensorHilEntryCallbackReviewDecisionHint").textContent = summary.boundary;
+}
+
 function ensureWaveRoverFeedbackReplayPanel() {
-  // feedback replay 是硬件链路的只读摘要，接在 HIL-entry 执行包后，不参与主操作 gating。
+  // feedback replay 是硬件链路的只读摘要，接在 HIL 回调复核之后，不参与主操作 gating。
   let panel = $("waveRoverFeedbackReplayPanel");
   if (panel) {
     return panel;
   }
-  const anchor = $("hardwareSensorHilEntryExecutionPackTitle")?.closest("section") ||
+  const anchor = $("hardwareSensorHilEntryCallbackReviewDecisionTitle")?.closest("section") ||
+    $("hardwareSensorHilEntryCallbackIntakeTitle")?.closest("section") ||
+    $("hardwareSensorHilEntryExecutionPackTitle")?.closest("section") ||
     $("hardwareSensorHilEntryReadinessReviewTitle")?.closest("section");
   if (!anchor || !anchor.parentElement) {
     return null;
@@ -31335,6 +31619,43 @@ function hardwareSensorHilEntryCallbackIntakeCopyPayload(summary) {
     not_proven: source.not_proven,
     delivery_success: false,
     primary_actions_enabled: false,
+  };
+}
+
+function hardwareSensorHilEntryCallbackReviewDecisionCopyPayload(summary) {
+  // callback review decision copy/export 只导出复核决策白名单，不携带 raw callback、ACK、cursor 或控制授权。
+  const source = summary?.schema
+    ? summary
+    : hardwareSensorHilEntryCallbackReviewDecisionFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  return {
+    schema: "trashbot.hardware_sensor_hil_entry_callback_review_decision_copy.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    hardware_sensor_hil_entry_callback_review_decision_schema: source.schema,
+    source_schema: source.source_schema,
+    source_callback_intake_schema: source.source_callback_intake_schema,
+    summary_alias: source.summary_alias,
+    review_decision: source.review_decision,
+    source_callback_intake_status: source.source_callback_intake_status,
+    accepted_callback_materials: source.accepted_callback_materials,
+    missing_callback_materials: source.missing_callback_materials,
+    rejected_callback_materials: source.rejected_callback_materials,
+    decision_reasons: source.decision_reasons,
+    owner_handoff: source.owner_handoff,
+    next_required_evidence: source.next_required_evidence,
+    safe_rerun_command: source.safe_rerun_command,
+    safe_evidence_ref: source.safe_evidence_ref,
+    boundary: source.boundary,
+    safe_copy: source.safe_copy,
+    evidence_boundary: HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_DECISION_BOUNDARY,
+    not_proven: source.not_proven,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    safe_to_control: false,
   };
 }
 
@@ -34019,6 +34340,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const hardwareSensorHilEntryCallbackReviewDecision = hardwareSensorHilEntryCallbackReviewDecisionFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const pr5ReviewThreadCloseout = pr5ReviewThreadCloseoutFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -34268,6 +34594,10 @@ function renderDiagnosticsSummary(payload) {
     ["hardware_sensor_hil_entry_readiness_review", hardwareSensorHilEntryReadinessReview.readiness_status],
     ["hardware_sensor_hil_entry_execution_pack", hardwareSensorHilEntryExecutionPack.execution_status],
     ["hardware_sensor_hil_entry_callback_intake", latestHardwareSensorHilEntryCallbackIntake?.intake_status || "not_proven"],
+    [
+      "hardware_sensor_hil_entry_callback_review_decision",
+      hardwareSensorHilEntryCallbackReviewDecision.review_decision,
+    ],
     ["pr5_review_thread_closeout", pr5ReviewThreadCloseout.overall_status],
     ["pr5_vendor_source_review_packet", latestPr5VendorSourceReviewPacket?.proof_status || "not_proven"],
     ["pr5_vendor_source_review_reply_dispatch", latestPr5VendorSourceReviewReplyDispatch?.dispatch_status || "not_proven"],
@@ -34425,6 +34755,7 @@ function renderOfflineFailure() {
   renderHardwareSensorHilEntryReadinessReview({});
   renderHardwareSensorHilEntryExecutionPack({});
   renderHardwareSensorHilEntryCallbackIntake({});
+  renderHardwareSensorHilEntryCallbackReviewDecision({});
   renderPr5ReviewThreadCloseout({});
   renderPr5VendorSourceReviewPacket({});
   renderPr5VendorSourceReviewReplyDispatch({});
@@ -34551,6 +34882,7 @@ function renderStatus(status) {
   renderHardwareSensorHilEntryReadinessReview(status);
   renderHardwareSensorHilEntryExecutionPack(status);
   renderHardwareSensorHilEntryCallbackIntake(status);
+  renderHardwareSensorHilEntryCallbackReviewDecision(status);
   renderPr5ReviewThreadCloseout(status);
   renderPr5VendorSourceReviewPacket(status);
   renderPr5VendorSourceReviewReplyDispatch(status);
@@ -34857,6 +35189,7 @@ async function openDiagnostics() {
     renderHardwareSensorHilEntryReadinessReview(latestStatus || {});
     renderHardwareSensorHilEntryExecutionPack(latestStatus || {});
     renderHardwareSensorHilEntryCallbackIntake(latestStatus || {});
+    renderHardwareSensorHilEntryCallbackReviewDecision(latestStatus || {});
     renderPr5VendorSourceReviewPacket(latestStatus || {});
     renderHardwareRealMaterialEscalationRequest(latestStatus || {});
     renderRealMaterialReadinessBoard(latestStatus || {});
@@ -34949,6 +35282,7 @@ function wireEvents() {
   ensureHardwareSensorHilEntryReadinessReviewPanel();
   ensureHardwareSensorHilEntryExecutionPackPanel();
   ensureHardwareSensorHilEntryCallbackIntakePanel();
+  ensureHardwareSensorHilEntryCallbackReviewDecisionPanel();
   ensureHardwareRealMaterialEscalationRequestPanel();
   ensureWaveRoverFeedbackReplayPanel();
   ensureWaveRoverHilPacketIntakePanel();
@@ -35385,6 +35719,38 @@ function wireEvents() {
     downloadJsonPackage("hardware_sensor_hil_entry_callback_intake_copy.json", payload);
     $("hardwareSensorHilEntryCallbackIntakeCopyStatus").textContent =
       "已导出 HIL callback intake whitelist-only JSON。";
+  });
+  $("copyHardwareSensorHilEntryCallbackReviewDecisionButton").addEventListener("click", async () => {
+    const payload = JSON.stringify(
+      hardwareSensorHilEntryCallbackReviewDecisionCopyPayload(
+        latestHardwareSensorHilEntryCallbackReviewDecision || {},
+      ),
+      null,
+      2,
+    );
+    $("hardwareSensorHilEntryCallbackReviewDecisionSafeCopy").textContent = payload;
+    // 复核决策 copy 只服务 phone-safe 交接；剪贴板失败时仍保留手动复制文本。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("hardwareSensorHilEntryCallbackReviewDecisionCopyStatus").textContent =
+        "已复制 HIL callback review decision phone-safe metadata。";
+    } catch (_error) {
+      $("hardwareSensorHilEntryCallbackReviewDecisionCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadHardwareSensorHilEntryCallbackReviewDecisionButton").addEventListener("click", () => {
+    const payload = JSON.stringify(
+      hardwareSensorHilEntryCallbackReviewDecisionCopyPayload(
+        latestHardwareSensorHilEntryCallbackReviewDecision || {},
+      ),
+      null,
+      2,
+    );
+    $("hardwareSensorHilEntryCallbackReviewDecisionSafeCopy").textContent = payload;
+    downloadJsonPackage("hardware_sensor_hil_entry_callback_review_decision_copy.json", payload);
+    $("hardwareSensorHilEntryCallbackReviewDecisionCopyStatus").textContent =
+      "已导出 HIL callback review decision whitelist-only JSON。";
   });
   $("copyWaveRoverHilPacketIntakeButton").addEventListener("click", async () => {
     const payload = JSON.stringify(

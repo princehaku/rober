@@ -113,6 +113,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_hardware_sensor_hil_entry_readiness_review,
     summarize_hardware_sensor_hil_entry_execution_pack,
     summarize_hardware_sensor_hil_entry_callback_intake,
+    summarize_hardware_sensor_hil_entry_callback_review_decision,
     summarize_pr5_review_thread_closeout,
     summarize_pr5_vendor_source_review_packet,
     summarize_pr5_vendor_source_review_reply_dispatch,
@@ -25535,6 +25536,226 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("HIL passed", encoded)
         self.assertNotIn("delivery success", encoded)
         self.assertNotIn("route/elevator pass", encoded)
+
+    def test_hardware_sensor_hil_entry_callback_review_decision_summary_safe_alias(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_payload = {
+                "schema": "trashbot.hardware_sensor_hil_entry_callback_review_decision_summary.v1",
+                "source_schema": "trashbot.hardware_sensor_hil_entry_callback_review_decision.v1",
+                "source_schema_version": 1,
+                "evidence_boundary": (
+                    "software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate"
+                ),
+                "source_evidence_boundary": (
+                    "software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate"
+                ),
+                "source": "software_proof",
+                "hardware_material_status": "hardware_material_pending",
+                "evidence_status": "not_proven",
+                "safe_evidence_ref": "evidence://hardware-sensor-hil-entry-callback-review-1",
+                "status": "blocked_missing_real_sensor_hil_entry_materials",
+                "review_decision": "missing",
+                "review_status": {
+                    "status": "blocked_missing_real_sensor_hil_entry_materials",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "sanitized callback review decision only",
+                },
+                "accepted_materials": ["sensor_mounting_callback_summary_redacted"],
+                "missing_materials": ["same-ref hardware feedback callback remains pending"],
+                "rejected_materials": ["unsafe callback detail was excluded"],
+                "decision_reasons": ["safe callback evidence is incomplete"],
+                "next_required_evidence": ["same-ref HIL-entry operator callback summary"],
+                "owner_handoff": ["Hardware owns missing callback evidence backfill."],
+                "rerun_commands": [
+                    "python3 pc-tools/evidence/hardware_sensor_hil_entry_callback_review_decision_gate.py --once-json"
+                ],
+                "same_evidence_ref_required": True,
+                "same_evidence_ref_status": {"status": "matched", "verdict": "not_proven"},
+                "safe_copy": (
+                    "Hardware sensor HIL-entry callback review decision is metadata-only; "
+                    "source=software_proof; hardware_material_pending; not_proven; "
+                    "delivery_success=false; primary_actions_enabled=false."
+                ),
+                "not_proven": ["real_hil_pass"],
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "safe_to_control": False,
+            }
+            artifact_path = Path(td) / "hardware_sensor_hil_entry_callback_review_decision.json"
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.hardware_sensor_hil_entry_callback_review_decision.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate"
+                        ),
+                        "safe_evidence_ref": "evidence://hardware-sensor-hil-entry-callback-review-1",
+                        "diagnostics": {
+                            "robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary": summary_payload
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "hardware_sensor_hil_entry_callback_review_decision": {
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                hardware_sensor_hil_entry_callback_review_decision_ref=str(artifact_path),
+            )
+            direct_summary = summarize_hardware_sensor_hil_entry_callback_review_decision(
+                dict(summary_payload)
+            )
+            summary = payload[
+                "robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary"
+            ]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(payload["hardware_sensor_hil_entry_callback_review_decision"], summary)
+        self.assertEqual(payload["hardware_sensor_hil_entry_callback_review_decision_summary"], summary)
+        self.assertEqual(direct_summary["review_decision"], "missing")
+        self.assertNotIn("hardware_sensor_hil_entry_callback_review_decision", payload["latest_status"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.hardware_sensor_hil_entry_callback_review_decision_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.hardware_sensor_hil_entry_callback_review_decision.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate",
+        )
+        self.assertEqual(summary["review_decision"], "missing")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["hardware_material_status"], "hardware_material_pending")
+        self.assertEqual(summary["evidence_status"], "not_proven")
+        self.assertIn("sensor_mounting_callback_summary_redacted", summary["accepted_materials"])
+        self.assertIn("same-ref hardware feedback callback remains pending", summary["missing_materials"])
+        self.assertIn("unsafe callback detail was excluded", summary["rejected_materials"])
+        self.assertIn("safe callback evidence is incomplete", summary["decision_reasons"])
+        self.assertIn("same-ref HIL-entry operator callback summary", summary["next_required_evidence"])
+        self.assertIn("Hardware owns missing callback evidence backfill.", summary["owner_handoff"])
+        self.assertIn("hardware_sensor_hil_entry_callback_review_decision_gate.py", summary["rerun_commands"][0])
+        self.assertTrue(summary["same_evidence_ref_required"])
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://hardware-sensor-hil-entry-callback-review-1",
+        )
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertIn("sensor_hil_entry_callback_review_decision_only", summary["not_proven"])
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertNotIn(str(artifact_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_hardware_sensor_hil_entry_callback_review_decision_fail_closed(self):
+        safe_summary = {
+            "schema": "trashbot.hardware_sensor_hil_entry_callback_review_decision_summary.v1",
+            "source_schema": "trashbot.hardware_sensor_hil_entry_callback_review_decision.v1",
+            "evidence_boundary": (
+                "software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate"
+            ),
+            "source": "software_proof",
+            "hardware_material_status": "hardware_material_pending",
+            "evidence_status": "not_proven",
+            "safe_evidence_ref": "evidence://hardware-sensor-hil-entry-callback-review-2",
+            "status": "blocked_missing_real_sensor_hil_entry_materials",
+            "review_decision": "missing",
+            "same_evidence_ref_required": True,
+            "safe_copy": (
+                "metadata-only; source=software_proof; hardware_material_pending; "
+                "not_proven; delivery_success=false; primary_actions_enabled=false."
+            ),
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+        }
+        missing = summarize_hardware_sensor_hil_entry_callback_review_decision("")
+        unsupported = summarize_hardware_sensor_hil_entry_callback_review_decision(
+            dict(safe_summary, source_schema="trashbot.hardware_sensor_hil_entry_callback_intake.v1")
+        )
+        weak_contract = summarize_hardware_sensor_hil_entry_callback_review_decision(
+            dict(safe_summary, same_evidence_ref_required=False)
+        )
+        raw_only = summarize_hardware_sensor_hil_entry_callback_review_decision(
+            {
+                "schema": "trashbot.hardware_sensor_hil_entry_callback_review_decision.v1",
+                "evidence_boundary": (
+                    "software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate"
+                ),
+                "safe_evidence_ref": "evidence://raw-without-safe-summary",
+            }
+        )
+        unsafe = summarize_hardware_sensor_hil_entry_callback_review_decision(
+            dict(
+                safe_summary,
+                safe_evidence_ref="evidence://hardware-sensor-hil-entry-callback-review-unsafe",
+                delivery_success=True,
+                primary_actions_enabled=True,
+                safe_to_control=True,
+                raw_artifact={"serial_device": "/dev/ttyUSB0", "token": "secret-token"},
+                safe_copy="HIL passed, delivery success, control enabled.",
+            )
+        )
+        encoded = json.dumps([missing, unsupported, weak_contract, raw_only, unsafe], ensure_ascii=False)
+
+        self.assertEqual(
+            missing["status"],
+            "blocked_missing_hardware_sensor_hil_entry_callback_review_decision",
+        )
+        self.assertEqual(
+            unsupported["status"],
+            "blocked_unsupported_hardware_sensor_hil_entry_callback_review_decision",
+        )
+        self.assertEqual(
+            weak_contract["status"],
+            "blocked_unsafe_hardware_sensor_hil_entry_callback_review_decision",
+        )
+        self.assertEqual(
+            raw_only["status"],
+            "blocked_missing_hardware_sensor_hil_entry_callback_review_decision_summary",
+        )
+        self.assertEqual(
+            unsafe["status"],
+            "blocked_unsafe_hardware_sensor_hil_entry_callback_review_decision",
+        )
+        self.assertFalse(unsafe["delivery_success"])
+        self.assertFalse(unsafe["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("HIL passed", encoded)
+        self.assertNotIn("delivery success", encoded)
+        self.assertNotIn("control enabled", encoded)
 
     def test_diagnostics_payload_includes_pr5_review_thread_closeout_safe_alias(self):
         with tempfile.TemporaryDirectory() as td:
