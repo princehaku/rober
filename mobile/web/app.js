@@ -23,6 +23,8 @@ const CLOUD_COMMAND_EXPIRY_BOUNDARY = "software_proof_docker_cloud_command_expir
 const CLOUD_COMMAND_EXPIRY_COPY = "云端命令已过期，机器人已忽略旧命令；请重新下发一次安全指令。";
 const CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY = "software_proof_docker_cloud_command_idempotency_visibility_guard";
 const CLOUD_COMMAND_IDEMPOTENCY_COPY = "重复云指令已去重；机器人没有重复执行；这不是送达成功。";
+const CLOUD_COMMAND_ID_CONFLICT_BOUNDARY = "software_proof_docker_cloud_command_id_conflict_visibility_guard";
+const CLOUD_COMMAND_ID_CONFLICT_COPY = "命令 ID 冲突；机器人已拒绝执行；这不是送达成功。";
 const MOBILE_DEVICE_ACCEPTANCE_BOUNDARY = "software_proof_docker_mobile_device_acceptance_readiness_gate";
 const MOBILE_DEVICE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_device_evidence_capture_gate";
 const MOBILE_DEVICE_HANDOFF_SESSION_BOUNDARY = "software_proof_docker_mobile_device_handoff_session_gate";
@@ -1496,6 +1498,45 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         proof_boundary: CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY,
         duplicate_command_id: duplicateCommandId,
         cached_ack_state: cachedAckState,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
+    if (provided.degradation_state === "command_id_conflict" ||
+        provided.proof_boundary === CLOUD_COMMAND_ID_CONFLICT_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_COMMAND_ID_CONFLICT_BOUNDARY) {
+      // command_id_conflict 代表同一 command.id 携带了不同 type/payload；前端只解释拒绝结果，不发起重放或 ACK/cursor 请求。
+      const conflictCommandId = safeText(provided.conflict_command_id, "");
+      const conflictReason = safeText(
+        provided.conflict_reason,
+        "duplicate_id_mismatched_type_or_payload",
+      );
+      const conflictFields = Array.isArray(provided.conflict_fields)
+        ? provided.conflict_fields.map((field) => safeText(field, "")).filter(Boolean).join(",")
+        : safeText(provided.conflict_fields, "type,payload");
+      return {
+        ...provided,
+        missing: false,
+        overall_status: "blocked",
+        preflight_status: "command_id_conflict",
+        db_queue_status: `conflict_command_id=${conflictCommandId || "[redacted]"} / conflict_fields=${conflictFields || "type,payload"} / remote_ready=false / primary_actions_enabled=false`,
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_COMMAND_ID_CONFLICT_COPY),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "请刷新状态或联系支持；手机端不要自动重放、自动 resubmit 或请求 ACK/cursor。",
+        ),
+        ack_semantics: safeText(
+          provided.ack_semantics,
+          "conflict_rejected_not_delivery_success",
+        ),
+        evidence_boundary: CLOUD_COMMAND_ID_CONFLICT_BOUNDARY,
+        proof_boundary: CLOUD_COMMAND_ID_CONFLICT_BOUNDARY,
+        conflict_command_id: conflictCommandId,
+        conflict_reason: conflictReason,
+        conflict_fields: conflictFields,
         not_proven: notProvenList(provided.not_proven),
       };
     }

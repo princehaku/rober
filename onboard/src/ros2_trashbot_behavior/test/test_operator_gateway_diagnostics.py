@@ -26258,6 +26258,69 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, encoded_offline_resume)
 
+    def test_diagnostics_phone_readiness_surfaces_command_id_conflict(self):
+        class Gateway:
+            def snapshot(self):
+                return {
+                    "state": "remote_degraded",
+                    "message": "remote conflict; hide token and /cmd_vel",
+                    "can_collect": True,
+                    "can_confirm_dropoff": True,
+                    "can_cancel": True,
+                    "remote_readiness": {
+                        "degradation_state": "command_id_conflict",
+                        "conflict_command_id": "cmd-conflict-diagnostics",
+                        "conflict_reason": "duplicate_id_mismatched_type_or_payload",
+                        "conflict_fields": "type,payload",
+                        "ack_semantics": "conflict_rejected_not_delivery_success",
+                        "remote_ready": False,
+                        "primary_actions_enabled": False,
+                        "retry_hint": "contact_support",
+                        "safe_phone_copy": "命令 ID 冲突：同一 ID 的 type/payload 不一致，机器人已拒绝执行；这不是送达成功。",
+                        "proof_boundary": "software_proof_docker_cloud_command_id_conflict_visibility_guard",
+                    },
+                }
+
+            def diagnostics(self):
+                return {
+                    "state": "diagnostics_ready",
+                    "software_version": "0.1.0",
+                    "map_version": "map-a",
+                    "route_version": "route-a",
+                    "source": "software_proof",
+                    "latest_status": self.snapshot(),
+                    "failure": {
+                        "state": "remote_degraded",
+                        "message": "raw /cmd_vel must stay hidden",
+                        "error_code": "REMOTE_COMMAND_ID_CONFLICT",
+                    },
+                }
+
+        payload = _diagnostics_with_phone_task_flow(Gateway(), MockCloudStore())
+        readiness = payload["latest_status"]["phone_readiness"]
+        remote_readiness = readiness["remote_readiness"]
+
+        self.assertEqual(remote_readiness["degradation_state"], "command_id_conflict")
+        self.assertEqual(remote_readiness["conflict_command_id"], "cmd-conflict-diagnostics")
+        self.assertEqual(
+            remote_readiness["ack_semantics"],
+            "conflict_rejected_not_delivery_success",
+        )
+        self.assertFalse(remote_readiness["primary_actions_enabled"])
+        self.assertEqual(
+            remote_readiness["proof_boundary"],
+            "software_proof_docker_cloud_command_id_conflict_visibility_guard",
+        )
+        self.assertEqual(readiness["command_safety"]["global_block_reason"], "command_id_conflict")
+        self.assertFalse(readiness["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["cancel"]["enabled"])
+        encoded = json.dumps(payload["phone_offline_resume_readiness"], ensure_ascii=False)
+        self.assertIn("conflict_rejected_not_delivery_success", json.dumps(readiness, ensure_ascii=False))
+        self.assertNotIn("delivery_success\": true", json.dumps(remote_readiness))
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("token", encoded)
+
     def test_diagnostics_payload_does_not_forward_preexisting_support_bundle(self):
         payload = build_diagnostics_payload(
             {

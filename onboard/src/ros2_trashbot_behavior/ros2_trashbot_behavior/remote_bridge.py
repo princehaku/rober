@@ -38,6 +38,9 @@ CLOUD_COMMAND_EXPIRY_SAFETY_GUARD_BOUNDARY = "software_proof_docker_cloud_comman
 CLOUD_COMMAND_IDEMPOTENCY_VISIBILITY_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_command_idempotency_visibility_guard"
 )
+CLOUD_COMMAND_ID_CONFLICT_VISIBILITY_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_command_id_conflict_visibility_guard"
+)
 PENDING_TERMINAL_ACK_KEY = "pending_terminal_ack"
 SAFE_OPERATOR_STATUS_KEYS = {
     "protocol_version",
@@ -54,6 +57,9 @@ SAFE_OPERATOR_STATUS_KEYS = {
     "pending_terminal_ack_id",
     "expired_command_id",
     "duplicate_command_id",
+    "conflict_command_id",
+    "conflict_reason",
+    "conflict_fields",
     "cached_ack_state",
     "ack_semantics",
     "primary_actions_enabled",
@@ -183,6 +189,53 @@ def _phone_safe_duplicate_command_status(robot_id, command_id, ack_state):
     )
 
 
+def _phone_safe_command_conflict_status(robot_id, command_id, conflict_fields):
+    safe_command_id = _safe_state_text_value(command_id)
+    safe_fields = _safe_state_text_value(",".join(conflict_fields) or "type,payload")
+    safe_phone_copy = "命令 ID 冲突：同一 ID 的 type/payload 不一致，机器人已拒绝执行；这不是送达成功。"
+    return make_status(
+        robot_id,
+        "remote_degraded",
+        safe_phone_copy,
+        remote_ready=False,
+        cloud_reachable=True,
+        auth_state="unknown",
+        degradation_state="command_id_conflict",
+        retry_hint="contact_support",
+        safe_phone_copy=safe_phone_copy,
+        conflict_command_id=safe_command_id,
+        conflict_reason="duplicate_id_mismatched_type_or_payload",
+        conflict_fields=safe_fields,
+        ack_semantics="conflict_rejected_not_delivery_success",
+        primary_actions_enabled=False,
+        proof_boundary=CLOUD_COMMAND_ID_CONFLICT_VISIBILITY_GUARD_BOUNDARY,
+    )
+
+
+def _canonical_command_identity(command):
+    # canonical identity 只比较业务执行内容，不把 expires_at/created_at 等队列元数据纳入幂等判断。
+    payload = command.get("payload") if isinstance(command.get("payload"), dict) else {}
+    canonical_payload = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return {
+        "type": str(command.get("type") or "").strip(),
+        "payload": canonical_payload,
+    }
+
+
+def _command_identity_conflict_fields(previous_identity, current_identity):
+    # 字段级差异用于手机端解释原因；不回显 raw payload，避免泄漏 JSON 细节或控制参数。
+    fields = []
+    for key in ("type", "payload"):
+        if previous_identity.get(key) != current_identity.get(key):
+            fields.append(key)
+    return fields
+
+
 class RemoteBridgeWorker:
     """Pure-Python HTTP polling worker for the outbound 4G bridge.
 
@@ -208,6 +261,7 @@ class RemoteBridgeWorker:
         self.last_ack_id = cursor_state["last_terminal_ack_id"]
         self.pending_terminal_ack = cursor_state[PENDING_TERMINAL_ACK_KEY]
         self.command_results = {}
+        self.command_identities = {}
         self.max_command_results = int(max_command_results)
 
     def poll_once(self):
@@ -249,6 +303,19 @@ class RemoteBridgeWorker:
             self._post_terminal_ack(command["id"], ack)
             return True
         if command["id"] in self.command_results:
+            previous_identity = self.command_identities.get(command["id"], {})
+            current_identity = _canonical_command_identity(command)
+            conflict_fields = _command_identity_conflict_fields(previous_identity, current_identity)
+            if conflict_fields:
+                # 同 id 不同内容不能复用 cached ACK；这里直接拒绝执行并用独立 ACK 暴露冲突原因。
+                conflict_status = self._record_command_conflict_status(command["id"], conflict_fields)
+                conflict_ack = self._make_ack(
+                    "ignored",
+                    "command id conflict rejected before robot execution",
+                    conflict_status,
+                )
+                self._post_terminal_ack(command["id"], conflict_ack, remember=False)
+                return True
             # duplicate 只复用已有 terminal ACK envelope，不再提交本地 action；同时把“去重不是送达”
             # 写进 operator_status，避免手机端只看到 acked 就误判 delivery success。
             cached_ack = dict(self.command_results[command["id"]])
@@ -283,6 +350,7 @@ class RemoteBridgeWorker:
                 "message": f"command failed: {exc}",
                 "result": result,
             }
+        self.command_identities[command["id"]] = _canonical_command_identity(command)
         self._post_terminal_ack(command["id"], ack)
         return True
 
@@ -357,6 +425,11 @@ class RemoteBridgeWorker:
         self._set_operator_status(status)
         return status
 
+    def _record_command_conflict_status(self, command_id, conflict_fields):
+        status = _phone_safe_command_conflict_status(self.robot_id, command_id, conflict_fields)
+        self._set_operator_status(status)
+        return status
+
     def _ack_with_operator_status(self, ack, operator_status):
         duplicate_ack = dict(ack or {})
         result = duplicate_ack.get("result") if isinstance(duplicate_ack.get("result"), dict) else {}
@@ -379,6 +452,9 @@ class RemoteBridgeWorker:
                 "pending_terminal_ack_id",
                 "expired_command_id",
                 "duplicate_command_id",
+                "conflict_command_id",
+                "conflict_reason",
+                "conflict_fields",
                 "cached_ack_state",
                 "ack_semantics",
                 "primary_actions_enabled",
@@ -534,7 +610,9 @@ class RemoteBridgeWorker:
     def _remember_command_result(self, command_id, ack):
         self.command_results[command_id] = ack
         while len(self.command_results) > max(1, self.max_command_results):
-            self.command_results.pop(next(iter(self.command_results)))
+            evicted_command_id = next(iter(self.command_results))
+            self.command_results.pop(evicted_command_id)
+            self.command_identities.pop(evicted_command_id, None)
 
     def _execute_command(self, command):
         payload = command["payload"]

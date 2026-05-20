@@ -336,6 +336,98 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         )
         self.assertNotIn("delivery_success\": true", json.dumps(duplicate_status))
 
+    def test_same_content_duplicate_uses_canonical_payload_order(self):
+        command = {
+            "id": "cmd-canonical-duplicate",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 2},
+        }
+        reordered_duplicate = {
+            "id": "cmd-canonical-duplicate",
+            "type": "collect",
+            "payload": {"trash_type": 2, "target": "trash_station"},
+        }
+        self.cloud.commands.append(command)
+        self.assertTrue(self.worker.poll_once())
+
+        self.cloud.commands.append(reordered_duplicate)
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 2)])
+        self.assertEqual(self.cloud.ack_posts[-1]["state"], "acked")
+        duplicate_status = self.cloud.ack_posts[-1]["result"]["operator_status"]
+        self.assertEqual(duplicate_status["degradation_state"], "command_duplicate_deduped")
+        self.assertEqual(duplicate_status["duplicate_command_id"], "cmd-canonical-duplicate")
+        self.assertEqual(
+            duplicate_status["ack_semantics"],
+            "duplicate_cached_ack_not_delivery_success",
+        )
+
+    def test_duplicate_id_with_type_conflict_is_rejected_without_cached_ack_reuse(self):
+        command = {
+            "id": "cmd-type-conflict",
+            "type": "collect",
+            "payload": {"target": "trash_station"},
+        }
+        self.cloud.commands.append(command)
+        self.assertTrue(self.worker.poll_once())
+
+        self.cloud.commands.append({
+            "id": "cmd-type-conflict",
+            "type": "cancel",
+            "payload": {"target": "trash_station"},
+        })
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual([ack["state"] for ack in self.cloud.ack_posts], ["acked", "ignored"])
+        conflict_status = self.cloud.ack_posts[-1]["result"]["operator_status"]
+        self.assertEqual(conflict_status["degradation_state"], "command_id_conflict")
+        self.assertEqual(conflict_status["conflict_command_id"], "cmd-type-conflict")
+        self.assertEqual(conflict_status["conflict_reason"], "duplicate_id_mismatched_type_or_payload")
+        self.assertEqual(conflict_status["conflict_fields"], "type")
+        self.assertEqual(
+            conflict_status["ack_semantics"],
+            "conflict_rejected_not_delivery_success",
+        )
+        self.assertFalse(conflict_status["remote_ready"])
+        self.assertFalse(conflict_status["primary_actions_enabled"])
+        self.assertEqual(
+            conflict_status["proof_boundary"],
+            "software_proof_docker_cloud_command_id_conflict_visibility_guard",
+        )
+        self.assertNotEqual(self.cloud.ack_posts[-1]["message"], self.cloud.ack_posts[0]["message"])
+
+    def test_duplicate_id_with_payload_conflict_is_rejected_and_redacted(self):
+        command = {
+            "id": "cmd-/cmd_vel-secret",
+            "type": "collect",
+            "payload": {"target": "trash_station"},
+        }
+        self.cloud.commands.append(command)
+        self.assertTrue(self.worker.poll_once())
+
+        self.cloud.commands.append({
+            "id": "cmd-/cmd_vel-secret",
+            "type": "collect",
+            "payload": {"target": "other_station"},
+        })
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.cloud.ack_posts[-1]["state"], "ignored")
+        conflict_status = self.cloud.ack_posts[-1]["result"]["operator_status"]
+        self.assertEqual(conflict_status["degradation_state"], "command_id_conflict")
+        self.assertEqual(conflict_status["conflict_command_id"], "[redacted]")
+        self.assertEqual(conflict_status["conflict_fields"], "payload")
+        self.assertEqual(
+            conflict_status["ack_semantics"],
+            "conflict_rejected_not_delivery_success",
+        )
+        encoded = json.dumps(conflict_status, ensure_ascii=False)
+        self.assertNotIn("cmd-/cmd_vel-secret", encoded)
+        self.assertNotIn("delivery_success\": true", encoded)
+
     def test_expired_duplicate_command_keeps_expired_priority(self):
         command = {
             "id": "cmd-expired-duplicate",

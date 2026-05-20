@@ -865,6 +865,42 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         )
         self.assertNotIn("delivery_success\": true", json.dumps(duplicate["remote_readiness"]))
 
+        conflict = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "degradation_state": "command_id_conflict",
+                "retry_hint": "contact_support",
+                "safe_phone_copy": "命令 ID 冲突：同一 ID 的 type/payload 不一致，机器人已拒绝执行；这不是送达成功。",
+                "conflict_command_id": "cmd-conflict",
+                "conflict_reason": "duplicate_id_mismatched_type_or_payload",
+                "conflict_fields": "payload",
+                "ack_semantics": "conflict_rejected_not_delivery_success",
+                "remote_ready": False,
+                "primary_actions_enabled": False,
+                "proof_boundary": "software_proof_docker_cloud_command_id_conflict_visibility_guard",
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        self.assertEqual(conflict["primary_state"], "remote_response_invalid")
+        self.assertFalse(conflict["can_continue"])
+        self.assertEqual(conflict["next_action"], "contact_support")
+        self.assertEqual(conflict["support_level"], "remote_command_id_conflict")
+        self.assertEqual(conflict["command_safety"]["global_block_reason"], "command_id_conflict")
+        self.assertFalse(conflict["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(conflict["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(conflict["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(conflict["command_safety"]["actions"]["diagnostics"]["enabled"])
+        self.assertEqual(conflict["remote_readiness"]["conflict_command_id"], "cmd-conflict")
+        self.assertEqual(
+            conflict["remote_readiness"]["ack_semantics"],
+            "conflict_rejected_not_delivery_success",
+        )
+        self.assertEqual(
+            conflict["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_command_id_conflict_visibility_guard",
+        )
+        self.assertNotIn("delivery_success\": true", json.dumps(conflict["remote_readiness"]))
+
         acked = build_phone_readiness(
             dict(local_status, target="Lobby trash station"),
             remote_readiness={
@@ -1774,6 +1810,46 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(
             payload["remote_readiness"]["proof_boundary"],
             "software_proof_docker_cloud_command_idempotency_visibility_guard",
+        )
+        self.assertNotIn("delivery_success\": true", json.dumps(payload["remote_readiness"]))
+
+    def test_mock_cloud_rejects_duplicate_id_with_mismatched_payload(self):
+        command = {
+            "protocol_version": REMOTE_PROTOCOL_VERSION,
+            "id": "cmd-conflict-visible",
+            "type": "collect",
+            "payload": {"target": "trash_station", "trash_type": 2},
+        }
+        status, payload = self.request("POST", "/robots/trashbot-001/commands", command)
+        self.assertEqual(status, 201)
+
+        status, payload = self.request(
+            "POST",
+            "/robots/trashbot-001/commands",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "id": "cmd-conflict-visible",
+                "type": "collect",
+                "payload": {"trash_type": 3, "target": "trash_station"},
+            },
+        )
+        self.assertEqual(status, 409)
+        self.assertFalse(payload["ok"])
+        self.assertTrue(payload["conflict"])
+        self.assertEqual(payload["error"]["code"], "command_id_conflict")
+        self.assertFalse(payload["remote_readiness"]["remote_ready"])
+        self.assertEqual(payload["remote_readiness"]["degradation_state"], "command_id_conflict")
+        self.assertEqual(payload["remote_readiness"]["conflict_command_id"], "cmd-conflict-visible")
+        self.assertEqual(payload["remote_readiness"]["conflict_reason"], "duplicate_id_mismatched_type_or_payload")
+        self.assertEqual(payload["remote_readiness"]["conflict_fields"], "payload")
+        self.assertEqual(
+            payload["remote_readiness"]["ack_semantics"],
+            "conflict_rejected_not_delivery_success",
+        )
+        self.assertFalse(payload["remote_readiness"]["primary_actions_enabled"])
+        self.assertEqual(
+            payload["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_command_id_conflict_visibility_guard",
         )
         self.assertNotIn("delivery_success\": true", json.dumps(payload["remote_readiness"]))
 

@@ -504,7 +504,8 @@ button-level gate for local/fallback phone control. Start Delivery, Confirm
 Dropoff, and Cancel are enabled only when the legacy local action permission and
 the command safety gate both allow the action. The gate blocks primary commands
 for stale robot status, pending ACK, auth failure, cloud unreachable, malformed
-remote response, missing/invalid/stale manifest summary, and manual takeover.
+remote response, command ID conflict, missing/invalid/stale manifest summary,
+and manual takeover.
 Diagnostics remains available with a phone-safe blocking explanation so support
 can still reproduce the issue. ACK text must stay conservative: an ACK is only
 command accepted/processing evidence and does not prove delivery success, real
@@ -541,6 +542,45 @@ only `software_proof_docker_cloud_command_idempotency_visibility_guard`; it does
 not prove production DB/queue behavior, public HTTPS/TLS, real 4G/SIM,
 OSS/CDN live traffic, real phone browser, Nav2 or fixed route delivery,
 WAVE ROVER motion, HIL, or delivery success.
+
+## Command ID Conflict Visibility Guard
+
+The Robot bridge now compares duplicate command identity with a canonical
+`type/payload` rule instead of raw JSON text. The canonical comparison sorts
+payload keys before comparing, so the same command content with a different JSON
+field order remains a normal duplicate and follows the cached ACK dedupe path.
+`expires_at`, `created_at`, and queue metadata are not part of command identity.
+
+If the same `command.id` appears again with a different `type` or canonical
+`payload`, the bridge must fail closed: do not call the operator backend, do not
+reuse the cached ACK, and do not write the cached ACK as the current command
+result. The rejected command may be ACKed as `ignored` only with a phone-safe
+operator status that explains the conflict.
+
+When this guard is active, status/readiness must include:
+
+- `degradation_state=command_id_conflict`
+- `remote_ready=false`
+- `conflict_command_id=<safe command id or [redacted]>`
+- `conflict_reason=duplicate_id_mismatched_type_or_payload`
+- `conflict_fields=<type|payload|type,payload>`
+- `ack_semantics=conflict_rejected_not_delivery_success`
+- `primary_actions_enabled=false`
+- `safe_phone_copy=命令 ID 冲突：同一 ID 的 type/payload 不一致，机器人已拒绝执行；这不是送达成功。`
+- `retry_hint=contact_support`
+- `proof_boundary=software_proof_docker_cloud_command_id_conflict_visibility_guard`
+
+Priority order is explicit: persisted pending terminal ACK blocks new command
+pulling first; expired commands still report `command_expired`; same-ID
+different-content commands report `command_id_conflict`; only same-ID same
+canonical `type/payload` commands report `command_duplicate_deduped`. Phone
+readiness, command safety, and diagnostics must keep Start Delivery, Confirm
+Dropoff, and Cancel disabled for `command_id_conflict`, while Diagnostics
+remains available for support. This is only
+`software_proof_docker_cloud_command_id_conflict_visibility_guard`; it does not
+prove delivery success, production DB/queue behavior, public HTTPS/TLS, real
+4G/SIM, OSS/CDN live traffic, real phone browser, Nav2 or fixed route delivery,
+WAVE ROVER motion, or HIL.
 
 ## Command Expiry Safety Guard
 

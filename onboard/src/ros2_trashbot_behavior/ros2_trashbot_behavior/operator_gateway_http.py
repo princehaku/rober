@@ -37,6 +37,9 @@ PHONE_COMMAND_EXPIRY_SAFETY_GUARD_BOUNDARY = "software_proof_docker_cloud_comman
 PHONE_COMMAND_IDEMPOTENCY_VISIBILITY_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_command_idempotency_visibility_guard"
 )
+PHONE_COMMAND_ID_CONFLICT_VISIBILITY_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_command_id_conflict_visibility_guard"
+)
 COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 REMOTE_STATUS_STALE_AFTER_SEC = 90.0
@@ -64,6 +67,7 @@ REMOTE_DEGRADATION_COPY = {
     "command_pending": "指令已提交，正在等待小车确认。",
     "command_expired": "这条云端指令已经过期，机器人没有执行；请重新提交最新指令。",
     "command_duplicate_deduped": "重复云指令已去重，机器人没有重复执行；cached ACK 不是送达成功。",
+    "command_id_conflict": "命令 ID 冲突：同一 ID 的 type/payload 不一致，机器人已拒绝执行；这不是送达成功。",
     "auth_failed": "手机登录已失效，请重新登录或检查访问凭证。",
     "cloud_unreachable": "远程控制通道暂不可用，请稍后重试。",
     "malformed_response": "远程控制返回异常，请联系支持人员。",
@@ -79,6 +83,9 @@ REMOTE_STATUS_SAFE_EXTRA_KEYS = {
     "pending_terminal_ack_id",
     "expired_command_id",
     "duplicate_command_id",
+    "conflict_command_id",
+    "conflict_reason",
+    "conflict_fields",
     "cached_ack_state",
     "ack_semantics",
     "primary_actions_enabled",
@@ -122,6 +129,7 @@ COMMAND_SAFETY_BLOCK_COPY = {
     "command_pending": "上一条指令仍在等待 ACK，暂不重复下发。",
     "command_expired": "上一条云端指令已过期，请重新提交新指令。",
     "command_duplicate_deduped": "重复云指令已去重，主操作保持不可用。",
+    "command_id_conflict": "同一命令 ID 出现不同内容，机器人已拒绝执行；这不是送达成功。",
     "auth_failed": "手机登录或访问码未通过，主操作暂不可用。",
     "cloud_unreachable": "远程控制通道暂不可用，主操作暂不可用。",
     "malformed_response": "远程控制返回异常，主操作暂不可用。",
@@ -598,6 +606,55 @@ def normalize_remote_status(robot_id, payload, *, now=None):
     return status
 
 
+def _canonical_remote_command_identity(command):
+    # 幂等身份只看会触发机器人行为的 type/payload，避免 JSON 字段顺序造成误判。
+    command = command if isinstance(command, dict) else {}
+    payload = command.get("payload") if isinstance(command.get("payload"), dict) else {}
+    return {
+        "type": str(command.get("type") or "").strip(),
+        "payload": json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+    }
+
+
+def _remote_command_conflict_fields(existing, incoming):
+    # 只返回字段名给手机端；不把 raw payload 或控制细节写入 conflict summary。
+    previous_identity = _canonical_remote_command_identity(existing)
+    current_identity = _canonical_remote_command_identity(incoming)
+    return [
+        key
+        for key in ("type", "payload")
+        if previous_identity.get(key) != current_identity.get(key)
+    ]
+
+
+def _command_id_conflict_status(robot_id, command_id, conflict_fields):
+    # mock cloud 侧也要 fail-closed，可让手机在机器人轮询前就看到同 ID 内容冲突。
+    safe_fields = ",".join(conflict_fields) or "type,payload"
+    safe_command_id = str(command_id or "").strip()
+    if any(marker in safe_command_id.lower() for marker in ("authorization", "bearer", "/cmd_vel", "serial", "baudrate", "traceback")):
+        safe_command_id = "[redacted]"
+    return {
+        "protocol_version": REMOTE_PROTOCOL_VERSION,
+        "robot_id": str(robot_id or "").strip(),
+        "state": "remote_degraded",
+        "message": REMOTE_DEGRADATION_COPY["command_id_conflict"],
+        "updated_at": time.time(),
+        "remote_ready": False,
+        "cloud_reachable": True,
+        "auth_state": "mock_not_required",
+        "degradation_state": "command_id_conflict",
+        "retry_hint": "contact_support",
+        "safe_phone_copy": REMOTE_DEGRADATION_COPY["command_id_conflict"],
+        "conflict_command_id": safe_command_id[:240],
+        "conflict_reason": "duplicate_id_mismatched_type_or_payload",
+        "conflict_fields": safe_fields[:240],
+        "ack_semantics": "conflict_rejected_not_delivery_success",
+        "primary_actions_enabled": False,
+        "proof_boundary": PHONE_COMMAND_ID_CONFLICT_VISIBILITY_GUARD_BOUNDARY,
+        "diagnostics": {},
+    }
+
+
 def normalize_remote_ack(robot_id, command_id, payload, *, now=None):
     now = time.time() if now is None else float(now)
     payload = payload if isinstance(payload, dict) else {}
@@ -831,6 +888,9 @@ class MockCloudStore:
         duplicate_command_id = ""
         if status_degradation == "command_duplicate_deduped":
             duplicate_command_id = str(status.get("duplicate_command_id") or "").strip()
+        conflict_command_id = ""
+        if status_degradation == "command_id_conflict":
+            conflict_command_id = str(status.get("conflict_command_id") or "").strip()
         ack_operator_status = {}
         if latest_ack and isinstance((latest_ack.get("result") or {}).get("operator_status"), dict):
             ack_operator_status = (latest_ack.get("result") or {}).get("operator_status")
@@ -841,15 +901,23 @@ class MockCloudStore:
             and str(ack_operator_status.get("degradation_state") or "") == "command_duplicate_deduped"
         ):
             duplicate_command_id = str(ack_operator_status.get("duplicate_command_id") or last_command_ack).strip()
+        if (
+            not conflict_command_id
+            and str(ack_operator_status.get("degradation_state") or "") == "command_id_conflict"
+        ):
+            conflict_command_id = str(ack_operator_status.get("conflict_command_id") or last_command_ack).strip()
         retry_hint = "ok"
         degradation_state = "ok"
-        # 过期和 pending 都比 duplicate 更需要用户立即处理，不能被 cached ACK 可见性覆盖。
+        # 过期和 pending 都比 duplicate/conflict 更需要用户立即处理，不能被 cached ACK 或冲突摘要覆盖。
         if expired_command_id or status_degradation == "command_expired":
             retry_hint = "resubmit_command"
             degradation_state = "command_expired"
         elif status_degradation == "command_pending":
             retry_hint = str(status.get("retry_hint") or ack_operator_status.get("retry_hint") or "wait_for_command_ack")
             degradation_state = "command_pending"
+        elif conflict_command_id or status_degradation == "command_id_conflict":
+            retry_hint = "contact_support"
+            degradation_state = "command_id_conflict"
         elif duplicate_command_id or status_degradation == "command_duplicate_deduped":
             retry_hint = "refresh_status"
             degradation_state = "command_duplicate_deduped"
@@ -861,7 +929,7 @@ class MockCloudStore:
             degradation_state = "command_pending"
         remote_ready = bool(
             not status_stale
-            and degradation_state not in {"command_expired", "command_duplicate_deduped"}
+            and degradation_state not in {"command_expired", "command_duplicate_deduped", "command_id_conflict"}
         )
         readiness = {
             "remote_ready": remote_ready,
@@ -902,6 +970,25 @@ class MockCloudStore:
                 or ack_operator_status.get("proof_boundary")
                 or PHONE_COMMAND_IDEMPOTENCY_VISIBILITY_GUARD_BOUNDARY
             )
+        if degradation_state == "command_id_conflict":
+            readiness["conflict_command_id"] = conflict_command_id
+            readiness["conflict_reason"] = str(
+                status.get("conflict_reason")
+                or ack_operator_status.get("conflict_reason")
+                or "duplicate_id_mismatched_type_or_payload"
+            )
+            readiness["conflict_fields"] = str(
+                status.get("conflict_fields")
+                or ack_operator_status.get("conflict_fields")
+                or "type,payload"
+            )
+            readiness["ack_semantics"] = "conflict_rejected_not_delivery_success"
+            readiness["primary_actions_enabled"] = False
+            readiness["proof_boundary"] = str(
+                status.get("proof_boundary")
+                or ack_operator_status.get("proof_boundary")
+                or PHONE_COMMAND_ID_CONFLICT_VISIBILITY_GUARD_BOUNDARY
+            )
         return readiness
 
     def submit_command(self, robot_id, payload):
@@ -910,6 +997,22 @@ class MockCloudStore:
             robot = self._robot(robot_id)
             existing = robot["command_index"].get(command["id"])
             if existing:
+                conflict_fields = _remote_command_conflict_fields(existing, command)
+                if conflict_fields:
+                    # 同 ID 不同内容不进入队列、不覆盖原命令，也不复用 cached ACK。
+                    robot["status"] = _command_id_conflict_status(robot_id, command["id"], conflict_fields)
+                    self._touch_stats_locked(robot, "status_count")
+                    self._persist_locked()
+                    readiness = self._readiness_locked(str(robot_id or "").strip(), robot)
+                    return 409, {
+                        "ok": False,
+                        "conflict": True,
+                        "error": {
+                            "code": "command_id_conflict",
+                            "message": REMOTE_DEGRADATION_COPY["command_id_conflict"],
+                        },
+                        "remote_readiness": readiness,
+                    }
                 # 幂等提交仍返回 readiness，手机端可同步刷新当前降级原因。
                 readiness = self._readiness_locked(str(robot_id or "").strip(), robot)
                 return 200, {
@@ -2714,6 +2817,7 @@ def _command_safety_block_reason(primary_state, remote_state, manifest_state):
         "command_pending",
         "command_expired",
         "command_duplicate_deduped",
+        "command_id_conflict",
         "auth_failed",
         "cloud_unreachable",
         "malformed_response",
@@ -3215,7 +3319,7 @@ def _offline_resume_connection_state(primary_state, remote_state, command_safety
         return "status_stale"
     if remote_state == "command_pending":
         return "pending_ack"
-    if remote_state in {"command_expired", "command_duplicate_deduped"}:
+    if remote_state in {"command_expired", "command_duplicate_deduped", "command_id_conflict"}:
         return "blocked"
     if primary_state in {"login_required", "remote_response_invalid"}:
         return "blocked"
@@ -3287,6 +3391,10 @@ def build_phone_offline_resume_readiness(
         next_action = "refresh_status"
         recovery_hint = PHONE_READINESS_NEXT_ACTION_COPY["refresh_status"]
         safe_phone_copy = REMOTE_DEGRADATION_COPY["command_duplicate_deduped"]
+    elif remote_state == "command_id_conflict":
+        next_action = "contact_support"
+        recovery_hint = PHONE_READINESS_NEXT_ACTION_COPY["contact_support"]
+        safe_phone_copy = REMOTE_DEGRADATION_COPY["command_id_conflict"]
     elif connection_state == "manual_takeover":
         recovery_hint = "保持现场安全，按手机提示人工接管，并打开 Support Handoff。"
         safe_phone_copy = "当前需要人工接管，不能通过离线恢复直接继续任务。"
@@ -3478,6 +3586,11 @@ def build_phone_readiness(
         next_action = "refresh_status"
         can_continue = False
         support_level = "remote_duplicate_deduped"
+    elif remote_state == "command_id_conflict":
+        primary_state = "remote_response_invalid"
+        next_action = "contact_support"
+        can_continue = False
+        support_level = "remote_command_id_conflict"
     elif remote_state == "status_stale":
         if can_use_local_action:
             primary_state = "local_ready_remote_status_waiting"

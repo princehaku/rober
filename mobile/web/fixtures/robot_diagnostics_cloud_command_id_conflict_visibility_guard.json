@@ -1,0 +1,84 @@
+{
+  "robot_id": "trashbot-alpha",
+  "state": "remote_degraded",
+  "remote_ready": false,
+  "cloud_reachable": true,
+  "auth_state": "authorized",
+  "degradation_state": "command_id_conflict",
+  "conflict_command_id": "cmd_conflict_20260520_001",
+  "conflict_reason": "duplicate_id_mismatched_type_or_payload",
+  "conflict_fields": [
+    "type",
+    "payload"
+  ],
+  "primary_actions_enabled": false,
+  "safe_to_control": false,
+  "safe_phone_copy": "命令 ID 冲突；机器人已拒绝执行；这不是送达成功。",
+  "recovery_hint": "请刷新状态或联系支持；手机端不要自动重放、自动 resubmit、请求 ACK/cursor 或提交同一 command_id。",
+  "retry_hint": "contact_support_or_refresh_status",
+  "ack_semantics": "conflict_rejected_not_delivery_success",
+  "proof_boundary": "software_proof_docker_cloud_command_id_conflict_visibility_guard",
+  "evidence_boundary": "software_proof_docker_cloud_command_id_conflict_visibility_guard",
+  "boundary_flags": "source=software_proof / not_proven / remote_ready=false / delivery_success=false / primary_actions_enabled=false",
+  "delivery_success": false,
+  "not_proven": [
+    "真实公网 HTTPS/TLS",
+    "真实 4G/SIM",
+    "production DB/queue",
+    "真实手机/browser",
+    "Nav2/fixed-route",
+    "WAVE ROVER/UART/HIL",
+    "delivery success"
+  ],
+  "phone_readiness": {
+    "primary_state": "blocked",
+    "next_action": "contact_support_or_refresh_status",
+    "support_level": "diagnostics_available",
+    "remote_readiness": {
+      "remote_ready": false,
+      "degradation_state": "command_id_conflict",
+      "conflict_command_id": "cmd_conflict_20260520_001",
+      "conflict_reason": "duplicate_id_mismatched_type_or_payload",
+      "conflict_fields": [
+        "type",
+        "payload"
+      ],
+      "primary_actions_enabled": false,
+      "safe_phone_copy": "命令 ID 冲突；机器人已拒绝执行；这不是送达成功。",
+      "retry_hint": "contact_support_or_refresh_status",
+      "ack_semantics": "conflict_rejected_not_delivery_success",
+      "proof_boundary": "software_proof_docker_cloud_command_id_conflict_visibility_guard"
+    },
+    "command_safety": {
+      "schema": "trashbot.command_safety.v1",
+      "global_block_reason": "command_id_conflict：同一 command_id 携带不同 type/payload，Robot 已拒绝执行，remote_ready=false。",
+      "ack_semantics": "conflict_rejected_not_delivery_success",
+      "actions": {
+        "start": {
+          "enabled": false,
+          "blocking_reason": "command_id_conflict / remote_ready=false / primary_actions_enabled=false"
+        },
+        "confirm_dropoff": {
+          "enabled": false,
+          "blocking_reason": "command_id_conflict / remote_ready=false / primary_actions_enabled=false"
+        },
+        "cancel": {
+          "enabled": false,
+          "blocking_reason": "command_id_conflict / remote_ready=false / primary_actions_enabled=false"
+        },
+        "diagnostics": {
+          "enabled": true,
+          "safe_phone_copy": "诊断可打开；主操作保持 fail closed。"
+        }
+      }
+    }
+  },
+  "action_permissions": {
+    "can_collect": false,
+    "can_confirm_dropoff": false,
+    "can_cancel": false
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}
