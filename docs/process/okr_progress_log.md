@@ -8,7 +8,25 @@
 
 ## 2026-05-21 系列
 
-更新时间：2026-05-21 03:19 Asia/Shanghai。
+更新时间：2026-05-21 04:21 Asia/Shanghai。
+
+### 2026-05-21 04-05｜pr5-mandatory-sensor-source-alignment｜PR #5 mandatory sensor source alignment software proof
+
+本轮 `sprints/2026.05.21_04-05_pr5-mandatory-sensor-source-alignment/` 执行 `pr5_mandatory_sensor_source_alignment` epic closeout。Objective 5 仍约 68%，但真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实 phone/browser external proof 不在 Docker-only 主机；Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / `hardware_material_pending`。本轮选择 Objective 1 source-alignment 软件证明，是为了把 PR #5 mandatory sensor assumptions 对齐到 `docs/vendor/VENDOR_INDEX.md` 和本地 vendor-source 边界，而不是宣称真实 2D LiDAR / ToF 材料、HIL 或 reviewer resolution。
+
+Hardware worker 新增 `trashbot.pr5_mandatory_sensor_source_alignment.v1` / summary PC gate、focused unittest、interface doc 和 `production_hardware_boundary.md` 更新；采用的本地资料包括 `docs/vendor/VENDOR_INDEX.md`、WAVE ROVER `ugv_rpi/README.md`、`base_ctrl.py`、`config.yaml`、`WAVE_ROVER_V0.9/json_cmd.h`、`uart_ctrl.h`、`movtion_module.h`，Orange Pi Zero 3 manual/schematic 仅作为 index-listed source refs，没有导出 pin/voltage 结论。Robot worker 新增 `robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary` safe alias，并修复一次 unsafe scanner false positive，避免把 `not_proven` 中的 `delivery_success` false-state token 误读为 success wording。Full-Stack worker 在 mobile/web 新增只读“PR #5 传感器来源对齐”panel，展示 thread id、source-boundary refs、missing materials、next required evidence、owner handoff 和 fail-closed flags，不触发 Start Delivery / Confirm Dropoff / Cancel / ACK / cursor / diagnostics fetch / queue / callback / review / handoff / procurement / GitHub / robot command。Autonomy worker 更新 fixed-route workflow 和 evidence contracts，把 2D LiDAR / ToF 作为 target sensing baseline / material pending，不写成 Nav2/SLAM field pass 或 near-field safety pass。
+
+证据边界保持 `software_proof_docker_pr5_mandatory_sensor_source_alignment_gate`、`source=software_proof`、`hardware_material_pending`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮把 PR #5 mandatory sensor assumptions 转成 PC gate、Robot safe alias、mobile/web 只读 panel 和 Nav2/fixed-route source-boundary docs；但没有真实 2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、真实 WAVE ROVER/UART、真实 `feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 `PRRT_kwDOSWB9286CJ3tX` reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不改 task_orchestrator、field rerun、dropoff/cancel、route/elevator runtime 或 delivery result；source-alignment summary 只约束下游材料口径，不证明真实电梯、真实 route/elevator field pass、dropoff/cancel completion、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | Autonomy docs 明确 `pr5_mandatory_sensor_source_alignment` 是 upstream source-boundary summary，不是真实路线采集、Nav2/fixed-route 实跑、route completion signal、near-field safety pass、现场 task_record 或上车复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读“PR #5 传感器来源对齐”panel 让现场 owner 和支持同学能看到 source-boundary refs、missing materials、next required evidence、owner handoff 和 fail-closed flags；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮不改 cloud commands/status/ack、不新增公网入口、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或 external proof；`software_proof_docker_pr5_mandatory_sensor_source_alignment_gate` 不能计为 O5 external proof。 |
+
+本轮验证：Hardware worker 报告 `py_compile` 通过；`python3 -m unittest tests.test_pr5_mandatory_sensor_source_alignment` 输出 `Ran 6 tests ... OK`；CLI `--help`、required `rg`、scoped diff check 和 comment density gate `20.1%` / test `24.0%` 通过。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 245 tests in 0.795s OK`；required `rg` 与 scoped diff check 通过。Full-Stack worker 报告 `node --check` 通过；`python3 -m unittest mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 193 tests ... OK`；fixture JSON check、required `rg` 与 scoped diff check 通过。Autonomy worker 报告 required `rg` 与 scoped diff check 通过。Product closeout required file checks、required `rg`、scoped `git diff --check` 和 staged `git diff --cached --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
 
 ### 2026-05-21 03-04｜field-evidence-rerun-execution-callback-review-handoff｜field evidence rerun execution callback review handoff software proof
 

@@ -1245,6 +1245,90 @@
       "real_phone_browser"
     ]
   },
+  "robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary": {
+    "schema": "trashbot.robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary.v1",
+    "source_schema": "trashbot.pr5_mandatory_sensor_source_alignment_summary.v1",
+    "schema_version": 1,
+    "summary_alias": "robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary",
+    "source": "software_proof",
+    "proof_status": "not_proven",
+    "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+    "source_boundary_refs": [
+      "source_ref=docs/vendor/VENDOR_INDEX.md",
+      "source_ref=local vendor source-boundary refs for upper-board, base protocol, and camera context",
+      "source_ref=2D LiDAR / ToF entries remain material placeholders until real source packets arrive"
+    ],
+    "missing_materials": [
+      "missing_material=real 2D LiDAR SKU/source/receipt summary",
+      "missing_material=real ToF SKU/source/receipt summary",
+      "missing_material=real procurement, installation, wiring, power, calibration, and HIL-entry summaries"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=Hardware owner submits real 2D LiDAR / ToF SKU and source summaries",
+      "next_required_evidence=Hardware owner submits receipt/procurement plus installation/wiring/power/calibration summaries",
+      "next_required_evidence=Robot owner consumes only sanitized summary before any HIL-entry follow-up"
+    ],
+    "owner_handoff": [
+      "owner_handoff=Hardware owns real sensor source and material backfill",
+      "owner_handoff=Robot owns sanitized diagnostics alias only",
+      "owner_handoff=Full-stack keeps mobile/web read-only and primary actions unchanged"
+    ],
+    "hardware_material_state": "hardware_material_pending",
+    "safe_copy": "PR #5 传感器来源对齐 fixture 只读展示 thread id、source-boundary refs、missing 2D LiDAR / ToF materials、next required evidence、owner handoff 和 fail-closed flags；这是 software_proof / not_proven。",
+    "safe_phone_copy": "PR #5 传感器来源对齐：PRRT_kwDOSWB9286CJ3tX 仍 hardware_material_pending / not_proven；手机端不触发控制、采购、GitHub 或复核提交动作。",
+    "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_source_alignment_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "hardware_material_pending",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "real_2d_lidar_material",
+      "real_tof_material",
+      "real_procurement_install_wiring_power_calibration",
+      "real_hil_entry",
+      "PR #5 reviewer resolution"
+    ]
+  },
+  "pr5_mandatory_sensor_source_alignment_summary": {
+    "schema": "trashbot.pr5_mandatory_sensor_source_alignment_summary.v1",
+    "schema_version": 1,
+    "source": "software_proof",
+    "proof_status": "not_proven",
+    "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+    "source_boundary_refs": [
+      "source_ref=docs/vendor/VENDOR_INDEX.md",
+      "source_ref=safe compatible summary only"
+    ],
+    "missing_materials": [
+      "missing_material=real 2D LiDAR material",
+      "missing_material=real ToF material"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real 2D LiDAR / ToF source, receipt, installation, calibration, and HIL-entry summaries"
+    ],
+    "owner_handoff": [
+      "owner_handoff=Hardware real material backfill; Robot sanitized alias; Full-stack read-only panel"
+    ],
+    "hardware_material_state": "hardware_material_pending",
+    "safe_phone_copy": "兼容 summary 只用于 PR #5 传感器来源对齐只读展示；不证明真实材料。",
+    "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_source_alignment_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "hardware_material_pending",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false"
+    ]
+  },
   "hardware_baseline_source_alignment": {
     "schema": "trashbot.hardware_baseline_source_alignment.v1",
     "summary_schema": "trashbot.hardware_baseline_source_alignment_summary.v1",

@@ -551,6 +551,37 @@ means only that the review thread has a machine-readable source packet, safe
 copy, missing-material list, and next evidence checklist. It is not a real
 hardware-material pass and must not auto-close `PRRT_kwDOSWB9286CJ3tX`.
 
+## PR #5 Mandatory Sensor Source Alignment Gate
+
+`pr5_mandatory_sensor_source_alignment` is the canonical fail-closed PC gate
+for PR #5 unresolved review thread `PRRT_kwDOSWB9286CJ3tX`. It emits
+`schema=trashbot.pr5_mandatory_sensor_source_alignment.v1` and
+`schema=trashbot.pr5_mandatory_sensor_source_alignment_summary.v1` under
+`software_proof_docker_pr5_mandatory_sensor_source_alignment_gate`.
+
+The gate answers only whether mandatory sensor assumptions in this product
+boundary are aligned to local vendor/source references. It starts from
+`docs/vendor/VENDOR_INDEX.md` and cites the local Orange Pi Zero 3 manual and
+schematic, WAVE ROVER upper-computer README, WAVE ROVER `base_ctrl.py`,
+`config.yaml`, `json_cmd.h`, `uart_ctrl.h`, and `movtion_module.h` as
+source-boundary material for Orange Pi, WAVE ROVER, UART JSON,
+firmware/vendor-app, camera/video/CV examples, and optional vendor-app lidar
+parser context.
+
+Those local vendor files do not prove a project 2D LiDAR or ToF SKU/source,
+receipt, procurement, mounting, wiring, power validation, calibration, HIL
+entry, Nav2/SLAM field pass, near-field safety pass, Objective 5 external
+proof, PR #5 reviewer resolution, or delivery result. They also do not prove
+real WAVE ROVER UART connectivity or HIL pass in this sprint.
+
+Every output must remain `source=software_proof`, `hardware_material_pending`,
+`not_proven`, `safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`. `ready_for_pr5_mandatory_sensor_source_alignment_not_proven`
+means only that the repo-local mandatory sensor assumptions are machine-readably
+aligned to local source boundaries; it is not real procurement, installation,
+wiring, power, calibration, HIL, field, PR thread resolved, Objective 5
+external proof, or delivery success.
+
 ## Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)
 
 - Target baseline combo: monocular camera + one 2D LiDAR + ToF safety ring.

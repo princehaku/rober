@@ -969,6 +969,18 @@ PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SUMMARY_SCHEMA = (
 PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_GATE = (
     "software_proof_docker_pr5_vendor_source_review_reply_dispatch_gate"
 )
+PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SCHEMA = (
+    "trashbot.pr5_mandatory_sensor_source_alignment.v1"
+)
+PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.pr5_mandatory_sensor_source_alignment_summary.v1"
+)
+PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary.v1"
+)
+PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_GATE = (
+    "software_proof_docker_pr5_mandatory_sensor_source_alignment_gate"
+)
 HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SCHEMA = (
     "trashbot.hardware_real_material_escalation_request.v1"
 )
@@ -1069,6 +1081,16 @@ PR5_VENDOR_SOURCE_REVIEW_PACKET_REQUIRED_NOT_PROVEN = (
     "real_procurement_receipt",
     "real_installation_wiring_power_calibration",
     "real_hil_entry",
+    "route_elevator_field_pass",
+    "delivery_success",
+    "primary_actions_enabled",
+)
+PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_REQUIRED_NOT_PROVEN = (
+    "real_2d_lidar_source_material",
+    "real_tof_source_material",
+    "real_procurement_receipt",
+    "real_installation_wiring_power_calibration",
+    "real_hardware_validation_entry",
     "route_elevator_field_pass",
     "delivery_success",
     "primary_actions_enabled",
@@ -4626,6 +4648,33 @@ def _pr5_vendor_source_review_packet_not_proven(packet=None, summary_fragment=No
         if isinstance(source.get("missing_real_materials"), list):
             source_values.extend(source.get("missing_real_materials"))
     for item in list(source_values) + list(PR5_VENDOR_SOURCE_REVIEW_PACKET_REQUIRED_NOT_PROVEN):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _pr5_mandatory_sensor_source_alignment_not_proven(source=None, summary_fragment=None):
+    # PR #5 mandatory sensor source alignment 只暴露消毒后的来源对齐状态，不证明传感器实物或控制链路。
+    source = source if isinstance(source, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    for item_source in (source, summary_fragment):
+        if isinstance(item_source.get("not_proven"), list):
+            source_values.extend(item_source.get("not_proven"))
+        if isinstance(item_source.get("missing_materials"), list):
+            source_values.extend(item_source.get("missing_materials"))
+        if isinstance(item_source.get("missing_real_materials"), list):
+            source_values.extend(item_source.get("missing_real_materials"))
+        if isinstance(item_source.get("next_required_evidence"), list):
+            source_values.extend(item_source.get("next_required_evidence"))
+    required = (
+        "not_proven",
+        "software_proof",
+        "hardware_material_pending",
+    ) + PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_REQUIRED_NOT_PROVEN
+    for item in list(source_values) + list(required):
         text = str(item or "").strip()
         if text and text not in values:
             values.append(text)
@@ -11734,6 +11783,75 @@ def _default_pr5_vendor_source_review_reply_dispatch_summary(
     }
 
 
+def _default_pr5_mandatory_sensor_source_alignment_summary(
+    path,
+    status="blocked_missing_pr5_mandatory_sensor_source_alignment_summary",
+    read_error="",
+):
+    # Robot alias 缺少 Hardware sanitized summary 时只能给 blocked 占位，不能读取 raw source material 补全。
+    safe_copy = (
+        "PR #5 mandatory sensor source alignment is metadata-only; software_proof, "
+        "hardware_material_pending, not_proven, delivery_success=false, "
+        "primary_actions_enabled=false and safe_to_control=false."
+    )
+    return {
+        "schema": PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "thread_id": "",
+        "source": "software_proof",
+        "source_boundary": "",
+        "status": status,
+        "overall_status": "not_proven",
+        "alignment_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": read_error
+            or "PR #5 mandatory sensor source alignment summary is not configured",
+        },
+        "missing_materials": [],
+        "next_required_evidence": [],
+        "owner_handoff": [],
+        "false_states": {
+            "hardware_material_pending": True,
+            "not_proven": True,
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        },
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "not_proven": _pr5_mandatory_sensor_source_alignment_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "summary_required": True,
+        "hardware_material_pending": True,
+        "hardware_read": False,
+        "raw_materials_exposed": False,
+        "serial_uart_opened": False,
+        "ros_graph_accessed": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "command_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "field_pass": False,
+    }
+
+
 def _default_hardware_real_material_escalation_request_summary(
     path,
     status="blocked_missing_hardware_real_material_escalation_request_summary",
@@ -13918,6 +14036,22 @@ def _pr5_vendor_source_review_reply_dispatch_source_contract(value):
     if source_schema == PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SOURCE_SUMMARY_SCHEMA:
         source_schema = str(
             value.get("source_schema") or PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_SCHEMA
+        )
+        source_boundary = str(
+            value.get("source_evidence_boundary")
+            or value.get("proof_boundary")
+            or source_boundary
+        )
+    return source_schema, source_boundary
+
+
+def _pr5_mandatory_sensor_source_alignment_source_contract(value):
+    # mandatory sensor alignment 只接受 Hardware gate 的 summary wrapper，不能从 raw source artifact 旁路读取。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or value.get("proof_boundary") or "")
+    if source_schema == PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SOURCE_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema") or PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SCHEMA
         )
         source_boundary = str(
             value.get("source_evidence_boundary")
@@ -46448,6 +46582,420 @@ def summarize_pr5_vendor_source_review_reply_dispatch(source):
     return summary
 
 
+def _pr5_mandatory_sensor_source_alignment_copy_is_unsafe(value):
+    # 来源对齐 safe copy 只能描述 blocked/not_proven/false-state；HIL、pass、topic 或本地路径词都必须阻断。
+    redacted = _redact_route_task_rehearsal_text(value)
+    guarded = redacted.lower()
+    for phrase in (
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false",
+        "not_proven",
+        "not proven",
+        "metadata-only",
+        "software_proof",
+        "hardware_material_pending",
+        "must not",
+        "not real",
+        "不证明",
+    ):
+        guarded = guarded.replace(phrase, "")
+    return (
+        "success" in guarded
+        or "passed" in guarded
+        or " pass" in guarded
+        or "hil" in guarded
+        or "delivery success" in guarded
+        or "control enabled" in guarded
+        or "ros topic" in guarded
+        or "/cmd_vel" in guarded
+        or "serial" in guarded
+        or "uart" in guarded
+        or "baud" in guarded
+        or any(marker in redacted for marker in (
+            "[REDACTED_AUTH_HEADER]",
+            "Bearer [REDACTED]",
+            "[REDACTED_URL]",
+            "/dev/[REDACTED_SERIAL]",
+            "[REDACTED_BAUD]",
+            "[REDACTED_TRACEBACK]",
+            "[REDACTED_LOCAL_PATH]",
+        ))
+    )
+
+
+def _pr5_mandatory_sensor_source_alignment_has_unsafe_fields(value, key_path=""):
+    # Robot 只收安全摘要字段；raw material、凭证、路径、串口、ROS 控制面字段出现即 fail closed。
+    unsafe_key_fragments = (
+        "raw",
+        "body",
+        "comment",
+        "credential",
+        "token",
+        "secret",
+        "authorization",
+        "serial",
+        "uart",
+        "baud",
+        "ros",
+        "topic",
+        "cmd_vel",
+        "ack",
+        "cursor",
+        "command",
+        "control_claim",
+        "source_material",
+        "local_path",
+        "path",
+        "checksum",
+        "hil",
+        "pass",
+    )
+    unsafe_true_keys = {
+        "delivery_success",
+        "primary_actions_enabled",
+        "safe_to_control",
+        "hardware_read",
+        "raw_materials_exposed",
+        "collect_triggered",
+        "dropoff_triggered",
+        "cancel_triggered",
+        "ack_post_allowed",
+        "remote_ack_allowed",
+        "cursor_updates_allowed",
+        "persistence_updates_allowed",
+        "terminal_ack_allowed",
+        "command_allowed",
+        "nav2_triggered",
+        "hil_pass",
+        "field_pass",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            current_path = f"{key_path}.{key_text}" if key_path else key_text
+            if key_text == "not_proven":
+                continue
+            if key_text == "false_states":
+                if _pr5_mandatory_sensor_source_alignment_has_unsafe_fields(item, current_path):
+                    return True
+                continue
+            if key_text in unsafe_true_keys:
+                if item is not False:
+                    return True
+                continue
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if _pr5_mandatory_sensor_source_alignment_has_unsafe_fields(item, current_path):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _pr5_mandatory_sensor_source_alignment_has_unsafe_fields(item, key_path)
+            for item in value
+        )
+    if isinstance(value, str):
+        return _pr5_mandatory_sensor_source_alignment_copy_is_unsafe(value)
+    return False
+
+
+def _pr5_mandatory_sensor_source_alignment_false_states_ok(source, summary_fragment):
+    # Hardware summary 必须显式携带 false states，避免前端把省略值误解成可控或已证明。
+    false_states = {}
+    for candidate in (
+        source.get("false_states") if isinstance(source, dict) else {},
+        summary_fragment.get("false_states") if isinstance(summary_fragment, dict) else {},
+    ):
+        if isinstance(candidate, dict):
+            false_states.update(candidate)
+    required_false = {
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+    for key, expected in required_false.items():
+        if false_states.get(key, source.get(key, summary_fragment.get(key))) is not expected:
+            return False
+    pending = false_states.get(
+        "hardware_material_pending",
+        source.get("hardware_material_pending", summary_fragment.get("hardware_material_pending")),
+    )
+    not_proven_state = false_states.get(
+        "not_proven",
+        source.get("overall_status") == "not_proven"
+        or summary_fragment.get("overall_status") == "not_proven",
+    )
+    return pending is True and not_proven_state is True
+
+
+def summarize_pr5_mandatory_sensor_source_alignment(source):
+    """构建 PR #5 mandatory sensor source alignment 的 metadata-only Robot diagnostics 摘要。"""
+    # 这里故意只消费 Hardware gate 的 sanitized summary；raw source material 不进入 Robot diagnostics。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_pr5_mandatory_sensor_source_alignment_summary(
+        source_path,
+        read_error="PR #5 mandatory sensor source alignment summary is not configured",
+    )
+    if isinstance(source, dict):
+        alignment = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = (
+                "PR #5 mandatory sensor source alignment summary artifact missing"
+            )
+            summary["alignment_status"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                alignment = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading PR #5 mandatory sensor source alignment summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["alignment_status"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(alignment, dict):
+        summary["read_error"] = "PR #5 mandatory sensor source alignment JSON must be an object"
+        summary["alignment_status"]["reason"] = summary["read_error"]
+        return summary
+
+    raw_schema = str(alignment.get("schema") or "")
+    summary_fragment = {}
+    source_schema, source_boundary = _pr5_mandatory_sensor_source_alignment_source_contract(
+        alignment
+    )
+    if raw_schema == PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SOURCE_SUMMARY_SCHEMA:
+        summary_fragment = alignment
+    else:
+        for candidate in (
+            alignment.get("pr5_mandatory_sensor_source_alignment_summary"),
+            alignment.get("robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary"),
+            alignment.get("diagnostics_summary"),
+            alignment.get("robot_diagnostics_summary"),
+            alignment.get("summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if isinstance(summary_fragment, dict) and summary_fragment:
+        nested_schema, nested_boundary = (
+            _pr5_mandatory_sensor_source_alignment_source_contract(summary_fragment)
+        )
+        if nested_schema:
+            source_schema, source_boundary = nested_schema, nested_boundary
+
+    accepted_schemas = {
+        PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SCHEMA,
+        PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SOURCE_SUMMARY_SCHEMA,
+    }
+    status_source = (
+        summary_fragment.get("alignment_status")
+        if isinstance(summary_fragment.get("alignment_status"), dict)
+        else alignment.get("alignment_status")
+        if isinstance(alignment.get("alignment_status"), dict)
+        else {}
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or alignment.get("safe_copy")
+        or alignment.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    source_boundary_text = _redact_route_task_rehearsal_text(
+        summary_fragment.get("source_boundary")
+        or summary_fragment.get("vendor_source_boundary")
+        or alignment.get("source_boundary")
+        or alignment.get("vendor_source_boundary")
+        or "docs/vendor/VENDOR_INDEX.md sanitized source boundary"
+    )
+    false_states = {
+        "hardware_material_pending": True,
+        "not_proven": True,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                alignment.get("source_schema_version")
+                if raw_schema == PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SOURCE_SUMMARY_SCHEMA
+                else alignment.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "thread_id": _redact_route_task_rehearsal_text(
+                summary_fragment.get("thread_id")
+                or alignment.get("thread_id")
+                or "PRRT_kwDOSWB9286CJ3tX"
+            ),
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or alignment.get("source") or "software_proof"
+            ),
+            "source_boundary": source_boundary_text,
+            "status": _redact_route_task_rehearsal_text(
+                status_source.get("status")
+                or summary_fragment.get("status")
+                or summary_fragment.get("overall_status")
+                or alignment.get("status")
+                or alignment.get("overall_status")
+                or "not_proven"
+            ),
+            "overall_status": "not_proven",
+            "alignment_status": {
+                "status": _redact_route_task_rehearsal_text(
+                    status_source.get("status")
+                    or summary_fragment.get("status")
+                    or alignment.get("status")
+                    or "not_proven"
+                ),
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or alignment.get("reason")
+                    or "PR #5 mandatory sensor source alignment is software_proof only"
+                ),
+            },
+            "missing_materials": _dedupe_ordered(
+                _safe_route_task_rehearsal_list(
+                    summary_fragment.get("missing_materials")
+                    if isinstance(summary_fragment.get("missing_materials"), list)
+                    else alignment.get("missing_materials")
+                )
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+                if isinstance(summary_fragment.get("next_required_evidence"), list)
+                else alignment.get("next_required_evidence")
+            ),
+            "owner_handoff": _safe_route_task_rehearsal_list(
+                summary_fragment.get("owner_handoff")
+                if isinstance(summary_fragment.get("owner_handoff"), list)
+                else alignment.get("owner_handoff")
+            ),
+            "evidence_boundary": PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_GATE,
+            "false_states": false_states,
+            "safe_copy": _redact_route_task_rehearsal_text(safe_copy),
+            "safe_phone_copy": _redact_route_task_rehearsal_text(
+                summary_fragment.get("safe_phone_copy")
+                or alignment.get("safe_phone_copy")
+                or safe_copy
+            ),
+            "not_proven": _pr5_mandatory_sensor_source_alignment_not_proven(
+                alignment,
+                summary_fragment,
+            ),
+            "read_error": "",
+            "metadata_only": True,
+            "summary_required": True,
+            "hardware_material_pending": True,
+            "hardware_read": False,
+            "raw_materials_exposed": False,
+            "serial_uart_opened": False,
+            "ros_graph_accessed": False,
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "collect_triggered": False,
+            "dropoff_triggered": False,
+            "cancel_triggered": False,
+            "ack_post_allowed": False,
+            "remote_ack_allowed": False,
+            "cursor_updates_allowed": False,
+            "persistence_updates_allowed": False,
+            "terminal_ack_allowed": False,
+            "command_allowed": False,
+            "nav2_triggered": False,
+            "hil_pass": False,
+            "field_pass": False,
+        }
+    )
+    if (
+        source_schema not in accepted_schemas
+        or source_boundary != PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_GATE
+    ):
+        summary.update(
+            {
+                "status": "unsupported_schema",
+                "alignment_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "PR #5 mandatory sensor source alignment schema or evidence boundary is unsupported",
+                },
+                "thread_id": "",
+                "source_boundary": "",
+                "missing_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+            }
+        )
+        return summary
+    if not isinstance(summary_fragment, dict) or not summary_fragment:
+        summary.update(
+            {
+                "status": "blocked_missing_pr5_mandatory_sensor_source_alignment_summary",
+                "alignment_status": {
+                    "status": "blocked_missing_pr5_mandatory_sensor_source_alignment_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "PR #5 mandatory sensor source alignment is missing sanitized summary",
+                },
+                "thread_id": "",
+                "source_boundary": "",
+                "missing_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+            }
+        )
+        return summary
+    if (
+        summary_fragment.get("source") != "software_proof"
+        or alignment.get("source", "software_proof") != "software_proof"
+        or not _pr5_mandatory_sensor_source_alignment_false_states_ok(
+            alignment,
+            summary_fragment,
+        )
+        or _pr5_mandatory_sensor_source_alignment_has_unsafe_fields(alignment)
+        or _pr5_mandatory_sensor_source_alignment_has_unsafe_fields(summary_fragment)
+        or _pr5_mandatory_sensor_source_alignment_copy_is_unsafe(safe_copy)
+    ):
+        blocked_copy = (
+            "PR #5 mandatory sensor source alignment was blocked because the summary "
+            "could expose raw source material, paths, credentials, serial/UART/ROS/control "
+            "details, HIL/pass wording, or success claims; software_proof; "
+            "hardware_material_pending; not_proven; delivery_success=false; "
+            "primary_actions_enabled=false; safe_to_control=false."
+        )
+        summary.update(
+            {
+                "status": "blocked_unsafe_pr5_mandatory_sensor_source_alignment_summary",
+                "alignment_status": {
+                    "status": "blocked_unsafe_pr5_mandatory_sensor_source_alignment_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "PR #5 mandatory sensor source alignment contains unsafe fields, missing false states, or enabled action claims",
+                },
+                "thread_id": "",
+                "source_boundary": "",
+                "missing_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+            }
+        )
+        return summary
+    return summary
+
+
 def summarize_hardware_real_material_escalation_request(source):
     """构建真实硬件材料升级请求的 metadata-only Robot diagnostics 摘要。"""
     # 只读消费 Hardware worker 的 sanitized summary；不能读取串口、ROS graph 或原始硬件材料正文。
@@ -51250,6 +51798,7 @@ def build_diagnostics_payload(
     pr5_review_thread_closeout_ref="",
     pr5_vendor_source_review_packet_ref="",
     pr5_vendor_source_review_reply_dispatch_ref="",
+    pr5_mandatory_sensor_source_alignment_ref="",
     hardware_real_material_escalation_request_ref="",
     real_material_readiness_board_ref="",
     real_material_evidence_intake_ref="",
@@ -51816,6 +52365,38 @@ def build_diagnostics_payload(
         if isinstance(
             diagnostics_source.get(
                 "robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary"
+            ),
+            dict,
+        )
+        else {}
+    )
+    pr5_mandatory_sensor_source_alignment_source = (
+        latest_status.get("pr5_mandatory_sensor_source_alignment")
+        if isinstance(latest_status.get("pr5_mandatory_sensor_source_alignment"), dict)
+        else latest_status.get("pr5_mandatory_sensor_source_alignment_summary")
+        if isinstance(latest_status.get("pr5_mandatory_sensor_source_alignment_summary"), dict)
+        else latest_status.get(
+            "robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("pr5_mandatory_sensor_source_alignment")
+        if isinstance(diagnostics_source.get("pr5_mandatory_sensor_source_alignment"), dict)
+        else diagnostics_source.get("pr5_mandatory_sensor_source_alignment_summary")
+        if isinstance(
+            diagnostics_source.get("pr5_mandatory_sensor_source_alignment_summary"),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary"
             ),
             dict,
         )
@@ -53920,6 +54501,12 @@ def build_diagnostics_payload(
         "robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary",
         None,
     )
+    latest_status.pop("pr5_mandatory_sensor_source_alignment", None)
+    latest_status.pop("pr5_mandatory_sensor_source_alignment_summary", None)
+    latest_status.pop(
+        "robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary",
+        None,
+    )
     latest_status.pop("hardware_real_material_escalation_request", None)
     latest_status.pop("hardware_real_material_escalation_request_summary", None)
     latest_status.pop("robot_diagnostics_hardware_real_material_escalation_request_summary", None)
@@ -55328,6 +55915,17 @@ def build_diagnostics_payload(
             pr5_vendor_source_review_reply_dispatch_source
         )
     )
+    pr5_mandatory_sensor_source_alignment_source = (
+        pr5_mandatory_sensor_source_alignment_ref
+        or os.environ.get("TRASHBOT_PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT", "")
+        or os.environ.get("TRASHBOT_PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SUMMARY", "")
+        or pr5_mandatory_sensor_source_alignment_source
+    )
+    pr5_mandatory_sensor_source_alignment_summary = (
+        summarize_pr5_mandatory_sensor_source_alignment(
+            pr5_mandatory_sensor_source_alignment_source
+        )
+    )
     hardware_real_material_escalation_request_source = (
         hardware_real_material_escalation_request_ref
         or os.environ.get("TRASHBOT_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST", "")
@@ -55862,6 +56460,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary=(
             pr5_vendor_source_review_reply_dispatch_summary
+        ),
+        pr5_mandatory_sensor_source_alignment=(
+            pr5_mandatory_sensor_source_alignment_summary
+        ),
+        pr5_mandatory_sensor_source_alignment_summary=(
+            pr5_mandatory_sensor_source_alignment_summary
+        ),
+        robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary=(
+            pr5_mandatory_sensor_source_alignment_summary
         ),
         hardware_real_material_escalation_request=(
             hardware_real_material_escalation_request_summary

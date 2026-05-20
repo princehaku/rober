@@ -99,6 +99,42 @@ real hardware procurement, real 2D LiDAR, real ToF, real WAVE ROVER/UART/HIL,
 real Nav2/fixed-route execution, real route/elevator field pass, real
 phone/browser validation, Objective 5 external proof, or delivery success.
 
+## pr5_mandatory_sensor_source_alignment
+
+`pr5_mandatory_sensor_source_alignment` is the upstream source-boundary summary
+for PR #5 thread `PRRT_kwDOSWB9286CJ3tX`. It aligns mandatory sensor wording
+across product, hardware, Robot diagnostics, mobile, and autonomy docs without
+turning local source references into field proof.
+
+- Artifact schema: `trashbot.pr5_mandatory_sensor_source_alignment.v1`
+- Summary schema: `trashbot.pr5_mandatory_sensor_source_alignment_summary.v1`
+- Diagnostics alias:
+  `robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary`
+- Evidence boundary:
+  `software_proof_docker_pr5_mandatory_sensor_source_alignment_gate`
+- Required source entrypoint: `docs/vendor/VENDOR_INDEX.md`, plus the product
+  hardware boundary and PR #5 review-thread context.
+
+Autonomy consumers may cite this summary only to say that fixed-route/Nav2
+documentation can reference the target sensing baseline as a product assumption:
+2D LiDAR for SLAM/Nav2, ToF for near-field safety, and camera/elevator semantics
+where the product boundary requires them. The same summary must keep real sensor
+materials in `hardware_material_pending` until SKU/source, receipt/procurement,
+mounting, wiring, power, calibration, HIL-entry, and field materials are
+available.
+
+All outputs must preserve `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`. The summary must not expose raw local paths,
+serial/UART details, ROS control topics, credentials, checksums, raw artifacts,
+or GitHub tokens.
+
+This contract is source-boundary software proof only. It does not prove real
+2D LiDAR procurement, real ToF procurement, install, wiring, power validation,
+calibration, WAVE ROVER/UART/HIL, real Nav2/SLAM field pass, fixed-route field
+pass, near-field safety pass, route/elevator material acceptance, PR #5 thread
+resolution, dropoff/cancel completion, delivery result, or delivery success.
+
 ## route_task_field_retest_acceptance_review_decision
 
 `pc-tools/evidence/route_task_field_retest_acceptance_review_decision.py`

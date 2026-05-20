@@ -82,6 +82,35 @@ waypoints:
 
 The fixed-route contract is `fixed_route.v1`. A valid route must contain at least one waypoint, and each waypoint must provide numeric `x`, `y`, and `qw`. Optional `z`, `qx`, `qy`, and `qz` default to `0.0`; `frame_id` defaults to `map`.
 
+## 2.5 Sensing-Assumption Boundary
+
+Route, fixed-route, and Nav2 planning docs may reference the target sensing
+baseline from product hardware boundary work: single camera for visual/elevator
+semantics, 2D LiDAR for SLAM/Nav2, and ToF for near-field safety. In this
+workflow that wording is only a product/source-boundary assumption until real
+2D LiDAR / ToF materials, a real Nav2/SLAM field pass, a near-field safety
+pass, and delivery result evidence are all present on the same safe evidence
+chain.
+
+The upstream `pr5_mandatory_sensor_source_alignment` summary is allowed here
+only as source-boundary input for PR #5 thread `PRRT_kwDOSWB9286CJ3tX`. It may
+show `hardware_material_pending`, `not_proven`, `safe_to_control=false`,
+`delivery_success=false`, and `primary_actions_enabled=false`, but it is not a
+route runtime log, fixed-route field pass, Nav2/SLAM pass, ToF safety pass,
+elevator field material, dropoff/cancel completion, HIL result, or delivery
+success proof.
+
+For closeout and review language, keep these layers separate:
+
+- `pr5_mandatory_sensor_source_alignment`: source-boundary summary and missing
+  material classification for mandatory sensor assumptions.
+- Route/elevator field materials: real Nav2/fixed-route runtime log, route
+  completion signal, task record, door/floor/human-assistance materials, and
+  dropoff/cancel/delivery result packet.
+- True field proof: real Nav2/SLAM route execution plus near-field safety
+  evidence, still requiring `delivery_success=false` until a real delivery
+  result explicitly proves success.
+
 ## 3. Dry-Run Verification
 
 Run fixed-route logic without Nav2 movement:

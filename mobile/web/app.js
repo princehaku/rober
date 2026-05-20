@@ -153,6 +153,7 @@ const HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_BOUNDARY = "software_pro
 const PR5_REVIEW_THREAD_CLOSEOUT_BOUNDARY = "software_proof_docker_pr5_review_thread_closeout_gate";
 const PR5_VENDOR_SOURCE_REVIEW_PACKET_BOUNDARY = "software_proof_docker_pr5_vendor_source_review_packet_gate";
 const PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_BOUNDARY = "software_proof_docker_pr5_vendor_source_review_reply_dispatch_gate";
+const PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_BOUNDARY = "software_proof_docker_pr5_mandatory_sensor_source_alignment_gate";
 const HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_BOUNDARY = "software_proof_docker_hardware_real_material_escalation_request_gate";
 const REAL_MATERIAL_READINESS_BOARD_BOUNDARY = "software_proof_docker_real_material_readiness_board_gate";
 const REAL_MATERIAL_EVIDENCE_INTAKE_BOUNDARY = "software_proof_docker_real_material_evidence_intake_gate";
@@ -340,6 +341,7 @@ const UNSAFE_HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_HANDOFF_TEXT = /(authoriz
 const UNSAFE_PR5_REVIEW_THREAD_CLOSEOUT_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw review body|raw github|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_PR5_VENDOR_SOURCE_REVIEW_PACKET_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw review packet|raw vendor|raw vendor docs|raw source document|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|标定\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*标定|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw reply body|raw review reply|raw dispatch payload|raw vendor|raw vendor docs|raw source document|complete artifact|complete artifacts|full execution bundle|execution bundle|ack payload|cursor|retry request|diagnostics fetch|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|标定\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*标定|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料|真实\s*手机\s*验收\s*通过|真实\s*送达)/i;
+const UNSAFE_PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw source material|raw vendor|raw vendor docs|raw source document|complete artifact|complete artifacts|full execution bundle|execution bundle|ack payload|cursor|retry request|diagnostics fetch|queue scheduling|callback submission|review submission|handoff submission|procurement action|github action|robot command|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|safe_to_control\s*=\s*true|delivery_success\s*=\s*true|primary_actions_enabled\s*=\s*true|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|标定\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*标定|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料|真实\s*手机\s*验收\s*通过|真实\s*送达)/i;
 const UNSAFE_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw request|raw escalation|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|\bhil\b|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_REAL_MATERIAL_READINESS_BOARD_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw board|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|safe_to_control\s*=\s*true|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_REAL_MATERIAL_EVIDENCE_INTAKE_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw diagnostics|raw material|raw intake|raw evidence|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|safe_to_control\s*=\s*true|hil_pass|hil passed|field pass|现场通过|真实手机已验收|真实送达成功|投放完成|取消完成|完整\s*材料)/i;
@@ -422,6 +424,7 @@ let latestHardwareSensorHilEntryCallbackReviewHandoff = null;
 let latestPr5ReviewThreadCloseout = null;
 let latestPr5VendorSourceReviewPacket = null;
 let latestPr5VendorSourceReviewReplyDispatch = null;
+let latestPr5MandatorySensorSourceAlignment = null;
 let latestHardwareRealMaterialEscalationRequest = null;
 let latestRealMaterialReadinessBoard = null;
 let latestRealMaterialEvidenceIntake = null;
@@ -1383,6 +1386,15 @@ function safePr5VendorSourceReviewReplyDispatchText(value, fallback = "not_prove
   // reply-dispatch 只说明可发布回复的只读准备状态；raw reply、ACK/cursor/retry 和控制语义都降级。
   const text = safeText(value, fallback);
   if (UNSAFE_PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safePr5MandatorySensorSourceAlignmentText(value, fallback = "not_proven") {
+  // 来源对齐 panel 只展示 Robot 脱敏 summary；raw source、采购动作、GitHub 动作或控制语义都降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -19474,6 +19486,147 @@ function pr5VendorSourceReviewReplyDispatchFromStatus(status, readiness, diagnos
   };
 }
 
+function pr5MandatorySensorSourceAlignmentCandidate(status, readiness, diagnostics) {
+  // Robot diagnostics safe alias 优先；兼容字段只接受 summary 形态，避免手机端读取 raw source artifact。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object" ? diagnostics.diagnostics : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary,
+    readiness?.robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary,
+    diagnostics?.robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary,
+    diagnosticsReadiness.robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary,
+    diagnosticsSummary.robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary,
+    statusDiagnosticsSummary.robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary,
+    status?.pr5_mandatory_sensor_source_alignment_summary,
+    readiness?.pr5_mandatory_sensor_source_alignment_summary,
+    diagnostics?.pr5_mandatory_sensor_source_alignment_summary,
+    diagnosticsReadiness.pr5_mandatory_sensor_source_alignment_summary,
+    diagnosticsSummary.pr5_mandatory_sensor_source_alignment_summary,
+    nestedDiagnosticsSummary.pr5_mandatory_sensor_source_alignment_summary,
+    nestedDiagnosticsInnerSummary.pr5_mandatory_sensor_source_alignment_summary,
+    statusDiagnosticsSummary.pr5_mandatory_sensor_source_alignment_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function pr5MandatorySensorSourceAlignmentNotProvenList(value) {
+  // PR #5 来源对齐只关闭说明链路，不补齐真实 2D LiDAR / ToF 材料、HIL 或送达证据。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "hardware_material_pending",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "真实 2D LiDAR SKU/source/receipt pending",
+    "真实 ToF SKU/source/receipt pending",
+    "真实 install/wiring/power/calibration/HIL-entry pending",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 18);
+}
+
+function pr5MandatorySensorSourceAlignmentSummaryText(value, fallback) {
+  // summary 字段可能是数组或对象；这里折叠成短文本，保持 phone-safe 且不扩展控制语义。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safePr5MandatorySensorSourceAlignmentText(
+        item?.safe_phone_copy || item?.summary || item?.status || item?.state ||
+          item?.label || item?.source_ref || item?.material || item?.evidence ||
+          item?.owner || item?.next_action || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.label || value.source_ref || value.material || value.evidence ||
+      value.owner || value.next_action;
+    if (direct) {
+      return safePr5MandatorySensorSourceAlignmentText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safePr5MandatorySensorSourceAlignmentText(key, "");
+        const copy = pr5MandatorySensorSourceAlignmentSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safePr5MandatorySensorSourceAlignmentText(value, fallback);
+}
+
+function pr5MandatorySensorSourceAlignmentFromStatus(status, readiness, diagnostics) {
+  const provided = pr5MandatorySensorSourceAlignmentCandidate(status, readiness, diagnostics) || {};
+  const source = safePr5MandatorySensorSourceAlignmentText(provided.source, "software_proof");
+  const proofStatus = safePr5MandatorySensorSourceAlignmentText(
+    provided.proof_status || provided.status || provided.overall_status,
+    "not_proven",
+  );
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary.v1",
+    source_schema: provided.source_schema || "trashbot.pr5_mandatory_sensor_source_alignment_summary.v1",
+    schema_version: 1,
+    thread_id: safePr5MandatorySensorSourceAlignmentText(
+      provided.thread_id || provided.review_thread_id,
+      "PRRT_kwDOSWB9286CJ3tX",
+    ),
+    source,
+    proof_status: proofStatus,
+    source_boundary_refs: pr5MandatorySensorSourceAlignmentSummaryText(
+      provided.source_boundary_refs || provided.source_boundary || provided.vendor_source_boundary,
+      "source_boundary_refs=docs/vendor/VENDOR_INDEX.md local source-boundary refs only; real 2D LiDAR / ToF materials pending.",
+    ),
+    missing_materials: pr5MandatorySensorSourceAlignmentSummaryText(
+      provided.missing_materials || provided.missing_real_materials || provided.hardware_material_pending,
+      "missing_materials=真实 2D LiDAR / ToF SKU/source/receipt、采购、安装、接线、电源、标定、HIL-entry pending",
+    ),
+    next_required_evidence: pr5MandatorySensorSourceAlignmentSummaryText(
+      provided.next_required_evidence || provided.next_evidence || provided.next_steps,
+      "next_required_evidence=真实 2D LiDAR / ToF SKU/source/receipt、采购、安装、接线、电源、标定和 HIL-entry phone-safe 摘要。",
+    ),
+    owner_handoff: pr5MandatorySensorSourceAlignmentSummaryText(
+      provided.owner_handoff || provided.owner_next_steps,
+      "owner_handoff=Hardware 提供真实材料；Robot 继续只暴露 sanitized summary；Full-stack 保持只读展示。",
+    ),
+    hardware_material_state: safePr5MandatorySensorSourceAlignmentText(
+      provided.hardware_material_state || provided.material_state,
+      "hardware_material_pending",
+    ),
+    evidence_boundary: safePr5MandatorySensorSourceAlignmentText(
+      provided.evidence_boundary || provided.proof_boundary,
+      PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_BOUNDARY,
+    ),
+    safe_copy: safePr5MandatorySensorSourceAlignmentText(
+      provided.safe_copy || provided.safe_phone_copy || provided.safe_summary,
+      "PR #5 传感器来源对齐只读展示；hardware_material_pending / not_proven，不是真实采购、安装、标定、HIL 或送达证明。",
+    ),
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: pr5MandatorySensorSourceAlignmentNotProvenList(provided),
+  };
+}
+
 function hardwareRealMaterialEscalationRequestCandidate(status, readiness, diagnostics) {
   // Robot diagnostics safe alias 优先；兜底只读主 summary，不主动 fetch diagnostics 或 artifact。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -28923,6 +29076,78 @@ function renderPr5VendorSourceReviewReplyDispatch(status) {
   $("pr5VendorSourceReviewReplyDispatchNotProven").textContent = summary.not_proven.join("、");
 }
 
+function ensurePr5MandatorySensorSourceAlignmentPanel() {
+  // 传感器来源对齐紧跟 PR #5 reply-dispatch，只解释材料缺口，不提供任何执行入口。
+  let panel = $("pr5MandatorySensorSourceAlignmentPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("pr5VendorSourceReviewReplyDispatchTitle")?.closest("section") ||
+    $("pr5VendorSourceReviewPacketTitle")?.closest("section") ||
+    $("pr5ReviewThreadCloseoutTitle")?.closest("section") ||
+    $("hardwareBaselineSourceAlignmentTitle")?.closest("section") ||
+    $("hardwareBaselineReviewTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "pr5MandatorySensorSourceAlignmentPanel";
+  panel.className = "pr5-mandatory-sensor-source-alignment-panel";
+  panel.setAttribute("aria-labelledby", "pr5MandatorySensorSourceAlignmentTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="pr5MandatorySensorSourceAlignmentTitle">PR #5 传感器来源对齐</h2>
+      <span id="pr5MandatorySensorSourceAlignmentBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="pr5MandatorySensorSourceAlignmentCopy" class="message">
+      等待 robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary。
+    </p>
+    <dl class="pr5-mandatory-sensor-source-alignment-grid">
+      <div><dt>Thread</dt><dd id="pr5MandatorySensorSourceAlignmentThread">PRRT_kwDOSWB9286CJ3tX</dd></div>
+      <div><dt>Proof Status</dt><dd id="pr5MandatorySensorSourceAlignmentStatus">software_proof / not_proven</dd></div>
+      <div><dt>Source Boundary Refs</dt><dd id="pr5MandatorySensorSourceAlignmentRefs">docs/vendor/VENDOR_INDEX.md local source-boundary refs only</dd></div>
+      <div><dt>Missing Materials</dt><dd id="pr5MandatorySensorSourceAlignmentMissing">2D LiDAR / ToF real materials pending</dd></div>
+      <div><dt>Next Required Evidence</dt><dd id="pr5MandatorySensorSourceAlignmentNextEvidence">next_required_evidence=not_proven</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="pr5MandatorySensorSourceAlignmentOwnerHandoff">owner_handoff=Hardware / Robot / Full-stack metadata-only handoff。</dd></div>
+      <div><dt>Hardware Material</dt><dd id="pr5MandatorySensorSourceAlignmentHardwareState">hardware_material_pending</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="pr5MandatorySensorSourceAlignmentBoundary">software_proof_docker_pr5_mandatory_sensor_source_alignment_gate</dd></div>
+      <div><dt>Control Boundary</dt><dd id="pr5MandatorySensorSourceAlignmentControls">hardware_material_pending / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="pr5MandatorySensorSourceAlignmentNotProven">真实 2D LiDAR / ToF、HIL 和 delivery success 未证明。</dd></div>
+    </dl>
+    <p id="pr5MandatorySensorSourceAlignmentHint" class="hint">
+      本 panel 只消费 Robot diagnostics safe alias 或 safe compatible summary；不触发 Start Delivery、Confirm Dropoff、Cancel、ACK、cursor、diagnostics fetch、queue scheduling、callback/review/handoff submission、procurement action、GitHub action 或 robot command。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderPr5MandatorySensorSourceAlignment(status) {
+  const panel = ensurePr5MandatorySensorSourceAlignmentPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = pr5MandatorySensorSourceAlignmentFromStatus(status, readiness, latestDiagnostics);
+  latestPr5MandatorySensorSourceAlignment = summary;
+  const badge = $("pr5MandatorySensorSourceAlignmentBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 sensor source summary" : "sensor source not_proven";
+  $("pr5MandatorySensorSourceAlignmentCopy").textContent = summary.safe_copy;
+  $("pr5MandatorySensorSourceAlignmentThread").textContent = summary.thread_id;
+  $("pr5MandatorySensorSourceAlignmentStatus").textContent = `${summary.source} / ${summary.proof_status}`;
+  $("pr5MandatorySensorSourceAlignmentRefs").textContent = summary.source_boundary_refs;
+  $("pr5MandatorySensorSourceAlignmentMissing").textContent = summary.missing_materials;
+  $("pr5MandatorySensorSourceAlignmentNextEvidence").textContent = summary.next_required_evidence;
+  $("pr5MandatorySensorSourceAlignmentOwnerHandoff").textContent = summary.owner_handoff;
+  $("pr5MandatorySensorSourceAlignmentHardwareState").textContent = summary.hardware_material_state;
+  $("pr5MandatorySensorSourceAlignmentBoundary").textContent = summary.evidence_boundary;
+  $("pr5MandatorySensorSourceAlignmentControls").textContent =
+    `${summary.hardware_material_state} / ${summary.proof_status} / safe_to_control=${summary.safe_to_control} / delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("pr5MandatorySensorSourceAlignmentNotProven").textContent = summary.not_proven.join("、");
+}
+
 function ensureHardwareRealMaterialEscalationRequestPanel() {
   // 升级请求紧跟 PR #5 closeout，只读说明真实材料缺口，不提供复制、ACK、cursor 或控制入口。
   let panel = $("hardwareRealMaterialEscalationRequestPanel");
@@ -35897,6 +36122,7 @@ function renderDiagnosticsSummary(payload) {
     ["pr5_review_thread_closeout", pr5ReviewThreadCloseout.overall_status],
     ["pr5_vendor_source_review_packet", latestPr5VendorSourceReviewPacket?.proof_status || "not_proven"],
     ["pr5_vendor_source_review_reply_dispatch", latestPr5VendorSourceReviewReplyDispatch?.dispatch_status || "not_proven"],
+    ["pr5_mandatory_sensor_source_alignment", latestPr5MandatorySensorSourceAlignment?.proof_status || "not_proven"],
     ["hardware_real_material_escalation_request", hardwareRealMaterialEscalationRequest.safe_status],
     ["real_material_readiness_board", realMaterialReadinessBoard.status],
     ["real_material_evidence_intake", realMaterialEvidenceIntake.intake_status],
@@ -36065,6 +36291,7 @@ function renderOfflineFailure() {
   renderPr5ReviewThreadCloseout({});
   renderPr5VendorSourceReviewPacket({});
   renderPr5VendorSourceReviewReplyDispatch({});
+  renderPr5MandatorySensorSourceAlignment({});
   renderHardwareRealMaterialEscalationRequest({});
   renderRealMaterialReadinessBoard({});
   renderRealMaterialEvidenceIntake({});
@@ -36196,6 +36423,7 @@ function renderStatus(status) {
   renderPr5ReviewThreadCloseout(status);
   renderPr5VendorSourceReviewPacket(status);
   renderPr5VendorSourceReviewReplyDispatch(status);
+  renderPr5MandatorySensorSourceAlignment(status);
   renderHardwareRealMaterialEscalationRequest(status);
   renderRealMaterialReadinessBoard(status);
   renderRealMaterialEvidenceIntake(status);
@@ -36505,6 +36733,8 @@ async function openDiagnostics() {
     renderHardwareSensorHilEntryCallbackReviewDecision(latestStatus || {});
     renderHardwareSensorHilEntryCallbackReviewHandoff(latestStatus || {});
     renderPr5VendorSourceReviewPacket(latestStatus || {});
+    renderPr5VendorSourceReviewReplyDispatch(latestStatus || {});
+    renderPr5MandatorySensorSourceAlignment(latestStatus || {});
     renderHardwareRealMaterialEscalationRequest(latestStatus || {});
     renderRealMaterialReadinessBoard(latestStatus || {});
     renderRealMaterialEvidenceIntake(latestStatus || {});

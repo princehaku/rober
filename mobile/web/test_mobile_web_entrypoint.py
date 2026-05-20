@@ -1279,6 +1279,113 @@ class Pr5VendorSourceReviewReplyDispatchMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, fixture_text)
 
 
+class Pr5MandatorySensorSourceAlignmentMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_pr5_mandatory_sensor_source_alignment_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # PR #5 来源对齐只消费 Robot safe alias 或 summary 兼容字段，不新增控制/采购/GitHub 操作。
+        self.assertIn("PR #5 传感器来源对齐", app)
+        self.assertIn("PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_BOUNDARY", app)
+        self.assertIn("UNSAFE_PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_TEXT", app)
+        self.assertIn("safePr5MandatorySensorSourceAlignmentText", app)
+        self.assertIn("pr5MandatorySensorSourceAlignmentCandidate", app)
+        self.assertIn("pr5MandatorySensorSourceAlignmentFromStatus", app)
+        self.assertIn("robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary", app)
+        self.assertIn("pr5_mandatory_sensor_source_alignment_summary", app)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", app)
+        self.assertIn("hardware_material_pending", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertNotRegex(
+            app,
+            r"pr5MandatorySensorSourceAlignment.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+
+        # fixture 和产品文档都必须固定保留 hardware_material_pending / not_proven / fail-closed 边界。
+        summary = fixture["robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary"]
+        self.assertEqual(summary["thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["proof_status"], "not_proven")
+        self.assertEqual(summary["hardware_material_state"], "hardware_material_pending")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertIn("software_proof_docker_pr5_mandatory_sensor_source_alignment_gate", fixture_text)
+        self.assertIn("2D LiDAR", fixture_text)
+        self.assertIn("ToF", fixture_text)
+        self.assertIn("hardware_material_pending", fixture_text)
+        self.assertIn("safe_to_control=false", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("PR #5 传感器来源对齐", doc)
+        self.assertIn("pr5_mandatory_sensor_source_alignment", doc)
+        self.assertIn("robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary", doc)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", doc)
+        self.assertIn("hardware_material_pending", doc)
+        self.assertIn("safe_to_control=false", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+
+    def test_pr5_mandatory_sensor_source_alignment_fixture_stays_phone_safe(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        summary_text = json.dumps(
+            fixture["robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 来源对齐 fixture 只保留 phone-safe 摘要，不能夹带 raw source、路径、凭证、动作提交或成功证明。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw source material",
+            "raw vendor docs",
+            "github token",
+            "ghp_",
+            "serial path",
+            "serial device",
+            "uart path",
+            "baudrate",
+            "/users/",
+            "/tmp/",
+            "credentials",
+            "authorization",
+            "bearer",
+            "database url",
+            "queue url",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "queue scheduling",
+            "callback submission",
+            "review submission",
+            "handoff submission",
+            "procurement action",
+            "github action",
+            "robot command",
+            "hil_pass",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "safe_to_control\": true",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+        ):
+            self.assertNotIn(forbidden, summary_text)
+
+
 class TaskTerminalCompletionMainlineMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")

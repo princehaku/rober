@@ -121,6 +121,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_pr5_review_thread_closeout,
     summarize_pr5_vendor_source_review_packet,
     summarize_pr5_vendor_source_review_reply_dispatch,
+    summarize_pr5_mandatory_sensor_source_alignment,
     summarize_hardware_real_material_escalation_request,
     summarize_real_material_readiness_board,
     summarize_real_material_evidence_intake,
@@ -26534,6 +26535,241 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("/dev/ttyUSB0", encoded)
         self.assertNotIn("raw_body", encoded)
         self.assertNotIn("Start Delivery control enabled", encoded)
+
+    def test_diagnostics_payload_includes_pr5_mandatory_sensor_source_alignment_safe_alias(self):
+        with tempfile.TemporaryDirectory() as td:
+            summary_path = Path(td) / "pr5_mandatory_sensor_source_alignment_summary.json"
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.pr5_mandatory_sensor_source_alignment_summary.v1",
+                        "source_schema": "trashbot.pr5_mandatory_sensor_source_alignment.v1",
+                        "source_schema_version": 1,
+                        "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_source_alignment_gate",
+                        "source_evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_source_alignment_gate",
+                        "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+                        "source": "software_proof",
+                        "source_boundary": "docs/vendor/VENDOR_INDEX.md sanitized source boundary",
+                        "status": "hardware_material_pending",
+                        "alignment_status": {
+                            "status": "hardware_material_pending",
+                            "reason": "2D LiDAR and ToF real source materials are still pending",
+                        },
+                        "missing_materials": [
+                            "real_2d_lidar_source_material",
+                            "real_tof_source_material",
+                        ],
+                        "next_required_evidence": [
+                            "sanitized 2D LiDAR source packet",
+                            "sanitized ToF source packet",
+                        ],
+                        "owner_handoff": ["hardware-engineer"],
+                        "false_states": {
+                            "hardware_material_pending": True,
+                            "not_proven": True,
+                            "safe_to_control": False,
+                            "delivery_success": False,
+                            "primary_actions_enabled": False,
+                        },
+                        "safe_copy": (
+                            "PR #5 mandatory sensor source alignment is metadata-only; "
+                            "software_proof; hardware_material_pending; not_proven; "
+                            "delivery_success=false; primary_actions_enabled=false; "
+                            "safe_to_control=false."
+                        ),
+                        "not_proven": ["hardware_material_pending", "delivery_success"],
+                        "hardware_material_pending": True,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                        "safe_to_control": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "pr5_mandatory_sensor_source_alignment": {
+                        "delivery_success": True,
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                pr5_mandatory_sensor_source_alignment_ref=str(summary_path),
+            )
+            summary = payload[
+                "robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary"
+            ]
+            encoded = json.dumps(summary, ensure_ascii=False)
+
+        self.assertEqual(summary, payload["pr5_mandatory_sensor_source_alignment"])
+        self.assertEqual(summary, payload["pr5_mandatory_sensor_source_alignment_summary"])
+        self.assertNotIn("pr5_mandatory_sensor_source_alignment", payload["latest_status"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.pr5_mandatory_sensor_source_alignment.v1",
+        )
+        self.assertEqual(summary["thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_pr5_mandatory_sensor_source_alignment_gate",
+        )
+        self.assertEqual(summary["overall_status"], "not_proven")
+        self.assertEqual(summary["status"], "hardware_material_pending")
+        self.assertIn("docs/vendor/VENDOR_INDEX.md", summary["source_boundary"])
+        self.assertIn("real_2d_lidar_source_material", summary["missing_materials"])
+        self.assertIn("sanitized 2D LiDAR source packet", summary["next_required_evidence"])
+        self.assertEqual(summary["owner_handoff"], ["hardware-engineer"])
+        self.assertTrue(summary["false_states"]["hardware_material_pending"])
+        self.assertTrue(summary["false_states"]["not_proven"])
+        self.assertFalse(summary["false_states"]["safe_to_control"])
+        self.assertFalse(summary["false_states"]["delivery_success"])
+        self.assertFalse(summary["false_states"]["primary_actions_enabled"])
+        self.assertTrue(summary["hardware_material_pending"])
+        self.assertIn("hardware_material_pending", summary["safe_copy"])
+        self.assertIn("delivery_success=false", summary["safe_copy"])
+        self.assertIn("primary_actions_enabled=false", summary["safe_copy"])
+        self.assertIn("safe_to_control=false", summary["safe_copy"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertTrue(summary["summary_required"])
+        self.assertFalse(summary["hardware_read"])
+        self.assertFalse(summary["raw_materials_exposed"])
+        self.assertFalse(summary["serial_uart_opened"])
+        self.assertFalse(summary["ros_graph_accessed"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["command_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["field_pass"])
+        self.assertNotIn(str(summary_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+
+    def test_pr5_mandatory_sensor_source_alignment_rejects_unsafe_inputs(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_without_summary = summarize_pr5_mandatory_sensor_source_alignment(
+                {
+                    "schema": "trashbot.pr5_mandatory_sensor_source_alignment.v1",
+                    "schema_version": 1,
+                    "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_source_alignment_gate",
+                    "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+                    "source": "software_proof",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_to_control": False,
+                }
+            )
+            unsupported = summarize_pr5_mandatory_sensor_source_alignment(
+                {
+                    "schema": "trashbot.pr5_vendor_source_review_packet_summary.v1",
+                    "evidence_boundary": "software_proof_docker_pr5_vendor_source_review_packet_gate",
+                    "source": "software_proof",
+                    "safe_copy": "PR #5 source alignment is metadata-only.",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_to_control": False,
+                }
+            )
+            missing_false_states = summarize_pr5_mandatory_sensor_source_alignment(
+                {
+                    "schema": "trashbot.pr5_mandatory_sensor_source_alignment_summary.v1",
+                    "source_schema": "trashbot.pr5_mandatory_sensor_source_alignment.v1",
+                    "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_source_alignment_gate",
+                    "source_evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_source_alignment_gate",
+                    "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+                    "source": "software_proof",
+                    "source_boundary": "docs/vendor/VENDOR_INDEX.md sanitized source boundary",
+                    "safe_copy": "PR #5 source alignment is metadata-only; not_proven.",
+                }
+            )
+            unsafe = summarize_pr5_mandatory_sensor_source_alignment(
+                {
+                    "schema": "trashbot.pr5_mandatory_sensor_source_alignment_summary.v1",
+                    "source_schema": "trashbot.pr5_mandatory_sensor_source_alignment.v1",
+                    "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_source_alignment_gate",
+                    "source_evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_source_alignment_gate",
+                    "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+                    "source": "software_proof",
+                    "source_boundary": "docs/vendor/VENDOR_INDEX.md sanitized source boundary",
+                    "false_states": {
+                        "hardware_material_pending": True,
+                        "not_proven": True,
+                        "safe_to_control": False,
+                        "delivery_success": False,
+                        "primary_actions_enabled": False,
+                    },
+                    "safe_copy": "Sensor source alignment passed; HIL pass; ROS topic /cmd_vel ready.",
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "safe_to_control": True,
+                    "raw_source_material": "token secret /Users/m4/apps/rober/raw.json /dev/ttyUSB0 UART",
+                }
+            )
+            missing_path = (
+                Path(td)
+                / "Bearer-secret-token"
+                / "missing_pr5_mandatory_sensor_source_alignment.json"
+            )
+            missing = summarize_pr5_mandatory_sensor_source_alignment(str(missing_path))
+            encoded = json.dumps(
+                [artifact_without_summary, unsupported, missing_false_states, unsafe, missing],
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(
+            artifact_without_summary["status"],
+            "blocked_missing_pr5_mandatory_sensor_source_alignment_summary",
+        )
+        self.assertEqual(unsupported["status"], "unsupported_schema")
+        self.assertEqual(
+            missing_false_states["status"],
+            "blocked_unsafe_pr5_mandatory_sensor_source_alignment_summary",
+        )
+        self.assertEqual(
+            unsafe["status"],
+            "blocked_unsafe_pr5_mandatory_sensor_source_alignment_summary",
+        )
+        self.assertEqual(
+            missing["status"],
+            "blocked_missing_pr5_mandatory_sensor_source_alignment_summary",
+        )
+        self.assertIn("software_proof_docker_pr5_mandatory_sensor_source_alignment_gate", encoded)
+        self.assertIn("software_proof", encoded)
+        self.assertIn("hardware_material_pending", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success", encoded)
+        self.assertIn("primary_actions_enabled", encoded)
+        self.assertIn("safe_to_control", encoded)
+        self.assertFalse(unsafe["delivery_success"])
+        self.assertFalse(unsafe["primary_actions_enabled"])
+        self.assertFalse(unsafe["safe_to_control"])
+        self.assertFalse(unsafe["ack_post_allowed"])
+        self.assertFalse(unsafe["cursor_updates_allowed"])
+        self.assertFalse(unsafe["command_allowed"])
+        self.assertFalse(unsafe["nav2_triggered"])
+        self.assertFalse(unsafe["hil_pass"])
+        self.assertFalse(unsafe["field_pass"])
+        self.assertNotIn(str(missing_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("/dev/ttyUSB0", encoded)
+        self.assertNotIn("/Users/m4/apps/rober/raw.json", encoded)
+        self.assertNotIn("raw_source_material", encoded)
+        self.assertNotIn("ROS topic /cmd_vel ready", encoded)
 
     def test_diagnostics_payload_includes_hardware_real_material_escalation_request_safe_alias(self):
         with tempfile.TemporaryDirectory() as td:
