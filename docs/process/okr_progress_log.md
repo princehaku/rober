@@ -8,7 +8,21 @@
 
 ## 2026-05-20 系列
 
-更新时间：2026-05-20 08:58 Asia/Shanghai。
+更新时间：2026-05-20 09:48 Asia/Shanghai。
+
+### 2026-05-20 09-10｜mobile-real-device-acceptance-handoff-intake｜O4 real-device acceptance handoff intake software proof
+
+本轮 `sprints/2026.05.20_09-10_mobile-real-device-acceptance-handoff-intake/` 执行 Objective 4 的 `mobile_real_device_field_trial_acceptance_execution_handoff_intake` closeout，不继续 O5 external blocker、本地 O1/HIL wrapper 或 route/elevator real-material blocker。Robot worker 新增 `mobile_real_device_field_trial_acceptance_execution_handoff_intake` / `robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_handoff_intake_summary` safe summary，字段覆盖 source handoff status、owner ack status、missing evidence、next owner、rerun guidance、blocker summary、same safe `evidence_ref`、`software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。Full-Stack worker 在 mobile/web 增加只读“现场验收交接回执”panel、safe summary selection、fail-closed normalization、whitelist copy/export 和 fixture tests；Start Delivery、Confirm Dropoff、Cancel gating 不变。证据边界保持 `software_proof_docker_mobile_real_device_field_trial_acceptance_execution_handoff_intake_gate`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL，不补 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending，reply comment `3269642220` 不等于 resolved。仍缺真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report、真实 UART、真实 HIL-entry、真实 SKU/source/receipt/procurement/installation/wiring/power/calibration。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮不新增 PR #4 route/elevator wrapper，不证明真实电梯、真实门状态、真实楼层确认、人工协助记录、dropoff/cancel completion、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮不新增真实路线采集、Nav2/fixed-route runtime log、route completion signal、现场 task_record 或同一 safe `evidence_ref` 上车实机复账；handoff intake 不得写成 route/elevator field pass。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile_real_device_field_trial_acceptance_execution_handoff_intake` 让现场 owner 能在 Robot diagnostics 与 mobile/web 中看到 handoff ack/intake、missing evidence、next owner、rerun guidance、blocker summary 和 same safe `evidence_ref`。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场 phone behavior。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮没有真实 HTTPS/TLS、公网、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实 external proof；handoff intake 不改变 commands/status/ack 或 cloud readiness。 |
+
+本轮验证：Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 225 tests in 0.650s OK`；required `rg` 与 scoped diff check 通过。Full-Stack worker 报告 `python3 mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 157 tests ... OK`；`py_compile` 通过；`node --check mobile/web/app.js` 通过；required `rg` 与 scoped diff check 通过。Product closeout required file check、required `rg` 与 scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion 或 delivery success。
 
 ### 2026-05-20 08-09｜cloud-command-id-conflict-visibility-guard｜command id conflict visibility software proof
 

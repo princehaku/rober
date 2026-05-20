@@ -207,6 +207,7 @@ h2 {
 .real-device-field-trial-acceptance-execution-callback-intake-panel,
 .real-device-field-trial-acceptance-execution-callback-review-decision-panel,
 .real-device-field-trial-acceptance-execution-callback-review-handoff-panel,
+.real-device-field-trial-acceptance-execution-handoff-intake-panel,
 .acceptance-bundle-panel,
 .terminal-action-panel,
 .action-feedback-panel,
@@ -374,6 +375,7 @@ h2 {
 .real-device-field-trial-acceptance-execution-callback-intake-grid,
 .real-device-field-trial-acceptance-execution-callback-review-decision-grid,
 .real-device-field-trial-acceptance-execution-callback-review-handoff-grid,
+.real-device-field-trial-acceptance-execution-handoff-intake-grid,
 .acceptance-bundle-grid,
 .feedback-grid,
 .terminal-action-grid,
@@ -455,6 +457,8 @@ h2 {
 .real-device-field-trial-acceptance-execution-pack-grid div,
 .real-device-field-trial-acceptance-execution-callback-intake-grid div,
 .real-device-field-trial-acceptance-execution-callback-review-decision-grid div,
+.real-device-field-trial-acceptance-execution-callback-review-handoff-grid div,
+.real-device-field-trial-acceptance-execution-handoff-intake-grid div,
 .acceptance-bundle-grid div,
 .feedback-grid div,
 .terminal-action-grid div,
@@ -876,6 +880,10 @@ dd {
 }
 
 .real-device-field-trial-acceptance-execution-callback-review-handoff-grid {
+  grid-template-columns: 1fr;
+}
+
+.real-device-field-trial-acceptance-execution-handoff-intake-grid {
   grid-template-columns: 1fr;
 }
 
