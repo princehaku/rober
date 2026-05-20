@@ -8,7 +8,25 @@
 
 ## 2026-05-21 系列
 
-更新时间：2026-05-21 06:26 Asia/Shanghai。
+更新时间：2026-05-21 07:08 Asia/Shanghai。
+
+### 2026-05-21 07-08｜field-evidence-rerun-execution-result-intake｜field evidence rerun execution result intake software proof
+
+本轮 `sprints/2026.05.21_07-08_field-evidence-rerun-execution-result-intake/` 执行 `field_evidence_rerun_execution_result_intake` epic closeout。Objective 5 仍约 68%，但真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实 phone/browser external proof 不在 Docker-only 主机；Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending，PR #6 仍是 README/docs-only 边界。本轮选择 O2/O3/O4 field evidence rerun execution result intake，是为了把 execution handoff 后的 owner result packet 转成 missing/accepted/rejected/blocked intake，而不是宣称真实现场通过。
+
+Autonomy worker 新增 `trashbot.field_evidence_rerun_execution_result_intake.v1` / `trashbot.field_evidence_rerun_execution_result_intake_summary.v1` PC gate，消费上一轮 execution callback review handoff artifact/summary 或 Robot safe alias，把 owner result packet 归类为 `missing`、`accepted`、`rejected` 或 `blocked`，并输出 safe `evidence_ref`、owner handoff、missing/rejected/blocked reasons、next required evidence 和 safe copy。Robot worker 新增 `robot_diagnostics_field_evidence_rerun_execution_result_intake_summary` safe alias，只读消费 sanitized summary。Full-Stack worker 在 mobile/web 新增只读“现场证据复跑执行结果回填”panel，展示 result packet state、safe `evidence_ref`、next required evidence 和 fail-closed boundary，不触发 Start Delivery / Confirm Dropoff / Cancel / ACK / cursor / diagnostics fetch / robot command。
+
+证据边界保持 `software_proof_docker_field_evidence_rerun_execution_result_intake_gate`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL、hardware bridge、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮把 execution handoff 后的 result packet 转成 `missing` / `accepted` / `rejected` / `blocked` intake；`accepted` 只表示 accepted for review intake，不是真实 task record、dropoff/cancel completion、delivery result、route/elevator field pass 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读“现场证据复跑执行结果回填”panel 让现场 owner 和支持同学能看到 result packet state、safe `evidence_ref`、next required evidence 和 fail-closed flags；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_field_evidence_rerun_execution_result_intake_gate` 只证明 Docker/local result-intake metadata 可见性；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 5 tests ... OK`；CLI、required `rg` 与 scoped `git diff --check` 通过。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 251 tests ... OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check` 通过；mobile unittest 输出 `Ran 199 tests ... OK`；JSON fixture check、required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、PR #6 runtime proof、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、delivery result 或 delivery success。
 
 ### 2026-05-21 06-07｜cloud-poll-backoff-rate-limit-guard｜cloud poll backoff rate-limit software proof
 

@@ -1,0 +1,69 @@
+{
+  "robot_diagnostics_field_evidence_rerun_execution_result_intake_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_intake_summary.v1",
+    "schema_version": 1,
+    "result_intake_schema": "trashbot.field_evidence_rerun_execution_result_intake.v1",
+    "source_review_handoff_schema": "trashbot.field_evidence_rerun_execution_callback_review_handoff.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_execution_result_intake_summary",
+    "source": "software_proof",
+    "result_intake_status": "blocked_missing_field_evidence_rerun_execution_result_packet_not_proven",
+    "source_review_handoff_status": "blocked_missing_field_evidence_rerun_execution_callback_review_handoff_materials_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_intake_fixture_20260521_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "owner_handoff": [
+      "owner_handoff=field owner backfills same safe_evidence_ref execution result packet summary",
+      "owner_handoff=Autonomy owner reconciles route completion signal and task_record before review",
+      "owner_handoff=Full-stack keeps execution result intake panel read-only"
+    ],
+    "missing_reasons": [
+      "missing=real task_record",
+      "missing=real nav2_fixed_route_runtime_log",
+      "missing=real route_completion_signal",
+      "missing=real elevator_door_state",
+      "missing=real target_floor_confirmation",
+      "missing=real human_assistance_record",
+      "missing=real dropoff_completion",
+      "missing=real cancel_completion",
+      "missing=real delivery_result",
+      "missing=real phone_browser_evidence"
+    ],
+    "rejected_reasons": [
+      "rejected=unsafe_or_mismatched_execution_result_packet_not_proven",
+      "rejected=success_or_control_claims_filtered"
+    ],
+    "blocked_reasons": [
+      "blocked=real execution result packet missing",
+      "blocked=same safe evidence_ref route/elevator evidence not accepted"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same safe_evidence_ref real task_record",
+      "next_required_evidence=real Nav2/fixed-route runtime log and route completion signal",
+      "next_required_evidence=real elevator door state, target floor confirmation, and human assistance record",
+      "next_required_evidence=real dropoff/cancel completion and delivery result",
+      "next_required_evidence=real phone/browser evidence"
+    ],
+    "reconciliation_hint": "reconciliation_hint=match task_record, route_completion_signal, terminal result, delivery_result, and phone/browser evidence under the same safe evidence_ref before any review acceptance.",
+    "safe_copy": "现场证据复跑执行结果回填 safe copy: result_intake_status=blocked_missing_field_evidence_rerun_execution_result_packet_not_proven, source=software_proof, not_proven, safe_to_control=false, delivery_success=false, primary_actions_enabled=false.",
+    "safe_phone_copy": "现场证据复跑执行结果回填 fixture 只读展示 safe evidence_ref、result intake status、owner handoff、missing/rejected/blocked reasons、next required evidence 和 fail-closed boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_intake_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator 现场复跑",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
+  }
+}
