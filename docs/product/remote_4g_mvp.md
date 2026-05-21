@@ -55,6 +55,28 @@ This guard keeps `ack_semantics=accepted_processing_only_not_delivery_success`,
 cancel completion, route/elevator field pass, real phone/browser proof, PR #5
 resolution, HIL, or delivery success.
 
+The local Robot/API status and diagnostics surfaces now also expose a command
+lifecycle audit/export summary for the same O5 proof boundary:
+
+```text
+cloud_command_lifecycle_audit_export
+cloud_command_lifecycle_audit_export_summary
+robot_diagnostics_cloud_command_lifecycle_audit_export_summary
+```
+
+The schema is `trashbot.cloud_command_lifecycle_audit_export_summary.v1` and
+the evidence boundary is
+`software_proof_docker_cloud_command_lifecycle_audit_export_gate`. The summary
+binds one safe `command_id` to one safe `evidence_ref`, lists a phone-safe
+`lifecycle_timeline`, reports `terminal_result_status`, provides
+`next_required_evidence`, and includes backend-provided `copy_export_text`.
+Missing or conflicting lifecycle state remains blocked/not_proven. It keeps
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`; it does not authorize Start/Confirm/Cancel, replay
+commands, advance ACK cursors, prove real external cloud/4G/OSS/CDN/DB/queue,
+prove a real phone/browser, prove HIL, resolve PR #5, or prove delivery
+success.
+
 The independent relay now also hosts the dependency-free `mobile/web/` PWA
 shell on the same origin:
 

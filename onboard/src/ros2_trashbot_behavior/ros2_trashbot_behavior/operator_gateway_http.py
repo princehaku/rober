@@ -39,6 +39,12 @@ CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA = "trashbot.cloud_support_handoff_safe_
 CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_EVIDENCE_BOUNDARY = (
     "software_proof_docker_cloud_support_handoff_safe_export_gate"
 )
+CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_SCHEMA = (
+    "trashbot.cloud_command_lifecycle_audit_export_summary.v1"
+)
+CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_command_lifecycle_audit_export_gate"
+)
 VOICE_PROMPT_READINESS_SCHEMA = "trashbot.voice_prompt_readiness.v1"
 VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_voice_prompt_readiness_gate"
 PHONE_OFFLINE_RESUME_READINESS_SCHEMA = "trashbot.phone_offline_resume_readiness.v1"
@@ -435,6 +441,32 @@ CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_NOT_PROVEN = [
 ]
 
 CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_FALSE_STATES = [
+    "source=software_proof",
+    "not_proven",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+]
+
+CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_NOT_PROVEN = [
+    "verified_terminal_result",
+    "delivery_result",
+    "dropoff_completion",
+    "cancel_completion",
+    "real_public_https_tls",
+    "real_4g_or_sim",
+    "production_db_queue",
+    "oss_cdn_live_traffic",
+    "route_elevator_field_pass",
+    "real_phone_device_or_browser",
+    "hil_pass",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
+    "pr5_thread_resolved",
+]
+
+CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_FALSE_STATES = [
     "source=software_proof",
     "not_proven",
     "safe_to_control=false",
@@ -4029,6 +4061,243 @@ def build_cloud_support_handoff_safe_export(
     }
 
 
+def _cloud_lifecycle_safe_text(value, fallback="not_reported"):
+    # lifecycle export 会被人工复制到 PR/支持线程，必须先过滤路径、凭证、URL 和底层控制词。
+    text = _support_safe_text(value, fallback)
+    if text == fallback:
+        return fallback
+    lowered = str(text).lower()
+    if any(
+        marker in lowered
+        for marker in (
+            "delivery_success=true",
+            "primary_actions_enabled=true",
+            "safe_to_control=true",
+            "hil_pass=true",
+            "terminal result verified",
+            "verified terminal result",
+        )
+    ):
+        return fallback
+    return text
+
+
+def _cloud_lifecycle_candidate_ids(status, remote_readiness, diagnostics):
+    # command_id 可能来自 ACK、pending/cancel/conflict 等不同 gate；统一收集后检查是否同一条链路。
+    status = status if isinstance(status, dict) else {}
+    remote_readiness = remote_readiness if isinstance(remote_readiness, dict) else {}
+    diagnostics = diagnostics if isinstance(diagnostics, dict) else {}
+    candidates = []
+    for source in (remote_readiness, status, diagnostics):
+        for key in (
+            "command_id",
+            "last_command_ack",
+            "pending_terminal_ack_id",
+            "ack_lookup_command_id",
+            "expired_command_id",
+            "duplicate_command_id",
+            "conflict_command_id",
+            "sequence_regression_command_id",
+        ):
+            value = _cloud_lifecycle_safe_text(source.get(key), "")
+            if value:
+                candidates.append(value)
+    return candidates
+
+
+def _cloud_lifecycle_evidence_ref(status, diagnostics):
+    # evidence_ref 只接受短 safe ref；本地路径会被过滤成 missing，避免把 Docker proof 当现场材料。
+    status = status if isinstance(status, dict) else {}
+    diagnostics = diagnostics if isinstance(diagnostics, dict) else {}
+    for source in (status, diagnostics):
+        for key in ("evidence_ref", "safe_evidence_ref", "result_ref", "diagnostics_ref"):
+            value = _cloud_lifecycle_safe_text(source.get(key), "")
+            if value:
+                return value
+    return ""
+
+
+def _cloud_lifecycle_terminal_status(remote_state):
+    # terminal_result_status 是 audit/export 的核心结论；所有非 verified 结果都保持 not_proven。
+    if remote_state == PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE:
+        return "pending_verified_terminal_result_not_proven"
+    if remote_state == PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE:
+        return "accepted_processing_missing_terminal_result_not_proven"
+    if remote_state == "ack_lookup_pending":
+        return "ack_not_found_terminal_result_not_proven"
+    if remote_state == "cancel_pending_goal_acceptance":
+        return "cancel_completion_not_proven"
+    if remote_state in {"command_pending", "status_stale"}:
+        return "waiting_for_ack_or_status_not_proven"
+    if remote_state in {
+        "command_expired",
+        "command_duplicate_deduped",
+        "command_id_conflict",
+        "command_sequence_regression",
+        "auth_failed",
+        "media_degraded",
+        "cloud_poll_backoff",
+        "cloud_unreachable",
+        "malformed_response",
+        MANUAL_TAKEOVER_DEGRADATION_STATE,
+    }:
+        return f"{remote_state}_terminal_result_not_proven"
+    return "verified_terminal_result_not_proven"
+
+
+def _cloud_lifecycle_timeline(remote_state, command_id):
+    # Timeline 只描述 safe lifecycle 阶段，不包含 raw command payload、ACK body 或 replay 指令。
+    command_bound = "bound_same_safe_command_id" if command_id else "missing_safe_command_id"
+    ack_status = {
+        "ack_lookup_pending": "ack_lookup_pending_not_delivery_success",
+        PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE: (
+            "accepted_processing_only_not_delivery_success"
+        ),
+        PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE: (
+            "pending_terminal_result_not_delivery_success"
+        ),
+        "cancel_pending_goal_acceptance": "cancel_pending_not_delivery_success",
+        "command_pending": "command_pending_not_delivery_success",
+    }.get(remote_state, f"{remote_state or 'unknown'}_not_delivery_success")
+    return [
+        {
+            "stage": "command_identity",
+            "status": command_bound,
+            "safe_copy": "同一 safe command_id 用于 audit；缺失时 fail-closed。",
+        },
+        {
+            "stage": "command_enqueue",
+            "status": "software_proof_queue_state_not_proven",
+            "safe_copy": "队列状态仅为 Docker/software proof，不证明真实云队列或机器人执行。",
+        },
+        {
+            "stage": "robot_poll_next_command",
+            "status": "poll_or_status_state_not_proven",
+            "safe_copy": "poll/status 只用于审计，不触发重放、游标推进或控制授权。",
+        },
+        {
+            "stage": "ack_lookup_or_processing",
+            "status": ack_status,
+            "safe_copy": "ACK accepted/processing 不是送达、投放或取消完成。",
+        },
+        {
+            "stage": "verified_terminal_result",
+            "status": _cloud_lifecycle_terminal_status(remote_state),
+            "safe_copy": "必须等待 verified delivery/dropoff/cancel result；当前仍为 not_proven。",
+        },
+    ]
+
+
+def build_cloud_command_lifecycle_audit_export(
+    status,
+    phone_readiness=None,
+    diagnostics=None,
+    *,
+    now=None,
+):
+    """Build a phone-safe command lifecycle audit/export summary.
+
+    这个 summary 只把 command/status/ACK lifecycle 压缩成可复制的安全文本；
+    它不读取 raw artifact，不推进 ACK cursor，也不改变任何运行时控制授权。
+    """
+    status = status if isinstance(status, dict) else {}
+    phone_readiness = phone_readiness if isinstance(phone_readiness, dict) else {}
+    diagnostics = diagnostics if isinstance(diagnostics, dict) else {}
+    remote_readiness = (
+        phone_readiness.get("remote_readiness")
+        if isinstance(phone_readiness.get("remote_readiness"), dict)
+        else status.get("remote_readiness")
+        if isinstance(status.get("remote_readiness"), dict)
+        else {}
+    )
+    remote_state = _cloud_lifecycle_safe_text(
+        remote_readiness.get("degradation_state"),
+        "status_stale",
+    )
+    command_ids = _cloud_lifecycle_candidate_ids(status, remote_readiness, diagnostics)
+    unique_command_ids = []
+    for command_id in command_ids:
+        if command_id not in unique_command_ids:
+            unique_command_ids.append(command_id)
+    command_id = unique_command_ids[0] if unique_command_ids else ""
+    evidence_ref = _cloud_lifecycle_evidence_ref(status, diagnostics)
+    lifecycle_conflict = len(unique_command_ids) > 1
+    missing_lifecycle_state = not command_id or not evidence_ref
+    unsafe = any(
+        _cloud_lifecycle_safe_text(value, "") == ""
+        and str(value or "").strip()
+        for source in (remote_readiness, status)
+        for value in (
+            source.get("safe_phone_copy"),
+            source.get("command_id"),
+            source.get("last_command_ack"),
+            source.get("evidence_ref"),
+        )
+    )
+    if lifecycle_conflict:
+        audit_status = "blocked_conflicting_lifecycle_state_not_proven"
+    elif missing_lifecycle_state:
+        audit_status = "blocked_missing_lifecycle_state_not_proven"
+    elif unsafe:
+        audit_status = "blocked_unsafe_lifecycle_state_not_proven"
+    else:
+        audit_status = "ready_for_cloud_command_lifecycle_audit_export_not_proven"
+    terminal_result_status = _cloud_lifecycle_terminal_status(remote_state)
+    next_required_evidence = [
+        "same_safe_command_id",
+        "same_safe_evidence_ref",
+        "verified_terminal_delivery_dropoff_or_cancel_result",
+        "real_public_https_tls_and_4g_or_sim",
+        "production_db_queue_and_oss_cdn_live_traffic",
+    ]
+    safe_phone_copy = _cloud_lifecycle_safe_text(
+        remote_readiness.get("safe_phone_copy"),
+        "命令 lifecycle audit 仍为 software proof；主操作保持不可用。",
+    )
+    copy_export_text = (
+        "cloud_command_lifecycle_audit_export: "
+        f"command_id={command_id or 'missing'}; "
+        f"evidence_ref={evidence_ref or 'missing'}; "
+        f"terminal_result_status={terminal_result_status}; "
+        f"status={audit_status}; "
+        "source=software_proof; not_proven; safe_to_control=false; "
+        "delivery_success=false; primary_actions_enabled=false."
+    )
+    return {
+        "schema": CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_SCHEMA,
+        "schema_version": 1,
+        "api_version": API_VERSION,
+        "capability": "cloud_command_lifecycle_audit_export",
+        "source": "software_proof",
+        "evidence_boundary": CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_EVIDENCE_BOUNDARY,
+        "status": audit_status,
+        "generated_at": float(now if now is not None else time.time()),
+        "command_id": command_id,
+        "evidence_ref": evidence_ref,
+        "lifecycle_state": remote_state,
+        "lifecycle_timeline": _cloud_lifecycle_timeline(remote_state, command_id),
+        "terminal_result_status": terminal_result_status,
+        "next_required_evidence": next_required_evidence,
+        "copy_export_text": _cloud_lifecycle_safe_text(copy_export_text, ""),
+        "safe_copy": _cloud_lifecycle_safe_text(copy_export_text, ""),
+        "safe_phone_copy": safe_phone_copy,
+        "false_states": list(CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_FALSE_STATES),
+        "not_proven": list(CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_NOT_PROVEN),
+        "remote_ready": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "missing_lifecycle_state": bool(missing_lifecycle_state),
+        "conflicting_lifecycle_state": bool(lifecycle_conflict),
+        "raw_material_redacted": bool(unsafe),
+    }
+
+
 def _voice_prompt_safe_text(value, fallback):
     # 提示词可能来自 status 文件或 task record；自由文本进入手机前必须脱敏。
     text_value = str(value or "").strip()
@@ -4785,6 +5054,10 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         payload["phone_readiness"],
         phone_support_bundle,
     )
+    lifecycle_export = build_cloud_command_lifecycle_audit_export(
+        payload,
+        payload["phone_readiness"],
+    )
     voice_prompt_readiness = build_voice_prompt_readiness(
         payload,
         payload["phone_readiness"],
@@ -4794,6 +5067,12 @@ def _status_with_phone_readiness(gateway, mock_cloud):
     payload["phone_readiness"]["phone_support_bundle"] = dict(phone_support_bundle)
     payload["cloud_support_handoff_safe_export"] = safe_export
     payload["phone_readiness"]["cloud_support_handoff_safe_export"] = dict(safe_export)
+    payload["cloud_command_lifecycle_audit_export"] = lifecycle_export
+    payload["cloud_command_lifecycle_audit_export_summary"] = dict(lifecycle_export)
+    payload["robot_diagnostics_cloud_command_lifecycle_audit_export_summary"] = dict(
+        lifecycle_export
+    )
+    payload["phone_readiness"]["cloud_command_lifecycle_audit_export"] = dict(lifecycle_export)
     payload["voice_prompt_readiness"] = voice_prompt_readiness
     payload["phone_readiness"]["voice_prompt_readiness"] = dict(voice_prompt_readiness)
     offline_resume_readiness = build_phone_offline_resume_readiness(
@@ -4822,6 +5101,12 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
         diagnostics_payload,
     )
     phone_readiness["cloud_support_handoff_safe_export"] = dict(safe_export)
+    lifecycle_export = build_cloud_command_lifecycle_audit_export(
+        status,
+        phone_readiness,
+        diagnostics_payload,
+    )
+    phone_readiness["cloud_command_lifecycle_audit_export"] = dict(lifecycle_export)
     voice_prompt_readiness = build_voice_prompt_readiness(status, phone_readiness, phone_support_bundle)
     offline_resume_readiness = build_phone_offline_resume_readiness(
         status,
@@ -4832,6 +5117,11 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
     diagnostics_payload["phone_task_flow_readiness"] = task_flow
     diagnostics_payload["phone_support_bundle"] = phone_support_bundle
     diagnostics_payload["cloud_support_handoff_safe_export"] = safe_export
+    diagnostics_payload["cloud_command_lifecycle_audit_export"] = lifecycle_export
+    diagnostics_payload["cloud_command_lifecycle_audit_export_summary"] = dict(lifecycle_export)
+    diagnostics_payload["robot_diagnostics_cloud_command_lifecycle_audit_export_summary"] = dict(
+        lifecycle_export
+    )
     diagnostics_payload["voice_prompt_readiness"] = voice_prompt_readiness
     diagnostics_payload["phone_offline_resume_readiness"] = offline_resume_readiness
     # HTTP diagnostics 复用 status 里的同一份摘要，避免 status/diagnostics 对 transaction gate 给出两套口径。
@@ -4848,6 +5138,11 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
         latest_status["phone_task_flow_readiness"] = task_flow
         latest_status["phone_support_bundle"] = phone_support_bundle
         latest_status["cloud_support_handoff_safe_export"] = safe_export
+        latest_status["cloud_command_lifecycle_audit_export"] = lifecycle_export
+        latest_status["cloud_command_lifecycle_audit_export_summary"] = dict(lifecycle_export)
+        latest_status["robot_diagnostics_cloud_command_lifecycle_audit_export_summary"] = dict(
+            lifecycle_export
+        )
         latest_status["voice_prompt_readiness"] = voice_prompt_readiness
         latest_status["phone_offline_resume_readiness"] = offline_resume_readiness
     remote_state = _remote_degradation(phone_readiness.get("remote_readiness"))

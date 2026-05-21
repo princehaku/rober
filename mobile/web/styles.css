@@ -161,6 +161,7 @@ h2 {
 .field-evidence-real-material-owner-ack-review-decision-panel,
 .field-evidence-material-blocker-escalation-pack-panel,
 .cloud-support-handoff-safe-export-panel,
+.cloud-command-lifecycle-audit-export-panel,
 .field-evidence-rerun-callback-review-decision-panel,
 .field-evidence-rerun-callback-review-handoff-panel,
 .task-terminal-completion-mainline-panel,
@@ -336,6 +337,7 @@ h2 {
 .real-material-followup-escalation-status-grid,
 .field-evidence-material-blocker-escalation-pack-grid,
 .cloud-support-handoff-safe-export-grid,
+.cloud-command-lifecycle-audit-export-grid,
 .task-terminal-completion-mainline-grid,
 .task-terminal-field-material-intake-grid,
 .task-terminal-field-material-review-decision-grid,
@@ -424,6 +426,7 @@ h2 {
 .real-material-evidence-intake-grid div,
 .field-evidence-material-blocker-escalation-pack-grid div,
 .cloud-support-handoff-safe-export-grid div,
+.cloud-command-lifecycle-audit-export-grid div,
 .task-terminal-completion-mainline-grid div,
 .task-terminal-field-material-intake-grid div,
 .task-terminal-field-material-review-decision-grid div,
@@ -672,6 +675,10 @@ dd {
 }
 
 .field-evidence-material-blocker-escalation-pack-grid {
+  grid-template-columns: 1fr;
+}
+
+.cloud-command-lifecycle-audit-export-grid {
   grid-template-columns: 1fr;
 }
 
@@ -1222,6 +1229,10 @@ dd {
   }
 
   .cloud-support-handoff-safe-export-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cloud-command-lifecycle-audit-export-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

@@ -8,7 +8,25 @@
 
 ## 2026-05-22 系列
 
-更新时间：2026-05-22 02:19 Asia/Shanghai。
+更新时间：2026-05-22 03:25 Asia/Shanghai。
+
+### 2026-05-22 03-04｜cloud-command-lifecycle-audit-export｜cloud command lifecycle audit/export software proof
+
+本轮 `sprints/2026.05.22_03-04_cloud-command-lifecycle-audit-export/` 执行 `cloud_command_lifecycle_audit_export` epic closeout。用户价值是让 support / field owner 在缺真实外部 proof 时，仍能从 Robot/API 与 mobile/web 看到同一条 phone-safe command lifecycle timeline，并复制 safe `command_id` / `evidence_ref` / terminal-result pending 摘要去追 verified delivery、dropoff 或 cancel terminal result。Objective 5 仍约 68%，是当前数值最低 Objective；本轮是 O5 software-proof audit/export layer，不是真实公网、4G、OSS/CDN、production DB/queue 或 worker/cutover proof。Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / material pending，comment `3269642220` 只是 software-proof publication，不是 reviewer resolution。O2/O3/O4 仍约 99%。
+
+Robot worker 新增 `cloud_command_lifecycle_audit_export` safe summary，暴露 `cloud_command_lifecycle_audit_export`、`cloud_command_lifecycle_audit_export_summary`、`robot_diagnostics_cloud_command_lifecycle_audit_export_summary`，字段包含 safe `command_id`、safe `evidence_ref`、`lifecycle_timeline`、`terminal_result_status`、`next_required_evidence`、`copy_export_text`，并固定 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。Full-Stack worker 在 `mobile/web` 新增只读“云命令生命周期审计导出”panel、fixture、样式、测试和 `docs/product/mobile_user_flow.md`，只在 backend `copy_export_text` 安全时允许复制，Start Delivery / Confirm Dropoff / Cancel 仍 disabled。Hardware worker 已读 `docs/vendor/VENDOR_INDEX.md`、WAVE ROVER `base_ctrl.py`、`config.yaml`、`json_cmd.h`，并把 `Cloud Command Lifecycle Audit/Export Hardware Boundary` 写入 `docs/product/production_hardware_boundary.md`，明确本轮不证明 WAVE ROVER/UART/HIL、真实串口、2D LiDAR/ToF 材料、route/elevator field pass、dropoff/cancel completion、verified terminal result 或 delivery success。Docs 同步已覆盖 Robot、Full-Stack、Hardware 三条行为变更：`docs/interfaces/operator_gateway_diagnostics.md`、`docs/product/remote_4g_mvp.md`、`docs/product/mobile_user_flow.md`、`docs/product/production_hardware_boundary.md`。
+
+证据边界保持 `software_proof_docker_cloud_command_lifecycle_audit_export_gate`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。本轮 is not real external cloud proof、not true phone/browser proof、not HIL、not WAVE ROVER/UART proof、not PR #5 `PRRT_kwDOSWB9286CJ3tX` resolution、not route/elevator field pass、not Nav2/fixed-route proof、not dropoff/cancel completion、not verified terminal delivery result、not delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | Hardware consultation 只确认 vendor-source 边界和 no-claim 清单；没有真实 2D LiDAR / ToF source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、WAVE ROVER powered bench/UART/HIL logs、operator HIL report 或 reviewer resolution。PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved/material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只把 cloud command lifecycle 与 terminal-result pending 做成可复盘导出；不是真实 route/elevator field pass、dropoff/cancel completion、verified terminal delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；audit/export 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能只读展示 lifecycle audit/export，并只复制 backend safe `copy_export_text`；Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_command_lifecycle_audit_export_gate` 只证明 Docker/local Robot/API + mobile static fixture 下 command lifecycle audit/export metadata 可见、可复制且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery result 或 delivery success。 |
+
+本轮验证：Robot worker 报告 `py_compile` 通过；unittest 输出 `Ran 331 tests in 65.257s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check` 通过；fixture `json.tool` 通过；mobile unittest 输出 `Ran 239 tests OK`；required `rg` 与 scoped `git diff --check` 通过。Hardware worker 报告 vendor index exists；required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。PR #5 live evidence remains: `PRRT_kwDOSWB9286CJ3tQ` resolved, `PRRT_kwDOSWB9286CJ3tU` resolved, `PRRT_kwDOSWB9286CJ3tX` unresolved/material pending, comment `3269642220` software-proof publication only。
 
 ### 2026-05-22 02-03｜field-evidence-material-blocker-escalation-pack｜material blocker escalation software proof
 

@@ -21,7 +21,12 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_FALSE_STATES,
     CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_NOT_PROVEN,
     CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA,
+    CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_EVIDENCE_BOUNDARY,
+    CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_FALSE_STATES,
+    CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_NOT_PROVEN,
+    CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_SCHEMA,
     normalize_elevator_assist,
+    build_cloud_command_lifecycle_audit_export,
     status_payload,
 )
 from ros2_trashbot_behavior.remote_cloud_relay import (
@@ -2267,6 +2272,123 @@ def summarize_cloud_support_handoff_safe_export(value):
         "cursor_updates_allowed": False,
         "nav2_triggered": False,
         "hil_pass": False,
+        "raw_material_redacted": bool(unsafe),
+    }
+
+
+def summarize_cloud_command_lifecycle_audit_export(value):
+    """为 command lifecycle audit/export 构建 Robot diagnostics 安全摘要。"""
+    source = value if isinstance(value, dict) else {}
+    unsupported = bool(source) and source.get("schema") != CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_SCHEMA
+    unsafe = _cloud_guard_has_unsafe_material(source)
+    command_id = _cloud_guard_safe_text(source.get("command_id"), "")
+    evidence_ref = _cloud_guard_safe_text(source.get("evidence_ref"), "")
+    missing_lifecycle_state = bool(
+        source.get("missing_lifecycle_state") or not command_id or not evidence_ref
+    )
+    conflicting_lifecycle_state = bool(source.get("conflicting_lifecycle_state"))
+    status = (
+        "missing_cloud_command_lifecycle_audit_export"
+        if not source
+        else "blocked_unsupported_cloud_command_lifecycle_audit_export"
+        if unsupported
+        else "blocked_unsafe_cloud_command_lifecycle_audit_export"
+        if unsafe
+        else "blocked_conflicting_lifecycle_state_not_proven"
+        if conflicting_lifecycle_state
+        else "blocked_missing_lifecycle_state_not_proven"
+        if missing_lifecycle_state
+        else str(source.get("status") or "ready_for_cloud_command_lifecycle_audit_export_not_proven")
+    )
+    safe_timeline = []
+    # timeline 每一项只保留 stage/status/safe_copy 三个短字段，禁止转发 raw ACK 或 raw command。
+    for item in source.get("lifecycle_timeline") if isinstance(source.get("lifecycle_timeline"), list) else []:
+        if not isinstance(item, dict):
+            continue
+        safe_item = {
+            "stage": _cloud_guard_safe_text(item.get("stage"), ""),
+            "status": _cloud_guard_safe_text(item.get("status"), "not_proven"),
+            "safe_copy": _cloud_guard_safe_text(
+                item.get("safe_copy"),
+                "lifecycle stage remains not_proven.",
+            ),
+        }
+        if safe_item["stage"]:
+            safe_timeline.append(safe_item)
+    source_next_required = (
+        source.get("next_required_evidence")
+        if isinstance(source.get("next_required_evidence"), list)
+        else []
+    )
+    next_required_evidence = [
+        _cloud_guard_safe_text(item, "")
+        for item in source_next_required
+    ]
+    next_required_evidence = [item for item in next_required_evidence if item]
+    if not next_required_evidence:
+        next_required_evidence = [
+            "same_safe_command_id",
+            "same_safe_evidence_ref",
+            "verified_terminal_delivery_dropoff_or_cancel_result",
+        ]
+    source_not_proven = (
+        list(source.get("not_proven"))
+        if isinstance(source.get("not_proven"), list)
+        else []
+    )
+    not_proven = _dedupe_ordered(
+        source_not_proven + list(CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_NOT_PROVEN)
+    )
+    fallback_copy = (
+        "cloud_command_lifecycle_audit_export is metadata-only; "
+        "source=software_proof; not_proven; safe_to_control=false; "
+        "delivery_success=false; primary_actions_enabled=false."
+    )
+    safe_copy = _cloud_guard_safe_text(
+        source.get("copy_export_text") or source.get("safe_copy") or source.get("safe_phone_copy"),
+        fallback_copy,
+    )
+    if (
+        "safe_to_control=false" not in safe_copy
+        or "delivery_success=false" not in safe_copy
+        or "primary_actions_enabled=false" not in safe_copy
+    ):
+        safe_copy = fallback_copy
+    return {
+        "schema": CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_SCHEMA,
+        "schema_version": 1,
+        "capability": "cloud_command_lifecycle_audit_export",
+        "source": "software_proof",
+        "evidence_boundary": CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_EVIDENCE_BOUNDARY,
+        "status": status,
+        "command_id": command_id,
+        "evidence_ref": evidence_ref,
+        "lifecycle_state": _cloud_guard_safe_text(source.get("lifecycle_state"), "not_proven"),
+        "lifecycle_timeline": safe_timeline,
+        "terminal_result_status": _cloud_guard_safe_text(
+            source.get("terminal_result_status"),
+            "verified_terminal_result_not_proven",
+        ),
+        "next_required_evidence": next_required_evidence,
+        "copy_export_text": safe_copy,
+        "safe_copy": safe_copy,
+        "safe_phone_copy": _cloud_guard_safe_text(
+            source.get("safe_phone_copy"),
+            "命令 lifecycle audit 仍为 software proof；主操作保持不可用。",
+        ),
+        "false_states": list(CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_FALSE_STATES),
+        "not_proven": not_proven,
+        "remote_ready": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "missing_lifecycle_state": bool(missing_lifecycle_state),
+        "conflicting_lifecycle_state": bool(conflicting_lifecycle_state),
         "raw_material_redacted": bool(unsafe),
     }
 
@@ -60876,6 +60998,59 @@ def build_diagnostics_payload(
     cloud_support_handoff_safe_export_summary = summarize_cloud_support_handoff_safe_export(
         cloud_support_handoff_safe_export_source
     )
+    cloud_command_lifecycle_status_source = dict(latest_status)
+    # 上面的 guard 会把 latest_status.remote_readiness 覆盖成 canonical safe state；
+    # lifecycle audit 仍需要同一 safe command_id，因此优先读覆盖前的 guard source。
+    for lifecycle_remote_source in (
+        terminal_result_verification_source,
+        ack_accepted_result_pending_source,
+        cancel_pending_source,
+        ack_lookup_pending_source,
+        latest_status.get("remote_readiness")
+        if isinstance(latest_status.get("remote_readiness"), dict)
+        else {},
+        diagnostics_source.get("remote_readiness")
+        if isinstance(diagnostics_source.get("remote_readiness"), dict)
+        else {},
+    ):
+        if not isinstance(lifecycle_remote_source, dict):
+            continue
+        lifecycle_state = str(
+            lifecycle_remote_source.get("degradation_state")
+            or lifecycle_remote_source.get("state")
+            or ""
+        ).strip()
+        if lifecycle_state:
+            cloud_command_lifecycle_status_source["remote_readiness"] = lifecycle_remote_source
+            break
+    cloud_command_lifecycle_audit_export_source = (
+        latest_status.get("cloud_command_lifecycle_audit_export")
+        if isinstance(latest_status.get("cloud_command_lifecycle_audit_export"), dict)
+        else latest_status.get("cloud_command_lifecycle_audit_export_summary")
+        if isinstance(latest_status.get("cloud_command_lifecycle_audit_export_summary"), dict)
+        else latest_status.get("robot_diagnostics_cloud_command_lifecycle_audit_export_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_cloud_command_lifecycle_audit_export_summary"),
+            dict,
+        )
+        else diagnostics_source.get("cloud_command_lifecycle_audit_export")
+        if isinstance(diagnostics_source.get("cloud_command_lifecycle_audit_export"), dict)
+        else diagnostics_source.get("cloud_command_lifecycle_audit_export_summary")
+        if isinstance(diagnostics_source.get("cloud_command_lifecycle_audit_export_summary"), dict)
+        else diagnostics_source.get("robot_diagnostics_cloud_command_lifecycle_audit_export_summary")
+        if isinstance(
+            diagnostics_source.get("robot_diagnostics_cloud_command_lifecycle_audit_export_summary"),
+            dict,
+        )
+        else build_cloud_command_lifecycle_audit_export(
+            cloud_command_lifecycle_status_source,
+            {"remote_readiness": cloud_command_lifecycle_status_source.get("remote_readiness", {})},
+            diagnostics_source,
+        )
+    )
+    cloud_command_lifecycle_audit_export_summary = summarize_cloud_command_lifecycle_audit_export(
+        cloud_command_lifecycle_audit_export_source
+    )
     task_terminal_field_material_intake_source = (
         _task_terminal_field_material_intake_source_from_payloads(
             latest_status,
@@ -63198,6 +63373,9 @@ def build_diagnostics_payload(
     latest_status.pop("cloud_support_handoff_safe_export", None)
     latest_status.pop("cloud_support_handoff_safe_export_summary", None)
     latest_status.pop("robot_diagnostics_cloud_support_handoff_safe_export_summary", None)
+    latest_status.pop("cloud_command_lifecycle_audit_export", None)
+    latest_status.pop("cloud_command_lifecycle_audit_export_summary", None)
+    latest_status.pop("robot_diagnostics_cloud_command_lifecycle_audit_export_summary", None)
     latest_status.pop("cloud_cancel_pending_command_safety_guard", None)
     latest_status.pop("cloud_cancel_pending_command_safety_guard_summary", None)
     latest_status.pop("robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary", None)
@@ -65886,6 +66064,13 @@ def build_diagnostics_payload(
         cloud_support_handoff_safe_export_summary=cloud_support_handoff_safe_export_summary,
         robot_diagnostics_cloud_support_handoff_safe_export_summary=(
             cloud_support_handoff_safe_export_summary
+        ),
+        cloud_command_lifecycle_audit_export=cloud_command_lifecycle_audit_export_summary,
+        cloud_command_lifecycle_audit_export_summary=(
+            cloud_command_lifecycle_audit_export_summary
+        ),
+        robot_diagnostics_cloud_command_lifecycle_audit_export_summary=(
+            cloud_command_lifecycle_audit_export_summary
         ),
         route_task_rehearsal=summarize_route_task_rehearsal_artifact(
             route_task_rehearsal_artifact_ref

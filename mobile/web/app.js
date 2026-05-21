@@ -33,6 +33,8 @@ const CLOUD_ACK_ACCEPTED_RESULT_PENDING_BOUNDARY = "software_proof_docker_cloud_
 const CLOUD_ACK_ACCEPTED_RESULT_PENDING_COPY = "命令已接收/处理中；尚无真实 delivery、dropoff 或 cancel result。主操作保持禁用，请等待结果或联系支持。";
 const CLOUD_TERMINAL_RESULT_VERIFICATION_BOUNDARY = "software_proof_docker_cloud_terminal_result_verification_guard";
 const CLOUD_TERMINAL_RESULT_VERIFICATION_COPY = "命令/result 字段存在，但 verified terminal delivery、dropoff 或 cancel result 仍缺失；主操作保持禁用，请等待结果或联系支持。";
+const CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_BOUNDARY = "software_proof_docker_cloud_command_lifecycle_audit_export_gate";
+const CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_COPY = "命令生命周期审计只读可见；缺 verified terminal delivery/dropoff/cancel result，主操作保持禁用。";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY = "software_proof_docker_cloud_poll_backoff_rate_limit_guard";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_COPY = "远程控制正在等待重试退避窗口；窗口结束前 Start Delivery、Confirm Dropoff、Cancel 保持禁用。";
 const CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_BOUNDARY = "software_proof_docker_cloud_support_handoff_safe_export_gate";
@@ -284,6 +286,7 @@ const REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_HANDOFF_REVIEW_HANDOFF_SCHEMA
 const REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_HANDOFF_REVIEW_HANDOFF_SUMMARY_SCHEMA = "trashbot.mobile_real_device_field_trial_acceptance_execution_handoff_review_handoff_summary.v1";
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|complete artifact|artifact|raw browser event|raw event|raw promise|complete ua|full ua|完整 ua|raw robot response|raw intake json|robot\/internal|internal technical)/i;
 const UNSAFE_CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_TEXT = /(authorization|bearer|token|github[_ -]?token|github action|gh workflow|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|robot\/internal|internal technical|password|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
+const UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|command route|ack route|cursor route|robot\/internal|internal technical|password|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_OPERATOR_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|raw ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|raw robot response|robot\/internal|internal technical|password)/i;
 const UNSAFE_PC_ROUTE_DEBUG_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|raw ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
@@ -501,6 +504,7 @@ let latestFieldEvidenceRealMaterialOwnerAckIntake = null;
 let latestFieldEvidenceRealMaterialOwnerAckReviewDecision = null;
 let latestFieldEvidenceMaterialBlockerEscalationPack = null;
 let latestCloudSupportHandoffSafeExport = null;
+let latestCloudCommandLifecycleAuditExport = null;
 let latestWaveRoverFeedbackReplay = null;
 let latestWaveRoverHilPacketIntake = null;
 let latestWaveRoverHilPacketReviewDecision = null;
@@ -1313,6 +1317,15 @@ function safeCloudSupportHandoffSafeExportText(value, fallback = "not_proven") {
   // 支持交接导出只允许 phone-safe 摘要；raw 诊断、凭证、ACK/cursor 或控制语义全部 fail closed。
   const text = safeText(value, fallback);
   if (UNSAFE_CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeCloudCommandLifecycleAuditExportText(value, fallback = "not_proven") {
+  // lifecycle audit/export 只展示后端脱敏摘要，拒绝 raw command、ACK/cursor 路由和任何成功/控制授权暗示。
+  const text = safeText(value, fallback);
+  if (UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -36666,6 +36679,304 @@ function renderCloudSupportHandoffSafeExport(status) {
   $("cloudSupportHandoffSafeExportHint").textContent = summary.recovery_hint;
 }
 
+function cloudCommandLifecycleAuditExportCandidate(status, readiness, diagnostics) {
+  // summary 只能来自既有 status/readiness/diagnostics 聚合面；这里不新增 raw diagnostics、ACK 或 cursor 拉取。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifactSummary = status?.cloud_command_lifecycle_audit_export?.summary ||
+    readiness?.cloud_command_lifecycle_audit_export?.summary ||
+    diagnostics?.cloud_command_lifecycle_audit_export?.summary ||
+    diagnosticsSummary.cloud_command_lifecycle_audit_export?.summary ||
+    nestedDiagnosticsSummary.cloud_command_lifecycle_audit_export?.summary ||
+    nestedDiagnosticsInnerSummary.cloud_command_lifecycle_audit_export?.summary ||
+    statusDiagnosticsSummary.cloud_command_lifecycle_audit_export?.summary;
+  return [
+    status?.robot_diagnostics_cloud_command_lifecycle_audit_export_summary,
+    readiness?.robot_diagnostics_cloud_command_lifecycle_audit_export_summary,
+    diagnostics?.robot_diagnostics_cloud_command_lifecycle_audit_export_summary,
+    diagnosticsReadiness.robot_diagnostics_cloud_command_lifecycle_audit_export_summary,
+    diagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_audit_export_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_audit_export_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_cloud_command_lifecycle_audit_export_summary,
+    statusDiagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_audit_export_summary,
+    status?.cloud_command_lifecycle_audit_export_summary,
+    readiness?.cloud_command_lifecycle_audit_export_summary,
+    diagnostics?.cloud_command_lifecycle_audit_export_summary,
+    diagnosticsReadiness.cloud_command_lifecycle_audit_export_summary,
+    diagnosticsSummary.cloud_command_lifecycle_audit_export_summary,
+    nestedDiagnosticsSummary.cloud_command_lifecycle_audit_export_summary,
+    nestedDiagnosticsInnerSummary.cloud_command_lifecycle_audit_export_summary,
+    statusDiagnosticsSummary.cloud_command_lifecycle_audit_export_summary,
+    artifactSummary,
+  ].find((value) => value && typeof value === "object") || null;
+}
+
+function cloudCommandLifecycleAuditExportList(value, fallback) {
+  // timeline 和 next_required_evidence 只保留短 phone-safe 文案；对象会被压成 key=value 摘要。
+  const items = Array.isArray(value) ? value : Object.entries(value || {});
+  const safeItems = items
+    .map((item) => {
+      if (Array.isArray(item)) {
+        const key = safeCloudCommandLifecycleAuditExportText(item[0], "");
+        const detail = safeCloudCommandLifecycleAuditExportText(item[1], "");
+        return key && detail ? `${key}=${detail}` : key || detail;
+      }
+      if (item && typeof item === "object") {
+        const step = safeCloudCommandLifecycleAuditExportText(
+          item.stage || item.step || item.lifecycle_state || item.status || item.safe_summary,
+          "",
+        );
+        const detail = safeCloudCommandLifecycleAuditExportText(
+          item.result || item.summary || item.safe_phone_copy || item.next_action,
+          "",
+        );
+        return step && detail ? `${step}: ${detail}` : step || detail;
+      }
+      return safeCloudCommandLifecycleAuditExportText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 12) : [fallback];
+}
+
+function cloudCommandLifecycleAuditExportNotProvenList(value) {
+  // 本 panel 只帮助追 verified terminal result，不证明真实云、真实手机、HIL 或送达闭环。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "source=software_proof",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "real_public_https_tls",
+    "real_4g_sim",
+    "oss_cdn_live_traffic",
+    "production_db_queue",
+    "true_phone_browser_proof",
+    "verified_terminal_result",
+    "dropoff_cancel_completion",
+    "hil_pass",
+    "delivery_success",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 24);
+}
+
+function cloudCommandLifecycleAuditExportCopyTextFromValue(value) {
+  // 复制/导出只接受后端 copy_export_text；缺字段或命中敏感词时按钮保持 disabled。
+  const source = value?.copy_export_text;
+  if (typeof source !== "string" || !source.trim()) {
+    return "";
+  }
+  return safeCloudCommandLifecycleAuditExportText(source, "");
+}
+
+function cloudCommandLifecycleAuditExportFromStatus(status, readiness, diagnostics) {
+  const provided = cloudCommandLifecycleAuditExportCandidate(status, readiness, diagnostics) || {};
+  const copyExportText = cloudCommandLifecycleAuditExportCopyTextFromValue(provided);
+  const safeCommandId = safeCloudCommandLifecycleAuditExportText(
+    provided.safe_command_id || provided.command_id,
+    "command_id=not_proven",
+  );
+  const safeEvidenceRef = safeCloudCommandLifecycleAuditExportText(
+    provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+    "evidence_ref=not_proven",
+  );
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.cloud_command_lifecycle_audit_export_summary.v1",
+    capability: safeCloudCommandLifecycleAuditExportText(
+      provided.capability,
+      "cloud_command_lifecycle_audit_export",
+    ),
+    source: safeCloudCommandLifecycleAuditExportText(provided.source, "software_proof"),
+    audit_status: safeCloudCommandLifecycleAuditExportText(
+      provided.audit_status || provided.lifecycle_status || provided.status || provided.overall_status,
+      "blocked_missing_cloud_command_lifecycle_audit_export_not_proven",
+    ),
+    safe_command_id: safeCommandId,
+    safe_evidence_ref: safeEvidenceRef,
+    lifecycle_timeline: cloudCommandLifecycleAuditExportList(
+      provided.lifecycle_timeline || provided.timeline || provided.lifecycle_stages,
+      "等待 command enqueue、robot poll、ACK lookup、accepted/processing、terminal-result pending 摘要。",
+    ),
+    terminal_result_status: safeCloudCommandLifecycleAuditExportText(
+      provided.terminal_result_status || provided.result_status || provided.verified_terminal_result_status,
+      "missing_verified_terminal_delivery_dropoff_cancel_result_not_proven",
+    ),
+    next_required_evidence: cloudCommandLifecycleAuditExportList(
+      provided.next_required_evidence || provided.required_evidence,
+      "需要 verified terminal delivery/dropoff/cancel result 和真实外部材料。",
+    ),
+    copy_export_text: copyExportText,
+    copy_export_status: copyExportText ? "copy_export_text_available" : "blocked copy unavailable",
+    safe_phone_copy: safeCloudCommandLifecycleAuditExportText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary,
+      CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_COPY,
+    ),
+    recovery_hint: safeCloudCommandLifecycleAuditExportText(
+      provided.recovery_hint || provided.retry_hint,
+      "等待 Robot/API 或现场 owner 回填 verified terminal result；手机端不自动重放、不请求 ACK/cursor，也不提交控制动作。",
+    ),
+    evidence_boundary: safeCloudCommandLifecycleAuditExportText(
+      provided.evidence_boundary || provided.proof_boundary,
+      CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_BOUNDARY,
+    ),
+    boundary_flags: "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: cloudCommandLifecycleAuditExportNotProvenList(provided),
+  };
+}
+
+function cloudCommandLifecycleAuditExportCopyPayload(summary) {
+  // 下载和复制共用同一份白名单 payload，且只包含 safe command_id、safe evidence_ref 和后端 copy_export_text。
+  const source = summary?.schema
+    ? summary
+    : cloudCommandLifecycleAuditExportFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  if (!source.copy_export_text) {
+    return null;
+  }
+  return {
+    schema: "trashbot.cloud_command_lifecycle_audit_export_copy.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    capability: "cloud_command_lifecycle_audit_export",
+    safe_command_id: source.safe_command_id,
+    safe_evidence_ref: source.safe_evidence_ref,
+    terminal_result_status: source.terminal_result_status,
+    next_required_evidence: source.next_required_evidence,
+    copy_export_text: source.copy_export_text,
+    evidence_boundary: CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_BOUNDARY,
+    not_proven: source.not_proven,
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+  };
+}
+
+function ensureCloudCommandLifecycleAuditExportPanel() {
+  // lifecycle panel 紧跟云支持导出，用户先看到云控阻塞，再复制同一 command/evidence_ref 审计摘要。
+  let panel = $("cloudCommandLifecycleAuditExportPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("cloudSupportHandoffSafeExportTitle")?.closest("section") ||
+    $("cloudReadinessTitle")?.closest("section") ||
+    $("supportTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "cloudCommandLifecycleAuditExportPanel";
+  panel.className = "cloud-command-lifecycle-audit-export-panel";
+  panel.setAttribute("aria-labelledby", "cloudCommandLifecycleAuditExportTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="cloudCommandLifecycleAuditExportTitle">云命令生命周期审计导出</h2>
+      <span id="cloudCommandLifecycleAuditExportBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="cloudCommandLifecycleAuditExportCopy" class="message">
+      等待 robot_diagnostics_cloud_command_lifecycle_audit_export_summary。
+    </p>
+    <dl class="cloud-command-lifecycle-audit-export-grid">
+      <div><dt>Audit Status</dt><dd id="cloudCommandLifecycleAuditExportStatus">blocked_missing_cloud_command_lifecycle_audit_export_not_proven</dd></div>
+      <div><dt>Command ID</dt><dd id="cloudCommandLifecycleAuditExportCommandId">command_id=not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="cloudCommandLifecycleAuditExportEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Terminal Result</dt><dd id="cloudCommandLifecycleAuditExportTerminalResult">missing_verified_terminal_delivery_dropoff_cancel_result_not_proven</dd></div>
+      <div><dt>Copy / Export</dt><dd id="cloudCommandLifecycleAuditExportCopyState">blocked copy unavailable</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="cloudCommandLifecycleAuditExportBoundary">software_proof_docker_cloud_command_lifecycle_audit_export_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="cloudCommandLifecycleAuditExportFlags">source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="cloudCommandLifecycleAuditExportNotProven">真实公网、4G、OSS/CDN、DB/queue、真实手机/browser、verified terminal result、HIL 和 delivery_success=false 边界未解除。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section>
+        <h3>Lifecycle Timeline</h3>
+        <ol id="cloudCommandLifecycleAuditExportTimeline" class="handoff-checklist">
+          <li>等待 lifecycle timeline。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Next Required Evidence</h3>
+        <ol id="cloudCommandLifecycleAuditExportNextEvidence" class="handoff-checklist">
+          <li>等待 next required evidence。</li>
+        </ol>
+      </section>
+    </div>
+    <div class="bundle-copy-row">
+      <button id="copyCloudCommandLifecycleAuditExportButton" type="button" disabled>复制生命周期审计</button>
+      <button id="downloadCloudCommandLifecycleAuditExportButton" type="button" disabled>导出生命周期 JSON</button>
+      <span id="cloudCommandLifecycleAuditExportCopyStatus" class="hint">blocked copy unavailable</span>
+    </div>
+    <pre id="cloudCommandLifecycleAuditExportSafeCopy" class="safe-copy" aria-label="cloud_command_lifecycle_audit_export copy_export_text">blocked copy unavailable</pre>
+    <p id="cloudCommandLifecycleAuditExportHint" class="hint">
+      本 panel 只消费 Robot/API 提供的 safe summary 和 copy_export_text；不会请求 raw diagnostics、command route、ACK route、cursor route、raw artifact，也不会 replay/resubmit 或启用 Start Delivery、Confirm Dropoff、Cancel。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderCloudCommandLifecycleAuditExport(status) {
+  const panel = ensureCloudCommandLifecycleAuditExportPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = cloudCommandLifecycleAuditExportFromStatus(status, readiness, latestDiagnostics);
+  latestCloudCommandLifecycleAuditExport = summary;
+  const copyPayload = cloudCommandLifecycleAuditExportCopyPayload(summary);
+  const badge = $("cloudCommandLifecycleAuditExportBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 lifecycle 审计摘要" : "lifecycle audit not_proven";
+  $("cloudCommandLifecycleAuditExportCopy").textContent = summary.safe_phone_copy;
+  $("cloudCommandLifecycleAuditExportStatus").textContent = `${summary.source} / ${summary.audit_status}`;
+  $("cloudCommandLifecycleAuditExportCommandId").textContent = summary.safe_command_id;
+  $("cloudCommandLifecycleAuditExportEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("cloudCommandLifecycleAuditExportTerminalResult").textContent = summary.terminal_result_status;
+  $("cloudCommandLifecycleAuditExportCopyState").textContent = summary.copy_export_status;
+  $("cloudCommandLifecycleAuditExportBoundary").textContent = summary.evidence_boundary;
+  $("cloudCommandLifecycleAuditExportFlags").textContent = summary.boundary_flags;
+  $("cloudCommandLifecycleAuditExportNotProven").textContent = summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleAuditExportTimeline",
+    summary.lifecycle_timeline,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleAuditExportNextEvidence",
+    summary.next_required_evidence,
+  );
+  $("copyCloudCommandLifecycleAuditExportButton").disabled = !copyPayload;
+  $("downloadCloudCommandLifecycleAuditExportButton").disabled = !copyPayload;
+  $("cloudCommandLifecycleAuditExportSafeCopy").textContent = copyPayload
+    ? JSON.stringify(copyPayload, null, 2)
+    : "blocked copy unavailable";
+  $("cloudCommandLifecycleAuditExportCopyStatus").textContent = summary.copy_export_status;
+  $("cloudCommandLifecycleAuditExportHint").textContent = summary.recovery_hint;
+}
+
 function renderMobileDeviceAcceptance(status) {
   const readiness = readinessFromStatus(status);
   const summary = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics);
@@ -40440,6 +40751,14 @@ function renderDiagnosticsSummary(payload) {
         latestDiagnostics || {},
       ).export_status,
     ],
+    [
+      "cloud_command_lifecycle_audit_export",
+      cloudCommandLifecycleAuditExportFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).audit_status,
+    ],
     ["wave_rover_feedback_replay", waveRoverFeedbackReplay.replay_status],
     ["wave_rover_hil_packet_intake", waveRoverHilPacketIntake.packet_status],
     ["wave_rover_hil_packet_review_decision", waveRoverHilPacketReviewDecision.review_decision],
@@ -40767,6 +41086,7 @@ function renderStatus(status) {
   renderWaveRoverHilPacketExecutionPack(status);
   renderCloudReadiness(status);
   renderCloudSupportHandoffSafeExport(status);
+  renderCloudCommandLifecycleAuditExport(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
   renderMobileDeviceHandoffSession(status);
@@ -41087,6 +41407,7 @@ async function openDiagnostics() {
     renderFieldEvidenceRealMaterialOwnerAckReviewDecision(latestStatus || {});
     renderFieldEvidenceMaterialBlockerEscalationPack(latestStatus || {});
     renderCloudSupportHandoffSafeExport(latestStatus || {});
+    renderCloudCommandLifecycleAuditExport(latestStatus || {});
     renderWaveRoverFeedbackReplay(latestStatus || {});
     renderWaveRoverHilPacketIntake(latestStatus || {});
     renderWaveRoverHilPacketReviewDecision(latestStatus || {});
@@ -41161,6 +41482,7 @@ async function submitAction(actionName) {
 function wireEvents() {
   $("diagnosticsButton").addEventListener("click", openDiagnostics);
   ensureCloudSupportHandoffSafeExportPanel();
+  ensureCloudCommandLifecycleAuditExportPanel();
   ensureHardwareBaselineSourceAlignmentPanel();
   ensureHardwareSensorProcurementExecutionPackPanel();
   ensureHardwareSensorProcurementReceiptIntakePanel();
@@ -41252,6 +41574,42 @@ function wireEvents() {
     downloadJsonPackage("cloud_support_handoff_safe_export_copy.json", payload);
     $("cloudSupportHandoffSafeExportCopyStatus").textContent =
       "已导出 cloud support handoff whitelist-only JSON。";
+  });
+  $("copyCloudCommandLifecycleAuditExportButton").addEventListener("click", async () => {
+    const copyPayload = cloudCommandLifecycleAuditExportCopyPayload(
+      latestCloudCommandLifecycleAuditExport || {},
+    );
+    if (!copyPayload) {
+      $("cloudCommandLifecycleAuditExportCopyStatus").textContent = "blocked copy unavailable";
+      $("cloudCommandLifecycleAuditExportSafeCopy").textContent = "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("cloudCommandLifecycleAuditExportSafeCopy").textContent = payload;
+    // 生命周期审计复制只使用后端 copy_export_text，不从 UI fallback 或 raw command 合成材料。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("cloudCommandLifecycleAuditExportCopyStatus").textContent =
+        "已复制 cloud command lifecycle audit export。";
+    } catch (_error) {
+      $("cloudCommandLifecycleAuditExportCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadCloudCommandLifecycleAuditExportButton").addEventListener("click", () => {
+    const copyPayload = cloudCommandLifecycleAuditExportCopyPayload(
+      latestCloudCommandLifecycleAuditExport || {},
+    );
+    if (!copyPayload) {
+      $("cloudCommandLifecycleAuditExportCopyStatus").textContent = "blocked copy unavailable";
+      $("cloudCommandLifecycleAuditExportSafeCopy").textContent = "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("cloudCommandLifecycleAuditExportSafeCopy").textContent = payload;
+    downloadJsonPackage("cloud_command_lifecycle_audit_export_copy.json", payload);
+    $("cloudCommandLifecycleAuditExportCopyStatus").textContent =
+      "已导出 cloud command lifecycle audit whitelist-only JSON。";
   });
   $("copyMobileRouteElevatorFieldDevicePrecheckButton").addEventListener("click", async () => {
     const payload = JSON.stringify(

@@ -590,6 +590,36 @@ aligned to local source boundaries; it is not real procurement, installation,
 wiring, power, calibration, HIL, field, PR thread resolved, Objective 5
 external proof, or delivery success.
 
+## Cloud Command Lifecycle Audit/Export Hardware Boundary
+
+`cloud_command_lifecycle_audit_export` is an Objective 5 software-proof
+operator/support audit surface. Its evidence boundary is
+`software_proof_docker_cloud_command_lifecycle_audit_export_gate`, and every
+hardware-facing consumer must preserve `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`.
+
+The sprint that introduces this audit/export surface uses the following PR #5
+planning boundary: `PRRT_kwDOSWB9286CJ3tQ` and `PRRT_kwDOSWB9286CJ3tU` are
+treated as resolved, while `PRRT_kwDOSWB9286CJ3tX` remains
+`hardware_material_pending`; comment `3269642220` is a software-proof
+publication only and is not reviewer resolution or real material evidence.
+
+The audit/export summary does not prove WAVE ROVER/UART/HIL, real serial
+connectivity, 2D LiDAR or ToF source/procurement/install/calibration,
+route/elevator field pass, dropoff/cancel completion, verified terminal result,
+or delivery success. It also does not change hardware config, launch defaults,
+serial device selection, baud rate, command mode, sensor count, speed limits,
+mounting assumptions, wiring assumptions, or HIL entry status.
+
+The explicit vendor/source boundary remains `docs/vendor/VENDOR_INDEX.md`,
+`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`,
+`docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`, and
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`. These files
+show local WAVE ROVER / UART JSON / firmware/vendor-app reference behavior
+only; they do not prove powered bench evidence, real UART logs, real sensor
+materials, field completion, or safe control.
+
 ## Navigation/Sensing Baseline (Product Target, Procurement Validation Pending)
 
 - Target baseline combo: monocular camera + one 2D LiDAR + ToF safety ring.

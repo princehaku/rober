@@ -1,0 +1,86 @@
+{
+  "robot_diagnostics_cloud_command_lifecycle_audit_export_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_audit_export_summary.v1",
+    "capability": "cloud_command_lifecycle_audit_export",
+    "audit_status": "ready_for_lifecycle_audit_export_not_proven",
+    "source": "software_proof",
+    "command_id": "cmd_lifecycle_audit_20260522_0001",
+    "safe_command_id": "command_id=cmd_lifecycle_audit_20260522_0001",
+    "evidence_ref": "cloud_command_lifecycle_audit_export_fixture_20260522_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_audit_export_fixture_20260522_0001",
+    "lifecycle_timeline": [
+      "command_enqueued=not_proven_safe_queue_record",
+      "robot_polled_next_command=not_proven_safe_poll_record",
+      "ack_lookup=accepted_processing_only_not_delivery_success",
+      "accepted_processing=missing_verified_terminal_result_not_proven",
+      "terminal_result=missing_verified_terminal_delivery_dropoff_cancel_result_not_proven"
+    ],
+    "terminal_result_status": "missing_verified_terminal_delivery_dropoff_cancel_result_not_proven",
+    "next_required_evidence": [
+      "verified terminal delivery result under same safe evidence_ref",
+      "verified dropoff or cancel completion under same safe evidence_ref",
+      "real public HTTPS/TLS, 4G/SIM, OSS/CDN, production DB/queue, and true phone/browser evidence remain pending"
+    ],
+    "copy_export_text": "cloud_command_lifecycle_audit_export：command_id=cmd_lifecycle_audit_20260522_0001；evidence_ref=cloud_command_lifecycle_audit_export_fixture_20260522_0001；source=software_proof；not_proven；terminal_result_status=missing_verified_terminal_delivery_dropoff_cancel_result_not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+    "safe_phone_copy": "命令生命周期已形成只读审计摘要；缺 verified terminal delivery/dropoff/cancel result，主操作保持禁用。",
+    "recovery_hint": "把 copy_export_text 交给支持人员后，等待 Robot/API 或现场 owner 回填 verified terminal result；手机端不重放、不请求 ACK/cursor，也不提交控制动作。",
+    "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_audit_export_gate",
+    "proof_boundary": "software_proof_docker_cloud_command_lifecycle_audit_export_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "real_public_https_tls",
+      "real_4g_sim",
+      "oss_cdn_live_traffic",
+      "production_db_queue",
+      "true_phone_browser_proof",
+      "verified_terminal_result",
+      "hil_pass",
+      "delivery_success"
+    ]
+  },
+  "cloud_command_lifecycle_audit_export_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_audit_export_summary.v1",
+    "capability": "cloud_command_lifecycle_audit_export",
+    "audit_status": "ready_for_lifecycle_audit_export_not_proven",
+    "source": "software_proof",
+    "command_id": "cmd_lifecycle_audit_20260522_0001",
+    "safe_command_id": "command_id=cmd_lifecycle_audit_20260522_0001",
+    "evidence_ref": "cloud_command_lifecycle_audit_export_fixture_20260522_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_audit_export_fixture_20260522_0001",
+    "terminal_result_status": "missing_verified_terminal_delivery_dropoff_cancel_result_not_proven",
+    "copy_export_text": "cloud_command_lifecycle_audit_export：command_id=cmd_lifecycle_audit_20260522_0001；evidence_ref=cloud_command_lifecycle_audit_export_fixture_20260522_0001；source=software_proof；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+    "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_audit_export_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false"
+    ]
+  },
+  "cloud_command_lifecycle_audit_export": {
+    "summary": {
+      "schema": "trashbot.cloud_command_lifecycle_audit_export_summary.v1",
+      "capability": "cloud_command_lifecycle_audit_export",
+      "audit_status": "ready_for_lifecycle_audit_export_not_proven",
+      "source": "software_proof",
+      "command_id": "cmd_lifecycle_audit_20260522_0001",
+      "evidence_ref": "cloud_command_lifecycle_audit_export_fixture_20260522_0001",
+      "terminal_result_status": "missing_verified_terminal_delivery_dropoff_cancel_result_not_proven",
+      "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_audit_export_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

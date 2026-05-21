@@ -1,5 +1,40 @@
 # Operator Gateway Diagnostics
 
+## robot_diagnostics_cloud_command_lifecycle_audit_export_summary
+
+Robot/API exposes `cloud_command_lifecycle_audit_export`,
+`cloud_command_lifecycle_audit_export_summary`, and
+`robot_diagnostics_cloud_command_lifecycle_audit_export_summary` on
+`/api/status` and `/api/diagnostics` for mobile/web and support handoff to
+copy a phone-safe command lifecycle audit.
+
+- API schema: `trashbot.cloud_command_lifecycle_audit_export_summary.v1`
+- Capability: `cloud_command_lifecycle_audit_export`
+- Evidence boundary:
+  `software_proof_docker_cloud_command_lifecycle_audit_export_gate`
+- Required safe fields: safe `command_id`, safe `evidence_ref`,
+  `lifecycle_timeline`, `terminal_result_status`, `next_required_evidence`,
+  and `copy_export_text`
+
+The summary is metadata-only and read-only. It binds one safe `command_id` to
+one safe `evidence_ref`, then lists lifecycle stages for command identity,
+queue state, robot poll/status state, ACK lookup or accepted/processing state,
+and the still-missing verified terminal result.
+
+Missing safe `command_id`, missing safe `evidence_ref`, conflicting command
+IDs across lifecycle sources, unsafe copy, raw paths, credentials, URLs,
+tracebacks, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details,
+success wording, `delivery_success=true`, `primary_actions_enabled=true`, or
+`safe_to_control=true` must fail closed as blocked/not_proven.
+
+The required false-state boundary is `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`. It must not enable Start Delivery, Confirm
+Dropoff, Cancel, ACK posting, cursor updates, persistence updates, command
+replay/resubmit, terminal ACK, Nav2, route execution, WAVE ROVER, HIL,
+verified delivery/dropoff/cancel result, PR #5 reviewer resolution, or delivery
+success.
+
 ## cloud_support_handoff_safe_export
 
 Robot/API exposes `cloud_support_handoff_safe_export` on `/api/status` and

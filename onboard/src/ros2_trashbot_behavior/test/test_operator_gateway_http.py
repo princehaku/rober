@@ -15,6 +15,8 @@ sys.path.insert(0, str(BEHAVIOR_PACKAGE_ROOT))
 
 from ros2_trashbot_behavior.operator_gateway_http import (
     ELEVATOR_ASSIST_SPEAKER_PROMPT,
+    CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_EVIDENCE_BOUNDARY,
+    CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_SCHEMA,
     CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_EVIDENCE_BOUNDARY,
     CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA,
     MockCloudStore,
@@ -38,6 +40,7 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     build_phone_readiness,
     build_phone_support_bundle,
     build_cloud_support_handoff_safe_export,
+    build_cloud_command_lifecycle_audit_export,
     build_voice_prompt_readiness,
     make_handler,
     normalize_elevator_assist,
@@ -1629,6 +1632,90 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, encoded)
 
+    def test_cloud_command_lifecycle_audit_export_binds_safe_command_and_evidence_ref(self):
+        status = status_payload(
+            "remote_degraded",
+            "accepted command is waiting for verified terminal result",
+            can_collect=True,
+            can_confirm_dropoff=True,
+            can_cancel=True,
+        )
+        status["evidence_ref"] = "ev-cloud-lifecycle-001"
+        readiness = build_phone_readiness(
+            status,
+            remote_readiness={
+                "capability": "cloud_ack_accepted_result_pending_guard",
+                "degradation_state": "ack_accepted_result_pending",
+                "last_command_ack": "cmd-safe-001",
+                "safe_phone_copy": "云端 ACK 已 accepted/processing，但还没有真实送达结果。",
+                "safe_to_control": True,
+                "delivery_success": True,
+                "primary_actions_enabled": True,
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        summary = build_cloud_command_lifecycle_audit_export(
+            status,
+            readiness,
+            now=1778357001.0,
+        )
+
+        encoded = json.dumps(summary, ensure_ascii=False).lower()
+        self.assertEqual(summary["schema"], CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_SCHEMA)
+        self.assertEqual(summary["capability"], "cloud_command_lifecycle_audit_export")
+        self.assertEqual(summary["evidence_boundary"], CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_EVIDENCE_BOUNDARY)
+        self.assertEqual(summary["command_id"], "cmd-safe-001")
+        self.assertEqual(summary["evidence_ref"], "ev-cloud-lifecycle-001")
+        self.assertEqual(summary["lifecycle_state"], "ack_accepted_result_pending")
+        self.assertEqual(
+            summary["terminal_result_status"],
+            "accepted_processing_missing_terminal_result_not_proven",
+        )
+        self.assertIn("verified_terminal_delivery_dropoff_or_cancel_result", summary["next_required_evidence"])
+        self.assertIn("command_id=cmd-safe-001", summary["copy_export_text"])
+        self.assertIn("safe_to_control=false", summary["copy_export_text"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["robot_command_side_effects_allowed"])
+        for forbidden in ("authorization", "bearer", "token", "/cmd_vel", "traceback", "/tmp/"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_command_lifecycle_audit_export_missing_or_conflicting_state_fails_closed(self):
+        missing = build_cloud_command_lifecycle_audit_export(
+            {"remote_readiness": {"degradation_state": "ack_lookup_pending"}},
+            {"remote_readiness": {"degradation_state": "ack_lookup_pending"}},
+        )
+        conflicting = build_cloud_command_lifecycle_audit_export(
+            {
+                "evidence_ref": "ev-cloud-lifecycle-002",
+                "command_id": "cmd-a",
+                "remote_readiness": {
+                    "degradation_state": "terminal_result_pending",
+                    "last_command_ack": "cmd-b",
+                },
+            },
+            {
+                "remote_readiness": {
+                    "degradation_state": "terminal_result_pending",
+                    "last_command_ack": "cmd-b",
+                }
+            },
+        )
+
+        self.assertEqual(missing["status"], "blocked_missing_lifecycle_state_not_proven")
+        self.assertTrue(missing["missing_lifecycle_state"])
+        self.assertFalse(missing["safe_to_control"])
+        self.assertFalse(missing["delivery_success"])
+        self.assertFalse(missing["primary_actions_enabled"])
+        self.assertEqual(conflicting["status"], "blocked_conflicting_lifecycle_state_not_proven")
+        self.assertTrue(conflicting["conflicting_lifecycle_state"])
+        self.assertFalse(conflicting["safe_to_control"])
+        self.assertFalse(conflicting["delivery_success"])
+        self.assertFalse(conflicting["primary_actions_enabled"])
+
     def test_unknown_operator_state_falls_back_to_human_help_prompt(self):
         self.assertEqual(
             operator_prompt_for_state("unexpected_state"),
@@ -1715,6 +1802,17 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertFalse(payload["cloud_support_handoff_safe_export"]["safe_to_control"])
         self.assertFalse(payload["cloud_support_handoff_safe_export"]["delivery_success"])
         self.assertFalse(payload["cloud_support_handoff_safe_export"]["primary_actions_enabled"])
+        self.assertEqual(
+            payload["cloud_command_lifecycle_audit_export"]["schema"],
+            CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_SCHEMA,
+        )
+        self.assertEqual(
+            payload["latest_status"]["robot_diagnostics_cloud_command_lifecycle_audit_export_summary"],
+            payload["cloud_command_lifecycle_audit_export"],
+        )
+        self.assertFalse(payload["cloud_command_lifecycle_audit_export"]["safe_to_control"])
+        self.assertFalse(payload["cloud_command_lifecycle_audit_export"]["delivery_success"])
+        self.assertFalse(payload["cloud_command_lifecycle_audit_export"]["primary_actions_enabled"])
         self.assertEqual(payload["voice_prompt_readiness"]["schema"], VOICE_PROMPT_READINESS_SCHEMA)
         self.assertEqual(
             payload["voice_prompt_readiness"]["evidence_boundary"],

@@ -149,6 +149,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_cloud_ack_accepted_result_pending_guard,
     summarize_cloud_terminal_result_verification_guard,
     summarize_cloud_cancel_pending_command_safety_guard,
+    summarize_cloud_command_lifecycle_audit_export,
     summarize_cloud_poll_backoff_rate_limit_guard,
     summarize_vision_manifest,
 )
@@ -29174,6 +29175,108 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("cancel_completion", summary["not_proven"])
         self.assertTrue(summary["raw_material_redacted"])
         for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel", "/tmp/"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_command_lifecycle_audit_export_summary_is_fail_closed(self):
+        summary = summarize_cloud_command_lifecycle_audit_export(
+            {
+                "schema": "trashbot.cloud_command_lifecycle_audit_export_summary.v1",
+                "capability": "cloud_command_lifecycle_audit_export",
+                "command_id": "cmd-safe-robot-001",
+                "evidence_ref": "ev-safe-robot-001",
+                "lifecycle_state": "terminal_result_pending",
+                "lifecycle_timeline": [
+                    {
+                        "stage": "ack_lookup_or_processing",
+                        "status": "pending_terminal_result_not_delivery_success",
+                        "safe_copy": "Authorization Bearer token raw response /cmd_vel",
+                    }
+                ],
+                "terminal_result_status": "pending_verified_terminal_result_not_proven",
+                "next_required_evidence": [
+                    "verified_terminal_delivery_dropoff_or_cancel_result"
+                ],
+                "copy_export_text": (
+                    "cloud_command_lifecycle_audit_export: command_id=cmd-safe-robot-001; "
+                    "evidence_ref=ev-safe-robot-001; not_proven; safe_to_control=false; "
+                    "delivery_success=false; primary_actions_enabled=false."
+                ),
+                "safe_phone_copy": "Authorization Bearer token raw response /cmd_vel",
+                "safe_to_control": True,
+                "delivery_success": True,
+                "primary_actions_enabled": True,
+            }
+        )
+
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.cloud_command_lifecycle_audit_export_summary.v1",
+        )
+        self.assertEqual(summary["capability"], "cloud_command_lifecycle_audit_export")
+        self.assertEqual(summary["command_id"], "cmd-safe-robot-001")
+        self.assertEqual(summary["evidence_ref"], "ev-safe-robot-001")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_audit_export_gate",
+        )
+        self.assertEqual(summary["status"], "blocked_unsafe_cloud_command_lifecycle_audit_export")
+        self.assertEqual(
+            summary["terminal_result_status"],
+            "pending_verified_terminal_result_not_proven",
+        )
+        self.assertIn("verified_terminal_delivery_dropoff_or_cancel_result", summary["next_required_evidence"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["robot_command_side_effects_allowed"])
+        self.assertIn("safe_to_control=false", summary["false_states"])
+        self.assertIn("verified_terminal_result", summary["not_proven"])
+        self.assertTrue(summary["raw_material_redacted"])
+        for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel", "/tmp/"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_diagnostics_payload_surfaces_cloud_command_lifecycle_audit_export_summary(self):
+        payload = self._base_build_payload(
+            {
+                "state": "remote_degraded",
+                "message": "safe lifecycle pending details",
+                "can_collect": True,
+                "can_confirm_dropoff": True,
+                "can_cancel": True,
+                "evidence_ref": "ev-safe-lifecycle-003",
+                "remote_readiness": {
+                    "capability": "cloud_terminal_result_verification_guard",
+                    "degradation_state": "terminal_result_pending",
+                    "last_command_ack": "cmd-safe-lifecycle-003",
+                    "safe_phone_copy": "等待 verified terminal result；这不是送达成功。",
+                    "remote_ready": True,
+                    "safe_to_control": True,
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "retry_hint": "retry_cloud",
+                },
+            }
+        )
+
+        summary = payload["robot_diagnostics_cloud_command_lifecycle_audit_export_summary"]
+        encoded = json.dumps(payload, ensure_ascii=False)
+
+        self.assertEqual(summary["capability"], "cloud_command_lifecycle_audit_export")
+        self.assertEqual(summary["command_id"], "cmd-safe-lifecycle-003")
+        self.assertEqual(summary["evidence_ref"], "ev-safe-lifecycle-003")
+        self.assertEqual(summary["lifecycle_state"], "terminal_result_pending")
+        self.assertEqual(
+            summary["terminal_result_status"],
+            "pending_verified_terminal_result_not_proven",
+        )
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertIn("safe_to_control=false", summary["copy_export_text"])
+        for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel"):
             self.assertNotIn(forbidden, encoded)
 
     def test_diagnostics_payload_surfaces_cloud_cancel_pending_and_phone_readiness(self):

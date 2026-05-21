@@ -23,6 +23,9 @@ CLOUD_POLL_BACKOFF_FIXTURE = (
 CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_support_handoff_safe_export.json"
 )
+CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_lifecycle_audit_export.json"
+)
 CLOUD_COMMAND_EXPIRY_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_expiry_safety_guard.json"
 CLOUD_COMMAND_IDEMPOTENCY_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_idempotency_visibility_guard.json"
@@ -190,6 +193,141 @@ class CloudSupportHandoffSafeExportMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, summary_text)
+
+
+class CloudCommandLifecycleAuditExportMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_command_lifecycle_audit_export_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # lifecycle audit/export 只消费 safe summary 和 copy_export_text，不新增 command/ACK/cursor/raw route。
+        self.assertIn("CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_BOUNDARY", app)
+        self.assertIn("UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT", app)
+        self.assertIn("safeCloudCommandLifecycleAuditExportText", app)
+        self.assertIn("cloudCommandLifecycleAuditExportCandidate", app)
+        self.assertIn("cloudCommandLifecycleAuditExportFromStatus", app)
+        self.assertIn("renderCloudCommandLifecycleAuditExport", app)
+        self.assertIn("云命令生命周期审计导出", app)
+        self.assertIn("robot_diagnostics_cloud_command_lifecycle_audit_export_summary", app)
+        self.assertIn("cloud_command_lifecycle_audit_export_summary", app)
+        self.assertIn("cloud_command_lifecycle_audit_export?.summary", app)
+        self.assertIn("copy_export_text", app)
+        self.assertIn("command_id", app)
+        self.assertIn("evidence_ref", app)
+        self.assertIn("lifecycle_timeline", app)
+        self.assertIn("terminal_result_status", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("cloud-command-lifecycle-audit-export-panel", styles)
+        self.assertNotRegex(
+            app,
+            r"cloudCommandLifecycleAuditExport.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackCloudCommandLifecycleAuditExport",
+            "cursorCloudCommandLifecycleAuditExport",
+            "fetchCloudCommandLifecycleAuditExportDiagnostics",
+            "replayCloudCommandLifecycleAuditExport",
+            "resubmitCloudCommandLifecycleAuditExport",
+            "commandCloudCommandLifecycleAuditExport",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # fixture 明确 lifecycle 审计是 software_proof/not_proven，三类主操作继续 disabled。
+        summary = fixture["robot_diagnostics_cloud_command_lifecycle_audit_export_summary"]
+        fallback = fixture["cloud_command_lifecycle_audit_export_summary"]
+        nested = fixture["cloud_command_lifecycle_audit_export"]["summary"]
+        self.assertEqual(summary["capability"], "cloud_command_lifecycle_audit_export")
+        self.assertEqual(summary["audit_status"], "ready_for_lifecycle_audit_export_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("cmd_lifecycle_audit_20260522_0001", summary["command_id"])
+        self.assertIn("cloud_command_lifecycle_audit_export_fixture", summary["evidence_ref"])
+        self.assertIn("copy_export_text", summary)
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["safe_to_control"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        for required in (
+            "cloud_command_lifecycle_audit_export",
+            "software_proof_docker_cloud_command_lifecycle_audit_export_gate",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "command_id=cmd_lifecycle_audit_20260522_0001",
+            "evidence_ref=cloud_command_lifecycle_audit_export_fixture_20260522_0001",
+        ):
+            self.assertIn(required, fixture_text)
+
+        # 产品文档必须写清 read-only lifecycle panel 不是真实云、真实手机、HIL 或送达证明。
+        self.assertIn("cloud_command_lifecycle_audit_export", doc)
+        self.assertIn("robot_diagnostics_cloud_command_lifecycle_audit_export_summary", doc)
+        self.assertIn("software_proof_docker_cloud_command_lifecycle_audit_export_gate", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not HIL", doc)
+        self.assertIn("not delivery success", doc)
+
+    def test_cloud_command_lifecycle_audit_export_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_FIXTURE.read_text(encoding="utf-8"))
+        lifecycle_text = json.dumps(
+            {
+                "robot": fixture["robot_diagnostics_cloud_command_lifecycle_audit_export_summary"],
+                "fallback": fixture["cloud_command_lifecycle_audit_export_summary"],
+                "nested": fixture["cloud_command_lifecycle_audit_export"]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留 phone-safe lifecycle metadata，不泄漏 raw route、ACK/cursor、凭证、路径或控制授权。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw status",
+            "raw command",
+            "command route",
+            "ack route",
+            "cursor route",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "ack payload",
+            "cursor request",
+            "replay request",
+            "resubmit request",
+            "robot command",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, lifecycle_text)
 
 
 class FieldEvidenceRerunMaterialDispatchMobileTest(unittest.TestCase):
