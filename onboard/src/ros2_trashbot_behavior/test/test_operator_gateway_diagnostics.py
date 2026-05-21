@@ -138,6 +138,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_hardware_real_material_escalation_request,
     summarize_real_material_readiness_board,
     summarize_real_material_evidence_intake,
+    summarize_verified_terminal_result_material_intake,
     summarize_real_material_followup_escalation_status,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
@@ -27158,6 +27159,208 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("/dev/ttyUSB0", encoded)
         self.assertNotIn("baudrate=115200", encoded)
         self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("Start Delivery control enabled", encoded)
+
+    def test_verified_terminal_result_material_intake_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": "trashbot.verified_terminal_result_material_intake_summary.v1",
+            "source_schema": "trashbot.verified_terminal_result_material_intake.v1",
+            "source_schema_version": 1,
+            "evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_intake_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_intake_gate"
+            ),
+            "source": "software_proof",
+            "status": "not_proven",
+            "overall_status": "not_proven",
+            "safe_evidence_ref": "evidence://verified-terminal-result-material-intake-1",
+            "accepted_materials": [
+                {"material_id": "terminal-result-summary-redacted", "status": "received"}
+            ],
+            "missing_materials": ["real_delivery_result"],
+            "rejected_materials": ["raw_ack_cursor"],
+            "next_required_evidence": ["Attach real terminal result packet."],
+            "owner_handoff": ["Robot consumes sanitized terminal-result material only."],
+            "safe_copy": (
+                "verified_terminal_result_material_intake is metadata-only; "
+                "source=software_proof; not_proven; delivery_success=false; "
+                "primary_actions_enabled=false; safe_to_control=false."
+            ),
+            "robot_diagnostics_summary": {
+                "safe_copy": (
+                    "Verified terminal result material intake is summary-only; "
+                    "source=software_proof; not_proven; delivery_success=false; "
+                    "primary_actions_enabled=false; safe_to_control=false."
+                )
+            },
+            "not_proven": ["terminal_result_material_only", "delivery_success"],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+        }
+        artifact = {
+            "schema": "trashbot.verified_terminal_result_material_intake.v1",
+            "evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_intake_gate"
+            ),
+            "safe_evidence_ref": "evidence://verified-terminal-result-material-intake-1",
+            "verified_terminal_result_material_intake_summary": safe_summary,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+        }
+        with tempfile.TemporaryDirectory() as td:
+            intake_path = Path(td) / "verified_terminal_result_material_intake.json"
+            intake_path.write_text(json.dumps(artifact), encoding="utf-8")
+            payload = build_diagnostics_payload(
+                {
+                    "verified_terminal_result_material_intake": {
+                        "delivery_success": True,
+                        "safe_to_control": True,
+                        "raw_artifact": {"ack_cursor": "cursor-1"},
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                verified_terminal_result_material_intake_ref=str(intake_path),
+            )
+            from_nested_status = build_diagnostics_payload(
+                {
+                    "diagnostics": {
+                        "status": {
+                            "verified_terminal_result_material_intake_summary": (
+                                safe_summary
+                            )
+                        }
+                    }
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )["robot_diagnostics_verified_terminal_result_material_intake_summary"]
+            from_latest_status = build_diagnostics_payload(
+                {
+                    "robot_diagnostics_verified_terminal_result_material_intake_summary": (
+                        safe_summary
+                    )
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )["robot_diagnostics_verified_terminal_result_material_intake_summary"]
+            missing = summarize_verified_terminal_result_material_intake(
+                Path(td) / "secret-token" / "missing_verified_terminal_result.json"
+            )
+            raw_only = summarize_verified_terminal_result_material_intake(
+                {
+                    "schema": "trashbot.verified_terminal_result_material_intake.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_verified_terminal_result_material_intake_gate"
+                    ),
+                    "safe_evidence_ref": "evidence://raw-terminal-result",
+                }
+            )
+            unsafe = summarize_verified_terminal_result_material_intake(
+                dict(
+                    safe_summary,
+                    safe_copy="Terminal result passed; Start Delivery control enabled.",
+                    delivery_success=True,
+                    primary_actions_enabled=True,
+                    safe_to_control=True,
+                    ack_mutation_allowed=True,
+                    cursor_mutation_allowed=True,
+                    replay_allowed=True,
+                    resubmit_allowed=True,
+                    robot_control_allowed=True,
+                    raw_ack_cursor="cursor-1",
+                )
+            )
+
+        summary = payload[
+            "robot_diagnostics_verified_terminal_result_material_intake_summary"
+        ]
+        encoded = json.dumps([summary, missing, raw_only, unsafe], ensure_ascii=False)
+        self.assertEqual(summary, payload["verified_terminal_result_material_intake"])
+        self.assertEqual(summary, payload["verified_terminal_result_material_intake_summary"])
+        self.assertNotIn("verified_terminal_result_material_intake", payload["latest_status"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.verified_terminal_result_material_intake_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.verified_terminal_result_material_intake.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_verified_terminal_result_material_intake_gate",
+        )
+        self.assertEqual(summary["status"], "not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://verified-terminal-result-material-intake-1",
+        )
+        self.assertEqual(
+            summary["accepted_materials"][0]["material_id"],
+            "terminal-result-summary-redacted",
+        )
+        self.assertIn("terminal_result_material_only", summary["not_proven"])
+        self.assertIn("delivery_success=false", summary["robot_diagnostics_summary"]["safe_copy"])
+        self.assertIn("primary_actions_enabled=false", summary["robot_diagnostics_summary"]["safe_copy"])
+        self.assertIn("safe_to_control=false", summary["robot_diagnostics_summary"]["safe_copy"])
+        self.assertTrue(summary["metadata_only"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["ack_mutation_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["cursor_mutation_allowed"])
+        self.assertFalse(summary["replay_allowed"])
+        self.assertFalse(summary["resubmit_allowed"])
+        self.assertFalse(summary["robot_control_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertEqual(from_nested_status["safe_evidence_ref"], summary["safe_evidence_ref"])
+        self.assertEqual(from_latest_status["owner_handoff"], summary["owner_handoff"])
+        self.assertEqual(
+            missing["status"],
+            "blocked_missing_verified_terminal_result_material_intake_summary",
+        )
+        self.assertEqual(
+            raw_only["status"],
+            "blocked_missing_verified_terminal_result_material_intake_summary",
+        )
+        self.assertEqual(
+            unsafe["status"],
+            "blocked_unsafe_verified_terminal_result_material_intake_summary",
+        )
+        self.assertIn("software_proof_docker_verified_terminal_result_material_intake_gate", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertNotIn(str(intake_path), encoded)
+        self.assertNotIn(str(Path(td)), encoded)
+        self.assertNotIn("secret-token", encoded)
+        self.assertNotIn("raw_ack_cursor", encoded)
+        self.assertNotIn("ack_cursor", encoded)
         self.assertNotIn("Start Delivery control enabled", encoded)
 
     def test_diagnostics_payload_includes_real_material_evidence_intake_safe_alias(self):

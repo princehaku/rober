@@ -1464,6 +1464,28 @@ verified delivery results. This state must not enable Start, Confirm Dropoff,
 Cancel, ACK cursor changes, route/elevator field pass, PR #5 resolution, HIL,
 dropoff completion, cancel completion, or delivery success.
 
+Verified terminal-result material intake has a separate Robot diagnostics
+safe alias:
+
+- `robot_diagnostics_verified_terminal_result_material_intake_summary`
+- `schema=trashbot.verified_terminal_result_material_intake_summary.v1`
+- `evidence_boundary=software_proof_docker_verified_terminal_result_material_intake_gate`
+- `status=not_proven`
+- `source=software_proof`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `safe_to_control=false`
+
+The alias only proves that a sanitized terminal-result material summary can be
+read by Robot diagnostics. It can consume the canonical intake/summary, the
+Robot alias, or compatible nested diagnostics/status summary, but it must strip
+or block raw artifact fields, ACK/cursor mutation hints, replay/resubmit hints,
+robot-control hints, credentials, paths, checksums, ROS topics, serial/UART
+details, and success wording. It must not enable Start Delivery, Confirm
+Dropoff, Cancel, ACK mutation, cursor mutation, replay, resubmit, robot
+control, route/elevator field pass, HIL, dropoff completion, cancel completion,
+or delivery success.
+
 ## Safety Rules
 
 - The robot never exposes `/cmd_vel` over the remote bridge.

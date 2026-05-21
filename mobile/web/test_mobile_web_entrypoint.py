@@ -26,6 +26,9 @@ CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_FIXTURE = (
 CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_lifecycle_audit_export.json"
 )
+VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_intake.json"
+)
 CLOUD_COMMAND_EXPIRY_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_expiry_safety_guard.json"
 CLOUD_COMMAND_IDEMPOTENCY_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_idempotency_visibility_guard.json"
@@ -328,6 +331,146 @@ class CloudCommandLifecycleAuditExportMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, lifecycle_text)
+
+
+class VerifiedTerminalResultMaterialIntakeMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_verified_terminal_result_material_intake_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # terminal-result material intake 只消费 safe summary 和 backend safe_copy，不新增控制/ACK/cursor/raw route。
+        self.assertIn("VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_TEXT", app)
+        self.assertIn("safeVerifiedTerminalResultMaterialIntakeText", app)
+        self.assertIn("verifiedTerminalResultMaterialIntakeCandidate", app)
+        self.assertIn("verifiedTerminalResultMaterialIntakeFromStatus", app)
+        self.assertIn("renderVerifiedTerminalResultMaterialIntake", app)
+        self.assertIn("Terminal Result 材料回填入口", app)
+        self.assertIn("robot_diagnostics_verified_terminal_result_material_intake_summary", app)
+        self.assertIn("verified_terminal_result_material_intake_summary", app)
+        self.assertIn("verified_terminal_result_material_intake?.summary", app)
+        self.assertIn("safe_copy", app)
+        self.assertIn("intake_status", app)
+        self.assertIn("terminal_result_type", app)
+        self.assertIn("required_materials_summary", app)
+        self.assertIn("blocked_reason", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("verified-terminal-result-material-intake-panel", styles)
+        self.assertNotRegex(
+            app,
+            r"verifiedTerminalResultMaterialIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackVerifiedTerminalResultMaterialIntake",
+            "cursorVerifiedTerminalResultMaterialIntake",
+            "fetchVerifiedTerminalResultMaterialIntakeDiagnostics",
+            "replayVerifiedTerminalResultMaterialIntake",
+            "resubmitVerifiedTerminalResultMaterialIntake",
+            "commandVerifiedTerminalResultMaterialIntake",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # fixture 明确 intake 是 software_proof/not_proven，safe_copy 存在但主操作继续 disabled。
+        summary = fixture["robot_diagnostics_verified_terminal_result_material_intake_summary"]
+        fallback = fixture["verified_terminal_result_material_intake_summary"]
+        nested = fixture["verified_terminal_result_material_intake"]["summary"]
+        self.assertEqual(summary["capability"], "verified_terminal_result_material_intake")
+        self.assertEqual(summary["intake_status"], "blocked_missing_verified_terminal_result_materials_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("cmd_terminal_result_material_20260522_0001", summary["safe_command_id"])
+        self.assertIn("verified_terminal_result_material_intake_fixture", summary["safe_evidence_ref"])
+        self.assertIn("safe_copy", summary)
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["safe_to_control"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        for required in (
+            "verified_terminal_result_material_intake",
+            "software_proof_docker_verified_terminal_result_material_intake_gate",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "terminal_result_type=delivery_result_material_pending",
+            "command_id=cmd_terminal_result_material_20260522_0001",
+            "evidence_ref=verified_terminal_result_material_intake_fixture_20260522_0001",
+        ):
+            self.assertIn(required, fixture_text)
+
+        # 产品文档必须写清 material intake 只是只读材料入口，不是真实手机、HIL 或送达证明。
+        self.assertIn("verified_terminal_result_material_intake", doc)
+        self.assertIn("robot_diagnostics_verified_terminal_result_material_intake_summary", doc)
+        self.assertIn("software_proof_docker_verified_terminal_result_material_intake_gate", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not HIL", doc)
+        self.assertIn("not delivery success", doc)
+
+    def test_verified_terminal_result_material_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE.read_text(encoding="utf-8"))
+        intake_text = json.dumps(
+            {
+                "robot": fixture["robot_diagnostics_verified_terminal_result_material_intake_summary"],
+                "fallback": fixture["verified_terminal_result_material_intake_summary"],
+                "nested": fixture["verified_terminal_result_material_intake"]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留 phone-safe material metadata，不泄漏 raw diagnostics/artifacts/ACK/cursor/command route。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw status",
+            "raw artifact",
+            "raw command",
+            "raw terminal result",
+            "raw material",
+            "command route",
+            "ack route",
+            "cursor route",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "ack payload",
+            "cursor request",
+            "replay request",
+            "resubmit request",
+            "robot command",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, intake_text)
 
 
 class FieldEvidenceRerunMaterialDispatchMobileTest(unittest.TestCase):

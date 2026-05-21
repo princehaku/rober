@@ -65,6 +65,29 @@ owner 收集真实材料，不访问 ROS graph、Nav2 runtime、serial/UART、WA
 真实手机、外部云、OSS/CDN、DB/queue 或 4G，也不证明 HIL、delivery success、
 PR #5 closure、PR #4 route/elevator completion、O4 phone acceptance 或 O5 external proof。
 
+## verified terminal result material intake
+
+`pc-tools/evidence/verified_terminal_result_material_intake.py` 是 PC-only
+terminal-result 材料入口，能力名 `verified_terminal_result_material_intake`：
+
+```bash
+python3 pc-tools/evidence/verified_terminal_result_material_intake.py \
+  --input /tmp/terminal_result_bundle.json \
+  --output-dir /tmp/verified_terminal_result_material_intake
+```
+
+输入 bundle 必须包含同一个 safe `evidence_ref`、`terminal_result_type`
+（仅 `delivery`、`dropoff`、`cancel`）以及对应 required materials。输出写入
+`verified_terminal_result_material_intake.json` 和
+`verified_terminal_result_material_intake_summary.json`，证据边界固定为
+`software_proof_docker_verified_terminal_result_material_intake_gate`，并始终保持
+`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、
+`safe_to_control=false`。
+
+该 gate 拒绝 raw artifacts、本机路径、凭证、ROS/control details、hardware details
+以及 success/control overclaim；`accepted_materials` 只表示脱敏材料形状可进入人工复核，
+不证明真实 terminal delivery、dropoff/cancel、Nav2 route、电梯现场通过、手机验收或控制权限。
+
 ## hardware sensor HIL-entry callback intake
 
 `pc-tools/evidence/hardware_sensor_hil_entry_callback_intake_gate.py` 是
