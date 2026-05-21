@@ -410,6 +410,15 @@ FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_REVIEW_HANDOFF_SUMMARY_SCHEMA = (
 FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_REVIEW_HANDOFF_GATE = (
     "software_proof_docker_field_evidence_rerun_execution_result_review_handoff_gate"
 )
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_SCHEMA = (
+    "trashbot.field_evidence_rerun_execution_result_acceptance_packet.v1"
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_SUMMARY_SCHEMA = (
+    "trashbot.field_evidence_rerun_execution_result_acceptance_packet_summary.v1"
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_GATE = (
+    "software_proof_docker_field_evidence_rerun_execution_result_acceptance_packet_gate"
+)
 ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SCHEMA = (
     "trashbot.route_task_field_retest_evidence_dispatch.v1"
 )
@@ -3668,6 +3677,40 @@ def _field_evidence_rerun_execution_result_review_handoff_not_proven(
             source_values.extend(item.get("not_proven"))
     required = (
         "field_evidence_rerun_execution_result_review_handoff_only",
+        "field_rerun_not_executed_by_robot",
+        "real_route_completion_not_verified",
+        "real_field_task_record_not_verified",
+        "real_nav2_fixed_route_runtime_not_verified",
+        "real_elevator_operation_not_verified",
+        "real_dropoff_cancel_completion_not_verified",
+        "real_delivery_result_not_verified",
+        "real_phone_browser_not_verified",
+        "real_hardware_runtime_not_verified",
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "hardware_transport_control",
+        "delivery_success",
+    )
+    values = []
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _field_evidence_rerun_execution_result_acceptance_packet_not_proven(
+    packet=None,
+    summary_fragment=None,
+):
+    # acceptance packet 只是验收准备摘要；即使 ready 也不能代表真实复跑或投递成功。
+    source_values = []
+    for item in (packet, summary_fragment):
+        if isinstance(item, dict) and isinstance(item.get("not_proven"), list):
+            source_values.extend(item.get("not_proven"))
+    required = (
+        "field_evidence_rerun_execution_result_acceptance_packet_only",
         "field_rerun_not_executed_by_robot",
         "real_route_completion_not_verified",
         "real_field_task_record_not_verified",
@@ -9185,6 +9228,68 @@ def _default_field_evidence_rerun_execution_result_review_handoff_summary(
         "robot_compatible_summary": {"status": "blocked", "reason": reason},
         "boundary": FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_REVIEW_HANDOFF_GATE,
         "not_proven": _field_evidence_rerun_execution_result_review_handoff_not_proven(),
+        "metadata_only": True,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+    }
+
+
+def _default_field_evidence_rerun_execution_result_acceptance_packet_summary(
+    path,
+    acceptance_status="blocked_missing_field_evidence_rerun_execution_result_acceptance_packet",
+    read_error="",
+):
+    # 缺省态必须显式 fail-closed，避免现场验收包缺失时被前端或 diagnostics 误读成可控。
+    safe_copy = (
+        "Field evidence rerun execution result acceptance packet is metadata-only; "
+        "source=software_proof; not_proven; safe_to_control=false; "
+        "delivery_success=false; primary_actions_enabled=false."
+    )
+    reason = read_error or (
+        "field evidence rerun execution result acceptance packet is not configured"
+    )
+    return {
+        "schema": FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "acceptance_status": {
+            "status": acceptance_status,
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "acceptance_verdict": "blocked",
+        "same_evidence_ref_status": {
+            "status": "blocked",
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "required_materials": [],
+        "accepted_materials": [],
+        "missing_materials": [],
+        "blocked_materials": [],
+        "owner_next_steps": [],
+        "robot_diagnostics_summary": {"status": "blocked", "reason": reason},
+        "robot_compatible_summary": {"status": "blocked", "reason": reason},
+        "boundary": FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_GATE,
+        "not_proven": _field_evidence_rerun_execution_result_acceptance_packet_not_proven(),
         "metadata_only": True,
         "safe_to_control": False,
         "delivery_success": False,
@@ -15839,6 +15944,11 @@ def _field_evidence_rerun_execution_callback_intake_has_unsafe_fields(value):
         "metadata_only",
         "boundary_flags",
         "control_entrypoint_enabled",
+        "field_evidence_rerun_execution_result_acceptance_packet_summary",
+        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary",
+        "diagnostics",
+        "summary",
+        "diagnostics_summary",
     }
     if isinstance(value, dict):
         for key, item in value.items():
@@ -15921,6 +16031,11 @@ def _field_evidence_rerun_execution_callback_review_decision_has_unsafe_fields(v
         "metadata_only",
         "boundary_flags",
         "control_entrypoint_enabled",
+        "field_evidence_rerun_execution_result_acceptance_packet_summary",
+        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary",
+        "diagnostics",
+        "summary",
+        "diagnostics_summary",
     }
     if isinstance(value, dict):
         for key, item in value.items():
@@ -16247,6 +16362,125 @@ def _field_evidence_rerun_execution_result_review_handoff_has_unsafe_fields(valu
     if isinstance(value, list):
         return any(
             _field_evidence_rerun_execution_result_review_handoff_has_unsafe_fields(
+                item
+            )
+            for item in value
+        )
+    return (
+        _route_task_field_retest_acceptance_execution_rerun_result_intake_has_unsafe_material(
+            value
+        )
+        or _route_task_field_retest_execution_pack_has_success_wording(value)
+    )
+
+
+def _field_evidence_rerun_execution_result_acceptance_packet_source_contract(value):
+    # Robot 只消费 Autonomy 给出的 safe summary，并用 source_schema 回指验收包 gate。
+    value = value if isinstance(value, dict) else {}
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema")
+            or FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _field_evidence_rerun_execution_result_acceptance_packet_has_unsafe_fields(value):
+    # acceptance packet alias 不能透出 raw task/log/route/elevator/packet、路径、凭证或控制语义。
+    unsafe_key_fragments = (
+        "raw",
+        "packet",
+        "artifact_path",
+        "artifact_ref",
+        "local_path",
+        "path",
+        "checksum",
+        "credential",
+        "secret",
+        "token",
+        "authorization",
+        "bearer",
+        "ros_topic",
+        "topic",
+        "serial",
+        "uart",
+        "baud",
+        "wave_rover",
+        "cmd_vel",
+        "control",
+        "ack",
+        "cursor",
+        "traceback",
+        "db_url",
+        "queue_url",
+        "oss",
+        "task_record",
+        "runtime_log",
+        "route_artifact",
+        "elevator_artifact",
+        "complete_acceptance",
+    )
+    safe_keys = {
+        "schema",
+        "schema_version",
+        "source",
+        "source_schema",
+        "source_schema_version",
+        "source_evidence_boundary",
+        "evidence_boundary",
+        "boundary",
+        "safe_evidence_ref",
+        "acceptance_status",
+        "status",
+        "status_summary",
+        "verdict",
+        "reason",
+        "acceptance_verdict",
+        "decision",
+        "same_evidence_ref_required",
+        "same_evidence_ref_status",
+        "required_materials",
+        "accepted_materials",
+        "missing_materials",
+        "blocked_materials",
+        "owner_next_steps",
+        "owner_handoff",
+        "next_required_evidence",
+        "robot_diagnostics_summary",
+        "robot_compatible_summary",
+        "safe_copy",
+        "safe_phone_copy",
+        "not_proven",
+        "safe_to_control",
+        "delivery_success",
+        "primary_actions_enabled",
+        "metadata_only",
+        "boundary_flags",
+        "control_entrypoint_enabled",
+        "field_evidence_rerun_execution_result_acceptance_packet_summary",
+        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary",
+        "diagnostics",
+        "summary",
+        "diagnostics_summary",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text not in safe_keys and any(
+                fragment in key_text for fragment in unsafe_key_fragments
+            ):
+                return True
+            if _field_evidence_rerun_execution_result_acceptance_packet_has_unsafe_fields(
+                item
+            ):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _field_evidence_rerun_execution_result_acceptance_packet_has_unsafe_fields(
                 item
             )
             for item in value
@@ -35813,6 +36047,408 @@ def summarize_field_evidence_rerun_execution_result_review_handoff(source):
     return summary
 
 
+def summarize_field_evidence_rerun_execution_result_acceptance_packet(source):
+    """构建 field evidence rerun execution result acceptance packet 的 Robot-safe 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        packet = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_field_evidence_rerun_execution_result_acceptance_packet_summary(
+            source_path,
+            read_error=(
+                "field evidence rerun execution result acceptance packet is not configured"
+            ),
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "acceptance_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": (
+                            "field evidence rerun execution result acceptance packet summary missing"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "execution result acceptance packet summary missing",
+                    },
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                packet = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "acceptance_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            "failed reading field evidence rerun execution result "
+                            f"acceptance packet: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "execution result acceptance packet JSON read error",
+                    },
+                }
+            )
+            return summary
+
+    summary = _default_field_evidence_rerun_execution_result_acceptance_packet_summary(
+        source_path,
+        read_error=(
+            "field evidence rerun execution result acceptance packet is not configured"
+        ),
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(packet, dict):
+        summary.update(
+            {
+                "acceptance_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "field evidence rerun execution result acceptance packet JSON must be an object"
+                    ),
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "execution result acceptance packet JSON shape is invalid",
+                },
+            }
+        )
+        return summary
+
+    diagnostics = packet.get("diagnostics") if isinstance(packet.get("diagnostics"), dict) else {}
+    # 只信任 canonical safe summary；complete packet / raw task records / route logs 不进入 Robot 输出。
+    summary_fragment = (
+        packet
+        if str(packet.get("schema") or "")
+        == FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_SUMMARY_SCHEMA
+        else {}
+    )
+    if not summary_fragment:
+        for candidate in (
+            packet.get("field_evidence_rerun_execution_result_acceptance_packet_summary"),
+            packet.get(
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary"
+            ),
+            packet.get("robot_compatible_summary"),
+            packet.get("summary"),
+            packet.get("diagnostics_summary"),
+            diagnostics.get("field_evidence_rerun_execution_result_acceptance_packet_summary"),
+            diagnostics.get(
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary"
+            ),
+            diagnostics.get("summary"),
+            diagnostics.get("diagnostics_summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+
+    contract_source = summary_fragment if summary_fragment else packet
+    source_schema, source_boundary = (
+        _field_evidence_rerun_execution_result_acceptance_packet_source_contract(
+            contract_source
+        )
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": contract_source.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+        }
+    )
+    if not summary_fragment:
+        summary.update(
+            {
+                "acceptance_status": {
+                    "status": "missing_summary",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "field evidence rerun execution result acceptance packet lacks a safe canonical summary"
+                    ),
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing safe execution result acceptance packet summary",
+                },
+            }
+        )
+        return summary
+
+    status_source = summary_fragment.get("acceptance_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("status_summary")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    acceptance_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or summary_fragment.get("acceptance_status")
+        or summary_fragment.get("status")
+        or "blocked"
+    )
+    verdict = _redact_route_task_rehearsal_text(
+        status_source.get("verdict") or summary_fragment.get("verdict") or "not_proven"
+    )
+    reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or summary_fragment.get("reason")
+        or "field evidence rerun execution result acceptance packet consumed as software_proof"
+    )
+    safe_copy = _safe_pc_route_debug_value(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or (
+            "Field evidence rerun execution result acceptance packet is metadata-only; "
+            "source=software_proof; not_proven; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    safe_copy_text = (
+        json.dumps(safe_copy, ensure_ascii=False, sort_keys=True)
+        if isinstance(safe_copy, (dict, list))
+        else str(safe_copy or "")
+    )
+    if "delivery_success=false" not in safe_copy_text:
+        # safe_copy 是用户可见边界，强制补齐 false literal 以防误读为验收通过。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+    source_ref = str(
+        packet.get("safe_evidence_ref") or packet.get("evidence_ref") or ""
+    ).strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or ""
+    ).strip()
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    same_ref_source = (
+        summary_fragment.get("same_evidence_ref_status")
+        if isinstance(summary_fragment.get("same_evidence_ref_status"), dict)
+        else {}
+    )
+    owner_steps_source = (
+        summary_fragment.get("owner_next_steps")
+        if "owner_next_steps" in summary_fragment
+        else summary_fragment.get("owner_handoff")
+    )
+    summary.update(
+        {
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or EVIDENCE_SOURCE_SOFTWARE
+            ),
+            "acceptance_status": {
+                "status": acceptance_status or "blocked",
+                "verdict": verdict or "not_proven",
+                "reason": reason,
+            },
+            "acceptance_verdict": _redact_route_task_rehearsal_text(
+                summary_fragment.get("acceptance_verdict")
+                or summary_fragment.get("decision")
+                or acceptance_status
+                or "blocked"
+            ),
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_ref or source_ref
+            ),
+            "same_evidence_ref_status": _safe_pc_route_debug_dict(same_ref_source)
+            or {
+                "status": acceptance_status or "blocked",
+                "verdict": "not_proven",
+                "reason": "execution result acceptance packet lacks same evidence_ref status",
+            },
+            "required_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("required_materials")
+            ),
+            "accepted_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("accepted_materials")
+            ),
+            "missing_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("missing_materials")
+            ),
+            "blocked_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("blocked_materials")
+            ),
+            "owner_next_steps": _safe_route_task_rehearsal_list(owner_steps_source),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": acceptance_status or "blocked",
+                "safe_copy": safe_copy_text,
+                "safe_phone_copy": safe_copy_text,
+            },
+            "not_proven": _field_evidence_rerun_execution_result_acceptance_packet_not_proven(
+                packet,
+                summary_fragment,
+            ),
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+            "read_error": "",
+        }
+    )
+    required_summary_fields = (
+        bool(summary["safe_evidence_ref"]),
+        bool(summary["acceptance_verdict"]),
+        bool(summary["same_evidence_ref_status"]),
+        isinstance(summary["required_materials"], list)
+        and bool(summary["required_materials"]),
+        isinstance(summary["owner_next_steps"], list)
+        and bool(summary["owner_next_steps"]),
+    )
+    unsafe_material = any(
+        _field_evidence_rerun_execution_result_acceptance_packet_has_unsafe_fields(item)
+        for item in (
+            status_source,
+            same_ref_source,
+            summary["required_materials"],
+            summary["accepted_materials"],
+            summary["missing_materials"],
+            summary["blocked_materials"],
+            summary["owner_next_steps"],
+            robot_summary,
+            safe_copy,
+            safe_copy_text,
+        )
+    )
+    if (
+        source_schema != FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_SCHEMA
+        or source_boundary != FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_GATE
+    ):
+        summary.update(
+            {
+                "acceptance_status": {
+                    "status": (
+                        "blocked_unsupported_field_evidence_rerun_execution_result_acceptance_packet"
+                    ),
+                    "verdict": "not_proven",
+                    "reason": (
+                        "field evidence rerun execution result acceptance packet schema "
+                        "or boundary is unsupported"
+                    ),
+                },
+                "acceptance_verdict": "blocked",
+                "accepted_materials": [],
+                "missing_materials": [],
+                "blocked_materials": [],
+                "owner_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported execution result acceptance packet schema or boundary",
+                },
+            }
+        )
+        return summary
+    if summary["source"] != EVIDENCE_SOURCE_SOFTWARE or verdict != "not_proven":
+        summary["acceptance_status"] = {
+            "status": "blocked_unsupported_field_evidence_rerun_execution_result_acceptance_packet",
+            "verdict": "not_proven",
+            "reason": "execution result acceptance packet must remain software_proof and not_proven",
+        }
+        summary["acceptance_verdict"] = "blocked"
+        return summary
+    if not all(required_summary_fields):
+        summary.update(
+            {
+                "acceptance_status": {
+                    "status": (
+                        "blocked_missing_field_evidence_rerun_execution_result_acceptance_packet_materials"
+                    ),
+                    "verdict": "not_proven",
+                    "reason": "execution result acceptance packet is missing required safe metadata",
+                },
+                "acceptance_verdict": "blocked",
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing required execution result acceptance packet fields",
+                },
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary["acceptance_status"] = {
+            "status": (
+                "evidence_ref_mismatch_field_evidence_rerun_execution_result_acceptance_packet_blocked"
+            ),
+            "verdict": "not_proven",
+            "reason": "execution result acceptance packet evidence_ref values do not match",
+        }
+        summary["acceptance_verdict"] = "blocked"
+        summary["same_evidence_ref_status"] = {
+            "status": "mismatch",
+            "verdict": "not_proven",
+            "reason": "same evidence_ref mismatch",
+        }
+        return summary
+    boundary_flags = _safe_pc_route_debug_dict(summary_fragment.get("boundary_flags")) or {}
+    if (
+        summary_fragment.get("safe_to_control") is not False
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or bool(boundary_flags.get("control_entrypoint_enabled"))
+        or unsafe_material
+        or _field_evidence_rerun_execution_result_acceptance_packet_has_unsafe_fields(
+            packet
+        )
+        or _field_evidence_rerun_execution_result_acceptance_packet_has_unsafe_fields(
+            summary_fragment
+        )
+        or _field_evidence_rerun_execution_result_acceptance_packet_has_unsafe_fields(
+            robot_summary
+        )
+    ):
+        blocked_copy = (
+            "Field evidence rerun execution result acceptance packet was blocked because "
+            "summary fields could expose raw records/logs/artifacts, control data, or "
+            "success wording; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "acceptance_status": {
+                    "status": (
+                        "blocked_unsafe_field_evidence_rerun_execution_result_acceptance_packet"
+                    ),
+                    "verdict": "not_proven",
+                    "reason": (
+                        "unsafe raw record/log/artifact, control, path, credential, or success material"
+                    ),
+                },
+                "acceptance_verdict": "blocked",
+                "accepted_materials": [],
+                "blocked_materials": [],
+                "owner_next_steps": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+            }
+        )
+    return summary
+
+
 def summarize_route_task_field_retest_result_callback_review_handoff(source):
     """构建 route-task field retest result callback review handoff 的 metadata-only diagnostics 摘要。"""
     source_path = ""
@@ -53872,6 +54508,7 @@ def build_diagnostics_payload(
     field_evidence_rerun_execution_result_intake_ref="",
     field_evidence_rerun_execution_result_review_decision_ref="",
     field_evidence_rerun_execution_result_review_handoff_ref="",
+    field_evidence_rerun_execution_result_acceptance_packet_ref="",
     route_task_field_retest_evidence_dispatch_ref="",
     route_task_field_retest_callback_intake_ref="",
     route_task_field_retest_callback_review_decision_ref="",
@@ -56656,6 +57293,19 @@ def build_diagnostics_payload(
         None,
     )
     latest_status.pop("field_evidence_rerun_execution_result_review_handoff_copy", None)
+    latest_status.pop("field_evidence_rerun_execution_result_acceptance_packet", None)
+    latest_status.pop(
+        "field_evidence_rerun_execution_result_acceptance_packet_summary",
+        None,
+    )
+    latest_status.pop(
+        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary",
+        None,
+    )
+    latest_status.pop(
+        "field_evidence_rerun_execution_result_acceptance_packet_copy",
+        None,
+    )
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -57695,6 +58345,72 @@ def build_diagnostics_payload(
             field_evidence_rerun_execution_result_review_handoff_source
         )
     )
+    field_evidence_rerun_execution_result_acceptance_packet_status_source = (
+        latest_status.get(
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "field_evidence_rerun_execution_result_acceptance_packet_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "field_evidence_rerun_execution_result_acceptance_packet_summary"
+            ),
+            dict,
+        )
+        else latest_status.get("field_evidence_rerun_execution_result_acceptance_packet")
+        if isinstance(
+            latest_status.get("field_evidence_rerun_execution_result_acceptance_packet"),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "field_evidence_rerun_execution_result_acceptance_packet_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "field_evidence_rerun_execution_result_acceptance_packet_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("field_evidence_rerun_execution_result_acceptance_packet")
+        if isinstance(
+            diagnostics_source.get("field_evidence_rerun_execution_result_acceptance_packet"),
+            dict,
+        )
+        else {}
+    )
+    field_evidence_rerun_execution_result_acceptance_packet_source = (
+        field_evidence_rerun_execution_result_acceptance_packet_ref
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_SUMMARY",
+            "",
+        )
+        or field_evidence_rerun_execution_result_acceptance_packet_status_source
+    )
+    field_evidence_rerun_execution_result_acceptance_packet_summary = (
+        summarize_field_evidence_rerun_execution_result_acceptance_packet(
+            field_evidence_rerun_execution_result_acceptance_packet_source
+        )
+    )
     route_task_field_retest_evidence_dispatch_source = (
         route_task_field_retest_evidence_dispatch_ref
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH", "")
@@ -58643,6 +59359,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_field_evidence_rerun_execution_result_review_handoff_summary=(
             field_evidence_rerun_execution_result_review_handoff_summary
+        ),
+        field_evidence_rerun_execution_result_acceptance_packet=(
+            field_evidence_rerun_execution_result_acceptance_packet_summary
+        ),
+        field_evidence_rerun_execution_result_acceptance_packet_summary=(
+            field_evidence_rerun_execution_result_acceptance_packet_summary
+        ),
+        robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary=(
+            field_evidence_rerun_execution_result_acceptance_packet_summary
         ),
         route_task_field_retest_evidence_dispatch=route_task_field_retest_evidence_dispatch_summary,
         route_task_field_retest_evidence_dispatch_summary=route_task_field_retest_evidence_dispatch_summary,

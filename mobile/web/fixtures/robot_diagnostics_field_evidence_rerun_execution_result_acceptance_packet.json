@@ -1,0 +1,96 @@
+{
+  "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_packet_summary.v1",
+    "schema_version": 1,
+    "acceptance_packet_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_packet.v1",
+    "source_review_handoff_schema": "trashbot.field_evidence_rerun_execution_result_review_handoff.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary",
+    "source": "software_proof",
+    "packet_verdict": "needs_material_backfill",
+    "source_review_handoff": "ready_for_field_owner_backfill_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_acceptance_packet_fixture_20260521_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "accepted_materials": [
+      "accepted_materials=execution result review handoff safe summary present",
+      "accepted_materials=diagnostics mobile safe summary present"
+    ],
+    "missing_materials": [
+      "missing_materials=real task record summary",
+      "missing_materials=real Nav2/fixed-route runtime log",
+      "missing_materials=real route completion signal",
+      "missing_materials=real elevator evidence",
+      "missing_materials=real dropoff/cancel completion",
+      "missing_materials=real delivery result",
+      "missing_materials=true phone/browser evidence summary"
+    ],
+    "blocked_materials": [
+      "blocked_materials=success/control claims stay rejected",
+      "blocked_materials=materials with mismatched safe evidence_ref stay blocked"
+    ],
+    "owner_next_steps": [
+      "owner_next_steps=field owner backfills same safe_evidence_ref real task record and route/elevator materials",
+      "owner_next_steps=field owner adds dropoff/cancel completion, delivery result, and true phone/browser evidence before acceptance review",
+      "owner_next_steps=Full-stack keeps the mobile panel read-only and does not add robot-control endpoints"
+    ],
+    "safe_copy": "现场证据复跑执行结果验收包 safe copy: packet_verdict=needs_material_backfill, source=software_proof, not_proven, safe_to_control=false, delivery_success=false, primary_actions_enabled=false.",
+    "safe_phone_copy": "现场证据复跑执行结果验收包 fixture 只读展示 safe evidence_ref、packet verdict、accepted/missing/blocked materials、owner next steps 和 fail-closed boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_packet_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "真实 task record",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 elevator evidence",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "true phone/browser evidence",
+      "HIL",
+      "O5 external proof"
+    ]
+  },
+  "field_evidence_rerun_execution_result_acceptance_packet_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_packet_summary.v1",
+    "source": "software_proof",
+    "packet_verdict": "needs_material_backfill",
+    "source_review_handoff": "ready_for_field_owner_backfill_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_acceptance_packet_fixture_20260521_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "accepted_materials": [
+      "accepted_materials=execution result review handoff safe summary present"
+    ],
+    "missing_materials": [
+      "missing_materials=real task record, route/elevator evidence, delivery result, and true phone/browser evidence"
+    ],
+    "blocked_materials": [
+      "blocked_materials=success/control claims stay rejected"
+    ],
+    "owner_next_steps": [
+      "owner_next_steps=backfill same safe_evidence_ref real materials before acceptance review"
+    ],
+    "safe_phone_copy": "fallback summary keeps现场证据复跑执行结果验收包 read-only；not_proven。",
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_packet_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "true phone/browser evidence"
+    ]
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

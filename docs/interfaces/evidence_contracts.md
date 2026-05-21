@@ -1500,6 +1500,75 @@ delivery result, real delivery success, real phone/browser evidence, HIL pass,
 Objective 5 external cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, PR #6
 runtime proof, or any primary robot action being enabled.
 
+## field_evidence_rerun_execution_result_acceptance_packet
+
+`pc-tools/evidence/field_evidence_rerun_execution_result_acceptance_packet.py`
+generates the PC-only acceptance readiness packet after
+`field_evidence_rerun_execution_result_review_handoff.py`. It consumes only a
+safe review handoff artifact/summary and a field-owner safe acceptance packet;
+it does not read raw task records, raw runtime logs, raw diagnostics, material
+directories, ROS graph state, robot control surfaces, hardware transport logs,
+external cloud evidence, or real phone/browser runtime state.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_packet.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_packet_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_packet_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_result_review_handoff.v1`,
+  `trashbot.field_evidence_rerun_execution_result_review_handoff_summary.v1`,
+  and future Robot safe aliases under
+  `software_proof_docker_field_evidence_rerun_execution_result_review_handoff_gate`.
+- Allowed acceptance packet inputs:
+  a safe field-owner packet with optional schema
+  `trashbot.field_evidence_rerun_execution_result_acceptance_packet_input.v1`
+  or
+  `trashbot.field_evidence_rerun_execution_result_acceptance_packet_materials.v1`.
+  It may expose only `safe_evidence_ref`, strict
+  `same_evidence_ref_required=true`, `accepted_materials`,
+  `missing_materials`, `rejected_materials`, `blocked_materials`,
+  `material_evidence_refs`, `materials`, `owner_next_steps`, and `safe_copy`.
+
+The required material set is fixed as `task_record`,
+`nav2_fixed_route_runtime_log`, `route_completion_signal`,
+`elevator_evidence`, `dropoff_cancel_completion`, `delivery_result`,
+`true_phone_browser_evidence`, and `diagnostics_mobile_safe_summary`. These are
+material category names only; they do not imply that the gate has opened,
+parsed, or validated the raw task record, Nav2 log, fixed-route log, elevator
+evidence, dropoff or cancel completion, delivery result, true phone/browser
+runtime, or diagnostics artifact.
+
+The output always includes `acceptance_verdict`, safe `evidence_ref`,
+`same_evidence_ref_required=true`, `same_evidence_ref_status`,
+`required_materials`, `accepted_materials`, `missing_materials`,
+`rejected_materials`, `acceptance_gap_summary`, `owner_handoff`,
+`next_required_evidence`, `safe_copy`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`,
+`safe_to_control=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_result_acceptance_packet_gate`.
+
+Allowed verdicts are `ready_for_field_owner_acceptance_review_not_proven`,
+`needs_material_backfill`, `blocked_evidence_ref_mismatch`,
+`blocked_unsafe_material`, `rejected_success_claim`, and
+`blocked_missing_acceptance_packet`. Missing or bad JSON, unsupported source
+schema/boundary, non-ready review handoff, evidence_ref mismatch, weak
+`same_evidence_ref_required`, missing required materials, rejected materials,
+unsafe copy, raw local paths, credentials, ROS topics, `/cmd_vel`,
+serial/UART/WAVE ROVER details, checksums, complete/raw artifacts, tracebacks,
+success/control claims, `safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` all fail closed.
+
+This contract is software proof only. A ready verdict means the same safe
+`evidence_ref` has a complete, metadata-only material index ready for field
+owner acceptance review. It is not real route/elevator field pass, not real
+Nav2/fixed-route execution, not task record validation, not route completion
+signal validation, not dropoff/cancel completion, not delivery result, not
+delivery success, not HIL, not WAVE ROVER/UART feedback, not true phone/browser
+proof, not Objective 5 external cloud/4G/OSS/CDN/DB/queue proof, and not any
+primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

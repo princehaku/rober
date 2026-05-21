@@ -181,6 +181,7 @@ const FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_BOUNDARY = "softwar
 const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_INTAKE_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_intake_gate";
 const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_REVIEW_DECISION_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_review_decision_gate";
 const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_review_handoff_gate";
+const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_acceptance_packet_gate";
 const WAVE_ROVER_FEEDBACK_REPLAY_BOUNDARY = "software_proof_docker_wave_rover_feedback_replay_gate";
 const WAVE_ROVER_HIL_PACKET_INTAKE_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_intake_gate";
 const WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_review_decision_gate";
@@ -278,6 +279,7 @@ const UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_CALLBACK_REVIEW_HANDOFF_TEXT = /(aut
 const UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw callback|raw packet|raw review|raw decision|raw handoff|raw result|raw execution|raw execution pack|full execution pack|execution scheduling|schedule execution|queue scheduling|schedule queue|result submission|submit result|review submission|handoff submission|callback submission|submit callback|submit handoff|ack payload|cursor|diagnostics fetch|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw callback|raw packet|raw review|raw decision|raw handoff|raw result|raw execution|raw execution pack|full execution pack|execution scheduling|schedule execution|queue scheduling|schedule queue|result submission|submit result|review submission|handoff submission|callback submission|submit callback|submit handoff|ack payload|cursor|diagnostics fetch|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_REVIEW_HANDOFF_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw callback|raw packet|raw review|raw decision|raw handoff|raw result|raw execution|raw execution pack|full execution pack|execution scheduling|schedule execution|queue scheduling|schedule queue|result submission|submit result|review submission|handoff submission|callback submission|submit callback|submit handoff|ack payload|cursor|diagnostics fetch|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
+const UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw callback|raw packet|raw acceptance|raw review|raw decision|raw handoff|raw result|raw execution|raw execution pack|full execution pack|execution scheduling|schedule execution|queue scheduling|schedule queue|result submission|submit result|review submission|handoff submission|acceptance submission|submit acceptance|callback submission|submit callback|submit handoff|ack payload|cursor|diagnostics fetch|command replay|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_RUN_READINESS_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_FIELD_RUN_CONSOLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw route response|raw robot response|complete bundle|complete artifact|field run artifact|execution bundle|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_FIELD_RUN_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|dropoff success|cancel completed|hil_pass)/i;
@@ -458,6 +460,7 @@ let latestFieldEvidenceRerunExecutionCallbackReviewHandoff = null;
 let latestFieldEvidenceRerunExecutionResultIntake = null;
 let latestFieldEvidenceRerunExecutionResultReviewDecision = null;
 let latestFieldEvidenceRerunExecutionResultReviewHandoff = null;
+let latestFieldEvidenceRerunExecutionResultAcceptancePacket = null;
 let latestWaveRoverFeedbackReplay = null;
 let latestWaveRoverHilPacketIntake = null;
 let latestWaveRoverHilPacketReviewDecision = null;
@@ -1171,6 +1174,15 @@ function safeFieldEvidenceRerunExecutionResultReviewHandoffText(value, fallback 
   // 执行结果复核交接只显示现场 owner 可执行的摘要；raw artifact、提交、排程和控制语义全部降级。
   const text = safeText(value, fallback);
   if (UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_REVIEW_HANDOFF_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeFieldEvidenceRerunExecutionResultAcceptancePacketText(value, fallback = "not_proven") {
+  // 验收包只展示 Robot safe summary；raw packet、ACK/cursor、重放/重提和控制语义全部 fail closed。
+  const text = safeText(value, fallback);
+  if (UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -22763,6 +22775,167 @@ function fieldEvidenceRerunExecutionResultReviewHandoffFromStatus(status, readin
   };
 }
 
+function fieldEvidenceRerunExecutionResultAcceptancePacketCandidate(status, readiness, diagnostics) {
+  // 验收包优先消费 Robot diagnostics safe alias；fallback 只接受同名 summary，避免手机端读取 raw artifact。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifactSummary = status?.field_evidence_rerun_execution_result_acceptance_packet?.summary ||
+    readiness?.field_evidence_rerun_execution_result_acceptance_packet?.summary ||
+    diagnostics?.field_evidence_rerun_execution_result_acceptance_packet?.summary ||
+    diagnosticsSummary.field_evidence_rerun_execution_result_acceptance_packet?.summary ||
+    nestedDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_packet?.summary ||
+    nestedDiagnosticsInnerSummary.field_evidence_rerun_execution_result_acceptance_packet?.summary ||
+    statusDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_packet?.summary;
+  const candidates = [
+    status?.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary,
+    readiness?.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary,
+    diagnostics?.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary,
+    diagnosticsReadiness.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary,
+    diagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary,
+    statusDiagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary,
+    status?.field_evidence_rerun_execution_result_acceptance_packet_summary,
+    readiness?.field_evidence_rerun_execution_result_acceptance_packet_summary,
+    diagnostics?.field_evidence_rerun_execution_result_acceptance_packet_summary,
+    diagnosticsReadiness.field_evidence_rerun_execution_result_acceptance_packet_summary,
+    diagnosticsSummary.field_evidence_rerun_execution_result_acceptance_packet_summary,
+    nestedDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_packet_summary,
+    nestedDiagnosticsInnerSummary.field_evidence_rerun_execution_result_acceptance_packet_summary,
+    statusDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_packet_summary,
+    artifactSummary,
+    status?.diagnostics_summary?.field_evidence_rerun_execution_result_acceptance_packet_summary,
+    diagnostics?.diagnostics_summary?.field_evidence_rerun_execution_result_acceptance_packet_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function fieldEvidenceRerunExecutionResultAcceptancePacketSummaryList(value, fallback) {
+  // 列表字段只保留短摘要，防止完整验收包、路径、checksum、控制语义或原始执行材料出现在手机端。
+  const list = Array.isArray(value) ? value : value && typeof value === "object" ? Object.values(value) : [];
+  const safeItems = list
+    .map((item) => {
+      if (item && typeof item === "object") {
+        return safeFieldEvidenceRerunExecutionResultAcceptancePacketText(
+          item.safe_phone_copy || item.summary || item.title || item.owner || item.reason ||
+            item.material_group || item.group || item.status || item.state ||
+            item.owner_next_step || item.owner_next_steps || item.next_step || item.next_required_evidence,
+          "",
+        );
+      }
+      return safeFieldEvidenceRerunExecutionResultAcceptancePacketText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 12) : [fallback];
+}
+
+function fieldEvidenceRerunExecutionResultAcceptancePacketNotProvenList(value) {
+  // 验收包只是 acceptance readiness，不代表真实现场通过、真实手机/browser、投放或送达成功。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "same_evidence_ref_required=true",
+    "真实 task record",
+    "真实 Nav2/fixed-route runtime log",
+    "真实 route completion signal",
+    "真实 elevator evidence",
+    "真实 dropoff/cancel completion",
+    "真实 delivery result",
+    "true phone/browser evidence",
+    "HIL",
+    "O5 external proof",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 20);
+}
+
+function fieldEvidenceRerunExecutionResultAcceptancePacketFromStatus(status, readiness, diagnostics) {
+  const provided = fieldEvidenceRerunExecutionResultAcceptancePacketCandidate(status, readiness, diagnostics) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.field_evidence_rerun_execution_result_acceptance_packet_summary.v1",
+    source_schema: safeFieldEvidenceRerunExecutionResultAcceptancePacketText(
+      provided.source_schema || provided.acceptance_packet_schema || provided.packet_schema,
+      "trashbot.field_evidence_rerun_execution_result_acceptance_packet.v1",
+    ),
+    source_review_handoff: safeFieldEvidenceRerunExecutionResultAcceptancePacketText(
+      provided.source_review_handoff || provided.source_handoff_status ||
+        provided.source_review_handoff_status || provided.handoff_status,
+      "source_review_handoff=not_proven",
+    ),
+    packet_verdict: safeFieldEvidenceRerunExecutionResultAcceptancePacketText(
+      provided.packet_verdict || provided.packet_status || provided.verdict || provided.status ||
+        provided.overall_status,
+      "blocked_missing_acceptance_packet",
+    ),
+    source: safeFieldEvidenceRerunExecutionResultAcceptancePacketText(provided.source, "software_proof"),
+    safe_evidence_ref: safeFieldEvidenceRerunExecutionResultAcceptancePacketText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    same_evidence_ref_status: safeFieldEvidenceRerunExecutionResultAcceptancePacketText(
+      provided.same_evidence_ref_status || provided.same_safe_evidence_ref_status ||
+        provided.same_evidence_ref_required,
+      "same_evidence_ref_status=required_not_proven",
+    ),
+    accepted_materials: fieldEvidenceRerunExecutionResultAcceptancePacketSummaryList(
+      provided.accepted_materials || provided.accepted_material_categories || provided.accepted,
+      "accepted_materials=none_not_proven",
+    ),
+    missing_materials: fieldEvidenceRerunExecutionResultAcceptancePacketSummaryList(
+      provided.missing_materials || provided.missing_material_categories || provided.missing,
+      "missing_materials=task record、Nav2/fixed-route、route completion、elevator evidence、dropoff/cancel、delivery result、true phone/browser evidence。",
+    ),
+    blocked_materials: fieldEvidenceRerunExecutionResultAcceptancePacketSummaryList(
+      provided.blocked_materials || provided.blocked_material_categories || provided.blocked ||
+        provided.blocker_summary,
+      "blocked_materials=任何 delivery_success=true、primary_actions_enabled=true 或 safe_to_control=true 都必须 rejected。",
+    ),
+    owner_next_steps: fieldEvidenceRerunExecutionResultAcceptancePacketSummaryList(
+      provided.owner_next_steps || provided.next_required_evidence || provided.next_steps ||
+        provided.owner_handoff,
+      "owner_next_steps=field owner 补齐同一 safe evidence_ref 的真实材料；手机端只读展示，不提交验收。",
+    ),
+    safe_copy: safeFieldEvidenceRerunExecutionResultAcceptancePacketText(
+      provided.safe_copy || provided.safe_phone_copy || provided.safe_summary,
+      "现场证据复跑执行结果验收包摘要缺失；手机端保持 not_proven 和主操作禁用。",
+    ),
+    safe_phone_copy: safeFieldEvidenceRerunExecutionResultAcceptancePacketText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary || provided.safe_copy,
+      "现场证据复跑执行结果验收包只读摘要缺失；等待 Robot diagnostics safe summary。",
+    ),
+    evidence_boundary: safeFieldEvidenceRerunExecutionResultAcceptancePacketText(
+      provided.evidence_boundary || provided.proof_boundary,
+      FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_PACKET_BOUNDARY,
+    ),
+    boundary_flags: "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: fieldEvidenceRerunExecutionResultAcceptancePacketNotProvenList(provided),
+  };
+}
+
 function waveRoverFeedbackReplayCandidate(status, readiness, diagnostics) {
   // 兼容 PC gate、Robot diagnostics 和 status 多层 summary；前端拒绝读取 raw artifact。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -31712,6 +31885,118 @@ function renderFieldEvidenceRerunExecutionResultReviewHandoff(status) {
   );
 }
 
+function ensureFieldEvidenceRerunExecutionResultAcceptancePacketPanel() {
+  // 验收包紧跟 review handoff，只读展示 packet verdict 和材料分类，不提供验收提交或控制入口。
+  let panel = $("fieldEvidenceRerunExecutionResultAcceptancePacketPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("fieldEvidenceRerunExecutionResultReviewHandoffPanel") ||
+    $("fieldEvidenceRerunExecutionResultReviewHandoffTitle")?.closest("section") ||
+    $("fieldEvidenceRerunExecutionResultReviewDecisionTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "fieldEvidenceRerunExecutionResultAcceptancePacketPanel";
+  panel.className = "field-evidence-rerun-execution-result-acceptance-packet-panel";
+  panel.setAttribute("aria-labelledby", "fieldEvidenceRerunExecutionResultAcceptancePacketTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="fieldEvidenceRerunExecutionResultAcceptancePacketTitle">现场证据复跑执行结果验收包</h2>
+      <span id="fieldEvidenceRerunExecutionResultAcceptancePacketBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="fieldEvidenceRerunExecutionResultAcceptancePacketCopy" class="message">
+      等待 robot_diagnostics_field_evidence_rerun_execution_result_acceptance_packet_summary。
+    </p>
+    <dl class="field-evidence-rerun-execution-result-acceptance-packet-grid">
+      <div><dt>Packet Verdict</dt><dd id="fieldEvidenceRerunExecutionResultAcceptancePacketVerdict">blocked_missing_acceptance_packet</dd></div>
+      <div><dt>Source Review Handoff</dt><dd id="fieldEvidenceRerunExecutionResultAcceptancePacketSourceHandoff">source_review_handoff=not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="fieldEvidenceRerunExecutionResultAcceptancePacketEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Same Evidence Ref</dt><dd id="fieldEvidenceRerunExecutionResultAcceptancePacketSameRef">same_evidence_ref_status=required_not_proven</dd></div>
+      <div><dt>Safe Copy</dt><dd id="fieldEvidenceRerunExecutionResultAcceptancePacketSafeCopy">blocked copy unavailable</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="fieldEvidenceRerunExecutionResultAcceptancePacketBoundary">software_proof_docker_field_evidence_rerun_execution_result_acceptance_packet_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="fieldEvidenceRerunExecutionResultAcceptancePacketFlags">source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="fieldEvidenceRerunExecutionResultAcceptancePacketNotProven">真实现场复跑、true phone/browser、HIL、投放和 delivery success 未证明。</dd></div>
+    </dl>
+    <div class="review-quads">
+      <section>
+        <h3>Accepted Materials</h3>
+        <ol id="fieldEvidenceRerunExecutionResultAcceptancePacketAccepted" class="handoff-checklist">
+          <li>等待 accepted materials。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Missing Materials</h3>
+        <ol id="fieldEvidenceRerunExecutionResultAcceptancePacketMissing" class="handoff-checklist">
+          <li>等待 missing materials。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Blocked Materials</h3>
+        <ol id="fieldEvidenceRerunExecutionResultAcceptancePacketBlocked" class="handoff-checklist">
+          <li>等待 blocked materials。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Owner Next Steps</h3>
+        <ol id="fieldEvidenceRerunExecutionResultAcceptancePacketOwnerNextSteps" class="handoff-checklist">
+          <li>等待 owner next steps。</li>
+        </ol>
+      </section>
+    </div>
+    <p id="fieldEvidenceRerunExecutionResultAcceptancePacketHint" class="hint">
+      本 panel 只消费 safe acceptance packet summary，不 fetch raw diagnostics/artifacts，不展示 raw JSON、local path、checksum、credential、ROS topic、serial/UART、WAVE ROVER detail、完整 packet、traceback、success copy、ACK、cursor、diagnostics fetch、command replay、automatic resubmit、queue scheduling、execution scheduling、review submission、handoff submission、result submission、acceptance submission、robot command request 或 control authorization；Start Delivery、Confirm Dropoff、Cancel gating 不变。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderFieldEvidenceRerunExecutionResultAcceptancePacket(status) {
+  const panel = ensureFieldEvidenceRerunExecutionResultAcceptancePacketPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = fieldEvidenceRerunExecutionResultAcceptancePacketFromStatus(
+    status,
+    readiness,
+    latestDiagnostics,
+  );
+  latestFieldEvidenceRerunExecutionResultAcceptancePacket = summary;
+  const badge = $("fieldEvidenceRerunExecutionResultAcceptancePacketBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待验收包" : "acceptance packet not_proven";
+  $("fieldEvidenceRerunExecutionResultAcceptancePacketCopy").textContent = summary.safe_phone_copy;
+  $("fieldEvidenceRerunExecutionResultAcceptancePacketVerdict").textContent = summary.packet_verdict;
+  $("fieldEvidenceRerunExecutionResultAcceptancePacketSourceHandoff").textContent =
+    summary.source_review_handoff;
+  $("fieldEvidenceRerunExecutionResultAcceptancePacketEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("fieldEvidenceRerunExecutionResultAcceptancePacketSameRef").textContent = summary.same_evidence_ref_status;
+  $("fieldEvidenceRerunExecutionResultAcceptancePacketSafeCopy").textContent = summary.safe_copy;
+  $("fieldEvidenceRerunExecutionResultAcceptancePacketBoundary").textContent = summary.evidence_boundary;
+  $("fieldEvidenceRerunExecutionResultAcceptancePacketFlags").textContent = summary.boundary_flags;
+  $("fieldEvidenceRerunExecutionResultAcceptancePacketNotProven").textContent = summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionResultAcceptancePacketAccepted",
+    summary.accepted_materials,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionResultAcceptancePacketMissing",
+    summary.missing_materials,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionResultAcceptancePacketBlocked",
+    summary.blocked_materials,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionResultAcceptancePacketOwnerNextSteps",
+    summary.owner_next_steps,
+  );
+}
+
 function renderHardwareSensorProcurementIntake(status) {
   const readiness = readinessFromStatus(status);
   const summary = hardwareSensorProcurementIntakeFromStatus(status, readiness, latestDiagnostics);
@@ -36966,6 +37251,12 @@ function renderDiagnosticsSummary(payload) {
       readinessFromStatus(latestStatus || {}),
       payload || {},
     );
+  const fieldEvidenceRerunExecutionResultAcceptancePacket =
+    fieldEvidenceRerunExecutionResultAcceptancePacketFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      payload || {},
+    );
   const waveRoverFeedbackReplay = waveRoverFeedbackReplayFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -37203,6 +37494,10 @@ function renderDiagnosticsSummary(payload) {
       "field_evidence_rerun_execution_result_review_handoff",
       fieldEvidenceRerunExecutionResultReviewHandoff.handoff_status,
     ],
+    [
+      "field_evidence_rerun_execution_result_acceptance_packet",
+      fieldEvidenceRerunExecutionResultAcceptancePacket.packet_verdict,
+    ],
     ["wave_rover_feedback_replay", waveRoverFeedbackReplay.replay_status],
     ["wave_rover_hil_packet_intake", waveRoverHilPacketIntake.packet_status],
     ["wave_rover_hil_packet_review_decision", waveRoverHilPacketReviewDecision.review_decision],
@@ -37369,6 +37664,7 @@ function renderOfflineFailure() {
   renderFieldEvidenceRerunExecutionResultIntake({});
   renderFieldEvidenceRerunExecutionResultReviewDecision({});
   renderFieldEvidenceRerunExecutionResultReviewHandoff({});
+  renderFieldEvidenceRerunExecutionResultAcceptancePacket({});
   renderWaveRoverFeedbackReplay({});
   renderWaveRoverHilPacketIntake({});
   renderWaveRoverHilPacketReviewDecision({});
@@ -37504,6 +37800,7 @@ function renderStatus(status) {
   renderFieldEvidenceRerunExecutionResultIntake(status);
   renderFieldEvidenceRerunExecutionResultReviewDecision(status);
   renderFieldEvidenceRerunExecutionResultReviewHandoff(status);
+  renderFieldEvidenceRerunExecutionResultAcceptancePacket(status);
   renderWaveRoverFeedbackReplay(status);
   renderWaveRoverHilPacketIntake(status);
   renderWaveRoverHilPacketReviewDecision(status);
@@ -37818,6 +38115,7 @@ async function openDiagnostics() {
     renderFieldEvidenceRerunExecutionResultIntake(latestStatus || {});
     renderFieldEvidenceRerunExecutionResultReviewDecision(latestStatus || {});
     renderFieldEvidenceRerunExecutionResultReviewHandoff(latestStatus || {});
+    renderFieldEvidenceRerunExecutionResultAcceptancePacket(latestStatus || {});
     renderWaveRoverFeedbackReplay(latestStatus || {});
     renderWaveRoverHilPacketIntake(latestStatus || {});
     renderWaveRoverHilPacketReviewDecision(latestStatus || {});
