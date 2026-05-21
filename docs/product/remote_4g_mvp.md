@@ -581,6 +581,39 @@ HTTPS/TLS, real 4G/SIM, production DB/queue, OSS/CDN live traffic, true
 phone/browser behavior, WAVE ROVER/UART, HIL, route/elevator field pass,
 dropoff/cancel completion, delivery result, or delivery success.
 
+## Cloud Manual Takeover Command Safety Guard
+
+`cloud_manual_takeover_command_safety_guard` covers the Robot/API state where a
+manual takeover or human-help outcome is required. It turns `needs_human_help`,
+`failed`, or `degradation_state=manual_takeover_required` into one canonical
+safe degraded state instead of leaving phones to infer support actions from raw
+Robot messages.
+
+When this guard is active, status/readiness must include:
+
+- `capability=cloud_manual_takeover_command_safety_guard`
+- `degradation_state=manual_takeover_required`
+- `manual_takeover_required=true`
+- `remote_ready=false`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `retry_hint=contact_support`
+- `ack_semantics=manual_takeover_not_delivery_success`
+- `safe_phone_copy=需要人工接管；远程主操作已暂停，请按现场/支持指引处理。这不是送达成功。`
+- `proof_boundary=software_proof_docker_cloud_manual_takeover_command_safety_guard`
+
+`build_phone_readiness` and `trashbot.command_safety.v1` must block Start
+Delivery, Confirm Dropoff, and Cancel for `manual_takeover_required`.
+Diagnostics, Support Handoff, voice prompt readiness, and offline/resume
+summaries remain available, but they must be redacted and must not expose raw
+tokens, Authorization headers, ROS topics, `/cmd_vel`, serial/UART details,
+WAVE ROVER details, local paths, tracebacks, or `delivery_success=true`.
+
+This guard is Docker/local software proof only. It is not real external cloud
+proof, true phone/browser proof, HIL, WAVE ROVER/UART proof,
+route/elevator field pass, delivery result, or delivery success.
+
 ## Command Idempotency Visibility Guard
 
 The Robot bridge treats `command.id` as the idempotency key. If the cloud sends
@@ -1163,7 +1196,7 @@ details.
 | `remote_ready` | `true` only means the current local/mock control-plane conditions allow the phone flow to continue; it is not real cloud, 4G, HIL, or delivery proof. |
 | `cloud_reachable` | Whether the configured local/mock control-plane is reachable from the caller's point of view. |
 | `auth_state` | Phone-safe auth state such as `mock_not_required`, `required`, `authorized`, or `auth_failed`. |
-| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `auth_failed`, `media_degraded`, `cloud_poll_backoff`, `cloud_unreachable`, or `malformed_response`. |
+| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `command_sequence_regression`, `auth_failed`, `media_degraded`, `cloud_poll_backoff`, `manual_takeover_required`, `cloud_unreachable`, or `malformed_response`. |
 | `media_state` | Present only for `media_degraded`; values are `oss_write_failed` or `cdn_unavailable`. |
 | `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `check_oss_write`, `check_cdn_reachability`, `wait_for_backoff_window`, `retry_cloud`, or `contact_support`. |
 | `safe_phone_copy` | Plain-language UI copy that must not include raw JSON, ROS topic names, secrets, serial devices, or hardware parameters. |

@@ -652,6 +652,54 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
             "auth_failed_not_delivery_success",
         )
 
+    def test_manual_takeover_backend_status_is_canonical_fail_closed(self):
+        class ManualTakeoverBackend(FakeOperatorBackend):
+            def start_collection(self, target, trash_type=0):
+                self.calls.append(("collect", target, trash_type))
+                return 503, {
+                    "state": "needs_human_help",
+                    "message": "Authorization Bearer token /cmd_vel requires operator",
+                    "remote_ready": True,
+                    "safe_to_control": True,
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                }
+
+        backend = ManualTakeoverBackend()
+        worker = RemoteBridgeWorker(self.client, backend, "robot-1")
+        self.cloud.commands.append({
+            "id": "cmd-manual-takeover",
+            "type": "collect",
+            "payload": {"target": "trash_station"},
+        })
+
+        self.assertTrue(worker.poll_once())
+
+        operator_status = self.cloud.ack_posts[0]["result"]["operator_status"]
+        encoded = json.dumps(operator_status, ensure_ascii=False)
+        self.assertEqual(backend.calls, [("collect", "trash_station", 0)])
+        self.assertEqual(self.cloud.ack_posts[0]["state"], "failed")
+        self.assertEqual(operator_status["capability"], "cloud_manual_takeover_command_safety_guard")
+        self.assertEqual(operator_status["degradation_state"], "manual_takeover_required")
+        self.assertTrue(operator_status["manual_takeover_required"])
+        self.assertFalse(operator_status["remote_ready"])
+        self.assertFalse(operator_status["safe_to_control"])
+        self.assertFalse(operator_status["delivery_success"])
+        self.assertFalse(operator_status["primary_actions_enabled"])
+        self.assertEqual(operator_status["retry_hint"], "contact_support")
+        self.assertEqual(
+            operator_status["ack_semantics"],
+            "manual_takeover_not_delivery_success",
+        )
+        self.assertEqual(
+            operator_status["proof_boundary"],
+            "software_proof_docker_cloud_manual_takeover_command_safety_guard",
+        )
+        self.assertIn("需要人工接管", operator_status["safe_phone_copy"])
+        self.assertEqual(self.cloud.status_posts[-1]["degradation_state"], "manual_takeover_required")
+        for forbidden in ("Authorization", "Bearer", "token", "/cmd_vel", "delivery_success\": true"):
+            self.assertNotIn(forbidden, encoded)
+
     def test_oss_write_failure_posts_media_degraded_status_without_command_poll(self):
         class MediaFailCloud:
             def __init__(self):

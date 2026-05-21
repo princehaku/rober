@@ -20,6 +20,11 @@ except ModuleNotFoundError:
 
 from ros2_trashbot_behavior.remote_bridge_protocol import (
     InvalidRemoteCommand,
+    MANUAL_TAKEOVER_ACK_SEMANTICS,
+    MANUAL_TAKEOVER_CAPABILITY,
+    MANUAL_TAKEOVER_DEGRADATION_STATE,
+    MANUAL_TAKEOVER_PROOF_BOUNDARY,
+    MANUAL_TAKEOVER_SAFE_PHONE_COPY,
     RemoteCloudError,
     RemoteCloudClient,
     command_expired,
@@ -53,6 +58,7 @@ CLOUD_MEDIA_DEGRADATION_STATUS_GUARD_BOUNDARY = (
 CLOUD_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_poll_backoff_rate_limit_guard"
 )
+MANUAL_TAKEOVER_STATES = {"failed", "needs_human_help"}
 MEDIA_DEGRADATION_STATES = {
     "oss_write_failed": (
         "check_oss_write",
@@ -79,6 +85,9 @@ SAFE_OPERATOR_STATUS_KEYS = {
     "media_state",
     "retry_hint",
     "safe_phone_copy",
+    "capability",
+    "manual_takeover_required",
+    "safe_to_control",
     "pending_terminal_ack_id",
     "expired_command_id",
     "duplicate_command_id",
@@ -238,6 +247,29 @@ def _phone_safe_poll_backoff_status(robot_id, backoff_until=None, *, backoff_dur
         delivery_success=False,
         proof_boundary=CLOUD_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY,
         **extra,
+    )
+
+
+def _phone_safe_manual_takeover_status(robot_id, message=""):
+    # 人工接管是现场安全边界，不允许沿用后端 payload 中任何“可控制/已送达”的乐观字段。
+    safe_message = _safe_state_text_value(message or MANUAL_TAKEOVER_SAFE_PHONE_COPY)
+    return make_status(
+        robot_id,
+        "remote_degraded",
+        safe_message,
+        capability=MANUAL_TAKEOVER_CAPABILITY,
+        remote_ready=False,
+        cloud_reachable=True,
+        auth_state="unknown",
+        degradation_state=MANUAL_TAKEOVER_DEGRADATION_STATE,
+        manual_takeover_required=True,
+        safe_to_control=False,
+        retry_hint="contact_support",
+        safe_phone_copy=MANUAL_TAKEOVER_SAFE_PHONE_COPY,
+        ack_semantics=MANUAL_TAKEOVER_ACK_SEMANTICS,
+        primary_actions_enabled=False,
+        delivery_success=False,
+        proof_boundary=MANUAL_TAKEOVER_PROOF_BOUNDARY,
     )
 
 
@@ -638,6 +670,21 @@ class RemoteBridgeWorker:
         self._set_operator_status(status)
         return status
 
+    def _manual_takeover_status_from_payload(self, payload):
+        # 后端可能只返回 needs_human_help/failed；bridge 在 ACK 前补齐 canonical safe degraded state。
+        if not isinstance(payload, dict):
+            return None
+        state = str(payload.get("state") or "").strip()
+        degradation_state = str(payload.get("degradation_state") or "").strip()
+        manual_takeover = bool(payload.get("manual_takeover_required"))
+        if (
+            state not in MANUAL_TAKEOVER_STATES
+            and degradation_state != MANUAL_TAKEOVER_DEGRADATION_STATE
+            and not manual_takeover
+        ):
+            return None
+        return _phone_safe_manual_takeover_status(self.robot_id, payload.get("message") or "")
+
     def _poll_backoff_active(self):
         return bool(self.poll_backoff_until and time.time() < self.poll_backoff_until)
 
@@ -708,6 +755,9 @@ class RemoteBridgeWorker:
                 "safe_phone_copy": status["safe_phone_copy"],
             }
             for key in (
+                "capability",
+                "manual_takeover_required",
+                "safe_to_control",
                 "pending_terminal_ack_id",
                 "expired_command_id",
                 "duplicate_command_id",
@@ -884,6 +934,9 @@ class RemoteBridgeWorker:
         status = (ack.get("result") or {}).get("operator_status")
         if not isinstance(status, dict):
             return
+        manual_takeover_status = self._manual_takeover_status_from_payload(status)
+        if manual_takeover_status is not None:
+            status = manual_takeover_status
         try:
             self.cloud.post_status(_snapshot_status(self.robot_id, status))
         except Exception:
@@ -899,18 +952,29 @@ class RemoteBridgeWorker:
 
     def _execute_command(self, command):
         payload = command["payload"]
+        def _normalize_result(result):
+            http_status, operator_status = result
+            manual_takeover_status = self._manual_takeover_status_from_payload(operator_status)
+            if manual_takeover_status is not None:
+                return http_status, manual_takeover_status
+            return http_status, operator_status
+
         if command["type"] == "collect":
             target = str(payload.get("target") or "").strip()
             if not target:
                 raise ValueError("collect target is required")
-            return self.operator_backend.start_collection(
-                target,
-                int(payload.get("trash_type", 0) or 0),
+            return _normalize_result(
+                self.operator_backend.start_collection(
+                    target,
+                    int(payload.get("trash_type", 0) or 0),
+                )
             )
         if command["type"] == "confirm_dropoff":
-            return self.operator_backend.confirm_dropoff(parse_bool(payload.get("accepted"), default=True))
+            return _normalize_result(
+                self.operator_backend.confirm_dropoff(parse_bool(payload.get("accepted"), default=True))
+            )
         if command["type"] == "cancel":
-            return self.operator_backend.cancel_collection()
+            return _normalize_result(self.operator_backend.cancel_collection())
         raise ValueError(f"unsupported command: {command['type']}")
 
 
@@ -1111,6 +1175,22 @@ class RemoteBridge(Node):
                 self.collect_pending = False
 
     def _set_status(self, state, message="", **extra):
+        if str(state or "").strip() in MANUAL_TAKEOVER_STATES:
+            # ROS 回调侧进入人工接管时也统一补齐远程安全字段，避免 diagnostics 只看到普通 failed。
+            extra = dict(extra)
+            extra.setdefault("capability", MANUAL_TAKEOVER_CAPABILITY)
+            extra.setdefault("degradation_state", MANUAL_TAKEOVER_DEGRADATION_STATE)
+            extra.setdefault("manual_takeover_required", True)
+            extra.setdefault("remote_ready", False)
+            extra.setdefault("cloud_reachable", True)
+            extra.setdefault("auth_state", "unknown")
+            extra.setdefault("safe_to_control", False)
+            extra.setdefault("delivery_success", False)
+            extra.setdefault("primary_actions_enabled", False)
+            extra.setdefault("retry_hint", "contact_support")
+            extra.setdefault("safe_phone_copy", MANUAL_TAKEOVER_SAFE_PHONE_COPY)
+            extra.setdefault("ack_semantics", MANUAL_TAKEOVER_ACK_SEMANTICS)
+            extra.setdefault("proof_boundary", MANUAL_TAKEOVER_PROOF_BOUNDARY)
         self.last_status = make_status(self.robot_id, state, message, **extra)
 
 

@@ -17,6 +17,38 @@ Allowed Robot-visible fields are limited to sanitized guard metadata: `guard`, `
 
 The alias must not expose bearer tokens, Authorization headers, credentials, DB/queue URLs, OSS AK/SK, raw cloud response bodies, tracebacks, local paths, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details, HIL/pass wording, delivery success wording, ACK/cursor state, retry/replay/resubmit requests, queue advancement, or hidden robot command side effects. Missing safe metadata, unsupported degradation state, unsafe copy, raw response markers, enabled action flags, `delivery_success=true`, `primary_actions_enabled=true`, `safe_to_control=true`, or `remote_ready=true` keeps the summary blocked/not_proven and leaves Start, Confirm Dropoff, Cancel, ACK, cursor fetch, retry, replay, resubmit, queue advancement, dropoff/cancel completion, delivery result, and primary robot actions disabled.
 
+## cloud_manual_takeover_command_safety_guard
+
+`cloud_manual_takeover_command_safety_guard` is the Robot/API safe degraded
+state for manual takeover and human-help outcomes. It is emitted when Robot
+status or ACK operator status reaches `needs_human_help`, `failed`, or an
+explicit `degradation_state=manual_takeover_required`.
+
+The contract is fail-closed:
+
+- `capability=cloud_manual_takeover_command_safety_guard`
+- `degradation_state=manual_takeover_required`
+- `manual_takeover_required=true`
+- `remote_ready=false`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `retry_hint=contact_support`
+- `ack_semantics=manual_takeover_not_delivery_success`
+- `proof_boundary=software_proof_docker_cloud_manual_takeover_command_safety_guard`
+- `safe_phone_copy=需要人工接管；远程主操作已暂停，请按现场/支持指引处理。这不是送达成功。`
+
+Diagnostics remain visible, but only through redacted `remote_readiness`,
+`phone_readiness`, `phone_task_flow_readiness`, support handoff, voice prompt,
+and offline/resume summaries. Missing canonical fields or unsafe upstream
+values such as `remote_ready=true`, `safe_to_control=true`,
+`delivery_success=true`, or `primary_actions_enabled=true` must be overwritten
+to the fail-closed values above.
+
+This boundary is Docker/local `software_proof` only. It is not real external
+cloud proof, true phone/browser proof, HIL, WAVE ROVER/UART proof,
+route/elevator field pass, delivery result, or delivery success.
+
 ## robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary
 
 `robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary` is the Robot diagnostics safe alias for the `pr5_mandatory_sensor_source_alignment` gate. It consumes only the sanitized summary schema `trashbot.pr5_mandatory_sensor_source_alignment_summary.v1`, whose `source_schema` must point back to `trashbot.pr5_mandatory_sensor_source_alignment.v1` and whose evidence boundary must remain `software_proof_docker_pr5_mandatory_sensor_source_alignment_gate`.

@@ -1,0 +1,79 @@
+{
+  "robot_id": "trashbot-alpha",
+  "state": "remote_degraded",
+  "remote_ready": false,
+  "cloud_reachable": true,
+  "auth_state": "authorized",
+  "degradation_state": "manual_takeover_required",
+  "manual_takeover_required": true,
+  "retry_hint": "contact_support",
+  "primary_actions_enabled": false,
+  "safe_to_control": false,
+  "safe_phone_copy": "需要人工接管；远程主操作已暂停，请按现场/支持指引处理。这不是送达成功。",
+  "recovery_hint": "请联系现场人员或支持同学人工接管；手机端不要自动重放、自动 resubmit、请求下游确认游标、拉取原始诊断或触发 Start Delivery、Confirm Dropoff、Cancel。",
+  "ack_semantics": "manual_takeover_not_delivery_success",
+  "proof_boundary": "software_proof_docker_cloud_manual_takeover_command_safety_guard",
+  "evidence_boundary": "software_proof_docker_cloud_manual_takeover_command_safety_guard",
+  "boundary_flags": "source=software_proof / not_proven / remote_ready=false / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / retry_hint=contact_support",
+  "delivery_success": false,
+  "not_proven": [
+    "真实公网 HTTPS/TLS",
+    "真实 4G/SIM",
+    "OSS/CDN live traffic",
+    "production DB/queue",
+    "真实手机/browser",
+    "Nav2/fixed-route",
+    "route/elevator field pass",
+    "WAVE ROVER/UART/HIL",
+    "delivery success"
+  ],
+  "phone_readiness": {
+    "primary_state": "blocked",
+    "next_action": "contact_support",
+    "support_level": "diagnostics_available",
+    "remote_readiness": {
+      "remote_ready": false,
+      "degradation_state": "manual_takeover_required",
+      "manual_takeover_required": true,
+      "primary_actions_enabled": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "safe_phone_copy": "需要人工接管；远程主操作已暂停，请按现场/支持指引处理。这不是送达成功。",
+      "recovery_hint": "请联系现场人员或支持同学人工接管；手机端不要自动重放、自动 resubmit、请求下游确认游标、拉取原始诊断或触发 Start Delivery、Confirm Dropoff、Cancel。",
+      "retry_hint": "contact_support",
+      "ack_semantics": "manual_takeover_not_delivery_success",
+      "proof_boundary": "software_proof_docker_cloud_manual_takeover_command_safety_guard"
+    },
+    "command_safety": {
+      "schema": "trashbot.command_safety.v1",
+      "global_block_reason": "manual_takeover_required：需要人工接管，remote_ready=false。",
+      "ack_semantics": "manual_takeover_not_delivery_success",
+      "actions": {
+        "start": {
+          "enabled": false,
+          "blocking_reason": "manual_takeover_required / remote_ready=false / primary_actions_enabled=false"
+        },
+        "confirm_dropoff": {
+          "enabled": false,
+          "blocking_reason": "manual_takeover_required / remote_ready=false / primary_actions_enabled=false"
+        },
+        "cancel": {
+          "enabled": false,
+          "blocking_reason": "manual_takeover_required / remote_ready=false / primary_actions_enabled=false"
+        },
+        "diagnostics": {
+          "enabled": true,
+          "safe_phone_copy": "诊断可打开；主操作保持 fail closed。"
+        }
+      }
+    }
+  },
+  "action_permissions": {
+    "can_collect": false,
+    "can_confirm_dropoff": false,
+    "can_cancel": false
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

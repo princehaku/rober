@@ -1005,6 +1005,54 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         )
         self.assertNotIn("delivery_success\": true", json.dumps(poll_backoff["remote_readiness"]))
 
+        manual_takeover = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "degradation_state": "manual_takeover_required",
+                "manual_takeover_required": True,
+                "retry_hint": "retry_cloud",
+                "safe_phone_copy": "Authorization Bearer token /cmd_vel",
+                "remote_ready": True,
+                "safe_to_control": True,
+                "primary_actions_enabled": True,
+                "delivery_success": True,
+                "ack_semantics": "delivery_success",
+                "proof_boundary": "unsafe-boundary",
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        self.assertEqual(manual_takeover["primary_state"], "manual_takeover_required")
+        self.assertFalse(manual_takeover["can_continue"])
+        self.assertEqual(manual_takeover["next_action"], "manual_takeover")
+        self.assertEqual(manual_takeover["support_level"], "human_takeover_required")
+        self.assertEqual(manual_takeover["command_safety"]["global_block_reason"], "manual_takeover_required")
+        self.assertFalse(manual_takeover["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(manual_takeover["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(manual_takeover["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(manual_takeover["command_safety"]["actions"]["diagnostics"]["enabled"])
+        self.assertEqual(
+            manual_takeover["remote_readiness"]["capability"],
+            "cloud_manual_takeover_command_safety_guard",
+        )
+        self.assertTrue(manual_takeover["remote_readiness"]["manual_takeover_required"])
+        self.assertFalse(manual_takeover["remote_readiness"]["remote_ready"])
+        self.assertFalse(manual_takeover["remote_readiness"]["safe_to_control"])
+        self.assertFalse(manual_takeover["remote_readiness"]["delivery_success"])
+        self.assertFalse(manual_takeover["remote_readiness"]["primary_actions_enabled"])
+        self.assertEqual(manual_takeover["remote_readiness"]["retry_hint"], "contact_support")
+        self.assertEqual(
+            manual_takeover["remote_readiness"]["ack_semantics"],
+            "manual_takeover_not_delivery_success",
+        )
+        self.assertEqual(
+            manual_takeover["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_manual_takeover_command_safety_guard",
+        )
+        self.assertIn("需要人工接管", manual_takeover["safe_phone_copy"])
+        encoded_manual = json.dumps(manual_takeover, ensure_ascii=False)
+        for forbidden in ("Authorization", "Bearer", "token", "/cmd_vel", "delivery_success\": true"):
+            self.assertNotIn(forbidden, encoded_manual)
+
         cloud_unreachable = build_phone_readiness(
             local_status,
             remote_readiness={
@@ -2242,6 +2290,46 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             "software_proof_docker_cloud_media_degradation_status_guard",
         )
         for forbidden in ("Authorization", "Bearer", "token", "signed URL", "/cmd_vel"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_mock_cloud_manual_takeover_status_remains_redacted_and_fail_closed(self):
+        store = MockCloudStore()
+        payload = store.post_status(
+            "trashbot-manual",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "needs_human_help",
+                "message": "Authorization Bearer token /cmd_vel requires operator",
+                "updated_at": time.time(),
+                "remote_ready": True,
+                "safe_to_control": True,
+                "degradation_state": "manual_takeover_required",
+                "manual_takeover_required": True,
+                "retry_hint": "retry_cloud",
+                "safe_phone_copy": "Authorization Bearer token /cmd_vel",
+                "ack_semantics": "delivery_success",
+                "primary_actions_enabled": True,
+                "delivery_success": True,
+            },
+        )
+
+        readiness = payload["remote_readiness"]
+        encoded = json.dumps(payload, ensure_ascii=False)
+        self.assertEqual(readiness["capability"], "cloud_manual_takeover_command_safety_guard")
+        self.assertEqual(readiness["degradation_state"], "manual_takeover_required")
+        self.assertTrue(readiness["manual_takeover_required"])
+        self.assertFalse(readiness["remote_ready"])
+        self.assertFalse(readiness["safe_to_control"])
+        self.assertFalse(readiness["delivery_success"])
+        self.assertFalse(readiness["primary_actions_enabled"])
+        self.assertEqual(readiness["retry_hint"], "contact_support")
+        self.assertEqual(readiness["ack_semantics"], "manual_takeover_not_delivery_success")
+        self.assertEqual(
+            readiness["proof_boundary"],
+            "software_proof_docker_cloud_manual_takeover_command_safety_guard",
+        )
+        self.assertIn("需要人工接管", readiness["safe_phone_copy"])
+        for forbidden in ("Authorization", "Bearer", "token", "/cmd_vel", "delivery_success\": true"):
             self.assertNotIn(forbidden, encoded)
 
     def test_mock_cloud_bearer_auth_gate_allows_authorized_phone_flow(self):

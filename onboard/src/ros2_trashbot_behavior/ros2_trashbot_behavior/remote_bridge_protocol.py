@@ -10,6 +10,11 @@ COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
 TERMINAL_COMMAND_STATES = {"acked", "failed", "ignored"}
 TRUE_STRINGS = {"1", "true", "yes", "on"}
 FALSE_STRINGS = {"0", "false", "no", "off"}
+MANUAL_TAKEOVER_CAPABILITY = "cloud_manual_takeover_command_safety_guard"
+MANUAL_TAKEOVER_DEGRADATION_STATE = "manual_takeover_required"
+MANUAL_TAKEOVER_PROOF_BOUNDARY = "software_proof_docker_cloud_manual_takeover_command_safety_guard"
+MANUAL_TAKEOVER_ACK_SEMANTICS = "manual_takeover_not_delivery_success"
+MANUAL_TAKEOVER_SAFE_PHONE_COPY = "需要人工接管；远程主操作已暂停，请按现场/支持指引处理。这不是送达成功。"
 
 
 class InvalidRemoteCommand(ValueError):

@@ -21,6 +21,9 @@ CLOUD_COMMAND_ID_CONFLICT_FIXTURE = (
 CLOUD_AUTH_FAILURE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_auth_failure_status_guard.json"
 )
+CLOUD_MANUAL_TAKEOVER_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_manual_takeover_command_safety_guard.json"
+)
 CLOUD_MEDIA_DEGRADATION_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_media_degradation_status_guard.json"
 )
@@ -342,6 +345,92 @@ class CloudAuthFailureStatusGuardMobileTest(unittest.TestCase):
             "/cmd_vel",
             "raw ros topic",
             "raw json",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "serial device",
+            "baudrate",
+            "wave rover parameter",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
+
+
+class CloudManualTakeoverCommandSafetyGuardMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_manual_takeover_command_safety_guard_is_consumed_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_MANUAL_TAKEOVER_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # manual_takeover_required 复用 cloud readiness / command safety；手机端只解释人工接管，不新增控制 endpoint。
+        self.assertIn("CLOUD_MANUAL_TAKEOVER_BOUNDARY", app)
+        self.assertIn("CLOUD_MANUAL_TAKEOVER_COPY", app)
+        self.assertIn("software_proof_docker_cloud_manual_takeover_command_safety_guard", app)
+        self.assertIn("degradation_state", app)
+        self.assertIn("manual_takeover_required", app)
+        self.assertIn("contact_support", app)
+        self.assertIn("manual_takeover_not_delivery_success", app)
+        self.assertIn("remote_ready=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"cloudManualTakeover.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 明确远程主操作暂停，三类主操作关闭，人工接管 ACK 语义不能被误读为送达成功。
+        self.assertEqual(fixture["degradation_state"], "manual_takeover_required")
+        self.assertEqual(fixture["manual_takeover_required"], True)
+        self.assertEqual(fixture["remote_ready"], False)
+        self.assertEqual(fixture["safe_to_control"], False)
+        self.assertEqual(fixture["primary_actions_enabled"], False)
+        self.assertEqual(fixture["delivery_success"], False)
+        self.assertEqual(fixture["retry_hint"], "contact_support")
+        self.assertEqual(fixture["ack_semantics"], "manual_takeover_not_delivery_success")
+        self.assertEqual(fixture["phone_readiness"]["remote_readiness"]["retry_hint"], "contact_support")
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertIn("需要人工接管", fixture_text)
+        self.assertIn("远程主操作已暂停", fixture_text)
+        self.assertIn("这不是送达成功", fixture_text)
+        self.assertIn("manual_takeover_not_delivery_success", fixture_text)
+        self.assertIn("remote_ready=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("software_proof_docker_cloud_manual_takeover_command_safety_guard", fixture_text)
+        self.assertNotIn("delivery_success\": true", fixture_text)
+        self.assertNotIn("primary_actions_enabled\": true", fixture_text)
+
+        # 产品文档必须把人工接管写成 Docker/local fixture proof，不是真实云、真机、HIL、现场通过或送达证明。
+        self.assertIn("cloud_manual_takeover_command_safety_guard", doc)
+        self.assertIn("manual_takeover_required", doc)
+        self.assertIn("contact_support", doc)
+        self.assertIn("manual_takeover_not_delivery_success", doc)
+        self.assertIn("需要人工接管；远程主操作已暂停", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("software_proof_docker_cloud_manual_takeover_command_safety_guard", doc)
+
+    def test_cloud_manual_takeover_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_MANUAL_TAKEOVER_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # 人工接管 fixture 只暴露安全摘要，不能携带 raw diagnostics、ACK/cursor、底盘控制或成功证明。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "ack payload",
+            "cursor",
             "authorization",
             "bearer",
             "token",

@@ -28484,6 +28484,74 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         for forbidden in ("Authorization", "Bearer", "signed URL", "/cmd_vel"):
             self.assertNotIn(forbidden, encoded)
 
+    def test_diagnostics_phone_readiness_surfaces_manual_takeover_guard(self):
+        class Gateway:
+            def snapshot(self):
+                return {
+                    "state": "needs_human_help",
+                    "message": "Authorization Bearer token /cmd_vel requires operator",
+                    "can_collect": True,
+                    "can_confirm_dropoff": True,
+                    "can_cancel": True,
+                    "remote_readiness": {
+                        "capability": "cloud_manual_takeover_command_safety_guard",
+                        "degradation_state": "manual_takeover_required",
+                        "manual_takeover_required": True,
+                        "ack_semantics": "delivery_success",
+                        "remote_ready": True,
+                        "safe_to_control": True,
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                        "retry_hint": "retry_cloud",
+                        "safe_phone_copy": "Authorization Bearer token /cmd_vel",
+                        "proof_boundary": "unsafe-boundary",
+                    },
+                }
+
+            def diagnostics(self):
+                return {
+                    "state": "diagnostics_ready",
+                    "software_version": "0.1.0",
+                    "map_version": "map-a",
+                    "route_version": "route-a",
+                    "source": "software_proof",
+                    "latest_status": self.snapshot(),
+                    "failure": {
+                        "state": "needs_human_help",
+                        "message": "raw Authorization Bearer token /cmd_vel must stay hidden",
+                        "error_code": "MANUAL_TAKEOVER_REQUIRED",
+                    },
+                }
+
+        payload = _diagnostics_with_phone_task_flow(Gateway(), MockCloudStore())
+        readiness = payload["latest_status"]["phone_readiness"]
+        remote_readiness = readiness["remote_readiness"]
+        offline_resume = payload["phone_offline_resume_readiness"]
+        encoded = json.dumps(payload, ensure_ascii=False)
+
+        self.assertEqual(remote_readiness["capability"], "cloud_manual_takeover_command_safety_guard")
+        self.assertEqual(remote_readiness["degradation_state"], "manual_takeover_required")
+        self.assertTrue(remote_readiness["manual_takeover_required"])
+        self.assertFalse(remote_readiness["remote_ready"])
+        self.assertFalse(remote_readiness["safe_to_control"])
+        self.assertFalse(remote_readiness["delivery_success"])
+        self.assertFalse(remote_readiness["primary_actions_enabled"])
+        self.assertEqual(remote_readiness["retry_hint"], "contact_support")
+        self.assertEqual(remote_readiness["ack_semantics"], "manual_takeover_not_delivery_success")
+        self.assertEqual(
+            remote_readiness["proof_boundary"],
+            "software_proof_docker_cloud_manual_takeover_command_safety_guard",
+        )
+        self.assertEqual(readiness["command_safety"]["global_block_reason"], "manual_takeover_required")
+        self.assertFalse(readiness["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(readiness["command_safety"]["actions"]["diagnostics"]["enabled"])
+        self.assertEqual(offline_resume["connection_state"], "manual_takeover")
+        self.assertIn("需要人工接管", remote_readiness["safe_phone_copy"])
+        for forbidden in ("Authorization", "Bearer", "token", "/cmd_vel", "delivery_success\": true"):
+            self.assertNotIn(forbidden, encoded)
+
     def test_cloud_unreachable_malformed_response_guard_summary_is_fail_closed(self):
         for degradation_state in ("cloud_unreachable", "malformed_response"):
             summary = summarize_cloud_unreachable_malformed_response_guard(

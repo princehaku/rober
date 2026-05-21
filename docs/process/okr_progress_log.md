@@ -8,7 +8,25 @@
 
 ## 2026-05-21 系列
 
-更新时间：2026-05-21 09:22 Asia/Shanghai。
+更新时间：2026-05-21 10:28 Asia/Shanghai。
+
+### 2026-05-21 10-11｜cloud-manual-takeover-command-safety-guard｜manual takeover command safety software proof
+
+本轮 `sprints/2026.05.21_10-11_cloud-manual-takeover-command-safety-guard/` 执行 `cloud_manual_takeover_command_safety_guard` epic closeout。Objective 5 仍约 68%，是当前数值最低 Objective；本轮只把 `manual_takeover_required` / human-help 状态补成独立 command-safety fail-closed guard，不提高百分比。Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending，comment `3269642220` 不是 reviewer resolution。
+
+Robot worker 将 `needs_human_help`、`failed` 和 `degradation_state=manual_takeover_required` 归一为 `capability=cloud_manual_takeover_command_safety_guard`，并强制 `manual_takeover_required=true`、`remote_ready=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`retry_hint=contact_support`、`ack_semantics=manual_takeover_not_delivery_success` 与 `proof_boundary=software_proof_docker_cloud_manual_takeover_command_safety_guard`。Robot worker 首轮验证发现 diagnostics 会保留 unsafe raw `latest_status.remote_readiness`，修复后改为 computed safe `remote_readiness`。Full-Stack worker 在 `mobile/web` 增加 manual takeover fixture / rendering，保持 Start Delivery / Confirm Dropoff / Cancel disabled；首轮验证发现 forbidden literal `raw diagnostics`，修复后 rerun。
+
+证据边界保持 `software_proof_docker_cloud_manual_takeover_command_safety_guard`、`manual_takeover_required`、`source=software_proof`、`not_proven`、`remote_ready=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。本轮 is not real external cloud proof、not true phone/browser proof、not HIL、not WAVE ROVER/UART proof、not route/elevator field pass、not delivery result、not delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL、hardware bridge、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只处理 manual takeover / human-help fail-closed 状态，不新增 route/elevator field material、真实电梯、Nav2/fixed-route runtime log、dropoff/cancel completion、field pass、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 可读状态受益：手机端能展示 manual takeover / human-help 安全文案，并保持 `remote_ready=false`、`primary_actions_enabled=false` 和主操作不可用；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_manual_takeover_command_safety_guard` 只证明 Docker/local Robot/API + mobile static fixture 下的人工接管 fail-closed 可见性：manual takeover 被安全分类、phone-safe copy 可见、actions fail closed、ACK semantics 明确不是 delivery success。本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Robot worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 517 tests in 137.481s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check` 通过；mobile unittest 输出 `Ran 205 tests`；fixture JSON check、required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、PR #6 runtime proof、O1/HIL、WAVE ROVER/UART、PR #4 route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、delivery result 或 delivery success。
 
 ### 2026-05-21 09-10｜field-evidence-rerun-execution-result-review-handoff｜field evidence rerun execution result review handoff software proof
 

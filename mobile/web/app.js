@@ -19,6 +19,8 @@ const ELEVATOR_ACTION_FEEDBACK_TRACE_BOUNDARY = "software_proof_docker_mobile_ac
 const CLOUD_READINESS_BOUNDARY = "software_proof_docker_mobile_cloud_readiness_summary_gate";
 const CLOUD_AUTH_FAILURE_STATUS_BOUNDARY = "software_proof_docker_cloud_auth_failure_status_guard";
 const CLOUD_AUTH_FAILURE_STATUS_COPY = "登录或访问码未通过；请重新登录或检查凭证；这不是送达成功。";
+const CLOUD_MANUAL_TAKEOVER_BOUNDARY = "software_proof_docker_cloud_manual_takeover_command_safety_guard";
+const CLOUD_MANUAL_TAKEOVER_COPY = "需要人工接管；远程主操作已暂停，请按现场/支持指引处理。这不是送达成功。";
 const CLOUD_STATUS_STALE_BOUNDARY = "software_proof_docker_cloud_status_stale_guard";
 const CLOUD_STATUS_STALE_COPY = "正在等待小车上报最新状态；当前状态已过期，不能作为送达成功依据。";
 const CLOUD_PENDING_ACK_STATUS_BOUNDARY = "software_proof_docker_cloud_pending_ack_status_guard";
@@ -1701,6 +1703,39 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         ),
         evidence_boundary: CLOUD_AUTH_FAILURE_STATUS_BOUNDARY,
         proof_boundary: CLOUD_AUTH_FAILURE_STATUS_BOUNDARY,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
+    if (provided.degradation_state === "manual_takeover_required" ||
+        provided.manual_takeover_required === true ||
+        provided.proof_boundary === CLOUD_MANUAL_TAKEOVER_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_MANUAL_TAKEOVER_BOUNDARY) {
+      // manual takeover 说明远程主操作已暂停，手机端只能展示人工接管指引，不能重放、请求下游游标或打开控制。
+      return {
+        ...provided,
+        missing: false,
+        overall_status: "blocked",
+        preflight_status: "manual_takeover_required",
+        degradation_state: "manual_takeover_required",
+        manual_takeover_required: true,
+        db_queue_status: "manual_takeover_required / remote_ready=false / primary_actions_enabled=false",
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        delivery_success: false,
+        retry_hint: "contact_support",
+        safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_MANUAL_TAKEOVER_COPY),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "请按现场/支持指引人工接管；手机端不重放、不 resubmit、不请求下游确认游标，也不提交控制动作。",
+        ),
+        ack_semantics: safeText(
+          provided.ack_semantics,
+          "manual_takeover_not_delivery_success",
+        ),
+        evidence_boundary: CLOUD_MANUAL_TAKEOVER_BOUNDARY,
+        proof_boundary: CLOUD_MANUAL_TAKEOVER_BOUNDARY,
         not_proven: notProvenList(provided.not_proven),
       };
     }

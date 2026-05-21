@@ -17,7 +17,14 @@ from ros2_trashbot_behavior.remote_cloud_relay import (
     build_phone_queue_ordering_drill_summary,
     build_phone_transaction_isolation_summary,
 )
-from ros2_trashbot_behavior.remote_bridge_protocol import parse_bool
+from ros2_trashbot_behavior.remote_bridge_protocol import (
+    MANUAL_TAKEOVER_ACK_SEMANTICS,
+    MANUAL_TAKEOVER_CAPABILITY,
+    MANUAL_TAKEOVER_DEGRADATION_STATE,
+    MANUAL_TAKEOVER_PROOF_BOUNDARY,
+    MANUAL_TAKEOVER_SAFE_PHONE_COPY,
+    parse_bool,
+)
 
 
 API_VERSION = "slice2.operator.v1"
@@ -50,6 +57,7 @@ PHONE_MEDIA_DEGRADATION_STATUS_GUARD_BOUNDARY = (
 PHONE_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_poll_backoff_rate_limit_guard"
 )
+PHONE_MANUAL_TAKEOVER_COMMAND_SAFETY_GUARD_BOUNDARY = MANUAL_TAKEOVER_PROOF_BOUNDARY
 PHONE_STATUS_STALE_GUARD_BOUNDARY = "software_proof_docker_cloud_status_stale_guard"
 COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
 REMOTE_COMMAND_TYPES = {"collect", "confirm_dropoff", "cancel"}
@@ -86,6 +94,7 @@ REMOTE_DEGRADATION_COPY = {
     "auth_failed": "手机登录已失效，请重新登录或检查访问凭证；这不是送达成功。",
     "media_degraded": "媒体链路降级：OSS 写入或 CDN 拉取不可用；这不是送达成功。",
     "cloud_poll_backoff": "远程轮询正在等待重试窗口，主操作保持不可用；这不是送达成功。",
+    MANUAL_TAKEOVER_DEGRADATION_STATE: MANUAL_TAKEOVER_SAFE_PHONE_COPY,
     "cloud_unreachable": "远程控制通道暂不可用，请稍后重试。",
     "malformed_response": "远程控制返回异常，请联系支持人员。",
 }
@@ -97,6 +106,9 @@ REMOTE_STATUS_SAFE_EXTRA_KEYS = {
     "degradation_state",
     "retry_hint",
     "safe_phone_copy",
+    "capability",
+    "manual_takeover_required",
+    "safe_to_control",
     "pending_terminal_ack_id",
     "expired_command_id",
     "duplicate_command_id",
@@ -991,9 +1003,20 @@ class MockCloudStore:
         media_state = ""
         if status_degradation == "media_degraded":
             media_state = str(status.get("media_state") or "").strip()
+        manual_takeover_required = bool(
+            status_degradation == MANUAL_TAKEOVER_DEGRADATION_STATE
+            or status.get("manual_takeover_required")
+            or str(status.get("state") or "").strip() in {"failed", "needs_human_help"}
+        )
         ack_operator_status = {}
         if latest_ack and isinstance((latest_ack.get("result") or {}).get("operator_status"), dict):
             ack_operator_status = (latest_ack.get("result") or {}).get("operator_status")
+        if not manual_takeover_required:
+            manual_takeover_required = bool(
+                str(ack_operator_status.get("degradation_state") or "").strip() == MANUAL_TAKEOVER_DEGRADATION_STATE
+                or ack_operator_status.get("manual_takeover_required")
+                or str(ack_operator_status.get("state") or "").strip() in {"failed", "needs_human_help"}
+            )
         if not expired_command_id and str(ack_operator_status.get("degradation_state") or "") == "command_expired":
             expired_command_id = str(ack_operator_status.get("expired_command_id") or last_command_ack).strip()
         if (
@@ -1016,8 +1039,11 @@ class MockCloudStore:
         auth_failed = status_degradation == "auth_failed" or str(ack_operator_status.get("auth_state") or "") == "auth_failed"
         retry_hint = "ok"
         degradation_state = "ok"
-        # 过期和 pending 都比 duplicate/conflict 更需要用户立即处理，不能被 cached ACK 或冲突摘要覆盖。
-        if expired_command_id or status_degradation == "command_expired":
+        # 人工接管是现场安全边界，优先于 pending/duplicate 等云队列状态，避免继续提示远程主操作。
+        if manual_takeover_required:
+            retry_hint = "contact_support"
+            degradation_state = MANUAL_TAKEOVER_DEGRADATION_STATE
+        elif expired_command_id or status_degradation == "command_expired":
             retry_hint = "resubmit_command"
             degradation_state = "command_expired"
         elif status_degradation == "command_pending":
@@ -1061,6 +1087,7 @@ class MockCloudStore:
                 "auth_failed",
                 "media_degraded",
                 "cloud_poll_backoff",
+                MANUAL_TAKEOVER_DEGRADATION_STATE,
             }
         )
         readiness = {
@@ -1201,6 +1228,22 @@ class MockCloudStore:
                 or ack_operator_status.get("proof_boundary")
                 or PHONE_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY
             )
+        if degradation_state == MANUAL_TAKEOVER_DEGRADATION_STATE:
+            # mock cloud 只能发布脱敏的人工接管摘要；上游 payload 的 success/control 字段一律降级。
+            readiness["capability"] = MANUAL_TAKEOVER_CAPABILITY
+            readiness["remote_ready"] = False
+            readiness["manual_takeover_required"] = True
+            readiness["safe_to_control"] = False
+            readiness["delivery_success"] = False
+            readiness["primary_actions_enabled"] = False
+            readiness["retry_hint"] = "contact_support"
+            readiness["safe_phone_copy"] = MANUAL_TAKEOVER_SAFE_PHONE_COPY
+            readiness["ack_semantics"] = MANUAL_TAKEOVER_ACK_SEMANTICS
+            readiness["proof_boundary"] = str(
+                status.get("proof_boundary")
+                or ack_operator_status.get("proof_boundary")
+                or PHONE_MANUAL_TAKEOVER_COMMAND_SAFETY_GUARD_BOUNDARY
+            )
         if degradation_state == "status_stale":
             # stale 状态只证明手机端需要等新状态，不能被上游 payload 的成功字段染成送达成功。
             readiness["remote_ready"] = False
@@ -1267,6 +1310,27 @@ class MockCloudStore:
 
     def post_status(self, robot_id, payload):
         status = normalize_remote_status(robot_id, payload)
+        if (
+            str(status.get("degradation_state") or "").strip() == MANUAL_TAKEOVER_DEGRADATION_STATE
+            or status.get("manual_takeover_required")
+            or str(status.get("state") or "").strip() in {"failed", "needs_human_help"}
+        ):
+            # mock cloud 返回的 status 也必须是 canonical safe state，不能保留上游 unsafe 成功字段。
+            status.update(
+                {
+                    "capability": MANUAL_TAKEOVER_CAPABILITY,
+                    "degradation_state": MANUAL_TAKEOVER_DEGRADATION_STATE,
+                    "manual_takeover_required": True,
+                    "remote_ready": False,
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "retry_hint": "contact_support",
+                    "safe_phone_copy": MANUAL_TAKEOVER_SAFE_PHONE_COPY,
+                    "ack_semantics": MANUAL_TAKEOVER_ACK_SEMANTICS,
+                    "proof_boundary": PHONE_MANUAL_TAKEOVER_COMMAND_SAFETY_GUARD_BOUNDARY,
+                }
+            )
         with self._lock:
             robot = self._robot(robot_id)
             robot["status"] = _remote_safe_value(status)
@@ -3046,6 +3110,7 @@ def _command_safety_block_reason(primary_state, remote_state, manifest_state):
         "command_sequence_regression",
         "media_degraded",
         "cloud_poll_backoff",
+        MANUAL_TAKEOVER_DEGRADATION_STATE,
         "auth_failed",
         "cloud_unreachable",
         "malformed_response",
@@ -3541,6 +3606,8 @@ def _offline_resume_safe_text(value, fallback):
 
 def _offline_resume_connection_state(primary_state, remote_state, command_safety):
     # connection_state 只描述手机恢复路径，不把本地 mock 或 ACK 状态升级成真实云/4G。
+    if remote_state == MANUAL_TAKEOVER_DEGRADATION_STATE:
+        return "manual_takeover"
     if remote_state == "cloud_unreachable":
         return "offline"
     if remote_state == "status_stale":
@@ -3801,7 +3868,7 @@ def build_phone_readiness(
     can_continue = bool(can_use_local_action)
     support_level = "local_fallback"
 
-    if state in {"failed", "needs_human_help"} or bool(
+    if remote_state == MANUAL_TAKEOVER_DEGRADATION_STATE or state in {"failed", "needs_human_help"} or bool(
         status.get("elevator_assist", {}).get("requires_human_help")
         if isinstance(status.get("elevator_assist"), dict)
         else False
@@ -3897,6 +3964,8 @@ def build_phone_readiness(
             remote.get("safe_phone_copy"),
             REMOTE_DEGRADATION_COPY["cloud_poll_backoff"],
         )
+    if remote_state == MANUAL_TAKEOVER_DEGRADATION_STATE:
+        safe_phone_copy = MANUAL_TAKEOVER_SAFE_PHONE_COPY
     if primary_state == "local_ready_remote_status_waiting":
         safe_phone_copy = "本地手机入口可继续；远程状态仍在等待小车上报。"
 
@@ -3913,6 +3982,23 @@ def build_phone_readiness(
                 "safe_phone_copy": safe_phone_copy,
                 "ack_semantics": "poll_backoff_not_delivery_success",
                 "proof_boundary": PHONE_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY,
+            }
+        )
+    if remote_state == MANUAL_TAKEOVER_DEGRADATION_STATE:
+        # 人工接管由 Robot/API canonical state 控制；缺字段或上游给出 unsafe 字段时强制 fail-closed。
+        safe_remote_readiness.update(
+            {
+                "capability": MANUAL_TAKEOVER_CAPABILITY,
+                "degradation_state": MANUAL_TAKEOVER_DEGRADATION_STATE,
+                "manual_takeover_required": True,
+                "remote_ready": False,
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "retry_hint": "contact_support",
+                "safe_phone_copy": MANUAL_TAKEOVER_SAFE_PHONE_COPY,
+                "ack_semantics": MANUAL_TAKEOVER_ACK_SEMANTICS,
+                "proof_boundary": PHONE_MANUAL_TAKEOVER_COMMAND_SAFETY_GUARD_BOUNDARY,
             }
         )
 
@@ -4098,13 +4184,15 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
     latest_status = diagnostics_payload.get("latest_status")
     if isinstance(latest_status, dict):
         # diagnostics 不能信任 status 文件内预置的 phone metadata；这里统一覆盖成现算的脱敏摘要。
+        if isinstance(phone_readiness.get("remote_readiness"), dict):
+            latest_status["remote_readiness"] = dict(phone_readiness["remote_readiness"])
         latest_status["phone_readiness"] = dict(phone_readiness)
         latest_status["phone_task_flow_readiness"] = task_flow
         latest_status["phone_support_bundle"] = phone_support_bundle
         latest_status["voice_prompt_readiness"] = voice_prompt_readiness
         latest_status["phone_offline_resume_readiness"] = offline_resume_readiness
     remote_state = _remote_degradation(phone_readiness.get("remote_readiness"))
-    if remote_state in {"auth_failed", "media_degraded", "cloud_poll_backoff"}:
+    if remote_state in {"auth_failed", "media_degraded", "cloud_poll_backoff", MANUAL_TAKEOVER_DEGRADATION_STATE}:
         return _remote_safe_diagnostics_value(diagnostics_payload)
     return diagnostics_payload
 
