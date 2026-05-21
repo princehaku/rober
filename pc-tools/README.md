@@ -933,6 +933,55 @@ python3 pc-tools/evidence/field_evidence_real_material_owner_ack_review_decision
 
 该 gate 不读取真实 task record、Nav2/fixed-route runtime log、route completion signal、电梯门/楼层材料、dropoff/cancel completion、delivery result、raw diagnostics、ROS graph、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺 owner ack intake source、坏 JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、checksum、traceback、完整/raw artifact、success/control claim、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`accepted` 只表示 Docker/local gate 已把 owner acknowledgement 回执分类转成只读复核决策，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery result、delivery success、HIL、O5 external proof、PR #5 resolved 或真实 phone/browser 证据。
 
+## field evidence material resolution intake
+
+`pc-tools/evidence/field_evidence_material_resolution_intake.py` 只读上一节
+`field_evidence_material_blocker_escalation_pack` artifact、summary、Robot safe
+alias 或 wrapper/nested JSON，并读取现场 owner 提交的脱敏 resolution packet，把
+owner 对材料 blocker 的 resolution 分类转成 metadata-only intake artifact /
+summary：
+
+```bash
+python3 pc-tools/evidence/field_evidence_material_resolution_intake.py \
+  --blocker-escalation-json /tmp/field_evidence_material_blocker_escalation_pack_summary.json \
+  --owner-resolution-json /tmp/field_evidence_material_resolution_packet.json \
+  --evidence-ref field-material-resolution-2026-05-22T06-07Z \
+  --output /tmp/field_evidence_material_resolution_intake.json \
+  --summary-output /tmp/field_evidence_material_resolution_intake_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.field_evidence_material_resolution_intake.v1`，
+summary 使用 `schema=trashbot.field_evidence_material_resolution_intake_summary.v1`，
+Robot safe alias 为 `robot_diagnostics_field_evidence_material_resolution_intake_summary`，
+证据边界固定为
+`software_proof_docker_field_evidence_material_resolution_intake_gate`。核心字段包括
+`decision`、safe `evidence_ref`、`source_blocker_escalation`、`owner_resolution`、
+`material_categories`、`next_required_evidence`、`decision_reasons`、`safe_copy`、
+`same_evidence_ref_required=true`、`source=software_proof`、`not_proven`、
+`safe_to_control=false`、`delivery_success=false` 和
+`primary_actions_enabled=false`。
+
+`decision` 只允许 `accepted`、`missing`、`rejected` 和 `blocked`。accepted packet
+必须和 blocker escalation source 使用同一个 safe `evidence_ref`，并且包含脱敏的
+accepted material summary，CLI 才会打印
+`field_evidence_material_resolution_intake_ready_not_proven`。缺 owner packet 或缺
+required resolution material 记录为 `missing`；unsafe 或 rejected material 记录为
+`rejected`；缺 blocker source、unsupported schema/boundary、弱类型
+`same_evidence_ref_required` 或 evidence-ref mismatch 记录为 `blocked`。
+
+该 gate 不读取真实 task record、Nav2/fixed-route runtime log、route completion
+signal、电梯门/楼层材料、dropoff/cancel completion、delivery result、raw diagnostics、
+ROS graph、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实
+手机/browser，也不执行任何机器人动作。缺输入、坏 JSON、unsupported schema/boundary、
+unsafe copy、raw field、raw path/credential/ROS topic、`/cmd_vel`、serial/UART/WAVE
+ROVER detail、checksum、traceback、完整/raw artifact、success wording、
+`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true`
+都会 fail closed。`accepted` 只表示 Docker/local
+`software_proof_docker_field_evidence_material_resolution_intake_gate` 已把 owner
+resolution packet 转成只读摘要，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、
+dropoff/cancel completion、delivery result、delivery success、HIL、O5 external proof、
+PR review resolved 或真实 phone/browser 证据。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

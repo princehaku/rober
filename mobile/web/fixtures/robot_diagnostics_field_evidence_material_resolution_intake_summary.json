@@ -1,0 +1,117 @@
+{
+  "robot_diagnostics_field_evidence_material_resolution_intake_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_intake_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_intake.v1",
+    "capability": "field_evidence_material_resolution_intake",
+    "source": "software_proof",
+    "decision": "missing",
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_intake_fixture_20260522_0001",
+    "accepted_summary": [
+      "accepted_summary=owner packet schema is sanitized",
+      "accepted_summary=same safe evidence_ref matched blocker escalation"
+    ],
+    "missing_summary": [
+      "missing_summary=true phone/browser field note still pending",
+      "missing_summary=real route/elevator runtime summary still pending",
+      "missing_summary=dropoff/cancel completion material still pending"
+    ],
+    "rejected_summary": [
+      "rejected_summary=none"
+    ],
+    "blocked_summary": [
+      "blocked_summary=hardware HIL and O5 external proof remain unavailable"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=field owner provides true phone/browser note on same safe evidence_ref",
+      "next_required_evidence=field owner provides route/elevator runtime and completion material",
+      "next_required_evidence=Robot/API republishes sanitized resolution intake summary"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field_owner_backfills_real_materials",
+      "owner_handoff=product_owner_keeps_not_proven_boundary_until real evidence arrives"
+    ],
+    "safe_copy": {
+      "capability": "field_evidence_material_resolution_intake",
+      "decision": "missing",
+      "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_intake_fixture_20260522_0001",
+      "accepted_summary": "owner packet schema sanitized and same safe evidence_ref matched",
+      "missing_summary": "true phone/browser, route/elevator runtime, dropoff/cancel completion",
+      "blocked_summary": "hardware HIL and O5 external proof remain unavailable",
+      "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_intake_gate"
+    },
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_intake_gate",
+    "proof_boundary": "software_proof_docker_field_evidence_material_resolution_intake_gate",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "true_phone_browser_proof_missing",
+      "route_elevator_runtime_missing",
+      "dropoff_completion_missing",
+      "cancel_completion_missing",
+      "hardware_hil_missing",
+      "o5_external_proof_missing"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_intake_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_intake_summary.v1",
+    "capability": "field_evidence_material_resolution_intake",
+    "source": "software_proof",
+    "decision": "missing",
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_intake_fixture_20260522_0001",
+    "accepted_summary": [
+      "accepted_summary=safe resolution packet accepted for later review"
+    ],
+    "missing_summary": [
+      "missing_summary=real material still pending"
+    ],
+    "rejected_summary": [
+      "rejected_summary=none"
+    ],
+    "blocked_summary": [
+      "blocked_summary=not field proof"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same safe evidence_ref field materials"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field_owner_material_backfill"
+    ],
+    "safe_copy": "field_evidence_material_resolution_intake；decision=missing；evidence_ref=field_evidence_material_resolution_intake_fixture_20260522_0001；source=software_proof；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_intake_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "field_evidence_material_resolution_intake": {
+    "summary": {
+      "schema": "trashbot.field_evidence_material_resolution_intake_summary.v1",
+      "capability": "field_evidence_material_resolution_intake",
+      "source": "software_proof",
+      "decision": "missing",
+      "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_intake_fixture_20260522_0001",
+      "safe_copy": "nested field_evidence_material_resolution_intake safe_copy only；source=software_proof；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+      "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_intake_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

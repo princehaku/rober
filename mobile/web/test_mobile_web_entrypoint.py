@@ -117,6 +117,10 @@ FIELD_EVIDENCE_MATERIAL_BLOCKER_ESCALATION_PACK_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_material_blocker_escalation_pack.json"
 )
+FIELD_EVIDENCE_MATERIAL_RESOLUTION_INTAKE_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_material_resolution_intake_summary.json"
+)
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -12995,6 +12999,154 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, escalation_text)
+
+    def test_field_evidence_material_resolution_intake_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_MATERIAL_RESOLUTION_INTAKE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # resolution intake 只消费 safe summary；backend safe_copy 缺失时不允许前端合成可复制文本。
+        self.assertIn("FIELD_EVIDENCE_MATERIAL_RESOLUTION_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_INTAKE_TEXT", app)
+        self.assertIn("safeFieldEvidenceMaterialResolutionIntakeText", app)
+        self.assertIn("fieldEvidenceMaterialResolutionIntakeCandidate", app)
+        self.assertIn("fieldEvidenceMaterialResolutionIntakeFromStatus", app)
+        self.assertIn("renderFieldEvidenceMaterialResolutionIntake", app)
+        self.assertIn("现场材料 resolution intake", app)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_material_resolution_intake_summary",
+            app,
+        )
+        self.assertIn("field_evidence_material_resolution_intake_summary", app)
+        self.assertIn("field_evidence_material_resolution_intake?.summary", app)
+        self.assertIn("accepted_summary", app)
+        self.assertIn("missing_summary", app)
+        self.assertIn("rejected_summary", app)
+        self.assertIn("blocked_summary", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("field-evidence-material-resolution-intake-panel", styles)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceMaterialResolutionIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackFieldEvidenceMaterialResolutionIntake",
+            "cursorFieldEvidenceMaterialResolutionIntake",
+            "fetchFieldEvidenceMaterialResolutionIntakeDiagnostics",
+            "fetchFieldEvidenceMaterialResolutionIntakeMaterial",
+            "replayFieldEvidenceMaterialResolutionIntake",
+            "resubmitFieldEvidenceMaterialResolutionIntake",
+            "commandFieldEvidenceMaterialResolutionIntake",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # dedicated fixture 明确 resolution intake 是 software_proof/not_proven，三类主操作继续 disabled。
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_material_resolution_intake_summary"
+        ]
+        fallback = dedicated_fixture["field_evidence_material_resolution_intake_summary"]
+        nested = dedicated_fixture["field_evidence_material_resolution_intake"]["summary"]
+        self.assertEqual(summary["capability"], "field_evidence_material_resolution_intake")
+        self.assertEqual(summary["decision"], "missing")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("field_evidence_material_resolution_intake_fixture", summary["safe_evidence_ref"])
+        self.assertIn("safe_copy", summary)
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["safe_to_control"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "field_evidence_material_resolution_intake",
+            "software_proof_docker_field_evidence_material_resolution_intake_gate",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "decision",
+            "missing",
+            "accepted_summary=owner packet schema is sanitized",
+            "evidence_ref=field_evidence_material_resolution_intake_fixture_20260522_0001",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn("field_evidence_material_resolution_intake", doc)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_material_resolution_intake_summary",
+            doc,
+        )
+        self.assertIn("software_proof_docker_field_evidence_material_resolution_intake_gate", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+
+    def test_field_evidence_material_resolution_intake_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_MATERIAL_RESOLUTION_INTAKE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        resolution_text = json.dumps(
+            {
+                "robot": dedicated_fixture[
+                    "robot_diagnostics_field_evidence_material_resolution_intake_summary"
+                ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_material_resolution_intake_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "field_evidence_material_resolution_intake"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留 resolution metadata，不泄漏 raw 材料、路径、凭证、底盘细节、ACK/cursor 或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw material",
+            "raw resolution",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "hil_pass",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "replay",
+            "resubmit",
+            "robot command",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, resolution_text)
 
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))

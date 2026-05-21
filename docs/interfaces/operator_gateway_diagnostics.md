@@ -719,6 +719,42 @@ success/control claims, or enabled action flags. Inputs with
 `delivery_success=true`, `primary_actions_enabled=true`, or
 `safe_to_control=true` fail closed as blocked/not_proven.
 
+## robot_diagnostics_field_evidence_material_resolution_intake_summary
+
+`robot_diagnostics_field_evidence_material_resolution_intake_summary` is the
+Robot diagnostics safe alias for `field_evidence_material_resolution_intake`.
+It consumes only sanitized
+`trashbot.field_evidence_material_resolution_intake_summary.v1` input, or a
+compatible nested safe summary from latest status / diagnostics.
+
+- Source artifact schema:
+  `trashbot.field_evidence_material_resolution_intake.v1`
+- Source summary schema:
+  `trashbot.field_evidence_material_resolution_intake_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_field_evidence_material_resolution_intake_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_intake_gate`
+
+Allowed fields are limited to decision values `accepted`, `missing`,
+`rejected`, or `blocked`; safe `evidence_ref`; accepted/missing/rejected/blocked
+summaries; next required evidence; owner handoff; evidence boundary; safe copy;
+`source=software_proof`; `not_proven`; `delivery_success=false`;
+`primary_actions_enabled=false`; and `safe_to_control=false`.
+
+The alias is read-only metadata. It must not expose raw artifact bodies, local
+paths, credentials, bearer tokens, ACK/cursor payloads, complete artifacts,
+checksums, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details,
+tracebacks, success/pass/control copy, `delivery_success=true`,
+`primary_actions_enabled=true`, or `safe_to_control=true`. Unsafe inputs fail
+closed as blocked/not_proven.
+
+`accepted` only means the safe resolution summary was accepted for later
+Product review. It is not delivery success, a real field pass, a verified
+terminal delivery/dropoff/cancel result, real phone/browser proof, public cloud
+proof, PR #5 reviewer resolution, HIL, Nav2 runtime proof, or permission to
+start/confirm/cancel/ACK/replay/resubmit robot commands.
+
 ## robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary
 
 `robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary`

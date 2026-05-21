@@ -2126,6 +2126,55 @@ field pass, HIL pass, real Nav2/fixed-route execution, real delivery success,
 real phone/browser validation, O5 external cloud proof, or any primary robot
 action being enabled.
 
+## field_evidence_material_resolution_intake
+
+`pc-tools/evidence/field_evidence_material_resolution_intake.py` generates the
+PC-only resolution intake gate after
+`field_evidence_material_blocker_escalation_pack.py`.
+
+- Artifact schema:
+  `trashbot.field_evidence_material_resolution_intake.v1`
+- Summary schema:
+  `trashbot.field_evidence_material_resolution_intake_summary.v1`
+- Robot diagnostics alias:
+  `robot_diagnostics_field_evidence_material_resolution_intake_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_intake_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_material_blocker_escalation_pack.v1`,
+  `trashbot.field_evidence_material_blocker_escalation_pack_summary.v1`, or a
+  compatible Robot safe alias/wrapper containing one of those schemas.
+- Allowed owner packet inputs:
+  an owner safe resolution packet with optional
+  `trashbot.field_evidence_material_resolution_packet.v1` schema, strict
+  `same_evidence_ref_required=true`, the same safe `evidence_ref`, and decision
+  value `accepted`, `missing`, `rejected`, or `blocked`.
+
+The output always includes `decision`, `source_blocker_escalation`,
+`owner_resolution`, `material_categories`, `next_required_evidence`,
+`decision_reasons`, `safe_copy`, `same_evidence_ref_required=true`,
+`source=software_proof`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, `safe_to_control=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_material_resolution_intake_gate`.
+
+Decision mapping is fail closed. A safe owner packet with decision `accepted`,
+accepted material summary, and the same safe `evidence_ref` maps to
+`field_evidence_material_resolution_intake_ready_not_proven`. Missing owner
+packet or missing required owner resolution material maps to `missing`. Unsafe
+or rejected owner material maps to `rejected`. Missing blocker escalation
+source, unsupported schema/boundary, weak `same_evidence_ref_required`, or
+evidence-ref mismatch maps to `blocked`.
+
+The gate rejects raw fields, raw artifact bodies, local filesystem paths,
+credentials, ROS topics, `/cmd_vel`, serial/UART or WAVE ROVER details,
+checksums, tracebacks, success wording, `delivery_success=true`,
+`primary_actions_enabled=true`, or `safe_to_control=true`.
+
+This contract is software proof only. `accepted` does not prove real
+route/elevator field pass, HIL pass, real fixed-route execution, real terminal
+delivery/dropoff/cancel result, real phone/browser validation, public cloud
+proof, PR review resolution, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_callback_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_callback_review_decision.py`
