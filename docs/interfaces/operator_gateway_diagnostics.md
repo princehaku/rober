@@ -541,6 +541,39 @@ success/control claims, or enabled action flags. Inputs with
 `delivery_success=true`, `primary_actions_enabled=true`, or
 `safe_to_control=true` fail closed as blocked/not_proven.
 
+## robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary
+
+`robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary`
+is the Robot diagnostics safe alias for
+`field_evidence_real_material_owner_ack_review_decision`. It consumes the
+canonical review-decision summary from latest status, nested diagnostics, an
+explicit ref, or the matching environment override, then republishes only
+sanitized owner acknowledgement review metadata for phone/Robot diagnostics.
+
+- Capability: `field_evidence_real_material_owner_ack_review_decision`
+- Source artifact schema:
+  `trashbot.field_evidence_real_material_owner_ack_review_decision.v1`
+- Source summary schema:
+  `trashbot.field_evidence_real_material_owner_ack_review_decision_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_real_material_owner_ack_review_decision_gate`
+
+Required boundary states are `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+
+Allowed fields are limited to review decision, source owner ack status, safe
+`evidence_ref`, same-ref status, decision reasons, missing materials, next
+required evidence, owner handoff, proof boundary, safe copy, and not-proven
+reasons. The alias must not expose raw artifacts, complete logs, local paths,
+credentials, ROS topics, `/cmd_vel`, serial/UART/WAVE ROVER details,
+checksums, HIL/pass wording, delivery success wording, control claims, or
+PR #5 resolved wording. Inputs with `delivery_success=true`,
+`primary_actions_enabled=true`, `safe_to_control=true`, raw material fields, or
+unsafe copy fail closed as blocked/not_proven.
+
 ## robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary
 
 Robot diagnostics exposes

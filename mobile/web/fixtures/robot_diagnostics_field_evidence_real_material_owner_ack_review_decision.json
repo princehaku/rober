@@ -1,0 +1,93 @@
+{
+  "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary": {
+    "schema": "trashbot.field_evidence_real_material_owner_ack_review_decision_summary.v1",
+    "source_schema": "trashbot.field_evidence_real_material_owner_ack_review_decision.v1",
+    "source": "software_proof",
+    "review_decision": "needs_more_evidence_not_proven",
+    "source_ack_status": "blocked_pending_owner_ack_material_backfill_not_proven",
+    "safe_evidence_ref": "field_evidence_real_material_owner_ack_review_decision_fixture_20260521_0001",
+    "missing_materials": [
+      "missing_materials=real task_record on same safe evidence_ref",
+      "missing_materials=real route_elevator_runtime_summary",
+      "missing_materials=true phone_browser_behavior_summary",
+      "missing_materials=dropoff_cancel_completion_material and delivery_result"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same safe evidence_ref real task_record summary",
+      "next_required_evidence=real nav2_fixed_route_runtime_log and route_completion_signal",
+      "next_required_evidence=real elevator_door_floor_evidence and human_assistance_note",
+      "next_required_evidence=real dropoff_cancel_completion plus delivery_result",
+      "next_required_evidence=true_phone_browser_evidence_summary"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field owner keeps backfilling missing materials before later review",
+      "owner_handoff=Robot diagnostics must expose sanitized summary only",
+      "owner_handoff=mobile remains read only and keeps primary actions disabled"
+    ],
+    "evidence_boundary": "software_proof_docker_field_evidence_real_material_owner_ack_review_decision_gate",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "real_field_materials_missing",
+      "true_phone_browser_proof_missing",
+      "route_elevator_runtime_missing",
+      "dropoff_completion_missing",
+      "cancel_completion_missing",
+      "delivery_result_missing",
+      "hardware_runtime_proof_missing",
+      "o5_external_proof_missing"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_real_material_owner_ack_review_decision_summary": {
+    "schema": "trashbot.field_evidence_real_material_owner_ack_review_decision_summary.v1",
+    "source": "software_proof",
+    "review_decision": "needs_more_evidence_not_proven",
+    "source_ack_status": "blocked_pending_owner_ack_material_backfill_not_proven",
+    "safe_evidence_ref": "field_evidence_real_material_owner_ack_review_decision_fixture_20260521_0001",
+    "missing_materials": [
+      "missing_materials=real task_record",
+      "missing_materials=true phone_browser_behavior_summary"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same safe evidence_ref real material summaries"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field owner continues backfill"
+    ],
+    "evidence_boundary": "software_proof_docker_field_evidence_real_material_owner_ack_review_decision_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false"
+    ]
+  },
+  "field_evidence_real_material_owner_ack_review_decision": {
+    "summary": {
+      "schema": "trashbot.field_evidence_real_material_owner_ack_review_decision_summary.v1",
+      "source": "software_proof",
+      "review_decision": "needs_more_evidence_not_proven",
+      "source_ack_status": "blocked_pending_owner_ack_material_backfill_not_proven",
+      "safe_evidence_ref": "field_evidence_real_material_owner_ack_review_decision_fixture_20260521_0001",
+      "evidence_boundary": "software_proof_docker_field_evidence_real_material_owner_ack_review_decision_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

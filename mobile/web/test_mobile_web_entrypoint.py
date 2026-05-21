@@ -94,6 +94,10 @@ FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_real_material_owner_ack_intake.json"
 )
+FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision.json"
+)
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -12059,6 +12063,163 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, owner_ack_intake_text)
+
+    def test_field_evidence_real_material_owner_ack_review_decision_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # owner ack 复核决策只消费 Robot safe summary，不新增 ACK/cursor、诊断拉取、复核提交或控制 endpoint。
+        self.assertIn("FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeFieldEvidenceRealMaterialOwnerAckReviewDecisionText", app)
+        self.assertIn("fieldEvidenceRealMaterialOwnerAckReviewDecisionCandidate", app)
+        self.assertIn("fieldEvidenceRealMaterialOwnerAckReviewDecisionFromStatus", app)
+        self.assertIn("renderFieldEvidenceRealMaterialOwnerAckReviewDecision", app)
+        self.assertIn("现场材料 owner ack 复核决策", app)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary",
+            app,
+        )
+        self.assertIn("field_evidence_real_material_owner_ack_review_decision_summary", app)
+        self.assertIn("field_evidence_real_material_owner_ack_review_decision?.summary", app)
+        self.assertIn("review_decision", app)
+        self.assertIn("source_ack_status", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("field-evidence-real-material-owner-ack-review-decision-panel", styles)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceRealMaterialOwnerAckReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackFieldEvidenceRealMaterialOwnerAckReviewDecision",
+            "cursorFieldEvidenceRealMaterialOwnerAckReviewDecision",
+            "fetchFieldEvidenceRealMaterialOwnerAckReviewDecisionDiagnostics",
+            "submitFieldEvidenceRealMaterialOwnerAckReviewDecision",
+            "reviewFieldEvidenceRealMaterialOwnerAckReviewDecision",
+            "materialFieldEvidenceRealMaterialOwnerAckReviewDecision",
+            "commandFieldEvidenceRealMaterialOwnerAckReviewDecision",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # dedicated fixture 明确复核仍是 software_proof/not_proven，三类主操作继续 disabled。
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary"
+        ]
+        fallback = dedicated_fixture[
+            "field_evidence_real_material_owner_ack_review_decision_summary"
+        ]
+        nested = dedicated_fixture[
+            "field_evidence_real_material_owner_ack_review_decision"
+        ]["summary"]
+        self.assertEqual(summary["review_decision"], "needs_more_evidence_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["safe_to_control"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "needs_more_evidence_not_proven",
+            "source_ack_status",
+            "missing_materials=real task_record",
+            "next_required_evidence=same safe evidence_ref",
+            "owner_handoff=field owner",
+            "source=software_proof",
+            "not_proven",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn(
+            "software_proof_docker_field_evidence_real_material_owner_ack_review_decision_gate",
+            dedicated_text,
+        )
+        self.assertIn("field_evidence_real_material_owner_ack_review_decision", doc)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary",
+            doc,
+        )
+        self.assertIn("现场材料 owner ack 复核决策", doc)
+
+    def test_field_evidence_real_material_owner_ack_review_decision_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        owner_ack_review_text = json.dumps(
+            {
+                "review":
+                    dedicated_fixture[
+                        "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary"
+                    ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_real_material_owner_ack_review_decision_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "field_evidence_real_material_owner_ack_review_decision"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留复核 metadata，不泄漏 raw、路径、凭证、底盘细节、外部证明或成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw owner ack",
+            "raw ack",
+            "raw material",
+            "raw review",
+            "raw decision",
+            "raw handoff",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "hil_pass",
+            "external proof",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "review route",
+            "material route",
+            "robot command",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, owner_ack_review_text)
 
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))

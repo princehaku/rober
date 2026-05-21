@@ -8,7 +8,25 @@
 
 ## 2026-05-21 系列
 
-更新时间：2026-05-21 22:05 Asia/Shanghai。
+更新时间：2026-05-21 23:20 Asia/Shanghai。
+
+### 2026-05-21 23-24｜field-evidence-real-material-owner-ack-review-decision｜field owner ack review decision software proof
+
+本轮 `sprints/2026.05.21_23-24_field-evidence-real-material-owner-ack-review-decision/` 执行 `field_evidence_real_material_owner_ack_review_decision` epic closeout。Objective 5 仍约 68%，是当前数值最低 Objective，但继续提高 O5 仍需要真实 public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或 true phone/browser proof。本轮不提高 O5。Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / material pending，comment `3269642220` 只是 software-proof publication，不是 reviewer resolution。O2/O3/O4 仍约 99%。
+
+Autonomy worker 新增 `field_evidence_real_material_owner_ack_review_decision` PC gate、focused tests 和 evidence docs，能把 `field_evidence_real_material_owner_ack_intake` safe artifact / summary / Robot alias 转成 `accepted`、`needs_more_evidence`、`rejected` 三类 review decision。Robot worker 新增 `robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary` safe alias 和 diagnostics docs，保持 `source=software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。Full-Stack worker 在 mobile/web 新增只读 "现场材料 owner ack 复核决策" panel、fixture、styles、tests 和 `docs/product/mobile_user_flow.md` 更新，Start Delivery / Confirm Dropoff / Cancel 继续 disabled。Hardware worker 只读复核 `docs/vendor/VENDOR_INDEX.md`、WAVE ROVER `base_ctrl.py`、`json_cmd.h`、`uart_ctrl.h`、Orange Pi PDFs、`docs/product/production_hardware_boundary.md`、`OKR.md` 和本 sprint tech-plan，确认本轮不新增 WAVE ROVER/UART/HIL、2D LiDAR、ToF 或真实硬件材料 claim。
+
+证据边界保持 `software_proof_docker_field_evidence_real_material_owner_ack_review_decision_gate`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。本轮 is not real field pass、not true phone/browser proof、not HIL、not WAVE ROVER/UART proof、not O5 external proof、not PR #5 `PRRT_kwDOSWB9286CJ3tX` resolution、not Nav2/fixed-route runtime、not dropoff/cancel completion、not delivery result、not delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 hardware bridge、真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` still unresolved/material pending，comment `3269642220` not reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只把 owner ack intake 转成 review decision；`accepted` 只表示结构上可进入下一步 software-proof review/backfill，不是真实 task record、真实电梯、dropoff/cancel completion、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | PC gate 与 Robot safe alias 可要求 route/runtime materials under the same safe `evidence_ref`，但本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读 "现场材料 owner ack 复核决策" panel 让现场 owner 和支持同学能看到 review decision、source ack status、safe `evidence_ref`、missing materials、next required evidence、owner handoff 和 fail-closed flags；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true_phone_browser_evidence 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_field_evidence_real_material_owner_ack_review_decision_gate` 只证明 Docker/local owner-ack review-decision metadata 可见性；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 6 tests in 0.069s OK`；required `rg` 与 scoped `git diff --check` 通过。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 269 tests in 1.137s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；fixture `json.tool` 通过；mobile unittest 输出 `Ran 231 tests in 1.794s OK`；required `rg` 与 scoped `git diff --check` 通过。Hardware consultation read-only vendor/product/OKR/tech-plan boundary passed。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、delivery result 或 delivery success。
 
 ### 2026-05-21 22-23｜cloud-ack-lookup-pending-status-guard｜missing ACK lookup pending software proof
 

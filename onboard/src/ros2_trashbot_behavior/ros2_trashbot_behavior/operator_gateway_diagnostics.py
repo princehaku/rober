@@ -523,6 +523,18 @@ FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_INTAKE_SUMMARY_SCHEMA = (
 FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_INTAKE_GATE = (
     "software_proof_docker_field_evidence_real_material_owner_ack_intake_gate"
 )
+FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SCHEMA = (
+    "trashbot.field_evidence_real_material_owner_ack_review_decision.v1"
+)
+FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.field_evidence_real_material_owner_ack_review_decision_summary.v1"
+)
+FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary.v1"
+)
+FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_GATE = (
+    "software_proof_docker_field_evidence_real_material_owner_ack_review_decision_gate"
+)
 ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SCHEMA = (
     "trashbot.route_task_field_retest_evidence_dispatch.v1"
 )
@@ -10380,6 +10392,45 @@ def _field_evidence_real_material_owner_ack_intake_not_proven(
     return values
 
 
+def _field_evidence_real_material_owner_ack_review_decision_not_proven(
+    decision=None,
+    summary_fragment=None,
+):
+    # owner ack review 只代表安全摘要被复核，不能升级成 PR 关闭、现场复跑或真实送达结论。
+    source_values = []
+    for item in (decision, summary_fragment):
+        if isinstance(item, dict) and isinstance(item.get("not_proven"), list):
+            source_values.extend(item.get("not_proven"))
+        if isinstance(item, dict) and isinstance(item.get("decision_reasons"), list):
+            source_values.extend(item.get("decision_reasons"))
+        if isinstance(item, dict) and isinstance(item.get("next_required_evidence"), list):
+            source_values.extend(item.get("next_required_evidence"))
+    required = (
+        "field_evidence_real_material_owner_ack_review_decision_only",
+        "field_owner_ack_not_pr5_resolution",
+        "source_owner_ack_status_not_real_material",
+        "real_route_completion_not_verified",
+        "real_field_task_record_not_verified",
+        "real_nav2_fixed_route_runtime_not_verified",
+        "real_elevator_operation_not_verified",
+        "real_delivery_result_not_verified",
+        "true_phone_browser_evidence_not_verified",
+        "delivery_success",
+        "primary_actions_enabled",
+        "safe_to_control",
+    )
+    values = []
+    for item in list(source_values) + list(required):
+        safe_item = _redact_route_task_rehearsal_text(item)
+        # Robot diagnostics 不展示 HIL/pass/raw/path/checksum 细节，只保留软件证明缺口。
+        lowered = safe_item.lower()
+        if any(marker in lowered for marker in ("hil", " pass", "raw", "path", "checksum", "[redacted")):
+            continue
+        if safe_item and safe_item not in values:
+            values.append(safe_item)
+    return values
+
+
 def _default_field_evidence_real_material_owner_ack_intake_summary(
     path,
     status="blocked_missing_field_evidence_real_material_owner_ack_intake",
@@ -10430,6 +10481,77 @@ def _default_field_evidence_real_material_owner_ack_intake_summary(
         "robot_compatible_summary": {"status": "blocked", "reason": reason},
         "boundary": FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_INTAKE_GATE,
         "not_proven": _field_evidence_real_material_owner_ack_intake_not_proven(),
+        "metadata_only": True,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "nav2_triggered": False,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+    }
+
+
+def _default_field_evidence_real_material_owner_ack_review_decision_summary(
+    path,
+    status="blocked_missing_field_evidence_real_material_owner_ack_review_decision",
+    read_error="",
+):
+    # 缺省 review-decision 也必须是完整 false 栅栏，避免 owner ack 被误读为控制许可。
+    safe_copy = (
+        "Field evidence real material owner ack review decision is metadata-only; "
+        "source=software_proof; not_proven; safe_to_control=false; "
+        "delivery_success=false; primary_actions_enabled=false."
+    )
+    reason = read_error or (
+        "field evidence real material owner ack review decision summary is not configured"
+    )
+    return {
+        "schema": FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_GATE,
+        "capability": "field_evidence_real_material_owner_ack_review_decision",
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "status": status,
+        "overall_status": "not_proven",
+        "review_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": reason,
+        },
+        "review_decision": "blocked_missing_owner_ack_review_decision_not_proven",
+        "source_owner_ack_schema": "",
+        "source_owner_ack_status": "blocked",
+        "same_evidence_ref_required": True,
+        "same_evidence_ref_status": {
+            "status": "blocked",
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "decision_reasons": [reason],
+        "missing_materials": [],
+        "next_required_evidence": [],
+        "owner_handoff": [],
+        "robot_diagnostics_summary": {
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+        },
+        "robot_compatible_summary": {"status": "blocked", "reason": reason},
+        "boundary": FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_GATE,
+        "proof_boundary": FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_GATE,
+        "not_proven": _field_evidence_real_material_owner_ack_review_decision_not_proven(),
         "metadata_only": True,
         "safe_to_control": False,
         "delivery_success": False,
@@ -17634,6 +17756,23 @@ def _field_evidence_real_material_owner_ack_intake_source_contract(value):
     return source_schema, source_boundary
 
 
+def _field_evidence_real_material_owner_ack_review_decision_source_contract(value):
+    # owner-ack review-decision 只接受本轮 review-decision summary 或 wrapper，不能误接 intake。
+    value = value if isinstance(value, dict) else {}
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema in {
+        FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SOURCE_SUMMARY_SCHEMA,
+        FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SUMMARY_SCHEMA,
+    }:
+        source_schema = str(
+            value.get("source_schema")
+            or FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _field_evidence_real_material_owner_ack_intake_has_unsafe_fields(
     value,
     key_path="",
@@ -18090,6 +18229,141 @@ def _field_evidence_real_material_response_intake_has_unsafe_fields(value):
         "oss_secret",
         "local_path",
         "/tmp/",
+    )
+    return any(marker in text for marker in unsafe_text_markers) or (
+        _route_task_field_retest_execution_pack_has_success_wording(value)
+    )
+
+
+def _field_evidence_real_material_owner_ack_review_decision_has_unsafe_fields(
+    value,
+    key_path="",
+):
+    # review-decision 只展示复核结论和下一步材料；任何 raw/路径/硬件/控制/PR 解决语义都阻断。
+    unsafe_key_fragments = (
+        "raw",
+        "packet",
+        "artifact_path",
+        "artifact_ref",
+        "local_path",
+        "path",
+        "checksum",
+        "credential",
+        "secret",
+        "token",
+        "authorization",
+        "bearer",
+        "ros_topic",
+        "topic",
+        "serial",
+        "uart",
+        "baud",
+        "wave_rover",
+        "cmd_vel",
+        "control",
+        "ack_post",
+        "ack_cursor",
+        "cursor",
+        "traceback",
+        "complete_log",
+        "complete_artifact",
+        "pr5_resolved",
+        "review_thread_resolved",
+    )
+    safe_keys = {
+        "schema",
+        "schema_version",
+        "capability",
+        "source",
+        "source_schema",
+        "source_schema_version",
+        "source_evidence_boundary",
+        "source_owner_ack_schema",
+        "source_owner_ack_status",
+        "source_owner_ack_summary_status",
+        "evidence_boundary",
+        "boundary",
+        "safe_evidence_ref",
+        "evidence_ref",
+        "status",
+        "overall_status",
+        "review_status",
+        "status_summary",
+        "verdict",
+        "reason",
+        "review_decision",
+        "decision",
+        "same_evidence_ref_required",
+        "same_evidence_ref_status",
+        "decision_reasons",
+        "missing_materials",
+        "next_required_evidence",
+        "owner_handoff",
+        "proof_boundary",
+        "robot_diagnostics_summary",
+        "robot_compatible_summary",
+        "safe_copy",
+        "safe_phone_copy",
+        "not_proven",
+        "safe_to_control",
+        "delivery_success",
+        "primary_actions_enabled",
+        "metadata_only",
+        "field_evidence_real_material_owner_ack_review_decision_summary",
+        "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary",
+        "diagnostics",
+        "summary",
+        "diagnostics_summary",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text not in safe_keys and any(
+                fragment in key_text for fragment in unsafe_key_fragments
+            ):
+                return True
+            if _field_evidence_real_material_owner_ack_review_decision_has_unsafe_fields(
+                item,
+                f"{key_path}.{key_text}" if key_path else key_text,
+            ):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _field_evidence_real_material_owner_ack_review_decision_has_unsafe_fields(
+                item,
+                key_path,
+            )
+            for item in value
+        )
+    text = str(value or "").strip().lower()
+    unsafe_text_markers = (
+        "/cmd_vel",
+        "ros_topic",
+        "serial",
+        "uart",
+        "wave rover",
+        "wave_rover",
+        "bearer",
+        "authorization",
+        "credential",
+        "secret",
+        "token",
+        "traceback",
+        "checksum",
+        "/tmp/",
+        "local path",
+        "complete log",
+        "complete artifact",
+        "hil pass",
+        "hil_pass",
+        "delivery success",
+        "delivery_success=true",
+        "primary_actions_enabled=true",
+        "safe_to_control=true",
+        "pr #5 resolved",
+        "pr5 resolved",
+        "review thread resolved",
     )
     return any(marker in text for marker in unsafe_text_markers) or (
         _route_task_field_retest_execution_pack_has_success_wording(value)
@@ -54806,6 +55080,7 @@ def summarize_field_evidence_real_material_followup_escalation_status(source):
             "status": status,
             "overall_status": "not_proven",
             "source": EVIDENCE_SOURCE_SOFTWARE,
+            "capability": "field_evidence_real_material_owner_ack_review_decision",
             "exists": True,
             "followup_status": {
                 "status": status,
@@ -55288,6 +55563,381 @@ def summarize_field_evidence_real_material_owner_ack_intake(source):
                 "accepted_materials_summary": [],
                 "missing_materials_summary": [],
                 "rejected_materials_summary": [],
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+            }
+        )
+    return summary
+
+
+def summarize_field_evidence_real_material_owner_ack_review_decision(source):
+    """构建 field-evidence real-material owner ack review decision 的安全 diagnostics 摘要。"""
+    # Robot 只镜像已经消毒的 review decision；不读取原始材料、不推进 ACK/控制，也不暗示 PR 关闭。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_field_evidence_real_material_owner_ack_review_decision_summary(
+        source_path,
+        read_error=(
+            "field_evidence_real_material_owner_ack_review_decision summary is not configured"
+        ),
+    )
+    if isinstance(source, dict):
+        decision = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = (
+                "field_evidence_real_material_owner_ack_review_decision summary artifact missing"
+            )
+            summary["review_status"]["reason"] = summary["read_error"]
+            summary["review_status"]["status"] = "missing"
+            summary["status"] = "missing"
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                decision = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                "failed reading field_evidence_real_material_owner_ack_review_decision "
+                f"summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["review_status"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(decision, dict):
+        summary["review_status"]["reason"] = (
+            "field_evidence_real_material_owner_ack_review_decision JSON must be an object"
+        )
+        return summary
+
+    diagnostics = (
+        decision.get("diagnostics")
+        if isinstance(decision.get("diagnostics"), dict)
+        else {}
+    )
+    raw_schema = str(decision.get("schema") or "")
+    source_schema, source_boundary = (
+        _field_evidence_real_material_owner_ack_review_decision_source_contract(
+            decision
+        )
+    )
+    if raw_schema in {
+        FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SOURCE_SUMMARY_SCHEMA,
+        FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SUMMARY_SCHEMA,
+    }:
+        summary_fragment = decision
+    else:
+        summary_fragment = {}
+        for candidate in (
+            decision.get("field_evidence_real_material_owner_ack_review_decision_summary"),
+            decision.get(
+                "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary"
+            ),
+            decision.get("diagnostics_summary"),
+            decision.get("robot_diagnostics_summary"),
+            decision.get("robot_compatible_summary"),
+            decision.get("summary"),
+            diagnostics.get("field_evidence_real_material_owner_ack_review_decision_summary"),
+            diagnostics.get(
+                "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary"
+            ),
+            diagnostics.get("diagnostics_summary"),
+            diagnostics.get("summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if summary_fragment:
+        nested_schema, nested_boundary = (
+            _field_evidence_real_material_owner_ack_review_decision_source_contract(
+                summary_fragment
+            )
+        )
+        if nested_schema:
+            source_schema, source_boundary = nested_schema, nested_boundary
+
+    review_status = (
+        summary_fragment.get("review_status")
+        if isinstance(summary_fragment.get("review_status"), dict)
+        else summary_fragment.get("status_summary")
+        if isinstance(summary_fragment.get("status_summary"), dict)
+        else decision.get("review_status")
+        if isinstance(decision.get("review_status"), dict)
+        else {}
+    )
+    same_ref_status = (
+        summary_fragment.get("same_evidence_ref_status")
+        if isinstance(summary_fragment.get("same_evidence_ref_status"), dict)
+        else {}
+    )
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or decision.get("safe_copy")
+        or decision.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    status = _redact_route_task_rehearsal_text(
+        review_status.get("status")
+        or summary_fragment.get("status")
+        or summary_fragment.get("overall_status")
+        or decision.get("status")
+        or "not_proven"
+    )
+    verdict = _redact_route_task_rehearsal_text(
+        review_status.get("verdict")
+        or summary_fragment.get("verdict")
+        or "not_proven"
+    )
+    overall_status = _redact_route_task_rehearsal_text(
+        summary_fragment.get("overall_status")
+        or decision.get("overall_status")
+        or verdict
+    )
+    source_value = _redact_route_task_rehearsal_text(
+        summary_fragment.get("source")
+        or decision.get("source")
+        or review_status.get("evidence_source")
+        or ""
+    )
+    source_ref = str(
+        decision.get("safe_evidence_ref") or decision.get("evidence_ref") or ""
+    ).strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or ""
+    ).strip()
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(summary_ref or source_ref)
+    safe_copy_text = _redact_route_task_rehearsal_text(safe_copy)
+    if "delivery_success=false" not in safe_copy_text:
+        # 固定 false flags 写入 copy，避免下游只读面板把 review accepted 当成主动作可用。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                summary_fragment.get("source_schema_version")
+                or summary_fragment.get("schema_version")
+                or decision.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+            "status": status,
+            "overall_status": "not_proven",
+            "source": EVIDENCE_SOURCE_SOFTWARE,
+            "exists": True,
+            "review_status": {
+                "status": status,
+                "verdict": "not_proven",
+                "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                "reason": _redact_route_task_rehearsal_text(
+                    review_status.get("reason")
+                    or summary_fragment.get("reason")
+                    or decision.get("reason")
+                    or "field evidence real material owner ack review decision is software_proof only"
+                ),
+            },
+            "review_decision": _redact_route_task_rehearsal_text(
+                summary_fragment.get("review_decision")
+                or summary_fragment.get("decision")
+                or decision.get("review_decision")
+                or "blocked_missing_owner_ack_review_decision_not_proven"
+            ),
+            "source_owner_ack_schema": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source_owner_ack_schema")
+                or FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_INTAKE_SOURCE_SUMMARY_SCHEMA
+            ),
+            "source_owner_ack_status": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source_owner_ack_status")
+                or summary_fragment.get("source_owner_ack_summary_status")
+                or "blocked"
+            ),
+            "same_evidence_ref_required": (
+                summary_fragment.get("same_evidence_ref_required") is True
+            ),
+            "same_evidence_ref_status": _safe_pc_route_debug_dict(same_ref_status)
+            or {
+                "status": status or "blocked",
+                "verdict": "not_proven",
+                "reason": "owner ack review decision lacks same evidence_ref status",
+            },
+            "safe_evidence_ref": safe_evidence_ref,
+            "decision_reasons": _safe_route_task_rehearsal_list(
+                summary_fragment.get("decision_reasons")
+            ),
+            "missing_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("missing_materials")
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "owner_handoff": _safe_route_task_rehearsal_list(
+                summary_fragment.get("owner_handoff")
+            ),
+            "proof_boundary": FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_GATE,
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "safe_copy": safe_copy_text,
+                "safe_phone_copy": safe_copy_text,
+                "status": status,
+            },
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+            "not_proven": _field_evidence_real_material_owner_ack_review_decision_not_proven(
+                decision,
+                summary_fragment,
+            ),
+            "read_error": "",
+        }
+    )
+    accepted_schemas = {
+        FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SCHEMA,
+        FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SOURCE_SUMMARY_SCHEMA,
+        FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SUMMARY_SCHEMA,
+    }
+    if source_schema not in accepted_schemas or (
+        source_boundary != FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_GATE
+    ):
+        summary.update(
+            {
+                "status": "unsupported_schema",
+                "review_status": {
+                    "status": (
+                        "blocked_unsupported_field_evidence_real_material_owner_ack_review_decision"
+                    ),
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": (
+                        "field_evidence_real_material_owner_ack_review_decision "
+                        "schema or evidence boundary is unsupported"
+                    ),
+                },
+                "safe_evidence_ref": "",
+                "decision_reasons": [],
+                "missing_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+            }
+        )
+        return summary
+    if (
+        raw_schema == FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SCHEMA
+        and not summary_fragment
+    ):
+        summary.update(
+            {
+                "status": "missing_summary",
+                "review_status": {
+                    "status": (
+                        "blocked_missing_field_evidence_real_material_owner_ack_review_decision_summary"
+                    ),
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": (
+                        "field_evidence_real_material_owner_ack_review_decision "
+                        "artifact is missing sanitized summary"
+                    ),
+                },
+                "safe_evidence_ref": "",
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary.update(
+            {
+                "review_status": {
+                    "status": (
+                        "evidence_ref_mismatch_field_evidence_real_material_owner_ack_review_decision_blocked"
+                    ),
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "owner ack review decision evidence_ref values do not match",
+                },
+                "same_evidence_ref_status": {
+                    "status": "mismatch",
+                    "verdict": "not_proven",
+                    "reason": "same evidence_ref mismatch",
+                },
+            }
+        )
+        return summary
+
+    # 只要 source/verdict/flags/字段消毒不满足约束，就返回固定 blocked 摘要。
+    unsafe_payload = (
+        not summary_fragment
+        or source_value != EVIDENCE_SOURCE_SOFTWARE
+        or verdict != "not_proven"
+        or overall_status != "not_proven"
+        or _real_material_evidence_ref_is_unsafe(safe_evidence_ref)
+        or not summary["same_evidence_ref_required"]
+        or not summary["decision_reasons"]
+        or not summary["next_required_evidence"]
+        or not summary["owner_handoff"]
+        or decision.get("delivery_success") is True
+        or decision.get("primary_actions_enabled") is True
+        or decision.get("safe_to_control") is True
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or summary_fragment.get("safe_to_control") is not False
+        or _field_evidence_real_material_owner_ack_review_decision_has_unsafe_fields(
+            decision
+        )
+        or _field_evidence_real_material_owner_ack_review_decision_has_unsafe_fields(
+            summary_fragment
+        )
+        or _field_evidence_real_material_owner_ack_review_decision_has_unsafe_fields(
+            robot_summary
+        )
+        or _task_terminal_field_material_intake_copy_is_unsafe(safe_copy_text)
+    )
+    if unsafe_payload:
+        blocked_copy = (
+            "Field evidence real material owner ack review decision was blocked "
+            "because the summary did not remain source=software_proof/not_proven "
+            "with delivery_success=false, primary_actions_enabled=false, and "
+            "safe_to_control=false."
+        )
+        summary.update(
+            {
+                "status": (
+                    "blocked_unsafe_field_evidence_real_material_owner_ack_review_decision"
+                ),
+                "review_status": {
+                    "status": (
+                        "blocked_unsafe_field_evidence_real_material_owner_ack_review_decision"
+                    ),
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": (
+                        "field_evidence_real_material_owner_ack_review_decision "
+                        "contains unsafe fields, success wording, weak evidence_ref, "
+                        "or control claims"
+                    ),
+                },
+                "review_decision": "blocked_unsafe_owner_ack_review_decision_not_proven",
+                "safe_evidence_ref": "",
+                "decision_reasons": [],
+                "missing_materials": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
                 "safe_copy": blocked_copy,
                 "safe_phone_copy": blocked_copy,
                 "robot_diagnostics_summary": {
@@ -59083,6 +59733,7 @@ def build_diagnostics_payload(
     real_material_followup_escalation_status_ref="",
     field_evidence_real_material_followup_escalation_status_ref="",
     field_evidence_real_material_owner_ack_intake_ref="",
+    field_evidence_real_material_owner_ack_review_decision_ref="",
     elevator_field_evidence_trace_callback_intake_ref="",
     elevator_field_evidence_trace_callback_review_decision_ref="",
     elevator_field_evidence_trace_callback_review_handoff_ref="",
@@ -59202,6 +59853,57 @@ def build_diagnostics_payload(
         else diagnostics_source.get("field_evidence_real_material_owner_ack_intake")
         if isinstance(
             diagnostics_source.get("field_evidence_real_material_owner_ack_intake"),
+            dict,
+        )
+        else {}
+    )
+    field_evidence_real_material_owner_ack_review_decision_preserved_source = (
+        latest_status.get(
+            "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "field_evidence_real_material_owner_ack_review_decision_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "field_evidence_real_material_owner_ack_review_decision_summary"
+            ),
+            dict,
+        )
+        else latest_status.get("field_evidence_real_material_owner_ack_review_decision")
+        if isinstance(
+            latest_status.get("field_evidence_real_material_owner_ack_review_decision"),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "field_evidence_real_material_owner_ack_review_decision_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "field_evidence_real_material_owner_ack_review_decision_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "field_evidence_real_material_owner_ack_review_decision"
+        )
+        if isinstance(
+            diagnostics_source.get("field_evidence_real_material_owner_ack_review_decision"),
             dict,
         )
         else {}
@@ -62207,6 +62909,16 @@ def build_diagnostics_payload(
         None,
     )
     latest_status.pop("field_evidence_real_material_owner_ack_intake_copy", None)
+    latest_status.pop("field_evidence_real_material_owner_ack_review_decision", None)
+    latest_status.pop(
+        "field_evidence_real_material_owner_ack_review_decision_summary",
+        None,
+    )
+    latest_status.pop(
+        "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary",
+        None,
+    )
+    latest_status.pop("field_evidence_real_material_owner_ack_review_decision_copy", None)
     latest_status.pop("elevator_action_feedback_trace", None)
     latest_status.pop("robot_diagnostics_elevator_action_feedback_trace_summary", None)
     latest_status.pop("elevator_field_evidence_trace_callback_intake", None)
@@ -64210,6 +64922,23 @@ def build_diagnostics_payload(
             field_evidence_real_material_owner_ack_intake_source
         )
     )
+    field_evidence_real_material_owner_ack_review_decision_source = (
+        field_evidence_real_material_owner_ack_review_decision_ref
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_SUMMARY",
+            "",
+        )
+        or field_evidence_real_material_owner_ack_review_decision_preserved_source
+    )
+    field_evidence_real_material_owner_ack_review_decision_summary = (
+        summarize_field_evidence_real_material_owner_ack_review_decision(
+            field_evidence_real_material_owner_ack_review_decision_source
+        )
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -64859,6 +65588,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_field_evidence_real_material_owner_ack_intake_summary=(
             field_evidence_real_material_owner_ack_intake_summary
+        ),
+        field_evidence_real_material_owner_ack_review_decision=(
+            field_evidence_real_material_owner_ack_review_decision_summary
+        ),
+        field_evidence_real_material_owner_ack_review_decision_summary=(
+            field_evidence_real_material_owner_ack_review_decision_summary
+        ),
+        robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary=(
+            field_evidence_real_material_owner_ack_review_decision_summary
         ),
         elevator_action_feedback_trace=elevator_action_feedback_trace_summary,
         robot_diagnostics_elevator_action_feedback_trace_summary=(

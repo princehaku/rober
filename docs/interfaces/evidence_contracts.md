@@ -2026,6 +2026,69 @@ real field task record, dropoff/cancel completion, delivery result, delivery
 success, HIL, WAVE ROVER/UART proof, real phone/browser proof, Objective 5
 external proof, PR #5 resolution, or any primary robot action being enabled.
 
+## field_evidence_real_material_owner_ack_review_decision
+
+`pc-tools/evidence/field_evidence_real_material_owner_ack_review_decision.py`
+generates the PC-only structured review-decision gate after
+`field_evidence_real_material_owner_ack_intake.py`. It consumes only the owner
+ack intake safe artifact, safe summary, wrapper/nested JSON, or Robot
+diagnostics safe alias, then maps the owner acknowledgement material categories
+to a three-value review decision.
+
+- Artifact schema:
+  `trashbot.field_evidence_real_material_owner_ack_review_decision.v1`
+- Summary schema:
+  `trashbot.field_evidence_real_material_owner_ack_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_real_material_owner_ack_review_decision_gate`
+- Capability:
+  `field_evidence_real_material_owner_ack_review_decision`
+- Allowed source inputs:
+  `trashbot.field_evidence_real_material_owner_ack_intake.v1`,
+  `trashbot.field_evidence_real_material_owner_ack_intake_summary.v1`, and
+  `trashbot.robot_diagnostics_field_evidence_real_material_owner_ack_intake_summary.v1`
+  under
+  `software_proof_docker_field_evidence_real_material_owner_ack_intake_gate`.
+  The Robot alias is allowed only when it preserves the same schema, boundary,
+  `evidence_ref`, and false action flags.
+
+Allowed `review_decision` values are exactly `accepted`,
+`needs_more_evidence`, and `rejected`. `accepted` only means the owner ack
+categories are safe to carry into later structured review; it is not a field
+pass, route/elevator pass, delivery result, delivery success, HIL, external
+proof, or phone/browser proof. `needs_more_evidence` is used for missing or
+blocked owner ack categories, and `rejected` is used for rejected categories,
+unsafe input, unsupported source, mixed evidence refs, or changed safety flags.
+
+The output always includes `source=software_proof`, `status=not_proven`, safe
+`evidence_ref`, `same_evidence_ref_required=true`,
+`source_owner_ack_intake`, `material_categories`, `material_category_counts`,
+`owner_handoff`, `next_required_evidence`, `safe_phone_copy`, `safe_copy`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_real_material_owner_ack_review_decision_gate`.
+The summary mirrors those fields and is the intended read-only consumer surface
+for Robot diagnostics and mobile/web follow-through.
+
+Mapping is fail-closed. A supported, safe owner ack intake source with matched
+safe `evidence_ref`, `same_evidence_ref_required=true`,
+`source=software_proof`, `not_proven`, all action flags false, ready owner ack
+intake status, at least one accepted category, and no missing/rejected/blocked
+categories maps to `accepted`. Missing or blocked material categories map to
+`needs_more_evidence`. Missing source, bad JSON, unsupported schema/boundary,
+missing software-proof/not-proven fields, weak-typed
+`same_evidence_ref_required`, evidence ref mismatch, rejected categories,
+unsafe copy, raw paths, credentials, ROS topic text, `/cmd_vel`, serial/UART
+or WAVE ROVER detail, checksum text, complete/raw artifact text,
+success/control wording, `safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` fail closed to `rejected`.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, real Nav2/fixed-route execution, real elevator door/floor state,
+real field task record, dropoff/cancel completion, delivery result, delivery
+success, HIL, WAVE ROVER/UART proof, real phone/browser proof, Objective 5
+external proof, PR #5 resolution, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`
