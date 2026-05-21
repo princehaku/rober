@@ -29,6 +29,8 @@ const CLOUD_PENDING_ACK_STATUS_BOUNDARY = "software_proof_docker_cloud_pending_a
 const CLOUD_PENDING_ACK_STATUS_COPY = "本地命令已终态，但云端 ACK 还没确认，暂不能拉取新命令";
 const CLOUD_ACK_LOOKUP_PENDING_STATUS_BOUNDARY = "software_proof_docker_cloud_ack_lookup_pending_status_guard";
 const CLOUD_ACK_LOOKUP_PENDING_STATUS_COPY = "机器人尚未处理该命令；请继续等待或联系支持。这不是失败完成、送达成功，也不能继续发主操作。";
+const CLOUD_ACK_ACCEPTED_RESULT_PENDING_BOUNDARY = "software_proof_docker_cloud_ack_accepted_result_pending_guard";
+const CLOUD_ACK_ACCEPTED_RESULT_PENDING_COPY = "命令已接收/处理中；尚无真实 delivery、dropoff 或 cancel result。主操作保持禁用，请等待结果或联系支持。";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY = "software_proof_docker_cloud_poll_backoff_rate_limit_guard";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_COPY = "远程控制正在等待重试退避窗口；窗口结束前 Start Delivery、Confirm Dropoff、Cancel 保持禁用。";
 const CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_BOUNDARY = "software_proof_docker_cloud_support_handoff_safe_export_gate";
@@ -2004,6 +2006,39 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         ),
         evidence_boundary: hostedBoundary || CLOUD_ACK_LOOKUP_PENDING_STATUS_BOUNDARY,
         proof_boundary: hostedBoundary || CLOUD_ACK_LOOKUP_PENDING_STATUS_BOUNDARY,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
+    if (provided.degradation_state === "ack_accepted_result_pending" ||
+        provided.capability === "cloud_ack_accepted_result_pending_guard" ||
+        provided.proof_boundary === CLOUD_ACK_ACCEPTED_RESULT_PENDING_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_ACK_ACCEPTED_RESULT_PENDING_BOUNDARY) {
+      // ack_accepted_result_pending 只能说明云端 ACK 已 accepted/processing；没有真实 result 前绝不能放开主操作。
+      return {
+        ...provided,
+        missing: false,
+        capability: "cloud_ack_accepted_result_pending_guard",
+        overall_status: "blocked",
+        preflight_status: "ack_accepted_result_pending",
+        degradation_state: "ack_accepted_result_pending",
+        db_queue_status: "ack_accepted_result_pending / remote_ready=false / primary_actions_enabled=false",
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        delivery_success: false,
+        retry_hint: "wait_for_delivery_result_or_contact_support",
+        safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_ACK_ACCEPTED_RESULT_PENDING_COPY),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "等待 Robot/API 产出真实 delivery、dropoff 或 cancel result；手机端不请求 ACK/cursor、不拉取 raw diagnostics，也不提交控制动作。",
+        ),
+        ack_semantics: safeText(
+          provided.ack_semantics,
+          "accepted_processing_only_not_delivery_success",
+        ),
+        evidence_boundary: hostedBoundary || CLOUD_ACK_ACCEPTED_RESULT_PENDING_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_ACK_ACCEPTED_RESULT_PENDING_BOUNDARY,
         not_proven: notProvenList(provided.not_proven),
       };
     }

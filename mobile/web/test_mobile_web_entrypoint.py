@@ -11,6 +11,9 @@ CLOUD_PENDING_ACK_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_pen
 CLOUD_ACK_LOOKUP_PENDING_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_ack_lookup_pending_status_guard.json"
 )
+CLOUD_ACK_ACCEPTED_RESULT_PENDING_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_ack_accepted_result_pending_guard.json"
+)
 CLOUD_POLL_BACKOFF_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_poll_backoff_rate_limit_guard.json"
 )
@@ -650,6 +653,98 @@ class CloudManualTakeoverCommandSafetyGuardMobileTest(unittest.TestCase):
             "raw diagnostics",
             "ack payload",
             "cursor",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "serial device",
+            "baudrate",
+            "wave rover parameter",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
+
+
+class CloudAckAcceptedResultPendingGuardMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_ack_accepted_result_pending_guard_is_consumed_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_ACK_ACCEPTED_RESULT_PENDING_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # accepted-result-pending 只说明 ACK accepted/processing；没有真实 result 前不能开放任何主操作。
+        self.assertIn("CLOUD_ACK_ACCEPTED_RESULT_PENDING_BOUNDARY", app)
+        self.assertIn("CLOUD_ACK_ACCEPTED_RESULT_PENDING_COPY", app)
+        self.assertIn("cloud_ack_accepted_result_pending_guard", app)
+        self.assertIn("ack_accepted_result_pending", app)
+        self.assertIn("wait_for_delivery_result_or_contact_support", app)
+        self.assertIn("accepted_processing_only_not_delivery_success", app)
+        self.assertIn("remote_ready=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"cloudAckAcceptedResultPending.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 明确命令已接收/处理中不等于 delivery/dropoff/cancel result，Diagnostics / Support Handoff 仍可见。
+        self.assertEqual(fixture["capability"], "cloud_ack_accepted_result_pending_guard")
+        self.assertEqual(fixture["degradation_state"], "ack_accepted_result_pending")
+        self.assertEqual(fixture["remote_ready"], False)
+        self.assertEqual(fixture["safe_to_control"], False)
+        self.assertEqual(fixture["primary_actions_enabled"], False)
+        self.assertEqual(fixture["delivery_success"], False)
+        self.assertEqual(fixture["retry_hint"], "wait_for_delivery_result_or_contact_support")
+        self.assertEqual(fixture["ack_semantics"], "accepted_processing_only_not_delivery_success")
+        self.assertEqual(
+            fixture["phone_readiness"]["remote_readiness"]["retry_hint"],
+            "wait_for_delivery_result_or_contact_support",
+        )
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertEqual(fixture["phone_readiness"]["command_safety"]["actions"]["diagnostics"]["enabled"], True)
+        self.assertEqual(fixture["phone_readiness"]["command_safety"]["actions"]["support_handoff"]["enabled"], True)
+        self.assertIn("命令已接收/处理中", fixture_text)
+        self.assertIn("尚无真实 delivery、dropoff 或 cancel result", fixture_text)
+        self.assertIn("accepted_processing_only_not_delivery_success", fixture_text)
+        self.assertIn("remote_ready=false", fixture_text)
+        self.assertIn("safe_to_control=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("software_proof_docker_cloud_ack_accepted_result_pending_guard", fixture_text)
+        self.assertNotIn("delivery_success\": true", fixture_text)
+        self.assertNotIn("primary_actions_enabled\": true", fixture_text)
+
+        # 产品文档必须把 accepted/processing 写成等待真实 result 的中间态，而不是送达、投放或取消完成。
+        self.assertIn("cloud_ack_accepted_result_pending_guard", doc)
+        self.assertIn("ack_accepted_result_pending", doc)
+        self.assertIn("wait_for_delivery_result_or_contact_support", doc)
+        self.assertIn("accepted_processing_only_not_delivery_success", doc)
+        self.assertIn("命令已接收/处理中", doc)
+        self.assertIn("Diagnostics / Support Handoff", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("safe_to_control=false", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("software_proof_docker_cloud_ack_accepted_result_pending_guard", doc)
+
+    def test_cloud_ack_accepted_result_pending_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_ACK_ACCEPTED_RESULT_PENDING_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # accepted-result-pending fixture 只暴露安全摘要，不能带 raw result、ACK 游标、底盘控制或成功证明。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "ack payload",
+            "cursor",
+            "raw delivery result",
             "authorization",
             "bearer",
             "token",

@@ -19,6 +19,10 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA,
     MockCloudStore,
     OPERATOR_PROMPTS,
+    PHONE_ACK_ACCEPTED_RESULT_PENDING_ACK_SEMANTICS,
+    PHONE_ACK_ACCEPTED_RESULT_PENDING_CAPABILITY,
+    PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE,
+    PHONE_ACK_ACCEPTED_RESULT_PENDING_GUARD_BOUNDARY,
     PHONE_TASK_FLOW_SCHEMA,
     PHONE_OFFLINE_RESUME_READINESS_EVIDENCE_BOUNDARY,
     PHONE_OFFLINE_RESUME_READINESS_SCHEMA,
@@ -1088,6 +1092,77 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         for forbidden in ("Authorization", "Bearer", "token", "/cmd_vel", "delivery_success\": true"):
             self.assertNotIn(forbidden, encoded_ack_lookup_pending)
 
+        accepted_result_pending = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "capability": "cloud_ack_accepted_result_pending_guard",
+                "degradation_state": "ack_accepted_result_pending",
+                "retry_hint": "retry_cloud",
+                "safe_phone_copy": "Authorization Bearer token /cmd_vel",
+                "ack_semantics": "delivery_success",
+                "remote_ready": True,
+                "safe_to_control": True,
+                "primary_actions_enabled": True,
+                "delivery_success": True,
+                "proof_boundary": "unsafe-boundary",
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        self.assertEqual(
+            accepted_result_pending["primary_state"],
+            "ack_accepted_result_pending",
+        )
+        self.assertFalse(accepted_result_pending["can_continue"])
+        self.assertEqual(
+            accepted_result_pending["next_action"],
+            "wait_for_delivery_result_or_contact_support",
+        )
+        self.assertEqual(
+            accepted_result_pending["support_level"],
+            "remote_ack_accepted_result_pending",
+        )
+        self.assertEqual(
+            accepted_result_pending["command_safety"]["global_block_reason"],
+            "ack_accepted_result_pending",
+        )
+        self.assertFalse(accepted_result_pending["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(
+            accepted_result_pending["command_safety"]["actions"]["confirm_dropoff"]["enabled"]
+        )
+        self.assertFalse(accepted_result_pending["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(
+            accepted_result_pending["command_safety"]["actions"]["diagnostics"]["enabled"]
+        )
+        self.assertEqual(
+            accepted_result_pending["remote_readiness"]["capability"],
+            "cloud_ack_accepted_result_pending_guard",
+        )
+        self.assertFalse(accepted_result_pending["remote_readiness"]["remote_ready"])
+        self.assertFalse(accepted_result_pending["remote_readiness"]["safe_to_control"])
+        self.assertFalse(accepted_result_pending["remote_readiness"]["delivery_success"])
+        self.assertFalse(
+            accepted_result_pending["remote_readiness"]["primary_actions_enabled"]
+        )
+        self.assertEqual(
+            accepted_result_pending["remote_readiness"]["retry_hint"],
+            "wait_for_delivery_result_or_contact_support",
+        )
+        self.assertEqual(
+            accepted_result_pending["remote_readiness"]["ack_semantics"],
+            "accepted_processing_only_not_delivery_success",
+        )
+        self.assertEqual(
+            accepted_result_pending["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_ack_accepted_result_pending_guard",
+        )
+        encoded_accepted_result_pending = json.dumps(
+            accepted_result_pending,
+            ensure_ascii=False,
+        )
+        self.assertIn("还没有真实送达", accepted_result_pending["safe_phone_copy"])
+        for forbidden in ("Authorization", "Bearer", "token", "/cmd_vel", "delivery_success\": true"):
+            self.assertNotIn(forbidden, encoded_accepted_result_pending)
+
         cancel_pending = build_phone_readiness(
             local_status,
             remote_readiness={
@@ -2100,11 +2175,37 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["ack"]["state"], "acked")
         self.assertEqual(payload["ack"]["command_id"], "cmd-0001")
         self.assertEqual(payload["remote_readiness"]["last_command_ack"], "cmd-0001")
-        self.assertEqual(payload["remote_readiness"]["retry_hint"], "ok")
+        self.assertEqual(
+            payload["remote_readiness"]["capability"],
+            PHONE_ACK_ACCEPTED_RESULT_PENDING_CAPABILITY,
+        )
+        self.assertEqual(
+            payload["remote_readiness"]["degradation_state"],
+            PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE,
+        )
+        self.assertEqual(
+            payload["remote_readiness"]["retry_hint"],
+            "wait_for_delivery_result_or_contact_support",
+        )
+        self.assertEqual(
+            payload["remote_readiness"]["ack_semantics"],
+            PHONE_ACK_ACCEPTED_RESULT_PENDING_ACK_SEMANTICS,
+        )
+        self.assertEqual(
+            payload["remote_readiness"]["proof_boundary"],
+            PHONE_ACK_ACCEPTED_RESULT_PENDING_GUARD_BOUNDARY,
+        )
+        self.assertFalse(payload["remote_readiness"]["delivery_success"])
+        self.assertFalse(payload["remote_readiness"]["primary_actions_enabled"])
+        self.assertFalse(payload["remote_readiness"]["safe_to_control"])
 
         status, payload = self.request("GET", "/robots/trashbot-001/commands/cmd-0001/ack")
         self.assertEqual(status, 200)
         self.assertEqual(payload["ack"]["result"]["behavior"], "submitted")
+        self.assertEqual(
+            payload["remote_readiness"]["degradation_state"],
+            PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE,
+        )
 
         status, payload = self.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=cmd-0001")
         self.assertEqual(status, 200)
@@ -2593,8 +2694,17 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         )
         self.assertEqual(status, 200)
         self.assertEqual(payload["remote_readiness"]["auth_state"], "authorized")
-        self.assertEqual(payload["remote_readiness"]["degradation_state"], "ok")
-        self.assertEqual(payload["remote_readiness"]["safe_phone_copy"], "手机远程控制通道可用，可以继续操作。")
+        self.assertEqual(
+            payload["remote_readiness"]["degradation_state"],
+            "ack_accepted_result_pending",
+        )
+        self.assertEqual(
+            payload["remote_readiness"]["ack_semantics"],
+            "accepted_processing_only_not_delivery_success",
+        )
+        self.assertFalse(payload["remote_readiness"]["delivery_success"])
+        self.assertFalse(payload["remote_readiness"]["primary_actions_enabled"])
+        self.assertFalse(payload["remote_readiness"]["safe_to_control"])
         self.assertNotIn("must-not-leak", json.dumps(payload, ensure_ascii=False))
 
     def test_mock_cloud_persists_queue_status_ack_without_sensitive_fields(self):

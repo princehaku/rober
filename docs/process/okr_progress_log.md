@@ -6,6 +6,28 @@
 
 ---
 
+## 2026-05-22 系列
+
+更新时间：2026-05-22 00:29 Asia/Shanghai。
+
+### 2026-05-22 00-01｜cloud-ack-accepted-result-pending-guard｜accepted ACK result-pending software proof
+
+本轮 `sprints/2026.05.22_00-01_cloud-ack-accepted-result-pending-guard/` 执行 `cloud_ack_accepted_result_pending_guard` epic closeout。Objective 5 仍约 68%，是当前数值最低 Objective；本轮针对 O5 command/status/ack 的一个 distinct safety gap：cloud command ACK 已经 `accepted` 或 `processing`，但还没有真实 delivery result、dropoff completion、cancel completion 或 terminal command result。产品结论是 accepted/processing ACK 只能表示控制面已接收/处理中，必须暴露为 `ack_accepted_result_pending` / `accepted_processing_only_not_delivery_success`，不能写成 delivery success。Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / material pending，comment `3269642220` 只是 software-proof publication，不是 reviewer resolution。O2/O3/O4 仍约 99%。
+
+Robot/API worker 更新 `operator_gateway_http.py`、`operator_gateway_diagnostics.py`、focused tests、`docs/product/remote_4g_mvp.md` 和 `docs/interfaces/operator_gateway_diagnostics.md`，让 accepted/processing ACK without terminal result 输出 canonical remote readiness：`capability=cloud_ack_accepted_result_pending_guard`、`degradation_state=ack_accepted_result_pending`、`ack_semantics=accepted_processing_only_not_delivery_success`、`proof_boundary=software_proof_docker_cloud_ack_accepted_result_pending_guard`，并强制 `delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。Full-Stack worker 更新 `mobile/web/app.js`、fixture、tests 和 `docs/product/mobile_user_flow.md`，渲染该 pending state，保持 Start Delivery / Confirm Dropoff / Cancel disabled，同时保留 diagnostics/support visibility。Hardware consultation read-only，确认本轮不声称 WAVE ROVER、UART、serial、voltage、2D LiDAR、ToF、HIL、route/elevator field pass、真实材料、delivery result 或 delivery success。
+
+证据边界保持 `software_proof_docker_cloud_ack_accepted_result_pending_guard`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。本轮 is not real external cloud proof、not true phone/browser proof、not HIL、not WAVE ROVER/UART proof、not PR #5 `PRRT_kwDOSWB9286CJ3tX` resolution、not route/elevator field pass、not Nav2/fixed-route proof、not dropoff/cancel completion、not delivery result、not delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 hardware bridge、真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` still unresolved/material pending，comment `3269642220` not reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只处理 accepted/processing ACK without terminal result 的云端控制面语义；`accepted_processing_only_not_delivery_success` 不是真实 route/elevator field pass、dropoff/cancel completion、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；ACK accepted-result-pending guard 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能展示 accepted/processing ACK pending 的 phone-safe copy，并保持 Start Delivery / Confirm Dropoff / Cancel disabled、Diagnostics / Support Handoff visible；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_ack_accepted_result_pending_guard` 只证明 Docker/local Robot/API + mobile static fixture 下 accepted/processing ACK pending 状态可见、可诊断且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Robot/API worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 323 tests in 63.418s OK`；required `rg` 与 scoped `git diff --check` 通过；首轮失败已修复：新 degraded state 接入 command_safety 全局阻断，旧鉴权测试期望已修正。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；`python3 -m unittest mobile.web.test_mobile_web_entrypoint` 输出 `Ran 233 tests OK`；fixture JSON parse、required `rg` 与 scoped `git diff --check` 通过。Hardware consultation read-only vendor/OKR/sprint boundary passed。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、delivery result 或 delivery success。
+
 ## 2026-05-21 系列
 
 更新时间：2026-05-21 23:20 Asia/Shanghai。

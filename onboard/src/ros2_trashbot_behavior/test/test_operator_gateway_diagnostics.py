@@ -145,6 +145,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_cloud_support_handoff_safe_export,
     summarize_cloud_unreachable_malformed_response_guard,
     summarize_cloud_ack_lookup_pending_status_guard,
+    summarize_cloud_ack_accepted_result_pending_guard,
     summarize_cloud_cancel_pending_command_safety_guard,
     summarize_cloud_poll_backoff_rate_limit_guard,
     summarize_vision_manifest,
@@ -28892,6 +28893,117 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             "software_proof_docker_cloud_ack_lookup_pending_status_guard",
         )
         self.assertEqual(readiness["command_safety"]["global_block_reason"], "ack_lookup_pending")
+        self.assertFalse(readiness["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(readiness["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(readiness["command_safety"]["actions"]["diagnostics"]["enabled"])
+        for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_ack_accepted_result_pending_guard_summary_is_fail_closed(self):
+        summary = summarize_cloud_ack_accepted_result_pending_guard(
+            {
+                "capability": "cloud_ack_accepted_result_pending_guard",
+                "degradation_state": "ack_accepted_result_pending",
+                "safe_phone_copy": "Authorization Bearer token raw response /cmd_vel",
+                "remote_ready": True,
+                "safe_to_control": True,
+                "delivery_success": True,
+                "primary_actions_enabled": True,
+                "retry_hint": "retry_cloud",
+                "raw_response_body": "Traceback (most recent call last): /tmp/cloud.json",
+            }
+        )
+
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_cloud_ack_accepted_result_pending_guard_summary.v1",
+        )
+        self.assertEqual(summary["capability"], "cloud_ack_accepted_result_pending_guard")
+        self.assertEqual(summary["degradation_state"], "ack_accepted_result_pending")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_cloud_ack_accepted_result_pending_guard",
+        )
+        self.assertEqual(summary["status"], "blocked_unsafe_material_not_proven")
+        self.assertEqual(summary["retry_hint"], "wait_for_delivery_result_or_contact_support")
+        self.assertEqual(
+            summary["ack_semantics"],
+            "accepted_processing_only_not_delivery_success",
+        )
+        self.assertFalse(summary["remote_ready"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["terminal_result_proven"])
+        self.assertFalse(summary["delivery_result_proven"])
+        self.assertFalse(summary["dropoff_completion_proven"])
+        self.assertFalse(summary["cancel_completion_proven"])
+        self.assertIn("remote_ready=false", summary["false_states"])
+        self.assertIn("delivery_result", summary["not_proven"])
+        self.assertTrue(summary["raw_material_redacted"])
+        for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel", "/tmp/"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_diagnostics_payload_surfaces_ack_accepted_result_pending_and_phone_readiness(self):
+        class Gateway:
+            def snapshot(self):
+                return {
+                    "state": "remote_degraded",
+                    "message": "raw accepted result pending details must stay hidden",
+                    "can_collect": True,
+                    "can_confirm_dropoff": True,
+                    "can_cancel": True,
+                    "remote_readiness": {
+                        "capability": "cloud_ack_accepted_result_pending_guard",
+                        "degradation_state": "ack_accepted_result_pending",
+                        "safe_phone_copy": "Authorization Bearer token raw response /cmd_vel",
+                        "remote_ready": True,
+                        "safe_to_control": True,
+                        "delivery_success": True,
+                        "primary_actions_enabled": True,
+                        "retry_hint": "retry_cloud",
+                    },
+                }
+
+            def diagnostics(self):
+                return build_diagnostics_payload(
+                    self.snapshot(),
+                    software_version="0.1.0",
+                    map_version="map-a",
+                    route_version="route-a",
+                    log_refs=[],
+                    vision_sample_manifest_ref="",
+                    review_decision_log_ref="",
+                    operator_status_file="/tmp/status.json",
+                )
+
+        payload = _diagnostics_with_phone_task_flow(Gateway(), MockCloudStore())
+
+        summary = payload["robot_diagnostics_cloud_ack_accepted_result_pending_guard_summary"]
+        remote_readiness = payload["latest_status"]["remote_readiness"]
+        readiness = payload["latest_status"]["phone_readiness"]
+        encoded = json.dumps(payload, ensure_ascii=False)
+
+        self.assertEqual(summary["degradation_state"], "ack_accepted_result_pending")
+        self.assertEqual(summary["status"], "blocked_unsafe_material_not_proven")
+        self.assertEqual(remote_readiness["capability"], "cloud_ack_accepted_result_pending_guard")
+        self.assertEqual(remote_readiness["degradation_state"], "ack_accepted_result_pending")
+        self.assertEqual(remote_readiness["retry_hint"], "wait_for_delivery_result_or_contact_support")
+        self.assertFalse(remote_readiness["remote_ready"])
+        self.assertFalse(remote_readiness["safe_to_control"])
+        self.assertFalse(remote_readiness["delivery_success"])
+        self.assertFalse(remote_readiness["primary_actions_enabled"])
+        self.assertEqual(
+            remote_readiness["ack_semantics"],
+            "accepted_processing_only_not_delivery_success",
+        )
+        self.assertEqual(
+            remote_readiness["proof_boundary"],
+            "software_proof_docker_cloud_ack_accepted_result_pending_guard",
+        )
+        self.assertEqual(readiness["command_safety"]["global_block_reason"], "ack_accepted_result_pending")
         self.assertFalse(readiness["command_safety"]["actions"]["start"]["enabled"])
         self.assertFalse(readiness["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
         self.assertFalse(readiness["command_safety"]["actions"]["cancel"]["enabled"])

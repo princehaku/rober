@@ -3,6 +3,11 @@ import os
 import re
 
 from ros2_trashbot_behavior.operator_gateway_http import (
+    PHONE_ACK_ACCEPTED_RESULT_PENDING_ACK_SEMANTICS,
+    PHONE_ACK_ACCEPTED_RESULT_PENDING_CAPABILITY,
+    PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE,
+    PHONE_ACK_ACCEPTED_RESULT_PENDING_GUARD_BOUNDARY,
+    PHONE_ACK_ACCEPTED_RESULT_PENDING_SAFE_PHONE_COPY,
     PHONE_CANCEL_PENDING_ACK_SEMANTICS,
     PHONE_CANCEL_PENDING_COMMAND_SAFETY_CAPABILITY,
     PHONE_CANCEL_PENDING_COMMAND_SAFETY_GUARD_BOUNDARY,
@@ -1307,6 +1312,33 @@ CLOUD_ACK_LOOKUP_PENDING_REQUIRED_NOT_PROVEN = (
     "primary_actions_enabled",
     "safe_to_control",
 )
+CLOUD_ACK_ACCEPTED_RESULT_PENDING_GUARD_SCHEMA = (
+    "trashbot.robot_diagnostics_cloud_ack_accepted_result_pending_guard_summary.v1"
+)
+CLOUD_ACK_ACCEPTED_RESULT_PENDING_FALSE_STATES = (
+    "source=software_proof",
+    "not_proven",
+    "remote_ready=false",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+)
+CLOUD_ACK_ACCEPTED_RESULT_PENDING_REQUIRED_NOT_PROVEN = (
+    "real_public_https_tls",
+    "real_4g_or_sim",
+    "production_db_queue",
+    "oss_cdn_live_traffic",
+    "terminal_result",
+    "delivery_result",
+    "dropoff_completion",
+    "cancel_completion",
+    "route_elevator_field_pass",
+    "real_phone_device_or_browser",
+    "hil_pass",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
+)
 CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_ROBOT_SCHEMA = (
     "trashbot.robot_diagnostics_cloud_support_handoff_safe_export_summary.v1"
 )
@@ -1861,6 +1893,92 @@ def _remote_readiness_for_ack_lookup_pending_guard(summary):
         "primary_actions_enabled": False,
         "safe_to_control": False,
         "proof_boundary": CLOUD_ACK_LOOKUP_PENDING_STATUS_GUARD_BOUNDARY,
+    }
+
+
+def summarize_cloud_ack_accepted_result_pending_guard(value):
+    """为 ACK accepted/processing 但缺少终态结果构建 Robot diagnostics 安全摘要。"""
+    source = value if isinstance(value, dict) else {}
+    degradation_state = str(source.get("degradation_state") or source.get("state") or "").strip()
+    applicable = degradation_state == PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE
+    unsafe = _cloud_guard_has_unsafe_material(source)
+    status = (
+        "not_applicable"
+        if not source
+        else "unsupported_degradation_not_proven"
+        if not applicable
+        else "blocked_unsafe_material_not_proven"
+        if unsafe
+        else "ack_accepted_result_pending_not_proven"
+    )
+    safe_copy = _cloud_guard_safe_text(
+        source.get("safe_phone_copy"),
+        PHONE_ACK_ACCEPTED_RESULT_PENDING_SAFE_PHONE_COPY,
+    )
+    return {
+        "schema": CLOUD_ACK_ACCEPTED_RESULT_PENDING_GUARD_SCHEMA,
+        "schema_version": 1,
+        "capability": PHONE_ACK_ACCEPTED_RESULT_PENDING_CAPABILITY,
+        "source": "software_proof",
+        "evidence_boundary": PHONE_ACK_ACCEPTED_RESULT_PENDING_GUARD_BOUNDARY,
+        "status": status,
+        "degradation_state": (
+            PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE
+            if applicable
+            else "not_applicable"
+        ),
+        "remote_ready": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "terminal_result_proven": False,
+        "delivery_result_proven": False,
+        "dropoff_completion_proven": False,
+        "cancel_completion_proven": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "retry_hint": "wait_for_delivery_result_or_contact_support",
+        "ack_semantics": PHONE_ACK_ACCEPTED_RESULT_PENDING_ACK_SEMANTICS,
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "false_states": list(CLOUD_ACK_ACCEPTED_RESULT_PENDING_FALSE_STATES),
+        "not_proven": list(CLOUD_ACK_ACCEPTED_RESULT_PENDING_REQUIRED_NOT_PROVEN),
+        "raw_material_redacted": bool(unsafe),
+    }
+
+
+def _remote_readiness_for_ack_accepted_result_pending_guard(summary):
+    # diagnostics 只回填 canonical O5 pending，不允许携带 terminal result 或 delivery 成功暗示。
+    if (
+        not isinstance(summary, dict)
+        or summary.get("degradation_state")
+        != PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE
+    ):
+        return {}
+    return {
+        "capability": PHONE_ACK_ACCEPTED_RESULT_PENDING_CAPABILITY,
+        "remote_ready": False,
+        "cloud_reachable": True,
+        "last_command_ack": "",
+        "status_stale": False,
+        "retry_hint": "wait_for_delivery_result_or_contact_support",
+        "auth_state": "required",
+        "degradation_state": PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE,
+        "safe_phone_copy": summary.get(
+            "safe_phone_copy",
+            PHONE_ACK_ACCEPTED_RESULT_PENDING_SAFE_PHONE_COPY,
+        ),
+        "status_age_sec": None,
+        "pending_command_count": 0,
+        "queue_persisted": False,
+        "state_path_configured": False,
+        "proof_schema": "",
+        "ack_semantics": PHONE_ACK_ACCEPTED_RESULT_PENDING_ACK_SEMANTICS,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "proof_boundary": PHONE_ACK_ACCEPTED_RESULT_PENDING_GUARD_BOUNDARY,
     }
 
 
@@ -59973,6 +60091,37 @@ def build_diagnostics_payload(
     )
     if safe_ack_lookup_pending_remote_readiness:
         latest_status["remote_readiness"] = safe_ack_lookup_pending_remote_readiness
+    ack_accepted_result_pending_source = (
+        latest_status.get("remote_readiness")
+        if isinstance(latest_status.get("remote_readiness"), dict)
+        else diagnostics_source.get("remote_readiness")
+        if isinstance(diagnostics_source.get("remote_readiness"), dict)
+        else latest_status.get("cloud_ack_accepted_result_pending_guard")
+        if isinstance(latest_status.get("cloud_ack_accepted_result_pending_guard"), dict)
+        else latest_status.get("robot_diagnostics_cloud_ack_accepted_result_pending_guard_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_cloud_ack_accepted_result_pending_guard_summary"),
+            dict,
+        )
+        else diagnostics_source.get("cloud_ack_accepted_result_pending_guard")
+        if isinstance(diagnostics_source.get("cloud_ack_accepted_result_pending_guard"), dict)
+        else diagnostics_source.get("robot_diagnostics_cloud_ack_accepted_result_pending_guard_summary")
+        if isinstance(
+            diagnostics_source.get("robot_diagnostics_cloud_ack_accepted_result_pending_guard_summary"),
+            dict,
+        )
+        else {}
+    )
+    ack_accepted_result_pending_summary = summarize_cloud_ack_accepted_result_pending_guard(
+        ack_accepted_result_pending_source
+    )
+    safe_ack_accepted_result_pending_remote_readiness = (
+        _remote_readiness_for_ack_accepted_result_pending_guard(
+            ack_accepted_result_pending_summary
+        )
+    )
+    if safe_ack_accepted_result_pending_remote_readiness:
+        latest_status["remote_readiness"] = safe_ack_accepted_result_pending_remote_readiness
     cancel_pending_source = (
         latest_status.get("remote_readiness")
         if isinstance(latest_status.get("remote_readiness"), dict)
@@ -62350,6 +62499,12 @@ def build_diagnostics_payload(
     latest_status.pop("cloud_ack_lookup_pending_status_guard", None)
     latest_status.pop("cloud_ack_lookup_pending_status_guard_summary", None)
     latest_status.pop("robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary", None)
+    latest_status.pop("cloud_ack_accepted_result_pending_guard", None)
+    latest_status.pop("cloud_ack_accepted_result_pending_guard_summary", None)
+    latest_status.pop(
+        "robot_diagnostics_cloud_ack_accepted_result_pending_guard_summary",
+        None,
+    )
     latest_status.pop("voice_prompt_readiness", None)
     latest_status.pop("phone_offline_resume_readiness", None)
     latest_status.pop("cloud_unreachable_malformed_response_guard", None)
@@ -64975,6 +65130,11 @@ def build_diagnostics_payload(
         cloud_ack_lookup_pending_status_guard_summary=ack_lookup_pending_summary,
         robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary=(
             ack_lookup_pending_summary
+        ),
+        cloud_ack_accepted_result_pending_guard=ack_accepted_result_pending_summary,
+        cloud_ack_accepted_result_pending_guard_summary=ack_accepted_result_pending_summary,
+        robot_diagnostics_cloud_ack_accepted_result_pending_guard_summary=(
+            ack_accepted_result_pending_summary
         ),
         cloud_cancel_pending_command_safety_guard=cancel_pending_summary,
         cloud_cancel_pending_command_safety_guard_summary=cancel_pending_summary,
