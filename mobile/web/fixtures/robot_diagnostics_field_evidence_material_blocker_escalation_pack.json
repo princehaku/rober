@@ -1,0 +1,79 @@
+{
+  "robot_diagnostics_field_evidence_material_blocker_escalation_pack_summary": {
+    "schema": "trashbot.field_evidence_material_blocker_escalation_pack_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_blocker_escalation_pack.v1",
+    "source": "software_proof",
+    "pack_status": "blocked_missing_all_real_materials_not_proven",
+    "target_owner": "target_owner=field_owner_route_elevator_phone_hardware_cloud",
+    "owner_escalation_level": "owner_escalation_level=ceo_field_owner_decision_required_not_proven",
+    "blocked_reason": "blocked_reason=missing true phone/browser, route/elevator runtime, hardware HIL and O5 external evidence",
+    "next_required_evidence": [
+      "next_required_evidence=true phone/browser behavior summary on same safe evidence_ref",
+      "next_required_evidence=real route/elevator runtime summary and route completion signal",
+      "next_required_evidence=real dropoff/cancel completion material plus verified delivery result",
+      "next_required_evidence=hardware HIL entry material or O5 external proof"
+    ],
+    "field_safe_copy": "现场材料仍未补齐；该升级包只把 blocker 转交给 field owner/CEO，不代表真实手机、路线电梯、HIL、外部云或投放成功。",
+    "evidence_boundary": "software_proof_docker_field_evidence_material_blocker_escalation_pack_gate",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "true_phone_browser_proof_missing",
+      "route_elevator_runtime_missing",
+      "dropoff_completion_missing",
+      "cancel_completion_missing",
+      "verified_delivery_result_missing",
+      "hardware_hil_missing",
+      "o5_external_proof_missing"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_blocker_escalation_pack_summary": {
+    "schema": "trashbot.field_evidence_material_blocker_escalation_pack_summary.v1",
+    "source": "software_proof",
+    "pack_status": "blocked_missing_all_real_materials_not_proven",
+    "target_owner": "target_owner=field_owner_route_elevator_phone_hardware_cloud",
+    "owner_escalation_level": "owner_escalation_level=ceo_field_owner_decision_required_not_proven",
+    "blocked_reason": "blocked_reason=missing true phone/browser, route/elevator runtime, hardware HIL and O5 external evidence",
+    "next_required_evidence": [
+      "next_required_evidence=same safe evidence_ref real material summaries"
+    ],
+    "field_safe_copy": "兼容 summary 只读展示现场材料 blocker 升级包。",
+    "evidence_boundary": "software_proof_docker_field_evidence_material_blocker_escalation_pack_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false"
+    ]
+  },
+  "field_evidence_material_blocker_escalation_pack": {
+    "summary": {
+      "schema": "trashbot.field_evidence_material_blocker_escalation_pack_summary.v1",
+      "source": "software_proof",
+      "pack_status": "blocked_missing_all_real_materials_not_proven",
+      "target_owner": "target_owner=field_owner_route_elevator_phone_hardware_cloud",
+      "owner_escalation_level": "owner_escalation_level=ceo_field_owner_decision_required_not_proven",
+      "blocked_reason": "blocked_reason=missing true phone/browser, route/elevator runtime, hardware HIL and O5 external evidence",
+      "field_safe_copy": "Nested safe summary only; still software proof and not_proven.",
+      "evidence_boundary": "software_proof_docker_field_evidence_material_blocker_escalation_pack_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

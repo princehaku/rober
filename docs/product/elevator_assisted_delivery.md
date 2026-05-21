@@ -218,6 +218,14 @@ artifact 使用 `evidence_boundary=software_proof_docker_elevator_evidence_drive
 
 `reconciled_not_proven` 只表示电梯 rehearsal evidence 与路线 completion signal 的 schema/boundary/source、同一 `evidence_ref` 和 phone-safe 摘要通过本机复账。它不证明真实电梯门状态、真实目标楼层确认、真实人工协助、真实 Nav2/fixed-route、真实路线采集、WAVE ROVER/UART/HIL、真实投放、真实取消完成、真实手机设备、Objective 5 external proof 或 delivery success。缺文件、坏 JSON、unsupported schema/boundary/source、`evidence_ref` mismatch、unsafe copy、`primary_actions_enabled=true`、`delivery_success=true` 或成功文案都必须 fail closed。
 
+## Field Evidence Material Blocker Escalation Pack Gate
+
+`pc-tools/evidence/field_evidence_material_blocker_escalation_pack.py` 是真实材料重复缺口后的 PC software-proof 升级包 gate。它只读取上一轮 owner ack review decision、material followup escalation status 或 response-review handoff 的 safe summary/wrapper，不读取 raw field files，不访问 ROS graph、Nav2 runtime、serial/UART、WAVE ROVER、真实云、OSS/CDN、DB/queue、4G 或真实手机。
+
+artifact 使用 `schema=trashbot.field_evidence_material_blocker_escalation_pack.v1`，summary 使用 `schema=trashbot.field_evidence_material_blocker_escalation_pack_summary.v1`，证据边界固定为 `software_proof_docker_field_evidence_material_blocker_escalation_pack_gate`。输出必须包含 `next_required_evidence`、`owner_escalation_level`、`blocked_reason`、`target_owner` 和 `field_safe_copy`，并保留 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+该 gate 只把真实材料缺口转成 field owner、Product Manager / OKR Owner 或 CEO 决策可执行事项，不能作为真实电梯、真实 Nav2/fixed-route、真实手机/browser、真实 external cloud proof、PR #5 resolution、HIL、真实投放、dropoff/cancel completion、verified terminal delivery result 或 delivery success。unsupported source、缺 source、unsafe copy、`evidence_ref` mismatch、`same_evidence_ref_required` 非 true、`primary_actions_enabled=true`、`safe_to_control=true`、`delivery_success=true` 或任何 success/control claim 都必须 fail closed；blocked artifact 仍可 exit 0，便于 Docker-only 留痕。
+
 ## 不做什么
 
 - 不把电梯能力写成当前 MVP 已完成。

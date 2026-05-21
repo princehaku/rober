@@ -1,0 +1,51 @@
+{
+  "schema": "trashbot.field_evidence_real_material_followup_escalation_status_summary.v1",
+  "schema_version": 1,
+  "source": "software_proof",
+  "status": "not_proven",
+  "capability": "field_evidence_real_material_followup_escalation_status",
+  "field_evidence_real_material_followup_escalation_status": "escalated_for_field_owner_followup_not_proven",
+  "followup_status": "escalated_for_field_owner_followup_not_proven",
+  "evidence_boundary": "software_proof_docker_field_evidence_real_material_followup_escalation_status_gate",
+  "boundary": "software_proof_docker_field_evidence_real_material_followup_escalation_status_gate",
+  "safe_evidence_ref": "field-material-blocker-2026-05-22T02-03Z",
+  "evidence_ref": "field-material-blocker-2026-05-22T02-03Z",
+  "same_evidence_ref_required": true,
+  "next_required_evidence": [
+    "real public HTTPS/TLS or 4G/SIM external proof",
+    "real OSS/CDN live traffic or production DB/queue connectivity proof",
+    "real 2D LiDAR / ToF SKU/source/receipt/procurement/installation/calibration material",
+    "real Nav2/fixed-route runtime log under the same safe evidence_ref",
+    "real route completion signal and field task record under the same safe evidence_ref",
+    "real elevator door state and target floor confirmation material",
+    "real dropoff/cancel completion material and verified terminal delivery result",
+    "real iPhone/Android browser/device evidence"
+  ],
+  "blocked_reason": "all_real_external_hardware_route_elevator_phone_and_delivery_materials_missing",
+  "owner_escalation_level": "field_owner_followup_overdue_escalate_to_product_owner_and_ceo_decision",
+  "target_owner": "field-owner + Product Manager / OKR Owner",
+  "not_proven": [
+    "not_proven"
+  ],
+  "safe_to_control": false,
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "safe_copy": {
+    "schema": "trashbot.field_evidence_real_material_followup_escalation_status_summary.v1.safe_copy",
+    "source": "software_proof",
+    "status": "not_proven",
+    "safe_evidence_ref": "field-material-blocker-2026-05-22T02-03Z",
+    "same_evidence_ref_required": true,
+    "blocked_reason": "all_real_external_hardware_route_elevator_phone_and_delivery_materials_missing",
+    "next_required_evidence": [
+      "real public HTTPS/TLS or 4G/SIM external proof",
+      "real OSS/CDN live traffic or production DB/queue connectivity proof",
+      "real Nav2/fixed-route runtime log under the same safe evidence_ref",
+      "real dropoff/cancel completion material and verified terminal delivery result"
+    ],
+    "not_proven": "not_proven",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  }
+}

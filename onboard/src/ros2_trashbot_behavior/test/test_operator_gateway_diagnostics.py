@@ -64,6 +64,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_field_evidence_real_material_followup_escalation_status,
     summarize_field_evidence_real_material_owner_ack_intake,
     summarize_field_evidence_real_material_owner_ack_review_decision,
+    summarize_field_evidence_material_blocker_escalation_pack,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -33885,6 +33886,233 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("hil", encoded.lower())
         self.assertNotIn("passed", encoded.lower())
         self.assertNotIn("PR #5 resolved", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+
+    def test_field_evidence_material_blocker_escalation_pack_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": "trashbot.field_evidence_material_blocker_escalation_pack_summary.v1",
+            "source_schema": "trashbot.field_evidence_material_blocker_escalation_pack.v1",
+            "source_schema_version": 1,
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_material_blocker_escalation_pack_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_field_evidence_material_blocker_escalation_pack_gate"
+            ),
+            "capability": "field_evidence_material_blocker_escalation_pack",
+            "source": "software_proof",
+            "status": "material_blocker_escalation_ready_not_proven",
+            "overall_status": "not_proven",
+            "safe_evidence_ref": "field-material-blocker-escalation-001",
+            "pack_status": {
+                "status": "material_blocker_escalation_ready_not_proven",
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": "real external and field materials are still missing",
+            },
+            "blocked_reason": "blocked_missing_real_field_and_external_materials",
+            "target_owner": "product-okr-owner",
+            "owner_escalation_level": "ceo_decision_needed",
+            "next_required_evidence": [
+                "Provide same-ref route/elevator field material or external proof."
+            ],
+            "owner_handoff": [
+                "Product owner must decide whether to supply materials or rerank."
+            ],
+            "field_safe_copy": (
+                "field_evidence_material_blocker_escalation_pack is metadata-only; "
+                "source=software_proof; not_proven; delivery_success=false; "
+                "primary_actions_enabled=false; safe_to_control=false."
+            ),
+            "robot_diagnostics_summary": {
+                "safe_copy": (
+                    "Field evidence material blocker escalation pack is summary-only; "
+                    "source=software_proof; not_proven; safe_to_control=false; "
+                    "delivery_success=false; primary_actions_enabled=false."
+                )
+            },
+            "not_proven": [
+                "field_evidence_material_blocker_escalation_pack_only",
+                "PRRT_kwDOSWB9286CJ3tX",
+                "delivery_success",
+            ],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+        }
+        artifact = {
+            "schema": "trashbot.field_evidence_material_blocker_escalation_pack.v1",
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_material_blocker_escalation_pack_gate"
+            ),
+            "safe_evidence_ref": "field-material-blocker-escalation-001",
+            "field_evidence_material_blocker_escalation_pack_summary": safe_summary,
+        }
+        with tempfile.TemporaryDirectory() as td:
+            pack_path = Path(td) / "field_evidence_material_blocker_escalation_pack.json"
+            pack_path.write_text(json.dumps(artifact), encoding="utf-8")
+            payload = build_diagnostics_payload(
+                {
+                    "field_evidence_material_blocker_escalation_pack": {
+                        "delivery_success": True,
+                        "safe_to_control": True,
+                        "raw_artifact": {"ros_topic": "/cmd_vel"},
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                field_evidence_material_blocker_escalation_pack_ref=str(pack_path),
+            )
+            from_nested = summarize_field_evidence_material_blocker_escalation_pack(
+                artifact
+            )
+            from_latest_status = build_diagnostics_payload(
+                {
+                    "robot_diagnostics_field_evidence_material_blocker_escalation_pack_summary": (
+                        safe_summary
+                    )
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )[
+                "robot_diagnostics_field_evidence_material_blocker_escalation_pack_summary"
+            ]
+            from_diagnostics_source = build_diagnostics_payload(
+                {
+                    "diagnostics": {
+                        "field_evidence_material_blocker_escalation_pack_summary": (
+                            safe_summary
+                        )
+                    }
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )[
+                "robot_diagnostics_field_evidence_material_blocker_escalation_pack_summary"
+            ]
+            missing = summarize_field_evidence_material_blocker_escalation_pack(
+                Path(td) / "missing_field_material_blocker_pack.json"
+            )
+            unsupported = summarize_field_evidence_material_blocker_escalation_pack(
+                dict(
+                    safe_summary,
+                    source_schema="trashbot.field_evidence_real_material_owner_ack_review_decision.v1",
+                    source_evidence_boundary=(
+                        "software_proof_docker_field_evidence_real_material_owner_ack_review_decision_gate"
+                    ),
+                )
+            )
+            raw_only = summarize_field_evidence_material_blocker_escalation_pack(
+                {
+                    "schema": "trashbot.field_evidence_material_blocker_escalation_pack.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_material_blocker_escalation_pack_gate"
+                    ),
+                    "safe_evidence_ref": "field-material-blocker-escalation-001",
+                    "raw_artifact": {"token": "secret"},
+                }
+            )
+            unsafe = summarize_field_evidence_material_blocker_escalation_pack(
+                dict(
+                    safe_summary,
+                    field_safe_copy="Materials passed; Start Delivery control enabled.",
+                    delivery_success=True,
+                    primary_actions_enabled=True,
+                    safe_to_control=True,
+                )
+            )
+
+        summary = payload[
+            "robot_diagnostics_field_evidence_material_blocker_escalation_pack_summary"
+        ]
+        self.assertEqual(
+            summary,
+            payload["field_evidence_material_blocker_escalation_pack"],
+        )
+        self.assertEqual(
+            summary,
+            payload["field_evidence_material_blocker_escalation_pack_summary"],
+        )
+        self.assertNotIn(
+            "field_evidence_material_blocker_escalation_pack",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_field_evidence_material_blocker_escalation_pack_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_material_blocker_escalation_pack.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_field_evidence_material_blocker_escalation_pack_gate",
+        )
+        self.assertEqual(
+            summary["capability"],
+            "field_evidence_material_blocker_escalation_pack",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["pack_status"]["verdict"], "not_proven")
+        self.assertEqual(summary["target_owner"], "product-okr-owner")
+        self.assertEqual(summary["owner_escalation_level"], "ceo_decision_needed")
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", summary["not_proven"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertEqual(from_nested["safe_evidence_ref"], summary["safe_evidence_ref"])
+        self.assertEqual(from_latest_status["target_owner"], summary["target_owner"])
+        self.assertEqual(
+            from_diagnostics_source["owner_handoff"],
+            summary["owner_handoff"],
+        )
+        self.assertEqual(missing["pack_status"]["status"], "missing")
+        self.assertEqual(
+            unsupported["pack_status"]["status"],
+            "blocked_unsupported_field_evidence_material_blocker_escalation_pack",
+        )
+        self.assertEqual(
+            raw_only["pack_status"]["status"],
+            "blocked_missing_field_evidence_material_blocker_escalation_pack_summary",
+        )
+        self.assertEqual(
+            unsafe["pack_status"]["status"],
+            "blocked_unsafe_field_evidence_material_blocker_escalation_pack",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("checksum", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("ttyUSB", encoded)
+        self.assertNotIn("wave_rover", encoded.lower())
+        self.assertNotIn("traceback", encoded.lower())
+        self.assertNotIn("passed", encoded.lower())
+        self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success=false", encoded)
         self.assertIn("primary_actions_enabled=false", encoded)
         self.assertIn("safe_to_control=false", encoded)

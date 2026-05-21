@@ -104,6 +104,10 @@ FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_real_material_owner_ack_review_decision.json"
 )
+FIELD_EVIDENCE_MATERIAL_BLOCKER_ESCALATION_PACK_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_material_blocker_escalation_pack.json"
+)
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -12412,6 +12416,148 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, owner_ack_review_text)
+
+    def test_field_evidence_material_blocker_escalation_pack_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_MATERIAL_BLOCKER_ESCALATION_PACK_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # escalation pack 只消费 safe summary；它是 owner/CEO 转派信息，不是命令、ACK 或诊断拉取入口。
+        self.assertIn("FIELD_EVIDENCE_MATERIAL_BLOCKER_ESCALATION_PACK_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_MATERIAL_BLOCKER_ESCALATION_PACK_TEXT", app)
+        self.assertIn("safeFieldEvidenceMaterialBlockerEscalationPackText", app)
+        self.assertIn("fieldEvidenceMaterialBlockerEscalationPackCandidate", app)
+        self.assertIn("fieldEvidenceMaterialBlockerEscalationPackFromStatus", app)
+        self.assertIn("renderFieldEvidenceMaterialBlockerEscalationPack", app)
+        self.assertIn("现场材料 blocker 升级包", app)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_material_blocker_escalation_pack_summary",
+            app,
+        )
+        self.assertIn("field_evidence_material_blocker_escalation_pack_summary", app)
+        self.assertIn("field_evidence_material_blocker_escalation_pack?.summary", app)
+        self.assertIn("target_owner", app)
+        self.assertIn("owner_escalation_level", app)
+        self.assertIn("blocked_reason", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("field_safe_copy", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("field-evidence-material-blocker-escalation-pack-panel", styles)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceMaterialBlockerEscalationPack.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackFieldEvidenceMaterialBlockerEscalationPack",
+            "cursorFieldEvidenceMaterialBlockerEscalationPack",
+            "fetchFieldEvidenceMaterialBlockerEscalationPackDiagnostics",
+            "submitFieldEvidenceMaterialBlockerEscalationPack",
+            "commandFieldEvidenceMaterialBlockerEscalationPack",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # dedicated fixture 明确升级包仍是 software_proof/not_proven，三类主操作继续 disabled。
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_material_blocker_escalation_pack_summary"
+        ]
+        fallback = dedicated_fixture["field_evidence_material_blocker_escalation_pack_summary"]
+        nested = dedicated_fixture["field_evidence_material_blocker_escalation_pack"]["summary"]
+        self.assertEqual(summary["pack_status"], "blocked_missing_all_real_materials_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["safe_to_control"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "blocked_missing_all_real_materials_not_proven",
+            "target_owner=field_owner_route_elevator_phone_hardware_cloud",
+            "owner_escalation_level=ceo_field_owner_decision_required_not_proven",
+            "blocked_reason=missing true phone/browser",
+            "next_required_evidence=true phone/browser behavior summary",
+            "source=software_proof",
+            "not_proven",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "software_proof_docker_field_evidence_material_blocker_escalation_pack_gate",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn("field_evidence_material_blocker_escalation_pack", doc)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_material_blocker_escalation_pack_summary",
+            doc,
+        )
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+
+    def test_field_evidence_material_blocker_escalation_pack_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_MATERIAL_BLOCKER_ESCALATION_PACK_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        escalation_text = json.dumps(
+            {
+                "robot": dedicated_fixture[
+                    "robot_diagnostics_field_evidence_material_blocker_escalation_pack_summary"
+                ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_material_blocker_escalation_pack_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "field_evidence_material_blocker_escalation_pack"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留 blocker metadata，不泄漏 raw 材料、路径、凭证、底盘细节、ACK/cursor 或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw material",
+            "raw blocker",
+            "raw escalation",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "hil_pass",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "robot command",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, escalation_text)
 
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))

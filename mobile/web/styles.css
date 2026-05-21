@@ -159,6 +159,7 @@ h2 {
 .real-material-followup-escalation-status-panel,
 .field-evidence-real-material-owner-ack-intake-panel,
 .field-evidence-real-material-owner-ack-review-decision-panel,
+.field-evidence-material-blocker-escalation-pack-panel,
 .cloud-support-handoff-safe-export-panel,
 .field-evidence-rerun-callback-review-decision-panel,
 .field-evidence-rerun-callback-review-handoff-panel,
@@ -333,6 +334,7 @@ h2 {
 .real-material-readiness-board-grid,
 .real-material-evidence-intake-grid,
 .real-material-followup-escalation-status-grid,
+.field-evidence-material-blocker-escalation-pack-grid,
 .cloud-support-handoff-safe-export-grid,
 .task-terminal-completion-mainline-grid,
 .task-terminal-field-material-intake-grid,
@@ -420,6 +422,7 @@ h2 {
 .hardware-real-material-escalation-request-grid div,
 .real-material-readiness-board-grid div,
 .real-material-evidence-intake-grid div,
+.field-evidence-material-blocker-escalation-pack-grid div,
 .cloud-support-handoff-safe-export-grid div,
 .task-terminal-completion-mainline-grid div,
 .task-terminal-field-material-intake-grid div,
@@ -665,6 +668,10 @@ dd {
 }
 
 .real-material-followup-escalation-status-grid {
+  grid-template-columns: 1fr;
+}
+
+.field-evidence-material-blocker-escalation-pack-grid {
   grid-template-columns: 1fr;
 }
 
@@ -1207,6 +1214,10 @@ dd {
   }
 
   .real-material-followup-escalation-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .field-evidence-material-blocker-escalation-pack-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

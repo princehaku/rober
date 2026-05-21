@@ -574,6 +574,14 @@ entry, Nav2/SLAM field pass, near-field safety pass, Objective 5 external
 proof, PR #5 reviewer resolution, or delivery result. They also do not prove
 real WAVE ROVER UART connectivity or HIL pass in this sprint.
 
+Current PR #5 review-thread boundary: `PRRT_kwDOSWB9286CJ3tQ` and
+`PRRT_kwDOSWB9286CJ3tU` are treated as resolved by review state, while
+`PRRT_kwDOSWB9286CJ3tX` remains `hardware_material_pending`. Comment
+`3269642220` is software-proof only: it may cite this source-boundary alignment
+but must not be used as evidence for 2D LiDAR / ToF source acceptance, receipt,
+installation, wiring, power, calibration, HIL-entry, Nav2 field pass,
+route/elevator pass, or delivery result.
+
 Every output must remain `source=software_proof`, `hardware_material_pending`,
 `not_proven`, `safe_to_control=false`, `delivery_success=false`, and
 `primary_actions_enabled=false`. `ready_for_pr5_mandatory_sensor_source_alignment_not_proven`

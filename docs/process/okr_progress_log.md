@@ -8,7 +8,25 @@
 
 ## 2026-05-22 系列
 
-更新时间：2026-05-22 01:29 Asia/Shanghai。
+更新时间：2026-05-22 02:19 Asia/Shanghai。
+
+### 2026-05-22 02-03｜field-evidence-material-blocker-escalation-pack｜material blocker escalation software proof
+
+本轮 `sprints/2026.05.22_02-03_field-evidence-material-blocker-escalation-pack/` 执行 `field_evidence_material_blocker_escalation_pack` epic closeout。Objective 5 仍约 68%，是当前数值最低 Objective；本轮不继续做 O5 本地 metadata depth，而是把 O5 external proof / terminal result 缺口、O1 PR #5 hardware/HIL 材料缺口、O2/O3/O4 route/elevator/phone field-material 缺口统一升级为 field owner / Product Manager / OKR Owner / CEO 可执行 blocker escalation pack。Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `hardware_material_pending`，comment `3269642220` 只是 software-proof publication，不是 reviewer resolution。O2/O3/O4 仍约 99%。
+
+Autonomy worker 新增 `field_evidence_material_blocker_escalation_pack` PC gate、focused tests、fixture 和 `docs/product/elevator_assisted_delivery.md` 更新，输出 `blocked_materials_escalation_pack_ready_not_proven`，并要求 `next_required_evidence`、`owner_escalation_level`、`blocked_reason`、`target_owner` 和 `field_safe_copy`。Robot worker 新增 `robot_diagnostics_field_evidence_material_blocker_escalation_pack_summary` safe alias 与 `docs/interfaces/operator_gateway_api.md`，缺 summary、unsupported schema、raw/unsafe/success/control claims 均 fail closed，并 scrub raw paths、credentials、checksums、tracebacks、ROS `/cmd_vel`、serial/UART 和 WAVE ROVER 细节。Full-Stack worker 在 mobile/web 新增只读 “现场材料 blocker 升级包” panel、fixture、styles、tests 和 `docs/product/mobile_user_flow.md` 更新，Start Delivery / Confirm Dropoff / Cancel 继续 disabled。Hardware worker 更新 `docs/product/production_hardware_boundary.md`，并报告已读 `docs/vendor/VENDOR_INDEX.md`、WAVE ROVER `base_ctrl.py`、`config.yaml` 和 `json_cmd.h`；结论是 `PRRT_kwDOSWB9286CJ3tX` 仍 `hardware_material_pending`，comment `3269642220` 仍 software-proof only。
+
+证据边界保持 `software_proof_docker_field_evidence_material_blocker_escalation_pack_gate`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。本轮 is not real external cloud proof、not true phone/browser proof、not HIL、not WAVE ROVER/UART proof、not PR #5 `PRRT_kwDOSWB9286CJ3tX` resolution、not route/elevator field pass、not Nav2/fixed-route proof、not dropoff/cancel completion、not verified terminal delivery result、not delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮只把 PR #5 `PRRT_kwDOSWB9286CJ3tX` unresolved/material pending 与真实 2D LiDAR / ToF / WAVE ROVER / HIL 材料缺口纳入 escalation pack；没有真实 source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、WAVE ROVER powered bench/UART/HIL logs、operator HIL report 或 reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只把真实 task record、电梯门状态、目标楼层确认、人工协助、dropoff/cancel completion 和 delivery result 缺口转成 owner escalation；没有真实 route/elevator field pass、dropoff/cancel completion、verified terminal delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；escalation pack 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能只读展示 blocker escalation pack，并保持 Start Delivery / Confirm Dropoff / Cancel disabled；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_field_evidence_material_blocker_escalation_pack_gate` 只证明 Docker/local missing-material escalation metadata 可见、可转派且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery result 或 delivery success。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 4 tests OK`；fixture JSON parse、required `rg` 与 scoped `git diff --check` 通过；CLI fixture 输出 `blocked_materials_escalation_pack_ready_not_proven` 且 safety booleans false。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 274 tests OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check` 通过；fixture JSON parse 通过；mobile unittest 输出 `Ran 237 tests OK`；required `rg` 与 scoped `git diff --check` 通过。Hardware worker 报告 vendor index exists；required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `docs/product/elevator_assisted_delivery.md`、`docs/interfaces/operator_gateway_api.md`、`docs/product/mobile_user_flow.md` 和 `docs/product/production_hardware_boundary.md`。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、verified terminal delivery result 或 delivery success。
 
 ### 2026-05-22 01-02｜cloud-terminal-result-verification-guard｜terminal result pending software proof
 
