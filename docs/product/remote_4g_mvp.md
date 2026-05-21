@@ -41,6 +41,20 @@ ROS2 topic names to ordinary phone users. The independent relay is still
 HTTPS/TLS, public ingress, real 4G/SIM, OSS/CDN, Nav2/fixed-route, WAVE ROVER,
 or HIL.
 
+The local `operator_gateway` mock cloud now verifies terminal-result-like ACK
+fields by value instead of treating any non-empty value as a real result. Values
+such as `delivery_result="pending"`, `terminal_result="accepted"`,
+`dropoff_completion="processing"`, `cancel_completion="pending"`, and
+`delivery_result="unknown"` are
+canonicalized to `cloud_terminal_result_verification_guard` with
+`degradation_state=terminal_result_pending` and
+`evidence_boundary=software_proof_docker_cloud_terminal_result_verification_guard`.
+This guard keeps `ack_semantics=accepted_processing_only_not_delivery_success`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`; it does not prove verified delivery result, dropoff or
+cancel completion, route/elevator field pass, real phone/browser proof, PR #5
+resolution, HIL, or delivery success.
+
 The independent relay now also hosts the dependency-free `mobile/web/` PWA
 shell on the same origin:
 
@@ -1227,9 +1241,9 @@ details.
 | `remote_ready` | `true` only means the current local/mock control-plane conditions allow the phone flow to continue; it is not real cloud, 4G, HIL, or delivery proof. |
 | `cloud_reachable` | Whether the configured local/mock control-plane is reachable from the caller's point of view. |
 | `auth_state` | Phone-safe auth state such as `mock_not_required`, `required`, `authorized`, or `auth_failed`. |
-| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `command_sequence_regression`, `auth_failed`, `media_degraded`, `cloud_poll_backoff`, `ack_lookup_pending`, `ack_accepted_result_pending`, `cancel_pending_goal_acceptance`, `manual_takeover_required`, `cloud_unreachable`, or `malformed_response`. |
+| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `command_sequence_regression`, `auth_failed`, `media_degraded`, `cloud_poll_backoff`, `ack_lookup_pending`, `ack_accepted_result_pending`, `terminal_result_pending`, `cancel_pending_goal_acceptance`, `manual_takeover_required`, `cloud_unreachable`, or `malformed_response`. |
 | `media_state` | Present only for `media_degraded`; values are `oss_write_failed` or `cdn_unavailable`. |
-| `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `check_oss_write`, `check_cdn_reachability`, `wait_for_backoff_window`, `continue_polling_or_contact_support`, `wait_for_delivery_result_or_contact_support`, `wait_for_goal_acceptance`, `retry_cloud`, or `contact_support`. |
+| `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `check_oss_write`, `check_cdn_reachability`, `wait_for_backoff_window`, `continue_polling_or_contact_support`, `wait_for_delivery_result_or_contact_support`, `wait_for_verified_terminal_result_or_contact_support`, `wait_for_goal_acceptance`, `retry_cloud`, or `contact_support`. |
 | `safe_phone_copy` | Plain-language UI copy that must not include raw JSON, ROS topic names, secrets, serial devices, or hardware parameters. |
 | `ack_semantics` | Explicit non-delivery wording for degraded ACK/status states; `stale_status_not_delivery_success` means stale robot status is not delivery success. |
 | `primary_actions_enabled` | `false` for fail-closed degraded states, including `auth_failed`, so Start/Confirm/Cancel remain disabled. |
@@ -1406,6 +1420,27 @@ This state is read-only. It must not enqueue, replay, cancel, confirm dropoff,
 advance an ACK cursor, infer delivery outcome, or expose raw tokens, paths,
 ROS topics, serial details, tracebacks, terminal-result wording, or success
 wording.
+
+ACK payloads with terminal-result-like fields that still carry non-terminal
+values must render as the stricter O5 software-proof state
+`cloud_terminal_result_verification_guard`:
+
+- `capability=cloud_terminal_result_verification_guard`
+- `degradation_state=terminal_result_pending`
+- `remote_ready=false`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `retry_hint=wait_for_verified_terminal_result_or_contact_support`
+- `ack_semantics=accepted_processing_only_not_delivery_success`
+- `proof_boundary=software_proof_docker_cloud_terminal_result_verification_guard`
+
+Values such as `delivery_result=pending`, `delivery_result=unknown`,
+`terminal_result=accepted`, `dropoff_completion=processing`, or
+`cancel_completion=pending` are not
+verified delivery results. This state must not enable Start, Confirm Dropoff,
+Cancel, ACK cursor changes, route/elevator field pass, PR #5 resolution, HIL,
+dropoff completion, cancel completion, or delivery success.
 
 ## Safety Rules
 

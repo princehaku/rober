@@ -8,7 +8,25 @@
 
 ## 2026-05-22 系列
 
-更新时间：2026-05-22 00:29 Asia/Shanghai。
+更新时间：2026-05-22 01:29 Asia/Shanghai。
+
+### 2026-05-22 01-02｜cloud-terminal-result-verification-guard｜terminal result pending software proof
+
+本轮 `sprints/2026.05.22_01-02_cloud-terminal-result-verification-guard/` 执行 `cloud_terminal_result_verification_guard` epic closeout。Objective 5 仍约 68%，是当前数值最低 Objective；本轮针对 O5 command/status/ack 的一个 distinct safety gap：accepted/processing ACK 携带 truthy result-like 字段时，字段存在不能被当成 verified terminal delivery/dropoff/cancel result。产品结论是 `pending`、`accepted`、`processing`、`queued`、`running`、`in_progress`、`submitted`、`unknown` 等非终态值必须暴露为 `terminal_result_pending` / `accepted_processing_only_not_delivery_success`，不能写成 delivery success。Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / material pending，comment `3269642220` 只是 software-proof publication，不是 reviewer resolution。O2/O3/O4 仍约 99%。
+
+Robot/API worker 更新 `operator_gateway_http.py`、`operator_gateway_diagnostics.py`、focused tests、`docs/product/remote_4g_mvp.md` 和 `docs/interfaces/operator_gateway_diagnostics.md`，把 truthy terminal-result detection 改为语义验证；accepted/processing ACK 携带非终态 result-like 字段时输出 canonical remote readiness：`capability=cloud_terminal_result_verification_guard`、`degradation_state=terminal_result_pending`、`ack_semantics=accepted_processing_only_not_delivery_success`、`proof_boundary=software_proof_docker_cloud_terminal_result_verification_guard`，并强制 `delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。返工后已对齐 `retry_hint=wait_for_verified_terminal_result_or_contact_support` 和 `delivery_result="unknown"` pending 语义。Full-Stack worker 更新 `mobile/web/app.js`、fixture、tests 和 `docs/product/mobile_user_flow.md`，渲染该 pending state，保持 Start Delivery / Confirm Dropoff / Cancel disabled，同时保留 diagnostics/support visibility。
+
+证据边界保持 `software_proof_docker_cloud_terminal_result_verification_guard`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。本轮 is not real external cloud proof、not true phone/browser proof、not HIL、not WAVE ROVER/UART proof、not PR #5 `PRRT_kwDOSWB9286CJ3tX` resolution、not route/elevator field pass、not Nav2/fixed-route proof、not dropoff/cancel completion、not verified terminal delivery result、not delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 hardware bridge、真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` still unresolved/material pending，comment `3269642220` not reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只处理 accepted/processing ACK + 非终态 result-like 字段的云端控制面语义；`accepted_processing_only_not_delivery_success` 不是真实 route/elevator field pass、dropoff/cancel completion、verified terminal delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；terminal-result verification guard 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能展示 terminal-result pending 的 phone-safe copy，并保持 Start Delivery / Confirm Dropoff / Cancel disabled、Diagnostics / Support Handoff visible；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_terminal_result_verification_guard` 只证明 Docker/local Robot/API + mobile static fixture 下非终态 result-like 字段可见、可诊断且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery result 或 delivery success。 |
+
+本轮验证：Robot/API worker 报告 `py_compile` exit 0；focused unittest 输出 `Ran 326 tests OK`；required `rg` 与 scoped `git diff --check` 通过；返工后 `retry_hint=wait_for_verified_terminal_result_or_contact_support` 和 `delivery_result="unknown"` pending 语义对齐，unittest 仍 `Ran 326 tests OK`。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；`python3 -m unittest mobile.web.test_mobile_web_entrypoint` 输出 `Ran 235 tests OK`；fixture JSON parse、required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、verified terminal delivery result 或 delivery success。
 
 ### 2026-05-22 00-01｜cloud-ack-accepted-result-pending-guard｜accepted ACK result-pending software proof
 

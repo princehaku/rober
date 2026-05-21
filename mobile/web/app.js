@@ -31,6 +31,8 @@ const CLOUD_ACK_LOOKUP_PENDING_STATUS_BOUNDARY = "software_proof_docker_cloud_ac
 const CLOUD_ACK_LOOKUP_PENDING_STATUS_COPY = "机器人尚未处理该命令；请继续等待或联系支持。这不是失败完成、送达成功，也不能继续发主操作。";
 const CLOUD_ACK_ACCEPTED_RESULT_PENDING_BOUNDARY = "software_proof_docker_cloud_ack_accepted_result_pending_guard";
 const CLOUD_ACK_ACCEPTED_RESULT_PENDING_COPY = "命令已接收/处理中；尚无真实 delivery、dropoff 或 cancel result。主操作保持禁用，请等待结果或联系支持。";
+const CLOUD_TERMINAL_RESULT_VERIFICATION_BOUNDARY = "software_proof_docker_cloud_terminal_result_verification_guard";
+const CLOUD_TERMINAL_RESULT_VERIFICATION_COPY = "命令/result 字段存在，但 verified terminal delivery、dropoff 或 cancel result 仍缺失；主操作保持禁用，请等待结果或联系支持。";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY = "software_proof_docker_cloud_poll_backoff_rate_limit_guard";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_COPY = "远程控制正在等待重试退避窗口；窗口结束前 Start Delivery、Confirm Dropoff、Cancel 保持禁用。";
 const CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_BOUNDARY = "software_proof_docker_cloud_support_handoff_safe_export_gate";
@@ -2039,6 +2041,43 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         ),
         evidence_boundary: hostedBoundary || CLOUD_ACK_ACCEPTED_RESULT_PENDING_BOUNDARY,
         proof_boundary: hostedBoundary || CLOUD_ACK_ACCEPTED_RESULT_PENDING_BOUNDARY,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
+    if (provided.degradation_state === "terminal_result_pending" ||
+        provided.capability === "cloud_terminal_result_verification_guard" ||
+        provided.proof_boundary === CLOUD_TERMINAL_RESULT_VERIFICATION_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_TERMINAL_RESULT_VERIFICATION_BOUNDARY) {
+      // terminal_result_pending 专门处理“result 字段存在但语义未终态”的情况；前端不能把 truthy 字段当成送达证明。
+      return {
+        ...provided,
+        missing: false,
+        capability: "cloud_terminal_result_verification_guard",
+        overall_status: "blocked",
+        preflight_status: "terminal_result_pending",
+        degradation_state: "terminal_result_pending",
+        // 即使后端返回了 result-like 字段，未 verified 前仍按云端未放行处理。
+        db_queue_status: "terminal_result_pending / remote_ready=false / primary_actions_enabled=false",
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        delivery_success: false,
+        retry_hint: "wait_for_verified_terminal_result_or_contact_support",
+        // 文案必须直接解释“字段存在但结果缺失”，避免用户把 pending 当完成。
+        safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_TERMINAL_RESULT_VERIFICATION_COPY),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "等待 Robot/API 产出 verified terminal delivery、dropoff 或 cancel result；手机端不请求 ACK/cursor、不拉取 raw diagnostics，也不提交控制动作。",
+        ),
+        // ACK accepted/processing 只保留处理中语义，不能升级成 success 语义。
+        ack_semantics: safeText(
+          provided.ack_semantics,
+          "accepted_processing_only_not_delivery_success",
+        ),
+        // proof/evidence boundary 透传到页面，便于支持人员区分 Docker 证明和真实云/手机/HIL。
+        evidence_boundary: hostedBoundary || CLOUD_TERMINAL_RESULT_VERIFICATION_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_TERMINAL_RESULT_VERIFICATION_BOUNDARY,
         not_proven: notProvenList(provided.not_proven),
       };
     }

@@ -81,6 +81,18 @@ PHONE_ACK_ACCEPTED_RESULT_PENDING_SAFE_PHONE_COPY = (
     "云端 ACK 已 accepted/processing，但还没有真实送达、投放或取消完成结果；"
     "请等待结果或联系支持。"
 )
+PHONE_TERMINAL_RESULT_VERIFICATION_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_terminal_result_verification_guard"
+)
+PHONE_TERMINAL_RESULT_VERIFICATION_CAPABILITY = "cloud_terminal_result_verification_guard"
+PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE = "terminal_result_pending"
+PHONE_TERMINAL_RESULT_PENDING_SAFE_PHONE_COPY = (
+    "云端 ACK 带有 pending/accepted/processing 类非终态结果字段；"
+    "这不是真实送达、投放或取消完成，请等待终态结果或联系支持。"
+)
+PHONE_TERMINAL_RESULT_PENDING_RETRY_HINT = (
+    "wait_for_verified_terminal_result_or_contact_support"
+)
 PHONE_CANCEL_PENDING_COMMAND_SAFETY_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_cancel_pending_command_safety_guard"
 )
@@ -117,6 +129,7 @@ REMOTE_RETRY_HINTS = {
     "continue_polling_or_contact_support",
     "wait_for_goal_acceptance",
     "wait_for_delivery_result_or_contact_support",
+    PHONE_TERMINAL_RESULT_PENDING_RETRY_HINT,
 }
 # safe_phone_copy 是正式手机端可直接展示的中文文案，不能包含 raw JSON 或凭证。
 REMOTE_DEGRADATION_COPY = {
@@ -133,6 +146,9 @@ REMOTE_DEGRADATION_COPY = {
     "ack_lookup_pending": PHONE_ACK_LOOKUP_PENDING_SAFE_PHONE_COPY,
     PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE: (
         PHONE_ACK_ACCEPTED_RESULT_PENDING_SAFE_PHONE_COPY
+    ),
+    PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE: (
+        PHONE_TERMINAL_RESULT_PENDING_SAFE_PHONE_COPY
     ),
     "cancel_pending_goal_acceptance": PHONE_CANCEL_PENDING_SAFE_PHONE_COPY,
     MANUAL_TAKEOVER_DEGRADATION_STATE: MANUAL_TAKEOVER_SAFE_PHONE_COPY,
@@ -199,6 +215,9 @@ PHONE_READINESS_NEXT_ACTION_COPY = {
     "wait_for_delivery_result_or_contact_support": (
         "等待真实 delivery/dropoff/cancel 结果；如果持续没有结果，请联系支持。"
     ),
+    PHONE_TERMINAL_RESULT_PENDING_RETRY_HINT: (
+        "等待 verified terminal result；如果持续没有结果，请联系支持。"
+    ),
     "manual_takeover": "保持现场安全，按提示人工接管。",
     "watch_progress": "继续观察任务状态，必要时取消。",
     "refresh_diagnostics_ref": "刷新状态；如果仍不可用，请重新生成诊断引用。",
@@ -223,6 +242,9 @@ COMMAND_SAFETY_BLOCK_COPY = {
     "ack_lookup_pending": "机器人尚未处理该命令，主操作暂不可用。",
     PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE: (
         "ACK 仅表示 accepted/processing，还没有真实 delivery/dropoff/cancel 结果，主操作暂不可用。"
+    ),
+    PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE: (
+        "ACK 结果字段仍是非终态，必须等待真实 terminal result。"
     ),
     "cancel_pending_goal_acceptance": "取消要等收集目标接受后才能重试，主操作暂不可用；这不是送达成功。",
     "cloud_unreachable": "远程控制通道暂不可用，主操作暂不可用。",
@@ -433,6 +455,7 @@ PHONE_READINESS_PRIMARY_COPY = {
     "cloud_poll_backoff": "远程轮询正在等待重试窗口。",
     "ack_lookup_pending": "正在等待机器人处理该命令。",
     PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE: "ACK 已受理，等待真实结果。",
+    PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE: "ACK 结果字段仍非终态。",
     "cancel_pending_goal_acceptance": "取消等待目标接受。",
     "manual_takeover_required": "需要人工接管。",
     "monitoring": "任务进行中，请继续观察。",
@@ -716,6 +739,87 @@ def _remote_readiness_for_ack_accepted_result_pending(
     }
 
 
+def _remote_readiness_for_terminal_result_pending(
+    *,
+    command_id="",
+    queue_persisted=False,
+    auth_state="required",
+):
+    # terminal_result_pending 是比 ACK accepted 更具体的防线：有字段但值仍非终态时必须显式 fail-closed。
+    return {
+        "capability": PHONE_TERMINAL_RESULT_VERIFICATION_CAPABILITY,
+        "remote_ready": False,
+        "cloud_reachable": True,
+        "last_command_ack": str(command_id or "").strip(),
+        "status_stale": False,
+        "retry_hint": PHONE_TERMINAL_RESULT_PENDING_RETRY_HINT,
+        "auth_state": str(auth_state or "required"),
+        "degradation_state": PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE,
+        "safe_phone_copy": PHONE_TERMINAL_RESULT_PENDING_SAFE_PHONE_COPY,
+        "status_age_sec": None,
+        "pending_command_count": 0,
+        "queue_persisted": bool(queue_persisted),
+        "state_path_configured": bool(queue_persisted),
+        "proof_schema": REMOTE_PERSISTENCE_SCHEMA if queue_persisted else "",
+        "ack_semantics": PHONE_ACK_ACCEPTED_RESULT_PENDING_ACK_SEMANTICS,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "proof_boundary": PHONE_TERMINAL_RESULT_VERIFICATION_GUARD_BOUNDARY,
+    }
+
+
+_TERMINAL_RESULT_PENDING_VALUES = {
+    "ack",
+    "acked",
+    "accepted",
+    "in_progress",
+    "pending",
+    "processing",
+    "queued",
+    "running",
+    "service_accepted",
+    "submitted",
+    "unknown",
+}
+_TERMINAL_RESULT_FINAL_VALUES = {
+    "aborted",
+    "cancel_completed",
+    "canceled",
+    "cancelled",
+    "complete",
+    "completed",
+    "delivered",
+    "delivery_failed",
+    "delivery_success",
+    "dropoff_completed",
+    "failed",
+    "failure",
+    "rejected",
+    "success",
+    "succeeded",
+    "timeout",
+}
+
+
+def _terminal_delivery_result_state(value, *, bool_true_is_terminal=False):
+    # 旧实现把任意 truthy 字符串都当终态；这里改成白名单，避免 pending/processing 绕过 guard。
+    if isinstance(value, bool):
+        return "terminal" if value and bool_true_is_terminal else "missing"
+    if value is None:
+        return "missing"
+    if isinstance(value, (int, float)):
+        return "terminal" if bool(value) and bool_true_is_terminal else "missing"
+    text = str(value).strip().lower()
+    if not text:
+        return "missing"
+    if text in _TERMINAL_RESULT_PENDING_VALUES:
+        return "pending"
+    if text in _TERMINAL_RESULT_FINAL_VALUES:
+        return "terminal"
+    return "missing"
+
+
 def _has_terminal_delivery_result(result, operator_status):
     # 只有明确的 delivery/dropoff/cancel completion 才能退出 pending；普通 ACK/HTTP 2xx 不算。
     candidates = []
@@ -725,8 +829,41 @@ def _has_terminal_delivery_result(result, operator_status):
             candidates.append(result.get("operator_status"))
     if isinstance(operator_status, dict):
         candidates.append(operator_status)
-    truthy_keys = (
-        "delivery_success",
+    terminal_keys = (
+        ("delivery_success", True),
+        ("delivery_result", False),
+        ("terminal_result", False),
+        ("dropoff_completion", False),
+        ("dropoff_completed", True),
+        ("cancel_completion", False),
+        ("cancel_completed", True),
+    )
+    for candidate in candidates:
+        if any(
+            _terminal_delivery_result_state(
+                candidate.get(key),
+                bool_true_is_terminal=bool_true_is_terminal,
+            )
+            == "terminal"
+            for key, bool_true_is_terminal in terminal_keys
+        ):
+            return True
+        state = str(candidate.get("state") or candidate.get("final_state") or "").strip()
+        if state in {"delivery_success", "dropoff_completed", "cancel_completed"}:
+            return True
+    return False
+
+
+def _has_pending_terminal_delivery_result(result, operator_status):
+    # 有 terminal 字段但值仍是 pending/accepted/processing 时，走专门 guard 而不是假装没有字段。
+    candidates = []
+    if isinstance(result, dict):
+        candidates.append(result)
+        if isinstance(result.get("operator_status"), dict):
+            candidates.append(result.get("operator_status"))
+    if isinstance(operator_status, dict):
+        candidates.append(operator_status)
+    terminal_keys = (
         "delivery_result",
         "terminal_result",
         "dropoff_completion",
@@ -735,10 +872,10 @@ def _has_terminal_delivery_result(result, operator_status):
         "cancel_completed",
     )
     for candidate in candidates:
-        if any(bool(candidate.get(key)) for key in truthy_keys):
-            return True
-        state = str(candidate.get("state") or candidate.get("final_state") or "").strip()
-        if state in {"delivery_success", "dropoff_completed", "cancel_completed"}:
+        if any(
+            _terminal_delivery_result_state(candidate.get(key)) == "pending"
+            for key in terminal_keys
+        ):
             return True
     return False
 
@@ -766,6 +903,36 @@ def _ack_is_accepted_processing_without_terminal_result(ack, operator_status=Non
         PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE,
     }
     return bool(accepted_processing and not _has_terminal_delivery_result(result, operator_status))
+
+
+def _ack_has_pending_terminal_delivery_result(ack, operator_status=None):
+    # 只在 ACK accepted/processing 语义下启用，避免把无关 status payload 的 pending 文本升级成云 guard。
+    ack = ack if isinstance(ack, dict) else {}
+    result = ack.get("result") if isinstance(ack.get("result"), dict) else {}
+    operator_status = operator_status if isinstance(operator_status, dict) else (
+        result.get("operator_status") if isinstance(result.get("operator_status"), dict) else {}
+    )
+    explicit_state = str(
+        operator_status.get("degradation_state")
+        or operator_status.get("state")
+        or result.get("state")
+        or ack.get("state")
+        or ""
+    ).strip()
+    accepted_processing = explicit_state in {
+        "acked",
+        "accepted",
+        "processing",
+        "submitted",
+        "service_accepted",
+        PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE,
+        PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE,
+    }
+    return bool(
+        accepted_processing
+        and not _has_terminal_delivery_result(result, operator_status)
+        and _has_pending_terminal_delivery_result(result, operator_status)
+    )
 
 
 def _remote_timestamp(value, field_name):
@@ -1228,6 +1395,10 @@ class MockCloudStore:
             or str(ack_operator_status.get("degradation_state") or "").strip()
             == "cancel_pending_goal_acceptance"
         )
+        terminal_result_pending = bool(
+            status_degradation == PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE
+            or _ack_has_pending_terminal_delivery_result(latest_ack, ack_operator_status)
+        )
         ack_accepted_result_pending = bool(
             status_degradation == PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE
             or _ack_is_accepted_processing_without_terminal_result(latest_ack, ack_operator_status)
@@ -1272,6 +1443,9 @@ class MockCloudStore:
         elif cancel_pending:
             retry_hint = "wait_for_goal_acceptance"
             degradation_state = "cancel_pending_goal_acceptance"
+        elif terminal_result_pending:
+            retry_hint = PHONE_TERMINAL_RESULT_PENDING_RETRY_HINT
+            degradation_state = PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE
         elif ack_accepted_result_pending:
             retry_hint = "wait_for_delivery_result_or_contact_support"
             degradation_state = PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE
@@ -1294,6 +1468,7 @@ class MockCloudStore:
                 "cloud_poll_backoff",
                 "ack_lookup_pending",
                 "cancel_pending_goal_acceptance",
+                PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE,
                 PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE,
                 MANUAL_TAKEOVER_DEGRADATION_STATE,
             }
@@ -1458,6 +1633,14 @@ class MockCloudStore:
                 status.get("proof_boundary")
                 or ack_operator_status.get("proof_boundary")
                 or PHONE_CANCEL_PENDING_COMMAND_SAFETY_GUARD_BOUNDARY
+            )
+        if degradation_state == PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE:
+            readiness.update(
+                _remote_readiness_for_terminal_result_pending(
+                    command_id=last_command_ack,
+                    queue_persisted=bool(self.state_path),
+                    auth_state=readiness.get("auth_state", "required"),
+                )
             )
         if degradation_state == PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE:
             readiness.update(
@@ -3359,6 +3542,7 @@ def _command_safety_block_reason(primary_state, remote_state, manifest_state):
         "cloud_poll_backoff",
         "ack_lookup_pending",
         PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE,
+        PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE,
         "cancel_pending_goal_acceptance",
         MANUAL_TAKEOVER_DEGRADATION_STATE,
         "auth_failed",
@@ -3969,7 +4153,11 @@ def _offline_resume_connection_state(primary_state, remote_state, command_safety
         return "offline"
     if remote_state == "status_stale":
         return "status_stale"
-    if remote_state in {"command_pending", PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE}:
+    if remote_state in {
+        "command_pending",
+        PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE,
+        PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE,
+    }:
         return "pending_ack"
     if remote_state in {
         "command_expired",
@@ -3978,6 +4166,7 @@ def _offline_resume_connection_state(primary_state, remote_state, command_safety
         "command_sequence_regression",
         "media_degraded",
         "cloud_poll_backoff",
+        PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE,
         "cancel_pending_goal_acceptance",
     }:
         return "blocked"
@@ -4303,6 +4492,11 @@ def build_phone_readiness(
         next_action = "wait_for_delivery_result_or_contact_support"
         can_continue = False
         support_level = "remote_ack_accepted_result_pending"
+    elif remote_state == PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE:
+        primary_state = PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE
+        next_action = PHONE_TERMINAL_RESULT_PENDING_RETRY_HINT
+        can_continue = False
+        support_level = "remote_terminal_result_pending"
     elif remote_state == "cancel_pending_goal_acceptance":
         primary_state = "cancel_pending_goal_acceptance"
         next_action = "wait_for_goal_acceptance"
@@ -4345,6 +4539,8 @@ def build_phone_readiness(
         safe_phone_copy = PHONE_ACK_LOOKUP_PENDING_SAFE_PHONE_COPY
     if remote_state == PHONE_ACK_ACCEPTED_RESULT_PENDING_DEGRADATION_STATE:
         safe_phone_copy = PHONE_ACK_ACCEPTED_RESULT_PENDING_SAFE_PHONE_COPY
+    if remote_state == PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE:
+        safe_phone_copy = PHONE_TERMINAL_RESULT_PENDING_SAFE_PHONE_COPY
     if remote_state == "cancel_pending_goal_acceptance":
         safe_phone_copy = PHONE_CANCEL_PENDING_SAFE_PHONE_COPY
     if remote_state == MANUAL_TAKEOVER_DEGRADATION_STATE:
@@ -4397,6 +4593,22 @@ def build_phone_readiness(
                 "safe_phone_copy": PHONE_ACK_ACCEPTED_RESULT_PENDING_SAFE_PHONE_COPY,
                 "ack_semantics": PHONE_ACK_ACCEPTED_RESULT_PENDING_ACK_SEMANTICS,
                 "proof_boundary": PHONE_ACK_ACCEPTED_RESULT_PENDING_GUARD_BOUNDARY,
+            }
+        )
+    if remote_state == PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE:
+        # 非终态 result 字段比普通 ACK pending 更危险，必须覆盖 retry/control/success 字段。
+        safe_remote_readiness.update(
+            {
+                "capability": PHONE_TERMINAL_RESULT_VERIFICATION_CAPABILITY,
+                "degradation_state": PHONE_TERMINAL_RESULT_PENDING_DEGRADATION_STATE,
+                "remote_ready": False,
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "retry_hint": PHONE_TERMINAL_RESULT_PENDING_RETRY_HINT,
+                "safe_phone_copy": PHONE_TERMINAL_RESULT_PENDING_SAFE_PHONE_COPY,
+                "ack_semantics": PHONE_ACK_ACCEPTED_RESULT_PENDING_ACK_SEMANTICS,
+                "proof_boundary": PHONE_TERMINAL_RESULT_VERIFICATION_GUARD_BOUNDARY,
             }
         )
     if remote_state == "cancel_pending_goal_acceptance":

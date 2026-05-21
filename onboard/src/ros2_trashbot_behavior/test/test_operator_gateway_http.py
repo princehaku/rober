@@ -2707,6 +2707,67 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertFalse(payload["remote_readiness"]["safe_to_control"])
         self.assertNotIn("must-not-leak", json.dumps(payload, ensure_ascii=False))
 
+    def test_mock_cloud_ack_non_terminal_result_fields_fail_closed(self):
+        self.gateway.mock_cloud_bearer_token = "phone-token"
+        command = {
+            "protocol_version": REMOTE_PROTOCOL_VERSION,
+            "id": "cmd-terminal-pending",
+            "type": "collect",
+            "expires_at": 4102444800.0,
+            "payload": {"target": "trash_station"},
+        }
+
+        status, _ = self.auth_request("POST", "/robots/trashbot-001/commands", command)
+        self.assertEqual(status, 201)
+        status, _ = self.auth_request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "delivering",
+                "message": "remote collect command accepted",
+                "updated_at": time.time(),
+            },
+        )
+        self.assertEqual(status, 200)
+
+        status, payload = self.auth_request(
+            "POST",
+            "/robots/trashbot-001/commands/cmd-terminal-pending/ack",
+            {
+                "protocol_version": REMOTE_PROTOCOL_VERSION,
+                "state": "acked",
+                "message": "accepted but result is not terminal",
+                "updated_at": time.time(),
+                "result": {
+                    "delivery_result": "unknown",
+                    "operator_status": {"state": "processing"},
+                },
+            },
+        )
+
+        readiness = payload["remote_readiness"]
+        self.assertEqual(status, 200)
+        self.assertEqual(readiness["capability"], "cloud_terminal_result_verification_guard")
+        self.assertEqual(readiness["degradation_state"], "terminal_result_pending")
+        self.assertEqual(
+            readiness["ack_semantics"],
+            "accepted_processing_only_not_delivery_success",
+        )
+        self.assertEqual(
+            readiness["proof_boundary"],
+            "software_proof_docker_cloud_terminal_result_verification_guard",
+        )
+        self.assertEqual(
+            readiness["retry_hint"],
+            "wait_for_verified_terminal_result_or_contact_support",
+        )
+        self.assertFalse(readiness["remote_ready"])
+        self.assertFalse(readiness["delivery_success"])
+        self.assertFalse(readiness["primary_actions_enabled"])
+        self.assertFalse(readiness["safe_to_control"])
+        self.assertIn("非终态结果字段", readiness["safe_phone_copy"])
+
     def test_mock_cloud_persists_queue_status_ack_without_sensitive_fields(self):
         with tempfile.TemporaryDirectory() as td:
             state_path = Path(td) / "mock_cloud_state.json"

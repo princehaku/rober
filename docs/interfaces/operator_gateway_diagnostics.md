@@ -102,6 +102,43 @@ execution, WAVE ROVER, HIL, Objective 5 external proof, true phone/browser
 proof, route/elevator field pass, dropoff completion, cancel completion,
 delivery result, or delivery success.
 
+## robot_diagnostics_cloud_terminal_result_verification_guard_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_cloud_terminal_result_verification_guard_summary` as the safe
+alias for ACK payloads that contain `delivery_result`, `terminal_result`,
+`dropoff_completion`, or `cancel_completion` fields whose values are still
+non-terminal, such as `pending`, `accepted`, or `processing`.
+`unknown` is also non-terminal when the field exists but verified result
+evidence has not arrived.
+
+- Source state: `remote_readiness.degradation_state=terminal_result_pending`
+- Robot alias schema:
+  `trashbot.robot_diagnostics_cloud_terminal_result_verification_guard_summary.v1`
+- Capability: `cloud_terminal_result_verification_guard`
+- Evidence boundary:
+  `software_proof_docker_cloud_terminal_result_verification_guard`
+
+The alias is metadata-only and read-only. It may expose sanitized
+`degradation_state=terminal_result_pending`, phone-safe copy,
+`retry_hint=wait_for_verified_terminal_result_or_contact_support`,
+`ack_semantics=accepted_processing_only_not_delivery_success`,
+`source=software_proof`, `not_proven`, `remote_ready=false`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+
+Unsafe copy, raw cloud bodies, bearer token, Authorization header, raw JSON,
+raw command path, traceback, ROS topic, `/cmd_vel`, serial/UART details,
+WAVE ROVER details, success wording, verified terminal-result wording,
+`delivery_success=true`, `primary_actions_enabled=true`, or
+`safe_to_control=true` must fail closed as blocked/not_proven.
+
+This alias must not enable Start Delivery, Confirm Dropoff, Cancel, ACK cursor
+fetch, cursor updates, persistence updates, terminal ACK, commands, Nav2, route
+execution, WAVE ROVER, HIL, Objective 5 external proof, true phone/browser
+proof, route/elevator field pass, dropoff completion, cancel completion,
+verified delivery result, or delivery success.
+
 ## robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary
 
 Robot diagnostics exposes
