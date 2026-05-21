@@ -1,0 +1,88 @@
+{
+  "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_backfill_summary.v1",
+    "schema_version": 1,
+    "acceptance_backfill_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_backfill.v1",
+    "source_acceptance_packet_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_packet_summary.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_summary",
+    "source": "software_proof",
+    "backfill_status": "blocked_missing_acceptance_backfill_not_proven",
+    "source_acceptance_packet": "needs_material_backfill",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_acceptance_backfill_fixture_20260521_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "missing_categories": [
+      "missing_categories=real task record summary",
+      "missing_categories=real Nav2/fixed-route runtime log",
+      "missing_categories=real route completion signal",
+      "missing_categories=real elevator evidence",
+      "missing_categories=real dropoff/cancel completion",
+      "missing_categories=real delivery result",
+      "missing_categories=true phone/browser evidence summary"
+    ],
+    "blocked_categories": [
+      "blocked_categories=success/control claims stay rejected",
+      "blocked_categories=materials with mismatched safe evidence_ref stay blocked"
+    ],
+    "owner_next_steps": [
+      "owner_next_steps=field owner backfills same safe_evidence_ref real task record and route/elevator materials",
+      "owner_next_steps=field owner adds dropoff/cancel completion, delivery result, and true phone/browser evidence before acceptance review",
+      "owner_next_steps=Full-stack keeps the mobile panel read-only and does not add robot-control endpoints"
+    ],
+    "safe_phone_copy": "现场证据复跑执行结果验收回填 fixture 只读展示 backfill status、safe evidence_ref、missing/blocked categories、owner next steps 和 fail-closed boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "真实 task record",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 elevator evidence",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "true phone/browser evidence",
+      "HIL",
+      "O5 external proof"
+    ]
+  },
+  "field_evidence_rerun_execution_result_acceptance_backfill_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_backfill_summary.v1",
+    "source": "software_proof",
+    "backfill_status": "blocked_missing_acceptance_backfill_not_proven",
+    "source_acceptance_packet": "needs_material_backfill",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_acceptance_backfill_fixture_20260521_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "missing_categories": [
+      "missing_categories=real task record, route/elevator evidence, delivery result, and true phone/browser evidence"
+    ],
+    "blocked_categories": [
+      "blocked_categories=success/control claims stay rejected"
+    ],
+    "owner_next_steps": [
+      "owner_next_steps=backfill same safe_evidence_ref real materials before acceptance review"
+    ],
+    "safe_phone_copy": "fallback summary keeps现场证据复跑执行结果验收回填 read-only；not_proven。",
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "true phone/browser evidence"
+    ]
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

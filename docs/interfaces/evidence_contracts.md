@@ -1569,6 +1569,71 @@ delivery success, not HIL, not WAVE ROVER/UART feedback, not true phone/browser
 proof, not Objective 5 external cloud/4G/OSS/CDN/DB/queue proof, and not any
 primary robot action being enabled.
 
+## field_evidence_rerun_execution_result_acceptance_backfill
+
+`pc-tools/evidence/field_evidence_rerun_execution_result_acceptance_backfill.py`
+generates the PC-only backfill gate after
+`field_evidence_rerun_execution_result_acceptance_packet.py`. It consumes only a
+safe acceptance packet artifact/summary or wrapper/nested JSON plus a sanitized
+field-owner material directory. It does not read real Nav2 runtime, ROS graph
+state, serial/UART or WAVE ROVER data, real elevator systems, external cloud
+evidence, real phone/browser runtime state, or raw field artifacts.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_backfill.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_backfill_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_packet.v1` and
+  `trashbot.field_evidence_rerun_execution_result_acceptance_packet_summary.v1`
+  under
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_packet_gate`.
+- Material source:
+  a sanitized `--material-dir` containing metadata-only files for the required
+  material categories; local file paths are reduced to safe `file:<name>`
+  references.
+
+The required material set is fixed as `task_record`,
+`nav2_fixed_route_runtime_log`, `route_completion_signal`,
+`elevator_evidence`, `dropoff_cancel_completion`, `delivery_result`,
+`true_phone_browser_evidence`, and `diagnostics_mobile_safe_summary`. These are
+material category names only; they do not imply that the gate has validated raw
+task records, Nav2/fixed-route logs, route completion signals, elevator
+evidence, dropoff/cancel completion, delivery result, true phone/browser
+runtime, or diagnostics artifacts.
+
+The output always includes `backfill_status`, safe `evidence_ref`,
+`source_acceptance_packet`, `safe_lineage`, `required_materials`,
+`material_states`, `material_completeness`, `same_evidence_ref_alignment`,
+`acceptance_backfill_gap_summary`, `owner_handoff`, `rerun_commands`,
+`decision_inputs`, `safe_copy`, `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate`.
+
+Ready status is
+`ready_for_field_evidence_rerun_execution_result_acceptance_backfill_not_proven`.
+Missing source, bad JSON, unsupported schema/boundary, source not marked as
+`source=software_proof` with `not_proven`, missing safe `evidence_ref`,
+evidence_ref mismatch, weak `same_evidence_ref_required`, non-ready acceptance
+packet, missing material directory, missing material, placeholder/template
+material, blocked/rejected material, unsafe or sensitive copy, raw local paths,
+credentials, ROS topics, `/cmd_vel`, serial/UART/WAVE ROVER details, checksums,
+complete/raw artifacts, tracebacks, success/control claims,
+`safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` all fail closed to a blocked/not_proven status.
+
+This contract is software proof only. A ready backfill status means the same
+safe `evidence_ref` has a complete, metadata-only backfill directory ready for
+field owner review. It is not real field rerun proof, not real route/elevator
+field pass, not real Nav2/fixed-route execution, not task record validation, not
+route completion signal validation, not dropoff/cancel completion, not delivery
+result, not delivery success, not HIL, not WAVE ROVER/UART feedback, not true
+phone/browser proof, not Objective 5 external cloud/4G/OSS/CDN/DB/queue proof,
+and not any primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

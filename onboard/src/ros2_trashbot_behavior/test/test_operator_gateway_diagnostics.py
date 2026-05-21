@@ -56,6 +56,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_field_evidence_rerun_execution_result_review_decision,
     summarize_field_evidence_rerun_execution_result_review_handoff,
     summarize_field_evidence_rerun_execution_result_acceptance_packet,
+    summarize_field_evidence_rerun_execution_result_acceptance_backfill,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -31473,6 +31474,241 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("raw_task_record", encoded)
         self.assertNotIn("checksum", encoded)
         self.assertNotIn("/tmp/raw-acceptance.json", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("traceback", encoded.lower())
+        self.assertNotIn("WAVE ROVER", encoded)
+        self.assertNotIn("serial", encoded.lower())
+        self.assertNotIn("uart", encoded.lower())
+        self.assertIn("not_proven", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+
+    def test_field_evidence_rerun_execution_result_acceptance_backfill_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_backfill_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_backfill.v1"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate"
+            ),
+            "source": "software_proof",
+            "safe_evidence_ref": "field-rerun-execution-result-acceptance-backfill-001",
+            "backfill_status": {
+                "status": "ready_for_field_owner_backfill_acceptance_not_proven",
+                "verdict": "not_proven",
+                "reason": "backfill only confirms phone-safe metadata was staged",
+            },
+            "backfill_verdict": "ready_for_field_owner_backfill_acceptance_not_proven",
+            "same_evidence_ref_required": True,
+            "same_evidence_ref_status": {"status": "matched", "verdict": "not_proven"},
+            "required_materials": [
+                "task record",
+                "Nav2/fixed-route runtime log",
+                "route completion signal",
+                "elevator evidence",
+                "dropoff/cancel completion",
+                "delivery result",
+                "true phone/browser evidence",
+                "diagnostics/mobile safe summary",
+            ],
+            "accepted_materials": ["diagnostics/mobile safe summary"],
+            "missing_materials": ["delivery result", "true phone/browser evidence"],
+            "blocked_materials": ["dropoff/cancel completion"],
+            "owner_next_steps": [
+                "Field owner attaches same-ref backfill materials without raw manifest"
+            ],
+            "robot_diagnostics_summary": {
+                "status": "metadata_only",
+                "reason": "Robot mirrors canonical acceptance backfill summary only",
+            },
+            "safe_copy": (
+                "Field evidence rerun execution result acceptance backfill is metadata-only; "
+                "source=software_proof; not_proven; safe_to_control=false; "
+                "delivery_success=false; primary_actions_enabled=false."
+            ),
+            "not_proven": ["acceptance backfill is not delivery success"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+        artifact = {
+            "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_backfill.v1",
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate"
+            ),
+            "safe_evidence_ref": "field-rerun-execution-result-acceptance-backfill-001",
+            "field_evidence_rerun_execution_result_acceptance_backfill_summary": safe_summary,
+        }
+        with tempfile.TemporaryDirectory() as td:
+            backfill_path = (
+                Path(td)
+                / "field_evidence_rerun_execution_result_acceptance_backfill.json"
+            )
+            backfill_path.write_text(json.dumps(artifact), encoding="utf-8")
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "field_evidence_rerun_execution_result_acceptance_backfill": {
+                        "safe_to_control": True,
+                        "raw_manifest": {"ros_topic": "/cmd_vel"},
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                field_evidence_rerun_execution_result_acceptance_backfill_ref=str(
+                    backfill_path
+                ),
+            )
+            from_nested = summarize_field_evidence_rerun_execution_result_acceptance_backfill(
+                {
+                    "schema": (
+                        "trashbot.field_evidence_rerun_execution_result_acceptance_backfill.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate"
+                    ),
+                    "field_evidence_rerun_execution_result_acceptance_backfill_summary": (
+                        safe_summary
+                    ),
+                }
+            )
+            missing = summarize_field_evidence_rerun_execution_result_acceptance_backfill(
+                Path(td) / "missing_execution_result_acceptance_backfill.json"
+            )
+            unsupported = summarize_field_evidence_rerun_execution_result_acceptance_backfill(
+                dict(
+                    safe_summary,
+                    source_schema=(
+                        "trashbot.field_evidence_rerun_execution_result_acceptance_packet.v1"
+                    ),
+                    source_evidence_boundary=(
+                        "software_proof_docker_field_evidence_rerun_execution_result_acceptance_packet_gate"
+                    ),
+                )
+            )
+            mismatch = summarize_field_evidence_rerun_execution_result_acceptance_backfill(
+                dict(artifact, safe_evidence_ref="different-ref")
+            )
+            unsafe = summarize_field_evidence_rerun_execution_result_acceptance_backfill(
+                {
+                    "schema": (
+                        "trashbot.field_evidence_rerun_execution_result_acceptance_backfill.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate"
+                    ),
+                    "safe_evidence_ref": (
+                        "field-rerun-execution-result-acceptance-backfill-001"
+                    ),
+                    "raw_manifest": {
+                        "checksum": "abc",
+                        "local_path": "/tmp/raw-backfill.json",
+                        "ros_topic": "/cmd_vel",
+                    },
+                    "diagnostics": {
+                        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_summary": (
+                            safe_summary
+                        )
+                    },
+                }
+            )
+            raw_only = summarize_field_evidence_rerun_execution_result_acceptance_backfill(
+                {
+                    "schema": (
+                        "trashbot.field_evidence_rerun_execution_result_acceptance_backfill.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate"
+                    ),
+                    "safe_evidence_ref": (
+                        "field-rerun-execution-result-acceptance-backfill-001"
+                    ),
+                    "raw_manifest": {"token": "secret"},
+                }
+            )
+
+        summary = payload[
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_summary"
+        ]
+        self.assertEqual(
+            payload["field_evidence_rerun_execution_result_acceptance_backfill"],
+            summary,
+        )
+        self.assertEqual(
+            payload["field_evidence_rerun_execution_result_acceptance_backfill_summary"],
+            summary,
+        )
+        self.assertNotIn(
+            "field_evidence_rerun_execution_result_acceptance_backfill",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.field_evidence_rerun_execution_result_acceptance_backfill_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_rerun_execution_result_acceptance_backfill.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(
+            summary["backfill_verdict"],
+            "ready_for_field_owner_backfill_acceptance_not_proven",
+        )
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertIn(
+            "field_evidence_rerun_execution_result_acceptance_backfill_only",
+            summary["not_proven"],
+        )
+        self.assertIn("task record", summary["required_materials"][0])
+        self.assertIn("diagnostics/mobile", summary["accepted_materials"][0])
+        self.assertIn("delivery result", summary["missing_materials"][0])
+        self.assertIn("dropoff/cancel", summary["blocked_materials"][0])
+        self.assertIn("Field owner", summary["owner_next_steps"][0])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertEqual(
+            from_nested["backfill_status"]["status"],
+            "ready_for_field_owner_backfill_acceptance_not_proven",
+        )
+        self.assertEqual(missing["backfill_status"]["status"], "missing")
+        self.assertEqual(
+            unsupported["backfill_status"]["status"],
+            "blocked_unsupported_field_evidence_rerun_execution_result_acceptance_backfill",
+        )
+        self.assertEqual(
+            mismatch["backfill_status"]["status"],
+            "evidence_ref_mismatch_field_evidence_rerun_execution_result_acceptance_backfill_blocked",
+        )
+        self.assertEqual(
+            unsafe["backfill_status"]["status"],
+            "blocked_unsafe_field_evidence_rerun_execution_result_acceptance_backfill",
+        )
+        self.assertEqual(raw_only["backfill_status"]["status"], "missing_summary")
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_manifest", encoded)
+        self.assertNotIn("checksum", encoded)
+        self.assertNotIn("/tmp/raw-backfill.json", encoded)
         self.assertNotIn("/cmd_vel", encoded)
         self.assertNotIn("traceback", encoded.lower())
         self.assertNotIn("WAVE ROVER", encoded)

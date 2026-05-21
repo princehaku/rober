@@ -271,3 +271,20 @@ The alias is metadata-only and fail-closed:
 Allowed Robot-visible fields are limited to sanitized acceptance readiness metadata: `safe_evidence_ref`, `acceptance_status`, `acceptance_verdict`, `same_evidence_ref_required`, `same_evidence_ref_status`, `required_materials`, `accepted_materials`, `missing_materials`, `blocked_materials`, `owner_next_steps`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
 
 The alias must not expose raw task records, raw logs, raw route/elevator artifacts, complete acceptance packet bodies, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, DB/queue URLs, OSS secrets, local paths, checksum values, tracebacks, ACK/cursor state, HIL/pass wording, dropoff/cancel completion, delivery result success, PR #5 `PRRT_kwDOSWB9286CJ3tX` resolution claims, comment `3269642220` reviewer-resolution claims, or success/control claims. Missing canonical summary, unsupported schema or boundary, same-`safe_evidence_ref` mismatch, enabled action flag, unsafe copy, raw record/log/artifact marker, local path, checksum, credential, DB/queue URL, traceback marker, HIL/pass wording, or hardware/control wording keeps the summary blocked/not_proven and leaves task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
+
+## robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_summary
+
+`robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_summary` is the Robot diagnostics safe alias for the `field_evidence_rerun_execution_result_acceptance_backfill` gate. It consumes only the canonical sanitized summary schema `trashbot.field_evidence_rerun_execution_result_acceptance_backfill_summary.v1`, whose `source_schema` must point back to `trashbot.field_evidence_rerun_execution_result_acceptance_backfill.v1` and whose evidence boundary must remain `software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate`.
+
+The alias is metadata-only and fail-closed:
+
+- `source=software_proof`
+- `not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `metadata_only=true`
+
+Allowed Robot-visible fields are limited to sanitized acceptance-backfill metadata: `safe_evidence_ref`, `backfill_status`, `backfill_verdict`, `same_evidence_ref_required`, `same_evidence_ref_status`, `required_materials`, `accepted_materials`, `missing_materials`, `blocked_materials`, `owner_next_steps`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
+
+The alias must not expose raw manifest contents, raw task records, raw logs, raw route/elevator artifacts, complete acceptance-backfill artifact bodies, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, DB/queue URLs, OSS secrets, local paths, checksum values, tracebacks, ACK/cursor state, HIL/pass wording, dropoff/cancel completion, delivery result success, or success/control claims. Missing canonical summary, unsupported schema or boundary, same-`safe_evidence_ref` mismatch, enabled action flag, unsafe copy, raw manifest/record/log/artifact marker, local path, checksum, credential, DB/queue URL, traceback marker, HIL/pass wording, or hardware/control wording keeps the summary blocked/not_proven and leaves task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.

@@ -8,7 +8,25 @@
 
 ## 2026-05-21 系列
 
-更新时间：2026-05-21 11:22 Asia/Shanghai。
+更新时间：2026-05-21 12:16 Asia/Shanghai。
+
+### 2026-05-21 12-13｜field-evidence-rerun-execution-result-acceptance-backfill｜field evidence rerun acceptance backfill software proof
+
+本轮 `sprints/2026.05.21_12-13_field-evidence-rerun-execution-result-acceptance-backfill/` 执行 `field_evidence_rerun_execution_result_acceptance_backfill` epic closeout。Objective 5 仍约 68%，但真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover 或真实 phone/browser external proof 不在 Docker-only 主机；Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending，comment `3269642220` 不是 reviewer resolution。本轮选择 O2/O3/O4 field evidence rerun execution result acceptance backfill，是为了把 acceptance packet 后的 missing/blocked 材料转成 sanitized backfill manifest 和后续 review decision 入口，而不是宣称真实现场通过。
+
+Autonomy worker 新增 `trashbot.field_evidence_rerun_execution_result_acceptance_backfill.v1` / `trashbot.field_evidence_rerun_execution_result_acceptance_backfill_summary.v1` PC gate，消费脱敏 JSON / manifest / material input，输出同一 safe `evidence_ref` 的 acceptance backfill artifact / summary，并对 unsafe、sensitive、evidence-ref mismatch 或 success claim fail closed。Robot worker 新增 `robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_summary` safe alias，scrub raw/latest_status，只读消费 sanitized summary。Full-Stack worker 在 mobile/web 新增只读“现场证据复跑执行结果验收回填”panel、fixture、tests 和 docs，保持 Start Delivery / Confirm Dropoff / Cancel disabled；无 raw fetch 或 control endpoint。
+
+证据边界保持 `software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。本轮 is not real field rerun、not real Nav2/fixed-route、not real route/elevator field pass、not delivery result、not delivery success、not true phone/browser proof、not O5 external proof、not HIL、not WAVE ROVER/UART proof、not PR #5 resolution。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL、hardware bridge、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` still unresolved/material pending，comment `3269642220` not reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮把 acceptance packet 后的 missing/blocked 材料转成 acceptance backfill manifest 和 safe summary；它只说明后续真实材料回填与 review decision 入口，不是真实 task record、dropoff/cancel completion、delivery result、route/elevator field pass 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | PC gate 与 Robot safe alias 要求同一 safe `evidence_ref` 复账，但本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读“现场证据复跑执行结果验收回填”panel 让现场 owner 和支持同学能看到 backfill status、safe `evidence_ref`、missing/blocked categories、owner next steps 和 fail-closed flags；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate` 只证明 Docker/local acceptance backfill metadata 可见性；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 5 tests in 0.182s OK`；CLI `--help`、required `rg` 与 scoped `git diff --check` 通过。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 256 tests in 0.884s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；mobile unittest 输出 `Ran 209 tests in 1.603s OK`；JSON fixture check、required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、required `rg`、scoped `git diff --check`、targeted integration `py_compile`、combined unittest、`node --check`、fixture JSON check、integration `rg` 和 scoped integration `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、delivery result 或 delivery success。
 
 ### 2026-05-21 11-12｜field-evidence-rerun-execution-result-acceptance-packet｜field evidence rerun acceptance readiness software proof
 
