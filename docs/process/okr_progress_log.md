@@ -8,7 +8,25 @@
 
 ## 2026-05-21 系列
 
-更新时间：2026-05-21 12:16 Asia/Shanghai。
+更新时间：2026-05-21 13:14 Asia/Shanghai。
+
+### 2026-05-21 13-14｜cloud-hosted-mobile-web-degradation-passthrough｜hosted mobile degraded-state passthrough software proof
+
+本轮 `sprints/2026.05.21_13-14_cloud-hosted-mobile-web-degradation-passthrough/` 执行 `cloud_hosted_mobile_web_degradation_passthrough` epic closeout。Objective 5 仍约 68%，是当前数值最低 Objective；本轮只把 hosted `/api/status` 的 safe `remote_readiness.degradation_state` 透传到 cloud-hosted mobile web，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending，comment `3269642220` 只是 software-proof reply publication，不是 reviewer resolution。
+
+Robot worker 更新 `remote_cloud_relay.py`、focused relay tests、`cloud-relay/README.md` 和 `docs/interfaces/ros_runtime_contracts.md`，让 `normalize_status()` 保留 sanitized `remote_readiness`，同时强制 `source=software_proof`、`remote_ready=false`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`；hosted `GET /api/status` 对 allow-listed degraded states 不再只 flatten 为 generic `status_present`。Full-Stack worker 更新 `mobile/web`、fixture、tests 和 `docs/product/mobile_user_flow.md`，消费 `auth_failed`、`cloud_poll_backoff`、`manual_takeover_required`、`command_pending`、`command_expired`、`command_duplicate_deduped`、`command_id_conflict`、`command_sequence_regression`、`cloud_unreachable`、`malformed_response` 并渲染 safe Chinese copy，所有 degraded states 下主操作保持 disabled。
+
+证据边界保持 `software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。本轮 is not real external cloud proof、not true phone/browser proof、not HIL、not WAVE ROVER/UART proof、not route/elevator field pass、not delivery result、not delivery success、not PR #5 resolution。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 WAVE ROVER/UART/HIL、hardware bridge、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` still unresolved/material pending，comment `3269642220` not reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只处理 cloud-hosted mobile degraded-state visibility，不新增 route/elevator field material、真实电梯、Nav2/fixed-route runtime log、dropoff/cancel completion、field pass、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能展示 hosted degraded states 的具体 safe copy，并保持 `primary_actions_enabled=false`、`safe_to_control=false` 和主操作不可用；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate` 只证明 Docker/local hosted API + mobile static fixture 下的 degraded-state passthrough 可见性；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Robot worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 87 tests ... OK`；required `rg` 与 scoped `git diff --check` 通过；首轮 fixture missing `state` 与 checksum redaction regression 已修复。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；mobile unittest 输出 `Ran 211 tests ... OK`；JSON fixture check、required `rg` 与 scoped `git diff --check` 通过；首轮 `raw diagnostics` 文案已改为 safe Chinese copy。Product closeout required file checks、required `rg`、scoped `git diff --check` 和 final scoped integration whitespace check 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、delivery result 或 delivery success。
 
 ### 2026-05-21 12-13｜field-evidence-rerun-execution-result-acceptance-backfill｜field evidence rerun acceptance backfill software proof
 

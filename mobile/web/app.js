@@ -36,6 +36,7 @@ const CLOUD_COMMAND_ID_CONFLICT_COPY = "命令 ID 冲突；机器人已拒绝执
 const CLOUD_COMMAND_SEQUENCE_REGRESSION_BOUNDARY = "software_proof_docker_cloud_command_sequence_regression_guard";
 const CLOUD_COMMAND_SEQUENCE_REGRESSION_COPY = "命令队列序号倒退；机器人已拒绝按旧顺序推进；这不是送达成功。";
 const CLOUD_UNREACHABLE_MALFORMED_RESPONSE_BOUNDARY = "software_proof_docker_cloud_unreachable_malformed_response_guard";
+const CLOUD_HOSTED_DEGRADATION_PASSTHROUGH_BOUNDARY = "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate";
 // 云端不可达和响应格式异常都只能解释为只读降级，不能触发手机端重试、ACK/cursor 或主操作。
 const CLOUD_UNREACHABLE_MALFORMED_RESPONSE_COPY = {
   cloud_unreachable: "云端暂时不可达；当前不能下发主操作，请刷新状态或联系支持。",
@@ -1680,6 +1681,18 @@ function voicePromptFromStatus(status, readiness) {
   return {};
 }
 
+function cloudHostedPassthroughBoundary(summary) {
+  // hosted /api/status 的本轮证明边界必须透传到页面，不能被历史单状态 guard 覆盖。
+  if (!summary || typeof summary !== "object") {
+    return "";
+  }
+  if (summary.proof_boundary === CLOUD_HOSTED_DEGRADATION_PASSTHROUGH_BOUNDARY ||
+      summary.evidence_boundary === CLOUD_HOSTED_DEGRADATION_PASSTHROUGH_BOUNDARY) {
+    return CLOUD_HOSTED_DEGRADATION_PASSTHROUGH_BOUNDARY;
+  }
+  return "";
+}
+
 function cloudReadinessSummaryFromStatus(status, readiness) {
   // 云摘要只读消费后端 phone-safe 字段，避免前端把配置证明误写成真实云可用。
   const candidates = [
@@ -1699,6 +1712,7 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
   ];
   const provided = candidates.find((value) => value && typeof value === "object");
   if (provided) {
+    const hostedBoundary = cloudHostedPassthroughBoundary(provided);
     if (provided.degradation_state === "auth_failed" ||
         provided.auth_state === "auth_failed" ||
         provided.proof_boundary === CLOUD_AUTH_FAILURE_STATUS_BOUNDARY ||
@@ -1715,6 +1729,7 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         primary_actions_enabled: false,
         safe_to_control: false,
         remote_ready: false,
+        delivery_success: false,
         retry_hint: "check_auth",
         safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_AUTH_FAILURE_STATUS_COPY),
         recovery_hint: safeText(
@@ -1725,8 +1740,8 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
           provided.ack_semantics,
           "auth_failed_not_delivery_success",
         ),
-        evidence_boundary: CLOUD_AUTH_FAILURE_STATUS_BOUNDARY,
-        proof_boundary: CLOUD_AUTH_FAILURE_STATUS_BOUNDARY,
+        evidence_boundary: hostedBoundary || CLOUD_AUTH_FAILURE_STATUS_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_AUTH_FAILURE_STATUS_BOUNDARY,
         not_proven: notProvenList(provided.not_proven),
       };
     }
@@ -1758,8 +1773,8 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
           provided.ack_semantics,
           "manual_takeover_not_delivery_success",
         ),
-        evidence_boundary: CLOUD_MANUAL_TAKEOVER_BOUNDARY,
-        proof_boundary: CLOUD_MANUAL_TAKEOVER_BOUNDARY,
+        evidence_boundary: hostedBoundary || CLOUD_MANUAL_TAKEOVER_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_MANUAL_TAKEOVER_BOUNDARY,
         not_proven: notProvenList(provided.not_proven),
       };
     }
@@ -1793,8 +1808,8 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
           provided.ack_semantics,
           "stale_status_not_delivery_success",
         ),
-        evidence_boundary: CLOUD_STATUS_STALE_BOUNDARY,
-        proof_boundary: CLOUD_STATUS_STALE_BOUNDARY,
+        evidence_boundary: hostedBoundary || CLOUD_STATUS_STALE_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_STATUS_STALE_BOUNDARY,
         status_age_seconds: statusAgeSeconds,
         not_proven: notProvenList(provided.not_proven),
       };
@@ -1813,14 +1828,15 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         primary_actions_enabled: false,
         safe_to_control: false,
         remote_ready: false,
+        delivery_success: false,
         safe_phone_copy: CLOUD_PENDING_ACK_STATUS_COPY,
         recovery_hint: safeText(
           provided.recovery_hint || provided.retry_hint,
           "等待 Robot 成功补发 pending terminal ACK；补发前不要重复提交主操作。",
         ),
         ack_semantics: ACK_PROCESSING_COPY,
-        evidence_boundary: CLOUD_PENDING_ACK_STATUS_BOUNDARY,
-        proof_boundary: CLOUD_PENDING_ACK_STATUS_BOUNDARY,
+        evidence_boundary: hostedBoundary || CLOUD_PENDING_ACK_STATUS_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_PENDING_ACK_STATUS_BOUNDARY,
         not_proven: notProvenList(provided.not_proven),
       };
     }
@@ -1849,8 +1865,8 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
           provided.ack_semantics,
           "poll_backoff_not_delivery_success",
         ),
-        evidence_boundary: CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY,
-        proof_boundary: CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY,
+        evidence_boundary: hostedBoundary || CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY,
         not_proven: notProvenList(provided.not_proven),
       };
     }
@@ -1868,6 +1884,7 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         primary_actions_enabled: false,
         safe_to_control: false,
         remote_ready: false,
+        delivery_success: false,
         safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_COMMAND_EXPIRY_COPY),
         recovery_hint: safeText(
           provided.recovery_hint || provided.retry_hint,
@@ -1877,8 +1894,8 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
           provided.ack_semantics,
           "ignored_expired_command_not_delivery_success",
         ),
-        evidence_boundary: CLOUD_COMMAND_EXPIRY_BOUNDARY,
-        proof_boundary: CLOUD_COMMAND_EXPIRY_BOUNDARY,
+        evidence_boundary: hostedBoundary || CLOUD_COMMAND_EXPIRY_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_COMMAND_EXPIRY_BOUNDARY,
         expired_command_id: safeText(provided.expired_command_id, ""),
         not_proven: notProvenList(provided.not_proven),
       };
@@ -1899,6 +1916,7 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         primary_actions_enabled: false,
         safe_to_control: false,
         remote_ready: false,
+        delivery_success: false,
         safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_COMMAND_IDEMPOTENCY_COPY),
         recovery_hint: safeText(
           provided.recovery_hint || provided.retry_hint,
@@ -1908,8 +1926,8 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
           provided.ack_semantics,
           "duplicate_cached_ack_not_delivery_success",
         ),
-        evidence_boundary: CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY,
-        proof_boundary: CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY,
+        evidence_boundary: hostedBoundary || CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY,
         duplicate_command_id: duplicateCommandId,
         cached_ack_state: cachedAckState,
         not_proven: notProvenList(provided.not_proven),
@@ -1937,6 +1955,7 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         primary_actions_enabled: false,
         safe_to_control: false,
         remote_ready: false,
+        delivery_success: false,
         safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_COMMAND_ID_CONFLICT_COPY),
         recovery_hint: safeText(
           provided.recovery_hint || provided.retry_hint,
@@ -1946,8 +1965,8 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
           provided.ack_semantics,
           "conflict_rejected_not_delivery_success",
         ),
-        evidence_boundary: CLOUD_COMMAND_ID_CONFLICT_BOUNDARY,
-        proof_boundary: CLOUD_COMMAND_ID_CONFLICT_BOUNDARY,
+        evidence_boundary: hostedBoundary || CLOUD_COMMAND_ID_CONFLICT_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_COMMAND_ID_CONFLICT_BOUNDARY,
         conflict_command_id: conflictCommandId,
         conflict_reason: conflictReason,
         conflict_fields: conflictFields,
@@ -1976,6 +1995,7 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         primary_actions_enabled: false,
         safe_to_control: false,
         remote_ready: false,
+        delivery_success: false,
         safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_COMMAND_SEQUENCE_REGRESSION_COPY),
         recovery_hint: safeText(
           provided.recovery_hint || provided.retry_hint,
@@ -1985,8 +2005,8 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
           provided.ack_semantics,
           "sequence_regression_not_delivery_success",
         ),
-        evidence_boundary: CLOUD_COMMAND_SEQUENCE_REGRESSION_BOUNDARY,
-        proof_boundary: CLOUD_COMMAND_SEQUENCE_REGRESSION_BOUNDARY,
+        evidence_boundary: hostedBoundary || CLOUD_COMMAND_SEQUENCE_REGRESSION_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_COMMAND_SEQUENCE_REGRESSION_BOUNDARY,
         regression_command_id: regressionCommandId,
         observed_sequence: observedSequence,
         previous_sequence: previousSequence,
@@ -2027,8 +2047,8 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         ),
         ack_semantics: safeText(provided.ack_semantics, ackSemantics),
         retry_hint: safeText(provided.retry_hint, retryHint),
-        evidence_boundary: CLOUD_UNREACHABLE_MALFORMED_RESPONSE_BOUNDARY,
-        proof_boundary: CLOUD_UNREACHABLE_MALFORMED_RESPONSE_BOUNDARY,
+        evidence_boundary: hostedBoundary || CLOUD_UNREACHABLE_MALFORMED_RESPONSE_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_UNREACHABLE_MALFORMED_RESPONSE_BOUNDARY,
         not_proven: notProvenList(provided.not_proven),
       };
     }

@@ -1,0 +1,202 @@
+{
+  "schema": "trashbot.cloud_hosted_mobile_web_degradation_passthrough.fixture.v1",
+  "capability": "cloud_hosted_mobile_web_degradation_passthrough",
+  "proof_boundary": "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate",
+  "evidence_boundary": "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate",
+  "source": "software_proof",
+  "state": "remote_degraded",
+  "remote_ready": false,
+  "safe_to_control": false,
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false,
+  "safe_copy": "cloud-hosted /api/status 只透传 phone-safe remote_readiness.degradation_state；Start Delivery、Confirm Dropoff、Cancel 全部保持 disabled。",
+  "boundary_flags": "source=software_proof / not_proven / remote_ready=false / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+  "not_proven": [
+    "not real phone/browser proof",
+    "not O5 external proof",
+    "not public HTTPS/TLS proof",
+    "not real 4G/SIM proof",
+    "not production DB/queue proof",
+    "not OSS/CDN live traffic proof",
+    "not WAVE ROVER/UART/HIL proof",
+    "not delivery success"
+  ],
+  "phone_readiness": {
+    "primary_state": "blocked",
+    "next_action": "refresh_status_or_contact_support",
+    "support_level": "diagnostics_available",
+    "remote_readiness": {
+      "schema": "trashbot.remote_readiness.v1",
+      "remote_ready": false,
+      "degradation_state": "auth_failed",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "safe_phone_copy": "登录或访问码未通过；请重新登录或检查凭证；这不是送达成功。",
+      "recovery_hint": "请先检查登录或访问码，再刷新状态；手机端不重放、不 resubmit、不请求 ACK/cursor。",
+      "ack_semantics": "auth_failed_not_delivery_success",
+      "proof_boundary": "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate",
+      "evidence_boundary": "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate"
+    },
+    "command_safety": {
+      "schema": "trashbot.command_safety.v1",
+      "global_block_reason": "cloud-hosted degraded status passthrough：remote_ready=false / safe_to_control=false / primary_actions_enabled=false",
+      "actions": {
+        "start": {
+          "label": "Start Delivery",
+          "enabled": false,
+          "blocking_reason": "degradation_state passthrough / remote_ready=false / primary_actions_enabled=false"
+        },
+        "confirm_dropoff": {
+          "label": "Confirm Dropoff",
+          "enabled": false,
+          "blocking_reason": "degradation_state passthrough / remote_ready=false / primary_actions_enabled=false"
+        },
+        "cancel": {
+          "label": "Cancel",
+          "enabled": false,
+          "blocking_reason": "degradation_state passthrough / remote_ready=false / primary_actions_enabled=false"
+        },
+        "diagnostics": {
+          "enabled": true,
+          "safe_phone_copy": "诊断可打开；主操作保持 fail closed。"
+        }
+      }
+    }
+  },
+  "hosted_status_examples": [
+    {
+      "degradation_state": "auth_failed",
+      "safe_phone_copy": "登录或访问码未通过；请重新登录或检查凭证；这不是送达成功。",
+      "recovery_hint": "检查登录或访问码后刷新状态；不要自动重放或请求 ACK/cursor。",
+      "ack_semantics": "auth_failed_not_delivery_success",
+      "remote_ready": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false
+    },
+    {
+      "degradation_state": "cloud_poll_backoff",
+      "safe_phone_copy": "远程控制正在等待重试退避窗口；窗口结束前 Start Delivery、Confirm Dropoff、Cancel 保持禁用。",
+      "recovery_hint": "等待退避窗口结束后刷新状态；不要自动 resubmit。",
+      "ack_semantics": "poll_backoff_not_delivery_success",
+      "remote_ready": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false
+    },
+    {
+      "degradation_state": "manual_takeover_required",
+      "safe_phone_copy": "需要人工接管；远程主操作已暂停，请按现场/支持指引处理。这不是送达成功。",
+      "recovery_hint": "联系现场人员或支持同学人工接管；不要自动提交控制动作。",
+      "ack_semantics": "manual_takeover_not_delivery_success",
+      "remote_ready": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false
+    },
+    {
+      "degradation_state": "command_pending",
+      "safe_phone_copy": "本地命令已终态，但云端 ACK 还没确认，暂不能拉取新命令",
+      "recovery_hint": "等待 Robot 补发 pending terminal ACK；补发前不要重复提交主操作。",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "remote_ready": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false
+    },
+    {
+      "degradation_state": "command_expired",
+      "safe_phone_copy": "云端命令已过期，机器人已忽略旧命令；请重新下发一次安全指令。",
+      "recovery_hint": "旧命令已忽略；确认当前状态后再由用户主动提交新命令。",
+      "ack_semantics": "ignored_expired_command_not_delivery_success",
+      "remote_ready": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false
+    },
+    {
+      "degradation_state": "command_duplicate_deduped",
+      "safe_phone_copy": "重复云指令已去重；机器人没有重复执行；这不是送达成功。",
+      "recovery_hint": "刷新状态或打开支持诊断；不要自动重放重复云指令。",
+      "ack_semantics": "duplicate_cached_ack_not_delivery_success",
+      "remote_ready": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false
+    },
+    {
+      "degradation_state": "command_id_conflict",
+      "safe_phone_copy": "命令 ID 冲突；机器人已拒绝执行；这不是送达成功。",
+      "recovery_hint": "刷新状态或联系支持；不要自动 resubmit 或请求 ACK/cursor。",
+      "ack_semantics": "conflict_rejected_not_delivery_success",
+      "remote_ready": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false
+    },
+    {
+      "degradation_state": "command_sequence_regression",
+      "safe_phone_copy": "命令队列序号倒退；机器人已拒绝按旧顺序推进；这不是送达成功。",
+      "recovery_hint": "刷新状态或联系支持；不要自动重放、resubmit 或请求 ACK/cursor。",
+      "ack_semantics": "sequence_regression_not_delivery_success",
+      "remote_ready": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false
+    },
+    {
+      "degradation_state": "cloud_unreachable",
+      "safe_phone_copy": "云端暂时不可达；当前不能下发主操作，请刷新状态或联系支持。",
+      "recovery_hint": "刷新状态或联系支持；不要提交 Start Delivery、Confirm Dropoff、Cancel。",
+      "ack_semantics": "cloud_unreachable_not_delivery_success",
+      "remote_ready": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false
+    },
+    {
+      "degradation_state": "malformed_response",
+      "safe_phone_copy": "云端响应格式异常；机器人没有确认执行，请刷新状态或联系支持。",
+      "recovery_hint": "联系支持并保留安全摘要；不要读取原始诊断详情或提交控制动作。",
+      "ack_semantics": "malformed_response_not_delivery_success",
+      "remote_ready": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "can_collect": false,
+      "can_confirm_dropoff": false,
+      "can_cancel": false
+    }
+  ]
+}

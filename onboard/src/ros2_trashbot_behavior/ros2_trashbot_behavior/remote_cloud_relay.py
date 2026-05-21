@@ -55,6 +55,9 @@ CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY = (
     "software_proof_docker_cloud_worker_cutover_drain_gate"
 )
 CLOUD_HOSTED_MOBILE_WEB_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_hosted_mobile_web_gate"
+CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate"
+)
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -108,6 +111,9 @@ CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA = "trashbot.cloud_worker_cutover_drain
 CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA_VERSION = 1
 CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA = "trashbot.cloud_hosted_mobile_web_gate"
 CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA_VERSION = 1
+CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_CAPABILITY = (
+    "cloud_hosted_mobile_web_degradation_passthrough"
+)
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -429,6 +435,9 @@ SENSITIVE_KEYS = {
     "ros_topic",
     "topic",
     "cmd_vel",
+    "raw_cloud_payload",
+    "traceback",
+    "complete_artifact",
 }
 PHONE_SAFE_KEY_EXCEPTIONS = {
     "bearer_rotation_status",
@@ -465,6 +474,18 @@ CLOUD_HOSTED_MOBILE_WEB_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+CLOUD_HOSTED_MOBILE_WEB_SAFE_DEGRADATION_STATES = {
+    "auth_failed",
+    "cloud_poll_backoff",
+    "manual_takeover_required",
+    "command_pending",
+    "command_expired",
+    "command_duplicate_deduped",
+    "command_id_conflict",
+    "command_sequence_regression",
+    "cloud_unreachable",
+    "malformed_response",
+}
 
 # 对字符串也做保守脱敏，避免敏感内容藏在 message 或 diagnostics 里。
 SENSITIVE_TEXT = (
@@ -6986,6 +7007,23 @@ def normalize_command(robot_id, payload, *, now=None):
     )
 
 
+def _normalize_status_remote_readiness(payload):
+    # status 可携带给手机看的安全摘要，但不能让上游 true 值打开任何远程控制语义。
+    remote_readiness = payload.get("remote_readiness") if isinstance(payload, dict) else None
+    if not isinstance(remote_readiness, dict):
+        return {}
+    safe_remote_readiness = safe_value(remote_readiness)
+    degradation_state = str(safe_remote_readiness.get("degradation_state") or "").strip()
+    if degradation_state not in CLOUD_HOSTED_MOBILE_WEB_SAFE_DEGRADATION_STATES:
+        safe_remote_readiness.pop("degradation_state", None)
+    safe_remote_readiness["source"] = "software_proof"
+    safe_remote_readiness["remote_ready"] = False
+    safe_remote_readiness["delivery_success"] = False
+    safe_remote_readiness["primary_actions_enabled"] = False
+    safe_remote_readiness["safe_to_control"] = False
+    return safe_remote_readiness
+
+
 def normalize_status(robot_id, payload, *, now=None):
     # status 是手机继续展示任务状态的 surface，ACK 不能替代它。
     now = _now() if now is None else float(now)
@@ -7005,6 +7043,7 @@ def normalize_status(robot_id, payload, *, now=None):
             "message": str(payload.get("message") or "").strip(),
             "updated_at": _timestamp(payload.get("updated_at", now), "updated_at"),
             "diagnostics": payload.get("diagnostics") if isinstance(payload.get("diagnostics"), dict) else {},
+            "remote_readiness": _normalize_status_remote_readiness(payload),
         }
     )
 
@@ -8006,16 +8045,40 @@ def _fail_closed_command_safety(reason):
     }
 
 
+def _remote_readiness_passthrough(latest_status):
+    # 只透传 allow-list 中的 degraded state；未知状态回落到普通 status，避免把原始云端 payload 当 UI 契约。
+    remote_readiness = latest_status.get("remote_readiness") if isinstance(latest_status, dict) else None
+    safe_remote_readiness = safe_value(remote_readiness) if isinstance(remote_readiness, dict) else {}
+    degradation_state = str(safe_remote_readiness.get("degradation_state") or "").strip()
+    if degradation_state not in CLOUD_HOSTED_MOBILE_WEB_SAFE_DEGRADATION_STATES:
+        degradation_state = ""
+
+    # API 自己补齐控制边界，防止上游 status 中误带 true 值时被手机壳误解为可操作。
+    safe_remote_readiness["source"] = "software_proof"
+    safe_remote_readiness["delivery_success"] = False
+    safe_remote_readiness["primary_actions_enabled"] = False
+    safe_remote_readiness["safe_to_control"] = False
+    if degradation_state:
+        safe_remote_readiness["degradation_state"] = degradation_state
+        safe_remote_readiness["remote_ready"] = False
+    return safe_remote_readiness, degradation_state
+
+
 def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
     # 手机同源 API 只读取 relay store 的最近状态；缺失或过期都转成 blocked 页面状态。
     robot_key = _robot_key(robot_id or _default_mobile_web_robot_id())
     status_code, store_payload = store.get_status(robot_key)
     latest_status = store_payload.get("status") if isinstance(store_payload, dict) else None
     latest_status = safe_value(latest_status) if isinstance(latest_status, dict) else None
+    remote_readiness, degradation_state = _remote_readiness_passthrough(latest_status or {})
     if status_code == 200 and latest_status:
-        state = str(latest_status.get("state") or "status_present")
+        state = degradation_state or str(latest_status.get("state") or "status_present")
         reason = "cloud-hosted mobile web gate keeps primary actions fail-closed."
-        safe_phone_copy = "已读取 relay 最近状态；云端托管手机壳仍保持主操作安全关闭。"
+        if degradation_state:
+            reason = f"remote readiness degraded: {degradation_state}; cloud-hosted mobile web gate keeps actions disabled."
+            safe_phone_copy = "已读取 relay 安全降级状态；云端托管手机壳继续禁用主操作。"
+        else:
+            safe_phone_copy = "已读取 relay 最近状态；云端托管手机壳仍保持主操作安全关闭。"
     elif latest_status:
         state = "status_stale"
         reason = "robot status is stale; cloud-hosted mobile web gate keeps actions disabled."
@@ -8031,15 +8094,23 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
         "schema_version": CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA_VERSION,
         "primary_state": "blocked",
         "can_continue": False,
+        "source": "software_proof",
         "safe_phone_copy": safe_phone_copy,
         "recovery_hint": "这只是 Docker/local software proof；真实公网、手机和机器人联调仍未证明。",
         "next_action": "wait_for_robot_status",
         "support_level": "support_required",
-        "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_EVIDENCE_BOUNDARY,
+        "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_EVIDENCE_BOUNDARY,
+        "remote_readiness": remote_readiness,
         "cloud_hosted_mobile_web_gate": {
             "overall_status": "blocked",
             "production_ready": False,
             "adapter": "phone_safe_status_diagnostics",
+            "capability": CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_CAPABILITY,
+            "source": "software_proof",
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_EVIDENCE_BOUNDARY,
             "safe_summary": "托管静态壳 + phone-safe /api/status 和 /api/diagnostics fail-closed adapter。",
         },
         "action_permissions": {
@@ -8057,17 +8128,22 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
             "schema_version": CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA_VERSION,
             "protocol_version": PROTOCOL_VERSION,
             "robot_id": robot_key,
+            "source": "software_proof",
             "state": state,
             "overall_status": "blocked",
             "production_ready": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
             "can_collect": False,
             "can_confirm_dropoff": False,
             "can_cancel": False,
             "command_safety": command_safety,
             "phone_readiness": phone_readiness,
+            "remote_readiness": remote_readiness,
             "safe_phone_copy": safe_phone_copy,
             "recovery_hint": phone_readiness["recovery_hint"],
-            "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_EVIDENCE_BOUNDARY,
+            "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_EVIDENCE_BOUNDARY,
             "not_proven": list(CLOUD_HOSTED_MOBILE_WEB_NOT_PROVEN),
             "latest_status": latest_status,
         }
@@ -8093,11 +8169,12 @@ def cloud_hosted_mobile_web_diagnostics_payload(store, robot_id=None):
                 "can_collect": False,
                 "can_confirm_dropoff": False,
                 "can_cancel": False,
+                "remote_readiness": status_payload.get("remote_readiness"),
             },
             "phone_readiness": status_payload["phone_readiness"],
             "command_safety": status_payload["command_safety"],
             "latest_status": status_payload.get("latest_status"),
-            "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_EVIDENCE_BOUNDARY,
+            "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_EVIDENCE_BOUNDARY,
             "not_proven": list(CLOUD_HOSTED_MOBILE_WEB_NOT_PROVEN),
         }
     )

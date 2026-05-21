@@ -352,7 +352,7 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertFalse(payload["phone_readiness"]["command_safety"]["actions"]["start"]["enabled"])
         self.assertEqual(
             payload["evidence_boundary"],
-            "software_proof_docker_cloud_hosted_mobile_web_gate",
+            "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate",
         )
 
         status, payload = self.client.request("GET", "/api/diagnostics", token="")
@@ -360,7 +360,7 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(payload["overall_status"], "blocked")
         self.assertEqual(
             payload["evidence_boundary"],
-            "software_proof_docker_cloud_hosted_mobile_web_gate",
+            "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate",
         )
         self.assertIn("real_phone_device_browser", payload["not_proven"])
 
@@ -439,6 +439,10 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(payload["latest_status"]["message"], "[redacted]")
         self.assertEqual(payload["latest_status"]["diagnostics"]["network"], "relay_proof")
         self.assertEqual(payload["latest_status"]["diagnostics"]["safe_hint"], "waiting_for_ack")
+        self.assertEqual(payload["source"], "software_proof")
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["primary_actions_enabled"])
+        self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["can_collect"])
         self.assertFalse(payload["phone_readiness"]["can_continue"])
         self.assertFalse(payload["phone_readiness"]["command_safety"]["actions"]["start"]["enabled"])
@@ -451,6 +455,64 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             "serial_port",
             "ros_topic",
             "phone-token",
+            str(REPO_ROOT),
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_mobile_web_status_preserves_safe_remote_degradation_state(self):
+        status, _ = self.client.request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "status_present",
+                "updated_at": time.time(),
+                "remote_readiness": {
+                    "remote_ready": False,
+                    "source": "software_proof",
+                    "degradation_state": "command_pending",
+                    "retry_hint": "wait_for_ack",
+                    "safe_phone_copy": "命令仍在等待 ACK；主操作保持禁用。",
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "safe_to_control": False,
+                    "raw_cloud_payload": {"Authorization": "Bearer hidden"},
+                },
+            },
+        )
+        self.assertEqual(status, 200)
+
+        status, payload = self.client.request("GET", "/api/status", token="")
+        encoded = json.dumps(payload, ensure_ascii=False)
+        gate = payload["phone_readiness"]["cloud_hosted_mobile_web_gate"]
+        remote_readiness = payload["remote_readiness"]
+
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["state"], "command_pending")
+        self.assertEqual(payload["source"], "software_proof")
+        self.assertEqual(remote_readiness["degradation_state"], "command_pending")
+        self.assertFalse(remote_readiness["remote_ready"])
+        self.assertFalse(remote_readiness["delivery_success"])
+        self.assertFalse(remote_readiness["primary_actions_enabled"])
+        self.assertFalse(remote_readiness["safe_to_control"])
+        self.assertEqual(
+            payload["evidence_boundary"],
+            "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate",
+        )
+        self.assertEqual(gate["capability"], "cloud_hosted_mobile_web_degradation_passthrough")
+        self.assertFalse(gate["delivery_success"])
+        self.assertFalse(gate["primary_actions_enabled"])
+        self.assertFalse(gate["safe_to_control"])
+        self.assertNotEqual(payload["state"], "status_present")
+        for forbidden in (
+            "Authorization",
+            "Bearer",
+            "raw_cloud_payload",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+            "/cmd_vel",
+            "ttyUSB",
             str(REPO_ROOT),
         ):
             self.assertNotIn(forbidden, encoded)
@@ -479,7 +541,7 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(payload["cloud_hosted_mobile_web_gate"]["overall_status"], "blocked")
         self.assertEqual(
             payload["evidence_boundary"],
-            "software_proof_docker_cloud_hosted_mobile_web_gate",
+            "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate",
         )
         self.assertIn("real_4g_sim", payload["not_proven"])
         for forbidden in (

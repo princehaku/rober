@@ -27,6 +27,9 @@ CLOUD_MANUAL_TAKEOVER_FIXTURE = (
 CLOUD_MEDIA_DEGRADATION_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_media_degradation_status_guard.json"
 )
+CLOUD_HOSTED_DEGRADATION_PASSTHROUGH_FIXTURE = (
+    WEB_ROOT / "fixtures" / "cloud_hosted_mobile_web_degradation_passthrough.json"
+)
 HARDWARE_SENSOR_HIL_ENTRY_CALLBACK_REVIEW_DECISION_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary.json"
 )
@@ -1028,6 +1031,115 @@ class CloudMediaDegradationStatusGuardMobileTest(unittest.TestCase):
             "delivery_success\": true",
             "primary_actions_enabled\": true",
             "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
+
+
+class CloudHostedMobileWebDegradationPassthroughTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_hosted_degradation_passthrough_fixture_covers_all_safe_states(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_HOSTED_DEGRADATION_PASSTHROUGH_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+        expected_states = {
+            "auth_failed",
+            "cloud_poll_backoff",
+            "manual_takeover_required",
+            "command_pending",
+            "command_expired",
+            "command_duplicate_deduped",
+            "command_id_conflict",
+            "command_sequence_regression",
+            "cloud_unreachable",
+            "malformed_response",
+        }
+
+        # hosted /api/status passthrough 必须保留本轮 evidence boundary，而不是被旧单状态 guard 吞掉。
+        self.assertIn("CLOUD_HOSTED_DEGRADATION_PASSTHROUGH_BOUNDARY", app)
+        self.assertIn("cloudHostedPassthroughBoundary", app)
+        self.assertIn(
+            "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate",
+            app,
+        )
+        self.assertIn("remote_readiness", app)
+        self.assertIn("degradation_state", app)
+
+        examples = fixture["hosted_status_examples"]
+        self.assertEqual({item["degradation_state"] for item in examples}, expected_states)
+        self.assertEqual(
+            fixture["proof_boundary"],
+            "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate",
+        )
+        self.assertEqual(
+            fixture["phone_readiness"]["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate",
+        )
+
+        # 每个 hosted degraded state 都必须保持三类主操作 disabled，并写明不是送达成功。
+        for example in examples:
+            self.assertEqual(example["remote_ready"], False)
+            self.assertEqual(example["safe_to_control"], False)
+            self.assertEqual(example["delivery_success"], False)
+            self.assertEqual(example["primary_actions_enabled"], False)
+            self.assertEqual(example["can_collect"], False)
+            self.assertEqual(example["can_confirm_dropoff"], False)
+            self.assertEqual(example["can_cancel"], False)
+            self.assertIn("not_delivery_success", example["ack_semantics"])
+
+        actions = fixture["phone_readiness"]["command_safety"]["actions"]
+        self.assertEqual(actions["start"]["label"], "Start Delivery")
+        self.assertEqual(actions["confirm_dropoff"]["label"], "Confirm Dropoff")
+        self.assertEqual(actions["cancel"]["label"], "Cancel")
+        self.assertEqual(actions["start"]["enabled"], False)
+        self.assertEqual(actions["confirm_dropoff"]["enabled"], False)
+        self.assertEqual(actions["cancel"]["enabled"], False)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("safe_to_control=false", fixture_text)
+        self.assertIn("not real phone/browser proof", fixture_text)
+        self.assertIn("not O5 external proof", fixture_text)
+
+        # 产品文档必须说明用户能看到具体中文 degraded state，但这仍只是 Docker/local software proof。
+        self.assertIn("cloud_hosted_mobile_web_degradation_passthrough", doc)
+        self.assertIn("software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate", doc)
+        for state in expected_states:
+            self.assertIn(state, doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel", doc)
+        self.assertIn("不是真实 phone/browser proof", doc)
+        self.assertIn("不是 O5 external proof", doc)
+        self.assertIn("not delivery success", doc)
+
+    def test_hosted_degradation_passthrough_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_HOSTED_DEGRADATION_PASSTHROUGH_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # hosted fixture 只能包含 safe summary，不能引入 raw 诊断、凭证、ACK/cursor 或真实控制入口。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "serial device",
+            "baudrate",
+            "wave rover detail",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+            "ack cursor",
+            "replay endpoint",
+            "resubmit endpoint",
         ):
             self.assertNotIn(forbidden, fixture_text)
 

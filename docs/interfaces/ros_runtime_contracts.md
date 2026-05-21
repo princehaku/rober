@@ -1,5 +1,25 @@
 # ROS Runtime Contracts
 
+## cloud_hosted_mobile_web_degradation_passthrough
+
+`cloud_hosted_mobile_web_degradation_passthrough` is the Robot/API contract for the cloud-hosted same-origin mobile `GET /api/status` adapter. It consumes only sanitized relay latest status metadata and, when present, preserves an allow-listed safe `remote_readiness.degradation_state` instead of flattening degraded status to only `state=status_present`.
+
+The contract is read-only and fail-closed:
+
+- `source=software_proof`
+- `proof_boundary=software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate`
+- `not_proven`
+- `remote_ready=false`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+
+Allowed degradation states are `auth_failed`, `cloud_poll_backoff`, `manual_takeover_required`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `command_sequence_regression`, `cloud_unreachable`, and `malformed_response`. The hosted adapter may expose `remote_readiness.degradation_state`, `retry_hint`, `safe_phone_copy`, `source=software_proof`, and the explicit false control fields above. Missing latest status still returns `state=status_missing`; stale status still returns `state=status_stale`.
+
+The adapter must not expose bearer tokens, Authorization headers, credentials, raw cloud payloads, DB/queue URLs, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details, local paths, tracebacks, checksums, complete artifacts, HIL/pass wording, delivery result, or delivery success. Any unsupported degradation state, unsafe copied field, `delivery_success=true`, `primary_actions_enabled=true`, `safe_to_control=true`, or `remote_ready=true` is overwritten or blocked so Start Delivery, Confirm Dropoff, Cancel, ACK/cursor fetch, retry/replay/resubmit, queue advancement, dropoff/cancel completion, delivery result, and primary robot actions remain disabled.
+
+This boundary is Docker/local software proof only. It is not real external cloud proof, true phone/browser proof, HIL, WAVE ROVER/UART proof, route/elevator field pass, delivery result, or delivery success.
+
 ## robot_diagnostics_cloud_unreachable_malformed_response_guard_summary
 
 `robot_diagnostics_cloud_unreachable_malformed_response_guard_summary` is the Robot diagnostics safe alias for the `cloud_unreachable_malformed_response_guard` gate. It consumes only phone-safe `remote_readiness` metadata for the degradation states `cloud_unreachable` and `malformed_response`; the evidence boundary must remain `software_proof_docker_cloud_unreachable_malformed_response_guard`.
