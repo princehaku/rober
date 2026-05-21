@@ -73,6 +73,10 @@ FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_DECISION_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_real_material_response_review_decision.json"
 )
+FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_real_material_response_review_handoff.json"
+)
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -11256,6 +11260,176 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, review_decision_text)
+
+    def test_field_evidence_real_material_response_review_handoff_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 响应复核交接只消费 safe summary，不提交 ACK/cursor、review/material/rerun 或任何控制动作。
+        self.assertIn("FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_TEXT", app)
+        self.assertIn("safeFieldEvidenceRealMaterialResponseReviewHandoffText", app)
+        self.assertIn("fieldEvidenceRealMaterialResponseReviewHandoffCandidate", app)
+        self.assertIn("fieldEvidenceRealMaterialResponseReviewHandoffFromStatus", app)
+        self.assertIn("renderFieldEvidenceRealMaterialResponseReviewHandoff", app)
+        self.assertIn("现场真实材料响应复核交接", app)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_real_material_response_review_handoff_summary",
+            app,
+        )
+        self.assertIn("field_evidence_real_material_response_review_handoff_summary", app)
+        self.assertIn("field_evidence_real_material_response_review_handoff?.summary", app)
+        self.assertIn("handoff_status", app)
+        self.assertIn("prior_review_decision", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("missing_materials", app)
+        self.assertIn("blocked_reason", app)
+        self.assertIn("rerun_guidance", app)
+        self.assertIn("false_flags", app)
+        self.assertIn("ready_for_field_owner_handoff_not_proven", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceRealMaterialResponseReviewHandoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "copyFieldEvidenceRealMaterialResponseReviewHandoffButton",
+            "downloadFieldEvidenceRealMaterialResponseReviewHandoffButton",
+            "submitFieldEvidenceRealMaterialResponseReviewHandoff",
+            "replayFieldEvidenceRealMaterialResponseReviewHandoff",
+            "reviewFieldEvidenceRealMaterialResponseReviewHandoff",
+            "materialFieldEvidenceRealMaterialResponseReviewHandoff",
+            "rerunFieldEvidenceRealMaterialResponseReviewHandoff",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # dedicated fixture 明确 handoff 只是现场 owner 后续动作，不解锁主操作也不等于通过。
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_real_material_response_review_handoff_summary"
+        ]
+        fallback = dedicated_fixture["field_evidence_real_material_response_review_handoff_summary"]
+        nested = dedicated_fixture["field_evidence_real_material_response_review_handoff"]["summary"]
+        self.assertEqual(summary["handoff_status"], "ready_for_field_owner_handoff_not_proven")
+        self.assertEqual(summary["prior_review_decision"], "accepted_for_later_review_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fallback["handoff_status"], "ready_for_field_owner_handoff_not_proven")
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["handoff_status"], "ready_for_field_owner_handoff_not_proven")
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "ready_for_field_owner_handoff_not_proven",
+            "prior_review_decision",
+            "next_required_evidence=real task_record",
+            "missing_materials=real task_record",
+            "blocked_reason=ready_for_field_owner_handoff_not_proven",
+            "rerun_guidance=rerun field evidence collection",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "not_proven",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn(
+            "software_proof_docker_field_evidence_real_material_response_review_handoff_gate",
+            dedicated_text,
+        )
+        self.assertIn("field_evidence_real_material_response_review_handoff", doc)
+        self.assertIn("现场真实材料响应复核交接", doc)
+        self.assertIn("ready_for_field_owner_handoff_not_proven", doc)
+        self.assertIn("review/material/rerun endpoint", doc)
+
+    def test_field_evidence_real_material_response_review_handoff_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        review_handoff_text = json.dumps(
+            {
+                "review_handoff":
+                    dedicated_fixture[
+                        "robot_diagnostics_field_evidence_real_material_response_review_handoff_summary"
+                    ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_real_material_response_review_handoff_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "field_evidence_real_material_response_review_handoff"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # review handoff fixture 只保留交接摘要，不泄漏 raw 材料、路径、凭证、底盘细节或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw packet",
+            "raw acceptance",
+            "raw backfill",
+            "raw request",
+            "raw dispatch",
+            "raw response",
+            "raw review",
+            "raw decision",
+            "raw handoff",
+            "raw result",
+            "raw execution",
+            "full execution pack",
+            "serial device",
+            "ttyusb",
+            "ttyacm",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "command replay",
+            "automatic resubmit",
+            "queue scheduling",
+            "execution scheduling",
+            "callback submission",
+            "request submission",
+            "review submission",
+            "handoff submission",
+            "result submission",
+            "acceptance submission",
+            "robot command",
+            "robot/internal",
+            "control authorization",
+            "field pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, review_handoff_text)
 
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))

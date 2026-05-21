@@ -1811,6 +1811,80 @@ completion, delivery result, delivery success, HIL, WAVE ROVER/UART proof,
 Objective 5 external proof, PR #5 reviewer resolution, or any primary robot
 action being enabled.
 
+## field_evidence_real_material_response_review_handoff
+
+`pc-tools/evidence/field_evidence_real_material_response_review_handoff.py`
+generates the canonical PC-only field-owner handoff gate after
+`field_evidence_real_material_response_review_decision.py`. It consumes only a
+sanitized review-decision artifact, review-decision summary, wrapper/nested
+JSON, or Robot diagnostics safe alias. It does not read raw field materials,
+ROS graph state, raw ROS topics, `/cmd_vel`, serial/UART or WAVE ROVER details,
+credentials, DB/queue URLs, local raw paths, checksums, tracebacks,
+complete/raw artifacts, real elevator systems, external cloud evidence, real
+phone/browser runtime, or PR #5 reviewer state.
+
+- Artifact schema:
+  `trashbot.field_evidence_real_material_response_review_handoff.v1`
+- Summary schema:
+  `trashbot.field_evidence_real_material_response_review_handoff_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_real_material_response_review_handoff_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_real_material_response_review_decision.v1` and
+  `trashbot.field_evidence_real_material_response_review_decision_summary.v1`
+  under
+  `software_proof_docker_field_evidence_real_material_response_review_decision_gate`.
+
+Allowed `handoff_status` values are
+`ready_for_field_owner_handoff_not_proven`,
+`needs_material_backfill_handoff_not_proven`,
+`rejected_unsafe_or_mixed_handoff_not_proven`, and
+`blocked_real_environment_unavailable_handoff_not_proven`.
+`ready_for_field_owner_handoff_not_proven` only means the sanitized review
+decision can be handed to a field owner with the same safe `evidence_ref`; it
+is not real field rerun proof, not true phone/browser proof, not Nav2/fixed
+route proof, not route/elevator field pass, not HIL, not WAVE ROVER/UART proof,
+not Objective 5 external proof, not PR #5 reviewer resolution, not delivery
+result, and not delivery success.
+
+The output always includes `handoff_status`, source `review_decision`,
+`source_review_decision`, safe `evidence_ref`, `same_evidence_ref_required=true`,
+`field_owner_handoff`, `next_required_evidence`,
+`missing_required_materials`, `blocked_reason`, `rerun_backfill_guidance`,
+`safe_phone_copy`, `safe_copy`, `blocked_claims`, `source=software_proof`,
+`status=not_proven`, `safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_real_material_response_review_handoff_gate`.
+The summary mirrors the artifact and is the intended read-only consumer surface
+for Robot diagnostics and mobile/web follow-through.
+
+Handoff mapping is fail-closed. A supported, safe review-decision source with
+matched safe `evidence_ref`, `same_evidence_ref_required=true`,
+`source=software_proof`, `not_proven`, and all action flags false maps
+`accepted_for_later_review_not_proven` to
+`ready_for_field_owner_handoff_not_proven`,
+`needs_material_backfill_not_proven` to
+`needs_material_backfill_handoff_not_proven`,
+`rejected_unsafe_or_mixed_response_not_proven` to
+`rejected_unsafe_or_mixed_handoff_not_proven`, and
+`blocked_real_environment_unavailable_not_proven` or
+`blocked_missing_field_evidence_real_material_response_intake_not_proven` to
+`blocked_real_environment_unavailable_handoff_not_proven`.
+Missing source, bad JSON, missing software-proof/not-proven fields, mismatched
+evidence refs, weak same-ref typing, unsupported schema/boundary, unknown
+review-decision status, unsafe copy, raw paths, credentials, ROS topic text,
+`/cmd_vel`, serial/UART or WAVE ROVER text, checksum text,
+complete/raw artifact text, traceback text, success/control wording,
+Objective 5 external proof claims, PR #5 resolution claims,
+`safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` also maps to a blocked or rejected handoff.
+
+This contract is software proof only. A ready field-owner handoff means a
+sanitized request can be routed to field owners; it does not prove a real field
+pass, real delivery result, true phone/browser proof, HIL, WAVE ROVER/UART
+proof, Objective 5 external proof, PR #5 resolution, or any primary robot action
+being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

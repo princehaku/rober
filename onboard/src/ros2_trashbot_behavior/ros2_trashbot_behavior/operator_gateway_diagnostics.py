@@ -479,6 +479,15 @@ FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_DECISION_VALUES = (
     "blocked_real_environment_unavailable_not_proven",
     "blocked_missing_field_evidence_real_material_response_intake_not_proven",
 )
+FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_SCHEMA = (
+    "trashbot.field_evidence_real_material_response_review_handoff.v1"
+)
+FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_SUMMARY_SCHEMA = (
+    "trashbot.field_evidence_real_material_response_review_handoff_summary.v1"
+)
+FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_GATE = (
+    "software_proof_docker_field_evidence_real_material_response_review_handoff_gate"
+)
 ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SCHEMA = (
     "trashbot.route_task_field_retest_evidence_dispatch.v1"
 )
@@ -3923,6 +3932,43 @@ def _field_evidence_real_material_response_review_decision_not_proven(
         "cursor_advance_or_persistence",
         "hardware_transport_control",
         "delivery_success",
+    )
+    values = []
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _field_evidence_real_material_response_review_handoff_not_proven(
+    handoff=None,
+    summary_fragment=None,
+):
+    # handoff 只把复核后续责任交给现场 owner；Robot 不能把它解释为现场通过。
+    source_values = []
+    for item in (handoff, summary_fragment):
+        if isinstance(item, dict) and isinstance(item.get("not_proven"), list):
+            source_values.extend(item.get("not_proven"))
+    required = (
+        "field_evidence_real_material_response_review_handoff_only",
+        "review_handoff_not_delivery_success",
+        "field_rerun_not_executed_by_robot",
+        "real_route_completion_not_verified",
+        "real_field_task_record_not_verified",
+        "real_nav2_fixed_route_runtime_not_verified",
+        "real_elevator_operation_not_verified",
+        "real_dropoff_cancel_completion_not_verified",
+        "real_delivery_result_not_verified",
+        "true_phone_browser_evidence_not_verified",
+        "real_hardware_runtime_not_verified",
+        "hil_pass_not_verified",
+        "hardware_transport_not_verified",
+        "o5_external_proof_not_verified",
+        "pr5_review_thread_not_resolved",
+        "safe_to_control_false",
+        "primary_actions_enabled_false",
+        "delivery_success_false",
     )
     values = []
     for item in list(source_values) + list(required):
@@ -9763,6 +9809,71 @@ def _default_field_evidence_real_material_response_review_decision_summary(
         "robot_compatible_summary": {"status": "blocked", "reason": reason},
         "boundary": FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_DECISION_GATE,
         "not_proven": _field_evidence_real_material_response_review_decision_not_proven(),
+        "metadata_only": True,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+    }
+
+
+def _default_field_evidence_real_material_response_review_handoff_summary(
+    path,
+    handoff_status="blocked_missing_field_evidence_real_material_response_review_handoff",
+    read_error="",
+):
+    # 缺省态保留 handoff gate 的软件证明边界，不把缺材料变成可控任务状态。
+    safe_copy = (
+        "Field evidence real material response review handoff is metadata-only; "
+        "source=software_proof; not_proven; safe_to_control=false; "
+        "delivery_success=false; primary_actions_enabled=false."
+    )
+    reason = read_error or (
+        "field evidence real material response review handoff is not configured"
+    )
+    return {
+        "schema": FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "source_review_decision": "",
+        "source_review_decision_status": "blocked",
+        "handoff_status": {
+            "status": handoff_status,
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "handoff_decision": "blocked_missing_real_material_response_review_handoff_not_proven",
+        "same_evidence_ref_required": True,
+        "same_evidence_ref_status": {
+            "status": "blocked",
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "owner_handoff": [],
+        "next_required_evidence": [],
+        "blocker_summary": "",
+        "rerun_guidance": [],
+        "reconciliation_guidance": [],
+        "robot_diagnostics_summary": {"status": "blocked", "reason": reason},
+        "robot_compatible_summary": {"status": "blocked", "reason": reason},
+        "boundary": FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_GATE,
+        "not_proven": _field_evidence_real_material_response_review_handoff_not_proven(),
         "metadata_only": True,
         "safe_to_control": False,
         "delivery_success": False,
@@ -16923,6 +17034,20 @@ def _field_evidence_real_material_response_review_decision_source_contract(value
     return source_schema, source_boundary
 
 
+def _field_evidence_real_material_response_review_handoff_source_contract(value):
+    # review handoff 只能消费本轮 handoff canonical summary 或 wrapper，不能误接 review-decision。
+    value = value if isinstance(value, dict) else {}
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema")
+            or FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _field_evidence_rerun_execution_result_acceptance_packet_has_unsafe_fields(value):
     # acceptance packet alias 不能透出 raw task/log/route/elevator/packet、路径、凭证或控制语义。
     unsafe_key_fragments = (
@@ -17440,6 +17565,139 @@ def _field_evidence_real_material_response_review_decision_has_unsafe_fields(val
         "oss_secret",
         "local_path",
         "/tmp/",
+    )
+    return any(marker in text for marker in unsafe_text_markers) or (
+        _route_task_field_retest_execution_pack_has_success_wording(value)
+    )
+
+
+def _field_evidence_real_material_response_review_handoff_has_unsafe_fields(value):
+    # handoff 只允许 owner 交接摘要；raw 复核材料、路径、ACK/cursor 和控制路由必须被拦截。
+    unsafe_key_fragments = (
+        "raw",
+        "artifact_path",
+        "artifact_ref",
+        "raw_diagnostics",
+        "raw_review",
+        "review_material",
+        "diagnostics_raw",
+        "local_path",
+        "path",
+        "checksum",
+        "credential",
+        "secret",
+        "token",
+        "authorization",
+        "bearer",
+        "ros_topic",
+        "topic",
+        "serial",
+        "uart",
+        "baud",
+        "wave_rover",
+        "cmd_vel",
+        "control",
+        "ack_cursor",
+        "ack_post",
+        "ack_state",
+        "ack_route",
+        "cursor",
+        "cursor_route",
+        "traceback",
+        "db_url",
+        "queue_url",
+        "oss",
+        "complete_artifact",
+        "complete_diagnostics",
+    )
+    safe_keys = {
+        "schema",
+        "schema_version",
+        "capability",
+        "source",
+        "source_schema",
+        "source_schema_version",
+        "source_evidence_boundary",
+        "source_review_decision",
+        "source_review_decision_status",
+        "evidence_boundary",
+        "boundary",
+        "safe_evidence_ref",
+        "evidence_ref",
+        "handoff_status",
+        "status",
+        "status_summary",
+        "verdict",
+        "reason",
+        "handoff_decision",
+        "review_decision",
+        "decision",
+        "same_evidence_ref_required",
+        "same_evidence_ref_status",
+        "owner_handoff",
+        "next_required_evidence",
+        "blocker_summary",
+        "rerun_guidance",
+        "reconciliation_guidance",
+        "robot_diagnostics_summary",
+        "robot_compatible_summary",
+        "safe_copy",
+        "safe_phone_copy",
+        "not_proven",
+        "safe_to_control",
+        "delivery_success",
+        "primary_actions_enabled",
+        "metadata_only",
+        "boundary_flags",
+        "control_entrypoint_enabled",
+        "field_evidence_real_material_response_review_handoff_summary",
+        "robot_diagnostics_field_evidence_real_material_response_review_handoff_summary",
+        "diagnostics",
+        "summary",
+        "diagnostics_summary",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text not in safe_keys and any(
+                fragment in key_text for fragment in unsafe_key_fragments
+            ):
+                return True
+            if _field_evidence_real_material_response_review_handoff_has_unsafe_fields(
+                item
+            ):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _field_evidence_real_material_response_review_handoff_has_unsafe_fields(
+                item
+            )
+            for item in value
+        )
+    text = str(value or "").strip().lower()
+    unsafe_text_markers = (
+        "/cmd_vel",
+        "ros_topic",
+        "serial",
+        "uart",
+        "wave rover",
+        "wave_rover",
+        "bearer",
+        "authorization",
+        "credential",
+        "secret",
+        "token",
+        "traceback",
+        "checksum",
+        "db_url",
+        "queue_url",
+        "oss_access_key",
+        "oss_secret",
+        "local_path",
+        "/tmp/",
+        "ack/",
+        "cursor/",
     )
     return any(marker in text for marker in unsafe_text_markers) or (
         _route_task_field_retest_execution_pack_has_success_wording(value)
@@ -39020,6 +39278,382 @@ def summarize_field_evidence_real_material_response_review_decision(source):
     return summary
 
 
+def summarize_field_evidence_real_material_response_review_handoff(source):
+    """构建 field evidence real material response review handoff 的 Robot-safe 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        handoff = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_field_evidence_real_material_response_review_handoff_summary(
+            source_path,
+            read_error=(
+                "field evidence real material response review handoff is not configured"
+            ),
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "handoff_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": "field evidence real material response review handoff summary missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "real material response review handoff summary missing",
+                    },
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                handoff = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "handoff_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            "failed reading field evidence real material response "
+                            f"review handoff: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "real material response review handoff JSON read error",
+                    },
+                }
+            )
+            return summary
+
+    summary = _default_field_evidence_real_material_response_review_handoff_summary(
+        source_path,
+        read_error="field evidence real material response review handoff is not configured",
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(handoff, dict):
+        summary["handoff_status"] = {
+            "status": "read_error",
+            "verdict": "not_proven",
+            "reason": "field evidence real material response review handoff JSON must be an object",
+        }
+        summary["robot_diagnostics_summary"] = {
+            "status": "blocked",
+            "reason": "real material response review handoff JSON shape is invalid",
+        }
+        return summary
+
+    diagnostics = handoff.get("diagnostics") if isinstance(handoff.get("diagnostics"), dict) else {}
+    summary_fragment = (
+        handoff
+        if str(handoff.get("schema") or "")
+        == FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_SUMMARY_SCHEMA
+        else {}
+    )
+    if not summary_fragment:
+        for candidate in (
+            handoff.get("field_evidence_real_material_response_review_handoff_summary"),
+            handoff.get(
+                "robot_diagnostics_field_evidence_real_material_response_review_handoff_summary"
+            ),
+            handoff.get("robot_compatible_summary"),
+            handoff.get("summary"),
+            handoff.get("diagnostics_summary"),
+            diagnostics.get("field_evidence_real_material_response_review_handoff_summary"),
+            diagnostics.get(
+                "robot_diagnostics_field_evidence_real_material_response_review_handoff_summary"
+            ),
+            diagnostics.get("summary"),
+            diagnostics.get("diagnostics_summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+
+    contract_source = summary_fragment if summary_fragment else handoff
+    source_schema, source_boundary = (
+        _field_evidence_real_material_response_review_handoff_source_contract(
+            contract_source
+        )
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": contract_source.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+        }
+    )
+    if not summary_fragment:
+        summary["handoff_status"] = {
+            "status": "missing_summary",
+            "verdict": "not_proven",
+            "reason": "field evidence real material response review handoff lacks a safe canonical summary",
+        }
+        summary["robot_diagnostics_summary"] = {
+            "status": "blocked",
+            "reason": "missing safe real material response review handoff summary",
+        }
+        return summary
+
+    status_source = summary_fragment.get("handoff_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("status_summary")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    handoff_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or summary_fragment.get("handoff_status")
+        or summary_fragment.get("status")
+        or "blocked"
+    )
+    verdict = _redact_route_task_rehearsal_text(
+        status_source.get("verdict") or summary_fragment.get("verdict") or "not_proven"
+    )
+    reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or summary_fragment.get("reason")
+        or "field evidence real material response review handoff consumed as software_proof"
+    )
+    safe_copy = _safe_pc_route_debug_value(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or (
+            "Field evidence real material response review handoff is metadata-only; "
+            "source=software_proof; not_proven; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    safe_copy_text = (
+        json.dumps(safe_copy, ensure_ascii=False, sort_keys=True)
+        if isinstance(safe_copy, (dict, list))
+        else str(safe_copy or "")
+    )
+    if "delivery_success=false" not in safe_copy_text:
+        # handoff 文案必须重复 false flags，避免 owner-handoff 被 UI 当成可执行授权。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+    source_ref = str(handoff.get("safe_evidence_ref") or handoff.get("evidence_ref") or "").strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or ""
+    ).strip()
+    same_ref_source = (
+        summary_fragment.get("same_evidence_ref_status")
+        if isinstance(summary_fragment.get("same_evidence_ref_status"), dict)
+        else {}
+    )
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    source_review_decision_status = summary_fragment.get("source_review_decision_status")
+    if not isinstance(source_review_decision_status, (dict, str)):
+        source_review_decision_status = "blocked"
+    summary.update(
+        {
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or EVIDENCE_SOURCE_SOFTWARE
+            ),
+            "source_review_decision": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source_review_decision")
+                or summary_fragment.get("review_decision")
+                or "blocked_missing_field_evidence_real_material_response_review_decision_not_proven"
+            ),
+            "source_review_decision_status": _safe_pc_route_debug_value(
+                source_review_decision_status
+            ),
+            "handoff_status": {
+                "status": handoff_status or "blocked",
+                "verdict": verdict or "not_proven",
+                "reason": reason,
+            },
+            "handoff_decision": _redact_route_task_rehearsal_text(
+                summary_fragment.get("handoff_decision")
+                or summary_fragment.get("decision")
+                or "needs_real_material_owner_handoff_not_proven"
+            ),
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_ref or source_ref
+            ),
+            "same_evidence_ref_required": (
+                summary_fragment.get("same_evidence_ref_required") is True
+            ),
+            "same_evidence_ref_status": _safe_pc_route_debug_dict(same_ref_source)
+            or {
+                "status": handoff_status or "blocked",
+                "verdict": "not_proven",
+                "reason": "real material response review handoff lacks same evidence_ref status",
+            },
+            "owner_handoff": _safe_route_task_rehearsal_list(
+                summary_fragment.get("owner_handoff")
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "blocker_summary": _redact_route_task_rehearsal_text(
+                summary_fragment.get("blocker_summary") or ""
+            ),
+            "rerun_guidance": _safe_route_task_rehearsal_list(
+                summary_fragment.get("rerun_guidance")
+            ),
+            "reconciliation_guidance": _safe_route_task_rehearsal_list(
+                summary_fragment.get("reconciliation_guidance")
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": handoff_status or "blocked",
+                "safe_copy": safe_copy_text,
+                "safe_phone_copy": safe_copy_text,
+            },
+            "not_proven": _field_evidence_real_material_response_review_handoff_not_proven(
+                handoff,
+                summary_fragment,
+            ),
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+            "read_error": "",
+        }
+    )
+    required_summary_fields = (
+        bool(summary["safe_evidence_ref"]),
+        summary["same_evidence_ref_required"] is True,
+        bool(summary["same_evidence_ref_status"]),
+        bool(summary["source_review_decision"]),
+        bool(summary["source_review_decision_status"]),
+        bool(summary["handoff_decision"]),
+        bool(summary["owner_handoff"]),
+        bool(summary["next_required_evidence"]),
+        bool(summary["blocker_summary"]),
+    )
+    unsafe_material = any(
+        _field_evidence_real_material_response_review_handoff_has_unsafe_fields(item)
+        for item in (
+            status_source,
+            source_review_decision_status,
+            same_ref_source,
+            summary["owner_handoff"],
+            summary["next_required_evidence"],
+            summary["blocker_summary"],
+            summary["rerun_guidance"],
+            summary["reconciliation_guidance"],
+            robot_summary,
+            safe_copy,
+            safe_copy_text,
+        )
+    )
+    if (
+        source_schema != FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_SCHEMA
+        or source_boundary != FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_GATE
+    ):
+        summary["handoff_status"] = {
+            "status": "blocked_unsupported_field_evidence_real_material_response_review_handoff",
+            "verdict": "not_proven",
+            "reason": "field evidence real material response review handoff schema or boundary is unsupported",
+        }
+        summary["handoff_decision"] = (
+            "blocked_missing_real_material_response_review_handoff_not_proven"
+        )
+        summary["robot_diagnostics_summary"] = {
+            "status": "blocked",
+            "reason": "unsupported real material response review handoff schema or boundary",
+        }
+        return summary
+    if summary["source"] != EVIDENCE_SOURCE_SOFTWARE or verdict != "not_proven":
+        summary["handoff_status"] = {
+            "status": "blocked_unsupported_field_evidence_real_material_response_review_handoff",
+            "verdict": "not_proven",
+            "reason": "real material response review handoff must remain software_proof and not_proven",
+        }
+        summary["handoff_decision"] = (
+            "blocked_missing_real_material_response_review_handoff_not_proven"
+        )
+        return summary
+    if not all(required_summary_fields):
+        summary["handoff_status"] = {
+            "status": "blocked_missing_field_evidence_real_material_response_review_handoff_materials",
+            "verdict": "not_proven",
+            "reason": "real material response review handoff is missing required safe metadata",
+        }
+        summary["handoff_decision"] = (
+            "blocked_missing_real_material_response_review_handoff_not_proven"
+        )
+        summary["robot_diagnostics_summary"] = {
+            "status": "blocked",
+            "reason": "missing required real material response review handoff fields",
+        }
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary["handoff_status"] = {
+            "status": "evidence_ref_mismatch_field_evidence_real_material_response_review_handoff_blocked",
+            "verdict": "not_proven",
+            "reason": "real material response review handoff evidence_ref values do not match",
+        }
+        summary["handoff_decision"] = (
+            "blocked_missing_real_material_response_review_handoff_not_proven"
+        )
+        summary["same_evidence_ref_status"] = {
+            "status": "mismatch",
+            "verdict": "not_proven",
+            "reason": "same evidence_ref mismatch",
+        }
+        return summary
+    boundary_flags = _safe_pc_route_debug_dict(summary_fragment.get("boundary_flags")) or {}
+    if (
+        summary_fragment.get("safe_to_control") is not False
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or bool(boundary_flags.get("control_entrypoint_enabled"))
+        or unsafe_material
+        or _field_evidence_real_material_response_review_handoff_has_unsafe_fields(
+            handoff
+        )
+        or _field_evidence_real_material_response_review_handoff_has_unsafe_fields(
+            summary_fragment
+        )
+        or _field_evidence_real_material_response_review_handoff_has_unsafe_fields(
+            robot_summary
+        )
+    ):
+        blocked_copy = (
+            "Field evidence real material response review handoff was blocked because "
+            "summary fields could expose raw artifacts, review materials, control data, "
+            "paths, credentials, ACK/cursor routes, or success wording; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+        summary["handoff_status"] = {
+            "status": "blocked_unsafe_field_evidence_real_material_response_review_handoff",
+            "verdict": "not_proven",
+            "reason": "unsafe raw artifact, review material, control, path, credential, ACK/cursor, or success material",
+        }
+        summary["handoff_decision"] = (
+            "blocked_unsafe_real_material_response_review_handoff_not_proven"
+        )
+        summary["owner_handoff"] = []
+        summary["next_required_evidence"] = []
+        summary["robot_diagnostics_summary"] = {
+            "status": "blocked",
+            "safe_copy": blocked_copy,
+            "safe_phone_copy": blocked_copy,
+        }
+        summary["safe_copy"] = blocked_copy
+        summary["safe_phone_copy"] = blocked_copy
+    return summary
+
+
 def summarize_route_task_field_retest_result_callback_review_handoff(source):
     """构建 route-task field retest result callback review handoff 的 metadata-only diagnostics 摘要。"""
     source_path = ""
@@ -57084,6 +57718,7 @@ def build_diagnostics_payload(
     field_evidence_real_material_request_dispatch_ref="",
     field_evidence_real_material_response_intake_ref="",
     field_evidence_real_material_response_review_decision_ref="",
+    field_evidence_real_material_response_review_handoff_ref="",
     route_task_field_retest_evidence_dispatch_ref="",
     route_task_field_retest_callback_intake_ref="",
     route_task_field_retest_callback_review_decision_ref="",
@@ -57197,6 +57832,32 @@ def build_diagnostics_payload(
         else latest_status.get("field_evidence_real_material_response_review_decision")
         if isinstance(
             latest_status.get("field_evidence_real_material_response_review_decision"),
+            dict,
+        )
+        else {}
+    )
+    field_evidence_real_material_response_review_handoff_preserved_source = (
+        latest_status.get(
+            "robot_diagnostics_field_evidence_real_material_response_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_field_evidence_real_material_response_review_handoff_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "field_evidence_real_material_response_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "field_evidence_real_material_response_review_handoff_summary"
+            ),
+            dict,
+        )
+        else latest_status.get("field_evidence_real_material_response_review_handoff")
+        if isinstance(
+            latest_status.get("field_evidence_real_material_response_review_handoff"),
             dict,
         )
         else {}
@@ -59966,6 +60627,19 @@ def build_diagnostics_payload(
         "field_evidence_real_material_response_review_decision_copy",
         None,
     )
+    latest_status.pop("field_evidence_real_material_response_review_handoff", None)
+    latest_status.pop(
+        "field_evidence_real_material_response_review_handoff_summary",
+        None,
+    )
+    latest_status.pop(
+        "robot_diagnostics_field_evidence_real_material_response_review_handoff_summary",
+        None,
+    )
+    latest_status.pop(
+        "field_evidence_real_material_response_review_handoff_copy",
+        None,
+    )
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -61299,6 +61973,55 @@ def build_diagnostics_payload(
             field_evidence_real_material_response_review_decision_source
         )
     )
+    field_evidence_real_material_response_review_handoff_status_source = (
+        field_evidence_real_material_response_review_handoff_preserved_source
+        if isinstance(
+            field_evidence_real_material_response_review_handoff_preserved_source,
+            dict,
+        )
+        and field_evidence_real_material_response_review_handoff_preserved_source
+        else diagnostics_source.get(
+            "robot_diagnostics_field_evidence_real_material_response_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_field_evidence_real_material_response_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "field_evidence_real_material_response_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "field_evidence_real_material_response_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("field_evidence_real_material_response_review_handoff")
+        if isinstance(
+            diagnostics_source.get("field_evidence_real_material_response_review_handoff"),
+            dict,
+        )
+        else {}
+    )
+    field_evidence_real_material_response_review_handoff_source = (
+        field_evidence_real_material_response_review_handoff_ref
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_HANDOFF_SUMMARY",
+            "",
+        )
+        or field_evidence_real_material_response_review_handoff_status_source
+    )
+    field_evidence_real_material_response_review_handoff_summary = (
+        summarize_field_evidence_real_material_response_review_handoff(
+            field_evidence_real_material_response_review_handoff_source
+        )
+    )
     route_task_field_retest_evidence_dispatch_source = (
         route_task_field_retest_evidence_dispatch_ref
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH", "")
@@ -62292,6 +63015,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_field_evidence_real_material_response_review_decision_summary=(
             field_evidence_real_material_response_review_decision_summary
+        ),
+        field_evidence_real_material_response_review_handoff=(
+            field_evidence_real_material_response_review_handoff_summary
+        ),
+        field_evidence_real_material_response_review_handoff_summary=(
+            field_evidence_real_material_response_review_handoff_summary
+        ),
+        robot_diagnostics_field_evidence_real_material_response_review_handoff_summary=(
+            field_evidence_real_material_response_review_handoff_summary
         ),
         route_task_field_retest_evidence_dispatch=route_task_field_retest_evidence_dispatch_summary,
         route_task_field_retest_evidence_dispatch_summary=route_task_field_retest_evidence_dispatch_summary,

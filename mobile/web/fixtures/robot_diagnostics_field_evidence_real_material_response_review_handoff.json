@@ -1,0 +1,145 @@
+{
+  "robot_diagnostics_field_evidence_real_material_response_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_real_material_response_review_handoff_summary.v1",
+    "schema_version": 1,
+    "response_review_handoff_schema": "trashbot.field_evidence_real_material_response_review_handoff.v1",
+    "source_review_decision_schema": "trashbot.field_evidence_real_material_response_review_decision_summary.v1",
+    "source_alias": "robot_diagnostics_field_evidence_real_material_response_review_handoff_summary",
+    "source": "software_proof",
+    "handoff_status": "ready_for_field_owner_handoff_not_proven",
+    "prior_review_decision": "accepted_for_later_review_not_proven",
+    "safe_evidence_ref": "field_evidence_real_material_response_review_handoff_fixture_20260521_0001",
+    "owner_handoff": [
+      "owner_handoff=field owner must keep the same safe evidence_ref",
+      "owner_handoff=field owner backfills real task_record and route/elevator materials",
+      "owner_handoff=product review waits for real materials before any proof claim"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real task_record",
+      "next_required_evidence=real nav2_fixed_route_runtime_log",
+      "next_required_evidence=real route_completion_signal",
+      "next_required_evidence=real elevator_door_floor_evidence",
+      "next_required_evidence=real human_assistance_note",
+      "next_required_evidence=real dropoff_cancel_completion",
+      "next_required_evidence=real delivery_result",
+      "next_required_evidence=true_phone_browser_evidence"
+    ],
+    "missing_materials": [
+      "missing_materials=real task_record",
+      "missing_materials=real route_completion_signal",
+      "missing_materials=real elevator_door_floor_evidence",
+      "missing_materials=real dropoff_cancel_completion",
+      "missing_materials=true_phone_browser_evidence"
+    ],
+    "blocked_reason": "blocked_reason=ready_for_field_owner_handoff_not_proven until same safe evidence_ref real materials arrive",
+    "rerun_guidance": [
+      "rerun_guidance=rerun field evidence collection with the same safe evidence_ref",
+      "rerun_guidance=backfill only phone-safe summaries after real materials arrive",
+      "rerun_guidance=rerun review decision before claiming any field proof"
+    ],
+    "false_flags": [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "true_phone_browser_evidence=false",
+      "real_route_elevator_material=false"
+    ],
+    "safe_phone_copy": "现场真实材料响应复核交接：ready_for_field_owner_handoff_not_proven 仅表示交接给现场 owner 继续回填；真实路线/电梯、真实手机、投放/取消完成和 delivery_result 仍未证明。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_real_material_response_review_handoff_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "real_field_rerun",
+      "true_phone_browser_proof",
+      "nav2_fixed_route_proof",
+      "pr5_thread_resolved",
+      "dropoff_completion",
+      "cancel_completion",
+      "delivery_result",
+      "delivery_success"
+    ]
+  },
+  "field_evidence_real_material_response_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_real_material_response_review_handoff_summary.v1",
+    "source": "software_proof",
+    "handoff_status": "ready_for_field_owner_handoff_not_proven",
+    "prior_review_decision": "accepted_for_later_review_not_proven",
+    "safe_evidence_ref": "field_evidence_real_material_response_review_handoff_fixture_20260521_0001",
+    "owner_handoff": [
+      "owner_handoff=fallback summary keeps field owner handoff only"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real task_record",
+      "next_required_evidence=true_phone_browser_evidence"
+    ],
+    "missing_materials": [
+      "missing_materials=real route/elevator evidence"
+    ],
+    "blocked_reason": "blocked_reason=not enough real materials for proof",
+    "rerun_guidance": [
+      "rerun_guidance=rerun/backfill after real materials arrive"
+    ],
+    "false_flags": [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false"
+    ],
+    "safe_phone_copy": "fallback review-handoff summary remains read-only；source=software_proof / not_proven。",
+    "evidence_boundary": "software_proof_docker_field_evidence_real_material_response_review_handoff_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "true_phone_browser_proof",
+      "delivery_success"
+    ]
+  },
+  "field_evidence_real_material_response_review_handoff": {
+    "summary": {
+      "schema": "trashbot.field_evidence_real_material_response_review_handoff_summary.v1",
+      "source": "software_proof",
+      "handoff_status": "ready_for_field_owner_handoff_not_proven",
+      "prior_review_decision": "accepted_for_later_review_not_proven",
+      "safe_evidence_ref": "field_evidence_real_material_response_review_handoff_fixture_20260521_0001",
+      "owner_handoff": [
+        "owner_handoff=nested safe summary only"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=real delivery_result"
+      ],
+      "missing_materials": [
+        "missing_materials=true_phone_browser_evidence"
+      ],
+      "blocked_reason": "blocked_reason=nested safe summary remains not_proven",
+      "rerun_guidance": [
+        "rerun_guidance=nested safe summary requires later backfill"
+      ],
+      "false_flags": [
+        "safe_to_control=false",
+        "delivery_success=false",
+        "primary_actions_enabled=false"
+      ],
+      "safe_phone_copy": "nested safe summary keeps review handoff read-only。",
+      "evidence_boundary": "software_proof_docker_field_evidence_real_material_response_review_handoff_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

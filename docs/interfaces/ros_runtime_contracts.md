@@ -365,3 +365,20 @@ Allowed Robot-visible fields are limited to sanitized review-decision metadata: 
 Allowed `review_decision` values are `accepted_for_later_review_not_proven`, `needs_material_backfill_not_proven`, `rejected_unsafe_or_mixed_response_not_proven`, `blocked_real_environment_unavailable_not_proven`, and `blocked_missing_field_evidence_real_material_response_intake_not_proven`. `accepted_for_later_review_not_proven` only means the sanitized response can continue to a later human review; it is not route/elevator field pass, delivery result, delivery success, true phone/browser proof, Nav2 proof, HIL pass, WAVE ROVER/UART proof, O5 external proof, or PR #5 reviewer resolution.
 
 The alias must not expose raw materials, raw artifact data, raw diagnostics, unsafe material, mismatched `evidence_ref`, success/control claims, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, DB/queue URLs, OSS secrets, local paths, checksum values, tracebacks, ACK/cursor state, HIL/pass wording, dropoff/cancel completion, delivery result success, or complete artifact bodies. Missing canonical summary, unsupported schema or boundary, unsupported decision value, same-`safe_evidence_ref` mismatch, missing review status, missing decision reasons, missing owner handoff, missing next required evidence, missing blocked claims, enabled action flag, unsafe copy, raw artifact/diagnostics marker, local path, checksum, credential, DB/queue URL, traceback marker, HIL/pass wording, or hardware/control wording keeps the summary blocked/not_proven and leaves task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
+
+## robot_diagnostics_field_evidence_real_material_response_review_handoff_summary
+
+`robot_diagnostics_field_evidence_real_material_response_review_handoff_summary` is the Robot diagnostics safe alias for the `field_evidence_real_material_response_review_handoff` gate. It consumes the canonical sanitized summary schema `trashbot.field_evidence_real_material_response_review_handoff_summary.v1`, a compatible artifact wrapper that contains that summary, or the same summary nested under `latest_status.diagnostics`; the source schema must point back to `trashbot.field_evidence_real_material_response_review_handoff.v1` and the evidence boundary must remain `software_proof_docker_field_evidence_real_material_response_review_handoff_gate`.
+
+The alias is metadata-only and fail-closed:
+
+- `source=software_proof`
+- `status=not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `metadata_only=true`
+
+Allowed Robot-visible fields are limited to sanitized review-handoff metadata: `safe_evidence_ref`, `source_review_decision`, `source_review_decision_status`, `handoff_status`, `handoff_decision`, `same_evidence_ref_required`, `same_evidence_ref_status`, `owner_handoff`, `next_required_evidence`, `blocker_summary`, `rerun_guidance`, `reconciliation_guidance`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
+
+The alias must not expose raw artifacts, raw review-decision materials, raw diagnostics, unsafe material, mismatched `evidence_ref`, success/control claims, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, DB/queue URLs, OSS secrets, local paths, checksum values, tracebacks, ACK/cursor/control routes, HIL/pass wording, field-pass wording, delivery result success, or complete artifact bodies. Missing canonical summary, unsupported schema or boundary, same-`safe_evidence_ref` mismatch, missing source review decision status, missing owner handoff, missing next required evidence, missing blocker summary, enabled action flag, unsafe copy, raw artifact/review marker, local path, checksum, credential, DB/queue URL, traceback marker, ACK/cursor route, HIL/pass wording, or hardware/control wording keeps the summary blocked/not_proven and leaves task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.

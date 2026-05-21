@@ -8,7 +8,25 @@
 
 ## 2026-05-21 系列
 
-更新时间：2026-05-21 16:17 Asia/Shanghai。
+更新时间：2026-05-21 17:58 Asia/Shanghai。
+
+### 2026-05-21 17-18｜field-evidence-real-material-response-review-handoff｜field-owner real-material response review handoff software proof
+
+本轮 `sprints/2026.05.21_17-18_field-evidence-real-material-response-review-handoff/` 执行 `field_evidence_real_material_response_review_handoff` epic closeout。Objective 5 仍约 68%，是当前数值最低 Objective，但真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、production app/device 或 true phone/browser external proof 仍不可用；Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending，comment `3269642220` 只是 software-proof reply publication，不是 reviewer resolution。本轮选择 O2/O3/O4 field-owner real-material response review handoff，是为了把上一轮 review decision 转成 owner handoff、next required evidence、missing materials、blocked reason、rerun/backfill guidance 和 safe copy，而不是宣称真实现场通过。
+
+Autonomy worker 新增 `trashbot.field_evidence_real_material_response_review_handoff.v1` / `trashbot.field_evidence_real_material_response_review_handoff_summary.v1` PC gate，消费 prior review-decision artifact / summary / Robot diagnostics safe alias，输出 `ready_for_field_owner_handoff_not_proven`、`needs_material_backfill_handoff_not_proven`、`rejected_unsafe_or_mixed_handoff_not_proven`、`blocked_real_environment_unavailable_handoff_not_proven` 或 `blocked_missing_review_decision_not_proven`。Robot worker 新增 `robot_diagnostics_field_evidence_real_material_response_review_handoff_summary` safe alias，只输出 safe `evidence_ref`、handoff status、owner handoff、next required evidence、missing materials、blocked reason 和 safe copy，并修复 import missing 与 unsafe WAVE ROVER/UART wording leak。Full-Stack worker 在 mobile/web 新增只读 review-handoff panel、fixture、tests 和 docs，保持 Start Delivery / Confirm Dropoff / Cancel disabled。Hardware read-only consultation 已读 `docs/vendor/VENDOR_INDEX.md`、`docs/product/production_hardware_boundary.md` 和 WAVE ROVER vendor files，确认本 sprint 只能声明 software-proof / not_proven，不能声明真实 2D LiDAR/ToF、WAVE ROVER/UART/HIL、route/elevator field pass、delivery success 或 PR #5 resolution。
+
+证据边界保持 `software_proof_docker_field_evidence_real_material_response_review_handoff_gate`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。本轮 is not real field pass、not true phone/browser proof、not HIL、not WAVE ROVER/UART proof、not O5 external proof、not PR #5 `PRRT_kwDOSWB9286CJ3tX` resolution、not delivery result、not delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 hardware bridge、真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` still unresolved/material pending，comment `3269642220` not reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只把 field-owner response review decision 转成 review handoff；handoff 只表示下一 owner 知道应收集哪些真实材料，不是真实 task record、真实电梯、dropoff/cancel completion、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮 review handoff 明确要求真实 `task_record`、`nav2_fixed_route_runtime_log` 和 `route_completion_signal` 在同一 safe `evidence_ref` 下回填，但没有真实路线采集、Nav2/fixed-route 实跑、route completion signal、现场 task_record 或上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读 review-handoff panel 让现场 owner 和支持同学能看到 safe `evidence_ref`、handoff status、owner handoff、next required evidence、missing materials、blocked reason 和 fail-closed flags；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true_phone_browser_evidence 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_field_evidence_real_material_response_review_handoff_gate` 只证明 Docker/local review-handoff metadata 可见性；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 6 tests in 0.108s OK`；CLI help、required `rg` 与 scoped `git diff --check` 通过。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 260 tests in 0.947s OK`；required `rg` 与 scoped `git diff --check` 通过；修复 import missing 和 unsafe WAVE ROVER/UART wording leak。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；fixture JSON check 通过；mobile unittest 输出 `Ran 219 tests OK`；required `rg` 与 scoped `git diff --check` 通过。Hardware consultation read-only vendor review passed。Product closeout required file checks、required `rg` 和 closeout scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、delivery result 或 delivery success。
 
 ### 2026-05-21 16-17｜field-evidence-real-material-response-review-decision｜field-owner real-material response review decision software proof
 
