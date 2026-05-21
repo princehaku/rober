@@ -846,6 +846,23 @@ real material request dispatch 固定请求九类同一 safe `evidence_ref` 材�
 
 该 gate 不读取真实 task record、Nav2/fixed-route runtime log、route completion signal、电梯门/楼层材料、人工协助记录、dropoff/cancel completion、delivery result、true phone/browser evidence、raw diagnostics、ROS graph、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺 source、坏 JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、source backfill 不是 `ready_for_field_evidence_rerun_execution_result_acceptance_backfill_not_proven`、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、unsafe copy、sensitive copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、checksum、traceback、完整/raw artifact、success/control claim、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_owner_real_material_request_not_proven` 只表示 Docker/local gate 已把下一步 field-owner 真实材料请求清单派发清楚，不是真实 field rerun、true phone/browser proof、Nav2/fixed-route proof、route/elevator field pass、HIL、O5 external proof、PR #5 resolved、delivery result 或 delivery success。
 
+`pc-tools/evidence/field_evidence_real_material_owner_ack_intake.py` 只读上一节 `field_evidence_real_material_followup_escalation_status` artifact、summary、Robot safe alias 或 wrapper/nested JSON，并读取现场 owner 提交的脱敏 acknowledgement packet，把 owner ack 整理成 metadata-only intake artifact / summary：
+
+```bash
+python3 pc-tools/evidence/field_evidence_real_material_owner_ack_intake.py \
+  --followup-json /tmp/field_evidence_real_material_followup_escalation_status_summary.json \
+  --owner-ack-json /tmp/field_evidence_real_material_owner_ack_packet.json \
+  --evidence-ref ev-field-owner-ack-001 \
+  --output /tmp/field_evidence_real_material_owner_ack_intake.json \
+  --summary-output /tmp/field_evidence_real_material_owner_ack_intake_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.field_evidence_real_material_owner_ack_intake.v1`，summary 使用 `schema=trashbot.field_evidence_real_material_owner_ack_intake_summary.v1`，Robot safe alias 为 `robot_diagnostics_field_evidence_real_material_owner_ack_intake_summary`，证据边界固定为 `software_proof_docker_field_evidence_real_material_owner_ack_intake_gate`。核心字段包括 `owner_ack_intake_status`、safe `evidence_ref`、`source_followup`、`owner_acknowledgement`、`material_categories`、`owner_next_steps`、`safe_copy`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+`material_categories` 固定输出 `accepted`、`missing`、`rejected` 和 `blocked` 四类，只表示 owner-safe acknowledgement packet 中材料类别的接收状态，不表示真实验收。顶层 acceptance command 可用 `python3 -m unittest pc-tools.evidence.test_field_evidence_real_material_owner_ack_intake` 运行离线围栏测试；该入口只证明本地 `software_proof_docker_field_evidence_real_material_owner_ack_intake_gate` 的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
+
+该 gate 不读取真实 task record、Nav2/fixed-route runtime log、route completion signal、电梯门/楼层材料、dropoff/cancel completion、delivery result、raw diagnostics、ROS graph、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺 followup source、缺 owner ack、坏 JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、source followup status 不在 ready/backfill 集合、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、owner ack 未 acknowledged、unsafe copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、checksum、traceback、完整/raw artifact、success/control claim、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_evidence_real_material_owner_ack_intake_not_proven` 只表示 Docker/local gate 已把 owner acknowledgement 回执转成只读摘要，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery result、delivery success、HIL、O5 external proof、PR #5 resolved 或真实 phone/browser 证据。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

@@ -1951,6 +1951,81 @@ real field task record, dropoff/cancel completion, delivery result, delivery
 success, HIL, WAVE ROVER/UART proof, real phone/browser proof, Objective 5
 external proof, PR #5 resolution, or any primary robot action being enabled.
 
+## field_evidence_real_material_owner_ack_intake
+
+`pc-tools/evidence/field_evidence_real_material_owner_ack_intake.py`
+generates the PC-only owner-acknowledgement intake gate after
+`field_evidence_real_material_followup_escalation_status.py`. It consumes only
+the followup escalation safe artifact, safe summary, wrapper/nested JSON, or
+Robot diagnostics safe alias plus an owner-safe acknowledgement packet, then
+turns the acknowledgement into accepted/missing/rejected/blocked material
+categories and owner next steps.
+
+- Artifact schema:
+  `trashbot.field_evidence_real_material_owner_ack_intake.v1`
+- Summary schema:
+  `trashbot.field_evidence_real_material_owner_ack_intake_summary.v1`
+- Robot diagnostics summary schema:
+  `trashbot.robot_diagnostics_field_evidence_real_material_owner_ack_intake_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_real_material_owner_ack_intake_gate`
+- Capability:
+  `field_evidence_real_material_owner_ack_intake`
+- Allowed source inputs:
+  `trashbot.field_evidence_real_material_followup_escalation_status.v1` and
+  `trashbot.field_evidence_real_material_followup_escalation_status_summary.v1`
+  under
+  `software_proof_docker_field_evidence_real_material_followup_escalation_status_gate`.
+  The Robot alias
+  `robot_diagnostics_field_evidence_real_material_followup_escalation_status_summary`
+  is allowed when it preserves the same schema, boundary, `evidence_ref`, and
+  false action flags.
+
+Allowed `owner_ack_intake_status` values are
+`ready_for_field_evidence_real_material_owner_ack_intake_not_proven`,
+`missing_field_material_owner_ack_intake_not_proven`,
+`blocked_rejected_or_unsafe_field_material_owner_ack_intake_not_proven`,
+`blocked_unsupported_field_material_owner_ack_intake_source`, and
+`evidence_ref_mismatch_field_material_owner_ack_intake_blocked`.
+
+The owner acknowledgement packet may use
+`trashbot.field_evidence_real_material_owner_ack_packet.v1`,
+`trashbot.field_evidence_real_material_owner_ack_packet_summary.v1`, or an
+owner-safe form without schema. It must include an explicit acknowledged state
+and the same safe `evidence_ref`. Its categorized fields are copied only as
+short safe lists: `accepted_materials` / `accepted_evidence`,
+`missing_materials` / `missing_evidence`, `rejected_materials` /
+`rejected_evidence`, and `blocked_materials` / `blocked_evidence`.
+
+The output always includes `source=software_proof`, `status=not_proven`, safe
+`evidence_ref`, `same_evidence_ref_required=true`, `source_followup`,
+`owner_acknowledgement`, `material_categories`, `owner_next_steps`,
+`blocked_reason`, `review_refs` with PR #5 thread `PRRT_kwDOSWB9286CJ3tX`,
+`safe_copy`, `safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_real_material_owner_ack_intake_gate`.
+The summary mirrors those fields and is the intended read-only consumer surface
+for Robot diagnostics and mobile/web follow-through.
+
+Mapping is fail-closed. A supported, safe followup source with matched safe
+`evidence_ref`, `same_evidence_ref_required=true`, `source=software_proof`,
+`not_proven`, all action flags false, and a supported owner-safe acknowledged
+packet maps to
+`ready_for_field_evidence_real_material_owner_ack_intake_not_proven`. Missing
+or pending acknowledgement maps to
+`missing_field_material_owner_ack_intake_not_proven`. Missing source, bad JSON,
+unsupported schema/boundary, missing software-proof/not-proven fields, source
+status outside the followup escalation ready/backfill set, raw paths,
+credentials, ROS topic text, `/cmd_vel`, checksum text, complete/raw artifact
+text, success/control wording, `safe_to_control=true`,
+`delivery_success=true`, or `primary_actions_enabled=true` fail closed.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, real Nav2/fixed-route execution, real elevator door/floor state,
+real field task record, dropoff/cancel completion, delivery result, delivery
+success, HIL, WAVE ROVER/UART proof, real phone/browser proof, Objective 5
+external proof, PR #5 resolution, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

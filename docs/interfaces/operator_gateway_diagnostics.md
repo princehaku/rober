@@ -478,6 +478,36 @@ material collection, production readiness, real phone/browser proof, public
 cloud proof, route/elevator field pass, dropoff/cancel completion, or delivery
 success.
 
+## robot_diagnostics_field_evidence_real_material_owner_ack_intake_summary
+
+`robot_diagnostics_field_evidence_real_material_owner_ack_intake_summary`
+is the Robot diagnostics safe alias for
+`field_evidence_real_material_owner_ack_intake`. It consumes the canonical
+summary from latest status or nested diagnostics, then republishes only
+sanitized owner acknowledgement metadata for phone/Robot diagnostics.
+
+- Source artifact schema:
+  `trashbot.field_evidence_real_material_owner_ack_intake.v1`
+- Source summary schema:
+  `trashbot.field_evidence_real_material_owner_ack_intake_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_field_evidence_real_material_owner_ack_intake_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_real_material_owner_ack_intake_gate`
+
+Required boundary states are `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+
+Allowed fields are limited to safe owner acknowledgement status, safe
+`evidence_ref`, owner/time labels, accepted/missing/rejected material summaries,
+next required evidence, owner next steps, safe copy, and not-proven reasons.
+The alias must not expose raw packets, local paths, credentials, ROS topics,
+serial/UART/WAVE ROVER details, HIL/pass wording, checksums, complete artifacts,
+success/control claims, or enabled action flags. Inputs with
+`delivery_success=true`, `primary_actions_enabled=true`, or
+`safe_to_control=true` fail closed as blocked/not_proven.
+
 ## robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary
 
 Robot diagnostics exposes

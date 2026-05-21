@@ -1,0 +1,86 @@
+{
+  "robot_diagnostics_field_evidence_real_material_owner_ack_intake_summary": {
+    "schema": "trashbot.field_evidence_real_material_owner_ack_intake_summary.v1",
+    "source_schema": "trashbot.field_evidence_real_material_owner_ack_intake.v1",
+    "source": "software_proof",
+    "owner_ack_status": "blocked_pending_owner_ack_material_backfill_not_proven",
+    "source_followup_status": "blocked_pending_field_owner_real_material_followup_not_proven",
+    "safe_evidence_ref": "field_evidence_real_material_owner_ack_intake_fixture_20260521_0001",
+    "ack_owner": "field_owner_route_elevator_and_phone",
+    "ack_time": "2026-05-21T21:38:00+08:00",
+    "accepted_next_evidence": [
+      "accepted_next_evidence=owner acknowledged same safe evidence_ref for follow-up routing only",
+      "accepted_next_evidence=software_proof_docker_field_evidence_real_material_owner_ack_intake_gate"
+    ],
+    "missing_next_evidence": [
+      "missing_next_evidence=real task_record on same safe evidence_ref",
+      "missing_next_evidence=real route/elevator runtime summary",
+      "missing_next_evidence=true phone/browser field behavior summary",
+      "missing_next_evidence=dropoff/cancel completion material and delivery result"
+    ],
+    "blocked_next_evidence": [
+      "blocked_next_evidence=route/elevator onsite proof not_proven",
+      "blocked_next_evidence=delivery_success=false",
+      "blocked_next_evidence=primary_actions_enabled=false",
+      "blocked_next_evidence=safe_to_control=false"
+    ],
+    "next_action": "next_action=field owner backfills missing real materials before later review",
+    "rerun_backfill_guidance": [
+      "rerun_guidance=collect same-safe-evidence-ref field materials before later review",
+      "backfill_guidance=use Robot sanitized summary only for mobile display",
+      "backfill_guidance=keep Start Delivery, Confirm Dropoff and Cancel disabled"
+    ],
+    "safe_copy": "现场 owner 已确认收到补证路径；手机端只读展示 owner ack intake，不触发重放、重提或机器人控制。",
+    "evidence_boundary": "software_proof_docker_field_evidence_real_material_owner_ack_intake_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "real_field_rerun",
+      "true_phone_browser_proof",
+      "route_elevator_field_pass",
+      "delivery_result",
+      "hil_pass",
+      "o5_external_proof"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_real_material_owner_ack_intake_summary": {
+    "schema": "trashbot.field_evidence_real_material_owner_ack_intake_summary.v1",
+    "source": "software_proof",
+    "owner_ack_status": "blocked_pending_owner_ack_material_backfill_not_proven",
+    "source_followup_status": "blocked_pending_field_owner_real_material_followup_not_proven",
+    "safe_evidence_ref": "field_evidence_real_material_owner_ack_intake_fixture_20260521_0001",
+    "ack_owner": "field_owner_route_elevator_and_phone",
+    "ack_time": "2026-05-21T21:38:00+08:00",
+    "next_action": "next_action=field owner backfills missing real materials before later review",
+    "safe_copy": "兼容 summary 只读展示现场真实材料 owner ack intake。",
+    "evidence_boundary": "software_proof_docker_field_evidence_real_material_owner_ack_intake_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_real_material_owner_ack_intake": {
+    "summary": {
+      "schema": "trashbot.field_evidence_real_material_owner_ack_intake_summary.v1",
+      "source": "software_proof",
+      "owner_ack_status": "blocked_pending_owner_ack_material_backfill_not_proven",
+      "source_followup_status": "blocked_pending_field_owner_real_material_followup_not_proven",
+      "safe_evidence_ref": "field_evidence_real_material_owner_ack_intake_fixture_20260521_0001",
+      "ack_owner": "field_owner_route_elevator_and_phone",
+      "ack_time": "2026-05-21T21:38:00+08:00",
+      "safe_copy": "Nested safe summary only; still software proof and not_proven.",
+      "evidence_boundary": "software_proof_docker_field_evidence_real_material_owner_ack_intake_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}
