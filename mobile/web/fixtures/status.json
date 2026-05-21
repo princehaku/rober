@@ -4730,5 +4730,129 @@
       "HIL",
       "O5 external proof"
     ]
+  },
+  "robot_diagnostics_field_evidence_rerun_execution_result_review_decision_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_review_decision_summary.v1",
+    "schema_version": 1,
+    "review_decision_schema": "trashbot.field_evidence_rerun_execution_result_review_decision.v1",
+    "source_result_intake_schema": "trashbot.field_evidence_rerun_execution_result_intake.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_execution_result_review_decision_summary",
+    "source": "software_proof",
+    "review_decision": "needs_material_backfill",
+    "source_result_intake_status": "accepted",
+    "intake_reference": "field_evidence_rerun_execution_result_intake_fixture_20260521_0001",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_intake_fixture_20260521_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "decision_reasons": [
+      "decision_reason=result intake accepted only for software review routing",
+      "decision_reason=real route/elevator field evidence still missing"
+    ],
+    "blocker_reasons": [
+      "blocked=real task_record and route completion signal missing",
+      "blocked=real elevator door state and target floor confirmation missing"
+    ],
+    "rejection_reasons": [
+      "rejected=unsafe_success_or_control_claims_filtered"
+    ],
+    "backfill_reasons": [
+      "backfill=real fixed-route runtime summary required",
+      "backfill=real terminal and phone/browser evidence summaries required"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field owner backfills same safe_evidence_ref execution result proof",
+      "owner_handoff=Robot and Autonomy owners reconcile task_record and route completion before acceptance",
+      "owner_handoff=Full-stack keeps execution result review decision panel read-only"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same safe_evidence_ref real task_record summary",
+      "next_required_evidence=real Nav2/fixed-route runtime summary and route completion signal",
+      "next_required_evidence=real elevator door state, target floor confirmation, and human assistance summary",
+      "next_required_evidence=real terminal outcome and phone/browser evidence summaries"
+    ],
+    "reconciliation_hint": "reconciliation_hint=match result intake, task_record, route completion, terminal outcome, and phone/browser summaries under the same safe evidence_ref before any review acceptance.",
+    "safe_copy": "现场证据复跑执行结果复核决策 safe copy：review_decision=needs_material_backfill，source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑执行结果复核决策 fixture 只读展示 safe evidence_ref、review decision、intake reference、owner handoff、next required evidence 和 fail-closed boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_review_decision_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator 现场复跑",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
+  },
+  "field_evidence_rerun_execution_result_review_decision_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_review_decision_summary.v1",
+    "schema_version": 1,
+    "review_decision_schema": "trashbot.field_evidence_rerun_execution_result_review_decision.v1",
+    "source_result_intake_schema": "trashbot.field_evidence_rerun_execution_result_intake.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_execution_result_review_decision_summary",
+    "source": "software_proof",
+    "review_decision": "needs_material_backfill",
+    "source_result_intake_status": "accepted",
+    "intake_reference": "field_evidence_rerun_execution_result_intake_fixture_20260521_0001",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_intake_fixture_20260521_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "decision_reasons": [
+      "decision_reason=result intake accepted only for software review routing",
+      "decision_reason=real route/elevator field evidence still missing"
+    ],
+    "blocker_reasons": [
+      "blocked=real task_record and route completion signal missing",
+      "blocked=real elevator door state and target floor confirmation missing"
+    ],
+    "rejection_reasons": [
+      "rejected=unsafe_success_or_control_claims_filtered"
+    ],
+    "backfill_reasons": [
+      "backfill=real fixed-route runtime summary required",
+      "backfill=real terminal and phone/browser evidence summaries required"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field owner backfills same safe_evidence_ref execution result proof",
+      "owner_handoff=Robot and Autonomy owners reconcile task_record and route completion before acceptance",
+      "owner_handoff=Full-stack keeps execution result review decision panel read-only"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same safe_evidence_ref real task_record summary",
+      "next_required_evidence=real Nav2/fixed-route runtime summary and route completion signal",
+      "next_required_evidence=real elevator door state, target floor confirmation, and human assistance summary",
+      "next_required_evidence=real terminal outcome and phone/browser evidence summaries"
+    ],
+    "reconciliation_hint": "reconciliation_hint=match result intake, task_record, route completion, terminal outcome, and phone/browser summaries under the same safe evidence_ref before any review acceptance.",
+    "safe_copy": "现场证据复跑执行结果复核决策 safe copy：review_decision=needs_material_backfill，source=software_proof，not_proven，safe_to_control=false，delivery_success=false，primary_actions_enabled=false。",
+    "safe_phone_copy": "现场证据复跑执行结果复核决策 fixture 只读展示 safe evidence_ref、review decision、intake reference、owner handoff、next required evidence 和 fail-closed boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_review_decision_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator 现场复跑",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
   }
 }

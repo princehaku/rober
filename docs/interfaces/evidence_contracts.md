@@ -1364,6 +1364,65 @@ real dropoff or cancel completion, real delivery result, real phone/browser
 evidence, HIL pass, Objective 5 external cloud/4G/OSS/CDN/DB/queue proof, PR
 #5 resolution, PR #6 runtime proof, or any primary robot action being enabled.
 
+## field_evidence_rerun_execution_result_review_decision
+
+`pc-tools/evidence/field_evidence_rerun_execution_result_review_decision.py`
+generates the PC-only canonical review-decision gate after
+`field_evidence_rerun_execution_result_intake.py`. It consumes only a safe
+execution result-intake artifact/summary/wrapper JSON or Robot safe alias; it
+does not read field material directories, execute field reruns, schedule robot
+actions, or expose raw result materials.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_result_review_decision.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_result_review_decision_summary.v1`
+- Robot safe alias:
+  `robot_diagnostics_field_evidence_rerun_execution_result_review_decision_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_result_review_decision_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_result_intake.v1`,
+  `trashbot.field_evidence_rerun_execution_result_intake_summary.v1`, and
+  `robot_diagnostics_field_evidence_rerun_execution_result_intake_summary`
+  under `software_proof_docker_field_evidence_rerun_execution_result_intake_gate`.
+- Review decision values:
+  `accepted_for_review`, `needs_material_backfill`, `rejected`, and `blocked`.
+
+The output always includes `source=software_proof`, `review_decision`, source
+`result_intake_status`, safe `evidence_ref`,
+`same_evidence_ref_required=true`, `same_evidence_ref_status`,
+`decision_reasons`, `owner_handoff`, `next_required_evidence`,
+`reconciliation_hint`, `blocker_summary`, `safe_copy`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_result_review_decision_gate`.
+The summary mirrors the artifact and is the intended read-only consumer surface
+for Robot diagnostics and mobile/web follow-through.
+
+Review-decision mapping is fail-closed. A supported, safe result-intake source
+with matched safe `evidence_ref`, `same_evidence_ref_required=true`,
+`same_evidence_ref_status=matched`, `source=software_proof`, `not_proven`, and
+all action flags false maps `result_intake_status=accepted` to
+`accepted_for_review`, `missing` to `needs_material_backfill`, `rejected` to
+`rejected`, and `blocked` to `blocked`. Missing or unsupported source input,
+bad JSON, missing software-proof/not-proven fields, mismatched evidence refs,
+weak same-ref typing, non-matched same-ref status, or unknown result-intake
+status maps to `blocked`. Unsafe copy, raw paths, credentials, ROS topic text,
+`/cmd_vel`, serial/UART or WAVE ROVER text, checksum text, complete/raw
+artifact text, traceback text, success/control wording,
+`safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` also maps to `blocked`.
+
+This contract is software proof only. `accepted_for_review` means accepted for
+metadata owner review only; it does not prove a real field rerun, real
+route/elevator field pass, real Nav2/fixed-route execution, real field task
+record, real route completion signal, real elevator door/floor material, real
+human assistance, real dropoff or cancel completion, real delivery result,
+real delivery success, real phone/browser evidence, HIL pass, Objective 5
+external cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, PR #6 runtime
+proof, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

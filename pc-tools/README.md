@@ -764,6 +764,22 @@ python3 pc-tools/evidence/field_evidence_rerun_execution_result_intake.py \
 
 该 gate 不读取真实材料目录、不触发现场复跑、不访问 ROS graph、Nav2/fixed-route runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺 handoff 输入、bad JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、source handoff 不是 `ready_for_field_evidence_rerun_execution_callback_review_handoff`、result packet 非 owner-safe schema、packet 不是 `source=software_proof` 或缺 `not_proven`、packet 状态不在 `missing/accepted/rejected/blocked`、证据号不一致、弱类型 `same_evidence_ref_required`、`same_evidence_ref_status` 非 matched/ready、unsafe copy、raw path、credential、ROS topic、`/cmd_vel`、serial/UART/WAVE ROVER detail、checksum、完整/raw artifact、traceback、success/control wording、true field pass、O5 external proof、PR #5 resolution claim、PR #6 runtime proof、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed 到 `blocked`。`accepted` 只表示 Docker/local `software_proof_docker_field_evidence_rerun_execution_result_intake_gate` 已接收可进入下一轮 review intake 的安全结果包，不是真实现场复跑、真实 Nav2/fixed-route proof、真实 route/elevator field pass、task record/completion signal、dropoff/cancel completion、delivery success、HIL、O5 external proof、PR #5 resolved、PR #6 runtime proof 或真实 phone/browser 证据。
 
+`pc-tools/evidence/field_evidence_rerun_execution_result_review_decision.py` 只读上一节 `field_evidence_rerun_execution_result_intake` artifact、summary、Robot safe alias 或 wrapper/nested JSON，把 result-intake 状态转成 metadata-only review-decision artifact / summary：
+
+```bash
+python3 pc-tools/evidence/field_evidence_rerun_execution_result_review_decision.py \
+  --result-intake-json /tmp/field_evidence_rerun_execution_result_intake_summary.json \
+  --evidence-ref ev-field-result-review-001 \
+  --output /tmp/field_evidence_rerun_execution_result_review_decision.json \
+  --summary-output /tmp/field_evidence_rerun_execution_result_review_decision_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.field_evidence_rerun_execution_result_review_decision.v1`，summary 使用 `schema=trashbot.field_evidence_rerun_execution_result_review_decision_summary.v1`，Robot safe alias 为 `robot_diagnostics_field_evidence_rerun_execution_result_review_decision_summary`，证据边界固定为 `software_proof_docker_field_evidence_rerun_execution_result_review_decision_gate`。核心字段包括 `review_decision`、`decision_reasons`、safe `evidence_ref`、`source_result_intake_status`、`same_evidence_ref_status`、`owner_handoff`、`next_required_evidence`、`reconciliation_hint`、`blocker_summary`、`safe_copy`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+`review_decision` 固定包含 `accepted_for_review`、`needs_material_backfill`、`rejected` 和 `blocked`。顶层 acceptance command 可用 `python3 -m unittest tests.test_field_evidence_rerun_execution_result_review_decision` 运行离线围栏测试；该入口只证明本地 result-review-decision gate 的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
+
+该 gate 不读取真实材料目录、不触发现场复跑、不访问 ROS graph、Nav2/fixed-route runtime、serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，也不执行任何机器人动作。缺 result-intake 输入、bad JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、result-intake 状态不是 `accepted/missing/rejected/blocked`、证据号不一致、弱类型 `same_evidence_ref_required`、`same_evidence_ref_status` 非 matched/ready、unsafe copy、raw path、credential、ROS topic、`/cmd_vel`、serial/UART/WAVE ROVER detail、checksum、完整/raw artifact、traceback、success/control wording、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed 到 `blocked`。`accepted_for_review` 只表示 Docker/local `software_proof_docker_field_evidence_rerun_execution_result_review_decision_gate` 已把同一 safe `evidence_ref` 的 result intake 转成只读复核决策，不是真实现场复跑、真实 Nav2/fixed-route proof、真实 route/elevator field pass、task record/completion signal、dropoff/cancel completion、delivery result、delivery success、HIL、O5 external proof、PR #5 resolved、PR #6 runtime proof 或真实 phone/browser 证据。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：
