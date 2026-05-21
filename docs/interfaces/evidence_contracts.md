@@ -1747,6 +1747,70 @@ phone/browser proof, Nav2/fixed-route proof, route/elevator field pass, HIL,
 WAVE ROVER/UART proof, Objective 5 external proof, PR #5 reviewer resolution,
 delivery result, delivery success, or any primary robot action being enabled.
 
+## field_evidence_real_material_response_review_decision
+
+`pc-tools/evidence/field_evidence_real_material_response_review_decision.py`
+generates the PC-only review-decision gate after
+`field_evidence_real_material_response_intake.py`. It consumes only the
+sanitized response-intake artifact, response-intake summary, wrapper/nested
+JSON, or Robot diagnostics safe alias. It does not read raw field materials,
+ROS graph state, raw ROS topics, `/cmd_vel`, serial/UART or WAVE ROVER details,
+credentials, DB/queue URLs, local raw paths, checksums, tracebacks,
+complete/raw artifacts, real elevator systems, external cloud evidence, or real
+phone/browser runtime.
+
+- Artifact schema:
+  `trashbot.field_evidence_real_material_response_review_decision.v1`
+- Summary schema:
+  `trashbot.field_evidence_real_material_response_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_real_material_response_review_decision_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_real_material_response_intake.v1` and
+  `trashbot.field_evidence_real_material_response_intake_summary.v1` under
+  `software_proof_docker_field_evidence_real_material_response_intake_gate`.
+
+Allowed `review_decision` values are
+`accepted_for_later_review_not_proven`,
+`needs_material_backfill_not_proven`,
+`rejected_unsafe_or_mixed_response_not_proven`,
+`blocked_real_environment_unavailable_not_proven`, and
+`blocked_missing_field_evidence_real_material_response_intake_not_proven`.
+`accepted_for_later_review_not_proven` only means the same safe `evidence_ref`
+has all nine sanitized material categories accepted by response intake and can
+enter later review; it is not real field rerun proof, not true phone/browser
+proof, not Nav2/fixed-route proof, not route/elevator field pass, not HIL, not
+WAVE ROVER/UART proof, not Objective 5 external proof, not PR #5 reviewer
+resolution, not delivery result, and not delivery success.
+
+The output always includes `review_decision`, `decision_reasons`,
+`source_response_intake`, safe `evidence_ref`, `same_evidence_ref_required=true`,
+`material_classification_counts`, grouped accepted/missing/rejected/blocked
+materials, `owner_handoff`, `next_required_evidence`, `safe_phone_copy`,
+`safe_copy`, `blocked_claims`, `source=software_proof`, `status=not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_real_material_response_review_decision_gate`.
+
+Missing or unreadable response-intake source maps to
+`blocked_missing_field_evidence_real_material_response_intake_not_proven`.
+Missing material categories map to `needs_material_backfill_not_proven`.
+Blocked material categories map to
+`blocked_real_environment_unavailable_not_proven`. Rejected material categories,
+unsupported schema/boundary, mixed safe `evidence_ref`, weak
+`same_evidence_ref_required`, unsafe or sensitive copy, raw local paths,
+credentials, ROS topics, `/cmd_vel`, serial/UART/WAVE ROVER details, DB/queue
+URLs, checksums, complete/raw artifacts, tracebacks, success/control claims,
+`safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` all fail closed to
+`rejected_unsafe_or_mixed_response_not_proven`.
+
+This contract is software proof only. It does not prove real route/elevator
+field pass, real field rerun, true phone/browser proof, dropoff/cancel
+completion, delivery result, delivery success, HIL, WAVE ROVER/UART proof,
+Objective 5 external proof, PR #5 reviewer resolution, or any primary robot
+action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

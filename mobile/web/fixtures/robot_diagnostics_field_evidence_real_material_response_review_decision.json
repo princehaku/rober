@@ -1,0 +1,122 @@
+{
+  "robot_diagnostics_field_evidence_real_material_response_review_decision_summary": {
+    "schema": "trashbot.field_evidence_real_material_response_review_decision_summary.v1",
+    "schema_version": 1,
+    "response_review_decision_schema": "trashbot.field_evidence_real_material_response_review_decision.v1",
+    "source_response_intake_schema": "trashbot.field_evidence_real_material_response_intake_summary.v1",
+    "source_alias": "robot_diagnostics_field_evidence_real_material_response_review_decision_summary",
+    "source": "software_proof",
+    "review_decision": "accepted_for_later_review_not_proven",
+    "source_response_intake": "blocked_missing_field_evidence_real_material_response_intake_not_proven",
+    "safe_evidence_ref": "field_evidence_real_material_response_review_decision_fixture_20260521_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "decision_reasons": [
+      "decision_reasons=diagnostics_mobile_safe_summary can be reviewed later only",
+      "decision_reasons=accepted_for_later_review_not_proven because missing materials still block proof",
+      "decision_reasons=source response intake remains not_proven"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field owner must backfill real task_record under same safe evidence_ref",
+      "owner_handoff=field owner must backfill real route/elevator evidence under same safe evidence_ref",
+      "owner_handoff=product review can continue after real materials arrive"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real task_record",
+      "next_required_evidence=real nav2_fixed_route_runtime_log",
+      "next_required_evidence=real route_completion_signal",
+      "next_required_evidence=real elevator_door_floor_evidence",
+      "next_required_evidence=real dropoff_cancel_completion",
+      "next_required_evidence=true_phone_browser_evidence"
+    ],
+    "blocked_claims": [
+      "blocked_claims=true_phone_browser_proof not proven",
+      "blocked_claims=route_elevator_field_pass not proven",
+      "blocked_claims=nav2_fixed_route_proof not proven",
+      "blocked_claims=dropoff_completion not proven",
+      "blocked_claims=cancel_completion not proven",
+      "blocked_claims=delivery_result not proven",
+      "blocked_claims=hil_pass not proven",
+      "blocked_claims=wave_rover_uart_proof not proven",
+      "blocked_claims=o5_external_proof not proven",
+      "blocked_claims=pr5_thread_resolved not proven",
+      "blocked_claims=delivery_success=false"
+    ],
+    "false_flags": [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "route_elevator_field_pass=false",
+      "true_phone_browser_evidence=false",
+      "hil_pass=false"
+    ],
+    "safe_phone_copy": "现场真实材料响应复核决策：accepted_for_later_review_not_proven 仅表示可进入后续人工 review；真实路线/电梯、真实手机、投放/取消完成、delivery_result 和 HIL 仍未证明。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_real_material_response_review_decision_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "real_field_rerun",
+      "true_phone_browser_proof",
+      "nav2_fixed_route_proof",
+      "route_elevator_field_pass",
+      "hil_pass",
+      "wave_rover_uart_proof",
+      "o5_external_proof",
+      "pr5_thread_resolved",
+      "dropoff_completion",
+      "cancel_completion",
+      "delivery_result",
+      "delivery_success"
+    ]
+  },
+  "field_evidence_real_material_response_review_decision_summary": {
+    "schema": "trashbot.field_evidence_real_material_response_review_decision_summary.v1",
+    "source": "software_proof",
+    "review_decision": "accepted_for_later_review_not_proven",
+    "source_response_intake": "blocked_missing_field_evidence_real_material_response_intake_not_proven",
+    "safe_evidence_ref": "field_evidence_real_material_response_review_decision_fixture_20260521_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "decision_reasons": [
+      "decision_reasons=fallback summary keeps accepted review decision not_proven"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field owner backfills real materials later"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real task_record",
+      "next_required_evidence=true_phone_browser_evidence"
+    ],
+    "blocked_claims": [
+      "blocked_claims=not delivery_result or delivery_success"
+    ],
+    "false_flags": [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false"
+    ],
+    "safe_phone_copy": "fallback review-decision summary remains read-only；source=software_proof / not_proven。",
+    "evidence_boundary": "software_proof_docker_field_evidence_real_material_response_review_decision_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "true_phone_browser_proof",
+      "delivery_success"
+    ]
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

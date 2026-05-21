@@ -69,6 +69,10 @@ FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_real_material_response_intake.json"
 )
+FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_DECISION_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_real_material_response_review_decision.json"
+)
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -11100,6 +11104,158 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, response_intake_text)
+
+    def test_field_evidence_real_material_response_review_decision_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 响应复核决策只把 Robot safe summary 转成只读状态，不提交 review 或控制动作。
+        self.assertIn("FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeFieldEvidenceRealMaterialResponseReviewDecisionText", app)
+        self.assertIn("fieldEvidenceRealMaterialResponseReviewDecisionCandidate", app)
+        self.assertIn("fieldEvidenceRealMaterialResponseReviewDecisionFromStatus", app)
+        self.assertIn("renderFieldEvidenceRealMaterialResponseReviewDecision", app)
+        self.assertIn("现场真实材料响应复核决策", app)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_real_material_response_review_decision_summary",
+            app,
+        )
+        self.assertIn("field_evidence_real_material_response_review_decision_summary", app)
+        self.assertIn("field_evidence_real_material_response_review_decision?.summary", app)
+        self.assertIn("decision_reasons", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("blocked_claims", app)
+        self.assertIn("false_flags", app)
+        self.assertIn("accepted_for_later_review_not_proven", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceRealMaterialResponseReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotIn("copyFieldEvidenceRealMaterialResponseReviewDecisionButton", app)
+        self.assertNotIn("downloadFieldEvidenceRealMaterialResponseReviewDecisionButton", app)
+        self.assertNotIn("submitFieldEvidenceRealMaterialResponseReviewDecision", app)
+        self.assertNotIn("replayFieldEvidenceRealMaterialResponseReviewDecision", app)
+
+        # dedicated fixture 明确 accepted_for_later_review_not_proven 不解锁主操作也不等于现场通过。
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_real_material_response_review_decision_summary"
+        ]
+        fallback = dedicated_fixture["field_evidence_real_material_response_review_decision_summary"]
+        self.assertEqual(summary["review_decision"], "accepted_for_later_review_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fallback["review_decision"], "accepted_for_later_review_not_proven")
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "accepted_for_later_review_not_proven",
+            "source_response_intake",
+            "next_required_evidence=real task_record",
+            "blocked_claims=route_elevator_field_pass not proven",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "not_proven",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn(
+            "software_proof_docker_field_evidence_real_material_response_review_decision_gate",
+            dedicated_text,
+        )
+        self.assertIn("field_evidence_real_material_response_review_decision", doc)
+        self.assertIn("现场真实材料响应复核决策", doc)
+        self.assertIn("accepted_for_later_review_not_proven", doc)
+        self.assertIn("not Objective 5 external proof", doc)
+
+    def test_field_evidence_real_material_response_review_decision_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        review_decision_text = json.dumps(
+            {
+                "review_decision":
+                    dedicated_fixture[
+                        "robot_diagnostics_field_evidence_real_material_response_review_decision_summary"
+                    ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_real_material_response_review_decision_summary"
+                ],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # review decision fixture 只保留人工复核摘要，不泄漏 raw 材料、路径、凭证或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw packet",
+            "raw acceptance",
+            "raw backfill",
+            "raw request",
+            "raw dispatch",
+            "raw response",
+            "raw review",
+            "raw decision",
+            "raw handoff",
+            "raw result",
+            "raw execution",
+            "full execution pack",
+            "serial device",
+            "ttyusb",
+            "ttyacm",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "command replay",
+            "automatic resubmit",
+            "queue scheduling",
+            "execution scheduling",
+            "callback submission",
+            "request submission",
+            "review submission",
+            "handoff submission",
+            "result submission",
+            "acceptance submission",
+            "robot command",
+            "robot/internal",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, review_decision_text)
 
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
