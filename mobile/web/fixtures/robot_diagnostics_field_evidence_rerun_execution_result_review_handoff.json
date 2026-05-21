@@ -1,0 +1,61 @@
+{
+  "robot_diagnostics_field_evidence_rerun_execution_result_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_review_handoff_summary.v1",
+    "schema_version": 1,
+    "review_handoff_schema": "trashbot.field_evidence_rerun_execution_result_review_handoff.v1",
+    "source_review_decision_schema": "trashbot.field_evidence_rerun_execution_result_review_decision.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_execution_result_review_handoff_summary",
+    "source": "software_proof",
+    "handoff_status": "ready_for_field_owner_backfill_not_proven",
+    "source_review_decision": "needs_material_backfill",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_intake_fixture_20260521_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "owner_handoff": [
+      "owner_handoff=field owner collects same safe_evidence_ref real execution result materials",
+      "owner_handoff=Robot owner reconciles task_record and route completion before any acceptance",
+      "owner_handoff=Full-stack keeps execution result review handoff panel read-only"
+    ],
+    "blocker_summary": [
+      "blocked=real task_record and route completion signal missing",
+      "blocked=real elevator door state, target floor confirmation, and human assistance record missing",
+      "blocked=real dropoff/cancel completion, delivery result, and true phone/browser evidence missing"
+    ],
+    "next_required_real_materials": [
+      "next_required_real_materials=same safe_evidence_ref real task_record summary",
+      "next_required_real_materials=real Nav2/fixed-route runtime log and route completion signal",
+      "next_required_real_materials=real elevator door state, target floor confirmation, and human assistance note",
+      "next_required_real_materials=real dropoff or cancel completion plus delivery result",
+      "next_required_real_materials=true phone/browser evidence summary"
+    ],
+    "reconciliation_guidance": [
+      "reconciliation_guidance=match review decision, task_record, route completion, terminal outcome, and phone/browser summaries under the same safe evidence_ref",
+      "reconciliation_guidance=do not mark accepted until real materials reconcile under the same safe evidence_ref"
+    ],
+    "rerun_guidance": [
+      "rerun_guidance=backfill missing real materials first, then rerun the execution result review handoff gate",
+      "rerun_guidance=mobile panel only displays the backfill request and keeps control surfaces unchanged"
+    ],
+    "safe_copy": "现场证据复跑执行结果复核交接 safe copy: handoff_status=ready_for_field_owner_backfill_not_proven, source=software_proof, not_proven, safe_to_control=false, delivery_success=false, primary_actions_enabled=false.",
+    "safe_phone_copy": "现场证据复跑执行结果复核交接 fixture 只读展示 safe evidence_ref、source review decision、owner handoff、blocker summary、next required real materials 和 fail-closed boundary；这是 source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_review_handoff_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "真实 route/elevator 现场复跑",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 task record",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "真实手机/browser",
+      "HIL",
+      "O5 external proof"
+    ]
+  }
+}

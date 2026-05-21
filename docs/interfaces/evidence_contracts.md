@@ -1423,6 +1423,83 @@ real delivery success, real phone/browser evidence, HIL pass, Objective 5
 external cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, PR #6 runtime
 proof, or any primary robot action being enabled.
 
+## field_evidence_rerun_execution_result_review_handoff
+
+`pc-tools/evidence/field_evidence_rerun_execution_result_review_handoff.py`
+generates the PC-only canonical owner handoff gate after
+`field_evidence_rerun_execution_result_review_decision.py`. It consumes only a
+safe review-decision artifact/summary/wrapper JSON or Robot safe alias; it does
+not read field material directories, execute field reruns, schedule robot
+actions, or expose raw result materials.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_result_review_handoff.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_result_review_handoff_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_result_review_handoff_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_result_review_decision.v1`,
+  `trashbot.field_evidence_rerun_execution_result_review_decision_summary.v1`,
+  and `robot_diagnostics_field_evidence_rerun_execution_result_review_decision_summary`
+  under `software_proof_docker_field_evidence_rerun_execution_result_review_decision_gate`.
+- Handoff values:
+  `ready_for_field_evidence_rerun_execution_result_review_owner_handoff_not_proven`,
+  `needs_field_owner_material_backfill_for_execution_result_review_handoff_not_proven`,
+  `rejected_field_evidence_rerun_execution_result_review_handoff_not_proven`,
+  `blocked_field_evidence_rerun_execution_result_review_handoff_not_proven`,
+  `evidence_ref_mismatch_field_evidence_rerun_execution_result_review_handoff`,
+  `blocked_unsupported_field_evidence_rerun_execution_result_review_decision`,
+  and `blocked_unsafe_field_evidence_rerun_execution_result_review_handoff`.
+
+The output always includes `source=software_proof`, `handoff_status`, source
+`review_decision`, safe `evidence_ref`, `same_evidence_ref_required=true`,
+`same_evidence_ref_status`, `owner_handoff`, `blocker_summary`,
+`next_required_real_materials`, `next_required_evidence`,
+`reconciliation_guidance`, `rerun_guidance`, `safe_copy`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_result_review_handoff_gate`.
+The summary mirrors the artifact and is the intended read-only consumer surface
+for Robot diagnostics and mobile/web follow-through.
+
+`next_required_real_materials` is the field-owner backfill set: same-safe
+`evidence_ref` task record, route/elevator runtime logs, route completion
+signal, elevator door/floor evidence, human assistance note, dropoff or cancel
+completion, delivery result, diagnostics/mobile safe summary, and true
+phone/browser evidence. These are required real materials for a later field
+claim; this handoff only packages the request.
+
+Handoff mapping is fail-closed. A supported, safe review-decision source with
+matched safe `evidence_ref`, `same_evidence_ref_required=true`,
+`same_evidence_ref_status=matched`, `source=software_proof`, `not_proven`, and
+all action flags false maps `accepted_for_review` to
+`ready_for_field_evidence_rerun_execution_result_review_owner_handoff_not_proven`,
+`needs_material_backfill` to
+`needs_field_owner_material_backfill_for_execution_result_review_handoff_not_proven`,
+`rejected` to
+`rejected_field_evidence_rerun_execution_result_review_handoff_not_proven`, and
+`blocked` to
+`blocked_field_evidence_rerun_execution_result_review_handoff_not_proven`.
+Missing or unsupported source input, bad JSON, missing software-proof/not-proven
+fields, mismatched evidence refs, weak same-ref typing, non-matched same-ref
+status, or unknown review-decision status maps to a blocked handoff. Unsafe
+copy, raw paths, credentials, ROS topic text, `/cmd_vel`, serial/UART or WAVE
+ROVER text, checksum text, complete/raw artifact text, traceback text,
+success/control wording, Objective 5 external proof claims, PR #5 resolution
+claims, PR #6 runtime claims, `safe_to_control=true`,
+`delivery_success=true`, or `primary_actions_enabled=true` also maps to a
+blocked handoff.
+
+This contract is software proof only. A ready owner handoff means a sanitized
+backfill request can be routed to field owners; it does not prove a real field
+rerun, real route/elevator field pass, real Nav2/fixed-route execution, real
+field task record, real route completion signal, real elevator door/floor
+material, real human assistance, real dropoff or cancel completion, real
+delivery result, real delivery success, real phone/browser evidence, HIL pass,
+Objective 5 external cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, PR #6
+runtime proof, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`
