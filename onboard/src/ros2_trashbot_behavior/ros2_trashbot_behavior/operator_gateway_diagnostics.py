@@ -428,6 +428,26 @@ FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_BACKFILL_SUMMARY_SCHEMA = (
 FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_BACKFILL_GATE = (
     "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate"
 )
+FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_SCHEMA = (
+    "trashbot.field_evidence_real_material_request_dispatch.v1"
+)
+FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_SUMMARY_SCHEMA = (
+    "trashbot.field_evidence_real_material_request_dispatch_summary.v1"
+)
+FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_GATE = (
+    "software_proof_docker_field_evidence_real_material_request_dispatch_gate"
+)
+FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_REQUIRED_MATERIALS = (
+    "task_record",
+    "nav2_fixed_route_runtime_log",
+    "route_completion_signal",
+    "elevator_door_floor_evidence",
+    "human_assistance_note",
+    "dropoff_cancel_completion",
+    "delivery_result",
+    "true_phone_browser_evidence",
+    "diagnostics_mobile_safe_summary",
+)
 ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SCHEMA = (
     "trashbot.route_task_field_retest_evidence_dispatch.v1"
 )
@@ -3762,6 +3782,40 @@ def _field_evidence_rerun_execution_result_acceptance_backfill_not_proven(
         "real_dropoff_cancel_completion_not_verified",
         "real_delivery_result_not_verified",
         "real_phone_browser_not_verified",
+        "real_hardware_runtime_not_verified",
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "hardware_transport_control",
+        "delivery_success",
+    )
+    values = []
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _field_evidence_real_material_request_dispatch_not_proven(
+    request=None,
+    summary_fragment=None,
+):
+    # request dispatch 只派发真实材料清单；不能把派发状态当成现场复跑、手机或交付证据。
+    source_values = []
+    for item in (request, summary_fragment):
+        if isinstance(item, dict) and isinstance(item.get("not_proven"), list):
+            source_values.extend(item.get("not_proven"))
+    required = (
+        "field_evidence_real_material_request_dispatch_only",
+        "field_rerun_not_executed_by_robot",
+        "real_route_completion_not_verified",
+        "real_field_task_record_not_verified",
+        "real_nav2_fixed_route_runtime_not_verified",
+        "real_elevator_operation_not_verified",
+        "real_dropoff_cancel_completion_not_verified",
+        "real_delivery_result_not_verified",
+        "true_phone_browser_evidence_not_verified",
         "real_hardware_runtime_not_verified",
         "collect_dropoff_cancel_control",
         "remote_ack",
@@ -9395,6 +9449,70 @@ def _default_field_evidence_rerun_execution_result_acceptance_backfill_summary(
         "robot_compatible_summary": {"status": "blocked", "reason": reason},
         "boundary": FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_BACKFILL_GATE,
         "not_proven": _field_evidence_rerun_execution_result_acceptance_backfill_not_proven(),
+        "metadata_only": True,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+    }
+
+
+def _default_field_evidence_real_material_request_dispatch_summary(
+    path,
+    request_status="blocked_missing_field_evidence_real_material_request_dispatch",
+    read_error="",
+):
+    # 缺源时也返回完整材料模板和 false flags，避免 diagnostics 缺项被误读成现场材料已到位。
+    safe_copy = (
+        "Field evidence real material request dispatch is metadata-only; "
+        "source=software_proof; not_proven; safe_to_control=false; "
+        "delivery_success=false; primary_actions_enabled=false."
+    )
+    reason = read_error or (
+        "field evidence real material request dispatch is not configured"
+    )
+    return {
+        "schema": FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "request_status": {
+            "status": request_status,
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "request_verdict": "blocked",
+        "same_evidence_ref_required": True,
+        "same_evidence_ref_status": {
+            "status": "blocked",
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "required_materials": list(
+            FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_REQUIRED_MATERIALS
+        ),
+        "owner_mapping": {},
+        "next_required_evidence": [],
+        "blocked_claims": [],
+        "robot_diagnostics_summary": {"status": "blocked", "reason": reason},
+        "robot_compatible_summary": {"status": "blocked", "reason": reason},
+        "boundary": FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_GATE,
+        "not_proven": _field_evidence_real_material_request_dispatch_not_proven(),
         "metadata_only": True,
         "safe_to_control": False,
         "delivery_success": False,
@@ -15889,7 +16007,9 @@ def _field_evidence_rerun_handoff_intake_has_unsafe_fields(value):
         "wave_rover",
         "cmd_vel",
         "control",
-        "ack",
+        "ack_cursor",
+        "ack_post",
+        "ack_state",
         "cursor",
     )
     if isinstance(value, dict):
@@ -16013,7 +16133,9 @@ def _field_evidence_rerun_execution_callback_intake_has_unsafe_fields(value):
         "wave_rover",
         "cmd_vel",
         "control",
-        "ack",
+        "ack_cursor",
+        "ack_post",
+        "ack_state",
         "cursor",
         "traceback",
     )
@@ -16097,7 +16219,9 @@ def _field_evidence_rerun_execution_callback_review_decision_has_unsafe_fields(v
         "wave_rover",
         "cmd_vel",
         "control",
-        "ack",
+        "ack_cursor",
+        "ack_post",
+        "ack_state",
         "cursor",
         "traceback",
     )
@@ -16507,6 +16631,20 @@ def _field_evidence_rerun_execution_result_acceptance_backfill_source_contract(v
     return source_schema, source_boundary
 
 
+def _field_evidence_real_material_request_dispatch_source_contract(value):
+    # Robot 只接受 Autonomy 的 canonical summary，或带 canonical summary 的 compatible wrapper。
+    value = value if isinstance(value, dict) else {}
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema")
+            or FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _field_evidence_rerun_execution_result_acceptance_packet_has_unsafe_fields(value):
     # acceptance packet alias 不能透出 raw task/log/route/elevator/packet、路径、凭证或控制语义。
     unsafe_key_fragments = (
@@ -16645,6 +16783,125 @@ def _field_evidence_rerun_execution_result_acceptance_backfill_has_unsafe_fields
         )
     return _field_evidence_rerun_execution_result_acceptance_packet_has_unsafe_fields(
         value
+    )
+
+
+def _field_evidence_real_material_request_dispatch_has_unsafe_fields(value):
+    # request dispatch 要允许材料类别名，但禁止 raw artifact、raw diagnostics 和任何控制/硬件细节。
+    unsafe_key_fragments = (
+        "raw",
+        "artifact_path",
+        "artifact_ref",
+        "raw_diagnostics",
+        "diagnostics_raw",
+        "local_path",
+        "path",
+        "checksum",
+        "credential",
+        "secret",
+        "token",
+        "authorization",
+        "bearer",
+        "ros_topic",
+        "topic",
+        "serial",
+        "uart",
+        "baud",
+        "wave_rover",
+        "cmd_vel",
+        "control",
+        "ack_cursor",
+        "ack_post",
+        "ack_state",
+        "cursor",
+        "traceback",
+        "db_url",
+        "queue_url",
+        "oss",
+        "complete_artifact",
+        "complete_diagnostics",
+    )
+    safe_keys = {
+        "schema",
+        "schema_version",
+        "capability",
+        "source",
+        "source_schema",
+        "source_schema_version",
+        "source_evidence_boundary",
+        "evidence_boundary",
+        "boundary",
+        "safe_evidence_ref",
+        "evidence_ref",
+        "request_status",
+        "status",
+        "status_summary",
+        "verdict",
+        "reason",
+        "request_verdict",
+        "same_evidence_ref_required",
+        "same_evidence_ref_status",
+        "required_materials",
+        "owner_mapping",
+        "owner_handoff",
+        "next_required_evidence",
+        "blocked_claims",
+        "robot_diagnostics_summary",
+        "robot_compatible_summary",
+        "safe_copy",
+        "safe_phone_copy",
+        "not_proven",
+        "safe_to_control",
+        "delivery_success",
+        "primary_actions_enabled",
+        "metadata_only",
+        "boundary_flags",
+        "control_entrypoint_enabled",
+        "field_evidence_real_material_request_dispatch_summary",
+        "robot_diagnostics_field_evidence_real_material_request_dispatch_summary",
+        "diagnostics",
+        "summary",
+        "diagnostics_summary",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text not in safe_keys and any(
+                fragment in key_text for fragment in unsafe_key_fragments
+            ):
+                return True
+            if _field_evidence_real_material_request_dispatch_has_unsafe_fields(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _field_evidence_real_material_request_dispatch_has_unsafe_fields(item)
+            for item in value
+        )
+    text = str(value or "").strip().lower()
+    unsafe_text_markers = (
+        "/cmd_vel",
+        "ros_topic",
+        "serial",
+        "uart",
+        "wave rover",
+        "wave_rover",
+        "bearer",
+        "authorization",
+        "credential",
+        "secret",
+        "token",
+        "traceback",
+        "checksum",
+        "db_url",
+        "queue_url",
+        "oss_access_key",
+        "oss_secret",
+        "local_path",
+        "/tmp/",
+    )
+    return any(marker in text for marker in unsafe_text_markers) or (
+        _route_task_field_retest_execution_pack_has_success_wording(value)
     )
 
 
@@ -37017,6 +37274,381 @@ def summarize_field_evidence_rerun_execution_result_acceptance_backfill(source):
     return summary
 
 
+def summarize_field_evidence_real_material_request_dispatch(source):
+    """构建 field evidence real material request dispatch 的 Robot-safe 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        request = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_field_evidence_real_material_request_dispatch_summary(
+            source_path,
+            read_error="field evidence real material request dispatch is not configured",
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "request_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": "field evidence real material request dispatch summary missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "real material request dispatch summary missing",
+                    },
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                request = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "request_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            f"failed reading field evidence real material request dispatch: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "real material request dispatch JSON read error",
+                    },
+                }
+            )
+            return summary
+
+    summary = _default_field_evidence_real_material_request_dispatch_summary(
+        source_path,
+        read_error="field evidence real material request dispatch is not configured",
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(request, dict):
+        summary.update(
+            {
+                "request_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "field evidence real material request dispatch JSON must be an object",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "real material request dispatch JSON shape is invalid",
+                },
+            }
+        )
+        return summary
+
+    diagnostics = request.get("diagnostics") if isinstance(request.get("diagnostics"), dict) else {}
+    # compatible wrapper 可以出现多种字段名，但最终必须落到 canonical safe summary。
+    summary_fragment = (
+        request
+        if str(request.get("schema") or "")
+        == FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_SUMMARY_SCHEMA
+        else {}
+    )
+    if not summary_fragment:
+        for candidate in (
+            request.get("field_evidence_real_material_request_dispatch_summary"),
+            request.get(
+                "robot_diagnostics_field_evidence_real_material_request_dispatch_summary"
+            ),
+            request.get("robot_compatible_summary"),
+            request.get("summary"),
+            request.get("diagnostics_summary"),
+            diagnostics.get("field_evidence_real_material_request_dispatch_summary"),
+            diagnostics.get(
+                "robot_diagnostics_field_evidence_real_material_request_dispatch_summary"
+            ),
+            diagnostics.get("summary"),
+            diagnostics.get("diagnostics_summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+
+    contract_source = summary_fragment if summary_fragment else request
+    source_schema, source_boundary = (
+        _field_evidence_real_material_request_dispatch_source_contract(contract_source)
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": contract_source.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+        }
+    )
+    if not summary_fragment:
+        summary.update(
+            {
+                "request_status": {
+                    "status": "missing_summary",
+                    "verdict": "not_proven",
+                    "reason": "field evidence real material request dispatch lacks a safe canonical summary",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing safe real material request dispatch summary",
+                },
+            }
+        )
+        return summary
+
+    status_source = summary_fragment.get("request_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("status_summary")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    request_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or summary_fragment.get("request_status")
+        or summary_fragment.get("status")
+        or "blocked"
+    )
+    verdict = _redact_route_task_rehearsal_text(
+        status_source.get("verdict") or summary_fragment.get("verdict") or "not_proven"
+    )
+    reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or summary_fragment.get("reason")
+        or "field evidence real material request dispatch consumed as software_proof"
+    )
+    safe_copy = _safe_pc_route_debug_value(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or (
+            "Field evidence real material request dispatch is metadata-only; "
+            "source=software_proof; not_proven; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    safe_copy_text = (
+        json.dumps(safe_copy, ensure_ascii=False, sort_keys=True)
+        if isinstance(safe_copy, (dict, list))
+        else str(safe_copy or "")
+    )
+    if "delivery_success=false" not in safe_copy_text:
+        # phone-safe copy 必须重复 false literal，方便下游只读面板直接显示边界。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+    source_ref = str(
+        request.get("safe_evidence_ref") or request.get("evidence_ref") or ""
+    ).strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or ""
+    ).strip()
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    same_ref_source = (
+        summary_fragment.get("same_evidence_ref_status")
+        if isinstance(summary_fragment.get("same_evidence_ref_status"), dict)
+        else {}
+    )
+    owner_mapping = (
+        _safe_pc_route_debug_dict(summary_fragment.get("owner_mapping"))
+        if isinstance(summary_fragment.get("owner_mapping"), dict)
+        else _safe_route_task_rehearsal_list(summary_fragment.get("owner_mapping"))
+    )
+    required_materials = _safe_route_task_rehearsal_list(
+        summary_fragment.get("required_materials"),
+        limit=len(FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_REQUIRED_MATERIALS),
+    )
+    summary.update(
+        {
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or EVIDENCE_SOURCE_SOFTWARE
+            ),
+            "request_status": {
+                "status": request_status or "blocked",
+                "verdict": verdict or "not_proven",
+                "reason": reason,
+            },
+            "request_verdict": _redact_route_task_rehearsal_text(
+                summary_fragment.get("request_verdict")
+                or summary_fragment.get("decision")
+                or request_status
+                or "blocked"
+            ),
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_ref or source_ref
+            ),
+            "same_evidence_ref_required": (
+                summary_fragment.get("same_evidence_ref_required") is True
+            ),
+            "same_evidence_ref_status": _safe_pc_route_debug_dict(same_ref_source)
+            or {
+                "status": request_status or "blocked",
+                "verdict": "not_proven",
+                "reason": "real material request dispatch lacks same evidence_ref status",
+            },
+            "required_materials": required_materials,
+            "owner_mapping": owner_mapping or {},
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "blocked_claims": _safe_route_task_rehearsal_list(
+                summary_fragment.get("blocked_claims")
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": request_status or "blocked",
+                "safe_copy": safe_copy_text,
+                "safe_phone_copy": safe_copy_text,
+            },
+            "not_proven": _field_evidence_real_material_request_dispatch_not_proven(
+                request,
+                summary_fragment,
+            ),
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+            "read_error": "",
+        }
+    )
+    required_material_set = {
+        str(item or "").strip() for item in summary["required_materials"]
+    }
+    required_summary_fields = (
+        bool(summary["safe_evidence_ref"]),
+        summary["same_evidence_ref_required"] is True,
+        bool(summary["same_evidence_ref_status"]),
+        set(FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_REQUIRED_MATERIALS)
+        <= required_material_set,
+        bool(summary["owner_mapping"]),
+        bool(summary["next_required_evidence"]),
+    )
+    unsafe_material = any(
+        _field_evidence_real_material_request_dispatch_has_unsafe_fields(item)
+        for item in (
+            status_source,
+            same_ref_source,
+            summary["required_materials"],
+            summary["owner_mapping"],
+            summary["next_required_evidence"],
+            summary["blocked_claims"],
+            robot_summary,
+            safe_copy,
+            safe_copy_text,
+        )
+    )
+    if (
+        source_schema != FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_SCHEMA
+        or source_boundary != FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_GATE
+    ):
+        summary.update(
+            {
+                "request_status": {
+                    "status": "blocked_unsupported_field_evidence_real_material_request_dispatch",
+                    "verdict": "not_proven",
+                    "reason": "field evidence real material request dispatch schema or boundary is unsupported",
+                },
+                "request_verdict": "blocked",
+                "owner_mapping": {},
+                "next_required_evidence": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported real material request dispatch schema or boundary",
+                },
+            }
+        )
+        return summary
+    if summary["source"] != EVIDENCE_SOURCE_SOFTWARE or verdict != "not_proven":
+        summary["request_status"] = {
+            "status": "blocked_unsupported_field_evidence_real_material_request_dispatch",
+            "verdict": "not_proven",
+            "reason": "real material request dispatch must remain software_proof and not_proven",
+        }
+        summary["request_verdict"] = "blocked"
+        return summary
+    if not all(required_summary_fields):
+        summary.update(
+            {
+                "request_status": {
+                    "status": "blocked_missing_field_evidence_real_material_request_dispatch_materials",
+                    "verdict": "not_proven",
+                    "reason": "real material request dispatch is missing required safe metadata",
+                },
+                "request_verdict": "blocked",
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing required real material request dispatch fields",
+                },
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary["request_status"] = {
+            "status": "evidence_ref_mismatch_field_evidence_real_material_request_dispatch_blocked",
+            "verdict": "not_proven",
+            "reason": "real material request dispatch evidence_ref values do not match",
+        }
+        summary["request_verdict"] = "blocked"
+        summary["same_evidence_ref_status"] = {
+            "status": "mismatch",
+            "verdict": "not_proven",
+            "reason": "same evidence_ref mismatch",
+        }
+        return summary
+    boundary_flags = _safe_pc_route_debug_dict(summary_fragment.get("boundary_flags")) or {}
+    if (
+        summary_fragment.get("safe_to_control") is not False
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or bool(boundary_flags.get("control_entrypoint_enabled"))
+        or unsafe_material
+        or _field_evidence_real_material_request_dispatch_has_unsafe_fields(request)
+        or _field_evidence_real_material_request_dispatch_has_unsafe_fields(
+            summary_fragment
+        )
+        or _field_evidence_real_material_request_dispatch_has_unsafe_fields(
+            robot_summary
+        )
+    ):
+        blocked_copy = (
+            "Field evidence real material request dispatch was blocked because "
+            "summary fields could expose raw artifacts, diagnostics, control data, paths, "
+            "or success wording; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "request_status": {
+                    "status": "blocked_unsafe_field_evidence_real_material_request_dispatch",
+                    "verdict": "not_proven",
+                    "reason": "unsafe raw artifact, diagnostics, control, path, credential, or success material",
+                },
+                "request_verdict": "blocked",
+                "owner_mapping": {},
+                "next_required_evidence": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+            }
+        )
+    return summary
+
+
 def summarize_route_task_field_retest_result_callback_review_handoff(source):
     """构建 route-task field retest result callback review handoff 的 metadata-only diagnostics 摘要。"""
     source_path = ""
@@ -55078,6 +55710,7 @@ def build_diagnostics_payload(
     field_evidence_rerun_execution_result_review_handoff_ref="",
     field_evidence_rerun_execution_result_acceptance_packet_ref="",
     field_evidence_rerun_execution_result_acceptance_backfill_ref="",
+    field_evidence_real_material_request_dispatch_ref="",
     route_task_field_retest_evidence_dispatch_ref="",
     route_task_field_retest_callback_intake_ref="",
     route_task_field_retest_callback_review_decision_ref="",
@@ -57888,6 +58521,13 @@ def build_diagnostics_payload(
         "field_evidence_rerun_execution_result_acceptance_backfill_copy",
         None,
     )
+    latest_status.pop("field_evidence_real_material_request_dispatch", None)
+    latest_status.pop("field_evidence_real_material_request_dispatch_summary", None)
+    latest_status.pop(
+        "robot_diagnostics_field_evidence_real_material_request_dispatch_summary",
+        None,
+    )
+    latest_status.pop("field_evidence_real_material_request_dispatch_copy", None)
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -59059,6 +59699,61 @@ def build_diagnostics_payload(
             field_evidence_rerun_execution_result_acceptance_backfill_source
         )
     )
+    field_evidence_real_material_request_dispatch_status_source = (
+        latest_status.get(
+            "robot_diagnostics_field_evidence_real_material_request_dispatch_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_field_evidence_real_material_request_dispatch_summary"
+            ),
+            dict,
+        )
+        else latest_status.get("field_evidence_real_material_request_dispatch_summary")
+        if isinstance(
+            latest_status.get("field_evidence_real_material_request_dispatch_summary"),
+            dict,
+        )
+        else latest_status.get("field_evidence_real_material_request_dispatch")
+        if isinstance(latest_status.get("field_evidence_real_material_request_dispatch"), dict)
+        else diagnostics_source.get(
+            "robot_diagnostics_field_evidence_real_material_request_dispatch_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_field_evidence_real_material_request_dispatch_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("field_evidence_real_material_request_dispatch_summary")
+        if isinstance(
+            diagnostics_source.get("field_evidence_real_material_request_dispatch_summary"),
+            dict,
+        )
+        else diagnostics_source.get("field_evidence_real_material_request_dispatch")
+        if isinstance(
+            diagnostics_source.get("field_evidence_real_material_request_dispatch"),
+            dict,
+        )
+        else {}
+    )
+    field_evidence_real_material_request_dispatch_source = (
+        field_evidence_real_material_request_dispatch_ref
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_SUMMARY",
+            "",
+        )
+        or field_evidence_real_material_request_dispatch_status_source
+    )
+    field_evidence_real_material_request_dispatch_summary = (
+        summarize_field_evidence_real_material_request_dispatch(
+            field_evidence_real_material_request_dispatch_source
+        )
+    )
     route_task_field_retest_evidence_dispatch_source = (
         route_task_field_retest_evidence_dispatch_ref
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH", "")
@@ -60025,6 +60720,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_summary=(
             field_evidence_rerun_execution_result_acceptance_backfill_summary
+        ),
+        field_evidence_real_material_request_dispatch=(
+            field_evidence_real_material_request_dispatch_summary
+        ),
+        field_evidence_real_material_request_dispatch_summary=(
+            field_evidence_real_material_request_dispatch_summary
+        ),
+        robot_diagnostics_field_evidence_real_material_request_dispatch_summary=(
+            field_evidence_real_material_request_dispatch_summary
         ),
         route_task_field_retest_evidence_dispatch=route_task_field_retest_evidence_dispatch_summary,
         route_task_field_retest_evidence_dispatch_summary=route_task_field_retest_evidence_dispatch_summary,

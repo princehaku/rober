@@ -57,6 +57,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_field_evidence_rerun_execution_result_review_handoff,
     summarize_field_evidence_rerun_execution_result_acceptance_packet,
     summarize_field_evidence_rerun_execution_result_acceptance_backfill,
+    summarize_field_evidence_real_material_request_dispatch,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -31709,6 +31710,239 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("raw_manifest", encoded)
         self.assertNotIn("checksum", encoded)
         self.assertNotIn("/tmp/raw-backfill.json", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("traceback", encoded.lower())
+        self.assertNotIn("WAVE ROVER", encoded)
+        self.assertNotIn("serial", encoded.lower())
+        self.assertNotIn("uart", encoded.lower())
+        self.assertIn("not_proven", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+
+    def test_field_evidence_real_material_request_dispatch_safe_alias_and_fail_closed(self):
+        required_materials = [
+            "task_record",
+            "nav2_fixed_route_runtime_log",
+            "route_completion_signal",
+            "elevator_door_floor_evidence",
+            "human_assistance_note",
+            "dropoff_cancel_completion",
+            "delivery_result",
+            "true_phone_browser_evidence",
+            "diagnostics_mobile_safe_summary",
+        ]
+        safe_summary = {
+            "schema": "trashbot.field_evidence_real_material_request_dispatch_summary.v1",
+            "source_schema": "trashbot.field_evidence_real_material_request_dispatch.v1",
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_real_material_request_dispatch_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_field_evidence_real_material_request_dispatch_gate"
+            ),
+            "capability": "field_evidence_real_material_request_dispatch",
+            "source": "software_proof",
+            "safe_evidence_ref": "field-real-material-request-dispatch-001",
+            "request_status": {
+                "status": "ready_for_field_owner_real_material_request_not_proven",
+                "verdict": "not_proven",
+                "reason": "real material request dispatch only",
+            },
+            "request_verdict": "ready_for_real_material_request_dispatch_not_proven",
+            "same_evidence_ref_required": True,
+            "same_evidence_ref_status": {"status": "matched", "verdict": "not_proven"},
+            "required_materials": required_materials,
+            "owner_mapping": {
+                "field_owner": ["task_record", "route_completion_signal"],
+                "autonomy": ["nav2_fixed_route_runtime_log"],
+                "hardware": ["elevator_door_floor_evidence", "human_assistance_note"],
+                "full_stack": ["true_phone_browser_evidence"],
+                "robot": ["diagnostics_mobile_safe_summary"],
+            },
+            "next_required_evidence": [
+                "Attach all nine same-ref materials before review intake."
+            ],
+            "blocked_claims": [
+                "real_field_rerun",
+                "true_phone_browser_proof",
+                "nav2_fixed_route_proof",
+                "route_elevator_field_pass",
+                "hil_pass",
+                "o5_external_proof",
+                "pr5_thread_resolved",
+                "delivery_result",
+                "delivery_success",
+            ],
+            "robot_diagnostics_summary": {
+                "status": "metadata_only",
+                "reason": "Robot mirrors request dispatch metadata only",
+            },
+            "safe_copy": (
+                "Field evidence real material request dispatch is metadata-only; "
+                "source=software_proof; not_proven; safe_to_control=false; "
+                "delivery_success=false; primary_actions_enabled=false."
+            ),
+            "not_proven": ["real material request dispatch is not delivery success"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+        artifact = {
+            "schema": "trashbot.field_evidence_real_material_request_dispatch.v1",
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_real_material_request_dispatch_gate"
+            ),
+            "safe_evidence_ref": "field-real-material-request-dispatch-001",
+            "field_evidence_real_material_request_dispatch_summary": safe_summary,
+        }
+        with tempfile.TemporaryDirectory() as td:
+            request_path = Path(td) / "field_evidence_real_material_request_dispatch.json"
+            request_path.write_text(json.dumps(artifact), encoding="utf-8")
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "field_evidence_real_material_request_dispatch": {
+                        "safe_to_control": True,
+                        "raw_diagnostics": {"ros_topic": "/cmd_vel"},
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                field_evidence_real_material_request_dispatch_ref=str(request_path),
+            )
+            from_nested = summarize_field_evidence_real_material_request_dispatch(
+                {
+                    "schema": "trashbot.field_evidence_real_material_request_dispatch.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_real_material_request_dispatch_gate"
+                    ),
+                    "field_evidence_real_material_request_dispatch_summary": safe_summary,
+                }
+            )
+            missing = summarize_field_evidence_real_material_request_dispatch(
+                Path(td) / "missing_real_material_request_dispatch.json"
+            )
+            unsupported = summarize_field_evidence_real_material_request_dispatch(
+                dict(
+                    safe_summary,
+                    source_schema=(
+                        "trashbot.field_evidence_rerun_execution_result_acceptance_backfill.v1"
+                    ),
+                    source_evidence_boundary=(
+                        "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate"
+                    ),
+                )
+            )
+            mismatch = summarize_field_evidence_real_material_request_dispatch(
+                dict(artifact, safe_evidence_ref="different-ref")
+            )
+            unsafe = summarize_field_evidence_real_material_request_dispatch(
+                {
+                    "schema": "trashbot.field_evidence_real_material_request_dispatch.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_real_material_request_dispatch_gate"
+                    ),
+                    "safe_evidence_ref": "field-real-material-request-dispatch-001",
+                    "raw_artifact": {
+                        "checksum": "abc",
+                        "local_path": "/tmp/raw-dispatch.json",
+                        "ros_topic": "/cmd_vel",
+                    },
+                    "diagnostics": {
+                        "robot_diagnostics_field_evidence_real_material_request_dispatch_summary": (
+                            safe_summary
+                        )
+                    },
+                }
+            )
+            raw_only = summarize_field_evidence_real_material_request_dispatch(
+                {
+                    "schema": "trashbot.field_evidence_real_material_request_dispatch.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_real_material_request_dispatch_gate"
+                    ),
+                    "safe_evidence_ref": "field-real-material-request-dispatch-001",
+                    "raw_diagnostics": {"token": "secret"},
+                }
+            )
+            success_claim = summarize_field_evidence_real_material_request_dispatch(
+                dict(safe_summary, delivery_success=True)
+            )
+
+        summary = payload[
+            "robot_diagnostics_field_evidence_real_material_request_dispatch_summary"
+        ]
+        self.assertEqual(payload["field_evidence_real_material_request_dispatch"], summary)
+        self.assertEqual(
+            payload["field_evidence_real_material_request_dispatch_summary"],
+            summary,
+        )
+        self.assertNotIn("field_evidence_real_material_request_dispatch", payload["latest_status"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.field_evidence_real_material_request_dispatch_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_real_material_request_dispatch.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_field_evidence_real_material_request_dispatch_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(
+            summary["request_verdict"],
+            "ready_for_real_material_request_dispatch_not_proven",
+        )
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertIn(
+            "field_evidence_real_material_request_dispatch_only",
+            summary["not_proven"],
+        )
+        self.assertEqual(summary["required_materials"], required_materials)
+        self.assertIn("field_owner", summary["owner_mapping"])
+        self.assertIn("Attach all nine", summary["next_required_evidence"][0])
+        self.assertIn("true_phone_browser_evidence", summary["required_materials"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertEqual(
+            from_nested["request_status"]["status"],
+            "ready_for_field_owner_real_material_request_not_proven",
+        )
+        self.assertEqual(missing["request_status"]["status"], "missing")
+        self.assertEqual(
+            unsupported["request_status"]["status"],
+            "blocked_unsupported_field_evidence_real_material_request_dispatch",
+        )
+        self.assertEqual(
+            mismatch["request_status"]["status"],
+            "evidence_ref_mismatch_field_evidence_real_material_request_dispatch_blocked",
+        )
+        self.assertEqual(
+            unsafe["request_status"]["status"],
+            "blocked_unsafe_field_evidence_real_material_request_dispatch",
+        )
+        self.assertEqual(raw_only["request_status"]["status"], "missing_summary")
+        self.assertEqual(
+            success_claim["request_status"]["status"],
+            "blocked_unsafe_field_evidence_real_material_request_dispatch",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_diagnostics", encoded)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("checksum", encoded)
+        self.assertNotIn("/tmp/raw-dispatch.json", encoded)
         self.assertNotIn("/cmd_vel", encoded)
         self.assertNotIn("traceback", encoded.lower())
         self.assertNotIn("WAVE ROVER", encoded)

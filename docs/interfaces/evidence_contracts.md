@@ -1634,6 +1634,64 @@ result, not delivery success, not HIL, not WAVE ROVER/UART feedback, not true
 phone/browser proof, not Objective 5 external cloud/4G/OSS/CDN/DB/queue proof,
 and not any primary robot action being enabled.
 
+## field_evidence_real_material_request_dispatch
+
+`pc-tools/evidence/field_evidence_real_material_request_dispatch.py` generates
+the PC-only real-material request dispatch gate after
+`field_evidence_rerun_execution_result_acceptance_backfill.py`. It consumes only
+the safe acceptance backfill artifact/summary or wrapper/nested JSON and emits a
+field-owner request checklist. It does not read raw field materials, real Nav2
+runtime, ROS graph state, serial/UART or WAVE ROVER data, real elevator systems,
+external cloud evidence, credentials, local raw paths, checksums, tracebacks,
+complete/raw artifacts, or real phone/browser runtime state.
+
+- Artifact schema:
+  `trashbot.field_evidence_real_material_request_dispatch.v1`
+- Summary schema:
+  `trashbot.field_evidence_real_material_request_dispatch_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_real_material_request_dispatch_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_backfill.v1` and
+  `trashbot.field_evidence_rerun_execution_result_acceptance_backfill_summary.v1`
+  under
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate`.
+
+The required request material set is fixed as `task_record`,
+`nav2_fixed_route_runtime_log`, `route_completion_signal`,
+`elevator_door_floor_evidence`, `human_assistance_note`,
+`dropoff_cancel_completion`, `delivery_result`,
+`true_phone_browser_evidence`, and `diagnostics_mobile_safe_summary`. These are
+request category names only; they do not imply that the gate has validated raw
+task records, Nav2/fixed-route logs, route completion signals, elevator door or
+floor evidence, human assistance records, dropoff/cancel completion, delivery
+result, true phone/browser runtime, or diagnostics artifacts.
+
+The output always includes `request_dispatch_status`, safe `evidence_ref`,
+`source_acceptance_backfill`, `required_materials`, `request_items`,
+`owner_handoff`, `next_steps`, `blocked_claims`, `safe_copy`,
+`source=software_proof`, `not_proven`, `safe_to_control=false`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_real_material_request_dispatch_gate`.
+
+Ready status is `ready_for_field_owner_real_material_request_not_proven`.
+Missing source, bad JSON, unsupported schema/boundary, source not marked as
+`source=software_proof` with `not_proven`, non-ready acceptance backfill, missing
+safe `evidence_ref`, evidence_ref mismatch, weak
+`same_evidence_ref_required`, unsafe or sensitive copy, raw local paths,
+credentials, ROS topics, `/cmd_vel`, serial/UART/WAVE ROVER details, checksums,
+complete/raw artifacts, tracebacks, success/control claims,
+`safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` all fail closed to a blocked/not_proven status.
+
+This contract is software proof only. A ready dispatch status means the same
+safe `evidence_ref` now has a field-owner request for the nine real material
+categories. It is not real field rerun proof, not true phone/browser proof, not
+Nav2/fixed-route proof, not route/elevator field pass, not HIL, not Objective 5
+external cloud/4G/OSS/CDN/DB/queue proof, not PR #5 reviewer resolution, not
+delivery result, not delivery success, and not any primary robot action being
+enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

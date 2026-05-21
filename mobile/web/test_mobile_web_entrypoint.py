@@ -61,6 +61,10 @@ FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_BACKFILL_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill.json"
 )
+FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_real_material_request_dispatch.json"
+)
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -10788,6 +10792,158 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, acceptance_backfill_text)
+
+    def test_field_evidence_real_material_request_dispatch_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_FIXTURE.read_text(encoding="utf-8")
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 现场真实材料请求 panel 跟在验收回填后，只读展示现场 owner 需要补的九类材料。
+        self.assertIn("FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_TEXT", app)
+        self.assertIn("safeFieldEvidenceRealMaterialRequestDispatchText", app)
+        self.assertIn("fieldEvidenceRealMaterialRequestDispatchCandidate", app)
+        self.assertIn("fieldEvidenceRealMaterialRequestDispatchFromStatus", app)
+        self.assertIn("renderFieldEvidenceRealMaterialRequestDispatch", app)
+        self.assertIn("现场真实材料请求", app)
+        self.assertIn("robot_diagnostics_field_evidence_real_material_request_dispatch_summary", app)
+        self.assertIn("field_evidence_real_material_request_dispatch_summary", app)
+        self.assertIn("field_evidence_real_material_request_dispatch?.summary", app)
+        self.assertIn("task_record", app)
+        self.assertIn("nav2_fixed_route_runtime_log", app)
+        self.assertIn("route_completion_signal", app)
+        self.assertIn("elevator_door_floor_evidence", app)
+        self.assertIn("human_assistance_note", app)
+        self.assertIn("dropoff_cancel_completion", app)
+        self.assertIn("delivery_result", app)
+        self.assertIn("true_phone_browser_evidence", app)
+        self.assertIn("diagnostics_mobile_safe_summary", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("not_proven", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceRealMaterialRequestDispatch.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotIn("copyFieldEvidenceRealMaterialRequestDispatchButton", app)
+        self.assertNotIn("downloadFieldEvidenceRealMaterialRequestDispatchButton", app)
+        self.assertNotIn("submitFieldEvidenceRealMaterialRequestDispatch", app)
+        self.assertNotIn("replayFieldEvidenceRealMaterialRequestDispatch", app)
+
+        # dedicated fixture 固定 request dispatch 语义，不能打开 Start/Confirm/Cancel 或声明真实送达。
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_real_material_request_dispatch_summary"
+        ]
+        fallback = dedicated_fixture["field_evidence_real_material_request_dispatch_summary"]
+        self.assertEqual(
+            summary["request_status"],
+            "ready_for_field_owner_real_material_request_dispatch_not_proven",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fallback["source"], "software_proof")
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "task_record",
+            "nav2_fixed_route_runtime_log",
+            "route_completion_signal",
+            "elevator_door_floor_evidence",
+            "human_assistance_note",
+            "dropoff_cancel_completion",
+            "delivery_result",
+            "true_phone_browser_evidence",
+            "diagnostics_mobile_safe_summary",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn(
+            "software_proof_docker_field_evidence_real_material_request_dispatch_gate",
+            dedicated_text,
+        )
+        self.assertIn("field_evidence_real_material_request_dispatch", doc)
+        self.assertIn("现场真实材料请求", doc)
+        self.assertIn("not Objective 5 external proof", doc)
+
+    def test_field_evidence_real_material_request_dispatch_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_FIXTURE.read_text(encoding="utf-8")
+        )
+        request_dispatch_text = json.dumps(
+            {
+                "request_dispatch":
+                    dedicated_fixture[
+                        "robot_diagnostics_field_evidence_real_material_request_dispatch_summary"
+                    ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_real_material_request_dispatch_summary"
+                ],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # 真实材料请求 fixture 只保留材料名称和 owner 步骤，不泄漏诊断原文、ACK/cursor 或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw packet",
+            "raw acceptance",
+            "raw backfill",
+            "raw request",
+            "raw dispatch",
+            "raw review",
+            "raw decision",
+            "raw handoff",
+            "raw result",
+            "raw execution",
+            "full execution pack",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "command replay",
+            "automatic resubmit",
+            "queue scheduling",
+            "execution scheduling",
+            "callback submission",
+            "request submission",
+            "review submission",
+            "handoff submission",
+            "result submission",
+            "acceptance submission",
+            "robot command",
+            "robot/internal",
+            "control authorization",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, request_dispatch_text)
 
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))

@@ -8,7 +8,25 @@
 
 ## 2026-05-21 系列
 
-更新时间：2026-05-21 13:14 Asia/Shanghai。
+更新时间：2026-05-21 14:22 Asia/Shanghai。
+
+### 2026-05-21 14-15｜field-evidence-real-material-request-dispatch｜field-owner real-material request dispatch software proof
+
+本轮 `sprints/2026.05.21_14-15_field-evidence-real-material-request-dispatch/` 执行 `field_evidence_real_material_request_dispatch` epic closeout。Objective 5 仍约 68%，是当前数值最低 Objective，但真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、production app/device 或 true phone/browser external proof 仍不可用；Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending，comment `3269642220` 只是 software-proof reply publication，不是 reviewer resolution。本轮选择 O2/O3/O4 field-owner real-material request dispatch，是为了把上一轮 acceptance-backfill safe state 转成九类真实材料请求，而不是宣称真实现场通过。
+
+Autonomy worker 新增 `trashbot.field_evidence_real_material_request_dispatch.v1` / `trashbot.field_evidence_real_material_request_dispatch_summary.v1` PC gate，消费 previous acceptance-backfill artifact、summary、Robot safe alias 或 wrapper/nested JSON 的 safe state，输出同一 safe `evidence_ref` 的 field-owner request checklist，并对 unsafe/sensitive、evidence-ref mismatch、source not ready、raw path、credential、ROS topic、serial/UART/WAVE ROVER detail、checksum、traceback、complete/raw artifact 和 success/control claim fail closed。Robot worker 新增 `robot_diagnostics_field_evidence_real_material_request_dispatch_summary` safe alias，只输出 safe `evidence_ref`、九类 required materials、owner mapping、next required evidence、blocked claims 和 safe copy。Full-Stack worker 在 mobile/web 新增只读“现场真实材料请求”panel、fixture、tests 和 docs，保持 Start Delivery / Confirm Dropoff / Cancel disabled。Hardware read-only consultation 已读 `docs/vendor/VENDOR_INDEX.md` 和 WAVE ROVER vendor files，只确认材料类别与 vendor-source 边界，不写成 installed proof。
+
+证据边界保持 `software_proof_docker_field_evidence_real_material_request_dispatch_gate`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。本轮 is not real field rerun、not real `task_record`、not real `nav2_fixed_route_runtime_log`、not real `route_completion_signal`、not route/elevator field pass、not true phone/browser proof、not dropoff/cancel completion、not delivery result、not delivery success、not O5 external proof、not HIL、not WAVE ROVER/UART proof、not PR #5 resolution。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 hardware bridge、真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` still unresolved/material pending，comment `3269642220` not reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只把 missing field evidence 转成 request dispatch，要求后续回填 `task_record`、电梯门/楼层证据、人工协助记录、dropoff/cancel completion、delivery result 和 diagnostics/mobile safe summary；没有真实 task record、真实电梯、dropoff/cancel completion、delivery result 或 delivery_success。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮 request dispatch 明确要求真实 `nav2_fixed_route_runtime_log` 和 `route_completion_signal`，但没有真实路线采集、Nav2/fixed-route 实跑、route completion signal、现场 task_record 或上车实机复账。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读“现场真实材料请求”panel 让现场 owner 和支持同学能看到 safe `evidence_ref`、required materials、field-owner next steps、blocked claims 和 fail-closed flags；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true_phone_browser_evidence 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_field_evidence_real_material_request_dispatch_gate` 只证明 Docker/local request dispatch metadata 可见性；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 5 tests in 0.160s OK`；CLI help、required `rg` 与 scoped `git diff --check` 通过，并修复 safe_copy 先脱敏导致无法 fail-closed 的问题。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 257 tests in 0.901s OK`；required `rg` 与 scoped `git diff --check` 通过，并修复九类 materials 被截成八类以及 `full_stack` 被 broad `ack` unsafe marker 误杀的问题。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；fixture JSON check 通过；mobile unittest 输出 `Ran 213 tests in 1.622s OK`；required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、required `rg`、closeout scoped `git diff --check`、targeted integration `py_compile`、Autonomy unittest、Robot diagnostics unittest、`node --check`、fixture JSON check、mobile unittest、integration `rg` 和 implementation scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、delivery result 或 delivery success。
 
 ### 2026-05-21 13-14｜cloud-hosted-mobile-web-degradation-passthrough｜hosted mobile degraded-state passthrough software proof
 

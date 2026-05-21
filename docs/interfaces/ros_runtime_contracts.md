@@ -308,3 +308,22 @@ The alias is metadata-only and fail-closed:
 Allowed Robot-visible fields are limited to sanitized acceptance-backfill metadata: `safe_evidence_ref`, `backfill_status`, `backfill_verdict`, `same_evidence_ref_required`, `same_evidence_ref_status`, `required_materials`, `accepted_materials`, `missing_materials`, `blocked_materials`, `owner_next_steps`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
 
 The alias must not expose raw manifest contents, raw task records, raw logs, raw route/elevator artifacts, complete acceptance-backfill artifact bodies, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, DB/queue URLs, OSS secrets, local paths, checksum values, tracebacks, ACK/cursor state, HIL/pass wording, dropoff/cancel completion, delivery result success, or success/control claims. Missing canonical summary, unsupported schema or boundary, same-`safe_evidence_ref` mismatch, enabled action flag, unsafe copy, raw manifest/record/log/artifact marker, local path, checksum, credential, DB/queue URL, traceback marker, HIL/pass wording, or hardware/control wording keeps the summary blocked/not_proven and leaves task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
+
+## robot_diagnostics_field_evidence_real_material_request_dispatch_summary
+
+`robot_diagnostics_field_evidence_real_material_request_dispatch_summary` is the Robot diagnostics safe alias for the `field_evidence_real_material_request_dispatch` gate. It consumes the canonical sanitized summary schema `trashbot.field_evidence_real_material_request_dispatch_summary.v1`, or a compatible wrapper that contains that summary and points back to `trashbot.field_evidence_real_material_request_dispatch.v1`; the evidence boundary must remain `software_proof_docker_field_evidence_real_material_request_dispatch_gate`.
+
+The alias is metadata-only and fail-closed:
+
+- `source=software_proof`
+- `not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `metadata_only=true`
+
+Allowed Robot-visible fields are limited to sanitized request-dispatch metadata: `safe_evidence_ref`, `request_status`, `request_verdict`, `same_evidence_ref_required`, `same_evidence_ref_status`, `required_materials`, `owner_mapping`, `next_required_evidence`, `blocked_claims`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
+
+The required material categories are exactly `task_record`, `nav2_fixed_route_runtime_log`, `route_completion_signal`, `elevator_door_floor_evidence`, `human_assistance_note`, `dropoff_cancel_completion`, `delivery_result`, `true_phone_browser_evidence`, and `diagnostics_mobile_safe_summary`. The alias preserves only the same safe `evidence_ref`, owner mapping, next required evidence, and safe copy needed by phone/diagnostics surfaces.
+
+The alias must not expose raw artifact data, raw diagnostics, unsafe material, mismatched `evidence_ref`, success/control claims, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, DB/queue URLs, OSS secrets, local paths, checksum values, tracebacks, ACK/cursor state, HIL/pass wording, dropoff/cancel completion, delivery result success, or complete artifact bodies. Missing canonical summary, unsupported schema or boundary, same-`safe_evidence_ref` mismatch, missing any of the nine material categories, missing owner mapping, missing next required evidence, enabled action flag, unsafe copy, raw artifact/diagnostics marker, local path, checksum, credential, DB/queue URL, traceback marker, HIL/pass wording, or hardware/control wording keeps the summary blocked/not_proven and leaves task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
