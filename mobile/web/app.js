@@ -209,6 +209,7 @@ const FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_INTAKE_BOUNDARY = "software_proof_d
 const FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_BOUNDARY = "software_proof_docker_field_evidence_real_material_owner_ack_review_decision_gate";
 const FIELD_EVIDENCE_MATERIAL_BLOCKER_ESCALATION_PACK_BOUNDARY = "software_proof_docker_field_evidence_material_blocker_escalation_pack_gate";
 const FIELD_EVIDENCE_MATERIAL_RESOLUTION_INTAKE_BOUNDARY = "software_proof_docker_field_evidence_material_resolution_intake_gate";
+const FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEW_DECISION_BOUNDARY = "software_proof_docker_field_evidence_material_resolution_review_decision_gate";
 const WAVE_ROVER_FEEDBACK_REPLAY_BOUNDARY = "software_proof_docker_wave_rover_feedback_replay_gate";
 const WAVE_ROVER_HIL_PACKET_INTAKE_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_intake_gate";
 const WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_review_decision_gate";
@@ -321,6 +322,7 @@ const UNSAFE_FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_INTAKE_TEXT = /(authorizatio
 const UNSAFE_FIELD_EVIDENCE_REAL_MATERIAL_OWNER_ACK_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw response|raw material|raw owner ack|raw ack|raw callback|raw packet|raw acceptance|raw backfill|raw request|raw dispatch|raw review|raw decision|raw handoff|raw result|raw followup|full execution pack|execution scheduling|schedule execution|queue scheduling|result submission|submit result|review submission|handoff submission|acceptance submission|request submission|dispatch submission|callback submission|followup submission|owner ack submission|upload|download|copy raw|ack payload|cursor|diagnostics fetch|command replay|replay request|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_EVIDENCE_MATERIAL_BLOCKER_ESCALATION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw response|raw material|raw blocker|raw escalation|raw owner|raw callback|raw packet|raw acceptance|raw backfill|raw request|raw dispatch|raw review|raw decision|raw handoff|raw result|raw followup|full execution pack|execution scheduling|schedule execution|queue scheduling|result submission|submit result|review submission|handoff submission|acceptance submission|request submission|dispatch submission|callback submission|followup submission|owner ack submission|upload|download|copy raw|ack payload|cursor|diagnostics fetch|command replay|replay request|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw response|raw material|raw blocker|raw escalation|raw resolution|raw owner|raw packet|raw review|raw decision|raw handoff|raw result|upload|download|copy raw|ack payload|cursor|diagnostics fetch|command replay|replay request|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
+const UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw response|raw material|raw blocker|raw escalation|raw resolution|raw owner|raw packet|raw review|raw decision|raw handoff|raw result|upload|download|copy raw|ack payload|cursor|diagnostics fetch|material fetch|command replay|replay request|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_RUN_READINESS_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_FIELD_RUN_CONSOLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw route response|raw robot response|complete bundle|complete artifact|field run artifact|execution bundle|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_FIELD_RUN_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|dropoff success|cancel completed|hil_pass)/i;
@@ -512,6 +514,7 @@ let latestFieldEvidenceRealMaterialOwnerAckIntake = null;
 let latestFieldEvidenceRealMaterialOwnerAckReviewDecision = null;
 let latestFieldEvidenceMaterialBlockerEscalationPack = null;
 let latestFieldEvidenceMaterialResolutionIntake = null;
+let latestFieldEvidenceMaterialResolutionReviewDecision = null;
 let latestCloudSupportHandoffSafeExport = null;
 let latestCloudCommandLifecycleAuditExport = null;
 let latestVerifiedTerminalResultMaterialIntake = null;
@@ -1328,6 +1331,15 @@ function safeFieldEvidenceMaterialResolutionIntakeText(value, fallback = "not_pr
   // resolution intake 只消费后端白名单 summary；raw resolution、ACK/cursor 或控制暗示全部 fail closed。
   const text = safeText(value, fallback);
   if (UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_INTAKE_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeFieldEvidenceMaterialResolutionReviewDecisionText(value, fallback = "not_proven") {
+  // review decision 只能呈现 owner 复核摘要；任何 raw、fetch、ACK/cursor 或控制成功暗示都退回 not_proven。
+  const text = safeText(value, fallback);
+  if (UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEW_DECISION_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -24793,6 +24805,149 @@ function fieldEvidenceMaterialResolutionIntakeCopyPayload(summary) {
   };
 }
 
+function fieldEvidenceMaterialResolutionReviewDecisionCandidate(status, readiness, diagnostics) {
+  // Robot diagnostics alias 是唯一优先入口；fallback 只读取既有 safe status/diagnostics summary 位置。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifactSummary = status?.field_evidence_material_resolution_review_decision?.summary ||
+    readiness?.field_evidence_material_resolution_review_decision?.summary ||
+    diagnostics?.field_evidence_material_resolution_review_decision?.summary ||
+    diagnosticsSummary.field_evidence_material_resolution_review_decision?.summary ||
+    nestedDiagnosticsSummary.field_evidence_material_resolution_review_decision?.summary ||
+    nestedDiagnosticsInnerSummary.field_evidence_material_resolution_review_decision?.summary ||
+    statusDiagnosticsSummary.field_evidence_material_resolution_review_decision?.summary;
+  return firstObject(
+    status?.robot_diagnostics_field_evidence_material_resolution_review_decision_summary,
+    readiness?.robot_diagnostics_field_evidence_material_resolution_review_decision_summary,
+    diagnostics?.robot_diagnostics_field_evidence_material_resolution_review_decision_summary,
+    diagnosticsReadiness.robot_diagnostics_field_evidence_material_resolution_review_decision_summary,
+    diagnosticsSummary.robot_diagnostics_field_evidence_material_resolution_review_decision_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_field_evidence_material_resolution_review_decision_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_field_evidence_material_resolution_review_decision_summary,
+    statusDiagnosticsSummary.robot_diagnostics_field_evidence_material_resolution_review_decision_summary,
+    status?.field_evidence_material_resolution_review_decision_summary,
+    readiness?.field_evidence_material_resolution_review_decision_summary,
+    diagnostics?.field_evidence_material_resolution_review_decision_summary,
+    diagnosticsReadiness.field_evidence_material_resolution_review_decision_summary,
+    diagnosticsSummary.field_evidence_material_resolution_review_decision_summary,
+    nestedDiagnosticsSummary.field_evidence_material_resolution_review_decision_summary,
+    nestedDiagnosticsInnerSummary.field_evidence_material_resolution_review_decision_summary,
+    statusDiagnosticsSummary.field_evidence_material_resolution_review_decision_summary,
+    artifactSummary,
+  );
+}
+
+function fieldEvidenceMaterialResolutionReviewDecisionList(value, fallback) {
+  // next_required_evidence 和 owner_review_handoff 可来自 list/map；手机端只保留短白名单文本。
+  const items = Array.isArray(value) ? value : Object.entries(value || {});
+  const safeItems = items
+    .map((item) => {
+      if (Array.isArray(item)) {
+        return safeFieldEvidenceMaterialResolutionReviewDecisionText(
+          `${item[0]}=${safeFieldEvidenceMaterialResolutionReviewDecisionText(item[1], "")}`,
+          "",
+        );
+      }
+      return safeFieldEvidenceMaterialResolutionReviewDecisionText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 12) : [fallback];
+}
+
+function fieldEvidenceMaterialResolutionReviewDecisionNotProvenList(value) {
+  // owner review decision 不是验收通过；这些缺口必须持续显示，避免把 accepted 误读成 delivery success。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "same_evidence_ref_required=true",
+    "true_phone_browser_proof_missing",
+    "route_elevator_runtime_missing",
+    "dropoff_completion_missing",
+    "cancel_completion_missing",
+    "verified_delivery_result_missing",
+    "hardware_hil_missing",
+    "o5_external_proof_missing",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 28);
+}
+
+function fieldEvidenceMaterialResolutionReviewDecisionFromStatus(status, readiness, diagnostics) {
+  const provided = fieldEvidenceMaterialResolutionReviewDecisionCandidate(status, readiness, diagnostics) || {};
+  const allowedDecisions = new Set([
+    "accepted_for_owner_review_not_proven",
+    "needs_more_evidence_not_proven",
+    "rejected_unsafe_resolution_not_proven",
+    "blocked_missing_resolution_intake_not_proven",
+  ]);
+  const candidateDecision = safeFieldEvidenceMaterialResolutionReviewDecisionText(
+    provided.decision || provided.review_decision || provided.status,
+    "blocked_missing_resolution_intake_not_proven",
+  );
+  const failClosedFlags = provided.safe_to_control === true ||
+    provided.delivery_success === true ||
+    provided.primary_actions_enabled === true;
+  const decision = allowedDecisions.has(candidateDecision) && !failClosedFlags
+    ? candidateDecision
+    : "blocked_missing_resolution_intake_not_proven";
+  return {
+    missing: !Object.keys(provided).length || failClosedFlags,
+    schema: "trashbot.field_evidence_material_resolution_review_decision_summary.v1",
+    source_schema: safeFieldEvidenceMaterialResolutionReviewDecisionText(
+      provided.source_schema || provided.artifact_schema,
+      "trashbot.field_evidence_material_resolution_review_decision.v1",
+    ),
+    source: safeFieldEvidenceMaterialResolutionReviewDecisionText(provided.source, "software_proof"),
+    decision,
+    safe_evidence_ref: safeFieldEvidenceMaterialResolutionReviewDecisionText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    reason: safeFieldEvidenceMaterialResolutionReviewDecisionText(
+      provided.reason || provided.decision_reason || provided.review_reason || provided.blocked_reason,
+      "reason=missing sanitized resolution review decision summary",
+    ),
+    next_required_evidence: fieldEvidenceMaterialResolutionReviewDecisionList(
+      provided.next_required_evidence || provided.next_evidence || provided.required_evidence,
+      "next_required_evidence=同一 safe evidence_ref 的真实手机/browser、route/elevator、dropoff/cancel、HIL 或 O5 external material。",
+    ),
+    owner_review_handoff: fieldEvidenceMaterialResolutionReviewDecisionList(
+      provided.owner_review_handoff || provided.owner_handoff || provided.owner_next_steps ||
+        provided.handoff,
+      "owner_review_handoff=field owner/Product 继续复核真实材料；手机端不提交材料或控制请求。",
+    ),
+    evidence_boundary: safeFieldEvidenceMaterialResolutionReviewDecisionText(
+      provided.evidence_boundary || provided.proof_boundary,
+      FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEW_DECISION_BOUNDARY,
+    ),
+    boundary_flags: "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: fieldEvidenceMaterialResolutionReviewDecisionNotProvenList(provided),
+  };
+}
+
 function waveRoverFeedbackReplayCandidate(status, readiness, diagnostics) {
   // 兼容 PC gate、Robot diagnostics 和 status 多层 summary；前端拒绝读取 raw artifact。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -34946,6 +35101,94 @@ function renderFieldEvidenceMaterialResolutionIntake(status) {
   $("fieldEvidenceMaterialResolutionIntakeCopyStatus").textContent = summary.safe_copy_status;
 }
 
+function ensureFieldEvidenceMaterialResolutionReviewDecisionPanel() {
+  // review decision 紧跟 resolution intake，让手机端看到 owner 复核结论但不获得任何材料提交或控制入口。
+  let panel = $("fieldEvidenceMaterialResolutionReviewDecisionPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("fieldEvidenceMaterialResolutionIntakeTitle")?.closest("section") ||
+    $("fieldEvidenceMaterialBlockerEscalationPackTitle")?.closest("section") ||
+    $("fieldEvidenceRealMaterialOwnerAckReviewDecisionTitle")?.closest("section") ||
+    $("elevatorAssistPanel");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "fieldEvidenceMaterialResolutionReviewDecisionPanel";
+  panel.className = "field-evidence-material-resolution-review-decision-panel";
+  panel.setAttribute("aria-labelledby", "fieldEvidenceMaterialResolutionReviewDecisionTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="fieldEvidenceMaterialResolutionReviewDecisionTitle">现场材料 resolution review decision</h2>
+      <span id="fieldEvidenceMaterialResolutionReviewDecisionBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="fieldEvidenceMaterialResolutionReviewDecisionCopy" class="message">
+      等待 robot_diagnostics_field_evidence_material_resolution_review_decision_summary。
+    </p>
+    <dl class="field-evidence-material-resolution-review-decision-grid">
+      <div><dt>Decision</dt><dd id="fieldEvidenceMaterialResolutionReviewDecisionState">blocked_missing_resolution_intake_not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="fieldEvidenceMaterialResolutionReviewDecisionEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Reason</dt><dd id="fieldEvidenceMaterialResolutionReviewDecisionReason">reason=missing sanitized resolution review decision summary</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="fieldEvidenceMaterialResolutionReviewDecisionBoundary">software_proof_docker_field_evidence_material_resolution_review_decision_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="fieldEvidenceMaterialResolutionReviewDecisionFlags">source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="fieldEvidenceMaterialResolutionReviewDecisionNotProven">真实手机/browser、路线电梯现场通过、dropoff/cancel、HIL、外部云证明和 delivery_success=false 边界未解除。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section>
+        <h3>Next Required Evidence</h3>
+        <ol id="fieldEvidenceMaterialResolutionReviewDecisionNextEvidence" class="handoff-checklist">
+          <li>等待 next required evidence。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Owner Review Handoff</h3>
+        <ol id="fieldEvidenceMaterialResolutionReviewDecisionOwnerHandoff" class="handoff-checklist">
+          <li>等待 owner review handoff。</li>
+        </ol>
+      </section>
+    </div>
+    <p id="fieldEvidenceMaterialResolutionReviewDecisionHint" class="hint">
+      本 panel 只消费 robot_diagnostics_field_evidence_material_resolution_review_decision_summary / field_evidence_material_resolution_review_decision_summary / nested safe summary；不触发 Start Delivery、Confirm Dropoff、Cancel、ACK、cursor、diagnostics fetch、material fetch、replay、resubmit 或 robot command。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderFieldEvidenceMaterialResolutionReviewDecision(status) {
+  const panel = ensureFieldEvidenceMaterialResolutionReviewDecisionPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = fieldEvidenceMaterialResolutionReviewDecisionFromStatus(
+    status,
+    readiness,
+    latestDiagnostics,
+  );
+  latestFieldEvidenceMaterialResolutionReviewDecision = summary;
+  const badge = $("fieldEvidenceMaterialResolutionReviewDecisionBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 resolution review decision 摘要" : "review decision not_proven";
+  $("fieldEvidenceMaterialResolutionReviewDecisionCopy").textContent = summary.boundary_flags;
+  $("fieldEvidenceMaterialResolutionReviewDecisionState").textContent = `${summary.source} / ${summary.decision}`;
+  $("fieldEvidenceMaterialResolutionReviewDecisionEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("fieldEvidenceMaterialResolutionReviewDecisionReason").textContent = summary.reason;
+  $("fieldEvidenceMaterialResolutionReviewDecisionBoundary").textContent = summary.evidence_boundary;
+  $("fieldEvidenceMaterialResolutionReviewDecisionFlags").textContent = summary.boundary_flags;
+  $("fieldEvidenceMaterialResolutionReviewDecisionNotProven").textContent = summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceMaterialResolutionReviewDecisionNextEvidence",
+    summary.next_required_evidence,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceMaterialResolutionReviewDecisionOwnerHandoff",
+    summary.owner_review_handoff,
+  );
+}
+
 function renderHardwareSensorProcurementIntake(status) {
   const readiness = readinessFromStatus(status);
   const summary = hardwareSensorProcurementIntakeFromStatus(status, readiness, latestDiagnostics);
@@ -41922,6 +42165,14 @@ function renderDiagnosticsSummary(payload) {
       ).pack_status,
     ],
     [
+      "field_evidence_material_resolution_review_decision",
+      fieldEvidenceMaterialResolutionReviewDecisionFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).decision,
+    ],
+    [
       "cloud_support_handoff_safe_export",
       cloudSupportHandoffSafeExportFromStatus(
         payload || {},
@@ -42130,6 +42381,7 @@ function renderOfflineFailure() {
   renderFieldEvidenceRealMaterialOwnerAckReviewDecision({});
   renderFieldEvidenceMaterialBlockerEscalationPack({});
   renderFieldEvidenceMaterialResolutionIntake({});
+  renderFieldEvidenceMaterialResolutionReviewDecision({});
   renderCloudSupportHandoffSafeExport({});
   renderCloudCommandLifecycleAuditExport({});
   renderVerifiedTerminalResultMaterialIntake({});
@@ -42280,6 +42532,7 @@ function renderStatus(status) {
   renderFieldEvidenceRealMaterialOwnerAckReviewDecision(status);
   renderFieldEvidenceMaterialBlockerEscalationPack(status);
   renderFieldEvidenceMaterialResolutionIntake(status);
+  renderFieldEvidenceMaterialResolutionReviewDecision(status);
   renderWaveRoverFeedbackReplay(status);
   renderWaveRoverHilPacketIntake(status);
   renderWaveRoverHilPacketReviewDecision(status);

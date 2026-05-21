@@ -755,6 +755,47 @@ terminal delivery/dropoff/cancel result, real phone/browser proof, public cloud
 proof, PR #5 reviewer resolution, HIL, Nav2 runtime proof, or permission to
 start/confirm/cancel/ACK/replay/resubmit robot commands.
 
+## robot_diagnostics_field_evidence_material_resolution_review_decision_summary
+
+`robot_diagnostics_field_evidence_material_resolution_review_decision_summary`
+is the Robot diagnostics safe alias for
+`field_evidence_material_resolution_review_decision`. It consumes only sanitized
+`trashbot.field_evidence_material_resolution_review_decision_summary.v1` input,
+or a compatible nested safe summary from latest status / diagnostics.
+
+- Source artifact schema:
+  `trashbot.field_evidence_material_resolution_review_decision.v1`
+- Source summary schema:
+  `trashbot.field_evidence_material_resolution_review_decision_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_field_evidence_material_resolution_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_review_decision_gate`
+
+Allowed decision values are
+`accepted_for_owner_review_not_proven`,
+`needs_more_evidence_not_proven`,
+`rejected_unsafe_resolution_not_proven`, and
+`blocked_missing_resolution_intake_not_proven`.
+
+Allowed fields are limited to decision, safe `evidence_ref`, reason, next
+required evidence, owner review handoff, evidence boundary,
+`source=software_proof`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and `safe_to_control=false`.
+
+The alias is read-only metadata. It must not expose raw artifact bodies, local
+paths, credentials, bearer tokens, ACK/cursor payloads, complete artifacts,
+checksums, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details,
+tracebacks, success/pass/control copy, `delivery_success=true`,
+`primary_actions_enabled=true`, or `safe_to_control=true`. Unsafe inputs fail
+closed as blocked/not_proven.
+
+`accepted_for_owner_review_not_proven` only means the safe resolution decision
+can be reviewed by the owner. It is not delivery success, a real field result,
+a verified terminal delivery/dropoff/cancel result, real phone/browser proof,
+public cloud proof, PR #5 reviewer resolution, HIL, Nav2 runtime proof, or
+permission to start/confirm/cancel/ACK/replay/resubmit robot commands.
+
 ## robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary
 
 `robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary`

@@ -121,6 +121,10 @@ FIELD_EVIDENCE_MATERIAL_RESOLUTION_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_material_resolution_intake_summary.json"
 )
+FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEW_DECISION_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_material_resolution_review_decision_summary.json"
+)
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -13147,6 +13151,155 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, resolution_text)
+
+    def test_field_evidence_material_resolution_review_decision_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # resolution review decision 只展示 owner 复核摘要，不新增复制、fetch、ACK/cursor 或机器人命令入口。
+        self.assertIn("FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeFieldEvidenceMaterialResolutionReviewDecisionText", app)
+        self.assertIn("fieldEvidenceMaterialResolutionReviewDecisionCandidate", app)
+        self.assertIn("fieldEvidenceMaterialResolutionReviewDecisionFromStatus", app)
+        self.assertIn("renderFieldEvidenceMaterialResolutionReviewDecision", app)
+        self.assertIn("现场材料 resolution review decision", app)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_material_resolution_review_decision_summary",
+            app,
+        )
+        self.assertIn("field_evidence_material_resolution_review_decision_summary", app)
+        self.assertIn("field_evidence_material_resolution_review_decision?.summary", app)
+        self.assertIn("accepted_for_owner_review_not_proven", app)
+        self.assertIn("needs_more_evidence_not_proven", app)
+        self.assertIn("rejected_unsafe_resolution_not_proven", app)
+        self.assertIn("blocked_missing_resolution_intake_not_proven", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("owner_review_handoff", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotIn("copyFieldEvidenceMaterialResolutionReviewDecisionButton", app)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceMaterialResolutionReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackFieldEvidenceMaterialResolutionReviewDecision",
+            "cursorFieldEvidenceMaterialResolutionReviewDecision",
+            "fetchFieldEvidenceMaterialResolutionReviewDecisionDiagnostics",
+            "fetchFieldEvidenceMaterialResolutionReviewDecisionMaterial",
+            "replayFieldEvidenceMaterialResolutionReviewDecision",
+            "resubmitFieldEvidenceMaterialResolutionReviewDecision",
+            "commandFieldEvidenceMaterialResolutionReviewDecision",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # dedicated fixture 明确 review decision 是 software_proof/not_proven，三类主操作继续 disabled。
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_material_resolution_review_decision_summary"
+        ]
+        fallback = dedicated_fixture["field_evidence_material_resolution_review_decision_summary"]
+        nested = dedicated_fixture["field_evidence_material_resolution_review_decision"]["summary"]
+        self.assertEqual(summary["capability"], "field_evidence_material_resolution_review_decision")
+        self.assertEqual(summary["decision"], "needs_more_evidence_not_proven")
+        self.assertEqual(fallback["decision"], "accepted_for_owner_review_not_proven")
+        self.assertEqual(nested["decision"], "blocked_missing_resolution_intake_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("field_evidence_material_resolution_review_decision_fixture", summary["safe_evidence_ref"])
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "field_evidence_material_resolution_review_decision",
+            "robot_diagnostics_field_evidence_material_resolution_review_decision_summary",
+            "software_proof_docker_field_evidence_material_resolution_review_decision_gate",
+            "accepted_for_owner_review_not_proven",
+            "needs_more_evidence_not_proven",
+            "rejected_unsafe_resolution_not_proven",
+            "blocked_missing_resolution_intake_not_proven",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "owner_review_handoff=field_owner_backfills_real_materials",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn("field_evidence_material_resolution_review_decision", doc)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_material_resolution_review_decision_summary",
+            doc,
+        )
+        self.assertIn("software_proof_docker_field_evidence_material_resolution_review_decision_gate", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+
+    def test_field_evidence_material_resolution_review_decision_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        review_text = json.dumps(
+            {
+                "robot": dedicated_fixture[
+                    "robot_diagnostics_field_evidence_material_resolution_review_decision_summary"
+                ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_material_resolution_review_decision_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "field_evidence_material_resolution_review_decision"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留 review-decision metadata，不泄漏 raw 材料、路径、凭证、底盘细节、ACK/cursor 或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw material",
+            "raw resolution",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "hil_pass",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "material fetch",
+            "replay",
+            "resubmit",
+            "robot command",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, review_text)
 
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))

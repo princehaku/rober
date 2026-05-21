@@ -1,0 +1,88 @@
+{
+  "robot_diagnostics_field_evidence_material_resolution_review_decision_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_review_decision_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_review_decision.v1",
+    "capability": "field_evidence_material_resolution_review_decision",
+    "source": "software_proof",
+    "decision": "needs_more_evidence_not_proven",
+    "review_decision_options": [
+      "accepted_for_owner_review_not_proven",
+      "needs_more_evidence_not_proven",
+      "rejected_unsafe_resolution_not_proven",
+      "blocked_missing_resolution_intake_not_proven"
+    ],
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_review_decision_fixture_20260522_0001",
+    "reason": "reason=resolution intake is sanitized but true field materials remain pending",
+    "next_required_evidence": [
+      "next_required_evidence=true phone/browser note on same safe evidence_ref",
+      "next_required_evidence=route/elevator runtime summary and completion material",
+      "next_required_evidence=verified terminal delivery/dropoff/cancel result material"
+    ],
+    "owner_review_handoff": [
+      "owner_review_handoff=field_owner_backfills_real_materials",
+      "owner_review_handoff=product_owner_keeps_not_proven_boundary"
+    ],
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_review_decision_gate",
+    "proof_boundary": "software_proof_docker_field_evidence_material_resolution_review_decision_gate",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "true_phone_browser_proof_missing",
+      "route_elevator_runtime_missing",
+      "dropoff_completion_missing",
+      "cancel_completion_missing",
+      "hardware_hil_missing",
+      "o5_external_proof_missing"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_review_decision_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_review_decision_summary.v1",
+    "capability": "field_evidence_material_resolution_review_decision",
+    "source": "software_proof",
+    "decision": "accepted_for_owner_review_not_proven",
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_review_decision_fixture_20260522_0001",
+    "reason": "reason=safe owner resolution packet can enter owner review",
+    "next_required_evidence": [
+      "next_required_evidence=same safe evidence_ref field materials"
+    ],
+    "owner_review_handoff": [
+      "owner_review_handoff=field_owner_material_review"
+    ],
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_review_decision_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "field_evidence_material_resolution_review_decision": {
+    "summary": {
+      "schema": "trashbot.field_evidence_material_resolution_review_decision_summary.v1",
+      "capability": "field_evidence_material_resolution_review_decision",
+      "source": "software_proof",
+      "decision": "blocked_missing_resolution_intake_not_proven",
+      "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_review_decision_fixture_20260522_0001",
+      "reason": "reason=nested fallback remains blocked without canonical Robot alias",
+      "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_review_decision_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

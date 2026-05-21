@@ -982,6 +982,52 @@ resolution packet 转成只读摘要，不是真实 field pass、真实 Nav2/fix
 dropoff/cancel completion、delivery result、delivery success、HIL、O5 external proof、
 PR review resolved 或真实 phone/browser 证据。
 
+## field evidence material resolution review decision
+
+`pc-tools/evidence/field_evidence_material_resolution_review_decision.py` 只读上一节
+`field_evidence_material_resolution_intake` artifact、summary、Robot safe alias 或
+wrapper/nested JSON，把 resolution intake 分类转成 PC-only owner review decision：
+
+```bash
+python3 pc-tools/evidence/field_evidence_material_resolution_review_decision.py \
+  --input /tmp/field_evidence_material_resolution_intake_summary.json \
+  --output /tmp/field_evidence_material_resolution_review_decision.json \
+  --summary-output /tmp/field_evidence_material_resolution_review_decision_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.field_evidence_material_resolution_review_decision.v1`，summary 使用
+`schema=trashbot.field_evidence_material_resolution_review_decision_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_field_evidence_material_resolution_review_decision_summary`，证据边界
+固定为
+`software_proof_docker_field_evidence_material_resolution_review_decision_gate`。核心字段
+包括 `decision`、safe `evidence_ref`、`material_status_summary`、`owner_handoff`、
+`next_required_evidence`、`decision_reasons`、`safe_copy`、
+`source=software_proof`、`not_proven`、`delivery_success=false`、
+`primary_actions_enabled=false` 和 `safe_to_control=false`。
+
+`decision` 只允许 `accepted_for_owner_review_not_proven`、
+`needs_more_evidence_not_proven`、`rejected_unsafe_resolution_not_proven` 和
+`blocked_missing_resolution_intake_not_proven`。accepted intake 仅在 safe schema /
+boundary、同一个 safe `evidence_ref`、`same_evidence_ref_required=true`、有 accepted
+material summary 且 false-state flags 未被改写时进入
+`accepted_for_owner_review_not_proven`；缺补证材料进入
+`needs_more_evidence_not_proven`；unsafe copy、success/control wording、raw 字段、凭证、
+本机路径、ROS/control detail、serial/UART/WAVE ROVER detail 或 rejected/blocked upstream
+材料进入 `rejected_unsafe_resolution_not_proven`；缺输入、坏 JSON、unsupported
+schema/boundary 或 evidence-ref mismatch 进入
+`blocked_missing_resolution_intake_not_proven`。
+
+该 gate 不读取真实 task record、Nav2/fixed-route runtime log、route completion signal、
+电梯门/楼层材料、dropoff/cancel completion、delivery result、raw diagnostics、ROS graph、
+serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G 或真实手机/browser，
+也不执行任何机器人动作。`accepted_for_owner_review_not_proven` 只表示 Docker/local
+`software_proof_docker_field_evidence_material_resolution_review_decision_gate` 已把上一轮
+resolution intake 转成只读 owner review decision，不是真实 field pass、真实
+Nav2/fixed-route、真实电梯、verified terminal result、delivery success、HIL、O5
+external proof、PR #5 resolution 或真实 phone/browser 证据。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：
