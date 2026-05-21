@@ -1,0 +1,83 @@
+{
+  "robot_diagnostics_cloud_support_handoff_safe_export_summary": {
+    "schema": "trashbot.cloud_support_handoff_safe_export_summary.v1",
+    "source_schema": "trashbot.cloud_support_handoff_safe_export.v1",
+    "capability": "cloud_support_handoff_safe_export",
+    "export_status": "ready_for_support_handoff_safe_export_not_proven",
+    "source": "software_proof",
+    "safe_evidence_ref": "cloud_support_handoff_safe_export_fixture_20260521_0001",
+    "support_level": "cloud_support_review",
+    "redaction_summary": "credentials、raw diagnostics、raw status、local path、ROS topic、serial detail removed",
+    "safe_sections": [
+      "cloud degradation summary",
+      "support handoff reason",
+      "safe evidence ref",
+      "not_proven boundary",
+      "false control flags"
+    ],
+    "blocked_actions": [
+      "Start Delivery disabled",
+      "Confirm Dropoff disabled",
+      "Cancel disabled",
+      "ACK cursor request disabled",
+      "retry replay resubmit disabled",
+      "GitHub action disabled"
+    ],
+    "safe_copy": {
+      "schema": "trashbot.cloud_support_handoff_safe_export_copy.v1",
+      "schema_version": 1,
+      "safe_phone_copy": "cloud_support_handoff_safe_export：source=software_proof；not_proven；safe_to_control=false；delivery_success=false；primary_actions_enabled=false；支持人员只能复盘脱敏摘要。"
+    },
+    "safe_phone_copy": "云端支持交接包已脱敏；只能复制给支持人员复盘，不能触发任何机器人动作。",
+    "recovery_hint": "把 phone-safe 支持包交给支持人员后，等待 Robot/API 或现场 owner 回填真实公网、4G、OSS/CDN、DB/queue、真实手机/browser 或 HIL 材料。",
+    "evidence_boundary": "software_proof_docker_cloud_support_handoff_safe_export_gate",
+    "proof_boundary": "software_proof_docker_cloud_support_handoff_safe_export_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "real_public_https_tls",
+      "real_4g_sim",
+      "oss_cdn_live_traffic",
+      "production_db_queue",
+      "true_phone_browser_proof",
+      "hil_pass",
+      "pr5_thread_resolved",
+      "delivery_success"
+    ]
+  },
+  "cloud_support_handoff_safe_export_summary": {
+    "schema": "trashbot.cloud_support_handoff_safe_export_summary.v1",
+    "source": "software_proof",
+    "export_status": "ready_for_support_handoff_safe_export_not_proven",
+    "safe_evidence_ref": "cloud_support_handoff_safe_export_fixture_20260521_0001",
+    "evidence_boundary": "software_proof_docker_cloud_support_handoff_safe_export_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false"
+    ]
+  },
+  "cloud_support_handoff_safe_export": {
+    "summary": {
+      "schema": "trashbot.cloud_support_handoff_safe_export_summary.v1",
+      "source": "software_proof",
+      "export_status": "ready_for_support_handoff_safe_export_not_proven",
+      "safe_evidence_ref": "cloud_support_handoff_safe_export_fixture_20260521_0001",
+      "evidence_boundary": "software_proof_docker_cloud_support_handoff_safe_export_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

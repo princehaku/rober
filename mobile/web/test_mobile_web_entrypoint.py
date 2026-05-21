@@ -11,6 +11,9 @@ CLOUD_PENDING_ACK_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_pen
 CLOUD_POLL_BACKOFF_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_poll_backoff_rate_limit_guard.json"
 )
+CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_support_handoff_safe_export.json"
+)
 CLOUD_COMMAND_EXPIRY_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_expiry_safety_guard.json"
 CLOUD_COMMAND_IDEMPOTENCY_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_idempotency_visibility_guard.json"
@@ -83,6 +86,86 @@ FIELD_EVIDENCE_REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_FIXTURE = (
 )
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
+
+
+class CloudSupportHandoffSafeExportMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_support_handoff_safe_export_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 云支持交接导出只消费 Robot/API safe summary，不新增任何手机端控制 endpoint。
+        self.assertIn("云支持交接安全导出", app)
+        self.assertIn("CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_BOUNDARY", app)
+        self.assertIn("robot_diagnostics_cloud_support_handoff_safe_export_summary", app)
+        self.assertIn("cloud_support_handoff_safe_export_summary", app)
+        self.assertIn("software_proof_docker_cloud_support_handoff_safe_export_gate", app)
+        self.assertIn("safe_to_control=false / delivery_success=false / primary_actions_enabled=false", app)
+        self.assertIn("cloud-support-handoff-safe-export-panel", styles)
+        self.assertNotRegex(app, r"cloudSupportHandoffSafeExport.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 明确支持包是 software_proof/not_proven，并保持所有主操作关闭。
+        summary = fixture["robot_diagnostics_cloud_support_handoff_safe_export_summary"]
+        self.assertEqual(summary["capability"], "cloud_support_handoff_safe_export")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertIn("safe_to_control=false", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("software_proof_docker_cloud_support_handoff_safe_export_gate", fixture_text)
+
+        # 产品文档必须写清支持导出不是公网、4G、OSS/CDN、DB/queue、真实手机、HIL 或送达证明。
+        self.assertIn("cloud_support_handoff_safe_export", doc)
+        self.assertIn("robot_diagnostics_cloud_support_handoff_safe_export_summary", doc)
+        self.assertIn("software_proof_docker_cloud_support_handoff_safe_export_gate", doc)
+        self.assertIn("not real public HTTPS/TLS proof", doc)
+        self.assertIn("not real 4G/SIM proof", doc)
+        self.assertIn("not OSS/CDN live traffic", doc)
+        self.assertIn("not production DB/queue proof", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not HIL", doc)
+        self.assertIn("not delivery success", doc)
+
+    def test_cloud_support_handoff_safe_export_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_FIXTURE.read_text(encoding="utf-8"))
+        summary_text = json.dumps(
+            fixture["robot_diagnostics_cloud_support_handoff_safe_export_summary"],
+            ensure_ascii=False,
+        ).lower()
+
+        # 支持导出 fixture 只能携带脱敏支持摘要，不泄漏凭证、底层通信、原始诊断或控制授权。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "signed url",
+            "serial device",
+            "baudrate",
+            "wave rover detail",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, summary_text)
 
 
 class FieldEvidenceRerunMaterialDispatchMobileTest(unittest.TestCase):

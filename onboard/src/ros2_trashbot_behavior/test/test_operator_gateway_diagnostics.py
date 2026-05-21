@@ -140,6 +140,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_route_elevator_field_session_handoff,
     summarize_cloud_worker_migration_rehearsal,
     summarize_cloud_worker_cutover_drain,
+    summarize_cloud_support_handoff_safe_export,
     summarize_cloud_unreachable_malformed_response_guard,
     summarize_cloud_poll_backoff_rate_limit_guard,
     summarize_vision_manifest,
@@ -28791,6 +28792,155 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(readiness["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
         self.assertFalse(readiness["command_safety"]["actions"]["cancel"]["enabled"])
         for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_support_handoff_safe_export_summary_is_fail_closed(self):
+        safe_summary = {
+            "schema": "trashbot.cloud_support_handoff_safe_export_summary.v1",
+            "capability": "cloud_support_handoff_safe_export",
+            "source": "software_proof",
+            "evidence_boundary": "software_proof_docker_cloud_support_handoff_safe_export_gate",
+            "status": "ready_for_cloud_support_handoff_safe_export_not_proven",
+            "degradation_state": "cloud_unreachable",
+            "safe_phone_copy": "云端不可达，主操作保持不可用。",
+            "support_bundle_id": "support-1778357000-remote-degraded",
+            "support_level": "remote_blocked",
+            "next_action": "retry_cloud",
+            "export_refs": {"bundle_id": "support-1778357000-remote-degraded"},
+            "okr_context": {
+                "lowest_objective": "Objective 5 ~68%",
+                "reference_objective": "Objective 1 ~81%",
+                "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+                "pr5_reply_comment_id": "3269642220",
+                "pr5_material_state": "unresolved_material_pending",
+            },
+            "safe_copy": (
+                "cloud_support_handoff_safe_export: source=software_proof; not_proven; "
+                "safe_to_control=false; delivery_success=false; primary_actions_enabled=false."
+            ),
+            "not_proven": ["o5_external_cloud_proof", "delivery_success"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+        summary = summarize_cloud_support_handoff_safe_export(safe_summary)
+        unsafe = summarize_cloud_support_handoff_safe_export(
+            dict(
+                safe_summary,
+                raw_response_body="Traceback /tmp/cloud.json Authorization Bearer token",
+                safe_to_control=True,
+                delivery_success=True,
+                primary_actions_enabled=True,
+            )
+        )
+
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_cloud_support_handoff_safe_export_summary.v1",
+        )
+        self.assertEqual(summary["source_schema"], "trashbot.cloud_support_handoff_safe_export_summary.v1")
+        self.assertEqual(summary["capability"], "cloud_support_handoff_safe_export")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_cloud_support_handoff_safe_export_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["status"], "ready_for_cloud_support_handoff_safe_export_not_proven")
+        self.assertEqual(summary["degradation_state"], "cloud_unreachable")
+        self.assertEqual(summary["okr_context"]["lowest_objective"], "Objective 5 ~68%")
+        self.assertEqual(summary["okr_context"]["reference_objective"], "Objective 1 ~81%")
+        self.assertEqual(summary["okr_context"]["pr5_thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(summary["okr_context"]["pr5_reply_comment_id"], "3269642220")
+        self.assertIn("not_proven", summary["false_states"])
+        self.assertIn("o5_external_cloud_proof", summary["not_proven"])
+        self.assertIn("pr5_thread_resolved", summary["not_proven"])
+        self.assertFalse(summary["remote_ready"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertEqual(unsafe["status"], "blocked_unsafe_cloud_support_handoff_safe_export")
+        self.assertTrue(unsafe["raw_material_redacted"])
+        for forbidden in (
+            "Authorization",
+            "Bearer",
+            "token",
+            "raw response",
+            "/cmd_vel",
+            "/tmp/",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_diagnostics_payload_surfaces_cloud_support_handoff_safe_export_alias(self):
+        payload = self._base_build_payload(
+            {
+                "state": "remote_degraded",
+                "cloud_support_handoff_safe_export": {
+                    "schema": "trashbot.cloud_support_handoff_safe_export_summary.v1",
+                    "capability": "cloud_support_handoff_safe_export",
+                    "source": "software_proof",
+                    "evidence_boundary": (
+                        "software_proof_docker_cloud_support_handoff_safe_export_gate"
+                    ),
+                    "status": "ready_for_cloud_support_handoff_safe_export_not_proven",
+                    "degradation_state": "malformed_response",
+                    "safe_phone_copy": "云端响应异常，主操作保持不可用。",
+                    "safe_copy": (
+                        "source=software_proof; not_proven; safe_to_control=false; "
+                        "delivery_success=false; primary_actions_enabled=false."
+                    ),
+                    "okr_context": {
+                        "lowest_objective": "Objective 5 ~68%",
+                        "reference_objective": "Objective 1 ~81%",
+                        "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+                        "pr5_reply_comment_id": "3269642220",
+                    },
+                    "not_proven": ["o5_external_cloud_proof"],
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                },
+            }
+        )
+
+        summary = payload["robot_diagnostics_cloud_support_handoff_safe_export_summary"]
+        encoded = json.dumps(payload, ensure_ascii=False)
+        self.assertEqual(
+            summary,
+            payload["cloud_support_handoff_safe_export"],
+        )
+        self.assertEqual(
+            summary,
+            payload["cloud_support_handoff_safe_export_summary"],
+        )
+        self.assertNotIn("cloud_support_handoff_safe_export", payload["latest_status"])
+        self.assertEqual(summary["degradation_state"], "malformed_response")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertIn("Objective 5", summary["okr_context"]["lowest_objective"])
+        self.assertIn("Objective 1", summary["okr_context"]["reference_objective"])
+        self.assertEqual(summary["okr_context"]["pr5_thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(summary["okr_context"]["pr5_reply_comment_id"], "3269642220")
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertIn("software_proof_docker_cloud_support_handoff_safe_export_gate", encoded)
+        for forbidden in (
+            "Authorization",
+            "Bearer",
+            "token",
+            "raw response",
+            "/cmd_vel",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
             self.assertNotIn(forbidden, encoded)
 
     def test_diagnostics_payload_does_not_forward_preexisting_support_bundle(self):

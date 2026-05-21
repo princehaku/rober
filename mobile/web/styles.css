@@ -157,6 +157,7 @@ h2 {
 .real-material-readiness-board-panel,
 .real-material-evidence-intake-panel,
 .real-material-followup-escalation-status-panel,
+.cloud-support-handoff-safe-export-panel,
 .field-evidence-rerun-callback-review-decision-panel,
 .field-evidence-rerun-callback-review-handoff-panel,
 .task-terminal-completion-mainline-panel,
@@ -330,6 +331,7 @@ h2 {
 .real-material-readiness-board-grid,
 .real-material-evidence-intake-grid,
 .real-material-followup-escalation-status-grid,
+.cloud-support-handoff-safe-export-grid,
 .task-terminal-completion-mainline-grid,
 .task-terminal-field-material-intake-grid,
 .task-terminal-field-material-review-decision-grid,
@@ -416,6 +418,7 @@ h2 {
 .hardware-real-material-escalation-request-grid div,
 .real-material-readiness-board-grid div,
 .real-material-evidence-intake-grid div,
+.cloud-support-handoff-safe-export-grid div,
 .task-terminal-completion-mainline-grid div,
 .task-terminal-field-material-intake-grid div,
 .task-terminal-field-material-review-decision-grid div,
@@ -1202,6 +1205,10 @@ dd {
   }
 
   .real-material-followup-escalation-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cloud-support-handoff-safe-export-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

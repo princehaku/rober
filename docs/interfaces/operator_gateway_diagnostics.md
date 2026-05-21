@@ -1,5 +1,40 @@
 # Operator Gateway Diagnostics
 
+## cloud_support_handoff_safe_export
+
+Robot/API exposes `cloud_support_handoff_safe_export` on `/api/status` and
+`/api/diagnostics` for mobile/web to consume a read-only cloud degraded-state
+support export package.
+
+- Source objects: sanitized `phone_readiness`, `phone_support_bundle`, and
+  diagnostics summaries
+- API schema: `trashbot.cloud_support_handoff_safe_export_summary.v1`
+- Robot alias schema:
+  `trashbot.robot_diagnostics_cloud_support_handoff_safe_export_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_cloud_support_handoff_safe_export_gate`
+
+The export is metadata-only. It may expose sanitized `degradation_state`, safe
+copy, support bundle id, support level, next action, short `export_refs`, and
+OKR/review context for `Objective 5 ~68%`, `Objective 1 ~81%`, PR thread
+`PRRT_kwDOSWB9286CJ3tX`, and comment `3269642220`.
+
+The required false-state boundary is `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`. The alias must also keep ACK posting, cursor
+updates, Nav2 triggering, and HIL pass false.
+
+Unsafe copy, raw diagnostics, raw cloud bodies, credentials, URLs, local paths,
+tracebacks, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details,
+success wording, `safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` must fail closed as blocked/not_proven.
+
+This export must not enable Start Delivery, Confirm Dropoff, Cancel, ACK,
+cursor updates, persistence updates, terminal ACK, commands, Nav2, route
+execution, WAVE ROVER, HIL, Objective 5 external proof, true phone/browser
+proof, route/elevator field pass, PR #5 reviewer resolution, or delivery
+success.
+
 ## robot_diagnostics_cloud_poll_backoff_rate_limit_guard_summary
 
 Robot diagnostics exposes

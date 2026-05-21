@@ -35,6 +35,10 @@ PHONE_COMMAND_SAFETY_EVIDENCE_BOUNDARY = "software_proof_docker_phone_command_sa
 PHONE_TASK_FLOW_SCHEMA = "trashbot.phone_task_flow_readiness.v1"
 PHONE_SUPPORT_BUNDLE_SCHEMA = "trashbot.phone_support_bundle.v1"
 PHONE_SUPPORT_BUNDLE_EVIDENCE_BOUNDARY = "software_proof_docker_phone_support_bundle_gate"
+CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA = "trashbot.cloud_support_handoff_safe_export_summary.v1"
+CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_support_handoff_safe_export_gate"
+)
 VOICE_PROMPT_READINESS_SCHEMA = "trashbot.voice_prompt_readiness.v1"
 VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_voice_prompt_readiness_gate"
 PHONE_OFFLINE_RESUME_READINESS_SCHEMA = "trashbot.phone_offline_resume_readiness.v1"
@@ -342,6 +346,31 @@ PHONE_SUPPORT_BUNDLE_SAFE_KEYS = {
     "overall_status",
     "evidence_boundary",
 }
+
+CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_NOT_PROVEN = [
+    "o5_external_cloud_proof",
+    "true_phone_browser_proof",
+    "real_public_https_tls",
+    "real_4g_or_sim",
+    "production_db_queue",
+    "oss_cdn_live_traffic",
+    "nav2_or_fixed_route_delivery",
+    "route_elevator_field_pass",
+    "wave_rover_motion",
+    "hil_pass",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
+    "pr5_thread_resolved",
+]
+
+CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_FALSE_STATES = [
+    "source=software_proof",
+    "not_proven",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+]
 
 PHONE_READINESS_PRIMARY_COPY = {
     "ready": "手机可以继续操作。",
@@ -3488,6 +3517,113 @@ def build_phone_support_bundle(status, phone_readiness=None, diagnostics=None, *
     }
 
 
+def build_cloud_support_handoff_safe_export(
+    status,
+    phone_readiness=None,
+    phone_support_bundle=None,
+    diagnostics=None,
+    *,
+    now=None,
+):
+    """Build the Robot/API safe export summary for cloud degraded support handoff.
+
+    该摘要只打包已经脱敏的 support bundle 与 remote degraded state；它是给
+    mobile/web 只读消费的导出索引，不能携带 raw diagnostics 或解锁控制。
+    """
+    status = status if isinstance(status, dict) else {}
+    phone_readiness = phone_readiness if isinstance(phone_readiness, dict) else {}
+    diagnostics = diagnostics if isinstance(diagnostics, dict) else {}
+    if not isinstance(phone_support_bundle, dict):
+        phone_support_bundle = build_phone_support_bundle(status, phone_readiness, diagnostics, now=now)
+    remote_readiness = (
+        phone_readiness.get("remote_readiness")
+        if isinstance(phone_readiness.get("remote_readiness"), dict)
+        else status.get("remote_readiness")
+        if isinstance(status.get("remote_readiness"), dict)
+        else {}
+    )
+    remote_state = _remote_degradation(remote_readiness)
+    support_refs = (
+        phone_support_bundle.get("support_refs")
+        if isinstance(phone_support_bundle.get("support_refs"), dict)
+        else {}
+    )
+    next_steps = (
+        phone_support_bundle.get("next_steps")
+        if isinstance(phone_support_bundle.get("next_steps"), dict)
+        else {}
+    )
+    generated_at = float(now if now is not None else time.time())
+    safe_state = _support_safe_text(status.get("state"), "unknown")
+    safe_copy = _support_safe_text(
+        remote_readiness.get("safe_phone_copy")
+        or phone_readiness.get("safe_phone_copy")
+        or phone_support_bundle.get("status_summary"),
+        "云端降级支持交接包已生成；主操作保持不可用。",
+    )
+    support_copy = _support_safe_text(
+        phone_support_bundle.get("safe_copy"),
+        "支持交接摘要已过滤敏感内容。",
+    )
+    # 只把可复制的短字段给 mobile/web；完整 diagnostics、URL、token、路径和硬件细节都不进入导出包。
+    export_refs = _support_safe_mapping(support_refs)
+    export_refs["bundle_id"] = _support_safe_text(phone_support_bundle.get("bundle_id"), "")
+    export_refs = {key: value for key, value in export_refs.items() if value not in ("", None)}
+    export_status = (
+        "ready_for_cloud_support_handoff_safe_export_not_proven"
+        if remote_state != "ok"
+        else "monitoring_cloud_support_handoff_safe_export_not_proven"
+    )
+    okr_context = {
+        "lowest_objective": "Objective 5 ~68%",
+        "reference_objective": "Objective 1 ~81%",
+        "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+        "pr5_reply_comment_id": "3269642220",
+        "pr5_material_state": "unresolved_material_pending",
+    }
+    return {
+        "schema": CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA,
+        "schema_version": 1,
+        "api_version": API_VERSION,
+        "capability": "cloud_support_handoff_safe_export",
+        "source": "software_proof",
+        "evidence_boundary": CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_EVIDENCE_BOUNDARY,
+        "status": export_status,
+        "generated_at": generated_at,
+        "degradation_state": _support_safe_text(remote_state, "status_stale"),
+        "safe_state": safe_state,
+        "safe_phone_copy": safe_copy,
+        "safe_copy": (
+            f"cloud_support_handoff_safe_export: {safe_copy} "
+            "source=software_proof; not_proven; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        ),
+        "support_bundle_id": _support_safe_text(phone_support_bundle.get("bundle_id"), ""),
+        "support_level": _support_safe_text(phone_readiness.get("support_level"), "support_required"),
+        "next_action": _support_safe_text(phone_readiness.get("next_action"), "contact_support"),
+        "next_steps": {
+            "user": _support_safe_text(next_steps.get("user"), "刷新状态；仍不可用时复制安全导出包。"),
+            "support": _support_safe_text(
+                next_steps.get("support"),
+                "只复查脱敏软件证据；不要把 ACK 当成送达成功。",
+            ),
+        },
+        "export_refs": export_refs,
+        "support_safe_copy": support_copy,
+        "okr_context": okr_context,
+        "false_states": list(CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_FALSE_STATES),
+        "not_proven": list(CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_NOT_PROVEN),
+        "remote_ready": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+    }
+
+
 def _voice_prompt_safe_text(value, fallback):
     # 提示词可能来自 status 文件或 task record；自由文本进入手机前必须脱敏。
     text_value = str(value or "").strip()
@@ -4137,6 +4273,11 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         production_recovery=production_recovery,
     )
     phone_support_bundle = build_phone_support_bundle(payload, payload["phone_readiness"])
+    safe_export = build_cloud_support_handoff_safe_export(
+        payload,
+        payload["phone_readiness"],
+        phone_support_bundle,
+    )
     voice_prompt_readiness = build_voice_prompt_readiness(
         payload,
         payload["phone_readiness"],
@@ -4144,6 +4285,8 @@ def _status_with_phone_readiness(gateway, mock_cloud):
     )
     payload["phone_support_bundle"] = phone_support_bundle
     payload["phone_readiness"]["phone_support_bundle"] = dict(phone_support_bundle)
+    payload["cloud_support_handoff_safe_export"] = safe_export
+    payload["phone_readiness"]["cloud_support_handoff_safe_export"] = dict(safe_export)
     payload["voice_prompt_readiness"] = voice_prompt_readiness
     payload["phone_readiness"]["voice_prompt_readiness"] = dict(voice_prompt_readiness)
     offline_resume_readiness = build_phone_offline_resume_readiness(
@@ -4165,6 +4308,13 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
     task_flow = dict(status.get("phone_task_flow_readiness", {}))
     phone_readiness = status.get("phone_readiness") if isinstance(status.get("phone_readiness"), dict) else {}
     phone_support_bundle = build_phone_support_bundle(status, phone_readiness, diagnostics_payload)
+    safe_export = build_cloud_support_handoff_safe_export(
+        status,
+        phone_readiness,
+        phone_support_bundle,
+        diagnostics_payload,
+    )
+    phone_readiness["cloud_support_handoff_safe_export"] = dict(safe_export)
     voice_prompt_readiness = build_voice_prompt_readiness(status, phone_readiness, phone_support_bundle)
     offline_resume_readiness = build_phone_offline_resume_readiness(
         status,
@@ -4174,6 +4324,7 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
     )
     diagnostics_payload["phone_task_flow_readiness"] = task_flow
     diagnostics_payload["phone_support_bundle"] = phone_support_bundle
+    diagnostics_payload["cloud_support_handoff_safe_export"] = safe_export
     diagnostics_payload["voice_prompt_readiness"] = voice_prompt_readiness
     diagnostics_payload["phone_offline_resume_readiness"] = offline_resume_readiness
     # HTTP diagnostics 复用 status 里的同一份摘要，避免 status/diagnostics 对 transaction gate 给出两套口径。
@@ -4189,6 +4340,7 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
         latest_status["phone_readiness"] = dict(phone_readiness)
         latest_status["phone_task_flow_readiness"] = task_flow
         latest_status["phone_support_bundle"] = phone_support_bundle
+        latest_status["cloud_support_handoff_safe_export"] = safe_export
         latest_status["voice_prompt_readiness"] = voice_prompt_readiness
         latest_status["phone_offline_resume_readiness"] = offline_resume_readiness
     remote_state = _remote_degradation(phone_readiness.get("remote_readiness"))

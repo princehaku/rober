@@ -27,6 +27,8 @@ const CLOUD_PENDING_ACK_STATUS_BOUNDARY = "software_proof_docker_cloud_pending_a
 const CLOUD_PENDING_ACK_STATUS_COPY = "本地命令已终态，但云端 ACK 还没确认，暂不能拉取新命令";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY = "software_proof_docker_cloud_poll_backoff_rate_limit_guard";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_COPY = "远程控制正在等待重试退避窗口；窗口结束前 Start Delivery、Confirm Dropoff、Cancel 保持禁用。";
+const CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_BOUNDARY = "software_proof_docker_cloud_support_handoff_safe_export_gate";
+const CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_COPY = "云端支持交接包已脱敏；只能复制给支持人员复盘，不能触发任何机器人动作。";
 const CLOUD_COMMAND_EXPIRY_BOUNDARY = "software_proof_docker_cloud_command_expiry_safety_guard";
 const CLOUD_COMMAND_EXPIRY_COPY = "云端命令已过期，机器人已忽略旧命令；请重新下发一次安全指令。";
 const CLOUD_COMMAND_IDEMPOTENCY_BOUNDARY = "software_proof_docker_cloud_command_idempotency_visibility_guard";
@@ -270,6 +272,7 @@ const REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_HANDOFF_REVIEW_DECISION_SUMMA
 const REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_HANDOFF_REVIEW_HANDOFF_SCHEMA = "trashbot.mobile_real_device_field_trial_acceptance_execution_handoff_review_handoff.v1";
 const REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_HANDOFF_REVIEW_HANDOFF_SUMMARY_SCHEMA = "trashbot.mobile_real_device_field_trial_acceptance_execution_handoff_review_handoff_summary.v1";
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|complete artifact|artifact|raw browser event|raw event|raw promise|complete ua|full ua|完整 ua|raw robot response|raw intake json|robot\/internal|internal technical)/i;
+const UNSAFE_CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_TEXT = /(authorization|bearer|token|github[_ -]?token|github action|gh workflow|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|robot\/internal|internal technical|password|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_OPERATOR_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|raw ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|raw robot response|robot\/internal|internal technical|password)/i;
 const UNSAFE_PC_ROUTE_DEBUG_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|raw ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
@@ -480,6 +483,7 @@ let latestFieldEvidenceRealMaterialResponseIntake = null;
 let latestFieldEvidenceRealMaterialResponseReviewDecision = null;
 let latestFieldEvidenceRealMaterialResponseReviewHandoff = null;
 let latestFieldEvidenceRealMaterialFollowupEscalationStatus = null;
+let latestCloudSupportHandoffSafeExport = null;
 let latestWaveRoverFeedbackReplay = null;
 let latestWaveRoverHilPacketIntake = null;
 let latestWaveRoverHilPacketReviewDecision = null;
@@ -1256,6 +1260,15 @@ function safeFieldEvidenceRealMaterialFollowupEscalationStatusText(value, fallba
   // 现场 follow-up 升级状态只读展示 Robot 已脱敏摘要；任何 raw 材料、endpoint 或控制语义都降级。
   const text = safeText(value, fallback);
   if (UNSAFE_FIELD_EVIDENCE_REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeCloudSupportHandoffSafeExportText(value, fallback = "not_proven") {
+  // 支持交接导出只允许 phone-safe 摘要；raw 诊断、凭证、ACK/cursor 或控制语义全部 fail closed。
+  const text = safeText(value, fallback);
+  if (UNSAFE_CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -35458,6 +35471,302 @@ function renderCloudReadiness(status) {
   $("cloudEvidenceBoundary").textContent = safeText(summary.evidence_boundary, CLOUD_READINESS_BOUNDARY);
 }
 
+function cloudSupportHandoffSafeExportCandidate(status, readiness, diagnostics) {
+  // Robot/API 会并行提供 sanitized summary；手机端只在 status/readiness/diagnostics 中找 summary，不反查 raw artifact。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifactSummary = status?.cloud_support_handoff_safe_export?.summary ||
+    readiness?.cloud_support_handoff_safe_export?.summary ||
+    diagnostics?.cloud_support_handoff_safe_export?.summary ||
+    diagnosticsSummary.cloud_support_handoff_safe_export?.summary ||
+    nestedDiagnosticsSummary.cloud_support_handoff_safe_export?.summary ||
+    nestedDiagnosticsInnerSummary.cloud_support_handoff_safe_export?.summary ||
+    statusDiagnosticsSummary.cloud_support_handoff_safe_export?.summary;
+  return firstObject(
+    status?.robot_diagnostics_cloud_support_handoff_safe_export_summary,
+    readiness?.robot_diagnostics_cloud_support_handoff_safe_export_summary,
+    diagnostics?.robot_diagnostics_cloud_support_handoff_safe_export_summary,
+    diagnosticsReadiness.robot_diagnostics_cloud_support_handoff_safe_export_summary,
+    diagnosticsSummary.robot_diagnostics_cloud_support_handoff_safe_export_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_cloud_support_handoff_safe_export_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_cloud_support_handoff_safe_export_summary,
+    statusDiagnosticsSummary.robot_diagnostics_cloud_support_handoff_safe_export_summary,
+    status?.cloud_support_handoff_safe_export_summary,
+    readiness?.cloud_support_handoff_safe_export_summary,
+    diagnostics?.cloud_support_handoff_safe_export_summary,
+    diagnosticsReadiness.cloud_support_handoff_safe_export_summary,
+    diagnosticsSummary.cloud_support_handoff_safe_export_summary,
+    nestedDiagnosticsSummary.cloud_support_handoff_safe_export_summary,
+    nestedDiagnosticsInnerSummary.cloud_support_handoff_safe_export_summary,
+    statusDiagnosticsSummary.cloud_support_handoff_safe_export_summary,
+    artifactSummary,
+  );
+}
+
+function cloudSupportHandoffSafeExportSummaryList(value, fallback) {
+  // sections、blocked_actions 和 not-proven 列表可来自数组或 map；最终只保留短白名单文案。
+  const items = Array.isArray(value) ? value : Object.entries(value || {});
+  const safeItems = items
+    .map((item) => {
+      if (Array.isArray(item)) {
+        const key = safeCloudSupportHandoffSafeExportText(item[0], "");
+        const detail = safeCloudSupportHandoffSafeExportText(item[1], "");
+        return key && detail ? `${key}=${detail}` : key || detail;
+      }
+      return safeCloudSupportHandoffSafeExportText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 12) : [fallback];
+}
+
+function cloudSupportHandoffSafeExportNotProvenList(value) {
+  // 交接包只能帮助支持复盘，不能改变 O5 外部证明、手机真机、HIL 或真实送达边界。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "source=software_proof",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "real_public_https_tls",
+    "real_4g_sim",
+    "oss_cdn_live_traffic",
+    "production_db_queue",
+    "true_phone_browser_proof",
+    "hil_pass",
+    "pr5_thread_resolved",
+    "delivery_success",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 24);
+}
+
+function cloudSupportHandoffSafeExportCopyPayloadFromValue(value) {
+  // copy/export 必须由上游 safe_copy 或 safe_export_package 授权；缺失时不能用 UI fallback 合成交接包。
+  const source = value?.safe_export_package || value?.safe_copy_payload ||
+    value?.support_export_package || value?.safe_copy;
+  if (!source) {
+    return null;
+  }
+  const text = typeof source === "object"
+    ? source.safe_phone_copy || source.summary || source.copy || source.package_summary
+    : source;
+  const safeCopy = safeCloudSupportHandoffSafeExportText(text, "");
+  if (!safeCopy) {
+    return null;
+  }
+  return {
+    schema: "trashbot.cloud_support_handoff_safe_export_copy.v1",
+    schema_version: 1,
+    safe_phone_copy: safeCopy,
+  };
+}
+
+function cloudSupportHandoffSafeExportFromStatus(status, readiness, diagnostics) {
+  const provided = cloudSupportHandoffSafeExportCandidate(status, readiness, diagnostics) || {};
+  const safeCopyPayload = cloudSupportHandoffSafeExportCopyPayloadFromValue(provided);
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.cloud_support_handoff_safe_export_summary.v1",
+    source_schema: safeCloudSupportHandoffSafeExportText(
+      provided.source_schema || provided.cloud_support_handoff_safe_export_schema,
+      "trashbot.cloud_support_handoff_safe_export.v1",
+    ),
+    export_status: safeCloudSupportHandoffSafeExportText(
+      provided.export_status || provided.status || provided.overall_status,
+      "blocked_missing_cloud_support_handoff_safe_export_not_proven",
+    ),
+    source: safeCloudSupportHandoffSafeExportText(provided.source, "software_proof"),
+    safe_evidence_ref: safeCloudSupportHandoffSafeExportText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    support_level: safeCloudSupportHandoffSafeExportText(
+      provided.support_level || provided.escalation_level || provided.owner_support_level,
+      "support_level=cloud_support_review",
+    ),
+    redaction_summary: safeCloudSupportHandoffSafeExportText(
+      provided.redaction_summary || provided.sanitization_summary || provided.sanitized_summary,
+      "redaction_summary=credentials、raw diagnostics、robot command 和 local path removed",
+    ),
+    safe_sections: cloudSupportHandoffSafeExportSummaryList(
+      provided.safe_sections || provided.sections || provided.export_sections,
+      "safe_sections=status summary、cloud degradation、support handoff、not_proven boundary",
+    ),
+    blocked_actions: cloudSupportHandoffSafeExportSummaryList(
+      provided.blocked_actions || provided.disabled_actions || provided.false_actions,
+      "blocked_actions=Start Delivery、Confirm Dropoff、Cancel、ACK/cursor request、retry、replay、resubmit、GitHub action、robot command",
+    ),
+    safe_copy_payload: safeCopyPayload,
+    safe_copy_status: safeCopyPayload ? "safe_copy_available" : "blocked copy unavailable",
+    safe_phone_copy: safeCloudSupportHandoffSafeExportText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary,
+      CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_COPY,
+    ),
+    recovery_hint: safeCloudSupportHandoffSafeExportText(
+      provided.recovery_hint || provided.retry_hint,
+      "复制给支持人员后等待 Robot/API 或现场 owner 回填真实材料；手机端不自动重放、不请求 ACK/cursor，也不提交控制动作。",
+    ),
+    evidence_boundary: safeCloudSupportHandoffSafeExportText(
+      provided.evidence_boundary || provided.proof_boundary,
+      CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_BOUNDARY,
+    ),
+    boundary_flags: "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: cloudSupportHandoffSafeExportNotProvenList(provided),
+  };
+}
+
+function cloudSupportHandoffSafeExportCopyPayload(summary) {
+  // 导出包只保留支持人员可读白名单，不携带 raw diagnostics、ACK/cursor、retry/replay 或 robot command。
+  const source = summary?.schema
+    ? summary
+    : cloudSupportHandoffSafeExportFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  if (!source.safe_copy_payload) {
+    return null;
+  }
+  return {
+    schema: source.safe_copy_payload.schema,
+    schema_version: source.safe_copy_payload.schema_version,
+    source: "mobile_web",
+    cloud_support_handoff_safe_export_schema: source.schema,
+    source_schema: source.source_schema,
+    export_status: source.export_status,
+    safe_evidence_ref: source.safe_evidence_ref,
+    support_level: source.support_level,
+    redaction_summary: source.redaction_summary,
+    safe_sections: source.safe_sections,
+    blocked_actions: source.blocked_actions,
+    boundary_flags: source.boundary_flags,
+    safe_phone_copy: source.safe_copy_payload.safe_phone_copy,
+    evidence_boundary: CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_BOUNDARY,
+    not_proven: source.not_proven,
+    source_boundary: "software_proof",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+  };
+}
+
+function ensureCloudSupportHandoffSafeExportPanel() {
+  // 支持导出 panel 放在云中转状态之后，让用户先看到云控降级，再复制 phone-safe 交接包。
+  let panel = $("cloudSupportHandoffSafeExportPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("cloudReadinessTitle")?.closest("section") || $("supportTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "cloudSupportHandoffSafeExportPanel";
+  panel.className = "cloud-support-handoff-safe-export-panel";
+  panel.setAttribute("aria-labelledby", "cloudSupportHandoffSafeExportTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="cloudSupportHandoffSafeExportTitle">云支持交接安全导出</h2>
+      <span id="cloudSupportHandoffSafeExportBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="cloudSupportHandoffSafeExportCopy" class="message">
+      等待 robot_diagnostics_cloud_support_handoff_safe_export_summary。
+    </p>
+    <dl class="cloud-support-handoff-safe-export-grid">
+      <div><dt>Export Status</dt><dd id="cloudSupportHandoffSafeExportStatus">blocked_missing_cloud_support_handoff_safe_export_not_proven</dd></div>
+      <div><dt>Support Level</dt><dd id="cloudSupportHandoffSafeExportLevel">support_level=cloud_support_review</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="cloudSupportHandoffSafeExportEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Redaction</dt><dd id="cloudSupportHandoffSafeExportRedaction">redaction_summary=credentials removed</dd></div>
+      <div><dt>Safe Copy</dt><dd id="cloudSupportHandoffSafeExportCopyState">blocked copy unavailable</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="cloudSupportHandoffSafeExportBoundary">software_proof_docker_cloud_support_handoff_safe_export_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="cloudSupportHandoffSafeExportFlags">source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="cloudSupportHandoffSafeExportNotProven">真实公网、4G、OSS/CDN、DB/queue、真实手机/browser、HIL 和 delivery_success=false 边界未解除。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section>
+        <h3>Safe Sections</h3>
+        <ol id="cloudSupportHandoffSafeExportSections" class="handoff-checklist">
+          <li>等待 safe sections。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Blocked Actions</h3>
+        <ol id="cloudSupportHandoffSafeExportBlockedActions" class="handoff-checklist">
+          <li>等待 blocked actions。</li>
+        </ol>
+      </section>
+    </div>
+    <div class="bundle-copy-row">
+      <button id="copyCloudSupportHandoffSafeExportButton" type="button" disabled>复制支持交接包</button>
+      <button id="downloadCloudSupportHandoffSafeExportButton" type="button" disabled>导出支持交接 JSON</button>
+      <span id="cloudSupportHandoffSafeExportCopyStatus" class="hint">blocked copy unavailable</span>
+    </div>
+    <pre id="cloudSupportHandoffSafeExportSafeCopy" class="safe-copy" aria-label="cloud_support_handoff_safe_export safe_copy">blocked copy unavailable</pre>
+    <p id="cloudSupportHandoffSafeExportHint" class="hint">
+      本 panel 只复制 Robot/API 提供的 sanitized support export summary；不会启用 Start Delivery、Confirm Dropoff、Cancel、ACK/cursor request、retry、replay、resubmit、GitHub action 或 robot command。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderCloudSupportHandoffSafeExport(status) {
+  const panel = ensureCloudSupportHandoffSafeExportPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = cloudSupportHandoffSafeExportFromStatus(status, readiness, latestDiagnostics);
+  latestCloudSupportHandoffSafeExport = summary;
+  const copyPayload = cloudSupportHandoffSafeExportCopyPayload(summary);
+  const badge = $("cloudSupportHandoffSafeExportBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待支持导出摘要" : "support export not_proven";
+  $("cloudSupportHandoffSafeExportCopy").textContent = summary.safe_phone_copy;
+  $("cloudSupportHandoffSafeExportStatus").textContent = `${summary.source} / ${summary.export_status}`;
+  $("cloudSupportHandoffSafeExportLevel").textContent = summary.support_level;
+  $("cloudSupportHandoffSafeExportEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("cloudSupportHandoffSafeExportRedaction").textContent = summary.redaction_summary;
+  $("cloudSupportHandoffSafeExportCopyState").textContent = summary.safe_copy_status;
+  $("cloudSupportHandoffSafeExportBoundary").textContent = summary.evidence_boundary;
+  $("cloudSupportHandoffSafeExportFlags").textContent = summary.boundary_flags;
+  $("cloudSupportHandoffSafeExportNotProven").textContent = summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList("cloudSupportHandoffSafeExportSections", summary.safe_sections);
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudSupportHandoffSafeExportBlockedActions",
+    summary.blocked_actions,
+  );
+  $("copyCloudSupportHandoffSafeExportButton").disabled = !copyPayload;
+  $("downloadCloudSupportHandoffSafeExportButton").disabled = !copyPayload;
+  $("cloudSupportHandoffSafeExportSafeCopy").textContent = copyPayload
+    ? JSON.stringify(copyPayload, null, 2)
+    : "blocked copy unavailable";
+  $("cloudSupportHandoffSafeExportCopyStatus").textContent = summary.safe_copy_status;
+  $("cloudSupportHandoffSafeExportHint").textContent = summary.recovery_hint;
+}
+
 function renderMobileDeviceAcceptance(status) {
   const readiness = readinessFromStatus(status);
   const summary = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics);
@@ -39200,6 +39509,14 @@ function renderDiagnosticsSummary(payload) {
         latestDiagnostics || {},
       ).status,
     ],
+    [
+      "cloud_support_handoff_safe_export",
+      cloudSupportHandoffSafeExportFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).export_status,
+    ],
     ["wave_rover_feedback_replay", waveRoverFeedbackReplay.replay_status],
     ["wave_rover_hil_packet_intake", waveRoverHilPacketIntake.packet_status],
     ["wave_rover_hil_packet_review_decision", waveRoverHilPacketReviewDecision.review_decision],
@@ -39520,6 +39837,7 @@ function renderStatus(status) {
   renderWaveRoverHilPacketReviewDecision(status);
   renderWaveRoverHilPacketExecutionPack(status);
   renderCloudReadiness(status);
+  renderCloudSupportHandoffSafeExport(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
   renderMobileDeviceHandoffSession(status);
@@ -39836,6 +40154,7 @@ async function openDiagnostics() {
     renderFieldEvidenceRealMaterialResponseReviewDecision(latestStatus || {});
     renderFieldEvidenceRealMaterialResponseReviewHandoff(latestStatus || {});
     renderFieldEvidenceRealMaterialFollowupEscalationStatus(latestStatus || {});
+    renderCloudSupportHandoffSafeExport(latestStatus || {});
     renderWaveRoverFeedbackReplay(latestStatus || {});
     renderWaveRoverHilPacketIntake(latestStatus || {});
     renderWaveRoverHilPacketReviewDecision(latestStatus || {});
@@ -39909,6 +40228,7 @@ async function submitAction(actionName) {
 
 function wireEvents() {
   $("diagnosticsButton").addEventListener("click", openDiagnostics);
+  ensureCloudSupportHandoffSafeExportPanel();
   ensureHardwareBaselineSourceAlignmentPanel();
   ensureHardwareSensorProcurementExecutionPackPanel();
   ensureHardwareSensorProcurementReceiptIntakePanel();
@@ -39969,6 +40289,38 @@ function wireEvents() {
   ensureMobileRealDeviceFieldTrialAcceptanceExecutionCallbackReviewHandoffPanel();
   ensureMobileRealDeviceFieldTrialAcceptanceExecutionHandoffIntakePanel();
   ensureMobileRealDeviceFieldTrialAcceptanceExecutionHandoffReviewDecisionPanel();
+  $("copyCloudSupportHandoffSafeExportButton").addEventListener("click", async () => {
+    const copyPayload = cloudSupportHandoffSafeExportCopyPayload(latestCloudSupportHandoffSafeExport || {});
+    if (!copyPayload) {
+      $("cloudSupportHandoffSafeExportCopyStatus").textContent = "blocked copy unavailable";
+      $("cloudSupportHandoffSafeExportSafeCopy").textContent = "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("cloudSupportHandoffSafeExportSafeCopy").textContent = payload;
+    // 支持交接包只复制白名单摘要；剪贴板失败时保留页面内手动复制文本。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("cloudSupportHandoffSafeExportCopyStatus").textContent =
+        "已复制 cloud support handoff safe export。";
+    } catch (_error) {
+      $("cloudSupportHandoffSafeExportCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadCloudSupportHandoffSafeExportButton").addEventListener("click", () => {
+    const copyPayload = cloudSupportHandoffSafeExportCopyPayload(latestCloudSupportHandoffSafeExport || {});
+    if (!copyPayload) {
+      $("cloudSupportHandoffSafeExportCopyStatus").textContent = "blocked copy unavailable";
+      $("cloudSupportHandoffSafeExportSafeCopy").textContent = "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("cloudSupportHandoffSafeExportSafeCopy").textContent = payload;
+    downloadJsonPackage("cloud_support_handoff_safe_export_copy.json", payload);
+    $("cloudSupportHandoffSafeExportCopyStatus").textContent =
+      "已导出 cloud support handoff whitelist-only JSON。";
+  });
   $("copyMobileRouteElevatorFieldDevicePrecheckButton").addEventListener("click", async () => {
     const payload = JSON.stringify(
       mobileRouteElevatorFieldDevicePrecheckCopyPayload(latestMobileRouteElevatorFieldDevicePrecheck || {}),

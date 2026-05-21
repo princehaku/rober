@@ -2,7 +2,14 @@ import json
 import os
 import re
 
-from ros2_trashbot_behavior.operator_gateway_http import normalize_elevator_assist, status_payload
+from ros2_trashbot_behavior.operator_gateway_http import (
+    CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_EVIDENCE_BOUNDARY,
+    CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_FALSE_STATES,
+    CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_NOT_PROVEN,
+    CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA,
+    normalize_elevator_assist,
+    status_payload,
+)
 from ros2_trashbot_behavior.remote_cloud_relay import (
     build_phone_credential_rotation_summary,
     build_phone_network_recovery_summary,
@@ -1241,6 +1248,9 @@ CLOUD_POLL_BACKOFF_REQUIRED_NOT_PROVEN = (
     "hil_pass",
     "delivery_success",
 )
+CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_ROBOT_SCHEMA = (
+    "trashbot.robot_diagnostics_cloud_support_handoff_safe_export_summary.v1"
+)
 PR5_REVIEW_THREAD_CLOSEOUT_REQUIRED_NOT_PROVEN = (
     "real_2d_lidar",
     "real_tof",
@@ -1694,6 +1704,94 @@ def _remote_readiness_for_poll_backoff_guard(summary):
         if summary.get(key) is not None:
             readiness[key] = summary[key]
     return readiness
+
+
+def summarize_cloud_support_handoff_safe_export(value):
+    """为 cloud degraded-state 支持交接导出构建 Robot diagnostics 安全摘要。"""
+    source = value if isinstance(value, dict) else {}
+    unsupported = bool(source) and source.get("schema") not in {
+        CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA,
+        CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_ROBOT_SCHEMA,
+    }
+    unsafe = _cloud_guard_has_unsafe_material(source)
+    status = (
+        "missing_cloud_support_handoff_safe_export"
+        if not source
+        else "blocked_unsupported_cloud_support_handoff_safe_export"
+        if unsupported
+        else "blocked_unsafe_cloud_support_handoff_safe_export"
+        if unsafe
+        else str(source.get("status") or "ready_for_cloud_support_handoff_safe_export_not_proven")
+    )
+    # Robot alias 只镜像已经脱敏的 export 摘要，避免 diagnostics core 转发 raw body。
+    safe_copy = _cloud_guard_safe_text(
+        source.get("safe_copy") or source.get("safe_phone_copy"),
+        (
+            "cloud_support_handoff_safe_export is metadata-only; "
+            "source=software_proof; not_proven; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        ),
+    )
+    export_refs = source.get("export_refs") if isinstance(source.get("export_refs"), dict) else {}
+    okr_context = source.get("okr_context") if isinstance(source.get("okr_context"), dict) else {}
+    safe_refs = {
+        str(key): _cloud_guard_safe_text(item, "")
+        for key, item in export_refs.items()
+        if _cloud_guard_safe_text(item, "")
+    }
+    safe_okr_context = {
+        key: _cloud_guard_safe_text(
+            okr_context.get(key),
+            "",
+        )
+        for key in (
+            "lowest_objective",
+            "reference_objective",
+            "pr5_thread_id",
+            "pr5_reply_comment_id",
+            "pr5_material_state",
+        )
+        if _cloud_guard_safe_text(okr_context.get(key), "")
+    }
+    source_not_proven = (
+        list(source.get("not_proven"))
+        if isinstance(source.get("not_proven"), list)
+        else []
+    )
+    not_proven = _dedupe_ordered(
+        source_not_proven + list(CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_NOT_PROVEN)
+    )
+    return {
+        "schema": CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_ROBOT_SCHEMA,
+        "source_schema": CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA,
+        "schema_version": 1,
+        "capability": "cloud_support_handoff_safe_export",
+        "source": "software_proof",
+        "evidence_boundary": CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_EVIDENCE_BOUNDARY,
+        "status": status,
+        "degradation_state": _cloud_guard_safe_text(source.get("degradation_state"), "status_stale"),
+        "safe_phone_copy": _cloud_guard_safe_text(
+            source.get("safe_phone_copy"),
+            "云端降级支持交接包已生成；主操作保持不可用。",
+        ),
+        "safe_copy": safe_copy,
+        "support_bundle_id": _cloud_guard_safe_text(source.get("support_bundle_id"), ""),
+        "support_level": _cloud_guard_safe_text(source.get("support_level"), "support_required"),
+        "next_action": _cloud_guard_safe_text(source.get("next_action"), "contact_support"),
+        "export_refs": safe_refs,
+        "okr_context": safe_okr_context,
+        "false_states": list(CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_FALSE_STATES),
+        "not_proven": not_proven,
+        "remote_ready": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "raw_material_redacted": bool(unsafe),
+    }
 
 
 def _route_task_rehearsal_not_proven(artifact=None):
@@ -58368,6 +58466,30 @@ def build_diagnostics_payload(
     safe_poll_backoff_remote_readiness = _remote_readiness_for_poll_backoff_guard(poll_backoff_summary)
     if safe_poll_backoff_remote_readiness:
         latest_status["remote_readiness"] = safe_poll_backoff_remote_readiness
+    cloud_support_handoff_safe_export_source = (
+        latest_status.get("cloud_support_handoff_safe_export")
+        if isinstance(latest_status.get("cloud_support_handoff_safe_export"), dict)
+        else latest_status.get("cloud_support_handoff_safe_export_summary")
+        if isinstance(latest_status.get("cloud_support_handoff_safe_export_summary"), dict)
+        else latest_status.get("robot_diagnostics_cloud_support_handoff_safe_export_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_cloud_support_handoff_safe_export_summary"),
+            dict,
+        )
+        else diagnostics_source.get("cloud_support_handoff_safe_export")
+        if isinstance(diagnostics_source.get("cloud_support_handoff_safe_export"), dict)
+        else diagnostics_source.get("cloud_support_handoff_safe_export_summary")
+        if isinstance(diagnostics_source.get("cloud_support_handoff_safe_export_summary"), dict)
+        else diagnostics_source.get("robot_diagnostics_cloud_support_handoff_safe_export_summary")
+        if isinstance(
+            diagnostics_source.get("robot_diagnostics_cloud_support_handoff_safe_export_summary"),
+            dict,
+        )
+        else {}
+    )
+    cloud_support_handoff_safe_export_summary = summarize_cloud_support_handoff_safe_export(
+        cloud_support_handoff_safe_export_source
+    )
     task_terminal_field_material_intake_source = (
         _task_terminal_field_material_intake_source_from_payloads(
             latest_status,
@@ -60687,6 +60809,9 @@ def build_diagnostics_payload(
     )
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
     latest_status.pop("phone_support_bundle", None)
+    latest_status.pop("cloud_support_handoff_safe_export", None)
+    latest_status.pop("cloud_support_handoff_safe_export_summary", None)
+    latest_status.pop("robot_diagnostics_cloud_support_handoff_safe_export_summary", None)
     latest_status.pop("voice_prompt_readiness", None)
     latest_status.pop("phone_offline_resume_readiness", None)
     latest_status.pop("cloud_unreachable_malformed_response_guard", None)
@@ -63257,6 +63382,11 @@ def build_diagnostics_payload(
         cloud_poll_backoff_rate_limit_guard=poll_backoff_summary,
         cloud_poll_backoff_rate_limit_guard_summary=poll_backoff_summary,
         robot_diagnostics_cloud_poll_backoff_rate_limit_guard_summary=poll_backoff_summary,
+        cloud_support_handoff_safe_export=cloud_support_handoff_safe_export_summary,
+        cloud_support_handoff_safe_export_summary=cloud_support_handoff_safe_export_summary,
+        robot_diagnostics_cloud_support_handoff_safe_export_summary=(
+            cloud_support_handoff_safe_export_summary
+        ),
         route_task_rehearsal=summarize_route_task_rehearsal_artifact(
             route_task_rehearsal_artifact_ref
             or os.environ.get("TRASHBOT_ROUTE_TASK_REHEARSAL_ARTIFACT", "")

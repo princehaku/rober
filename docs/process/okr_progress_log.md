@@ -8,7 +8,25 @@
 
 ## 2026-05-21 系列
 
-更新时间：2026-05-21 18:22 Asia/Shanghai。
+更新时间：2026-05-21 19:20 Asia/Shanghai。
+
+### 2026-05-21 19-20｜cloud-support-handoff-safe-export｜cloud degraded support export software proof
+
+本轮 `sprints/2026.05.21_19-20_cloud-support-handoff-safe-export/` 执行 `cloud_support_handoff_safe_export` epic closeout。Objective 5 仍约 68%，是当前数值最低 Objective，但真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、production app/device 或 true phone/browser external proof 仍不可用；Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / material pending，comment `3269642220` 只是 software-proof reply publication，不是 reviewer resolution。本轮选择 O5 support handoff safe export，是为了把 cloud degraded-state context 变成 phone-safe copy/export support bundle，而不是宣称真实外部云、真实手机、HIL、路线/电梯或送达通过。
+
+Robot/API worker 新增 `trashbot.cloud_support_handoff_safe_export_summary.v1` 到 `/api/status` 和 `/api/diagnostics`，并新增 Robot diagnostics alias `trashbot.robot_diagnostics_cloud_support_handoff_safe_export_summary.v1`。Full-Stack worker 在 mobile/web 新增 read-only support export panel、copy/export handling 和 fixture，只导出 sanitized summary，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。Autonomy read-only consultation 确认 support export 只是 degraded-state context / support handoff，不是 route/elevator field pass、Nav2/fixed-route proof、route completion signal、dropoff/cancel completion、delivery result 或 delivery success。Hardware read-only consultation 已读 `docs/vendor/VENDOR_INDEX.md` 和 WAVE ROVER vendor files，确认 PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved/material pending，comment `3269642220` 只是 software-proof reply publication。
+
+证据边界保持 `software_proof_docker_cloud_support_handoff_safe_export_gate`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。本轮 is not real external cloud proof、not true phone/browser proof、not HIL、not WAVE ROVER/UART proof、not PR #5 `PRRT_kwDOSWB9286CJ3tX` resolution、not route/elevator field pass、not Nav2/fixed-route proof、not dropoff/cancel completion、not delivery result、not delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 hardware bridge、真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` still unresolved/material pending，comment `3269642220` not reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只把 cloud degraded-state context 变成 support export；Autonomy guardrails 明确它不是 route/elevator field pass、dropoff/cancel completion、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；support export 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web read-only support export panel 让用户/支持同学可复制 sanitized degraded-state summary；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_support_handoff_safe_export_gate` 只证明 Docker/local Robot/API + mobile static fixture 下 support handoff safe export 可见、可复制且 fail-closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL 或 delivery success。 |
+
+本轮验证：Robot/API worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 315 tests ... OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；`python3 -m unittest mobile.web.test_mobile_web_entrypoint` 输出 `Ran 223 tests ... OK`；fixture JSON parse、required `rg` 与 scoped `git diff --check` 通过。Autonomy read-only consultation passed。Hardware read-only vendor/PR #5 consultation passed。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、delivery result 或 delivery success。
 
 ### 2026-05-21 18-19｜field-evidence-real-material-followup-escalation-status｜field-owner followup escalation status software proof
 

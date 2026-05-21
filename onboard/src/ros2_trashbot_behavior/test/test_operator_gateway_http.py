@@ -15,6 +15,8 @@ sys.path.insert(0, str(BEHAVIOR_PACKAGE_ROOT))
 
 from ros2_trashbot_behavior.operator_gateway_http import (
     ELEVATOR_ASSIST_SPEAKER_PROMPT,
+    CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_EVIDENCE_BOUNDARY,
+    CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA,
     MockCloudStore,
     OPERATOR_PROMPTS,
     PHONE_TASK_FLOW_SCHEMA,
@@ -31,6 +33,7 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     build_phone_offline_resume_readiness,
     build_phone_readiness,
     build_phone_support_bundle,
+    build_cloud_support_handoff_safe_export,
     build_voice_prompt_readiness,
     make_handler,
     normalize_elevator_assist,
@@ -473,6 +476,20 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("ACK 只表示", support_bundle["safe_copy"])
         self.assertIn("不能代表送达成功", support_bundle["ack_semantics"])
         self.assertIn("current_step", support_bundle["support_refs"])
+        safe_export = payload["cloud_support_handoff_safe_export"]
+        self.assertEqual(safe_export["schema"], CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA)
+        self.assertEqual(safe_export["evidence_boundary"], CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_EVIDENCE_BOUNDARY)
+        self.assertEqual(
+            payload["phone_readiness"]["cloud_support_handoff_safe_export"],
+            safe_export,
+        )
+        self.assertEqual(safe_export["source"], "software_proof")
+        self.assertFalse(safe_export["safe_to_control"])
+        self.assertFalse(safe_export["delivery_success"])
+        self.assertFalse(safe_export["primary_actions_enabled"])
+        self.assertIn("Objective 5", safe_export["okr_context"]["lowest_objective"])
+        self.assertEqual(safe_export["okr_context"]["pr5_thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(safe_export["okr_context"]["pr5_reply_comment_id"], "3269642220")
         voice_prompt = payload["voice_prompt_readiness"]
         self.assertEqual(voice_prompt["schema"], VOICE_PROMPT_READINESS_SCHEMA)
         self.assertEqual(voice_prompt["evidence_boundary"], VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY)
@@ -643,6 +660,22 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             "/tmp/",
         ):
             self.assertNotIn(forbidden, encoded_support_bundle)
+        encoded_safe_export = json.dumps(safe_export, ensure_ascii=False).lower()
+        for forbidden in (
+            "authorization",
+            "token",
+            "postgres://",
+            "db_url",
+            "raw_ros_topic",
+            "/cmd_vel",
+            "traceback",
+            "checksum",
+            "/tmp/",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, encoded_safe_export)
         encoded_voice_prompt = json.dumps(voice_prompt, ensure_ascii=False).lower()
         for forbidden in (
             "authorization",
@@ -1357,6 +1390,73 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, encoded)
 
+    def test_cloud_support_handoff_safe_export_filters_sensitive_material(self):
+        status = status_payload(
+            "loaded_and_ready",
+            "Traceback /tmp/raw.log token=secret",
+            can_collect=True,
+            can_confirm_dropoff=False,
+            can_cancel=False,
+        )
+        readiness = build_phone_readiness(
+            status,
+            remote_readiness={
+                "degradation_state": "cloud_unreachable",
+                "safe_phone_copy": "云端不可达，主操作保持不可用。",
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        diagnostics = {
+            "failure": {"message": "Traceback /tmp/raw.log"},
+            "authorization": "Bearer secret",
+            "raw_ros_topic": "/cmd_vel",
+        }
+        bundle = build_phone_support_bundle(status, readiness, diagnostics, now=1778357000.0)
+        summary = build_cloud_support_handoff_safe_export(
+            status,
+            readiness,
+            bundle,
+            diagnostics,
+            now=1778357000.0,
+        )
+
+        self.assertEqual(summary["schema"], CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA)
+        self.assertEqual(summary["capability"], "cloud_support_handoff_safe_export")
+        self.assertEqual(summary["evidence_boundary"], CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_EVIDENCE_BOUNDARY)
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["degradation_state"], "cloud_unreachable")
+        self.assertEqual(
+            summary["status"],
+            "ready_for_cloud_support_handoff_safe_export_not_proven",
+        )
+        self.assertIn("not_proven", summary["false_states"])
+        self.assertIn("o5_external_cloud_proof", summary["not_proven"])
+        self.assertIn("Objective 5", summary["okr_context"]["lowest_objective"])
+        self.assertIn("Objective 1", summary["okr_context"]["reference_objective"])
+        self.assertEqual(summary["okr_context"]["pr5_thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(summary["okr_context"]["pr5_reply_comment_id"], "3269642220")
+        self.assertFalse(summary["remote_ready"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        encoded = json.dumps(summary, ensure_ascii=False).lower()
+        for forbidden in (
+            "authorization",
+            "bearer",
+            "token",
+            "/cmd_vel",
+            "traceback",
+            "/tmp/",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
     def test_unknown_operator_state_falls_back_to_human_help_prompt(self):
         self.assertEqual(
             operator_prompt_for_state("unexpected_state"),
@@ -1428,6 +1528,21 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["phone_support_bundle"]["schema"], PHONE_SUPPORT_BUNDLE_SCHEMA)
         self.assertEqual(payload["latest_status"]["phone_support_bundle"]["schema"], PHONE_SUPPORT_BUNDLE_SCHEMA)
         self.assertIn("ACK 只表示", payload["phone_support_bundle"]["safe_copy"])
+        self.assertEqual(
+            payload["cloud_support_handoff_safe_export"]["schema"],
+            CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA,
+        )
+        self.assertEqual(
+            payload["latest_status"]["cloud_support_handoff_safe_export"]["schema"],
+            CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_SCHEMA,
+        )
+        self.assertEqual(
+            payload["latest_status"]["phone_readiness"]["cloud_support_handoff_safe_export"],
+            payload["cloud_support_handoff_safe_export"],
+        )
+        self.assertFalse(payload["cloud_support_handoff_safe_export"]["safe_to_control"])
+        self.assertFalse(payload["cloud_support_handoff_safe_export"]["delivery_success"])
+        self.assertFalse(payload["cloud_support_handoff_safe_export"]["primary_actions_enabled"])
         self.assertEqual(payload["voice_prompt_readiness"]["schema"], VOICE_PROMPT_READINESS_SCHEMA)
         self.assertEqual(
             payload["voice_prompt_readiness"]["evidence_boundary"],
@@ -1458,6 +1573,9 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         encoded_support_bundle = json.dumps(payload["phone_support_bundle"], ensure_ascii=False).lower()
         for forbidden in ("authorization", "token", "/cmd_vel", "baudrate", "traceback", "checksum", "/tmp/"):
             self.assertNotIn(forbidden, encoded_support_bundle)
+        encoded_safe_export = json.dumps(payload["cloud_support_handoff_safe_export"], ensure_ascii=False).lower()
+        for forbidden in ("authorization", "token", "/cmd_vel", "baudrate", "traceback", "checksum", "/tmp/"):
+            self.assertNotIn(forbidden, encoded_safe_export)
         self.assertEqual(payload["oss_cdn_manifest"]["state"], "ready")
         self.assertEqual(
             payload["oss_cdn_manifest"]["evidence_boundary"],
