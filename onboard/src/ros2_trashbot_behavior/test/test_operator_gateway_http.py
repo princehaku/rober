@@ -1038,6 +1038,53 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         )
         self.assertNotIn("delivery_success\": true", json.dumps(poll_backoff["remote_readiness"]))
 
+        cancel_pending = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "capability": "cloud_cancel_pending_command_safety_guard",
+                "degradation_state": "cancel_pending_goal_acceptance",
+                "retry_hint": "wait_for_goal_acceptance",
+                "safe_phone_copy": "Authorization Bearer token /cmd_vel",
+                "ack_semantics": "delivery_success",
+                "remote_ready": True,
+                "safe_to_control": True,
+                "primary_actions_enabled": True,
+                "delivery_success": True,
+                "proof_boundary": "unsafe-boundary",
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        self.assertEqual(cancel_pending["primary_state"], "cancel_pending_goal_acceptance")
+        self.assertFalse(cancel_pending["can_continue"])
+        self.assertEqual(cancel_pending["next_action"], "wait_for_goal_acceptance")
+        self.assertEqual(cancel_pending["support_level"], "remote_cancel_pending_goal_acceptance")
+        self.assertEqual(cancel_pending["command_safety"]["global_block_reason"], "cancel_pending_goal_acceptance")
+        self.assertFalse(cancel_pending["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(cancel_pending["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(cancel_pending["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(cancel_pending["command_safety"]["actions"]["diagnostics"]["enabled"])
+        self.assertEqual(
+            cancel_pending["remote_readiness"]["capability"],
+            "cloud_cancel_pending_command_safety_guard",
+        )
+        self.assertFalse(cancel_pending["remote_readiness"]["remote_ready"])
+        self.assertFalse(cancel_pending["remote_readiness"]["safe_to_control"])
+        self.assertFalse(cancel_pending["remote_readiness"]["delivery_success"])
+        self.assertFalse(cancel_pending["remote_readiness"]["primary_actions_enabled"])
+        self.assertEqual(cancel_pending["remote_readiness"]["retry_hint"], "wait_for_goal_acceptance")
+        self.assertEqual(
+            cancel_pending["remote_readiness"]["ack_semantics"],
+            "cancel_pending_not_delivery_success",
+        )
+        self.assertEqual(
+            cancel_pending["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_cancel_pending_command_safety_guard",
+        )
+        encoded_cancel_pending = json.dumps(cancel_pending, ensure_ascii=False)
+        self.assertIn("收集任务仍在等待目标接受", cancel_pending["safe_phone_copy"])
+        for forbidden in ("Authorization", "Bearer", "token", "/cmd_vel", "delivery_success\": true"):
+            self.assertNotIn(forbidden, encoded_cancel_pending)
+
         manual_takeover = build_phone_readiness(
             local_status,
             remote_readiness={

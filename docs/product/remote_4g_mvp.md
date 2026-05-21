@@ -581,6 +581,37 @@ HTTPS/TLS, real 4G/SIM, production DB/queue, OSS/CDN live traffic, true
 phone/browser behavior, WAVE ROVER/UART, HIL, route/elevator field pass,
 dropoff/cancel completion, delivery result, or delivery success.
 
+## Cloud Cancel Pending Command Safety Guard
+
+`cloud_cancel_pending_command_safety_guard` covers the Robot/API state where a
+cloud `cancel` arrives while the collect goal is still pending acceptance. The
+canonical degraded state is `cancel_pending_goal_acceptance`, not a generic
+`busy`/`failed` state and not a cancel completion.
+
+When this guard is active, status/readiness must include:
+
+- `capability=cloud_cancel_pending_command_safety_guard`
+- `degradation_state=cancel_pending_goal_acceptance`
+- `remote_ready=false`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `retry_hint=wait_for_goal_acceptance`
+- `ack_semantics=cancel_pending_not_delivery_success`
+- `safe_phone_copy=取消请求已收到，但收集任务仍在等待目标接受；请等待目标接受后再重试取消，若持续阻塞请联系支持。这不是送达成功。`
+- `proof_boundary=software_proof_docker_cloud_cancel_pending_command_safety_guard`
+
+`build_phone_readiness` and `trashbot.command_safety.v1` must block Start
+Delivery, Confirm Dropoff, and Cancel for `cancel_pending_goal_acceptance`.
+Diagnostics and Support Handoff remain visible with sanitized copy only. The
+state must not expose raw JSON, credentials, ROS topics, `/cmd_vel`,
+serial/UART details, WAVE ROVER details, tracebacks, or `delivery_success=true`.
+
+This guard is Docker/local software proof only. It does not prove real goal
+acceptance, cancel completion, public HTTPS/TLS, real 4G/SIM, production
+DB/queue, OSS/CDN live traffic, true phone/browser behavior, WAVE ROVER/UART,
+HIL, route/elevator field pass, delivery result, or delivery success.
+
 ## Cloud Manual Takeover Command Safety Guard
 
 `cloud_manual_takeover_command_safety_guard` covers the Robot/API state where a
@@ -1196,9 +1227,9 @@ details.
 | `remote_ready` | `true` only means the current local/mock control-plane conditions allow the phone flow to continue; it is not real cloud, 4G, HIL, or delivery proof. |
 | `cloud_reachable` | Whether the configured local/mock control-plane is reachable from the caller's point of view. |
 | `auth_state` | Phone-safe auth state such as `mock_not_required`, `required`, `authorized`, or `auth_failed`. |
-| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `command_sequence_regression`, `auth_failed`, `media_degraded`, `cloud_poll_backoff`, `manual_takeover_required`, `cloud_unreachable`, or `malformed_response`. |
+| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `command_sequence_regression`, `auth_failed`, `media_degraded`, `cloud_poll_backoff`, `cancel_pending_goal_acceptance`, `manual_takeover_required`, `cloud_unreachable`, or `malformed_response`. |
 | `media_state` | Present only for `media_degraded`; values are `oss_write_failed` or `cdn_unavailable`. |
-| `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `check_oss_write`, `check_cdn_reachability`, `wait_for_backoff_window`, `retry_cloud`, or `contact_support`. |
+| `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `check_oss_write`, `check_cdn_reachability`, `wait_for_backoff_window`, `wait_for_goal_acceptance`, `retry_cloud`, or `contact_support`. |
 | `safe_phone_copy` | Plain-language UI copy that must not include raw JSON, ROS topic names, secrets, serial devices, or hardware parameters. |
 | `ack_semantics` | Explicit non-delivery wording for degraded ACK/status states; `stale_status_not_delivery_success` means stale robot status is not delivery success. |
 | `primary_actions_enabled` | `false` for fail-closed degraded states, including `auth_failed`, so Start/Confirm/Cancel remain disabled. |

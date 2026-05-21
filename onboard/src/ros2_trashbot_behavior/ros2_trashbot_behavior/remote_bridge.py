@@ -58,6 +58,16 @@ CLOUD_MEDIA_DEGRADATION_STATUS_GUARD_BOUNDARY = (
 CLOUD_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_poll_backoff_rate_limit_guard"
 )
+CLOUD_CANCEL_PENDING_COMMAND_SAFETY_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_cancel_pending_command_safety_guard"
+)
+CLOUD_CANCEL_PENDING_COMMAND_SAFETY_CAPABILITY = "cloud_cancel_pending_command_safety_guard"
+CLOUD_CANCEL_PENDING_DEGRADATION_STATE = "cancel_pending_goal_acceptance"
+CLOUD_CANCEL_PENDING_ACK_SEMANTICS = "cancel_pending_not_delivery_success"
+CLOUD_CANCEL_PENDING_SAFE_PHONE_COPY = (
+    "取消请求已收到，但收集任务仍在等待目标接受；请等待目标接受后再重试取消，"
+    "若持续阻塞请联系支持。这不是送达成功。"
+)
 MANUAL_TAKEOVER_STATES = {"failed", "needs_human_help"}
 MEDIA_DEGRADATION_STATES = {
     "oss_write_failed": (
@@ -247,6 +257,28 @@ def _phone_safe_poll_backoff_status(robot_id, backoff_until=None, *, backoff_dur
         delivery_success=False,
         proof_boundary=CLOUD_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY,
         **extra,
+    )
+
+
+def _phone_safe_cancel_pending_goal_acceptance_status(robot_id, message=""):
+    # pending goal 阶段取消不能声明 cancel completed；独立状态让 ACK、手机和 diagnostics 同步 fail-closed。
+    safe_message = CLOUD_CANCEL_PENDING_SAFE_PHONE_COPY
+    return make_status(
+        robot_id,
+        "remote_degraded",
+        safe_message,
+        capability=CLOUD_CANCEL_PENDING_COMMAND_SAFETY_CAPABILITY,
+        remote_ready=False,
+        cloud_reachable=True,
+        auth_state="unknown",
+        degradation_state=CLOUD_CANCEL_PENDING_DEGRADATION_STATE,
+        safe_to_control=False,
+        retry_hint="wait_for_goal_acceptance",
+        safe_phone_copy=CLOUD_CANCEL_PENDING_SAFE_PHONE_COPY,
+        ack_semantics=CLOUD_CANCEL_PENDING_ACK_SEMANTICS,
+        primary_actions_enabled=False,
+        delivery_success=False,
+        proof_boundary=CLOUD_CANCEL_PENDING_COMMAND_SAFETY_GUARD_BOUNDARY,
     )
 
 
@@ -544,7 +576,14 @@ class RemoteBridgeWorker:
 
         try:
             http_status, payload = self._execute_command(command)
-            if command["type"] == "collect" and int(http_status) == 409:
+            if (
+                command["type"] == "cancel"
+                and int(http_status) == 409
+                and isinstance(payload, dict)
+                and payload.get("degradation_state") == CLOUD_CANCEL_PENDING_DEGRADATION_STATE
+            ):
+                ack_state = "ignored"
+            elif command["type"] == "collect" and int(http_status) == 409:
                 ack_state = "ignored"
             else:
                 ack_state = "acked" if 200 <= int(http_status) < 300 else "failed"
@@ -684,6 +723,29 @@ class RemoteBridgeWorker:
         ):
             return None
         return _phone_safe_manual_takeover_status(self.robot_id, payload.get("message") or "")
+
+    def _cancel_pending_status_from_payload(self, payload):
+        # 后端只给 busy 文案时，bridge 负责收敛成 canonical O5 command-safety 状态。
+        if not isinstance(payload, dict):
+            return None
+        degradation_state = str(payload.get("degradation_state") or "").strip()
+        if degradation_state == CLOUD_CANCEL_PENDING_DEGRADATION_STATE:
+            return _phone_safe_cancel_pending_goal_acceptance_status(
+                self.robot_id,
+                payload.get("message") or payload.get("safe_phone_copy") or "",
+            )
+        state = str(payload.get("state") or "").strip()
+        message = " ".join(
+            str(payload.get(key) or "")
+            for key in ("message", "safe_phone_copy", "phone_copy")
+        ).lower()
+        pending_goal_copy = (
+            "collect goal is still pending" in message
+            or "retry cancel after acceptance" in message
+        )
+        if state == "busy" and pending_goal_copy:
+            return _phone_safe_cancel_pending_goal_acceptance_status(self.robot_id, payload.get("message") or "")
+        return None
 
     def _poll_backoff_active(self):
         return bool(self.poll_backoff_until and time.time() < self.poll_backoff_until)
@@ -954,6 +1016,9 @@ class RemoteBridgeWorker:
         payload = command["payload"]
         def _normalize_result(result):
             http_status, operator_status = result
+            cancel_pending_status = self._cancel_pending_status_from_payload(operator_status)
+            if cancel_pending_status is not None:
+                return http_status, cancel_pending_status
             manual_takeover_status = self._manual_takeover_status_from_payload(operator_status)
             if manual_takeover_status is not None:
                 return http_status, manual_takeover_status
@@ -1124,8 +1189,15 @@ class RemoteBridge(Node):
             goal_handle = self.active_goal_handle
             collect_pending = self.collect_pending
         if goal_handle is None:
-            state = "busy" if collect_pending else "canceled"
-            message = "collect goal is still pending; retry cancel after acceptance" if collect_pending else "no active task to cancel"
+            if collect_pending:
+                payload = _phone_safe_cancel_pending_goal_acceptance_status(
+                    self.robot_id,
+                    "collect goal is still pending; retry cancel after acceptance",
+                )
+                self.last_status = payload
+                return 409, payload
+            state = "canceled"
+            message = "no active task to cancel"
             self._set_status(state, message)
             return 409, self.snapshot()
         goal_handle.cancel_goal_async()

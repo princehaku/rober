@@ -8,7 +8,25 @@
 
 ## 2026-05-21 系列
 
-更新时间：2026-05-21 19:20 Asia/Shanghai。
+更新时间：2026-05-21 20:22 Asia/Shanghai。
+
+### 2026-05-21 20-21｜cloud-cancel-pending-command-safety-guard｜cancel pending goal acceptance software proof
+
+本轮 `sprints/2026.05.21_20-21_cloud-cancel-pending-command-safety-guard/` 执行 `cloud_cancel_pending_command_safety_guard` epic closeout。Objective 5 仍约 68%，是当前数值最低 Objective；本轮选择一个独立、可 Docker 验证的 command-safety 缺口：当 cloud/mobile cancel 到达时 collect goal acceptance 仍 pending，系统必须把它归一成 `cancel_pending_goal_acceptance`，而不是写成取消完成、送达成功或泛化云失败。Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / material pending，comment `3269642220` 只是 software-proof reply publication，不是 reviewer resolution。PR #6 merged docs-only with no review threads。
+
+Robot/API worker 新增 `cloud_cancel_pending_command_safety_guard` / `cancel_pending_goal_acceptance`，ACK 语义为 `cancel_pending_not_delivery_success`，并强制 `remote_ready=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。Full-Stack worker 让 mobile/web 读取新状态，禁用 Start Delivery / Confirm Dropoff / Cancel，并保留 Diagnostics / Support Handoff。Hardware worker 只读复核 `docs/vendor/VENDOR_INDEX.md`、WAVE ROVER minimal vendor files 和 `docs/product/production_hardware_boundary.md`，确认本轮不涉及硬件配置、串口、WAVE ROVER、UART、2D LiDAR、ToF、HIL 或上车材料。
+
+证据边界保持 `software_proof_docker_cloud_cancel_pending_command_safety_guard`、`source=software_proof`、`not_proven`、`remote_ready=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。本轮 is not real external cloud proof、not true phone/browser proof、not real cancel completion、not HIL、not WAVE ROVER/UART proof、not PR #5 `PRRT_kwDOSWB9286CJ3tX` resolution、not route/elevator field pass、not Nav2/fixed-route proof、not dropoff completion、not delivery result、not delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 hardware bridge、真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` still unresolved/material pending，comment `3269642220` not reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只处理 cancel pending collect-goal acceptance 的 cloud command-safety 状态，不是真实 route/elevator field pass、dropoff/cancel completion、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；cancel-pending guard 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能展示 cancel-pending phone-safe copy，并保持 Start Delivery / Confirm Dropoff / Cancel disabled、Diagnostics / Support Handoff visible；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_cancel_pending_command_safety_guard` 只证明 Docker/local Robot/API + mobile static fixture 下 cancel-pending goal-acceptance 状态可见、可诊断且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、真实 cancel completion 或 delivery success。 |
+
+本轮验证：Robot/API worker 报告 `py_compile` 通过；focused unittest 输出 `Ran 456 tests in 100.242s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check` 通过；`python3 -m unittest mobile.web.test_mobile_web_entrypoint` 输出 `Ran 225 tests in 1.732s OK`；fixture JSON parse、required `rg` 与 scoped `git diff --check` 通过。Hardware consultation read-only vendor/product/PR #5 review passed。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、delivery result 或 delivery success。
 
 ### 2026-05-21 19-20｜cloud-support-handoff-safe-export｜cloud degraded support export software proof
 

@@ -3,6 +3,10 @@ import os
 import re
 
 from ros2_trashbot_behavior.operator_gateway_http import (
+    PHONE_CANCEL_PENDING_ACK_SEMANTICS,
+    PHONE_CANCEL_PENDING_COMMAND_SAFETY_CAPABILITY,
+    PHONE_CANCEL_PENDING_COMMAND_SAFETY_GUARD_BOUNDARY,
+    PHONE_CANCEL_PENDING_SAFE_PHONE_COPY,
     CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_EVIDENCE_BOUNDARY,
     CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_FALSE_STATES,
     CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_NOT_PROVEN,
@@ -1251,6 +1255,32 @@ CLOUD_POLL_BACKOFF_REQUIRED_NOT_PROVEN = (
 CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_ROBOT_SCHEMA = (
     "trashbot.robot_diagnostics_cloud_support_handoff_safe_export_summary.v1"
 )
+CLOUD_CANCEL_PENDING_COMMAND_SAFETY_GUARD_SCHEMA = (
+    "trashbot.robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary.v1"
+)
+CLOUD_CANCEL_PENDING_FALSE_STATES = (
+    "source=software_proof",
+    "not_proven",
+    "remote_ready=false",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+)
+CLOUD_CANCEL_PENDING_REQUIRED_NOT_PROVEN = (
+    "real_public_https_tls",
+    "real_4g_or_sim",
+    "production_db_queue",
+    "oss_cdn_live_traffic",
+    "real_goal_acceptance",
+    "cancel_completion",
+    "dropoff_completion",
+    "route_elevator_field_pass",
+    "real_phone_device_or_browser",
+    "hil_pass",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
+)
 PR5_REVIEW_THREAD_CLOSEOUT_REQUIRED_NOT_PROVEN = (
     "real_2d_lidar",
     "real_tof",
@@ -1704,6 +1734,77 @@ def _remote_readiness_for_poll_backoff_guard(summary):
         if summary.get(key) is not None:
             readiness[key] = summary[key]
     return readiness
+
+
+def summarize_cloud_cancel_pending_command_safety_guard(value):
+    """为 cancel pending goal acceptance 构建 Robot diagnostics 安全摘要。"""
+    source = value if isinstance(value, dict) else {}
+    degradation_state = str(source.get("degradation_state") or source.get("state") or "").strip()
+    applicable = degradation_state == "cancel_pending_goal_acceptance"
+    unsafe = _cloud_guard_has_unsafe_material(source)
+    status = (
+        "not_applicable"
+        if not source
+        else "unsupported_degradation_not_proven"
+        if not applicable
+        else "blocked_unsafe_material_not_proven"
+        if unsafe
+        else "cancel_pending_goal_acceptance_not_proven"
+    )
+    safe_copy = _cloud_guard_safe_text(
+        source.get("safe_phone_copy"),
+        PHONE_CANCEL_PENDING_SAFE_PHONE_COPY,
+    )
+    return {
+        "schema": CLOUD_CANCEL_PENDING_COMMAND_SAFETY_GUARD_SCHEMA,
+        "schema_version": 1,
+        "capability": PHONE_CANCEL_PENDING_COMMAND_SAFETY_CAPABILITY,
+        "source": "software_proof",
+        "evidence_boundary": PHONE_CANCEL_PENDING_COMMAND_SAFETY_GUARD_BOUNDARY,
+        "status": status,
+        "degradation_state": "cancel_pending_goal_acceptance" if applicable else "not_applicable",
+        "remote_ready": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "cancel_completion_proven": False,
+        "retry_hint": "wait_for_goal_acceptance",
+        "ack_semantics": PHONE_CANCEL_PENDING_ACK_SEMANTICS,
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "false_states": list(CLOUD_CANCEL_PENDING_FALSE_STATES),
+        "not_proven": list(CLOUD_CANCEL_PENDING_REQUIRED_NOT_PROVEN),
+        "raw_material_redacted": bool(unsafe),
+    }
+
+
+def _remote_readiness_for_cancel_pending_guard(summary):
+    # diagnostics core 只回填安全 remote_readiness，避免 raw status 文案进入手机首屏。
+    if not isinstance(summary, dict) or summary.get("degradation_state") != "cancel_pending_goal_acceptance":
+        return {}
+    return {
+        "capability": PHONE_CANCEL_PENDING_COMMAND_SAFETY_CAPABILITY,
+        "remote_ready": False,
+        "cloud_reachable": True,
+        "last_command_ack": "",
+        "status_stale": False,
+        "retry_hint": "wait_for_goal_acceptance",
+        "auth_state": "required",
+        "degradation_state": "cancel_pending_goal_acceptance",
+        "safe_phone_copy": summary.get("safe_phone_copy", PHONE_CANCEL_PENDING_SAFE_PHONE_COPY),
+        "status_age_sec": None,
+        "pending_command_count": 0,
+        "queue_persisted": False,
+        "state_path_configured": False,
+        "proof_schema": "",
+        "ack_semantics": PHONE_CANCEL_PENDING_ACK_SEMANTICS,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "proof_boundary": PHONE_CANCEL_PENDING_COMMAND_SAFETY_GUARD_BOUNDARY,
+    }
 
 
 def summarize_cloud_support_handoff_safe_export(value):
@@ -58466,6 +58567,31 @@ def build_diagnostics_payload(
     safe_poll_backoff_remote_readiness = _remote_readiness_for_poll_backoff_guard(poll_backoff_summary)
     if safe_poll_backoff_remote_readiness:
         latest_status["remote_readiness"] = safe_poll_backoff_remote_readiness
+    cancel_pending_source = (
+        latest_status.get("remote_readiness")
+        if isinstance(latest_status.get("remote_readiness"), dict)
+        else diagnostics_source.get("remote_readiness")
+        if isinstance(diagnostics_source.get("remote_readiness"), dict)
+        else latest_status.get("cloud_cancel_pending_command_safety_guard")
+        if isinstance(latest_status.get("cloud_cancel_pending_command_safety_guard"), dict)
+        else latest_status.get("robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary"),
+            dict,
+        )
+        else diagnostics_source.get("cloud_cancel_pending_command_safety_guard")
+        if isinstance(diagnostics_source.get("cloud_cancel_pending_command_safety_guard"), dict)
+        else diagnostics_source.get("robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary")
+        if isinstance(
+            diagnostics_source.get("robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary"),
+            dict,
+        )
+        else {}
+    )
+    cancel_pending_summary = summarize_cloud_cancel_pending_command_safety_guard(cancel_pending_source)
+    safe_cancel_pending_remote_readiness = _remote_readiness_for_cancel_pending_guard(cancel_pending_summary)
+    if safe_cancel_pending_remote_readiness:
+        latest_status["remote_readiness"] = safe_cancel_pending_remote_readiness
     cloud_support_handoff_safe_export_source = (
         latest_status.get("cloud_support_handoff_safe_export")
         if isinstance(latest_status.get("cloud_support_handoff_safe_export"), dict)
@@ -60812,6 +60938,9 @@ def build_diagnostics_payload(
     latest_status.pop("cloud_support_handoff_safe_export", None)
     latest_status.pop("cloud_support_handoff_safe_export_summary", None)
     latest_status.pop("robot_diagnostics_cloud_support_handoff_safe_export_summary", None)
+    latest_status.pop("cloud_cancel_pending_command_safety_guard", None)
+    latest_status.pop("cloud_cancel_pending_command_safety_guard_summary", None)
+    latest_status.pop("robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary", None)
     latest_status.pop("voice_prompt_readiness", None)
     latest_status.pop("phone_offline_resume_readiness", None)
     latest_status.pop("cloud_unreachable_malformed_response_guard", None)
@@ -63382,6 +63511,9 @@ def build_diagnostics_payload(
         cloud_poll_backoff_rate_limit_guard=poll_backoff_summary,
         cloud_poll_backoff_rate_limit_guard_summary=poll_backoff_summary,
         robot_diagnostics_cloud_poll_backoff_rate_limit_guard_summary=poll_backoff_summary,
+        cloud_cancel_pending_command_safety_guard=cancel_pending_summary,
+        cloud_cancel_pending_command_safety_guard_summary=cancel_pending_summary,
+        robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary=cancel_pending_summary,
         cloud_support_handoff_safe_export=cloud_support_handoff_safe_export_summary,
         cloud_support_handoff_safe_export_summary=cloud_support_handoff_safe_export_summary,
         robot_diagnostics_cloud_support_handoff_safe_export_summary=(

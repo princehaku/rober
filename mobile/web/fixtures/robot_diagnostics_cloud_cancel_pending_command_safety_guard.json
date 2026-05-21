@@ -1,0 +1,86 @@
+{
+  "robot_id": "trashbot-alpha",
+  "state": "remote_degraded",
+  "capability": "cloud_cancel_pending_command_safety_guard",
+  "remote_ready": false,
+  "cloud_reachable": true,
+  "auth_state": "authorized",
+  "degradation_state": "cancel_pending_goal_acceptance",
+  "collect_goal_state": "acceptance_pending",
+  "retry_hint": "wait_for_goal_acceptance",
+  "primary_actions_enabled": false,
+  "safe_to_control": false,
+  "safe_phone_copy": "取消请求已被阻塞在 collect goal 接受窗口；请等待 goal 接受后重试或联系支持。这不是取消完成、送达成功或真实云证明。",
+  "recovery_hint": "等待 collect goal 接受后再重试 cancel；如果持续阻塞，请联系支持。手机端不自动重放、不 resubmit，也不提交主操作。",
+  "ack_semantics": "cancel_pending_not_delivery_success",
+  "proof_boundary": "software_proof_docker_cloud_cancel_pending_command_safety_guard",
+  "evidence_boundary": "software_proof_docker_cloud_cancel_pending_command_safety_guard",
+  "boundary_flags": "source=software_proof / not_proven / remote_ready=false / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / retry_hint=wait_for_goal_acceptance",
+  "delivery_success": false,
+  "not_proven": [
+    "真实公网 HTTPS/TLS",
+    "真实 4G/SIM",
+    "OSS/CDN live traffic",
+    "production DB/queue",
+    "真实手机/browser",
+    "真实 cancel completion",
+    "Nav2/fixed-route",
+    "route/elevator field pass",
+    "WAVE ROVER/UART/HIL",
+    "delivery success"
+  ],
+  "phone_readiness": {
+    "primary_state": "blocked",
+    "next_action": "wait_for_goal_acceptance",
+    "support_level": "diagnostics_available",
+    "remote_readiness": {
+      "capability": "cloud_cancel_pending_command_safety_guard",
+      "remote_ready": false,
+      "degradation_state": "cancel_pending_goal_acceptance",
+      "collect_goal_state": "acceptance_pending",
+      "primary_actions_enabled": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "safe_phone_copy": "取消请求已被阻塞在 collect goal 接受窗口；请等待 goal 接受后重试或联系支持。这不是取消完成、送达成功或真实云证明。",
+      "recovery_hint": "等待 collect goal 接受后再重试 cancel；如果持续阻塞，请联系支持。手机端不自动重放、不 resubmit，也不提交主操作。",
+      "retry_hint": "wait_for_goal_acceptance",
+      "ack_semantics": "cancel_pending_not_delivery_success",
+      "proof_boundary": "software_proof_docker_cloud_cancel_pending_command_safety_guard"
+    },
+    "command_safety": {
+      "schema": "trashbot.command_safety.v1",
+      "global_block_reason": "cancel_pending_goal_acceptance：取消请求被阻塞在 collect goal 接受窗口，remote_ready=false。",
+      "ack_semantics": "cancel_pending_not_delivery_success",
+      "actions": {
+        "start": {
+          "enabled": false,
+          "blocking_reason": "cancel_pending_goal_acceptance / remote_ready=false / primary_actions_enabled=false"
+        },
+        "confirm_dropoff": {
+          "enabled": false,
+          "blocking_reason": "cancel_pending_goal_acceptance / remote_ready=false / primary_actions_enabled=false"
+        },
+        "cancel": {
+          "enabled": false,
+          "blocking_reason": "cancel_pending_goal_acceptance / remote_ready=false / primary_actions_enabled=false"
+        },
+        "diagnostics": {
+          "enabled": true,
+          "safe_phone_copy": "诊断可打开；主操作保持 fail closed。"
+        },
+        "support_handoff": {
+          "enabled": true,
+          "safe_phone_copy": "支持交接可见；不代表取消完成或送达成功。"
+        }
+      }
+    }
+  },
+  "action_permissions": {
+    "can_collect": false,
+    "can_confirm_dropoff": false,
+    "can_cancel": false
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

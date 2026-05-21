@@ -143,9 +143,10 @@ class MockCloud:
 
 
 class FakeOperatorBackend:
-    def __init__(self, busy=False):
+    def __init__(self, busy=False, cancel_pending=False):
         self.calls = []
         self.busy = busy
+        self.cancel_pending = cancel_pending
         self.last_status = {}
 
     def snapshot(self):
@@ -163,6 +164,11 @@ class FakeOperatorBackend:
 
     def cancel_collection(self):
         self.calls.append(("cancel",))
+        if self.cancel_pending:
+            return 409, {
+                "state": "busy",
+                "message": "collect goal is still pending; retry cancel after acceptance",
+            }
         return 202, {"state": "canceling"}
 
 
@@ -221,6 +227,47 @@ class RemoteBridgeWorkerTest(unittest.TestCase):
         self.assertEqual(self.backend.calls, [("confirm_dropoff", False), ("cancel",)])
         self.assertEqual([ack["command_id"] for ack in self.cloud.ack_posts], ["cmd-2", "cmd-3"])
         self.assertEqual([ack["state"] for ack in self.cloud.ack_posts], ["acked", "acked"])
+
+    def test_poll_cancel_pending_goal_acceptance_returns_canonical_safe_guard(self):
+        self.backend.cancel_pending = True
+        self.cloud.commands.append({
+            "id": "cmd-cancel-pending",
+            "type": "cancel",
+            "payload": {},
+        })
+
+        self.assertTrue(self.worker.poll_once())
+
+        self.assertEqual(self.backend.calls, [("cancel",)])
+        ack = self.cloud.ack_posts[0]
+        operator_status = ack["result"]["operator_status"]
+        self.assertEqual(ack["command_id"], "cmd-cancel-pending")
+        self.assertEqual(ack["state"], "ignored")
+        self.assertEqual(operator_status["capability"], "cloud_cancel_pending_command_safety_guard")
+        self.assertEqual(operator_status["degradation_state"], "cancel_pending_goal_acceptance")
+        self.assertFalse(operator_status["remote_ready"])
+        self.assertFalse(operator_status["safe_to_control"])
+        self.assertFalse(operator_status["delivery_success"])
+        self.assertFalse(operator_status["primary_actions_enabled"])
+        self.assertEqual(operator_status["retry_hint"], "wait_for_goal_acceptance")
+        self.assertEqual(operator_status["ack_semantics"], "cancel_pending_not_delivery_success")
+        self.assertEqual(
+            operator_status["proof_boundary"],
+            "software_proof_docker_cloud_cancel_pending_command_safety_guard",
+        )
+        self.assertEqual(self.cloud.status_posts[-1]["degradation_state"], "cancel_pending_goal_acceptance")
+        encoded = json.dumps(operator_status, ensure_ascii=False)
+        for forbidden in (
+            "Authorization",
+            "Bearer",
+            "/cmd_vel",
+            "serial",
+            "UART",
+            "WAVE ROVER",
+            "Traceback",
+            "delivery_success\": true",
+        ):
+            self.assertNotIn(forbidden, encoded)
 
     def test_poll_parses_string_false_dropoff_rejection(self):
         self.cloud.commands.append({

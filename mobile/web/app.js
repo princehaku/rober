@@ -21,6 +21,8 @@ const CLOUD_AUTH_FAILURE_STATUS_BOUNDARY = "software_proof_docker_cloud_auth_fai
 const CLOUD_AUTH_FAILURE_STATUS_COPY = "登录或访问码未通过；请重新登录或检查凭证；这不是送达成功。";
 const CLOUD_MANUAL_TAKEOVER_BOUNDARY = "software_proof_docker_cloud_manual_takeover_command_safety_guard";
 const CLOUD_MANUAL_TAKEOVER_COPY = "需要人工接管；远程主操作已暂停，请按现场/支持指引处理。这不是送达成功。";
+const CLOUD_CANCEL_PENDING_COMMAND_SAFETY_BOUNDARY = "software_proof_docker_cloud_cancel_pending_command_safety_guard";
+const CLOUD_CANCEL_PENDING_COMMAND_SAFETY_COPY = "取消请求已被阻塞在 collect goal 接受窗口；请等待 goal 接受后重试或联系支持。这不是取消完成、送达成功或真实云证明。";
 const CLOUD_STATUS_STALE_BOUNDARY = "software_proof_docker_cloud_status_stale_guard";
 const CLOUD_STATUS_STALE_COPY = "正在等待小车上报最新状态；当前状态已过期，不能作为送达成功依据。";
 const CLOUD_PENDING_ACK_STATUS_BOUNDARY = "software_proof_docker_cloud_pending_ack_status_guard";
@@ -1884,6 +1886,39 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         evidence_boundary: hostedBoundary || CLOUD_STATUS_STALE_BOUNDARY,
         proof_boundary: hostedBoundary || CLOUD_STATUS_STALE_BOUNDARY,
         status_age_seconds: statusAgeSeconds,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
+    if (provided.degradation_state === "cancel_pending_goal_acceptance" ||
+        provided.capability === "cloud_cancel_pending_command_safety_guard" ||
+        provided.proof_boundary === CLOUD_CANCEL_PENDING_COMMAND_SAFETY_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_CANCEL_PENDING_COMMAND_SAFETY_BOUNDARY) {
+      // cancel_pending_goal_acceptance 只说明取消撞上 collect goal 接受窗口；前端不能把它写成取消完成或送达成功。
+      return {
+        ...provided,
+        missing: false,
+        capability: "cloud_cancel_pending_command_safety_guard",
+        overall_status: "blocked",
+        preflight_status: "cancel_pending_goal_acceptance",
+        degradation_state: "cancel_pending_goal_acceptance",
+        db_queue_status: "cancel_pending_goal_acceptance / remote_ready=false / primary_actions_enabled=false",
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        delivery_success: false,
+        retry_hint: "wait_for_goal_acceptance",
+        safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_CANCEL_PENDING_COMMAND_SAFETY_COPY),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "等待 collect goal 接受后再重试 cancel；如果持续阻塞，请联系支持。手机端不自动重放、不 resubmit。",
+        ),
+        ack_semantics: safeText(
+          provided.ack_semantics,
+          "cancel_pending_not_delivery_success",
+        ),
+        evidence_boundary: hostedBoundary || CLOUD_CANCEL_PENDING_COMMAND_SAFETY_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_CANCEL_PENDING_COMMAND_SAFETY_BOUNDARY,
         not_proven: notProvenList(provided.not_proven),
       };
     }

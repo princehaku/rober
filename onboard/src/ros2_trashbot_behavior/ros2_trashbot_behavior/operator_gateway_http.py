@@ -61,6 +61,15 @@ PHONE_MEDIA_DEGRADATION_STATUS_GUARD_BOUNDARY = (
 PHONE_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_poll_backoff_rate_limit_guard"
 )
+PHONE_CANCEL_PENDING_COMMAND_SAFETY_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_cancel_pending_command_safety_guard"
+)
+PHONE_CANCEL_PENDING_COMMAND_SAFETY_CAPABILITY = "cloud_cancel_pending_command_safety_guard"
+PHONE_CANCEL_PENDING_ACK_SEMANTICS = "cancel_pending_not_delivery_success"
+PHONE_CANCEL_PENDING_SAFE_PHONE_COPY = (
+    "取消请求已收到，但收集任务仍在等待目标接受；请等待目标接受后再重试取消，"
+    "若持续阻塞请联系支持。这不是送达成功。"
+)
 PHONE_MANUAL_TAKEOVER_COMMAND_SAFETY_GUARD_BOUNDARY = MANUAL_TAKEOVER_PROOF_BOUNDARY
 PHONE_STATUS_STALE_GUARD_BOUNDARY = "software_proof_docker_cloud_status_stale_guard"
 COMMAND_SAFETY_SCHEMA = "trashbot.command_safety.v1"
@@ -85,6 +94,7 @@ REMOTE_RETRY_HINTS = {
     "check_oss_write",
     "check_cdn_reachability",
     "wait_for_backoff_window",
+    "wait_for_goal_acceptance",
 }
 # safe_phone_copy 是正式手机端可直接展示的中文文案，不能包含 raw JSON 或凭证。
 REMOTE_DEGRADATION_COPY = {
@@ -98,6 +108,7 @@ REMOTE_DEGRADATION_COPY = {
     "auth_failed": "手机登录已失效，请重新登录或检查访问凭证；这不是送达成功。",
     "media_degraded": "媒体链路降级：OSS 写入或 CDN 拉取不可用；这不是送达成功。",
     "cloud_poll_backoff": "远程轮询正在等待重试窗口，主操作保持不可用；这不是送达成功。",
+    "cancel_pending_goal_acceptance": PHONE_CANCEL_PENDING_SAFE_PHONE_COPY,
     MANUAL_TAKEOVER_DEGRADATION_STATE: MANUAL_TAKEOVER_SAFE_PHONE_COPY,
     "cloud_unreachable": "远程控制通道暂不可用，请稍后重试。",
     "malformed_response": "远程控制返回异常，请联系支持人员。",
@@ -156,6 +167,7 @@ PHONE_READINESS_NEXT_ACTION_COPY = {
     "check_oss_write": "检查 OSS 写入链路；媒体未持久化前不要当成送达成功。",
     "check_cdn_reachability": "检查 CDN 可达性；媒体不可拉取前不要当成送达成功。",
     "wait_for_backoff_window": "等待轮询 backoff 窗口结束后再刷新状态。",
+    "wait_for_goal_acceptance": "等待收集目标接受后再重试取消；如果持续阻塞，请联系支持。",
     "manual_takeover": "保持现场安全，按提示人工接管。",
     "watch_progress": "继续观察任务状态，必要时取消。",
     "refresh_diagnostics_ref": "刷新状态；如果仍不可用，请重新生成诊断引用。",
@@ -177,6 +189,7 @@ COMMAND_SAFETY_BLOCK_COPY = {
     "auth_failed": "手机登录或访问码未通过，主操作暂不可用。",
     "media_degraded": "媒体链路降级，主操作暂不可用；这不是送达成功。",
     "cloud_poll_backoff": "远程轮询等待重试窗口，主操作暂不可用；这不是送达成功。",
+    "cancel_pending_goal_acceptance": "取消要等收集目标接受后才能重试，主操作暂不可用；这不是送达成功。",
     "cloud_unreachable": "远程控制通道暂不可用，主操作暂不可用。",
     "malformed_response": "远程控制返回异常，主操作暂不可用。",
     "diagnostic_refs_missing": "诊断对象引用缺失，主操作暂不可用。",
@@ -383,6 +396,7 @@ PHONE_READINESS_PRIMARY_COPY = {
     "remote_unreachable": "远程通道暂不可用。",
     "remote_response_invalid": "远程通道返回异常。",
     "cloud_poll_backoff": "远程轮询正在等待重试窗口。",
+    "cancel_pending_goal_acceptance": "取消等待目标接受。",
     "manual_takeover_required": "需要人工接管。",
     "monitoring": "任务进行中，请继续观察。",
     "diagnostic_refs_missing": "诊断对象引用缺失。",
@@ -1065,6 +1079,11 @@ class MockCloudStore:
             sequence_regression_command_id = str(
                 ack_operator_status.get("sequence_regression_command_id") or last_command_ack
             ).strip()
+        cancel_pending = bool(
+            status_degradation == "cancel_pending_goal_acceptance"
+            or str(ack_operator_status.get("degradation_state") or "").strip()
+            == "cancel_pending_goal_acceptance"
+        )
         auth_failed = status_degradation == "auth_failed" or str(ack_operator_status.get("auth_state") or "") == "auth_failed"
         retry_hint = "ok"
         degradation_state = "ok"
@@ -1099,6 +1118,9 @@ class MockCloudStore:
         elif status_degradation == "cloud_poll_backoff":
             retry_hint = "wait_for_backoff_window"
             degradation_state = "cloud_poll_backoff"
+        elif cancel_pending:
+            retry_hint = "wait_for_goal_acceptance"
+            degradation_state = "cancel_pending_goal_acceptance"
         elif status_stale:
             retry_hint = "wait_for_robot_status"
             degradation_state = "status_stale"
@@ -1116,6 +1138,7 @@ class MockCloudStore:
                 "auth_failed",
                 "media_degraded",
                 "cloud_poll_backoff",
+                "cancel_pending_goal_acceptance",
                 MANUAL_TAKEOVER_DEGRADATION_STATE,
             }
         )
@@ -1256,6 +1279,21 @@ class MockCloudStore:
                 status.get("proof_boundary")
                 or ack_operator_status.get("proof_boundary")
                 or PHONE_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY
+            )
+        if degradation_state == "cancel_pending_goal_acceptance":
+            # cancel pending 只说明取消需等 collect goal acceptance；不能升级成 cancel completed 或 delivery success。
+            readiness["capability"] = PHONE_CANCEL_PENDING_COMMAND_SAFETY_CAPABILITY
+            readiness["remote_ready"] = False
+            readiness["safe_to_control"] = False
+            readiness["delivery_success"] = False
+            readiness["primary_actions_enabled"] = False
+            readiness["retry_hint"] = "wait_for_goal_acceptance"
+            readiness["safe_phone_copy"] = PHONE_CANCEL_PENDING_SAFE_PHONE_COPY
+            readiness["ack_semantics"] = PHONE_CANCEL_PENDING_ACK_SEMANTICS
+            readiness["proof_boundary"] = str(
+                status.get("proof_boundary")
+                or ack_operator_status.get("proof_boundary")
+                or PHONE_CANCEL_PENDING_COMMAND_SAFETY_GUARD_BOUNDARY
             )
         if degradation_state == MANUAL_TAKEOVER_DEGRADATION_STATE:
             # mock cloud 只能发布脱敏的人工接管摘要；上游 payload 的 success/control 字段一律降级。
@@ -3139,6 +3177,7 @@ def _command_safety_block_reason(primary_state, remote_state, manifest_state):
         "command_sequence_regression",
         "media_degraded",
         "cloud_poll_backoff",
+        "cancel_pending_goal_acceptance",
         MANUAL_TAKEOVER_DEGRADATION_STATE,
         "auth_failed",
         "cloud_unreachable",
@@ -3757,6 +3796,7 @@ def _offline_resume_connection_state(primary_state, remote_state, command_safety
         "command_sequence_regression",
         "media_degraded",
         "cloud_poll_backoff",
+        "cancel_pending_goal_acceptance",
     }:
         return "blocked"
     if primary_state in {"login_required", "remote_response_invalid"}:
@@ -3852,6 +3892,10 @@ def build_phone_offline_resume_readiness(
         next_action = "wait_for_backoff_window"
         recovery_hint = PHONE_READINESS_NEXT_ACTION_COPY["wait_for_backoff_window"]
         safe_phone_copy = REMOTE_DEGRADATION_COPY["cloud_poll_backoff"]
+    elif remote_state == "cancel_pending_goal_acceptance":
+        next_action = "wait_for_goal_acceptance"
+        recovery_hint = PHONE_READINESS_NEXT_ACTION_COPY["wait_for_goal_acceptance"]
+        safe_phone_copy = PHONE_CANCEL_PENDING_SAFE_PHONE_COPY
     elif connection_state == "manual_takeover":
         recovery_hint = "保持现场安全，按手机提示人工接管，并打开 Support Handoff。"
         safe_phone_copy = "当前需要人工接管，不能通过离线恢复直接继续任务。"
@@ -4067,6 +4111,11 @@ def build_phone_readiness(
         next_action = "wait_for_backoff_window"
         can_continue = False
         support_level = "remote_poll_backoff"
+    elif remote_state == "cancel_pending_goal_acceptance":
+        primary_state = "cancel_pending_goal_acceptance"
+        next_action = "wait_for_goal_acceptance"
+        can_continue = False
+        support_level = "remote_cancel_pending_goal_acceptance"
     elif remote_state == "status_stale":
         if can_use_local_action:
             primary_state = "local_ready_remote_status_waiting"
@@ -4100,6 +4149,8 @@ def build_phone_readiness(
             remote.get("safe_phone_copy"),
             REMOTE_DEGRADATION_COPY["cloud_poll_backoff"],
         )
+    if remote_state == "cancel_pending_goal_acceptance":
+        safe_phone_copy = PHONE_CANCEL_PENDING_SAFE_PHONE_COPY
     if remote_state == MANUAL_TAKEOVER_DEGRADATION_STATE:
         safe_phone_copy = MANUAL_TAKEOVER_SAFE_PHONE_COPY
     if primary_state == "local_ready_remote_status_waiting":
@@ -4118,6 +4169,22 @@ def build_phone_readiness(
                 "safe_phone_copy": safe_phone_copy,
                 "ack_semantics": "poll_backoff_not_delivery_success",
                 "proof_boundary": PHONE_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY,
+            }
+        )
+    if remote_state == "cancel_pending_goal_acceptance":
+        # cancel pending 由 Robot/API canonical state 控制；上游乐观字段不能开启任何主操作。
+        safe_remote_readiness.update(
+            {
+                "capability": PHONE_CANCEL_PENDING_COMMAND_SAFETY_CAPABILITY,
+                "degradation_state": "cancel_pending_goal_acceptance",
+                "remote_ready": False,
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "retry_hint": "wait_for_goal_acceptance",
+                "safe_phone_copy": PHONE_CANCEL_PENDING_SAFE_PHONE_COPY,
+                "ack_semantics": PHONE_CANCEL_PENDING_ACK_SEMANTICS,
+                "proof_boundary": PHONE_CANCEL_PENDING_COMMAND_SAFETY_GUARD_BOUNDARY,
             }
         )
     if remote_state == MANUAL_TAKEOVER_DEGRADATION_STATE:
