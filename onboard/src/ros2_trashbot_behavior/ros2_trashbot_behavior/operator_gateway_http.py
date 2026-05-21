@@ -61,6 +61,14 @@ PHONE_MEDIA_DEGRADATION_STATUS_GUARD_BOUNDARY = (
 PHONE_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_poll_backoff_rate_limit_guard"
 )
+PHONE_ACK_LOOKUP_PENDING_STATUS_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_ack_lookup_pending_status_guard"
+)
+PHONE_ACK_LOOKUP_PENDING_STATUS_CAPABILITY = "cloud_ack_lookup_pending_status_guard"
+PHONE_ACK_LOOKUP_PENDING_ACK_SEMANTICS = "ack_lookup_pending_not_delivery_success"
+PHONE_ACK_LOOKUP_PENDING_SAFE_PHONE_COPY = (
+    "机器人尚未处理该命令，请继续等待或联系支持。"
+)
 PHONE_CANCEL_PENDING_COMMAND_SAFETY_GUARD_BOUNDARY = (
     "software_proof_docker_cloud_cancel_pending_command_safety_guard"
 )
@@ -94,6 +102,7 @@ REMOTE_RETRY_HINTS = {
     "check_oss_write",
     "check_cdn_reachability",
     "wait_for_backoff_window",
+    "continue_polling_or_contact_support",
     "wait_for_goal_acceptance",
 }
 # safe_phone_copy 是正式手机端可直接展示的中文文案，不能包含 raw JSON 或凭证。
@@ -108,6 +117,7 @@ REMOTE_DEGRADATION_COPY = {
     "auth_failed": "手机登录已失效，请重新登录或检查访问凭证；这不是送达成功。",
     "media_degraded": "媒体链路降级：OSS 写入或 CDN 拉取不可用；这不是送达成功。",
     "cloud_poll_backoff": "远程轮询正在等待重试窗口，主操作保持不可用；这不是送达成功。",
+    "ack_lookup_pending": PHONE_ACK_LOOKUP_PENDING_SAFE_PHONE_COPY,
     "cancel_pending_goal_acceptance": PHONE_CANCEL_PENDING_SAFE_PHONE_COPY,
     MANUAL_TAKEOVER_DEGRADATION_STATE: MANUAL_TAKEOVER_SAFE_PHONE_COPY,
     "cloud_unreachable": "远程控制通道暂不可用，请稍后重试。",
@@ -136,6 +146,7 @@ REMOTE_STATUS_SAFE_EXTRA_KEYS = {
     "queue_sequence",
     "highest_terminal_queue_sequence",
     "media_state",
+    "ack_lookup_command_id",
     "cached_ack_state",
     "ack_semantics",
     "primary_actions_enabled",
@@ -167,6 +178,7 @@ PHONE_READINESS_NEXT_ACTION_COPY = {
     "check_oss_write": "检查 OSS 写入链路；媒体未持久化前不要当成送达成功。",
     "check_cdn_reachability": "检查 CDN 可达性；媒体不可拉取前不要当成送达成功。",
     "wait_for_backoff_window": "等待轮询 backoff 窗口结束后再刷新状态。",
+    "continue_polling_or_contact_support": "继续等待小车处理该命令；如果持续没有 ACK，请联系支持。",
     "wait_for_goal_acceptance": "等待收集目标接受后再重试取消；如果持续阻塞，请联系支持。",
     "manual_takeover": "保持现场安全，按提示人工接管。",
     "watch_progress": "继续观察任务状态，必要时取消。",
@@ -189,6 +201,7 @@ COMMAND_SAFETY_BLOCK_COPY = {
     "auth_failed": "手机登录或访问码未通过，主操作暂不可用。",
     "media_degraded": "媒体链路降级，主操作暂不可用；这不是送达成功。",
     "cloud_poll_backoff": "远程轮询等待重试窗口，主操作暂不可用；这不是送达成功。",
+    "ack_lookup_pending": "机器人尚未处理该命令，主操作暂不可用。",
     "cancel_pending_goal_acceptance": "取消要等收集目标接受后才能重试，主操作暂不可用；这不是送达成功。",
     "cloud_unreachable": "远程控制通道暂不可用，主操作暂不可用。",
     "malformed_response": "远程控制返回异常，主操作暂不可用。",
@@ -396,6 +409,7 @@ PHONE_READINESS_PRIMARY_COPY = {
     "remote_unreachable": "远程通道暂不可用。",
     "remote_response_invalid": "远程通道返回异常。",
     "cloud_poll_backoff": "远程轮询正在等待重试窗口。",
+    "ack_lookup_pending": "正在等待机器人处理该命令。",
     "cancel_pending_goal_acceptance": "取消等待目标接受。",
     "manual_takeover_required": "需要人工接管。",
     "monitoring": "任务进行中，请继续观察。",
@@ -621,6 +635,31 @@ def remote_error(code, message, *, details=None):
             "message": str(message),
             "details": details if isinstance(details, dict) else {},
         },
+    }
+
+
+def _remote_readiness_for_ack_lookup_pending(*, queue_persisted=False, auth_state="required"):
+    # 缺失 ACK 是读取侧 pending，不代表失败、取消或送达；手机只拿 canonical 降级态继续轮询。
+    return {
+        "capability": PHONE_ACK_LOOKUP_PENDING_STATUS_CAPABILITY,
+        "remote_ready": False,
+        "cloud_reachable": True,
+        "last_command_ack": "",
+        "status_stale": False,
+        "retry_hint": "continue_polling_or_contact_support",
+        "auth_state": str(auth_state or "required"),
+        "degradation_state": "ack_lookup_pending",
+        "safe_phone_copy": PHONE_ACK_LOOKUP_PENDING_SAFE_PHONE_COPY,
+        "status_age_sec": None,
+        "pending_command_count": 1,
+        "queue_persisted": bool(queue_persisted),
+        "state_path_configured": bool(queue_persisted),
+        "proof_schema": REMOTE_PERSISTENCE_SCHEMA if queue_persisted else "",
+        "ack_semantics": PHONE_ACK_LOOKUP_PENDING_ACK_SEMANTICS,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "proof_boundary": PHONE_ACK_LOOKUP_PENDING_STATUS_GUARD_BOUNDARY,
     }
 
 
@@ -1118,6 +1157,9 @@ class MockCloudStore:
         elif status_degradation == "cloud_poll_backoff":
             retry_hint = "wait_for_backoff_window"
             degradation_state = "cloud_poll_backoff"
+        elif status_degradation == "ack_lookup_pending":
+            retry_hint = "continue_polling_or_contact_support"
+            degradation_state = "ack_lookup_pending"
         elif cancel_pending:
             retry_hint = "wait_for_goal_acceptance"
             degradation_state = "cancel_pending_goal_acceptance"
@@ -1138,6 +1180,7 @@ class MockCloudStore:
                 "auth_failed",
                 "media_degraded",
                 "cloud_poll_backoff",
+                "ack_lookup_pending",
                 "cancel_pending_goal_acceptance",
                 MANUAL_TAKEOVER_DEGRADATION_STATE,
             }
@@ -1279,6 +1322,14 @@ class MockCloudStore:
                 status.get("proof_boundary")
                 or ack_operator_status.get("proof_boundary")
                 or PHONE_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY
+            )
+        if degradation_state == "ack_lookup_pending":
+            # ACK 查询缺失只说明机器人尚未处理该命令；不能推进 cursor 或解释成任何交付结果。
+            readiness.update(
+                _remote_readiness_for_ack_lookup_pending(
+                    queue_persisted=bool(self.state_path),
+                    auth_state=readiness.get("auth_state", "required"),
+                )
             )
         if degradation_state == "cancel_pending_goal_acceptance":
             # cancel pending 只说明取消需等 collect goal acceptance；不能升级成 cancel completed 或 delivery success。
@@ -1432,7 +1483,13 @@ class MockCloudStore:
         with self._lock:
             ack = self._robot(robot_id)["acks"].get(str(command_id or "").strip())
         if not ack:
-            return 404, remote_error("ack_not_found", f"ack not found for command_id: {command_id}")
+            # 404 仍保留 ack_not_found，但同时给手机 canonical readiness，避免 UI 从错误文案里猜状态。
+            payload = remote_error("ack_not_found", "ack not found for command")
+            payload["remote_readiness"] = _remote_readiness_for_ack_lookup_pending(
+                queue_persisted=bool(self.state_path),
+                auth_state="required" if self.auth_required else "mock_not_required",
+            )
+            return 404, payload
         return 200, {"ok": True, "ack": dict(ack)}
 
 
@@ -3177,6 +3234,7 @@ def _command_safety_block_reason(primary_state, remote_state, manifest_state):
         "command_sequence_regression",
         "media_degraded",
         "cloud_poll_backoff",
+        "ack_lookup_pending",
         "cancel_pending_goal_acceptance",
         MANUAL_TAKEOVER_DEGRADATION_STATE,
         "auth_failed",
@@ -4111,6 +4169,11 @@ def build_phone_readiness(
         next_action = "wait_for_backoff_window"
         can_continue = False
         support_level = "remote_poll_backoff"
+    elif remote_state == "ack_lookup_pending":
+        primary_state = "waiting_for_command_ack"
+        next_action = "continue_polling_or_contact_support"
+        can_continue = False
+        support_level = "remote_ack_lookup_pending"
     elif remote_state == "cancel_pending_goal_acceptance":
         primary_state = "cancel_pending_goal_acceptance"
         next_action = "wait_for_goal_acceptance"
@@ -4149,6 +4212,8 @@ def build_phone_readiness(
             remote.get("safe_phone_copy"),
             REMOTE_DEGRADATION_COPY["cloud_poll_backoff"],
         )
+    if remote_state == "ack_lookup_pending":
+        safe_phone_copy = PHONE_ACK_LOOKUP_PENDING_SAFE_PHONE_COPY
     if remote_state == "cancel_pending_goal_acceptance":
         safe_phone_copy = PHONE_CANCEL_PENDING_SAFE_PHONE_COPY
     if remote_state == MANUAL_TAKEOVER_DEGRADATION_STATE:
@@ -4169,6 +4234,22 @@ def build_phone_readiness(
                 "safe_phone_copy": safe_phone_copy,
                 "ack_semantics": "poll_backoff_not_delivery_success",
                 "proof_boundary": PHONE_POLL_BACKOFF_RATE_LIMIT_GUARD_BOUNDARY,
+            }
+        )
+    if remote_state == "ack_lookup_pending":
+        # ACK lookup pending 只允许手机继续等待或联系支持；任何乐观字段都要被覆盖为 fail-closed。
+        safe_remote_readiness.update(
+            {
+                "capability": PHONE_ACK_LOOKUP_PENDING_STATUS_CAPABILITY,
+                "degradation_state": "ack_lookup_pending",
+                "remote_ready": False,
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "retry_hint": "continue_polling_or_contact_support",
+                "safe_phone_copy": PHONE_ACK_LOOKUP_PENDING_SAFE_PHONE_COPY,
+                "ack_semantics": PHONE_ACK_LOOKUP_PENDING_ACK_SEMANTICS,
+                "proof_boundary": PHONE_ACK_LOOKUP_PENDING_STATUS_GUARD_BOUNDARY,
             }
         )
     if remote_state == "cancel_pending_goal_acceptance":
@@ -4513,6 +4594,7 @@ def make_handler(gateway):
                         return
                     if route_name == "ack":
                         status, payload = mock_cloud.get_ack(robot_id, command_id)
+                        payload = _with_remote_auth_state(payload, self._remote_auth_state())
                         self._send_json(status, payload)
                         return
                 except ValueError as exc:

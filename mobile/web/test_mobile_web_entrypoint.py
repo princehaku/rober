@@ -8,6 +8,9 @@ WEB_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = WEB_ROOT.parent.parent
 FIXTURE = WEB_ROOT / "fixtures" / "status.json"
 CLOUD_PENDING_ACK_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_pending_ack_status_guard.json"
+CLOUD_ACK_LOOKUP_PENDING_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_ack_lookup_pending_status_guard.json"
+)
 CLOUD_POLL_BACKOFF_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_poll_backoff_rate_limit_guard.json"
 )
@@ -388,6 +391,97 @@ class CloudPendingAckStatusGuardMobileTest(unittest.TestCase):
             "/cmd_vel",
             "raw ros topic",
             "raw json",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "serial device",
+            "baudrate",
+            "wave rover parameter",
+            "traceback",
+            "checksum",
+            "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
+
+
+class CloudAckLookupPendingStatusGuardMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_ack_lookup_pending_status_guard_is_consumed_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_ACK_LOOKUP_PENDING_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # ack_lookup_pending 只消费 remote_readiness safe fields；手机端不新增 ACK/cursor、diagnostics fetch 或控制 endpoint。
+        self.assertIn("CLOUD_ACK_LOOKUP_PENDING_STATUS_BOUNDARY", app)
+        self.assertIn("CLOUD_ACK_LOOKUP_PENDING_STATUS_COPY", app)
+        self.assertIn("cloud_ack_lookup_pending_status_guard", app)
+        self.assertIn("ack_lookup_pending", app)
+        self.assertIn("continue_polling_or_contact_support", app)
+        self.assertIn("ack_lookup_pending_not_delivery_success", app)
+        self.assertIn("remote_ready=false / primary_actions_enabled=false", app)
+        self.assertNotRegex(app, r"cloudAckLookupPending.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel)")
+
+        # fixture 明确机器人尚未处理命令，三类主操作关闭，Diagnostics / Support Handoff 仍可见。
+        self.assertEqual(fixture["capability"], "cloud_ack_lookup_pending_status_guard")
+        self.assertEqual(fixture["degradation_state"], "ack_lookup_pending")
+        self.assertEqual(fixture["remote_ready"], False)
+        self.assertEqual(fixture["safe_to_control"], False)
+        self.assertEqual(fixture["primary_actions_enabled"], False)
+        self.assertEqual(fixture["delivery_success"], False)
+        self.assertEqual(fixture["retry_hint"], "continue_polling_or_contact_support")
+        self.assertEqual(fixture["ack_semantics"], "ack_lookup_pending_not_delivery_success")
+        self.assertEqual(
+            fixture["phone_readiness"]["remote_readiness"]["retry_hint"],
+            "continue_polling_or_contact_support",
+        )
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertEqual(fixture["phone_readiness"]["command_safety"]["actions"]["diagnostics"]["enabled"], True)
+        self.assertEqual(fixture["phone_readiness"]["command_safety"]["actions"]["support_handoff"]["enabled"], True)
+        self.assertIn("机器人尚未处理该命令", fixture_text)
+        self.assertIn("继续等待或联系支持", fixture_text)
+        self.assertIn("这不是失败完成、送达成功，也不能继续发主操作", fixture_text)
+        self.assertIn("ack_lookup_pending_not_delivery_success", fixture_text)
+        self.assertIn("remote_ready=false", fixture_text)
+        self.assertIn("safe_to_control=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("software_proof_docker_cloud_ack_lookup_pending_status_guard", fixture_text)
+        self.assertNotIn("delivery_success\": true", fixture_text)
+        self.assertNotIn("primary_actions_enabled\": true", fixture_text)
+
+        # 产品文档必须把它写成 Docker/local safe status proof，而不是失败完成、送达成功或可继续主操作。
+        self.assertIn("cloud_ack_lookup_pending_status_guard", doc)
+        self.assertIn("ack_lookup_pending", doc)
+        self.assertIn("continue_polling_or_contact_support", doc)
+        self.assertIn("ack_lookup_pending_not_delivery_success", doc)
+        self.assertIn("机器人尚未处理该命令", doc)
+        self.assertIn("Diagnostics / Support Handoff", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+        self.assertIn("safe_to_control=false", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("software_proof_docker_cloud_ack_lookup_pending_status_guard", doc)
+
+    def test_cloud_ack_lookup_pending_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_ACK_LOOKUP_PENDING_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # ack lookup pending fixture 只暴露安全摘要，不能带 raw diagnostics、ACK 游标、底盘控制或成功证明。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "ack payload",
             "authorization",
             "bearer",
             "token",

@@ -27,6 +27,8 @@ const CLOUD_STATUS_STALE_BOUNDARY = "software_proof_docker_cloud_status_stale_gu
 const CLOUD_STATUS_STALE_COPY = "正在等待小车上报最新状态；当前状态已过期，不能作为送达成功依据。";
 const CLOUD_PENDING_ACK_STATUS_BOUNDARY = "software_proof_docker_cloud_pending_ack_status_guard";
 const CLOUD_PENDING_ACK_STATUS_COPY = "本地命令已终态，但云端 ACK 还没确认，暂不能拉取新命令";
+const CLOUD_ACK_LOOKUP_PENDING_STATUS_BOUNDARY = "software_proof_docker_cloud_ack_lookup_pending_status_guard";
+const CLOUD_ACK_LOOKUP_PENDING_STATUS_COPY = "机器人尚未处理该命令；请继续等待或联系支持。这不是失败完成、送达成功，也不能继续发主操作。";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY = "software_proof_docker_cloud_poll_backoff_rate_limit_guard";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_COPY = "远程控制正在等待重试退避窗口；窗口结束前 Start Delivery、Confirm Dropoff、Cancel 保持禁用。";
 const CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_BOUNDARY = "software_proof_docker_cloud_support_handoff_safe_export_gate";
@@ -1957,6 +1959,39 @@ function cloudReadinessSummaryFromStatus(status, readiness) {
         ack_semantics: ACK_PROCESSING_COPY,
         evidence_boundary: hostedBoundary || CLOUD_PENDING_ACK_STATUS_BOUNDARY,
         proof_boundary: hostedBoundary || CLOUD_PENDING_ACK_STATUS_BOUNDARY,
+        not_proven: notProvenList(provided.not_proven),
+      };
+    }
+    if (provided.degradation_state === "ack_lookup_pending" ||
+        provided.capability === "cloud_ack_lookup_pending_status_guard" ||
+        provided.proof_boundary === CLOUD_ACK_LOOKUP_PENDING_STATUS_BOUNDARY ||
+        provided.evidence_boundary === CLOUD_ACK_LOOKUP_PENDING_STATUS_BOUNDARY) {
+      // ack_lookup_pending 只说明 Robot/API 还没查到命令处理结果；手机端必须继续等待或交给支持，不能补发主操作。
+      return {
+        ...provided,
+        missing: false,
+        capability: "cloud_ack_lookup_pending_status_guard",
+        overall_status: "blocked",
+        preflight_status: "ack_lookup_pending",
+        degradation_state: "ack_lookup_pending",
+        db_queue_status: "ack_lookup_pending / remote_ready=false / primary_actions_enabled=false",
+        production_ready: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+        remote_ready: false,
+        delivery_success: false,
+        retry_hint: "continue_polling_or_contact_support",
+        safe_phone_copy: safeText(provided.safe_phone_copy, CLOUD_ACK_LOOKUP_PENDING_STATUS_COPY),
+        recovery_hint: safeText(
+          provided.recovery_hint || provided.retry_hint,
+          "继续等待 Robot/API 轮询命令处理结果；若长时间未更新，请联系支持。手机端不请求 ACK/cursor、不拉取 raw diagnostics，也不提交控制动作。",
+        ),
+        ack_semantics: safeText(
+          provided.ack_semantics,
+          "ack_lookup_pending_not_delivery_success",
+        ),
+        evidence_boundary: hostedBoundary || CLOUD_ACK_LOOKUP_PENDING_STATUS_BOUNDARY,
+        proof_boundary: hostedBoundary || CLOUD_ACK_LOOKUP_PENDING_STATUS_BOUNDARY,
         not_proven: notProvenList(provided.not_proven),
       };
     }

@@ -1,0 +1,84 @@
+{
+  "robot_id": "trashbot-alpha",
+  "state": "remote_degraded",
+  "capability": "cloud_ack_lookup_pending_status_guard",
+  "remote_ready": false,
+  "cloud_reachable": true,
+  "auth_state": "authorized",
+  "degradation_state": "ack_lookup_pending",
+  "retry_hint": "continue_polling_or_contact_support",
+  "primary_actions_enabled": false,
+  "safe_to_control": false,
+  "safe_phone_copy": "机器人尚未处理该命令；请继续等待或联系支持。这不是失败完成、送达成功，也不能继续发主操作。",
+  "recovery_hint": "继续等待 Robot/API 轮询命令处理结果；如果长时间未更新，请联系支持。手机端不自动重放、不提交主操作。",
+  "ack_semantics": "ack_lookup_pending_not_delivery_success",
+  "proof_boundary": "software_proof_docker_cloud_ack_lookup_pending_status_guard",
+  "evidence_boundary": "software_proof_docker_cloud_ack_lookup_pending_status_guard",
+  "boundary_flags": "source=software_proof / not_proven / remote_ready=false / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / retry_hint=continue_polling_or_contact_support",
+  "delivery_success": false,
+  "not_proven": [
+    "真实公网 HTTPS/TLS",
+    "真实 4G/SIM",
+    "OSS/CDN live traffic",
+    "production DB/queue",
+    "真实手机/browser",
+    "真实 command delivery result",
+    "Nav2/fixed-route",
+    "route/elevator field pass",
+    "WAVE ROVER/UART/HIL",
+    "delivery success"
+  ],
+  "phone_readiness": {
+    "primary_state": "blocked",
+    "next_action": "continue_polling_or_contact_support",
+    "support_level": "diagnostics_available",
+    "remote_readiness": {
+      "capability": "cloud_ack_lookup_pending_status_guard",
+      "remote_ready": false,
+      "degradation_state": "ack_lookup_pending",
+      "primary_actions_enabled": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "safe_phone_copy": "机器人尚未处理该命令；请继续等待或联系支持。这不是失败完成、送达成功，也不能继续发主操作。",
+      "recovery_hint": "继续等待 Robot/API 轮询命令处理结果；如果长时间未更新，请联系支持。手机端不自动重放、不提交主操作。",
+      "retry_hint": "continue_polling_or_contact_support",
+      "ack_semantics": "ack_lookup_pending_not_delivery_success",
+      "proof_boundary": "software_proof_docker_cloud_ack_lookup_pending_status_guard"
+    },
+    "command_safety": {
+      "schema": "trashbot.command_safety.v1",
+      "global_block_reason": "ack_lookup_pending：机器人尚未处理该命令，remote_ready=false。",
+      "ack_semantics": "ack_lookup_pending_not_delivery_success",
+      "actions": {
+        "start": {
+          "enabled": false,
+          "blocking_reason": "ack_lookup_pending / remote_ready=false / primary_actions_enabled=false"
+        },
+        "confirm_dropoff": {
+          "enabled": false,
+          "blocking_reason": "ack_lookup_pending / remote_ready=false / primary_actions_enabled=false"
+        },
+        "cancel": {
+          "enabled": false,
+          "blocking_reason": "ack_lookup_pending / remote_ready=false / primary_actions_enabled=false"
+        },
+        "diagnostics": {
+          "enabled": true,
+          "safe_phone_copy": "诊断可打开；主操作保持 fail closed。"
+        },
+        "support_handoff": {
+          "enabled": true,
+          "safe_phone_copy": "支持交接可见；不代表命令已处理、失败完成或送达成功。"
+        }
+      }
+    }
+  },
+  "action_permissions": {
+    "can_collect": false,
+    "can_confirm_dropoff": false,
+    "can_cancel": false
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

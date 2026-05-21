@@ -35,6 +35,39 @@ execution, WAVE ROVER, HIL, Objective 5 external proof, true phone/browser
 proof, route/elevator field pass, PR #5 reviewer resolution, or delivery
 success.
 
+## robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary` as the safe
+alias for `GET /robots/{robot_id}/commands/{command_id}/ack` returning
+`ack_not_found` while the robot has not processed that command.
+
+- Source state: `remote_readiness.degradation_state=ack_lookup_pending`
+- Robot alias schema:
+  `trashbot.robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary.v1`
+- Capability: `cloud_ack_lookup_pending_status_guard`
+- Evidence boundary:
+  `software_proof_docker_cloud_ack_lookup_pending_status_guard`
+
+The alias is metadata-only and read-only. It may expose sanitized
+`degradation_state=ack_lookup_pending`, phone-safe copy,
+`retry_hint=continue_polling_or_contact_support`,
+`ack_semantics=ack_lookup_pending_not_delivery_success`,
+`source=software_proof`, `not_proven`, `remote_ready=false`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+
+Unsafe copy, raw cloud bodies, bearer token, Authorization header, raw JSON,
+raw command path, traceback, ROS topic, `/cmd_vel`, serial/UART details,
+WAVE ROVER details, success wording, `delivery_success=true`,
+`primary_actions_enabled=true`, or `safe_to_control=true` must fail closed as
+blocked/not_proven.
+
+This alias must not enable Start Delivery, Confirm Dropoff, Cancel, ACK cursor
+fetch, cursor updates, persistence updates, terminal ACK, commands, Nav2, route
+execution, WAVE ROVER, HIL, Objective 5 external proof, true phone/browser
+proof, route/elevator field pass, or delivery success.
+
 ## robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary
 
 Robot diagnostics exposes

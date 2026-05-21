@@ -1038,6 +1038,56 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         )
         self.assertNotIn("delivery_success\": true", json.dumps(poll_backoff["remote_readiness"]))
 
+        ack_lookup_pending = build_phone_readiness(
+            local_status,
+            remote_readiness={
+                "capability": "cloud_ack_lookup_pending_status_guard",
+                "degradation_state": "ack_lookup_pending",
+                "retry_hint": "retry_cloud",
+                "safe_phone_copy": "Authorization Bearer token /cmd_vel",
+                "ack_semantics": "delivery_success",
+                "remote_ready": True,
+                "safe_to_control": True,
+                "primary_actions_enabled": True,
+                "delivery_success": True,
+                "proof_boundary": "unsafe-boundary",
+            },
+            oss_cdn_manifest=READY_MANIFEST,
+        )
+        self.assertEqual(ack_lookup_pending["primary_state"], "waiting_for_command_ack")
+        self.assertFalse(ack_lookup_pending["can_continue"])
+        self.assertEqual(ack_lookup_pending["next_action"], "continue_polling_or_contact_support")
+        self.assertEqual(ack_lookup_pending["support_level"], "remote_ack_lookup_pending")
+        self.assertEqual(ack_lookup_pending["command_safety"]["global_block_reason"], "ack_lookup_pending")
+        self.assertFalse(ack_lookup_pending["command_safety"]["actions"]["start"]["enabled"])
+        self.assertFalse(ack_lookup_pending["command_safety"]["actions"]["confirm_dropoff"]["enabled"])
+        self.assertFalse(ack_lookup_pending["command_safety"]["actions"]["cancel"]["enabled"])
+        self.assertTrue(ack_lookup_pending["command_safety"]["actions"]["diagnostics"]["enabled"])
+        self.assertEqual(
+            ack_lookup_pending["remote_readiness"]["capability"],
+            "cloud_ack_lookup_pending_status_guard",
+        )
+        self.assertFalse(ack_lookup_pending["remote_readiness"]["remote_ready"])
+        self.assertFalse(ack_lookup_pending["remote_readiness"]["safe_to_control"])
+        self.assertFalse(ack_lookup_pending["remote_readiness"]["delivery_success"])
+        self.assertFalse(ack_lookup_pending["remote_readiness"]["primary_actions_enabled"])
+        self.assertEqual(
+            ack_lookup_pending["remote_readiness"]["retry_hint"],
+            "continue_polling_or_contact_support",
+        )
+        self.assertEqual(
+            ack_lookup_pending["remote_readiness"]["ack_semantics"],
+            "ack_lookup_pending_not_delivery_success",
+        )
+        self.assertEqual(
+            ack_lookup_pending["remote_readiness"]["proof_boundary"],
+            "software_proof_docker_cloud_ack_lookup_pending_status_guard",
+        )
+        encoded_ack_lookup_pending = json.dumps(ack_lookup_pending, ensure_ascii=False)
+        self.assertIn("机器人尚未处理该命令", ack_lookup_pending["safe_phone_copy"])
+        for forbidden in ("Authorization", "Bearer", "token", "/cmd_vel", "delivery_success\": true"):
+            self.assertNotIn(forbidden, encoded_ack_lookup_pending)
+
         cancel_pending = build_phone_readiness(
             local_status,
             remote_readiness={
@@ -2698,10 +2748,30 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertIn("type must be one of", payload["error"]["message"])
 
     def test_mock_cloud_ack_lookup_reports_missing_ack(self):
-        status, payload = self.request("GET", "/robots/trashbot-001/commands/missing/ack")
+        status, payload = self.request(
+            "GET",
+            "/robots/trashbot-001/commands/Authorization-Bearer-token-cmd_vel/ack",
+        )
 
         self.assertEqual(status, 404)
         self.assertEqual(payload["error"]["code"], "ack_not_found")
+        readiness = payload["remote_readiness"]
+        self.assertEqual(readiness["capability"], "cloud_ack_lookup_pending_status_guard")
+        self.assertEqual(readiness["degradation_state"], "ack_lookup_pending")
+        self.assertFalse(readiness["remote_ready"])
+        self.assertFalse(readiness["safe_to_control"])
+        self.assertFalse(readiness["delivery_success"])
+        self.assertFalse(readiness["primary_actions_enabled"])
+        self.assertEqual(readiness["retry_hint"], "continue_polling_or_contact_support")
+        self.assertEqual(readiness["ack_semantics"], "ack_lookup_pending_not_delivery_success")
+        self.assertEqual(
+            readiness["proof_boundary"],
+            "software_proof_docker_cloud_ack_lookup_pending_status_guard",
+        )
+        self.assertIn("机器人尚未处理该命令", readiness["safe_phone_copy"])
+        encoded = json.dumps(payload, ensure_ascii=False)
+        for forbidden in ("Authorization", "Bearer", "token", "/cmd_vel", "delivery_success\": true"):
+            self.assertNotIn(forbidden, encoded)
 
     def test_malformed_json_returns_400(self):
         status, payload = self.request("POST", "/api/collect", b"{bad")

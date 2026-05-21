@@ -1264,6 +1264,37 @@ CLOUD_POLL_BACKOFF_REQUIRED_NOT_PROVEN = (
     "hil_pass",
     "delivery_success",
 )
+CLOUD_ACK_LOOKUP_PENDING_STATUS_GUARD_BOUNDARY = (
+    "software_proof_docker_cloud_ack_lookup_pending_status_guard"
+)
+CLOUD_ACK_LOOKUP_PENDING_STATUS_GUARD_SCHEMA = (
+    "trashbot.robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary.v1"
+)
+CLOUD_ACK_LOOKUP_PENDING_FALSE_STATES = (
+    "source=software_proof",
+    "not_proven",
+    "remote_ready=false",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+)
+CLOUD_ACK_LOOKUP_PENDING_REQUIRED_NOT_PROVEN = (
+    "real_public_https_tls",
+    "real_4g_or_sim",
+    "production_db_queue",
+    "oss_cdn_live_traffic",
+    "ack_completion",
+    "ack_cursor_fetch",
+    "cursor_update",
+    "robot_command_side_effects",
+    "dropoff_or_cancel_completion",
+    "route_elevator_field_pass",
+    "real_phone_device_or_browser",
+    "hil_pass",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
+)
 CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_ROBOT_SCHEMA = (
     "trashbot.robot_diagnostics_cloud_support_handoff_safe_export_summary.v1"
 )
@@ -1746,6 +1777,79 @@ def _remote_readiness_for_poll_backoff_guard(summary):
         if summary.get(key) is not None:
             readiness[key] = summary[key]
     return readiness
+
+
+def summarize_cloud_ack_lookup_pending_status_guard(value):
+    """为 ACK 查询缺失构建 Robot diagnostics 安全摘要。"""
+    source = value if isinstance(value, dict) else {}
+    degradation_state = str(source.get("degradation_state") or source.get("state") or "").strip()
+    applicable = degradation_state == "ack_lookup_pending"
+    unsafe = _cloud_guard_has_unsafe_material(source)
+    fallback_copy = "机器人尚未处理该命令，请继续等待或联系支持。"
+    status = (
+        "not_applicable"
+        if not source
+        else "unsupported_degradation_not_proven"
+        if not applicable
+        else "blocked_unsafe_material_not_proven"
+        if unsafe
+        else "ack_lookup_pending_not_proven"
+    )
+    safe_copy = _cloud_guard_safe_text(source.get("safe_phone_copy"), fallback_copy)
+    return {
+        "schema": CLOUD_ACK_LOOKUP_PENDING_STATUS_GUARD_SCHEMA,
+        "schema_version": 1,
+        "capability": "cloud_ack_lookup_pending_status_guard",
+        "source": "software_proof",
+        "evidence_boundary": CLOUD_ACK_LOOKUP_PENDING_STATUS_GUARD_BOUNDARY,
+        "status": status,
+        "degradation_state": "ack_lookup_pending" if applicable else "not_applicable",
+        "remote_ready": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "ack_completion_proven": False,
+        "ack_cursor_fetch_allowed": False,
+        "cursor_updates_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "retry_hint": "continue_polling_or_contact_support",
+        "ack_semantics": "ack_lookup_pending_not_delivery_success",
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "false_states": list(CLOUD_ACK_LOOKUP_PENDING_FALSE_STATES),
+        "not_proven": list(CLOUD_ACK_LOOKUP_PENDING_REQUIRED_NOT_PROVEN),
+        "raw_material_redacted": bool(unsafe),
+    }
+
+
+def _remote_readiness_for_ack_lookup_pending_guard(summary):
+    # diagnostics 只能回填 canonical pending，不带 command path、raw ACK body 或 traceback。
+    if not isinstance(summary, dict) or summary.get("degradation_state") != "ack_lookup_pending":
+        return {}
+    return {
+        "capability": "cloud_ack_lookup_pending_status_guard",
+        "remote_ready": False,
+        "cloud_reachable": True,
+        "last_command_ack": "",
+        "status_stale": False,
+        "retry_hint": "continue_polling_or_contact_support",
+        "auth_state": "required",
+        "degradation_state": "ack_lookup_pending",
+        "safe_phone_copy": summary.get(
+            "safe_phone_copy",
+            "机器人尚未处理该命令，请继续等待或联系支持。",
+        ),
+        "status_age_sec": None,
+        "pending_command_count": 1,
+        "queue_persisted": False,
+        "state_path_configured": False,
+        "proof_schema": "",
+        "ack_semantics": "ack_lookup_pending_not_delivery_success",
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "proof_boundary": CLOUD_ACK_LOOKUP_PENDING_STATUS_GUARD_BOUNDARY,
+    }
 
 
 def summarize_cloud_cancel_pending_command_safety_guard(value):
@@ -59138,6 +59242,35 @@ def build_diagnostics_payload(
     safe_poll_backoff_remote_readiness = _remote_readiness_for_poll_backoff_guard(poll_backoff_summary)
     if safe_poll_backoff_remote_readiness:
         latest_status["remote_readiness"] = safe_poll_backoff_remote_readiness
+    ack_lookup_pending_source = (
+        latest_status.get("remote_readiness")
+        if isinstance(latest_status.get("remote_readiness"), dict)
+        else diagnostics_source.get("remote_readiness")
+        if isinstance(diagnostics_source.get("remote_readiness"), dict)
+        else latest_status.get("cloud_ack_lookup_pending_status_guard")
+        if isinstance(latest_status.get("cloud_ack_lookup_pending_status_guard"), dict)
+        else latest_status.get("robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary")
+        if isinstance(
+            latest_status.get("robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary"),
+            dict,
+        )
+        else diagnostics_source.get("cloud_ack_lookup_pending_status_guard")
+        if isinstance(diagnostics_source.get("cloud_ack_lookup_pending_status_guard"), dict)
+        else diagnostics_source.get("robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary")
+        if isinstance(
+            diagnostics_source.get("robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary"),
+            dict,
+        )
+        else {}
+    )
+    ack_lookup_pending_summary = summarize_cloud_ack_lookup_pending_status_guard(
+        ack_lookup_pending_source
+    )
+    safe_ack_lookup_pending_remote_readiness = _remote_readiness_for_ack_lookup_pending_guard(
+        ack_lookup_pending_summary
+    )
+    if safe_ack_lookup_pending_remote_readiness:
+        latest_status["remote_readiness"] = safe_ack_lookup_pending_remote_readiness
     cancel_pending_source = (
         latest_status.get("remote_readiness")
         if isinstance(latest_status.get("remote_readiness"), dict)
@@ -61512,6 +61645,9 @@ def build_diagnostics_payload(
     latest_status.pop("cloud_cancel_pending_command_safety_guard", None)
     latest_status.pop("cloud_cancel_pending_command_safety_guard_summary", None)
     latest_status.pop("robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary", None)
+    latest_status.pop("cloud_ack_lookup_pending_status_guard", None)
+    latest_status.pop("cloud_ack_lookup_pending_status_guard_summary", None)
+    latest_status.pop("robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary", None)
     latest_status.pop("voice_prompt_readiness", None)
     latest_status.pop("phone_offline_resume_readiness", None)
     latest_status.pop("cloud_unreachable_malformed_response_guard", None)
@@ -64106,6 +64242,11 @@ def build_diagnostics_payload(
         cloud_poll_backoff_rate_limit_guard=poll_backoff_summary,
         cloud_poll_backoff_rate_limit_guard_summary=poll_backoff_summary,
         robot_diagnostics_cloud_poll_backoff_rate_limit_guard_summary=poll_backoff_summary,
+        cloud_ack_lookup_pending_status_guard=ack_lookup_pending_summary,
+        cloud_ack_lookup_pending_status_guard_summary=ack_lookup_pending_summary,
+        robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary=(
+            ack_lookup_pending_summary
+        ),
         cloud_cancel_pending_command_safety_guard=cancel_pending_summary,
         cloud_cancel_pending_command_safety_guard_summary=cancel_pending_summary,
         robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary=cancel_pending_summary,

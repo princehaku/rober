@@ -1227,9 +1227,9 @@ details.
 | `remote_ready` | `true` only means the current local/mock control-plane conditions allow the phone flow to continue; it is not real cloud, 4G, HIL, or delivery proof. |
 | `cloud_reachable` | Whether the configured local/mock control-plane is reachable from the caller's point of view. |
 | `auth_state` | Phone-safe auth state such as `mock_not_required`, `required`, `authorized`, or `auth_failed`. |
-| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `command_sequence_regression`, `auth_failed`, `media_degraded`, `cloud_poll_backoff`, `cancel_pending_goal_acceptance`, `manual_takeover_required`, `cloud_unreachable`, or `malformed_response`. |
+| `degradation_state` | Phone-safe degradation state such as `ok`, `status_stale`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `command_sequence_regression`, `auth_failed`, `media_degraded`, `cloud_poll_backoff`, `ack_lookup_pending`, `cancel_pending_goal_acceptance`, `manual_takeover_required`, `cloud_unreachable`, or `malformed_response`. |
 | `media_state` | Present only for `media_degraded`; values are `oss_write_failed` or `cdn_unavailable`. |
-| `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `check_oss_write`, `check_cdn_reachability`, `wait_for_backoff_window`, `wait_for_goal_acceptance`, `retry_cloud`, or `contact_support`. |
+| `retry_hint` | Operator/phone action hint such as `ok`, `wait_for_robot_status`, `wait_for_command_ack`, `resubmit_command`, `refresh_status`, `check_auth`, `check_oss_write`, `check_cdn_reachability`, `wait_for_backoff_window`, `continue_polling_or_contact_support`, `wait_for_goal_acceptance`, `retry_cloud`, or `contact_support`. |
 | `safe_phone_copy` | Plain-language UI copy that must not include raw JSON, ROS topic names, secrets, serial devices, or hardware parameters. |
 | `ack_semantics` | Explicit non-delivery wording for degraded ACK/status states; `stale_status_not_delivery_success` means stale robot status is not delivery success. |
 | `primary_actions_enabled` | `false` for fail-closed degraded states, including `auth_failed`, so Start/Confirm/Cancel remain disabled. |
@@ -1366,8 +1366,26 @@ state and status as the continuing delivery/result surface.
 
 The phone-safe read endpoint is
 `GET /robots/{robot_id}/commands/{command_id}/ack`. A missing ACK returns an
-`ack_not_found` error so the UI can keep polling or show that the robot has not
-processed the command yet.
+`ack_not_found` error plus canonical `remote_readiness` so the UI can keep
+polling or show that the robot has not processed the command yet.
+
+Missing ACK lookup must render as the O5 software-proof state
+`cloud_ack_lookup_pending_status_guard`:
+
+- `capability=cloud_ack_lookup_pending_status_guard`
+- `degradation_state=ack_lookup_pending`
+- `remote_ready=false`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `retry_hint=continue_polling_or_contact_support`
+- `ack_semantics=ack_lookup_pending_not_delivery_success`
+- `proof_boundary=software_proof_docker_cloud_ack_lookup_pending_status_guard`
+- Phone-safe copy: `机器人尚未处理该命令，请继续等待或联系支持。`
+
+This pending lookup state is read-only. It must not enqueue, replay, cancel,
+confirm dropoff, advance an ACK cursor, infer delivery outcome, or expose raw
+tokens, paths, ROS topics, serial details, tracebacks, or success wording.
 
 ## Safety Rules
 
