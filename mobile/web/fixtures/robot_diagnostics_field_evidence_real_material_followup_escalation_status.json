@@ -1,0 +1,74 @@
+{
+  "robot_diagnostics_field_evidence_real_material_followup_escalation_status_summary": {
+    "schema": "trashbot.field_evidence_real_material_followup_escalation_status_summary.v1",
+    "source_schema": "trashbot.field_evidence_real_material_followup_escalation_status.v1",
+    "source": "software_proof",
+    "status": "blocked_pending_field_owner_real_material_followup_not_proven",
+    "safe_evidence_ref": "field_evidence_real_material_followup_escalation_status_fixture_20260521_0001",
+    "owner": "field_owner_route_elevator_and_phone",
+    "sla_due_status": "overdue_missing_same_evidence_ref_real_materials",
+    "next_required_evidence": [
+      "next_required_evidence=real task_record on same safe evidence_ref",
+      "next_required_evidence=real route/elevator runtime summary",
+      "next_required_evidence=true phone/browser field behavior summary",
+      "next_required_evidence=dropoff/cancel completion material and delivery result"
+    ],
+    "blocked_reason": "blocked_reason=missing route/elevator and true phone/browser real materials",
+    "escalation_level": "owner_escalation_required",
+    "rerun_backfill_guidance": [
+      "rerun_guidance=collect same-safe-evidence-ref field materials before later review",
+      "backfill_guidance=use Robot sanitized summary only for mobile display",
+      "backfill_guidance=keep Start Delivery, Confirm Dropoff and Cancel disabled"
+    ],
+    "safe_copy": "现场 owner 仍需补齐同一 safe evidence_ref 的真实材料；手机端只读展示 follow-up 升级状态。",
+    "evidence_boundary": "software_proof_docker_field_evidence_real_material_followup_escalation_status_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "real_field_rerun",
+      "true_phone_browser_proof",
+      "delivery_result"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_real_material_followup_escalation_status_summary": {
+    "schema": "trashbot.field_evidence_real_material_followup_escalation_status_summary.v1",
+    "source": "software_proof",
+    "status": "blocked_pending_field_owner_real_material_followup_not_proven",
+    "safe_evidence_ref": "field_evidence_real_material_followup_escalation_status_fixture_20260521_0001",
+    "owner": "field_owner_route_elevator_and_phone",
+    "due_status": "overdue_missing_same_evidence_ref_real_materials",
+    "blocked_reason": "blocked_reason=missing route/elevator and true phone/browser real materials",
+    "escalation_level": "owner_escalation_required",
+    "safe_copy": "兼容 summary 只读展示现场真实材料 follow-up 升级状态。",
+    "evidence_boundary": "software_proof_docker_field_evidence_real_material_followup_escalation_status_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_real_material_followup_escalation_status": {
+    "summary": {
+      "schema": "trashbot.field_evidence_real_material_followup_escalation_status_summary.v1",
+      "source": "software_proof",
+      "status": "blocked_pending_field_owner_real_material_followup_not_proven",
+      "safe_evidence_ref": "field_evidence_real_material_followup_escalation_status_fixture_20260521_0001",
+      "owner": "field_owner_route_elevator_and_phone",
+      "sla_due_status": "overdue_missing_same_evidence_ref_real_materials",
+      "blocked_reason": "blocked_reason=missing route/elevator and true phone/browser real materials",
+      "escalation_level": "owner_escalation_required",
+      "safe_copy": "Nested safe summary only; still software proof and not_proven.",
+      "evidence_boundary": "software_proof_docker_field_evidence_real_material_followup_escalation_status_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

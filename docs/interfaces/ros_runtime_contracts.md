@@ -382,3 +382,20 @@ The alias is metadata-only and fail-closed:
 Allowed Robot-visible fields are limited to sanitized review-handoff metadata: `safe_evidence_ref`, `source_review_decision`, `source_review_decision_status`, `handoff_status`, `handoff_decision`, `same_evidence_ref_required`, `same_evidence_ref_status`, `owner_handoff`, `next_required_evidence`, `blocker_summary`, `rerun_guidance`, `reconciliation_guidance`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
 
 The alias must not expose raw artifacts, raw review-decision materials, raw diagnostics, unsafe material, mismatched `evidence_ref`, success/control claims, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, DB/queue URLs, OSS secrets, local paths, checksum values, tracebacks, ACK/cursor/control routes, HIL/pass wording, field-pass wording, delivery result success, or complete artifact bodies. Missing canonical summary, unsupported schema or boundary, same-`safe_evidence_ref` mismatch, missing source review decision status, missing owner handoff, missing next required evidence, missing blocker summary, enabled action flag, unsafe copy, raw artifact/review marker, local path, checksum, credential, DB/queue URL, traceback marker, ACK/cursor route, HIL/pass wording, or hardware/control wording keeps the summary blocked/not_proven and leaves task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
+
+## robot_diagnostics_field_evidence_real_material_followup_escalation_status_summary
+
+`robot_diagnostics_field_evidence_real_material_followup_escalation_status_summary` is the Robot diagnostics safe alias for the `field_evidence_real_material_followup_escalation_status` gate. It consumes the canonical sanitized summary schema `trashbot.field_evidence_real_material_followup_escalation_status_summary.v1`, a compatible artifact wrapper that contains that summary, or the same summary nested under `latest_status.diagnostics`; the source schema must point back to `trashbot.field_evidence_real_material_followup_escalation_status.v1` and the evidence boundary must remain `software_proof_docker_field_evidence_real_material_followup_escalation_status_gate`.
+
+The alias is metadata-only and fail-closed:
+
+- `source=software_proof`
+- `not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `metadata_only=true`
+
+Allowed Robot-visible fields are limited to sanitized field follow-up metadata: `safe_evidence_ref`, `status`, `followup_status`, `material_group`, `field_owner`, `due_status`, `blocked_reason`, `next_required_evidence`, `escalation_level`, `rerun_status_summary`, `source_review_handoff_status`, `owner_handoff`, `material_groups`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
+
+This alias is scoped to field-evidence follow-up, including PR review context such as `PRRT_kwDOSWB9286CJ3tX` and comment/material reference `3269642220`, but it does not resolve PR review state. It must not expose raw artifacts, raw review-handoff materials, raw diagnostics, unsafe material, mismatched `evidence_ref`, success/control claims, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, DB/queue URLs, OSS secrets, local paths, checksum values, tracebacks, ACK/cursor/control routes, HIL/pass wording, field-pass wording, delivery result success, or complete artifact bodies. Missing canonical summary, unsupported schema or boundary, enabled action flag, unsafe copy, raw artifact/review marker, local path, checksum, credential, DB/queue URL, traceback marker, ACK/cursor route, HIL/pass wording, or hardware/control wording keeps the summary blocked/not_proven and leaves task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.

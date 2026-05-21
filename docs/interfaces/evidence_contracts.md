@@ -1885,6 +1885,72 @@ pass, real delivery result, true phone/browser proof, HIL, WAVE ROVER/UART
 proof, Objective 5 external proof, PR #5 resolution, or any primary robot action
 being enabled.
 
+## field_evidence_real_material_followup_escalation_status
+
+`pc-tools/evidence/field_evidence_real_material_followup_escalation_status.py`
+generates the PC-only escalation-status gate after
+`field_evidence_real_material_response_review_handoff.py`. It consumes only the
+17-18 response-review-handoff safe artifact, safe summary, wrapper/nested JSON,
+or Robot diagnostics safe alias and turns the remaining route/elevator/field
+material gaps into owner/SLA/next-action/missing-evidence/blocked-reason
+escalation status.
+
+- Artifact schema:
+  `trashbot.field_evidence_real_material_followup_escalation_status.v1`
+- Summary schema:
+  `trashbot.field_evidence_real_material_followup_escalation_status_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_real_material_followup_escalation_status_gate`
+- Capability:
+  `field_evidence_real_material_followup_escalation_status`
+- Allowed source inputs:
+  `trashbot.field_evidence_real_material_response_review_handoff.v1` and
+  `trashbot.field_evidence_real_material_response_review_handoff_summary.v1`
+  under
+  `software_proof_docker_field_evidence_real_material_response_review_handoff_gate`.
+  The Robot alias
+  `robot_diagnostics_field_evidence_real_material_response_review_handoff_summary`
+  is allowed when it preserves the same schema, boundary, `evidence_ref`, and
+  false action flags.
+
+Allowed `field_evidence_real_material_followup_escalation_status` values are
+`escalated_for_field_owner_followup_not_proven`,
+`blocked_missing_field_material_followup_escalation_not_proven`,
+`blocked_rejected_or_unsafe_handoff_followup_escalation_not_proven`,
+`blocked_unsupported_field_material_followup_escalation_source`, and
+`evidence_ref_mismatch_field_material_followup_escalation_blocked`.
+
+The output always includes `source=software_proof`, `status=not_proven`, safe
+`evidence_ref`, `same_evidence_ref_required=true`, source handoff metadata,
+`owner_escalation_items`, `owner`, `sla`, `due_status`, `next_action`,
+`missing_evidence`, `blocked_reason`, `review_refs` with PR #4 ref `3269642220`
+and PR #5 thread `PRRT_kwDOSWB9286CJ3tX`, `safe_copy`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_real_material_followup_escalation_status_gate`.
+The summary mirrors those fields and is the intended read-only consumer surface
+for Robot diagnostics and mobile/web follow-through.
+
+Mapping is fail-closed. A supported, safe response-review-handoff source with
+matched safe `evidence_ref`, `same_evidence_ref_required=true`,
+`source=software_proof`, `not_proven`, and all action flags false maps
+`ready_for_field_owner_handoff_not_proven` to
+`escalated_for_field_owner_followup_not_proven` and
+`needs_material_backfill_handoff_not_proven` to
+`blocked_missing_field_material_followup_escalation_not_proven`. Rejected,
+blocked, unknown, unsafe, success/control, or mixed handoff inputs map to
+`blocked_rejected_or_unsafe_handoff_followup_escalation_not_proven`. Missing
+source, bad JSON, unsupported schema/boundary, missing software-proof/not-proven
+fields, raw paths, credentials, ROS topic text, `/cmd_vel`, checksum text,
+complete/raw artifact text, `safe_to_control=true`, `delivery_success=true`,
+or `primary_actions_enabled=true` fail closed.
+
+This contract is software proof only. It does not prove a real route/elevator
+field pass, real Nav2/fixed-route execution, real elevator door/floor state,
+real field task record, dropoff/cancel completion, delivery result, delivery
+success, HIL, WAVE ROVER/UART proof, real phone/browser proof, Objective 5
+external proof, PR #5 resolution, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`
