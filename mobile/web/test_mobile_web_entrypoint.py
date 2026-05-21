@@ -65,6 +65,10 @@ FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_real_material_request_dispatch.json"
 )
+FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_real_material_response_intake.json"
+)
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -3818,7 +3822,8 @@ class RouteTaskTerminalReviewDecisionMobileTest(unittest.TestCase):
             "raw ros topic",
             "raw json",
             "serial device",
-            "uart",
+            "ttyusb",
+            "ttyacm",
             "baudrate",
             "authorization",
             "token",
@@ -9824,7 +9829,8 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "raw execution",
             "full execution pack",
             "serial device",
-            "uart",
+            "ttyusb",
+            "ttyacm",
             "baudrate",
             "wave rover parameter",
             "authorization",
@@ -9949,7 +9955,8 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "raw execution",
             "full execution pack",
             "serial device",
-            "uart",
+            "ttyusb",
+            "ttyacm",
             "baudrate",
             "wave rover parameter",
             "authorization",
@@ -10944,6 +10951,155 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, request_dispatch_text)
+
+    def test_field_evidence_real_material_response_intake_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_FIXTURE.read_text(encoding="utf-8")
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 响应入口只展示 Robot safe summary 的分类结果，不读取原始材料或打开控制动作。
+        self.assertIn("FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_TEXT", app)
+        self.assertIn("safeFieldEvidenceRealMaterialResponseIntakeText", app)
+        self.assertIn("fieldEvidenceRealMaterialResponseIntakeCandidate", app)
+        self.assertIn("fieldEvidenceRealMaterialResponseIntakeFromStatus", app)
+        self.assertIn("renderFieldEvidenceRealMaterialResponseIntake", app)
+        self.assertIn("现场真实材料响应入口", app)
+        self.assertIn("robot_diagnostics_field_evidence_real_material_response_intake_summary", app)
+        self.assertIn("field_evidence_real_material_response_intake_summary", app)
+        self.assertIn("field_evidence_real_material_response_intake?.summary", app)
+        self.assertIn("accepted_categories", app)
+        self.assertIn("missing_categories", app)
+        self.assertIn("rejected_categories", app)
+        self.assertIn("blocked_categories", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("blocked_claims", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("not_proven", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceRealMaterialResponseIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotIn("copyFieldEvidenceRealMaterialResponseIntakeButton", app)
+        self.assertNotIn("downloadFieldEvidenceRealMaterialResponseIntakeButton", app)
+        self.assertNotIn("submitFieldEvidenceRealMaterialResponseIntake", app)
+        self.assertNotIn("replayFieldEvidenceRealMaterialResponseIntake", app)
+
+        # dedicated fixture 固定 response intake 只读分类语义，accepted 也不能解锁主操作。
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_real_material_response_intake_summary"
+        ]
+        fallback = dedicated_fixture["field_evidence_real_material_response_intake_summary"]
+        self.assertEqual(
+            summary["intake_status"],
+            "blocked_missing_field_evidence_real_material_response_intake_not_proven",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fallback["source"], "software_proof")
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "accepted=diagnostics_mobile_safe_summary",
+            "missing=task_record",
+            "rejected=unsafe_or_mismatched_materials_not_proven",
+            "blocked=true_phone_browser_evidence",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not_proven",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn(
+            "software_proof_docker_field_evidence_real_material_response_intake_gate",
+            dedicated_text,
+        )
+        self.assertIn("field_evidence_real_material_response_intake", doc)
+        self.assertIn("现场真实材料响应入口", doc)
+        self.assertIn("not Objective 5 external proof", doc)
+
+    def test_field_evidence_real_material_response_intake_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_FIXTURE.read_text(encoding="utf-8")
+        )
+        response_intake_text = json.dumps(
+            {
+                "response_intake":
+                    dedicated_fixture[
+                        "robot_diagnostics_field_evidence_real_material_response_intake_summary"
+                    ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_real_material_response_intake_summary"
+                ],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # 响应入口 fixture 只保留 accepted/missing/rejected/blocked 摘要，不泄漏材料原文或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw packet",
+            "raw acceptance",
+            "raw backfill",
+            "raw request",
+            "raw dispatch",
+            "raw response",
+            "raw review",
+            "raw decision",
+            "raw handoff",
+            "raw result",
+            "raw execution",
+            "full execution pack",
+            "serial device",
+            "ttyusb",
+            "ttyacm",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "command replay",
+            "automatic resubmit",
+            "queue scheduling",
+            "execution scheduling",
+            "callback submission",
+            "request submission",
+            "review submission",
+            "handoff submission",
+            "result submission",
+            "acceptance submission",
+            "robot command",
+            "robot/internal",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, response_intake_text)
 
     def test_elevator_realtime_stage_keeps_primary_actions_closed(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))

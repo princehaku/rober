@@ -1692,6 +1692,61 @@ external cloud/4G/OSS/CDN/DB/queue proof, not PR #5 reviewer resolution, not
 delivery result, not delivery success, and not any primary robot action being
 enabled.
 
+## field_evidence_real_material_response_intake
+
+`pc-tools/evidence/field_evidence_real_material_response_intake.py` generates
+the PC-only field-owner response intake gate after
+`field_evidence_real_material_request_dispatch.py`. It consumes only the safe
+request dispatch artifact/summary or wrapper/nested JSON and an optional
+field-owner response JSON. It does not read raw robot runtime, ROS graph state,
+raw ROS topics, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials,
+DB/queue URLs, local raw paths, checksums, tracebacks, complete/raw artifacts,
+real elevator systems, external cloud evidence, or real phone/browser runtime.
+
+- Artifact schema:
+  `trashbot.field_evidence_real_material_response_intake.v1`
+- Summary schema:
+  `trashbot.field_evidence_real_material_response_intake_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_real_material_response_intake_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_real_material_request_dispatch.v1` and
+  `trashbot.field_evidence_real_material_request_dispatch_summary.v1` under
+  `software_proof_docker_field_evidence_real_material_request_dispatch_gate`.
+
+The gate classifies the same nine request categories:
+`task_record`, `nav2_fixed_route_runtime_log`, `route_completion_signal`,
+`elevator_door_floor_evidence`, `human_assistance_note`,
+`dropoff_cancel_completion`, `delivery_result`,
+`true_phone_browser_evidence`, and `diagnostics_mobile_safe_summary`.
+Allowed per-material classifications are `accepted`, `missing`, `rejected`, and
+`blocked`. `accepted` only means the sanitized category index is ready for later
+review; it is not a delivery result, delivery success, route/elevator field
+pass, Nav2/fixed-route proof, true phone/browser proof, HIL pass, or external
+cloud proof.
+
+The output always includes `response_intake_status`, safe `evidence_ref`,
+`source_request_dispatch`, `required_materials`, `response_statuses`,
+`material_classification_counts`, `material_responses`, `safe_copy`,
+`source=software_proof`, `not_proven`, `safe_to_control=false`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_real_material_response_intake_gate`.
+
+Missing field-owner response JSON maps to blocked/missing material
+classifications and never creates `accepted` material. Bad JSON, unsupported
+dispatch schema/boundary, non-ready request dispatch, missing or mixed safe
+`evidence_ref`, weak same-evidence-ref state, unsafe or sensitive copy, raw
+local paths, credentials, ROS topics, `/cmd_vel`, serial/UART/WAVE ROVER
+details, DB/queue URLs, checksums, complete/raw artifacts, tracebacks,
+success/control claims, `safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` all fail closed to a blocked/not_proven status or
+per-material `rejected` classification.
+
+This contract is software proof only. It does not prove real field rerun, true
+phone/browser proof, Nav2/fixed-route proof, route/elevator field pass, HIL,
+WAVE ROVER/UART proof, Objective 5 external proof, PR #5 reviewer resolution,
+delivery result, delivery success, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_backfill_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_backfill_review_decision.py`

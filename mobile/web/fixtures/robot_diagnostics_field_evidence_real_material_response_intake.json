@@ -1,0 +1,116 @@
+{
+  "robot_diagnostics_field_evidence_real_material_response_intake_summary": {
+    "schema": "trashbot.field_evidence_real_material_response_intake_summary.v1",
+    "schema_version": 1,
+    "response_intake_schema": "trashbot.field_evidence_real_material_response_intake.v1",
+    "source_request_dispatch_schema": "trashbot.field_evidence_real_material_request_dispatch_summary.v1",
+    "source_alias": "robot_diagnostics_field_evidence_real_material_response_intake_summary",
+    "source": "software_proof",
+    "intake_status": "blocked_missing_field_evidence_real_material_response_intake_not_proven",
+    "source_request_dispatch": "ready_for_field_owner_real_material_request_dispatch_not_proven",
+    "safe_evidence_ref": "field_evidence_real_material_response_intake_fixture_20260521_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "accepted_categories": [
+      "accepted=diagnostics_mobile_safe_summary present for later review only"
+    ],
+    "missing_categories": [
+      "missing=task_record",
+      "missing=nav2_fixed_route_runtime_log",
+      "missing=route_completion_signal",
+      "missing=delivery_result",
+      "missing=true_phone_browser_evidence"
+    ],
+    "rejected_categories": [
+      "rejected=unsafe_or_mismatched_materials_not_proven"
+    ],
+    "blocked_categories": [
+      "blocked=elevator_door_floor_evidence waiting real elevator field material",
+      "blocked=dropoff_cancel_completion waiting field owner completion material",
+      "blocked=human_assistance_note waiting operator note"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=field owner must return missing categories under the same safe evidence_ref",
+      "next_required_evidence=accepted categories remain review input only and do not prove field pass"
+    ],
+    "blocked_claims": [
+      "blocked_claims=real_field_rerun not proven",
+      "blocked_claims=true_phone_browser_proof not proven",
+      "blocked_claims=nav2_fixed_route_proof not proven",
+      "blocked_claims=route_elevator_field_pass not proven",
+      "blocked_claims=hil_pass not proven",
+      "blocked_claims=wave_rover_uart_proof not proven",
+      "blocked_claims=o5_external_proof not proven",
+      "blocked_claims=pr5_thread_resolved not proven",
+      "blocked_claims=delivery_result not proven",
+      "blocked_claims=delivery_success=false"
+    ],
+    "safe_phone_copy": "现场真实材料响应入口已收到 phone-safe 摘要：accepted 仅代表后续 review 可看，missing/rejected/blocked 仍需 field owner 回填；source=software_proof / not_proven。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_real_material_response_intake_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "real_field_rerun",
+      "true_phone_browser_proof",
+      "nav2_fixed_route_proof",
+      "route_elevator_field_pass",
+      "hil_pass",
+      "wave_rover_uart_proof",
+      "o5_external_proof",
+      "pr5_thread_resolved",
+      "delivery_result",
+      "delivery_success"
+    ]
+  },
+  "field_evidence_real_material_response_intake_summary": {
+    "schema": "trashbot.field_evidence_real_material_response_intake_summary.v1",
+    "source": "software_proof",
+    "intake_status": "blocked_missing_field_evidence_real_material_response_intake_not_proven",
+    "source_request_dispatch": "ready_for_field_owner_real_material_request_dispatch_not_proven",
+    "safe_evidence_ref": "field_evidence_real_material_response_intake_fixture_20260521_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "accepted_categories": [
+      "accepted=diagnostics_mobile_safe_summary"
+    ],
+    "missing_categories": [
+      "missing=task_record",
+      "missing=delivery_result"
+    ],
+    "rejected_categories": [
+      "rejected=unsafe_or_mismatched_materials_not_proven"
+    ],
+    "blocked_categories": [
+      "blocked=true_phone_browser_evidence"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same safe evidence_ref field owner response"
+    ],
+    "blocked_claims": [
+      "blocked_claims=not delivery result or delivery success"
+    ],
+    "safe_phone_copy": "fallback response-intake summary keeps the panel read-only；source=software_proof / not_proven。",
+    "evidence_boundary": "software_proof_docker_field_evidence_real_material_response_intake_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "true_phone_browser_proof",
+      "delivery_success"
+    ]
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

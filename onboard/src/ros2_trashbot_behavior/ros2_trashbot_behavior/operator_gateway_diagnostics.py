@@ -448,6 +448,21 @@ FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_REQUIRED_MATERIALS = (
     "true_phone_browser_evidence",
     "diagnostics_mobile_safe_summary",
 )
+FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_SCHEMA = (
+    "trashbot.field_evidence_real_material_response_intake.v1"
+)
+FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_SUMMARY_SCHEMA = (
+    "trashbot.field_evidence_real_material_response_intake_summary.v1"
+)
+FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_GATE = (
+    "software_proof_docker_field_evidence_real_material_response_intake_gate"
+)
+FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_STATUSES = (
+    "accepted",
+    "missing",
+    "rejected",
+    "blocked",
+)
 ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SCHEMA = (
     "trashbot.route_task_field_retest_evidence_dispatch.v1"
 )
@@ -3808,6 +3823,41 @@ def _field_evidence_real_material_request_dispatch_not_proven(
             source_values.extend(item.get("not_proven"))
     required = (
         "field_evidence_real_material_request_dispatch_only",
+        "field_rerun_not_executed_by_robot",
+        "real_route_completion_not_verified",
+        "real_field_task_record_not_verified",
+        "real_nav2_fixed_route_runtime_not_verified",
+        "real_elevator_operation_not_verified",
+        "real_dropoff_cancel_completion_not_verified",
+        "real_delivery_result_not_verified",
+        "true_phone_browser_evidence_not_verified",
+        "real_hardware_runtime_not_verified",
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "hardware_transport_control",
+        "delivery_success",
+    )
+    values = []
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _field_evidence_real_material_response_intake_not_proven(
+    response=None,
+    summary_fragment=None,
+):
+    # response intake 只分类现场 owner 回填状态，accepted 也不能升级成真实现场通过。
+    source_values = []
+    for item in (response, summary_fragment):
+        if isinstance(item, dict) and isinstance(item.get("not_proven"), list):
+            source_values.extend(item.get("not_proven"))
+    required = (
+        "field_evidence_real_material_response_intake_only",
+        "accepted_materials_ready_for_later_review_only",
         "field_rerun_not_executed_by_robot",
         "real_route_completion_not_verified",
         "real_field_task_record_not_verified",
@@ -9513,6 +9563,83 @@ def _default_field_evidence_real_material_request_dispatch_summary(
         "robot_compatible_summary": {"status": "blocked", "reason": reason},
         "boundary": FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_GATE,
         "not_proven": _field_evidence_real_material_request_dispatch_not_proven(),
+        "metadata_only": True,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+    }
+
+
+def _default_field_evidence_real_material_response_intake_summary(
+    path,
+    response_status="blocked_missing_field_evidence_real_material_response_intake",
+    read_error="",
+):
+    # 缺省态必须带齐四类材料桶和 false flags，避免 diagnostics 把缺回执误读成通过。
+    safe_copy = (
+        "Field evidence real material response intake is metadata-only; "
+        "source=software_proof; not_proven; safe_to_control=false; "
+        "delivery_success=false; primary_actions_enabled=false."
+    )
+    reason = read_error or (
+        "field evidence real material response intake is not configured"
+    )
+    return {
+        "schema": FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "response_status": {
+            "status": response_status,
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "response_verdict": "blocked",
+        "same_evidence_ref_required": True,
+        "same_evidence_ref_status": {
+            "status": "blocked",
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "required_materials": list(
+            FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_REQUIRED_MATERIALS
+        ),
+        "accepted_materials": [],
+        "missing_materials": list(
+            FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_REQUIRED_MATERIALS
+        ),
+        "rejected_materials": [],
+        "blocked_materials": [],
+        "material_statuses": {
+            "accepted": [],
+            "missing": list(
+                FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_REQUIRED_MATERIALS
+            ),
+            "rejected": [],
+            "blocked": [],
+        },
+        "next_required_evidence": [],
+        "blocked_claims": [],
+        "robot_diagnostics_summary": {"status": "blocked", "reason": reason},
+        "robot_compatible_summary": {"status": "blocked", "reason": reason},
+        "boundary": FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_GATE,
+        "not_proven": _field_evidence_real_material_response_intake_not_proven(),
         "metadata_only": True,
         "safe_to_control": False,
         "delivery_success": False,
@@ -16645,6 +16772,20 @@ def _field_evidence_real_material_request_dispatch_source_contract(value):
     return source_schema, source_boundary
 
 
+def _field_evidence_real_material_response_intake_source_contract(value):
+    # response intake 兼容 canonical summary 和 wrapper，但必须回指本轮 response-intake gate。
+    value = value if isinstance(value, dict) else {}
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema")
+            or FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _field_evidence_rerun_execution_result_acceptance_packet_has_unsafe_fields(value):
     # acceptance packet alias 不能透出 raw task/log/route/elevator/packet、路径、凭证或控制语义。
     unsafe_key_fragments = (
@@ -16876,6 +17017,137 @@ def _field_evidence_real_material_request_dispatch_has_unsafe_fields(value):
     if isinstance(value, list):
         return any(
             _field_evidence_real_material_request_dispatch_has_unsafe_fields(item)
+            for item in value
+        )
+    text = str(value or "").strip().lower()
+    unsafe_text_markers = (
+        "/cmd_vel",
+        "ros_topic",
+        "serial",
+        "uart",
+        "wave rover",
+        "wave_rover",
+        "bearer",
+        "authorization",
+        "credential",
+        "secret",
+        "token",
+        "traceback",
+        "checksum",
+        "db_url",
+        "queue_url",
+        "oss_access_key",
+        "oss_secret",
+        "local_path",
+        "/tmp/",
+    )
+    return any(marker in text for marker in unsafe_text_markers) or (
+        _route_task_field_retest_execution_pack_has_success_wording(value)
+    )
+
+
+def _field_evidence_real_material_response_intake_has_unsafe_fields(value):
+    # response intake 允许四类状态桶，但仍禁止 raw/source 材料和任何成功、控制、硬件细节。
+    unsafe_key_fragments = (
+        "raw",
+        "artifact_path",
+        "artifact_ref",
+        "raw_diagnostics",
+        "diagnostics_raw",
+        "local_path",
+        "path",
+        "checksum",
+        "credential",
+        "secret",
+        "token",
+        "authorization",
+        "bearer",
+        "ros_topic",
+        "topic",
+        "serial",
+        "uart",
+        "baud",
+        "wave_rover",
+        "cmd_vel",
+        "control",
+        "ack_cursor",
+        "ack_post",
+        "ack_state",
+        "cursor",
+        "traceback",
+        "db_url",
+        "queue_url",
+        "oss",
+        "complete_artifact",
+        "complete_diagnostics",
+    )
+    safe_keys = {
+        "schema",
+        "schema_version",
+        "capability",
+        "source",
+        "source_schema",
+        "source_schema_version",
+        "source_evidence_boundary",
+        "evidence_boundary",
+        "boundary",
+        "safe_evidence_ref",
+        "evidence_ref",
+        "response_status",
+        "intake_status",
+        "material_response_status",
+        "status",
+        "status_summary",
+        "verdict",
+        "reason",
+        "response_verdict",
+        "same_evidence_ref_required",
+        "same_evidence_ref_status",
+        "required_materials",
+        "accepted_materials",
+        "missing_materials",
+        "rejected_materials",
+        "blocked_materials",
+        "material_statuses",
+        "accepted",
+        "missing",
+        "rejected",
+        "blocked",
+        "next_required_evidence",
+        "blocked_claims",
+        "robot_diagnostics_summary",
+        "robot_compatible_summary",
+        "safe_copy",
+        "safe_phone_copy",
+        "not_proven",
+        "safe_to_control",
+        "delivery_success",
+        "primary_actions_enabled",
+        "metadata_only",
+        "boundary_flags",
+        "control_entrypoint_enabled",
+        "field_evidence_real_material_response_intake_summary",
+        "robot_diagnostics_field_evidence_real_material_response_intake_summary",
+        "diagnostics",
+        "summary",
+        "diagnostics_summary",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text == "blocked_claims":
+                # blocked_claims 会列出被禁止的硬件/控制证明名；这些名称只能作为阻断声明展示。
+                continue
+            if key_text not in safe_keys and any(
+                fragment in key_text for fragment in unsafe_key_fragments
+            ):
+                return True
+            if _field_evidence_real_material_response_intake_has_unsafe_fields(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _field_evidence_real_material_response_intake_has_unsafe_fields(item)
             for item in value
         )
     text = str(value or "").strip().lower()
@@ -37649,6 +37921,428 @@ def summarize_field_evidence_real_material_request_dispatch(source):
     return summary
 
 
+def summarize_field_evidence_real_material_response_intake(source):
+    """构建 field evidence real material response intake 的 Robot-safe 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        response = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_field_evidence_real_material_response_intake_summary(
+            source_path,
+            read_error="field evidence real material response intake is not configured",
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "response_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "reason": "field evidence real material response intake summary missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "real material response intake summary missing",
+                    },
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                response = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "response_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            f"failed reading field evidence real material response intake: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "real material response intake JSON read error",
+                    },
+                }
+            )
+            return summary
+
+    summary = _default_field_evidence_real_material_response_intake_summary(
+        source_path,
+        read_error="field evidence real material response intake is not configured",
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(response, dict):
+        summary.update(
+            {
+                "response_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": "field evidence real material response intake JSON must be an object",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "real material response intake JSON shape is invalid",
+                },
+            }
+        )
+        return summary
+
+    diagnostics = (
+        response.get("diagnostics")
+        if isinstance(response.get("diagnostics"), dict)
+        else {}
+    )
+    # wrapper、latest_status 和 diagnostics 嵌套都必须最终落到 canonical sanitized summary。
+    summary_fragment = (
+        response
+        if str(response.get("schema") or "")
+        == FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_SUMMARY_SCHEMA
+        else {}
+    )
+    if not summary_fragment:
+        for candidate in (
+            response.get("field_evidence_real_material_response_intake_summary"),
+            response.get(
+                "robot_diagnostics_field_evidence_real_material_response_intake_summary"
+            ),
+            response.get("robot_compatible_summary"),
+            response.get("summary"),
+            response.get("diagnostics_summary"),
+            diagnostics.get("field_evidence_real_material_response_intake_summary"),
+            diagnostics.get(
+                "robot_diagnostics_field_evidence_real_material_response_intake_summary"
+            ),
+            diagnostics.get("summary"),
+            diagnostics.get("diagnostics_summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+
+    contract_source = summary_fragment if summary_fragment else response
+    source_schema, source_boundary = (
+        _field_evidence_real_material_response_intake_source_contract(contract_source)
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": contract_source.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+        }
+    )
+    if not summary_fragment:
+        summary.update(
+            {
+                "response_status": {
+                    "status": "missing_summary",
+                    "verdict": "not_proven",
+                    "reason": "field evidence real material response intake lacks a safe canonical summary",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing safe real material response intake summary",
+                },
+            }
+        )
+        return summary
+
+    status_source = summary_fragment.get("response_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("intake_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("material_response_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("status_summary")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    response_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or summary_fragment.get("response_status")
+        or summary_fragment.get("status")
+        or "blocked"
+    )
+    verdict = _redact_route_task_rehearsal_text(
+        status_source.get("verdict") or summary_fragment.get("verdict") or "not_proven"
+    )
+    reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or summary_fragment.get("reason")
+        or "field evidence real material response intake consumed as software_proof"
+    )
+    safe_copy = _safe_pc_route_debug_value(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or (
+            "Field evidence real material response intake is metadata-only; "
+            "source=software_proof; not_proven; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    safe_copy_text = (
+        json.dumps(safe_copy, ensure_ascii=False, sort_keys=True)
+        if isinstance(safe_copy, (dict, list))
+        else str(safe_copy or "")
+    )
+    if "delivery_success=false" not in safe_copy_text:
+        # copy 里保留 literal false，方便 mobile/diagnostics 面板直接展示安全边界。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+    source_ref = str(
+        response.get("safe_evidence_ref") or response.get("evidence_ref") or ""
+    ).strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or ""
+    ).strip()
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    same_ref_source = (
+        summary_fragment.get("same_evidence_ref_status")
+        if isinstance(summary_fragment.get("same_evidence_ref_status"), dict)
+        else {}
+    )
+    material_statuses_source = (
+        summary_fragment.get("material_statuses")
+        if isinstance(summary_fragment.get("material_statuses"), dict)
+        else {}
+    )
+    accepted_materials = _safe_route_task_rehearsal_list(
+        summary_fragment.get("accepted_materials")
+        or material_statuses_source.get("accepted")
+    )
+    missing_materials = _safe_route_task_rehearsal_list(
+        summary_fragment.get("missing_materials")
+        or material_statuses_source.get("missing")
+    )
+    rejected_materials = _safe_route_task_rehearsal_list(
+        summary_fragment.get("rejected_materials")
+        or material_statuses_source.get("rejected")
+    )
+    blocked_materials = _safe_route_task_rehearsal_list(
+        summary_fragment.get("blocked_materials")
+        or material_statuses_source.get("blocked")
+    )
+    required_materials = _safe_route_task_rehearsal_list(
+        summary_fragment.get("required_materials"),
+        limit=len(FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_REQUIRED_MATERIALS),
+    )
+    material_statuses = {
+        "accepted": accepted_materials,
+        "missing": missing_materials,
+        "rejected": rejected_materials,
+        "blocked": blocked_materials,
+    }
+    summary.update(
+        {
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or EVIDENCE_SOURCE_SOFTWARE
+            ),
+            "response_status": {
+                "status": response_status or "blocked",
+                "verdict": verdict or "not_proven",
+                "reason": reason,
+            },
+            "response_verdict": _redact_route_task_rehearsal_text(
+                summary_fragment.get("response_verdict")
+                or summary_fragment.get("decision")
+                or response_status
+                or "blocked"
+            ),
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_ref or source_ref
+            ),
+            "same_evidence_ref_required": (
+                summary_fragment.get("same_evidence_ref_required") is True
+            ),
+            "same_evidence_ref_status": _safe_pc_route_debug_dict(same_ref_source)
+            or {
+                "status": response_status or "blocked",
+                "verdict": "not_proven",
+                "reason": "real material response intake lacks same evidence_ref status",
+            },
+            "required_materials": required_materials,
+            "accepted_materials": accepted_materials,
+            "missing_materials": missing_materials,
+            "rejected_materials": rejected_materials,
+            "blocked_materials": blocked_materials,
+            "material_statuses": material_statuses,
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "blocked_claims": _safe_route_task_rehearsal_list(
+                summary_fragment.get("blocked_claims")
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": response_status or "blocked",
+                "safe_copy": safe_copy_text,
+                "safe_phone_copy": safe_copy_text,
+            },
+            "not_proven": _field_evidence_real_material_response_intake_not_proven(
+                response,
+                summary_fragment,
+            ),
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+            "read_error": "",
+        }
+    )
+    required_material_set = {
+        str(item or "").strip() for item in summary["required_materials"]
+    }
+    classified_materials = set()
+    for bucket in material_statuses.values():
+        classified_materials.update(str(item or "").strip() for item in bucket)
+    required_summary_fields = (
+        bool(summary["safe_evidence_ref"]),
+        summary["same_evidence_ref_required"] is True,
+        bool(summary["same_evidence_ref_status"]),
+        set(FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_REQUIRED_MATERIALS)
+        <= required_material_set,
+        set(FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_STATUSES)
+        == set(material_statuses),
+        required_material_set <= classified_materials,
+        bool(summary["next_required_evidence"]),
+        bool(summary["blocked_claims"]),
+    )
+    unsafe_material = any(
+        _field_evidence_real_material_response_intake_has_unsafe_fields(item)
+        for item in (
+            status_source,
+            same_ref_source,
+            summary["required_materials"],
+            summary["accepted_materials"],
+            summary["missing_materials"],
+            summary["rejected_materials"],
+            summary["blocked_materials"],
+            summary["material_statuses"],
+            summary["next_required_evidence"],
+            robot_summary,
+            safe_copy,
+            safe_copy_text,
+        )
+    )
+    if (
+        source_schema != FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_SCHEMA
+        or source_boundary != FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_GATE
+    ):
+        summary.update(
+            {
+                "response_status": {
+                    "status": "blocked_unsupported_field_evidence_real_material_response_intake",
+                    "verdict": "not_proven",
+                    "reason": "field evidence real material response intake schema or boundary is unsupported",
+                },
+                "response_verdict": "blocked",
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported real material response intake schema or boundary",
+                },
+            }
+        )
+        return summary
+    if summary["source"] != EVIDENCE_SOURCE_SOFTWARE or verdict != "not_proven":
+        summary["response_status"] = {
+            "status": "blocked_unsupported_field_evidence_real_material_response_intake",
+            "verdict": "not_proven",
+            "reason": "real material response intake must remain software_proof and not_proven",
+        }
+        summary["response_verdict"] = "blocked"
+        return summary
+    if not all(required_summary_fields):
+        summary.update(
+            {
+                "response_status": {
+                    "status": "blocked_missing_field_evidence_real_material_response_intake_materials",
+                    "verdict": "not_proven",
+                    "reason": "real material response intake is missing required safe metadata",
+                },
+                "response_verdict": "blocked",
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing required real material response intake fields",
+                },
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary["response_status"] = {
+            "status": "evidence_ref_mismatch_field_evidence_real_material_response_intake_blocked",
+            "verdict": "not_proven",
+            "reason": "real material response intake evidence_ref values do not match",
+        }
+        summary["response_verdict"] = "blocked"
+        summary["same_evidence_ref_status"] = {
+            "status": "mismatch",
+            "verdict": "not_proven",
+            "reason": "same evidence_ref mismatch",
+        }
+        return summary
+    boundary_flags = _safe_pc_route_debug_dict(summary_fragment.get("boundary_flags")) or {}
+    if (
+        summary_fragment.get("safe_to_control") is not False
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or bool(boundary_flags.get("control_entrypoint_enabled"))
+        or unsafe_material
+        or _field_evidence_real_material_response_intake_has_unsafe_fields(response)
+        or _field_evidence_real_material_response_intake_has_unsafe_fields(
+            summary_fragment
+        )
+        or _field_evidence_real_material_response_intake_has_unsafe_fields(
+            robot_summary
+        )
+    ):
+        blocked_copy = (
+            "Field evidence real material response intake was blocked because "
+            "summary fields could expose raw artifacts, diagnostics, control data, paths, "
+            "or success wording; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "response_status": {
+                    "status": "blocked_unsafe_field_evidence_real_material_response_intake",
+                    "verdict": "not_proven",
+                    "reason": "unsafe raw artifact, diagnostics, control, path, credential, or success material",
+                },
+                "response_verdict": "blocked",
+                "accepted_materials": [],
+                "material_statuses": {
+                    "accepted": [],
+                    "missing": summary["missing_materials"],
+                    "rejected": summary["rejected_materials"],
+                    "blocked": summary["blocked_materials"],
+                },
+                "next_required_evidence": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+            }
+        )
+    return summary
+
+
 def summarize_route_task_field_retest_result_callback_review_handoff(source):
     """构建 route-task field retest result callback review handoff 的 metadata-only diagnostics 摘要。"""
     source_path = ""
@@ -55711,6 +56405,7 @@ def build_diagnostics_payload(
     field_evidence_rerun_execution_result_acceptance_packet_ref="",
     field_evidence_rerun_execution_result_acceptance_backfill_ref="",
     field_evidence_real_material_request_dispatch_ref="",
+    field_evidence_real_material_response_intake_ref="",
     route_task_field_retest_evidence_dispatch_ref="",
     route_task_field_retest_callback_intake_ref="",
     route_task_field_retest_callback_review_decision_ref="",
@@ -55783,6 +56478,25 @@ def build_diagnostics_payload(
 ):
     latest_status = dict(latest_status or {})
     diagnostics_source = latest_status.get("diagnostics") if isinstance(latest_status.get("diagnostics"), dict) else {}
+    field_evidence_real_material_response_intake_preserved_source = (
+        latest_status.get(
+            "robot_diagnostics_field_evidence_real_material_response_intake_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_field_evidence_real_material_response_intake_summary"
+            ),
+            dict,
+        )
+        else latest_status.get("field_evidence_real_material_response_intake_summary")
+        if isinstance(
+            latest_status.get("field_evidence_real_material_response_intake_summary"),
+            dict,
+        )
+        else latest_status.get("field_evidence_real_material_response_intake")
+        if isinstance(latest_status.get("field_evidence_real_material_response_intake"), dict)
+        else {}
+    )
     cloud_guard_source = (
         latest_status.get("remote_readiness")
         if isinstance(latest_status.get("remote_readiness"), dict)
@@ -58528,6 +59242,13 @@ def build_diagnostics_payload(
         None,
     )
     latest_status.pop("field_evidence_real_material_request_dispatch_copy", None)
+    latest_status.pop("field_evidence_real_material_response_intake", None)
+    latest_status.pop("field_evidence_real_material_response_intake_summary", None)
+    latest_status.pop(
+        "robot_diagnostics_field_evidence_real_material_response_intake_summary",
+        None,
+    )
+    latest_status.pop("field_evidence_real_material_response_intake_copy", None)
     latest_status.pop("hardware_baseline_review", None)
     latest_status.pop("hardware_baseline_review_summary", None)
     latest_status.pop("hardware_baseline_review_copy", None)
@@ -59754,6 +60475,64 @@ def build_diagnostics_payload(
             field_evidence_real_material_request_dispatch_source
         )
     )
+    field_evidence_real_material_response_intake_status_source = (
+        field_evidence_real_material_response_intake_preserved_source
+        if isinstance(field_evidence_real_material_response_intake_preserved_source, dict)
+        and field_evidence_real_material_response_intake_preserved_source
+        else latest_status.get(
+            "robot_diagnostics_field_evidence_real_material_response_intake_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_field_evidence_real_material_response_intake_summary"
+            ),
+            dict,
+        )
+        else latest_status.get("field_evidence_real_material_response_intake_summary")
+        if isinstance(
+            latest_status.get("field_evidence_real_material_response_intake_summary"),
+            dict,
+        )
+        else latest_status.get("field_evidence_real_material_response_intake")
+        if isinstance(latest_status.get("field_evidence_real_material_response_intake"), dict)
+        else diagnostics_source.get(
+            "robot_diagnostics_field_evidence_real_material_response_intake_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_field_evidence_real_material_response_intake_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("field_evidence_real_material_response_intake_summary")
+        if isinstance(
+            diagnostics_source.get("field_evidence_real_material_response_intake_summary"),
+            dict,
+        )
+        else diagnostics_source.get("field_evidence_real_material_response_intake")
+        if isinstance(
+            diagnostics_source.get("field_evidence_real_material_response_intake"),
+            dict,
+        )
+        else {}
+    )
+    field_evidence_real_material_response_intake_source = (
+        field_evidence_real_material_response_intake_ref
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_SUMMARY",
+            "",
+        )
+        or field_evidence_real_material_response_intake_status_source
+    )
+    field_evidence_real_material_response_intake_summary = (
+        summarize_field_evidence_real_material_response_intake(
+            field_evidence_real_material_response_intake_source
+        )
+    )
     route_task_field_retest_evidence_dispatch_source = (
         route_task_field_retest_evidence_dispatch_ref
         or os.environ.get("TRASHBOT_ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH", "")
@@ -60729,6 +61508,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_field_evidence_real_material_request_dispatch_summary=(
             field_evidence_real_material_request_dispatch_summary
+        ),
+        field_evidence_real_material_response_intake=(
+            field_evidence_real_material_response_intake_summary
+        ),
+        field_evidence_real_material_response_intake_summary=(
+            field_evidence_real_material_response_intake_summary
+        ),
+        robot_diagnostics_field_evidence_real_material_response_intake_summary=(
+            field_evidence_real_material_response_intake_summary
         ),
         route_task_field_retest_evidence_dispatch=route_task_field_retest_evidence_dispatch_summary,
         route_task_field_retest_evidence_dispatch_summary=route_task_field_retest_evidence_dispatch_summary,
