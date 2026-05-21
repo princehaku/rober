@@ -1486,6 +1486,29 @@ Dropoff, Cancel, ACK mutation, cursor mutation, replay, resubmit, robot
 control, route/elevator field pass, HIL, dropoff completion, cancel completion,
 or delivery success.
 
+Verified terminal-result material review decision has a follow-on Robot
+diagnostics safe alias:
+
+- `robot_diagnostics_verified_terminal_result_material_review_decision_summary`
+- `schema=trashbot.verified_terminal_result_material_review_decision_summary.v1`
+- `evidence_boundary=software_proof_docker_verified_terminal_result_material_review_decision_gate`
+- `source=software_proof`
+- `not_proven`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `safe_to_control=false`
+
+The alias only proves that Robot diagnostics can surface a sanitized
+review-decision summary. `accepted_for_review` is owner-review readiness, not
+delivery success. It can consume the canonical review decision artifact,
+canonical summary, Robot alias, or compatible nested diagnostics/status
+summary, but it strips or blocks raw artifact fields, ACK/cursor mutation
+hints, replay/resubmit hints, robot-control hints, credentials, paths,
+checksums, ROS topics, serial/UART details, WAVE ROVER details, and success
+wording. It must not enable Start Delivery, Confirm Dropoff, Cancel, ACK
+mutation, cursor mutation, replay, resubmit, robot control, route/elevator
+field pass, HIL, dropoff completion, cancel completion, or delivery success.
+
 ## Safety Rules
 
 - The robot never exposes `/cmd_vel` over the remote bridge.

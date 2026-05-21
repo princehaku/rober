@@ -567,6 +567,43 @@ Confirm Dropoff, Cancel, ACK mutation, cursor mutation, replay, resubmit, robot
 control, commands, Nav2, WAVE ROVER, HIL, material collection, production
 readiness, dropoff/cancel completion, or delivery success.
 
+## robot_diagnostics_verified_terminal_result_material_review_decision_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_verified_terminal_result_material_review_decision_summary`
+as a safe alias for verified terminal-result material review decision.
+
+- Source artifact schema:
+  `trashbot.verified_terminal_result_material_review_decision.v1`
+- Source summary schema and Robot alias schema:
+  `trashbot.verified_terminal_result_material_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_verified_terminal_result_material_review_decision_gate`
+
+The alias is metadata-only and read-only. It may consume
+`verified_terminal_result_material_review_decision`,
+`verified_terminal_result_material_review_decision_summary`, the Robot alias,
+or a compatible nested diagnostics/status summary. It may expose only sanitized
+review decision, source intake status, safe `evidence_ref`, safe `command_id`,
+terminal result type, decision reasons, material status summary,
+blocked/rejected reason, next required evidence, owner handoff, safe copy,
+`source=software_proof`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and `safe_to_control=false`.
+
+Missing summary, unreadable input, unsupported schema or evidence boundary,
+`source` other than `software_proof`, status other than `not_proven`, unsafe
+`evidence_ref`, unsafe copy, raw artifact fields, raw JSON, credentials, local
+paths, checksums, ROS topics, `/cmd_vel`, ACK mutation hints, cursor mutation
+hints, replay/resubmit hints, serial/UART details, success/control claims,
+`delivery_success=true`, `primary_actions_enabled=true`, or
+`safe_to_control=true` must fail closed as blocked/not_proven.
+
+This alias is not terminal delivery proof and `accepted_for_review` is not
+delivery success. It must not enable Start Delivery, Confirm Dropoff, Cancel,
+ACK mutation, cursor mutation, replay, resubmit, robot control, commands, Nav2,
+WAVE ROVER, HIL, material collection, production readiness, dropoff/cancel
+completion, or delivery success.
+
 ## robot_diagnostics_real_material_followup_escalation_status_summary
 
 Robot diagnostics exposes

@@ -88,6 +88,37 @@ python3 pc-tools/evidence/verified_terminal_result_material_intake.py \
 以及 success/control overclaim；`accepted_materials` 只表示脱敏材料形状可进入人工复核，
 不证明真实 terminal delivery、dropoff/cancel、Nav2 route、电梯现场通过、手机验收或控制权限。
 
+## verified terminal result material review decision
+
+`pc-tools/evidence/verified_terminal_result_material_review_decision.py` 是 PC-only
+terminal-result 材料复核决策 gate，能力名
+`verified_terminal_result_material_review_decision`：
+
+```bash
+python3 pc-tools/evidence/verified_terminal_result_material_review_decision.py \
+  --input /tmp/verified_terminal_result_material_intake_summary.json \
+  --output-dir /tmp/verified_terminal_result_material_review_decision
+```
+
+输入支持上一轮 `verified_terminal_result_material_intake` artifact、summary、
+Robot safe alias `robot_diagnostics_verified_terminal_result_material_intake_summary`
+以及常见 wrapper/nested JSON。输出写入
+`verified_terminal_result_material_review_decision.json` 和
+`verified_terminal_result_material_review_decision_summary.json`，证据边界固定为
+`software_proof_docker_verified_terminal_result_material_review_decision_gate`，
+并始终保持 `not_proven`、`delivery_success=false`、
+`primary_actions_enabled=false`、`safe_to_control=false`。
+
+`review_decision` 只允许 `accepted_for_review`、`needs_material_backfill`、
+`rejected` 和 `blocked`。该 gate 校验 same safe `evidence_ref` 和
+`terminal_result_type`（仅 `delivery`、`dropoff`、`cancel`），输出
+`owner_handoff`、`next_required_evidence`、`safe_copy`、
+material status summary、decision reasons 和 fail-closed flags。它拒绝 raw
+artifacts、本机路径、凭证、ROS/control details、hardware details、
+reviewer-resolution claims 和 success/control overclaim；`accepted_for_review`
+不证明真实 delivery/dropoff/cancel、真实手机/browser、HIL、O5 external proof
+或机器人控制权限。
+
 ## hardware sensor HIL-entry callback intake
 
 `pc-tools/evidence/hardware_sensor_hil_entry_callback_intake_gate.py` 是

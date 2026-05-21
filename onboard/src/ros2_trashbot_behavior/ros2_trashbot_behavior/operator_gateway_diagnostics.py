@@ -1199,6 +1199,15 @@ VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_SUMMARY_SCHEMA = (
 VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_GATE = (
     "software_proof_docker_verified_terminal_result_material_intake_gate"
 )
+VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_SCHEMA = (
+    "trashbot.verified_terminal_result_material_review_decision.v1"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_SUMMARY_SCHEMA = (
+    "trashbot.verified_terminal_result_material_review_decision_summary.v1"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_GATE = (
+    "software_proof_docker_verified_terminal_result_material_review_decision_gate"
+)
 REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SCHEMA = (
     "trashbot.real_material_followup_escalation_status.v1"
 )
@@ -55610,6 +55619,521 @@ def summarize_verified_terminal_result_material_intake(source):
     return summary
 
 
+def _verified_terminal_result_material_review_decision_not_proven(
+    decision=None, summary_fragment=None
+):
+    # review decision 只能说明“材料进入复核队列”，不能被解释成送达、ACK 或控制授权。
+    values = [
+        "verified_terminal_result_material_review_decision_only",
+        "real_delivery_result",
+        "dropoff_completion",
+        "cancel_completion",
+        "delivery_success",
+        "robot_control_authorization",
+        "ACK_mutation",
+        "cursor_mutation",
+        "replay_or_resubmit",
+        "real_hil_pass",
+    ]
+    for container in (decision or {}, summary_fragment or {}):
+        for item in container.get("not_proven", []) if isinstance(container, dict) else []:
+            safe_item = _redact_route_task_rehearsal_text(item)
+            if safe_item and safe_item not in values:
+                values.append(safe_item)
+    return values
+
+
+def _default_verified_terminal_result_material_review_decision_summary(
+    path,
+    status="blocked_missing_verified_terminal_result_material_review_decision_summary",
+    read_error="",
+):
+    # 缺省摘要必须带完整 false 状态，避免空输入被手机或支持面误读成可执行状态。
+    safe_copy = (
+        "Verified terminal result material review decision is metadata-only; "
+        "source=software_proof; not_proven; delivery_success=false; "
+        "primary_actions_enabled=false; safe_to_control=false."
+    )
+    return {
+        "schema": VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "capability": "verified_terminal_result_material_review_decision",
+        "evidence_boundary": VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source_contract": {"schema": "", "evidence_boundary": "", "metadata_only": True},
+        "status": status,
+        "overall_status": "not_proven",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "review_decision": "blocked",
+        "review_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": read_error
+            or "verified_terminal_result_material_review_decision summary is not configured",
+        },
+        "source_intake_status": {},
+        "safe_evidence_ref": "",
+        "safe_command_id": "",
+        "terminal_result_type": "",
+        "decision_reasons": [],
+        "material_status_summary": {},
+        "blocked_reason": read_error,
+        "rejected_reason": "",
+        "next_required_evidence": [],
+        "owner_handoff": [],
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "robot_diagnostics_summary": {
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+        },
+        "not_proven": _verified_terminal_result_material_review_decision_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "summary_required": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "ack_mutation_allowed": False,
+        "cursor_mutation_allowed": False,
+        "replay_allowed": False,
+        "resubmit_allowed": False,
+        "robot_control_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
+def _verified_terminal_result_material_review_decision_summary_fragment(value):
+    # Robot 只消费 summary-only 字段；artifact wrapper 中的 raw body 不允许直接透传。
+    if not isinstance(value, dict):
+        return {}
+    if str(value.get("schema") or "") == VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_SUMMARY_SCHEMA:
+        return value
+    for candidate in (
+        value.get("verified_terminal_result_material_review_decision_summary"),
+        value.get(
+            "robot_diagnostics_verified_terminal_result_material_review_decision_summary"
+        ),
+        value.get("diagnostics_summary"),
+        value.get("robot_diagnostics_summary"),
+        value.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            return candidate
+    for container_name in ("diagnostics", "status", "latest_status"):
+        container = value.get(container_name)
+        if isinstance(container, dict):
+            nested = _verified_terminal_result_material_review_decision_summary_fragment(
+                container
+            )
+            if nested:
+                return nested
+    return {}
+
+
+def _verified_terminal_result_material_review_decision_has_unsafe_controls(value):
+    # review decision alias 是诊断安全面；发现 raw、ACK/cursor、replay、resubmit 或控制字段就整体降级。
+    unsafe_true_keys = {
+        "ack_mutation_allowed",
+        "cursor_mutation_allowed",
+        "replay_allowed",
+        "resubmit_allowed",
+        "robot_control_allowed",
+        "robot_command_allowed",
+        "start_delivery_enabled",
+        "confirm_dropoff_enabled",
+        "cancel_enabled",
+        "commands_enabled",
+    }
+    unsafe_key_fragments = (
+        "raw",
+        "ack_cursor",
+        "ack_mutation",
+        "cursor_mutation",
+        "replay",
+        "resubmit",
+        "robot_control",
+        "command_envelope",
+        "control_envelope",
+        "authorization",
+        "credential",
+        "secret",
+        "token",
+        "checksum",
+        "traceback",
+        "serial",
+        "uart",
+        "baud",
+        "cmd_vel",
+        "wave_rover",
+    )
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text in unsafe_true_keys and bool(item):
+                return True
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if _verified_terminal_result_material_review_decision_has_unsafe_controls(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _verified_terminal_result_material_review_decision_has_unsafe_controls(item)
+            for item in value
+        )
+    return False
+
+
+def _verified_terminal_result_material_review_decision_safe_list(value):
+    # 列表面向 operator/mobile 展示，只保留短文本并过滤 mutation/replay/control 词面。
+    safe_items = []
+    for item in _safe_route_task_rehearsal_list(value):
+        lowered = str(item or "").lower()
+        if any(
+            marker in lowered
+            for marker in (
+                "raw",
+                "ack_cursor",
+                "cursor_mutation",
+                "ack_mutation",
+                "replay",
+                "resubmit",
+                "robot_control",
+                "/cmd_vel",
+            )
+        ):
+            continue
+        safe_items.append(item)
+    return safe_items
+
+
+def summarize_verified_terminal_result_material_review_decision(source):
+    """构建 verified terminal result material review decision 的只读 Robot diagnostics 摘要。"""
+    # 本 alias 只提供支持排障摘要；所有机器人动作面在输出阶段强制保持关闭。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_verified_terminal_result_material_review_decision_summary(
+        source_path,
+        read_error=(
+            "verified_terminal_result_material_review_decision summary is not configured"
+        ),
+    )
+    if isinstance(source, dict):
+        decision = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = (
+                "verified_terminal_result_material_review_decision summary artifact missing"
+            )
+            summary["review_status"]["reason"] = summary["read_error"]
+            summary["blocked_reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                decision = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading verified_terminal_result_material_review_decision summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["review_status"]["reason"] = safe_error
+            summary["blocked_reason"] = safe_error
+            return summary
+
+    if not isinstance(decision, dict):
+        summary["review_status"]["reason"] = (
+            "verified_terminal_result_material_review_decision JSON must be an object"
+        )
+        return summary
+
+    raw_schema = str(decision.get("schema") or "")
+    summary_fragment = _verified_terminal_result_material_review_decision_summary_fragment(
+        decision
+    )
+    source_schema, source_boundary = (
+        _verified_terminal_result_material_intake_source_contract(
+            summary_fragment or decision
+        )
+    )
+    if not source_schema and raw_schema:
+        source_schema = raw_schema
+    if not source_boundary:
+        source_boundary = str(decision.get("evidence_boundary") or "")
+    review_status = (
+        summary_fragment.get("review_status")
+        if isinstance(summary_fragment.get("review_status"), dict)
+        else summary_fragment.get("decision_status")
+        if isinstance(summary_fragment.get("decision_status"), dict)
+        else decision.get("review_status")
+        if isinstance(decision.get("review_status"), dict)
+        else decision.get("decision_status")
+        if isinstance(decision.get("decision_status"), dict)
+        else {}
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or decision.get("safe_copy")
+        or decision.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else decision.get("robot_diagnostics_summary")
+        if isinstance(decision.get("robot_diagnostics_summary"), dict)
+        else {}
+    )
+    safe_robot_summary = {
+        "safe_copy": _redact_route_task_rehearsal_text(
+            robot_summary.get("safe_copy") or safe_copy
+        ),
+        "safe_phone_copy": _redact_route_task_rehearsal_text(
+            robot_summary.get("safe_phone_copy") or safe_copy
+        ),
+    }
+    review_decision = _redact_route_task_rehearsal_text(
+        summary_fragment.get("review_decision")
+        or decision.get("review_decision")
+        or review_status.get("status")
+        or "blocked"
+    )
+    overall_status = _redact_route_task_rehearsal_text(
+        summary_fragment.get("overall_status")
+        or decision.get("overall_status")
+        or "not_proven"
+    )
+    source_value = _redact_route_task_rehearsal_text(
+        summary_fragment.get("source")
+        or decision.get("source")
+        or review_status.get("evidence_source")
+        or ""
+    )
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or decision.get("safe_evidence_ref")
+        or decision.get("evidence_ref", "")
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                summary_fragment.get("source_schema_version")
+                or summary_fragment.get("schema_version")
+                or decision.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+            "source_contract": {
+                "schema": _redact_route_task_rehearsal_text(source_schema),
+                "evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "metadata_only": True,
+            },
+            "status": review_decision,
+            "overall_status": "not_proven",
+            "source": EVIDENCE_SOURCE_SOFTWARE,
+            "review_decision": review_decision,
+            "review_status": {
+                "status": review_decision,
+                "verdict": "not_proven",
+                "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                "reason": _redact_route_task_rehearsal_text(
+                    review_status.get("reason")
+                    or summary_fragment.get("reason")
+                    or decision.get("reason")
+                    or "verified terminal result material review decision is software_proof only"
+                ),
+            },
+            "source_intake_status": _safe_pc_route_debug_value(
+                summary_fragment.get("source_intake_status")
+                if isinstance(summary_fragment.get("source_intake_status"), dict)
+                else {}
+            ),
+            "safe_evidence_ref": safe_evidence_ref,
+            "safe_command_id": _redact_route_task_rehearsal_text(
+                summary_fragment.get("safe_command_id")
+                or summary_fragment.get("command_id")
+                or decision.get("safe_command_id")
+                or decision.get("command_id")
+                or ""
+            ),
+            "terminal_result_type": _redact_route_task_rehearsal_text(
+                summary_fragment.get("terminal_result_type")
+                or decision.get("terminal_result_type")
+                or ""
+            ),
+            "decision_reasons": (
+                _verified_terminal_result_material_review_decision_safe_list(
+                    summary_fragment.get("decision_reasons")
+                )
+            ),
+            "material_status_summary": _safe_pc_route_debug_value(
+                summary_fragment.get("material_status_summary")
+                if isinstance(summary_fragment.get("material_status_summary"), dict)
+                else {}
+            ),
+            "blocked_reason": _redact_route_task_rehearsal_text(
+                summary_fragment.get("blocked_reason") or decision.get("blocked_reason") or ""
+            ),
+            "rejected_reason": _redact_route_task_rehearsal_text(
+                summary_fragment.get("rejected_reason") or decision.get("rejected_reason") or ""
+            ),
+            "next_required_evidence": (
+                _verified_terminal_result_material_review_decision_safe_list(
+                    summary_fragment.get("next_required_evidence")
+                )
+            ),
+            "owner_handoff": _verified_terminal_result_material_review_decision_safe_list(
+                summary_fragment.get("owner_handoff")
+            ),
+            "safe_copy": _redact_route_task_rehearsal_text(safe_copy),
+            "safe_phone_copy": _redact_route_task_rehearsal_text(safe_copy),
+            "robot_diagnostics_summary": safe_robot_summary,
+            "not_proven": _verified_terminal_result_material_review_decision_not_proven(
+                decision,
+                summary_fragment,
+            ),
+            "read_error": "",
+        }
+    )
+    accepted_schemas = {
+        VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_SCHEMA,
+        VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_SUMMARY_SCHEMA,
+    }
+    if (
+        source_schema not in accepted_schemas
+        or source_boundary != VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_GATE
+    ):
+        summary.update(
+            {
+                "status": "unsupported_schema",
+                "review_decision": "blocked",
+                "review_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "verified_terminal_result_material_review_decision schema or evidence boundary is unsupported",
+                },
+                "safe_evidence_ref": "",
+                "safe_command_id": "",
+                "decision_reasons": [],
+                "material_status_summary": {},
+                "next_required_evidence": [],
+                "owner_handoff": [],
+            }
+        )
+        return summary
+    if (
+        raw_schema == VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_SCHEMA
+        and not summary_fragment
+    ):
+        summary.update(
+            {
+                "status": "blocked_missing_verified_terminal_result_material_review_decision_summary",
+                "review_decision": "blocked",
+                "review_status": {
+                    "status": "blocked_missing_verified_terminal_result_material_review_decision_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "verified_terminal_result_material_review_decision artifact is missing sanitized summary",
+                },
+                "safe_evidence_ref": "",
+            }
+        )
+        return summary
+
+    # 所有可见输出都必须来自软件证明摘要；任何成功语义或 raw 控制字段都阻断 alias。
+    if (
+        source_value != EVIDENCE_SOURCE_SOFTWARE
+        or overall_status != "not_proven"
+        or _real_material_evidence_ref_is_unsafe(safe_evidence_ref)
+        or (
+            raw_schema == VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_SCHEMA
+            and (
+                (
+                    "delivery_success" in decision
+                    and decision.get("delivery_success") is not False
+                )
+                or (
+                    "primary_actions_enabled" in decision
+                    and decision.get("primary_actions_enabled") is not False
+                )
+                or (
+                    "safe_to_control" in decision
+                    and decision.get("safe_to_control") is not False
+                )
+            )
+        )
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or summary_fragment.get("safe_to_control") is not False
+        or _route_task_field_run_readiness_has_unsafe_fields(decision)
+        or _route_task_field_run_readiness_has_unsafe_fields(summary_fragment)
+        or _verified_terminal_result_material_review_decision_has_unsafe_controls(
+            decision
+        )
+        or _verified_terminal_result_material_review_decision_has_unsafe_controls(
+            summary_fragment
+        )
+        or _task_terminal_field_material_intake_copy_is_unsafe(safe_copy)
+        or _task_terminal_field_material_intake_copy_is_unsafe(
+            safe_robot_summary.get("safe_copy", "")
+        )
+    ):
+        blocked_copy = (
+            "Verified terminal result material review decision was blocked because "
+            "the summary did not remain software_proof/not_proven with "
+            "delivery_success=false, primary_actions_enabled=false, and "
+            "safe_to_control=false."
+        )
+        summary.update(
+            {
+                "status": "blocked_unsafe_verified_terminal_result_material_review_decision_summary",
+                "review_decision": "blocked",
+                "review_status": {
+                    "status": "blocked_unsafe_verified_terminal_result_material_review_decision_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "verified_terminal_result_material_review_decision contains unsafe fields, success wording, raw details, ACK/cursor/replay claims, or control claims",
+                },
+                "safe_evidence_ref": "",
+                "safe_command_id": "",
+                "decision_reasons": [],
+                "material_status_summary": {},
+                "blocked_reason": blocked_copy,
+                "rejected_reason": "",
+                "next_required_evidence": [],
+                "owner_handoff": [],
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+            }
+        )
+    return summary
+
+
 def summarize_real_material_followup_escalation_status(source):
     """构建真实材料 follow-up escalation status 的 summary-only Robot diagnostics 摘要。"""
     # 这里故意只读 sanitized summary；raw manifest/materials 即使存在也不能进入 Robot diagnostics。
@@ -61046,6 +61570,7 @@ def build_diagnostics_payload(
     real_material_readiness_board_ref="",
     real_material_evidence_intake_ref="",
     verified_terminal_result_material_intake_ref="",
+    verified_terminal_result_material_review_decision_ref="",
     real_material_followup_escalation_status_ref="",
     field_evidence_real_material_followup_escalation_status_ref="",
     field_evidence_real_material_owner_ack_intake_ref="",
@@ -61304,6 +61829,55 @@ def build_diagnostics_payload(
         else diagnostics_source.get("verified_terminal_result_material_intake")
         if isinstance(
             diagnostics_source.get("verified_terminal_result_material_intake"),
+            dict,
+        )
+        else diagnostics_source
+        if diagnostics_source
+        else {}
+    )
+    verified_terminal_result_material_review_decision_preserved_source = (
+        latest_status.get(
+            "robot_diagnostics_verified_terminal_result_material_review_decision_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_verified_terminal_result_material_review_decision_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "verified_terminal_result_material_review_decision_summary"
+        )
+        if isinstance(
+            latest_status.get("verified_terminal_result_material_review_decision_summary"),
+            dict,
+        )
+        else latest_status.get("verified_terminal_result_material_review_decision")
+        if isinstance(
+            latest_status.get("verified_terminal_result_material_review_decision"),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_verified_terminal_result_material_review_decision_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_verified_terminal_result_material_review_decision_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "verified_terminal_result_material_review_decision_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "verified_terminal_result_material_review_decision_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("verified_terminal_result_material_review_decision")
+        if isinstance(
+            diagnostics_source.get("verified_terminal_result_material_review_decision"),
             dict,
         )
         else diagnostics_source
@@ -66440,6 +67014,27 @@ def build_diagnostics_payload(
         "robot_diagnostics_verified_terminal_result_material_intake_summary",
     ):
         latest_status.pop(unsafe_latest_key, None)
+    verified_terminal_result_material_review_decision_source = (
+        verified_terminal_result_material_review_decision_ref
+        or os.environ.get("TRASHBOT_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION", "")
+        or os.environ.get(
+            "TRASHBOT_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_SUMMARY",
+            "",
+        )
+        or verified_terminal_result_material_review_decision_preserved_source
+    )
+    verified_terminal_result_material_review_decision_summary = (
+        summarize_verified_terminal_result_material_review_decision(
+            verified_terminal_result_material_review_decision_source
+        )
+    )
+    # review-decision 输入可能包含 artifact wrapper；输出前只保留 canonical safe alias。
+    for unsafe_latest_key in (
+        "verified_terminal_result_material_review_decision",
+        "verified_terminal_result_material_review_decision_summary",
+        "robot_diagnostics_verified_terminal_result_material_review_decision_summary",
+    ):
+        latest_status.pop(unsafe_latest_key, None)
     real_material_followup_escalation_status_source = (
         real_material_followup_escalation_status_ref
         or os.environ.get("TRASHBOT_REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS", "")
@@ -67167,6 +67762,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_verified_terminal_result_material_intake_summary=(
             verified_terminal_result_material_intake_summary
+        ),
+        verified_terminal_result_material_review_decision=(
+            verified_terminal_result_material_review_decision_summary
+        ),
+        verified_terminal_result_material_review_decision_summary=(
+            verified_terminal_result_material_review_decision_summary
+        ),
+        robot_diagnostics_verified_terminal_result_material_review_decision_summary=(
+            verified_terminal_result_material_review_decision_summary
         ),
         real_material_followup_escalation_status=(
             real_material_followup_escalation_status_summary

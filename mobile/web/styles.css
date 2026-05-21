@@ -163,6 +163,7 @@ h2 {
 .cloud-support-handoff-safe-export-panel,
 .cloud-command-lifecycle-audit-export-panel,
 .verified-terminal-result-material-intake-panel,
+.verified-terminal-result-material-review-decision-panel,
 .field-evidence-rerun-callback-review-decision-panel,
 .field-evidence-rerun-callback-review-handoff-panel,
 .task-terminal-completion-mainline-panel,
@@ -340,6 +341,7 @@ h2 {
 .cloud-support-handoff-safe-export-grid,
 .cloud-command-lifecycle-audit-export-grid,
 .verified-terminal-result-material-intake-grid,
+.verified-terminal-result-material-review-decision-grid,
 .task-terminal-completion-mainline-grid,
 .task-terminal-field-material-intake-grid,
 .task-terminal-field-material-review-decision-grid,
@@ -430,6 +432,7 @@ h2 {
 .cloud-support-handoff-safe-export-grid div,
 .cloud-command-lifecycle-audit-export-grid div,
 .verified-terminal-result-material-intake-grid div,
+.verified-terminal-result-material-review-decision-grid div,
 .task-terminal-completion-mainline-grid div,
 .task-terminal-field-material-intake-grid div,
 .task-terminal-field-material-review-decision-grid div,
@@ -686,6 +689,10 @@ dd {
 }
 
 .verified-terminal-result-material-intake-grid {
+  grid-template-columns: 1fr;
+}
+
+.verified-terminal-result-material-review-decision-grid {
   grid-template-columns: 1fr;
 }
 
@@ -1244,6 +1251,10 @@ dd {
   }
 
   .verified-terminal-result-material-intake-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .verified-terminal-result-material-review-decision-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

@@ -29,6 +29,9 @@ CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_FIXTURE = (
 VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_intake.json"
 )
+VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_review_decision.json"
+)
 CLOUD_COMMAND_EXPIRY_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_expiry_safety_guard.json"
 CLOUD_COMMAND_IDEMPOTENCY_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_idempotency_visibility_guard.json"
@@ -471,6 +474,159 @@ class VerifiedTerminalResultMaterialIntakeMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, intake_text)
+
+
+class VerifiedTerminalResultMaterialReviewDecisionMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_verified_terminal_result_material_review_decision_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(
+            VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_FIXTURE.read_text(encoding="utf-8")
+        )
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # terminal-result material review decision 只消费 safe summary 和 backend safe_copy，不新增控制/ACK/cursor/raw/review route。
+        self.assertIn("VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeVerifiedTerminalResultMaterialReviewDecisionText", app)
+        self.assertIn("verifiedTerminalResultMaterialReviewDecisionCandidate", app)
+        self.assertIn("verifiedTerminalResultMaterialReviewDecisionFromStatus", app)
+        self.assertIn("renderVerifiedTerminalResultMaterialReviewDecision", app)
+        self.assertIn("Terminal Result 材料复核决策", app)
+        self.assertIn("robot_diagnostics_verified_terminal_result_material_review_decision_summary", app)
+        self.assertIn("verified_terminal_result_material_review_decision_summary", app)
+        self.assertIn("verified_terminal_result_material_review_decision?.summary", app)
+        self.assertIn("safe_copy", app)
+        self.assertIn("review_decision", app)
+        self.assertIn("source_intake_status", app)
+        self.assertIn("terminal_result_type", app)
+        self.assertIn("decision_reasons", app)
+        self.assertIn("material_status_summary", app)
+        self.assertIn("blocked_or_rejected_reason", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("verified-terminal-result-material-review-decision-panel", styles)
+        self.assertNotRegex(
+            app,
+            r"verifiedTerminalResultMaterialReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackVerifiedTerminalResultMaterialReviewDecision",
+            "cursorVerifiedTerminalResultMaterialReviewDecision",
+            "fetchVerifiedTerminalResultMaterialReviewDecisionDiagnostics",
+            "replayVerifiedTerminalResultMaterialReviewDecision",
+            "resubmitVerifiedTerminalResultMaterialReviewDecision",
+            "commandVerifiedTerminalResultMaterialReviewDecision",
+            "reviewVerifiedTerminalResultMaterialReviewDecision",
+            "downloadVerifiedTerminalResultMaterialReviewDecisionButton",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # fixture 明确 review decision 是 software_proof/not_proven，safe_copy 存在但三类主操作继续 disabled。
+        summary = fixture["robot_diagnostics_verified_terminal_result_material_review_decision_summary"]
+        fallback = fixture["verified_terminal_result_material_review_decision_summary"]
+        nested = fixture["verified_terminal_result_material_review_decision"]["summary"]
+        self.assertEqual(summary["capability"], "verified_terminal_result_material_review_decision")
+        self.assertEqual(summary["review_decision"], "needs_material_backfill")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("cmd_terminal_result_material_review_20260522_0001", summary["safe_command_id"])
+        self.assertIn("verified_terminal_result_material_review_decision_fixture", summary["safe_evidence_ref"])
+        self.assertIn("safe_copy", summary)
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["safe_to_control"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        for required in (
+            "verified_terminal_result_material_review_decision",
+            "software_proof_docker_verified_terminal_result_material_review_decision_gate",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "review_decision=needs_material_backfill",
+            "source_intake_status=blocked_missing_verified_terminal_result_materials_not_proven",
+            "terminal_result_type=delivery",
+            "command_id=cmd_terminal_result_material_review_20260522_0001",
+            "evidence_ref=verified_terminal_result_material_review_decision_fixture_20260522_0001",
+        ):
+            self.assertIn(required, fixture_text)
+
+        # 产品文档必须写清 review decision 只是只读材料复核决策，不是真实手机、HIL 或送达证明。
+        self.assertIn("verified_terminal_result_material_review_decision", doc)
+        self.assertIn("robot_diagnostics_verified_terminal_result_material_review_decision_summary", doc)
+        self.assertIn("software_proof_docker_verified_terminal_result_material_review_decision_gate", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not HIL", doc)
+        self.assertIn("not delivery success", doc)
+
+    def test_verified_terminal_result_material_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(
+            VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_FIXTURE.read_text(encoding="utf-8")
+        )
+        review_text = json.dumps(
+            {
+                "robot": fixture["robot_diagnostics_verified_terminal_result_material_review_decision_summary"],
+                "fallback": fixture["verified_terminal_result_material_review_decision_summary"],
+                "nested": fixture["verified_terminal_result_material_review_decision"]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留 phone-safe review metadata，不泄漏 raw diagnostics/artifacts/ACK/cursor/command/review route。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw status",
+            "raw artifact",
+            "raw command",
+            "raw terminal result",
+            "raw material",
+            "raw review",
+            "raw decision",
+            "command route",
+            "review route",
+            "ack route",
+            "cursor route",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "ack payload",
+            "cursor request",
+            "replay request",
+            "resubmit request",
+            "robot command",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, review_text)
 
 
 class FieldEvidenceRerunMaterialDispatchMobileTest(unittest.TestCase):

@@ -1,0 +1,118 @@
+{
+  "robot_diagnostics_verified_terminal_result_material_review_decision_summary": {
+    "schema": "trashbot.verified_terminal_result_material_review_decision_summary.v1",
+    "capability": "verified_terminal_result_material_review_decision",
+    "source": "software_proof",
+    "review_decision": "needs_material_backfill",
+    "source_intake_status": "source_intake_status=blocked_missing_verified_terminal_result_materials_not_proven",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "command_id": "cmd_terminal_result_material_review_20260522_0001",
+    "safe_command_id": "command_id=cmd_terminal_result_material_review_20260522_0001",
+    "evidence_ref": "verified_terminal_result_material_review_decision_fixture_20260522_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_review_decision_fixture_20260522_0001",
+    "decision_reasons": [
+      "review_decision=needs_material_backfill",
+      "reason=same safe evidence_ref terminal material is still incomplete",
+      "reason=field owner material note remains pending"
+    ],
+    "material_status_summary": [
+      "material_status=terminal result summary pending",
+      "material_status=task record summary pending",
+      "material_status=phone behavior note pending"
+    ],
+    "blocked_reason": "blocked_reason=missing_verified_terminal_result_material_review_decision_not_proven",
+    "next_required_evidence": [
+      "next_required_evidence=field owner uploads verified terminal result summary under same safe evidence_ref",
+      "next_required_evidence=Robot/API republishes sanitized review decision summary",
+      "next_required_evidence=real public cloud, phone browser, route elevator evidence, and HIL remain pending"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field_owner_backfills_terminal_result_materials",
+      "owner_handoff=robot_owner_checks_same_safe_evidence_ref_before_any_completion_claim"
+    ],
+    "safe_copy": {
+      "review_decision": "review_decision=needs_material_backfill",
+      "source_intake_status": "source_intake_status=blocked_missing_verified_terminal_result_materials_not_proven",
+      "terminal_result_type": "terminal_result_type=delivery",
+      "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_review_decision_fixture_20260522_0001",
+      "safe_command_id": "command_id=cmd_terminal_result_material_review_20260522_0001",
+      "blocked_or_rejected_reason": "blocked_reason=missing_verified_terminal_result_material_review_decision_not_proven",
+      "evidence_boundary": "software_proof_docker_verified_terminal_result_material_review_decision_gate"
+    },
+    "safe_phone_copy": "Terminal result 材料复核决策为 needs_material_backfill；缺 verified terminal result 材料，主操作保持禁用。",
+    "recovery_hint": "把 safe_copy 交给支持人员后，等待现场 owner 回填 verified terminal result 材料；手机端不重放、不请求 ACK/cursor，也不提交控制动作。",
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_review_decision_gate",
+    "proof_boundary": "software_proof_docker_verified_terminal_result_material_review_decision_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "verified_terminal_result_missing",
+      "true_phone_browser_proof_missing",
+      "route_elevator_evidence_missing",
+      "hil_pass_missing",
+      "o5_external_proof_missing"
+    ]
+  },
+  "verified_terminal_result_material_review_decision_summary": {
+    "schema": "trashbot.verified_terminal_result_material_review_decision_summary.v1",
+    "capability": "verified_terminal_result_material_review_decision",
+    "source": "software_proof",
+    "review_decision": "needs_material_backfill",
+    "source_intake_status": "source_intake_status=blocked_missing_verified_terminal_result_materials_not_proven",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "safe_command_id": "command_id=cmd_terminal_result_material_review_20260522_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_review_decision_fixture_20260522_0001",
+    "decision_reasons": [
+      "review_decision=needs_material_backfill"
+    ],
+    "material_status_summary": [
+      "material_status=terminal result summary pending"
+    ],
+    "blocked_reason": "blocked_reason=missing_verified_terminal_result_material_review_decision_not_proven",
+    "next_required_evidence": [
+      "next_required_evidence=verified terminal result material backfill"
+    ],
+    "owner_handoff": [
+      "owner_handoff=field_owner_material_backfill"
+    ],
+    "safe_copy": "verified_terminal_result_material_review_decision；review_decision=needs_material_backfill；command_id=cmd_terminal_result_material_review_20260522_0001；evidence_ref=verified_terminal_result_material_review_decision_fixture_20260522_0001；source=software_proof；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_review_decision_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "verified_terminal_result_material_review_decision": {
+    "summary": {
+      "schema": "trashbot.verified_terminal_result_material_review_decision_summary.v1",
+      "capability": "verified_terminal_result_material_review_decision",
+      "source": "software_proof",
+      "review_decision": "needs_material_backfill",
+      "source_intake_status": "source_intake_status=blocked_missing_verified_terminal_result_materials_not_proven",
+      "terminal_result_type": "terminal_result_type=delivery",
+      "safe_command_id": "command_id=cmd_terminal_result_material_review_20260522_0001",
+      "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_review_decision_fixture_20260522_0001",
+      "blocked_reason": "blocked_reason=missing_verified_terminal_result_material_review_decision_not_proven",
+      "safe_copy": "nested verified_terminal_result_material_review_decision safe_copy only；source=software_proof；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+      "evidence_boundary": "software_proof_docker_verified_terminal_result_material_review_decision_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}
