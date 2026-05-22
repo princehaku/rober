@@ -1,0 +1,140 @@
+{
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false,
+  "command_safety": {
+    "primary_actions_enabled": false,
+    "actions": {
+      "start": {
+        "enabled": false,
+        "reason": "field_evidence_material_resolution_reviewer_ack_review_decision_not_control_grant"
+      },
+      "confirm_dropoff": {
+        "enabled": false,
+        "reason": "field_evidence_material_resolution_reviewer_ack_review_decision_not_dropoff_completion"
+      },
+      "cancel": {
+        "enabled": false,
+        "reason": "field_evidence_material_resolution_reviewer_ack_review_decision_not_cancel_completion"
+      }
+    }
+  },
+  "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_decision_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_decision_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_decision.v1",
+    "capability": "field_evidence_material_resolution_reviewer_ack_review_decision",
+    "source": "software_proof",
+    "safe_decision": "accepted_for_material_review_not_proven",
+    "source_ack_status": "source_ack_status=ack_needs_more_material_not_proven",
+    "safe_evidence_ref": "safe_evidence_ref=field_evidence_material_resolution_reviewer_ack_review_decision:TASK-2026-05-22-ACK-REVIEW",
+    "blocker": [
+      "blocker=true phone/browser evidence missing",
+      "blocker=route/elevator runtime material missing"
+    ],
+    "next_step": [
+      "next_step=send accepted safe summary to material review owner",
+      "next_step=keep waiting for real field materials under same safe evidence_ref"
+    ],
+    "decision_reasons": [
+      "decision_reason=sanitized reviewer ACK is consistent with previous owner response handoff",
+      "decision_reason=no control grant wording in safe summary"
+    ],
+    "reassignment": [
+      "reassignment=none_not_proven"
+    ],
+    "field_owner_supplement": [
+      "field_owner_supplement=provide true phone/browser evidence",
+      "field_owner_supplement=provide verified terminal delivery/dropoff/cancel result material"
+    ],
+    "safe_copy": "field_evidence_material_resolution_reviewer_ack_review_decision: accepted_for_material_review_not_proven; not true phone/browser; delivery_success=false; primary_actions_enabled=false; safe_to_control=false.",
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_decision_gate",
+    "proof_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_decision_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "not true phone/browser",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "not robot control grant",
+      "not PR #5 resolution"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_reviewer_ack_review_decision_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_decision_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_decision.v1",
+    "capability": "field_evidence_material_resolution_reviewer_ack_review_decision",
+    "source": "software_proof",
+    "safe_decision": "needs_reassignment_not_proven",
+    "source_ack_status": "source_ack_status=ack_received_not_proven",
+    "safe_evidence_ref": "safe_evidence_ref=field_evidence_material_resolution_reviewer_ack_review_decision:fallback",
+    "blocker": [
+      "blocker=owner assignment ambiguous"
+    ],
+    "next_step": [
+      "next_step=assign material review owner before field rerun"
+    ],
+    "decision_reasons": [
+      "decision_reason=reviewer ACK is phone-safe but owner route is ambiguous"
+    ],
+    "reassignment": [
+      "reassignment=field_owner_or_support_owner_required"
+    ],
+    "field_owner_supplement": [
+      "field_owner_supplement=keep same safe evidence_ref"
+    ],
+    "safe_copy": "fallback reviewer ACK review decision summary; not true phone/browser; delivery_success=false.",
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_decision_gate",
+    "not_proven": [
+      "software_proof",
+      "not true phone/browser",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_reviewer_ack_review_decision": {
+    "summary": {
+      "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_decision_summary.v1",
+      "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_decision.v1",
+      "capability": "field_evidence_material_resolution_reviewer_ack_review_decision",
+      "source": "software_proof",
+      "safe_decision": "blocked_missing_reviewer_ack_intake_not_proven",
+      "source_ack_status": "source_ack_status=blocked_missing_reviewer_ack_intake_not_proven",
+      "safe_evidence_ref": "safe_evidence_ref=field_evidence_material_resolution_reviewer_ack_review_decision:nested",
+      "blocker": [
+        "blocker=reviewer ACK intake missing"
+      ],
+      "next_step": [
+        "next_step=wait for reviewer ACK intake safe summary"
+      ],
+      "decision_reasons": [
+        "decision_reason=no safe reviewer ACK intake was available"
+      ],
+      "reassignment": [
+        "reassignment=none_not_proven"
+      ],
+      "field_owner_supplement": [
+        "field_owner_supplement=missing"
+      ],
+      "safe_copy": "nested reviewer ACK review decision blocked; not PR #5 resolution.",
+      "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_decision_gate",
+      "not_proven": [
+        "software_proof",
+        "not true phone/browser",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  }
+}

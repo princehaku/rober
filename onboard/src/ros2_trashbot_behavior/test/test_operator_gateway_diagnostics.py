@@ -73,6 +73,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_field_evidence_material_resolution_owner_response_review_decision,
     summarize_field_evidence_material_resolution_owner_response_review_handoff,
     summarize_field_evidence_material_resolution_reviewer_ack_intake,
+    summarize_field_evidence_material_resolution_reviewer_ack_review_decision,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -36992,6 +36993,223 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("control enabled", encoded.lower())
         self.assertIn(
             "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
+            encoded,
+        )
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+
+    def test_field_evidence_material_resolution_reviewer_ack_review_decision_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_decision_summary.v1",
+            "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_decision.v1",
+            "source_evidence_boundary": (
+                "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_decision_gate"
+            ),
+            "schema_version": 1,
+            "capability": (
+                "field_evidence_material_resolution_reviewer_ack_review_decision"
+            ),
+            "review_decision": "accepted_for_material_review_not_proven",
+            "status": "accepted_for_material_review_not_proven",
+            "overall_status": "not_proven",
+            "source": "software_proof",
+            "review_status": {
+                "status": "accepted_for_material_review_not_proven",
+                "reason": "reviewer ACK can enter safe material review only",
+                "evidence_source": "software_proof",
+            },
+            "source_reviewer_ack_intake_schema": (
+                "trashbot.field_evidence_material_resolution_reviewer_ack_intake_summary.v1"
+            ),
+            "source_reviewer_ack_intake_status": "accepted_not_proven",
+            "previous_reviewer_ack_intake_ref": "reviewer-ack-intake-001",
+            "safe_evidence_ref": "reviewer-ack-review-decision-001",
+            "decision_reasons": [
+                "safe reviewer ACK review decision is visible in diagnostics"
+            ],
+            "accepted_materials": ["reviewer-ack-intake-summary"],
+            "missing_materials": ["real reviewer resolution evidence"],
+            "rejected_materials": [],
+            "unsafe_materials": [],
+            "next_required_evidence": [
+                "Collect real reviewer-resolution evidence before claiming closure."
+            ],
+            "owner_action": "Keep reviewer ACK review decision blocked from robot controls.",
+            "ceo_escalation_recommendation": "Do not count review decision as PR reviewer resolution.",
+            "review_handoff_recommendation": "handoff_material_review_not_proven",
+            "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+            "pr5_thread_state": "unresolved",
+            "pr5_material_state": "hardware_material_pending",
+            "pr5_reply_comment_id": "3269642220",
+            "pr5_reply_resolution_claim": "not_reviewer_resolution",
+            "safe_copy": (
+                "Field evidence material resolution reviewer ack review decision is "
+                "metadata-only; source=software_proof; not_proven; "
+                "delivery_success=false; primary_actions_enabled=false; "
+                "safe_to_control=false."
+            ),
+            "not_proven": ["reviewer ACK review decision is not reviewer resolution"],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+        }
+        artifact = {
+            "schema": (
+                "trashbot.field_evidence_material_resolution_reviewer_ack_review_decision.v1"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_decision_gate"
+            ),
+            "field_evidence_material_resolution_reviewer_ack_review_decision_summary": (
+                safe_summary
+            ),
+        }
+        payload = self._base_build_payload(
+            {
+                "field_evidence_material_resolution_reviewer_ack_review_decision": {
+                    "delivery_success": True,
+                    "raw_ack_artifact": {"cmd_vel": "unsafe"},
+                },
+                "diagnostics": {
+                    "field_evidence_material_resolution_reviewer_ack_review_decision_summary": (
+                        safe_summary
+                    )
+                },
+            }
+        )
+        from_nested = (
+            summarize_field_evidence_material_resolution_reviewer_ack_review_decision(
+                artifact
+            )
+        )
+        from_diagnostics = self._base_build_payload(
+            {
+                "diagnostics": {
+                    "field_evidence_material_resolution_reviewer_ack_review_decision_summary": (
+                        safe_summary
+                    )
+                }
+            }
+        )[
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_decision_summary"
+        ]
+        missing = summarize_field_evidence_material_resolution_reviewer_ack_review_decision(
+            ""
+        )
+        unsupported = summarize_field_evidence_material_resolution_reviewer_ack_review_decision(
+            dict(
+                safe_summary,
+                source_schema="trashbot.field_evidence_material_resolution_reviewer_ack_intake.v1",
+                source_evidence_boundary=(
+                    "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate"
+                ),
+            )
+        )
+        raw_only = summarize_field_evidence_material_resolution_reviewer_ack_review_decision(
+            {
+                "schema": (
+                    "trashbot.field_evidence_material_resolution_reviewer_ack_review_decision.v1"
+                ),
+                "evidence_boundary": (
+                    "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_decision_gate"
+                ),
+                "safe_evidence_ref": "reviewer-ack-review-decision-001",
+                "raw_artifact": {"checksum": "abc"},
+            }
+        )
+        unsafe = summarize_field_evidence_material_resolution_reviewer_ack_review_decision(
+            dict(
+                safe_summary,
+                safe_copy="Reviewer resolved; Start Delivery control enabled.",
+                delivery_success=True,
+                primary_actions_enabled=True,
+                safe_to_control=True,
+                boundary_flags={"reviewer_resolution_enabled": True},
+            )
+        )
+
+        summary = payload[
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_decision_summary"
+        ]
+        self.assertEqual(
+            payload["field_evidence_material_resolution_reviewer_ack_review_decision"],
+            summary,
+        )
+        self.assertEqual(
+            payload[
+                "field_evidence_material_resolution_reviewer_ack_review_decision_summary"
+            ],
+            summary,
+        )
+        self.assertNotIn(
+            "field_evidence_material_resolution_reviewer_ack_review_decision",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            from_nested["review_decision"], "accepted_for_material_review_not_proven"
+        )
+        self.assertEqual(
+            from_diagnostics["previous_reviewer_ack_intake_ref"],
+            "reviewer-ack-intake-001",
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_decision_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_material_resolution_reviewer_ack_review_decision.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_decision_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(
+            summary["review_decision"], "accepted_for_material_review_not_proven"
+        )
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["ack_mutation_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["cursor_mutation_allowed"])
+        self.assertFalse(summary["replay_allowed"])
+        self.assertFalse(summary["resubmit_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertIn(
+            "field_evidence_material_resolution_reviewer_ack_review_decision_only",
+            summary["not_proven"],
+        )
+        self.assertEqual(
+            missing["review_status"]["status"],
+            "blocked_missing_reviewer_ack_intake_not_proven",
+        )
+        self.assertEqual(
+            unsupported["review_status"]["status"],
+            "blocked_unsupported_field_evidence_material_resolution_reviewer_ack_review_decision",
+        )
+        self.assertEqual(
+            raw_only["review_status"]["status"],
+            "blocked_missing_field_evidence_material_resolution_reviewer_ack_review_decision_summary",
+        )
+        self.assertEqual(
+            unsafe["review_status"]["status"],
+            "blocked_unsafe_field_evidence_material_resolution_reviewer_ack_review_decision",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_ack_artifact", encoded)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("checksum", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("reviewer resolved", encoded.lower())
+        self.assertNotIn("control enabled", encoded.lower())
+        self.assertIn(
+            "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_decision_gate",
             encoded,
         )
         self.assertIn("not_proven", encoded)

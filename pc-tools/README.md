@@ -1349,6 +1349,53 @@ field/cloud/phone/HIL proof claim 会输出 `rejected_unsafe_ack`。顶层 accep
 `software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate`
 的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
 
+## field evidence material resolution reviewer ACK review decision
+
+`pc-tools/evidence/field_evidence_material_resolution_reviewer_ack_review_decision.py`
+只读上一节 `field_evidence_material_resolution_reviewer_ack_intake` artifact、
+summary、Robot safe alias 或 wrapper/nested JSON，把 reviewer ACK intake 的 ACK 状态
+转换成五值 structured review decision：
+
+```bash
+python3 pc-tools/evidence/field_evidence_material_resolution_reviewer_ack_review_decision.py \
+  --reviewer-ack-intake-json /tmp/field_evidence_material_resolution_reviewer_ack_intake_summary.json \
+  --evidence-ref field-material-resolution-reviewer-ack-001 \
+  --output /tmp/field_evidence_material_resolution_reviewer_ack_review_decision.json \
+  --summary-output /tmp/field_evidence_material_resolution_reviewer_ack_review_decision_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.field_evidence_material_resolution_reviewer_ack_review_decision.v1`，
+summary 使用
+`schema=trashbot.field_evidence_material_resolution_reviewer_ack_review_decision_summary.v1`，
+建议 Robot safe alias 为
+`robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_decision_summary`，
+证据边界固定为
+`software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_decision_gate`。
+核心字段包括
+`capability=field_evidence_material_resolution_reviewer_ack_review_decision`、safe
+`evidence_ref`、`previous_intake_reference`、`reviewer_ack_state`、
+`review_decision`、`decision_reasons`、`ack_owner`、`acknowledged_at`、
+`reassignment_target`、`next_required_evidence`、`owner_action`、
+`review_handoff_recommendation`、`safe_copy`、`source=software_proof`、
+`not_proven`、`primary_actions_enabled=false`、`delivery_success=false` 和
+`safe_to_control=false`。
+
+`review_decision` 枚举固定为
+`accepted_for_material_review_not_proven`、
+`needs_reassignment_not_proven`、
+`needs_field_owner_supplement_not_proven`、
+`rejected_unsafe_ack_not_proven` 和
+`blocked_missing_reviewer_ack_intake_not_proven`。accepted 只表示 reviewer ACK
+可进入后续材料复核，不表示真实 reviewer resolution、OKR movement、真实 field pass、
+verified terminal result、delivery success、HIL、O5 external proof、真实 phone/browser
+证据或 PR #5 resolved。`needs_reassignment_not_proven` 只表达 owner 路由变化；
+`needs_field_owner_supplement_not_proven` 只表达 field owner 需要补交脱敏材料。
+缺 intake source、unsupported schema 或缺上一环 proof boundary 会输出
+`blocked_missing_reviewer_ack_intake_not_proven`；success/control/reviewer-resolution
+claim、raw artifact、credential/local path、ROS/control detail、field/cloud/phone/HIL
+proof claim 会输出 `rejected_unsafe_ack_not_proven`。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：
