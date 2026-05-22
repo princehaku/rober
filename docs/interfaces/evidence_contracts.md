@@ -2409,6 +2409,64 @@ handoff to `field_evidence_material_resolution_review_handoff`. It keeps PR #5
 thread `PRRT_kwDOSWB9286CJ3tX` unresolved / `hardware_material_pending` unless
 real live evidence and reviewer action change that state.
 
+## field_evidence_material_resolution_owner_response_review_decision
+
+`pc-tools/evidence/field_evidence_material_resolution_owner_response_review_decision.py`
+generates the PC-only owner-response review-decision gate after
+`field_evidence_material_resolution_owner_response_intake.py`.
+
+- Artifact schema:
+  `trashbot.field_evidence_material_resolution_owner_response_review_decision.v1`
+- Summary schema:
+  `trashbot.field_evidence_material_resolution_owner_response_review_decision_summary.v1`
+- Robot diagnostics alias:
+  `robot_diagnostics_field_evidence_material_resolution_owner_response_review_decision_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_owner_response_review_decision_gate`
+- Capability:
+  `field_evidence_material_resolution_owner_response_review_decision`
+- Allowed source inputs:
+  `trashbot.field_evidence_material_resolution_owner_response_intake.v1`,
+  `trashbot.field_evidence_material_resolution_owner_response_intake_summary.v1`,
+  the Robot safe alias, or a compatible wrapper containing one of those safe
+  schemas under
+  `software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate`.
+
+The output always includes safe `evidence_ref`,
+`same_evidence_ref_required=true`, `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, `previous_intake_reference`,
+`owner_response_material_status`, `review_decision`, `decision_reasons`,
+`accepted_materials`, `missing_materials`, `rejected_materials`,
+`unsafe_materials`, `next_required_evidence`, `owner_action`,
+`ceo_escalation_recommendation`, `review_handoff_recommendation`,
+`pr5_thread`, `safe_copy`, and
+`evidence_boundary=software_proof_docker_field_evidence_material_resolution_owner_response_review_decision_gate`.
+
+Allowed `review_decision` values are
+`accepted_for_material_review_not_proven`,
+`needs_more_evidence_not_proven`,
+`rejected_unsafe_material_response_not_proven`, and
+`blocked_missing_owner_response_intake_not_proven`. Fully accepted sanitized
+owner response material maps only to
+`accepted_for_material_review_not_proven`; this is later material-review
+readiness only, not real owner acceptance, not OKR movement, not delivery
+success, and not reviewer resolution. Missing owner response material maps to
+`needs_more_evidence_not_proven`. Rejected or unsafe material categories map to
+`rejected_unsafe_material_response_not_proven`. Missing JSON, bad JSON,
+unsupported intake schema, or wrong intake proof boundary maps to
+`blocked_missing_owner_response_intake_not_proven`.
+
+Decision mapping is fail closed. Missing safe `evidence_ref`, evidence-ref
+mismatch, source not preserving `source=software_proof` / `not_proven` /
+false-state flags, unsafe raw artifacts, local paths, credentials,
+ROS/control details, reviewer resolution claims, enabled primary actions,
+delivery-success claims, or field/cloud/phone/HIL proof claims are rejected
+without copying raw material into the artifact. The gate keeps PR #5 thread
+`PRRT_kwDOSWB9286CJ3tX` unresolved / `hardware_material_pending` and comment
+`3269642220` as a software-proof reply only unless real live reviewer evidence
+changes that state.
+
 ## route_task_field_retest_result_callback_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_callback_review_decision.py`

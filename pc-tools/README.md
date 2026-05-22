@@ -1208,6 +1208,53 @@ trace 到 `field_evidence_material_resolution_review_handoff`。PR #5 thread
 `PRRT_kwDOSWB9286CJ3tX` 仍输出为 unresolved / `hardware_material_pending`，只有真实 live
 evidence 与 reviewer 实际 resolve 后才能改变该状态。
 
+## field evidence material resolution owner response review decision
+
+`pc-tools/evidence/field_evidence_material_resolution_owner_response_review_decision.py`
+只读上一节 `field_evidence_material_resolution_owner_response_intake`
+artifact、summary、Robot safe alias 或 wrapper/nested JSON，把 owner response material
+intake 的 `review_readiness` 与 accepted/missing/rejected/unsafe 分类转换成四值 structured
+review decision：
+
+```bash
+python3 pc-tools/evidence/field_evidence_material_resolution_owner_response_review_decision.py \
+  --owner-response-intake-json /tmp/field_evidence_material_resolution_owner_response_intake_summary.json \
+  --evidence-ref field-resolution-owner-001 \
+  --output /tmp/field_evidence_material_resolution_owner_response_review_decision.json \
+  --summary-output /tmp/field_evidence_material_resolution_owner_response_review_decision_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.field_evidence_material_resolution_owner_response_review_decision.v1`，
+summary 使用
+`schema=trashbot.field_evidence_material_resolution_owner_response_review_decision_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_field_evidence_material_resolution_owner_response_review_decision_summary`，
+证据边界固定为
+`software_proof_docker_field_evidence_material_resolution_owner_response_review_decision_gate`。
+核心字段包括
+`capability=field_evidence_material_resolution_owner_response_review_decision`、safe
+`evidence_ref`、`previous_intake_reference`、`owner_response_material_status`、
+`review_decision`、`decision_reasons`、`accepted_materials`、`missing_materials`、
+`rejected_materials`、`unsafe_materials`、`next_required_evidence`、`owner_action`、
+`ceo_escalation_recommendation`、`review_handoff_recommendation`、`pr5_thread`、
+`safe_copy`、`source=software_proof`、`not_proven`、`primary_actions_enabled=false`、
+`delivery_success=false` 和 `safe_to_control=false`。
+
+`review_decision` 枚举固定为
+`accepted_for_material_review_not_proven`、
+`needs_more_evidence_not_proven`、
+`rejected_unsafe_material_response_not_proven` 和
+`blocked_missing_owner_response_intake_not_proven`。accepted 只表示 owner response
+material 可以进入后续材料复核，不表示真实 material accepted、OKR movement、真实 field
+pass、verified terminal result、delivery success、HIL、O5 external proof、真实
+phone/browser 证据或 PR #5 resolved。缺 intake source、unsupported schema 或缺上一环
+proof boundary 会输出 `blocked_missing_owner_response_intake_not_proven`；缺 owner response
+material 或 missing 分类会输出 `needs_more_evidence_not_proven`；rejected/unsafe 分类、
+success/control/reviewer-resolution claim、raw artifact、credential/local path、ROS/control
+detail、field/cloud/phone/HIL proof claim 会输出
+`rejected_unsafe_material_response_not_proven`。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：
