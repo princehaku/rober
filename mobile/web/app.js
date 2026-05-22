@@ -634,6 +634,11 @@ function safeText(value, fallback = SAFE_EMPTY) {
   return fallback;
 }
 
+function firstObject(...values) {
+  // 多层 diagnostics/status 镜像按优先级取第一个对象；避免缺 helper 时中断整页渲染。
+  return values.find((value) => value && typeof value === "object" && !Array.isArray(value)) || null;
+}
+
 function safeBundleText(value, fallback = "未证明") {
   // 验收包面向手机用户和支持人员复制；命中敏感词时直接降级为安全摘要。
   const text = safeText(value, fallback);
@@ -37664,6 +37669,7 @@ function renderCommandSafety(status) {
   const mobileDeviceHandoff = mobileDeviceHandoffSessionFromStatus(status, readiness, latestDiagnostics);
   const mobileRealDeviceReviewHandoff = mobileRealDeviceReviewHandoffFromStatus(status, readiness, latestDiagnostics);
   const mobileRealDeviceReviewExecution = mobileRealDeviceReviewExecutionFromStatus(status, readiness, latestDiagnostics);
+  const mobileRealDeviceRetestRequest = mobileRealDeviceRetestRequestFromStatus(status, readiness, latestDiagnostics);
   const cloudAllowsPrimaryActions = cloudSummaryAllowsPrimaryActions(cloudSummary);
   const mobileDeviceAllowsPrimaryActions = mobileDeviceAcceptanceAllowsPrimaryActions(mobileDeviceAcceptance);
   const browserBundleAllowsPrimaryActions = mobileBrowserAcceptanceBundleAllowsPrimaryActions(mobileBrowserAcceptance);
@@ -39251,7 +39257,8 @@ function renderMobileDeviceAcceptance(status) {
     ? "production_app_ready=true"
     : "production_app_ready=false / 未证明";
   $("mobileDeviceAckSemantics").textContent = safeText(summary.ack_semantics, ACK_PROCESSING_COPY);
-  $("mobileDeviceEvidenceBoundary").textContent = safeText(summary.evidence_boundary, MOBILE_DEVICE_ACCEPTANCE_BOUNDARY);
+  // 验收准备和设备证据采集是两个不同边界；避免重复 id 覆盖 evidence capture panel。
+  $("mobileDeviceAcceptanceBoundary").textContent = safeText(summary.evidence_boundary, MOBILE_DEVICE_ACCEPTANCE_BOUNDARY);
   $("mobileDeviceRecoveryHint").textContent = safeText(
     summary.recovery_hint || summary.retry_hint,
     "缺少真实手机验收摘要时，Start、Confirm、Cancel 保持禁用。",
@@ -43802,6 +43809,7 @@ function wireEvents() {
   ensureCloudSupportHandoffSafeExportPanel();
   ensureCloudCommandLifecycleAuditExportPanel();
   ensureVerifiedTerminalResultMaterialIntakePanel();
+  ensureVerifiedTerminalResultMaterialReviewDecisionPanel();
   ensureHardwareBaselineSourceAlignmentPanel();
   ensureHardwareSensorProcurementExecutionPackPanel();
   ensureHardwareSensorProcurementReceiptIntakePanel();
@@ -46339,5 +46347,7 @@ if ("serviceWorker" in navigator) {
 
 markMobilePwaCacheRecovery();
 initializePwaInstallPromptEventCapture();
+// 先渲染一次空状态，让动态只读 panel 的按钮进入 DOM；事件绑定只连接已有安全按钮，不创建任何控制授权。
+renderStatus({});
 wireEvents();
 refreshStatus();

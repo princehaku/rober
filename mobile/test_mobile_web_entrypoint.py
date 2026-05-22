@@ -103,10 +103,13 @@ class MobileWebEntrypointTest(unittest.TestCase):
     def test_current_browser_gate_field_trial_boundary_keeps_compatibility(self):
         script = BROWSER_GATE.read_text(encoding="utf-8")
 
-        # field-trial browser proof 使用本 sprint artifact 名，同时保留旧边界字段方便 closeout 核对。
-        self.assertIn("mobile_current_pwa_field_trial_browser_{width}x{height}.png", script)
-        self.assertIn("mobile_current_pwa_field_trial_browser_{width}x{height}.json", script)
+        # artifact 名由 run_config 统一选择，避免 fresh profile 和默认 proof 的文件名断言漂移。
+        self.assertIn('DEFAULT_ARTIFACT_PREFIX = "mobile_current_pwa_field_trial_browser"', script)
+        self.assertIn('FRESH_ARTIFACT_PREFIX = "mobile_pwa_fresh_browser_proof"', script)
+        self.assertIn('f"{config[\'artifact_prefix\']}_{width}x{height}.png"', script)
+        self.assertIn('f"{config[\'artifact_prefix\']}_{width}x{height}.json"', script)
         self.assertIn("mobile_current_pwa_field_trial_browser_acceptance_summary.json", script)
+        self.assertIn("mobile_pwa_fresh_browser_proof_summary.json", script)
         self.assertIn("compatible_evidence_boundary", script)
         self.assertIn("refresh_evidence_boundary", script)
         self.assertIn("legacy_artifact_evidence_boundary", script)
@@ -2914,9 +2917,11 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "raw artifact",
             "complete artifact",
             "serial device",
-            "local path",
         ):
             self.assertNotIn(forbidden, encoded)
+        # fixture 可以写“删除 local path”这类否定红线，但不能包含真实本机路径前缀。
+        self.assertNotIn("/users/", encoded)
+        self.assertNotIn("/private/", encoded)
 
 
 if __name__ == "__main__":

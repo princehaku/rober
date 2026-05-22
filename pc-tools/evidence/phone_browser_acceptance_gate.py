@@ -653,10 +653,28 @@ class CDPClient:
                 })
             if method == "Runtime.exceptionThrown":
                 details = params.get("exceptionDetails", {})
+                exception = details.get("exception", {}) or {}
+                stack = details.get("stackTrace", {}) or {}
+                frames = stack.get("callFrames", []) or []
+                # fresh-profile gate 需要定位真实 runtime 来源；只记录位置/栈摘要，不放宽 console-zero 判定。
+                stack_summary = [
+                    {
+                        "function": str(frame.get("functionName", ""))[:200],
+                        "url": str(frame.get("url", ""))[:500],
+                        "line": frame.get("lineNumber"),
+                        "column": frame.get("columnNumber"),
+                    }
+                    for frame in frames[:8]
+                ]
                 failures.append({
                     "method": method,
                     "type": "exception",
-                    "text": str(details.get("text") or details.get("exception", {}).get("description", ""))[:1000],
+                    "text": str(details.get("text") or exception.get("description", ""))[:1000],
+                    "description": str(exception.get("description", ""))[:1000],
+                    "url": str(details.get("url", ""))[:500],
+                    "line": details.get("lineNumber"),
+                    "column": details.get("columnNumber"),
+                    "stack": stack_summary,
                 })
             if method == "Log.entryAdded" and params.get("entry", {}).get("level") == "error":
                 failures.append({

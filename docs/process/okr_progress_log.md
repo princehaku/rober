@@ -8,7 +8,25 @@
 
 ## 2026-05-22 系列
 
-更新时间：2026-05-22 10:22 Asia/Shanghai。
+更新时间：2026-05-22 11:27 Asia/Shanghai。
+
+### 2026-05-22 11-12｜mobile-pwa-fresh-browser-proof-refresh｜fresh browser software proof
+
+本轮 `sprints/2026.05.22_11-12_mobile-pwa-fresh-browser-proof-refresh/` 执行 `mobile_pwa_fresh_browser_proof` refresh closeout。用户价值是确认当前 `mobile/web` PWA 在 fresh Chromium-family profile 下仍能稳定打开、无 console runtime error、无明显 overflow/overlap、service-worker dynamic no-store 规则生效、ACK copy 明确不是 delivery success，并且 Start Delivery / Confirm Dropoff / Cancel 在 blocked fixture state 下继续 disabled。Objective 5 仍约 68%，是当前数值最低 Objective；但最近两轮已消费同一 `missing_real_owner_response_material` blocker，本轮按重复 blocker 红线切到 Objective 4 fresh-browser proof，而不是继续包装本地 O5 metadata。Objective 4 保守保持约 99%，Objective 1 仍约 81%，Objective 2/3 仍约 99%，Objective 5 保持约 68%，no OKR percentage lift。
+
+Full-Stack worker 修复了 fresh-browser gate 暴露的 scoped runtime 问题：`mobileDeviceEvidenceBoundary` DOM id 重复、`wireEvents()` 绑定前 panel 不存在、`firstObject()` helper 缺失、`renderCommandSafety()` 中 `mobileRealDeviceRetestRequest` 未定义；并增强 browser gate runtime exception evidence。刷新后的 summary 位于 `sprints/2026.05.22_11-12_mobile-pwa-fresh-browser-proof-refresh/evidence/mobile_pwa_fresh_browser_proof_summary.json`，输出 `ok=true`、`fresh_profile=true`、`require_console_zero=true`、`console_error_count=0`、`current_panels_status=passed`、`current_boundaries_status=passed`、`service_worker_dynamic_no_store_status=passed`、`primary_actions_disabled=true`、`delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`，证据边界为 `software_proof_docker_mobile_pwa_fresh_browser_proof_gate`。
+
+`mobile_pwa_fresh_browser_proof` only means local Chromium-family browser proof for the current `mobile/web` PWA. It is not true phone/browser proof, not real iPhone/Android behavior, not production app proof, not real PWA prompt/userChoice, not real public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production DB/queue, not external cloud proof, not WAVE ROVER/UART/HIL, not route/elevator field pass, not dropoff/cancel completion, not verified terminal delivery/dropoff/cancel result, and not delivery success.
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 hardware bridge、真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；fresh-browser proof 不提供 hardware material。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只证明 blocked state 下手机主操作仍 disabled 且 `delivery_success=false`；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；fresh-browser proof 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `software_proof_docker_mobile_pwa_fresh_browser_proof_gate` 证明本地 fresh Chromium-family profile 下两个 viewport browser proof 通过、console-zero、service-worker dynamic no-store、主操作禁用和 not-proven copy 可见；仍缺真实手机设备、production app、真实 PWA prompt/userChoice 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮因 O5 重复 blocker 切 O4，没有真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Product closeout 基于 full-stack worker 报告和 evidence summary。Full-stack validation reported `phone_browser_acceptance_gate.py --fresh-profile --require-console-zero` pass，两个 viewport 均 `passed=true`、`console_zero_status=passed`、`console_error_count=0`、`current_boundaries_status=passed`、`primary_actions_disabled=true`、summary `ok=true`；`node --check mobile/web/app.js` pass；`python3 -m unittest mobile.test_mobile_web_entrypoint` 输出 `Ran 54 tests ... OK`；scoped `git diff --check` pass。Product closeout required file check、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、verified terminal delivery/dropoff/cancel result 或 delivery success。
 
 ### 2026-05-22 10-11｜field-evidence-material-resolution-owner-response-intake｜owner response material intake software proof
 
