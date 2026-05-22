@@ -108,6 +108,10 @@ FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_REVIEW_HANDOFF_F
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff.json"
 )
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_FOLLOWUP_ESCALATION_STATUS_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status.json"
+)
 FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_real_material_request_dispatch.json"
@@ -12923,6 +12927,216 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, handoff_text)
+
+    def test_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_FOLLOWUP_ESCALATION_STATUS_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 跟进升级状态 panel 只读消费 Robot safe alias；四态之外的状态不能打开三类主操作。
+        self.assertIn(
+            "FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_FOLLOWUP_ESCALATION_STATUS_BOUNDARY",
+            app,
+        )
+        self.assertIn(
+            "UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_FOLLOWUP_ESCALATION_STATUS_TEXT",
+            app,
+        )
+        self.assertIn(
+            "safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatusText",
+            app,
+        )
+        self.assertIn(
+            "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatusCandidate",
+            app,
+        )
+        self.assertIn(
+            "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatusFromStatus",
+            app,
+        )
+        self.assertIn(
+            "renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatus",
+            app,
+        )
+        self.assertIn("现场证据复跑执行结果验收交接回执跟进升级状态", app)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_summary",
+            app,
+        )
+        self.assertIn(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_summary",
+            app,
+        )
+        self.assertIn(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status?.summary",
+            app,
+        )
+        self.assertIn("followup_status", app)
+        self.assertIn("source_review_handoff_status", app)
+        self.assertIn("missing_material_refs", app)
+        self.assertIn("pending_reasons", app)
+        self.assertIn("overdue_reasons", app)
+        self.assertIn("escalated_reasons", app)
+        self.assertIn("blocked_reasons", app)
+        self.assertIn("owner_next_step", app)
+        self.assertIn("support_next_step", app)
+        self.assertIn("reviewer_next_step", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatus.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotIn("copyFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatusButton", app)
+        self.assertNotIn(
+            "downloadFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatusButton",
+            app,
+        )
+        self.assertNotIn("submitFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatus", app)
+        self.assertNotIn("replayFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatus", app)
+        self.assertNotIn("resubmitFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatus", app)
+
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_summary"
+        ]
+        fallback = dedicated_fixture[
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_summary"
+        ]
+        nested = dedicated_fixture[
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status"
+        ]["summary"]
+        self.assertEqual(summary["followup_status"], "escalated")
+        self.assertEqual(
+            summary["source_review_handoff_status"],
+            "ready_for_acceptance_review_handoff_not_proven",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("missing_material_refs", summary)
+        self.assertIn("pending_reasons", summary)
+        self.assertIn("overdue_reasons", summary)
+        self.assertIn("escalated_reasons", summary)
+        self.assertIn("blocked_reasons", summary)
+        self.assertIn("owner_next_step", summary)
+        self.assertIn("support_next_step", summary)
+        self.assertIn("reviewer_next_step", summary)
+        self.assertEqual(fallback["followup_status"], "overdue")
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["followup_status"], "blocked")
+        self.assertEqual(nested["safe_to_control"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        self.assertIn(
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_gate",
+            dedicated_text,
+        )
+        for state in ("pending", "overdue", "escalated", "blocked"):
+            self.assertIn(state, dedicated_text)
+        self.assertIn("source=software_proof", dedicated_text)
+        self.assertIn("not_proven", dedicated_text)
+        self.assertIn("safe_to_control=false", dedicated_text)
+        self.assertIn("delivery_success=false", dedicated_text)
+        self.assertIn("primary_actions_enabled=false", dedicated_text)
+        self.assertIn("field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status", doc)
+        self.assertIn("现场证据复跑执行结果验收交接回执跟进升级状态", doc)
+        self.assertIn("not Objective 5 external proof", doc)
+
+    def test_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_FOLLOWUP_ESCALATION_STATUS_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        followup_text = json.dumps(
+            {
+                "followup":
+                    dedicated_fixture[
+                        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_summary"
+                    ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留四态、缺失 refs、原因和下一步，不泄漏底层诊断或任何可执行动作语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw packet",
+            "raw acceptance",
+            "raw backfill",
+            "raw material",
+            "raw review",
+            "raw decision",
+            "raw handoff",
+            "raw intake",
+            "raw result",
+            "raw execution",
+            "full execution pack",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "material upload",
+            "fetch route",
+            "command route",
+            "ack route",
+            "cursor route",
+            "callback route",
+            "review route",
+            "handoff route",
+            "follow-up route",
+            "followup route",
+            "command replay",
+            "automatic resubmit",
+            "hidden action enablement",
+            "result submission",
+            "acceptance submission",
+            "robot command",
+            "robot/internal",
+            "control authorization",
+            "success copy",
+            "control copy",
+            "field pass",
+            "route pass",
+            "elevator pass",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, followup_text)
 
     def test_field_evidence_real_material_request_dispatch_panel_is_fail_closed(self):
         app = self.read_web("app.js")

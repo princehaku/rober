@@ -1998,6 +1998,87 @@ not delivery result, not delivery success, not HIL, not WAVE ROVER/UART feedback
 not true phone/browser proof, not PR #5 resolution, not Objective 5 external
 cloud/4G/OSS/CDN/DB/queue proof, and not any primary robot action being enabled.
 
+## field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status
+
+`pc-tools/evidence/field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status.py`
+generates the PC-only follow-up escalation status gate after
+`field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff.py`.
+It consumes only a safe review-handoff artifact/summary, Robot diagnostics safe
+alias, or wrapper/nested JSON plus an owner/support/reviewer safe follow-up
+policy. It does not scan a material directory and does not read real Nav2
+runtime, ROS graph state, serial/UART or WAVE ROVER data, real elevator systems,
+external cloud evidence, real phone/browser runtime state, or raw field
+artifacts.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_summary.v1`
+- Robot safe alias:
+  `robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff.v1`
+  and
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_summary.v1`
+  under
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_gate`.
+
+Allowed `due_state` / `followup_status` values are exactly `pending`,
+`overdue`, `escalated`, and `blocked`. A safe non-blocked state requires the
+previous review-handoff status `ready_for_acceptance_review_handoff_not_proven`,
+`source=software_proof`, `software_proof`, `not_proven`, safe `evidence_ref`,
+`same_evidence_ref_required=true`, a safe follow-up policy with due state
+`pending`, `overdue`, or `escalated`, all required material categories
+acknowledged, and no unsafe or success/control claim. The CLI returns zero only
+for the non-blocked states; missing source, missing policy, missing required
+material category, evidence-ref mismatch, unsupported due state, unsafe/rejected
+content, or unsupported review handoff returns nonzero and emits `blocked`.
+
+The follow-up policy checklist is fixed to true task record, true Nav2/fixed-route
+runtime log, route completion signal, true elevator door state, target floor
+confirmation, human assistance record, dropoff/cancel completion or delivery
+result, true route/elevator field pass, true phone/browser evidence, and PR #5
+hardware material remaining pending unless `PRRT_kwDOSWB9286CJ3tX` is live
+resolved. These are follow-up category names only; this gate does not validate
+raw task records, runtime logs, route completion signals, elevator/floor records,
+human assistance records, dropoff/cancel completion, delivery results, field
+passes, phone/browser runtime, or GitHub review state.
+
+The output always includes `source=software_proof`, `software_proof`,
+`due_state`, `followup_status`, `allowed_due_states`, `followup_reasons`, safe
+`evidence_ref`, `source_review_handoff`, `safe_followup_policy`,
+`required_materials`, `material_status`, `owner_escalation`,
+`next_required_evidence`, `rerun_commands`, `safe_copy`, `not_proven`,
+`non_access_scope`, `safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_gate`.
+
+Missing review handoff, missing follow-up policy, bad JSON, unsupported
+schema/boundary, source or follow-up policy not marked as `source=software_proof`
+with `not_proven`, source review handoff not
+`ready_for_acceptance_review_handoff_not_proven`, missing safe `evidence_ref`,
+evidence_ref mismatch, weak `same_evidence_ref_required`, missing checklist
+acknowledgement, rejected or unsafe material refs, unsafe copy, raw or local
+paths, credentials, ROS topics, `/cmd_vel`, serial/UART/WAVE ROVER details,
+raw/complete artifacts, checksums, tracebacks, true phone/browser proof claims,
+real route/elevator field pass claims, real Nav2/fixed-route pass claims,
+verified terminal result claims, Objective 5 external proof claims, HIL claims,
+PR #5 resolution claims, success/control claims, `safe_to_control=true`,
+`delivery_success=true`, or `primary_actions_enabled=true` all fail closed to
+`blocked`.
+
+This contract is software proof only. `pending`, `overdue`, or `escalated` means
+the metadata-only review handoff and follow-up policy can move to Product/Robot
+/mobile read-only consumption while remaining fail-closed. It is not real field
+rerun proof, not real route/elevator field pass, not real Nav2/fixed-route
+execution, not true task record validation, not route completion signal
+validation, not dropoff/cancel completion, not verified terminal result, not
+delivery result, not delivery success, not HIL, not WAVE ROVER/UART feedback,
+not true phone/browser proof, not PR #5 resolution, not Objective 5 external
+cloud/4G/OSS/CDN/DB/queue proof, and not any primary robot action being enabled.
+
 ## field_evidence_real_material_request_dispatch
 
 `pc-tools/evidence/field_evidence_real_material_request_dispatch.py` generates

@@ -8,7 +8,27 @@
 
 ## 2026-05-23 系列
 
-更新时间：2026-05-23 02:22 Asia/Shanghai。
+更新时间：2026-05-23 03:19 Asia/Shanghai。
+
+### 2026-05-23 03-04｜field-evidence-rerun-acceptance-handoff-intake-followup-escalation-status｜acceptance handoff intake follow-up escalation software proof
+
+本轮 `sprints/2026.05.23_03-04_field-evidence-rerun-acceptance-handoff-intake-followup-escalation-status/` 执行 `field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status` epic closeout。用户价值是把上一轮 acceptance handoff intake review handoff 转成 owner/support/reviewer 可消费的安全跟进升级状态：`pending`、`overdue`、`escalated` 或 `blocked`，并继续绑定同一 safe `evidence_ref`、source review handoff status、missing material refs、follow-up reasons、owner/support/reviewer next step、proof boundary 和禁止声明范围。本轮边界为 `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_gate`，必须保留 `source=software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+Autonomy worker 新增 PC-only follow-up escalation status gate、focused tests、`pc-tools/README.md` 和 `docs/interfaces/evidence_contracts.md` 更新。Task A 首轮失败是 required checklist 类别 `true route/elevator field pass` 被误判为 proof claim，已收紧 pattern 后通过。Robot worker 新增 `robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_summary` safe alias、targeted tests 和 `docs/interfaces/ros_runtime_contracts.md` 更新。Task B 首轮失败是 fixture 使用 “field pass” wording，unsafe scanner 正确 blocking；改成 “field evidence” 后通过。Full-Stack worker 新增 mobile/web read-only “现场证据复跑执行结果验收交接回执跟进升级状态” panel、fixture、tests 和 `docs/product/mobile_user_flow.md` 更新，优先消费 Robot safe alias 并保持 Start Delivery / Confirm Dropoff / Cancel disabled。
+
+Live PR #5 state：`PRRT_kwDOSWB9286CJ3tQ` resolved，`PRRT_kwDOSWB9286CJ3tU` resolved，`PRRT_kwDOSWB9286CJ3tX` remains `is_resolved=false` / unresolved / `hardware_material_pending`。`PRRT_kwDOSWB9286CJ3tQ` 与 `PRRT_kwDOSWB9286CJ3tU` resolved 不关闭 `PRRT_kwDOSWB9286CJ3tX`。
+
+本轮不是 true phone/browser proof，不是 route/elevator field pass，不是 Nav2/fixed-route runtime pass，不是 verified terminal result，不是 dropoff/cancel completion，不是 delivery result，不是 delivery success，不是 Objective 5 external proof，不是 Objective 1 HIL，不是 WAVE ROVER/UART proof，也不是 PR #5 resolution；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 hardware bridge、真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` still unresolved/material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只把 acceptance handoff intake review handoff 转成 follow-up escalation metadata；没有真实 task record、真实电梯、dropoff/cancel completion、delivery result、verified terminal delivery/dropoff/cancel result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；follow-up escalation gate 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能只读展示现场证据复跑执行结果验收交接回执跟进升级状态，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料；本轮 not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_gate` 只证明 Docker/local PC follow-up escalation gate + Robot diagnostics + mobile static fixture 下 acceptance handoff intake follow-up escalation metadata 可见、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；unittest 输出 `Ran 6 tests in 0.164s OK`；CLI `--help`、required `rg` 与 scoped `git diff --check` 通过。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 298 tests in 2.504s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check` 通过；fixture `json.tool` 通过；mobile unittest 输出 `Ran 282 tests in 2.494s OK`；required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、combined `py_compile`、combined unittest、`node --check`、fixture `json.tool`、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `pc-tools/README.md`、`docs/interfaces/evidence_contracts.md`、`docs/interfaces/ros_runtime_contracts.md`、`docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。
 
 ### 2026-05-23 02-03｜field-evidence-rerun-acceptance-handoff-intake-review-handoff｜acceptance handoff intake review-handoff software proof
 
