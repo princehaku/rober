@@ -160,6 +160,10 @@ FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_REVIEW_HANDOFF_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_handoff_summary.json"
 )
+FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.json"
+)
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -14963,6 +14967,186 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "cursor",
             "diagnostics fetch",
             "material fetch",
+            "replay",
+            "resubmit",
+            "robot command",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, response_text)
+
+    def test_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # reviewer ACK followup escalation status 只读 Robot diagnostics safe summary，不新增 copy/export/ACK/cursor 或控制端点。
+        self.assertIn("FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_TEXT", app)
+        self.assertIn("safeFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatusText", app)
+        self.assertIn("fieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatusCandidate", app)
+        self.assertIn("fieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatusFromStatus", app)
+        self.assertIn("renderFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatus", app)
+        self.assertIn("现场材料 reviewer ACK 后续升级状态", app)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary",
+            app,
+        )
+        self.assertIn("field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary", app)
+        self.assertIn("field_evidence_material_resolution_reviewer_ack_followup_escalation_status?.summary", app)
+        self.assertIn("owner_response_pending_not_proven", app)
+        self.assertIn("owner_response_overdue_escalate_not_proven", app)
+        self.assertIn("blocked_missing_required_materials_not_proven", app)
+        self.assertIn("blocked_unsafe_material_claims_not_proven", app)
+        self.assertIn("accepted_for_owner_response_intake_not_proven", app)
+        self.assertIn("blocked_missing_reviewer_ack_handoff_not_proven", app)
+        self.assertIn("followup_status", app)
+        self.assertIn("due_status", app)
+        self.assertIn("source_handoff_status", app)
+        self.assertIn("field_owner_handoff", app)
+        self.assertIn("support_escalation", app)
+        self.assertIn("missing_required_evidence", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("not true phone/browser", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertNotIn("copyFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatusButton", app)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatus.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatus",
+            "cursorFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatus",
+            "fetchFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatusDiagnostics",
+            "fetchFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatusMaterial",
+            "reviewFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatus",
+            "handoffFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatus",
+            "ownerResponseFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatus",
+            "replayFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatus",
+            "resubmitFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatus",
+            "commandFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatus",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # dedicated fixture 覆盖 Robot alias、fallback、nested summary，并保持三 false flags 和主操作关闭。
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary"
+        ]
+        fallback = dedicated_fixture[
+            "field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary"
+        ]
+        nested = dedicated_fixture[
+            "field_evidence_material_resolution_reviewer_ack_followup_escalation_status"
+        ]["summary"]
+        self.assertEqual(summary["capability"], "field_evidence_material_resolution_reviewer_ack_followup_escalation_status")
+        self.assertEqual(summary["followup_status"], "owner_response_overdue_escalate_not_proven")
+        self.assertEqual(fallback["followup_status"], "blocked_missing_required_materials_not_proven")
+        self.assertEqual(nested["followup_status"], "blocked_missing_reviewer_ack_handoff_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary",
+            "software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate",
+            "followup_status",
+            "due_status",
+            "source_handoff_status",
+            "safe_evidence_ref",
+            "field_owner_handoff",
+            "support_escalation",
+            "missing_required_evidence",
+            "next_required_evidence",
+            "not true phone/browser",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not robot control grant",
+            "not PR #5 resolution",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn("field_evidence_material_resolution_reviewer_ack_followup_escalation_status", doc)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary",
+            doc,
+        )
+        self.assertIn(
+            "software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate",
+            doc,
+        )
+        self.assertIn("owner_response_overdue_escalate_not_proven", doc)
+        self.assertIn("not true phone/browser", doc)
+        self.assertIn("not delivery success", doc)
+        self.assertIn("not robot control grant", doc)
+        self.assertIn("not PR #5 resolution", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+
+    def test_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        response_text = json.dumps(
+            {
+                "robot": dedicated_fixture[
+                    "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary"
+                ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "field_evidence_material_resolution_reviewer_ack_followup_escalation_status"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只能包含 reviewer ACK followup escalation safe summary，不泄漏原始材料、凭证或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw material",
+            "raw owner packet",
+            "raw ack",
+            "raw handoff",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "hil_pass",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "material fetch",
+            "review route",
+            "handoff route",
+            "owner-response route",
             "replay",
             "resubmit",
             "robot command",

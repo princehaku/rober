@@ -1,0 +1,137 @@
+{
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false,
+  "command_safety": {
+    "primary_actions_enabled": false,
+    "actions": {
+      "start": {
+        "enabled": false,
+        "reason": "field_evidence_material_resolution_reviewer_ack_followup_escalation_status_not_control_grant"
+      },
+      "confirm_dropoff": {
+        "enabled": false,
+        "reason": "field_evidence_material_resolution_reviewer_ack_followup_escalation_status_not_dropoff_completion"
+      },
+      "cancel": {
+        "enabled": false,
+        "reason": "field_evidence_material_resolution_reviewer_ack_followup_escalation_status_not_cancel_completion"
+      }
+    }
+  },
+  "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status.v1",
+    "capability": "field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
+    "source": "software_proof",
+    "followup_status": "owner_response_overdue_escalate_not_proven",
+    "due_status": "due_status=overdue_not_proven",
+    "source_handoff_status": "source_handoff_status=ready_for_material_review_handoff_not_proven",
+    "safe_evidence_ref": "safe_evidence_ref=field_evidence_material_resolution_reviewer_ack_followup_escalation_status:TASK-2026-05-22-ACK-FOLLOWUP",
+    "field_owner_handoff": [
+      "field_owner_handoff=keep same safe evidence_ref for field-owner response intake",
+      "field_owner_handoff=provide true phone/browser note before any field rerun"
+    ],
+    "support_escalation": [
+      "support_escalation=notify support owner that field materials remain missing",
+      "support_escalation=do not claim robot control grant"
+    ],
+    "missing_required_evidence": [
+      "missing_required_evidence=not true phone/browser",
+      "missing_required_evidence=route elevator runtime summary",
+      "missing_required_evidence=verified terminal delivery/dropoff/cancel result",
+      "missing_required_evidence=manual reviewer resolved evidence"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=field-owner response intake under same safe evidence_ref",
+      "next_required_evidence=manual GitHub reviewer resolution evidence",
+      "next_required_evidence=true phone/browser proof"
+    ],
+    "safe_copy": "field_evidence_material_resolution_reviewer_ack_followup_escalation_status: owner_response_overdue_escalate_not_proven; not true phone/browser; delivery_success=false; primary_actions_enabled=false; safe_to_control=false.",
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate",
+    "proof_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "not true phone/browser",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "not robot control grant",
+      "not PR #5 resolution"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status.v1",
+    "capability": "field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
+    "source": "software_proof",
+    "followup_status": "blocked_missing_required_materials_not_proven",
+    "due_status": "due_status=waiting_for_required_materials_not_proven",
+    "source_handoff_status": "source_handoff_status=needs_field_owner_supplement_handoff_not_proven",
+    "safe_evidence_ref": "safe_evidence_ref=field_evidence_material_resolution_reviewer_ack_followup_escalation_status:fallback",
+    "field_owner_handoff": [
+      "field_owner_handoff=add missing field owner response"
+    ],
+    "support_escalation": [
+      "support_escalation=keep Start Delivery Confirm Dropoff Cancel disabled"
+    ],
+    "missing_required_evidence": [
+      "missing_required_evidence=field owner response"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same safe evidence_ref response intake"
+    ],
+    "safe_copy": "fallback reviewer ACK followup escalation status; not true phone/browser; delivery_success=false.",
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate",
+    "not_proven": [
+      "software_proof",
+      "not true phone/browser",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_reviewer_ack_followup_escalation_status": {
+    "summary": {
+      "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1",
+      "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status.v1",
+      "capability": "field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
+      "source": "software_proof",
+      "followup_status": "blocked_missing_reviewer_ack_handoff_not_proven",
+      "due_status": "due_status=waiting_for_source_handoff_not_proven",
+      "source_handoff_status": "source_handoff_status=blocked_missing_reviewer_ack_handoff_not_proven",
+      "safe_evidence_ref": "safe_evidence_ref=field_evidence_material_resolution_reviewer_ack_followup_escalation_status:nested",
+      "field_owner_handoff": [
+        "field_owner_handoff=wait for reviewer ACK handoff safe summary"
+      ],
+      "support_escalation": [
+        "support_escalation=explain missing reviewer ACK handoff"
+      ],
+      "missing_required_evidence": [
+        "missing_required_evidence=reviewer ACK handoff safe summary"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=reviewer ACK handoff safe summary"
+      ],
+      "safe_copy": "nested reviewer ACK followup escalation status blocked; not PR #5 resolution.",
+      "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate",
+      "not_proven": [
+        "software_proof",
+        "not true phone/browser",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  }
+}

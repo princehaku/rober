@@ -2707,6 +2707,71 @@ result, delivery success, real phone/browser evidence, HIL pass, Objective 5
 external cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, or any primary
 robot action being enabled.
 
+## field_evidence_material_resolution_reviewer_ack_followup_escalation_status
+
+`pc-tools/evidence/field_evidence_material_resolution_reviewer_ack_followup_escalation_status.py`
+generates the PC-only reviewer ACK followup escalation status gate after
+`field_evidence_material_resolution_reviewer_ack_review_handoff.py`.
+
+- Artifact schema:
+  `trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status.v1`
+- Summary schema:
+  `trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1`
+- Robot diagnostics alias:
+  `robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate`
+- Capability:
+  `field_evidence_material_resolution_reviewer_ack_followup_escalation_status`
+- Allowed source inputs:
+  `trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff.v1`,
+  `trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff_summary.v1`,
+  the Robot safe alias, or a compatible wrapper containing one of those safe
+  schemas under
+  `software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate`.
+
+The output always includes safe `evidence_ref`,
+`same_evidence_ref_required=true`, `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, `followup_status`, `due_status`,
+`source_handoff_status`, `reviewer_ack_status`, `source_review_decision`,
+`field_owner_handoff`, `support_escalation_owner`,
+`missing_required_evidence`, `rejected_or_unsafe_reasons`,
+`next_required_evidence`, `phone_safe_copy`, `proof_flags`, `safe_copy`, and
+`evidence_boundary=software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate`.
+
+Allowed `followup_status` values are
+`owner_response_pending_not_proven`,
+`owner_response_overdue_escalate_not_proven`,
+`blocked_missing_required_materials_not_proven`,
+`blocked_unsafe_material_claims_not_proven`,
+`accepted_for_owner_response_intake_not_proven`, and
+`blocked_missing_reviewer_ack_handoff_not_proven`. A ready upstream reviewer
+ACK review handoff maps to pending, overdue escalation, or accepted for owner
+response intake depending on the PC-provided due state. Accepted means owner
+response intake readiness only; it is not real reviewer resolution, not owner
+acceptance, not OKR movement, not delivery success, and not PR #5 resolution.
+Missing JSON, bad JSON, unsupported review-handoff schema, wrong proof
+boundary, or missing/mismatched safe `evidence_ref` maps to
+`blocked_missing_reviewer_ack_handoff_not_proven`. A non-ready source handoff
+maps to `blocked_missing_required_materials_not_proven`. Unsafe source material
+maps to `blocked_unsafe_material_claims_not_proven`.
+
+Decision mapping is fail closed. Unsafe raw artifacts, local paths,
+credentials, bearer tokens, signed URLs, raw checksums, stack traces,
+ROS/control topics, `/cmd_vel`, serial/UART details, WAVE ROVER details,
+reviewer resolution claims, enabled primary actions, delivery-success claims,
+true phone/browser claims, Objective 5 external-proof claims, or
+field/cloud/phone/HIL proof claims are rejected without copying raw material
+into the artifact.
+
+This contract is software proof only. It does not prove a real reviewer
+resolution, real owner acceptance, real owner-response intake completion, real
+route/elevator field pass, real Nav2/fixed-route execution, verified terminal
+result, delivery success, real phone/browser evidence, HIL pass, Objective 5
+external cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, or any primary
+robot action being enabled.
+
 ## route_task_field_retest_result_callback_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_callback_review_decision.py`

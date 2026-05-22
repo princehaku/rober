@@ -75,6 +75,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_field_evidence_material_resolution_reviewer_ack_intake,
     summarize_field_evidence_material_resolution_reviewer_ack_review_decision,
     summarize_field_evidence_material_resolution_reviewer_ack_review_handoff,
+    summarize_field_evidence_material_resolution_reviewer_ack_followup_escalation_status,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -37432,6 +37433,225 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("control enabled", encoded.lower())
         self.assertIn(
             "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate",
+            encoded,
+        )
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+
+    def test_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1",
+            "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status.v1",
+            "source_evidence_boundary": (
+                "software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate"
+            ),
+            "schema_version": 1,
+            "capability": (
+                "field_evidence_material_resolution_reviewer_ack_followup_escalation_status"
+            ),
+            "followup_status": "owner_response_overdue_escalate_not_proven",
+            "due_status": "overdue_escalate_not_proven",
+            "status": "owner_response_overdue_escalate_not_proven",
+            "overall_status": "not_proven",
+            "source": "software_proof",
+            "followup_status_summary": {
+                "status": "owner_response_overdue_escalate_not_proven",
+                "due_status": "overdue_escalate_not_proven",
+                "reason": "owner response is still pending safe evidence",
+                "evidence_source": "software_proof",
+            },
+            "source_handoff_status": (
+                "accepted_for_material_review_handoff_not_proven"
+            ),
+            "source_handoff_schema": (
+                "trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff_summary.v1"
+            ),
+            "source_handoff_ref": "reviewer-ack-review-handoff-001",
+            "safe_evidence_ref": "reviewer-ack-followup-status-001",
+            "owner_handoff_hints": [
+                "Ask field owner for the missing real-material response."
+            ],
+            "missing_required_evidence": [
+                "field owner real-material response remains missing"
+            ],
+            "next_required_evidence": [
+                "Collect owner response intake before any resolution claim."
+            ],
+            "phone_safe_copy": (
+                "Field evidence material resolution reviewer ack followup escalation "
+                "status is read-only; source=software_proof; not_proven; "
+                "delivery_success=false; primary_actions_enabled=false; "
+                "safe_to_control=false."
+            ),
+            "not_proven": [
+                "reviewer ACK followup status is not reviewer resolution"
+            ],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+        }
+        artifact = {
+            "schema": (
+                "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status.v1"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate"
+            ),
+            "field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary": (
+                safe_summary
+            ),
+        }
+        payload = self._base_build_payload(
+            {
+                "field_evidence_material_resolution_reviewer_ack_followup_escalation_status": {
+                    "delivery_success": True,
+                    "raw_followup_artifact": {"cmd_vel": "unsafe"},
+                },
+                "diagnostics": {
+                    "field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary": (
+                        safe_summary
+                    )
+                },
+            }
+        )
+        from_nested = (
+            summarize_field_evidence_material_resolution_reviewer_ack_followup_escalation_status(
+                artifact
+            )
+        )
+        from_diagnostics = self._base_build_payload(
+            {
+                "diagnostics": {
+                    "field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary": (
+                        safe_summary
+                    )
+                }
+            }
+        )[
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary"
+        ]
+        missing = summarize_field_evidence_material_resolution_reviewer_ack_followup_escalation_status(
+            ""
+        )
+        unsupported = summarize_field_evidence_material_resolution_reviewer_ack_followup_escalation_status(
+            dict(
+                safe_summary,
+                source_schema="trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff.v1",
+                source_evidence_boundary=(
+                    "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate"
+                ),
+            )
+        )
+        raw_only = summarize_field_evidence_material_resolution_reviewer_ack_followup_escalation_status(
+            {
+                "schema": (
+                    "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status.v1"
+                ),
+                "evidence_boundary": (
+                    "software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate"
+                ),
+                "safe_evidence_ref": "reviewer-ack-followup-status-001",
+                "raw_artifact": {"checksum": "abc"},
+            }
+        )
+        unsafe = summarize_field_evidence_material_resolution_reviewer_ack_followup_escalation_status(
+            dict(
+                safe_summary,
+                phone_safe_copy="Reviewer resolved; Start Delivery control enabled.",
+                delivery_success=True,
+                primary_actions_enabled=True,
+                safe_to_control=True,
+                boundary_flags={"reviewer_resolution_enabled": True},
+            )
+        )
+
+        summary = payload[
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary"
+        ]
+        self.assertEqual(
+            payload[
+                "field_evidence_material_resolution_reviewer_ack_followup_escalation_status"
+            ],
+            summary,
+        )
+        self.assertEqual(
+            payload[
+                "field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary"
+            ],
+            summary,
+        )
+        self.assertNotIn(
+            "field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            from_nested["followup_status"],
+            "owner_response_overdue_escalate_not_proven",
+        )
+        self.assertEqual(
+            from_diagnostics["source_handoff_ref"],
+            "reviewer-ack-review-handoff-001",
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(
+            summary["followup_status"],
+            "owner_response_overdue_escalate_not_proven",
+        )
+        self.assertEqual(summary["due_status"], "overdue_escalate_not_proven")
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["ack_mutation_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["cursor_mutation_allowed"])
+        self.assertFalse(summary["replay_allowed"])
+        self.assertFalse(summary["resubmit_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertIn(
+            "field_evidence_material_resolution_reviewer_ack_followup_escalation_status_only",
+            summary["not_proven"],
+        )
+        self.assertEqual(
+            missing["followup_status_summary"]["status"],
+            "blocked_missing_reviewer_ack_handoff_not_proven",
+        )
+        self.assertEqual(
+            unsupported["followup_status_summary"]["status"],
+            "blocked_unsupported_field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
+        )
+        self.assertEqual(
+            raw_only["followup_status_summary"]["status"],
+            "blocked_missing_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary",
+        )
+        self.assertEqual(
+            unsafe["followup_status_summary"]["status"],
+            "blocked_unsafe_field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_followup_artifact", encoded)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("checksum", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("reviewer resolved", encoded.lower())
+        self.assertNotIn("control enabled", encoded.lower())
+        self.assertIn(
+            "software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate",
             encoded,
         )
         self.assertIn("not_proven", encoded)

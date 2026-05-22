@@ -1443,6 +1443,55 @@ credential/local path、ROS/control detail、field/cloud/phone/HIL proof claim �
 `software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate`
 的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
 
+`pc-tools/evidence/field_evidence_material_resolution_reviewer_ack_followup_escalation_status.py`
+只读上一节 `field_evidence_material_resolution_reviewer_ack_review_handoff`
+artifact、summary、Robot safe alias 或 wrapper/nested JSON，把 reviewer ACK
+handoff 后续转成 support escalation / field owner response 的 PC-only status：
+
+```bash
+python3 pc-tools/evidence/field_evidence_material_resolution_reviewer_ack_followup_escalation_status.py \
+  --input /tmp/field_evidence_material_resolution_reviewer_ack_review_handoff_summary.json \
+  --due-status overdue \
+  --output /tmp/field_evidence_material_resolution_reviewer_ack_followup_escalation_status.json \
+  --summary-output /tmp/field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status.v1`，
+summary 使用
+`schema=trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary`，
+证据边界固定为
+`software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate`。
+核心字段包括
+`capability=field_evidence_material_resolution_reviewer_ack_followup_escalation_status`、safe
+`evidence_ref`、`followup_status`、`due_status`、`source_handoff_status`、
+`reviewer_ack_status`、`field_owner_handoff`、`support_escalation_owner`、
+`missing_required_evidence`、`rejected_or_unsafe_reasons`、
+`next_required_evidence`、`phone_safe_copy`、`source=software_proof`、`not_proven`、
+`primary_actions_enabled=false`、`delivery_success=false` 和 `safe_to_control=false`。
+
+`followup_status` 枚举固定为
+`owner_response_pending_not_proven`、
+`owner_response_overdue_escalate_not_proven`、
+`blocked_missing_required_materials_not_proven`、
+`blocked_unsafe_material_claims_not_proven`、
+`accepted_for_owner_response_intake_not_proven` 和
+`blocked_missing_reviewer_ack_handoff_not_proven`。accepted 只表示可以把脱敏
+reviewer ACK handoff 转入后续 owner response intake，仍不是真实 owner acceptance、
+真实 reviewer resolution、真实 field pass、verified terminal result、delivery success、
+HIL、O5 external proof、真实 phone/browser 证据、PR #5 resolved 或 OKR movement。
+缺 source handoff、bad JSON、unsupported schema、wrong proof boundary、safe
+`evidence_ref` 不一致或缺失会 fail closed；raw artifact/local path/credential、bearer
+token、signed URL、ROS topic、`/cmd_vel`、serial/UART/WAVE ROVER detail、traceback、
+raw checksum、success/control claim、true phone/browser claim、Objective 5 external-proof
+claim 或 `delivery_success=true` 会输出
+`blocked_unsafe_material_claims_not_proven` 或
+`blocked_missing_reviewer_ack_handoff_not_proven`。该入口只证明本地
+`software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate`
+的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

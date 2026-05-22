@@ -1274,6 +1274,61 @@ Reviewer ACK review handoff must preserve the false-state boundary:
 `not_proven`, `delivery_success=false`, `safe_to_control=false`, and
 `primary_actions_enabled=false`.
 
+## robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary
+
+`robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary`
+is the Robot diagnostics safe alias for
+`field_evidence_material_resolution_reviewer_ack_followup_escalation_status`.
+It consumes only the phone-safe PC followup escalation status summary
+`trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1`,
+an artifact wrapper containing that summary, or compatible latest status /
+diagnostics fallback metadata.
+
+- Source artifact schema:
+  `trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status.v1`
+- Source summary schema:
+  `trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate`
+
+Allowed followup statuses are
+`owner_response_pending_not_proven`,
+`owner_response_overdue_escalate_not_proven`,
+`blocked_missing_required_materials_not_proven`,
+`blocked_unsafe_material_claims_not_proven`,
+`accepted_for_owner_response_intake_not_proven`, and
+`blocked_missing_reviewer_ack_handoff_not_proven`. These statuses are
+read-only reviewer ACK follow-up metadata only.
+
+Allowed fields are limited to capability, schema, evidence boundary,
+`source=software_proof`, safe `evidence_ref`, `followup_status`,
+`due_status`, source handoff status/schema/ref, owner handoff hints, missing
+required evidence, next required evidence, phone-safe copy, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+
+The alias must never expose raw artifacts, complete artifacts, raw GitHub
+payloads, local paths, credentials, bearer tokens, signed URLs, DB/queue URLs,
+OSS secrets, raw checksums, complete internal logs, ROS topics, `/cmd_vel`,
+serial/UART details, WAVE ROVER parameters, raw tracebacks, ACK/cursor/command
+data, control permissions, success claims, reviewer-resolution claims,
+owner-material acceptance claims, `safe_to_control=true`,
+`delivery_success=true`, or `primary_actions_enabled=true`.
+
+`accepted_for_owner_response_intake_not_proven` only means a sanitized followup
+status can enter a later owner-response intake. It is not delivery success,
+real route/elevator field pass, verified terminal delivery/dropoff/cancel
+result, real phone/browser proof, public cloud proof, PR #5 reviewer
+resolution, HIL, Nav2 runtime proof, or permission to
+start/confirm/cancel/ACK/replay/resubmit robot commands.
+
+Reviewer ACK followup escalation status must preserve the false-state boundary:
+`software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate`,
+`not_proven`, `delivery_success=false`, `safe_to_control=false`, and
+`primary_actions_enabled=false`.
+
 ## robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary
 
 `robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary`
