@@ -8,7 +8,25 @@
 
 ## 2026-05-22 系列
 
-更新时间：2026-05-22 16:21 Asia/Shanghai。
+更新时间：2026-05-22 17:44 Asia/Shanghai。
+
+### 2026-05-22 17-18｜mobile-current-panel-browser-proof-refresh｜current panel browser proof refresh software proof
+
+本轮 `sprints/2026.05.22_17-18_mobile-current-panel-browser-proof-refresh/` 执行 `mobile_current_panel_browser_proof_refresh` epic closeout。用户价值是刷新当前 `mobile/web` 手机入口的本地 fresh Chromium-family browser proof，确认最近多轮 material-resolution / reviewer ACK / support / terminal-result / cloud-readiness current panels 仍可见、无 console error，并在 blocked / not_proven fixture state 下保持 Start Delivery / Confirm Dropoff / Cancel disabled。Objective 5 仍约 68%，是当前数值最低 Objective；本轮没有真实 public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、真实手机/browser 外部 proof 或 verified terminal delivery/dropoff/cancel result material，所以 Objective 5 不提升，no OKR percentage lift。Objective 1 仍约 81%，PR #5 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `is_resolved=false` / `hardware_material_pending`，本轮不是 reviewer resolution。O2/O3/O4 仍约 99%。
+
+Full-Stack worker changed `pc-tools/evidence/phone_browser_acceptance_gate.py`, `mobile/web/test_mobile_web_entrypoint.py`, `mobile/test_mobile_web_entrypoint.py`, `docs/product/mobile_user_flow.md`, and sprint evidence files. Browser proof command passed with `ok=true`; both `390x844` and `768x900` passed; `current_panels_status=passed`, `current_boundaries_status=passed`, `console_zero_status=passed`, `console_error_count=0`, `material_resolution_panels_fail_closed=true`, and `primary_actions_disabled=true`. `node --check mobile/web/app.js` passed; `node --check mobile/web/service-worker.js` passed; `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest mobile.web.test_mobile_web_entrypoint` passed with `Ran 264 tests ... OK`; required `rg` and scoped `git diff --check` passed. Robot Task B was read-only, changed no files, and confirmed current panels consume phone-safe Robot diagnostics/status summaries; no raw ROS topics, `/cmd_vel`, serial/UART, baudrate, WAVE ROVER parameters, credentials, local paths, tracebacks, checksums, or complete artifacts were found in current Robot diagnostics current-panel summary consumption. It noted only a caveat that two old fixture fragments may still have historical enabled flags, but not in the current Robot diagnostics current-panel summary path.
+
+`mobile_current_panel_browser_proof_refresh` only means local Chromium-family current-panel browser proof can be refreshed while keeping fail-closed flags visible or machine-checkable. It is not true phone/browser, not O5 external proof, not public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production DB/queue, not worker/cutover, not verified terminal result, not HIL, not route/elevator field pass, not delivery success, and not PR #5 resolution.
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 hardware bridge、真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` still unresolved/material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只刷新 `mobile/web` current-panel browser proof；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal delivery/dropoff/cancel result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；browser proof refresh 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile/web` 在 local fresh browser profile 中证明 current panels visible、console-zero、fail-closed；`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false` 保持。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料；本轮 not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_mobile_current_panel_browser_proof_refresh_gate` 只证明 Docker/local mobile current-panel browser refresh 可见、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。本轮不证明真实手机/browser、production app、真实 PWA prompt/userChoice、O5 external proof、PR #5 hardware material / thread `PRRT_kwDOSWB9286CJ3tX` resolved、O1/HIL、WAVE ROVER/UART、route/elevator field pass、Nav2/fixed-route、dropoff/cancel completion、verified terminal result 或 delivery success。
 
 ### 2026-05-22 16-17｜field-evidence-material-resolution-reviewer-ack-intake｜reviewer ACK intake software proof
 

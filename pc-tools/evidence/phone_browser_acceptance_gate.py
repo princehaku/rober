@@ -34,6 +34,8 @@ COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_retest_
 REFRESH_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"
 LEGACY_ARTIFACT_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_proof_gate"
 FRESH_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_pwa_fresh_browser_proof_gate"
+CURRENT_PANEL_BROWSER_PROOF_REFRESH_CAPABILITY = "mobile_current_panel_browser_proof_refresh"
+CURRENT_PANEL_BROWSER_PROOF_REFRESH_BOUNDARY = "software_proof_docker_mobile_current_panel_browser_proof_refresh_gate"
 FRESH_ARTIFACT_PREFIX = "mobile_pwa_fresh_browser_proof"
 DEFAULT_ARTIFACT_PREFIX = "mobile_current_pwa_field_trial_browser"
 ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF = "mobile_route_elevator_handoff_browser"
@@ -70,6 +72,44 @@ KEY_ELEMENT_IDS = (
     "routeElevatorFieldSessionHandoffBoundary",
     "routeElevatorFieldSessionHandoffNotProven",
     "routeElevatorFieldSessionHandoffHint",
+    "cloudReadinessTitle",
+    "cloudEvidenceBoundary",
+    "cloudSupportHandoffSafeExportTitle",
+    "cloudSupportHandoffSafeExportBoundary",
+    "cloudSupportHandoffSafeExportFlags",
+    "fieldEvidenceMaterialResolutionIntakeTitle",
+    "fieldEvidenceMaterialResolutionIntakeBoundary",
+    "fieldEvidenceMaterialResolutionIntakeFlags",
+    "fieldEvidenceMaterialResolutionReviewDecisionTitle",
+    "fieldEvidenceMaterialResolutionReviewDecisionBoundary",
+    "fieldEvidenceMaterialResolutionReviewDecisionFlags",
+    "fieldEvidenceMaterialResolutionReviewHandoffTitle",
+    "fieldEvidenceMaterialResolutionReviewHandoffBoundary",
+    "fieldEvidenceMaterialResolutionReviewHandoffFlags",
+    "fieldEvidenceMaterialResolutionFollowupEscalationStatusTitle",
+    "fieldEvidenceMaterialResolutionFollowupEscalationStatusBoundary",
+    "fieldEvidenceMaterialResolutionFollowupEscalationStatusFlags",
+    "fieldEvidenceMaterialResolutionOwnerResponseIntakeTitle",
+    "fieldEvidenceMaterialResolutionOwnerResponseIntakeBoundary",
+    "fieldEvidenceMaterialResolutionOwnerResponseIntakeFlags",
+    "fieldEvidenceMaterialResolutionOwnerResponseReviewDecisionTitle",
+    "fieldEvidenceMaterialResolutionOwnerResponseReviewDecisionBoundary",
+    "fieldEvidenceMaterialResolutionOwnerResponseReviewDecisionFlags",
+    "fieldEvidenceMaterialResolutionOwnerResponseReviewHandoffTitle",
+    "fieldEvidenceMaterialResolutionOwnerResponseReviewHandoffBoundary",
+    "fieldEvidenceMaterialResolutionOwnerResponseReviewHandoffFlags",
+    "fieldEvidenceMaterialResolutionReviewerAckIntakeTitle",
+    "fieldEvidenceMaterialResolutionReviewerAckIntakeBoundary",
+    "fieldEvidenceMaterialResolutionReviewerAckIntakeFlags",
+    "verifiedTerminalResultMaterialIntakeTitle",
+    "verifiedTerminalResultMaterialIntakeBoundary",
+    "verifiedTerminalResultMaterialIntakeFlags",
+    "verifiedTerminalResultMaterialReviewDecisionTitle",
+    "verifiedTerminalResultMaterialReviewDecisionBoundary",
+    "verifiedTerminalResultMaterialReviewDecisionFlags",
+    "verifiedTerminalResultMaterialReviewHandoffTitle",
+    "verifiedTerminalResultMaterialReviewHandoffBoundary",
+    "verifiedTerminalResultMaterialReviewHandoffFlags",
     "mobileDeviceEvidenceTitle",
     "mobileDeviceEvidenceSafeCopy",
     "mobileDeviceEvidenceBoundary",
@@ -168,6 +208,19 @@ CURRENT_PANEL_EXPECTATIONS = {
     "primaryJourneyTitle": "三步主路径",
     "recoveryDecisionTitle": "恢复决策",
     "routeElevatorFieldSessionHandoffTitle": "路线电梯现场交接",
+    "cloudReadinessTitle": "云中转状态",
+    "cloudSupportHandoffSafeExportTitle": "云支持交接安全导出",
+    "fieldEvidenceMaterialResolutionIntakeTitle": "现场材料 resolution intake",
+    "fieldEvidenceMaterialResolutionReviewDecisionTitle": "现场材料 resolution review decision",
+    "fieldEvidenceMaterialResolutionReviewHandoffTitle": "现场材料 resolution review handoff",
+    "fieldEvidenceMaterialResolutionFollowupEscalationStatusTitle": "现场材料 resolution follow-up 升级状态",
+    "fieldEvidenceMaterialResolutionOwnerResponseIntakeTitle": "现场材料 owner response intake",
+    "fieldEvidenceMaterialResolutionOwnerResponseReviewDecisionTitle": "现场材料 owner response 复核决策",
+    "fieldEvidenceMaterialResolutionOwnerResponseReviewHandoffTitle": "现场材料 owner response 复核交接",
+    "fieldEvidenceMaterialResolutionReviewerAckIntakeTitle": "现场材料 reviewer ACK 入口",
+    "verifiedTerminalResultMaterialIntakeTitle": "Terminal Result 材料回填入口",
+    "verifiedTerminalResultMaterialReviewDecisionTitle": "Terminal Result 材料复核决策",
+    "verifiedTerminalResultMaterialReviewHandoffTitle": "Terminal Result 材料复核交接",
     "terminalActionTitle": "终端动作二次确认",
     "mobileDeviceEvidenceTitle": "手机设备证据采集",
     "mobileDeviceHandoffTitle": "真实手机验收交接会话",
@@ -185,6 +238,23 @@ CURRENT_BOUNDARY_EXPECTATIONS = {
     "primaryJourneyBoundary": "software_proof_docker_mobile_primary_journey_gate",
     "recoveryDecisionBoundary": "software_proof_docker_mobile_recovery_decision_gate",
     "routeElevatorFieldSessionHandoffBoundary": "software_proof_docker_route_elevator_field_session_handoff_gate",
+    "cloudEvidenceBoundary": "software_proof_docker_mobile_cloud_readiness_summary_gate",
+    "cloudSupportHandoffSafeExportBoundary": "software_proof_docker_cloud_support_handoff_safe_export_gate",
+    "cloudSupportHandoffSafeExportFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "fieldEvidenceMaterialResolutionIntakeBoundary": "software_proof_docker_field_evidence_material_resolution_intake_gate",
+    "fieldEvidenceMaterialResolutionReviewDecisionBoundary": "software_proof_docker_field_evidence_material_resolution_review_decision_gate",
+    "fieldEvidenceMaterialResolutionReviewHandoffBoundary": "software_proof_docker_field_evidence_material_resolution_review_handoff_gate",
+    "fieldEvidenceMaterialResolutionFollowupEscalationStatusBoundary": "software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate",
+    "fieldEvidenceMaterialResolutionOwnerResponseIntakeBoundary": "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate",
+    "fieldEvidenceMaterialResolutionOwnerResponseReviewDecisionBoundary": "software_proof_docker_field_evidence_material_resolution_owner_response_review_decision_gate",
+    "fieldEvidenceMaterialResolutionOwnerResponseReviewHandoffBoundary": "software_proof_docker_field_evidence_material_resolution_owner_response_review_handoff_gate",
+    "fieldEvidenceMaterialResolutionReviewerAckIntakeBoundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
+    "verifiedTerminalResultMaterialIntakeBoundary": "software_proof_docker_verified_terminal_result_material_intake_gate",
+    "verifiedTerminalResultMaterialIntakeFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "verifiedTerminalResultMaterialReviewDecisionBoundary": "software_proof_docker_verified_terminal_result_material_review_decision_gate",
+    "verifiedTerminalResultMaterialReviewDecisionFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "verifiedTerminalResultMaterialReviewHandoffBoundary": "software_proof_docker_verified_terminal_result_material_review_handoff_gate",
+    "verifiedTerminalResultMaterialReviewHandoffFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
     "terminalActionBoundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
     "mobileDeviceEvidenceBoundary": "software_proof_docker_mobile_device_evidence_capture_gate",
     "mobileDeviceHandoffBoundary": "software_proof_docker_mobile_device_handoff_session_gate",
@@ -418,15 +488,30 @@ def run_config(args):
     """把默认 proof 与 fresh proof 隔离，保持旧 CLI 行为和 artifact 名称。"""
 
     fresh = bool(args.fresh_profile)
+    default_capability = (
+        "mobile_pwa_fresh_browser_proof"
+        if fresh else "mobile_current_pwa_field_trial_browser_proof"
+    )
+    capability = args.capability or default_capability
+    default_boundary = FRESH_EVIDENCE_BOUNDARY if fresh else EVIDENCE_BOUNDARY
+    evidence_boundary = args.evidence_boundary or default_boundary
+    artifact_prefix = (
+        capability if args.capability else (FRESH_ARTIFACT_PREFIX if fresh else DEFAULT_ARTIFACT_PREFIX)
+    )
+    summary_name = (
+        f"{capability}_summary.json"
+        if args.capability else (
+            "mobile_pwa_fresh_browser_proof_summary.json"
+            if fresh else "mobile_current_pwa_field_trial_browser_acceptance_summary.json"
+        )
+    )
     return {
         "fresh_profile": fresh,
         "require_console_zero": bool(args.require_console_zero),
-        "artifact_prefix": FRESH_ARTIFACT_PREFIX if fresh else DEFAULT_ARTIFACT_PREFIX,
-        "summary_name": (
-            "mobile_pwa_fresh_browser_proof_summary.json"
-            if fresh else "mobile_current_pwa_field_trial_browser_acceptance_summary.json"
-        ),
-        "evidence_boundary": FRESH_EVIDENCE_BOUNDARY if fresh else EVIDENCE_BOUNDARY,
+        "capability": capability,
+        "artifact_prefix": artifact_prefix,
+        "summary_name": summary_name,
+        "evidence_boundary": evidence_boundary,
         "proof_type": (
             "fresh local Chromium-family browser proof for current mobile/web PWA with isolated profile, "
             "console/runtime capture, service-worker cache recovery marker, and dynamic no-store assertions"
@@ -706,6 +791,7 @@ def viewport_script():
     const fieldTrialVerdict = document.getElementById('mobileRealDeviceFieldTrialEvidenceVerdictSafeCopy');
     const fieldTrialRetest = document.getElementById('mobileRealDeviceFieldTrialRetestExecutionSafeCopy');
     const routeElevatorHandoff = document.getElementById('routeElevatorFieldSessionHandoffBoundary');
+    const materialResolutionAck = document.getElementById('fieldEvidenceMaterialResolutionReviewerAckIntakeBoundary');
     const diag = document.getElementById('diagnosticsButton');
     const ack = document.getElementById('ackCopy');
     if (bundleBoundary && bundleBoundary.innerText.includes('software_proof_docker_mobile_browser_acceptance_bundle_gate') &&
@@ -720,6 +806,7 @@ def viewport_script():
         fieldTrialRecord && fieldTrialRecord.innerText.includes('trashbot.mobile_real_device_field_trial_evidence_record_copy.v1') &&
         fieldTrialVerdict && fieldTrialVerdict.innerText.includes('trashbot.mobile_real_device_field_trial_evidence_verdict_copy.v1') &&
         fieldTrialRetest && fieldTrialRetest.innerText.includes('trashbot.mobile_real_device_field_trial_retest_execution_copy.v1') &&
+        materialResolutionAck && materialResolutionAck.innerText.includes('software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate') &&
         diag && !diag.disabled && ack && ack.innerText.includes('不代表送达成功')) break;
     await sleep(100);
   }}
@@ -869,6 +956,24 @@ def viewport_script():
       document.getElementById('routeElevatorFieldSessionHandoffControls').innerText.includes('delivery_success=false') &&
       document.getElementById('routeElevatorFieldSessionHandoffControls').innerText.includes('primary_actions_enabled=false') &&
       document.getElementById('routeElevatorFieldSessionHandoffNotProven').innerText.includes('HIL'),
+    materialResolutionPanelsFailClosed:
+      [
+        'fieldEvidenceMaterialResolutionIntakeFlags',
+        'fieldEvidenceMaterialResolutionReviewDecisionFlags',
+        'fieldEvidenceMaterialResolutionReviewHandoffFlags',
+        'fieldEvidenceMaterialResolutionFollowupEscalationStatusFlags',
+        'fieldEvidenceMaterialResolutionOwnerResponseIntakeFlags',
+        'fieldEvidenceMaterialResolutionOwnerResponseReviewDecisionFlags',
+        'fieldEvidenceMaterialResolutionOwnerResponseReviewHandoffFlags',
+        'fieldEvidenceMaterialResolutionReviewerAckIntakeFlags'
+      ].every((id) => {{
+        const text = document.getElementById(id)?.innerText || '';
+        return text.includes('delivery_success=false') &&
+          text.includes('primary_actions_enabled=false') &&
+          text.includes('safe_to_control=false');
+      }}) &&
+      (document.getElementById('fieldEvidenceMaterialResolutionReviewerAckIntakeFlags')?.innerText || '')
+        .includes('not true phone/browser'),
     pwaInstallPromptVisible:
       document.getElementById('mobilePwaInstallPromptSafeCopy').innerText.includes('trashbot.mobile_pwa_install_prompt_evidence_package.v1') ||
       document.getElementById('mobilePwaInstallPromptSafeCopy').innerText.includes('trashbot.mobile_pwa_install_prompt_evidence_export_copy.v1'),
@@ -1060,6 +1165,7 @@ def judge_viewport(result, *, fresh_mode=False, service_worker_assertions=None, 
         "device_handoff_session_visible": bool(result.get("deviceHandoffVisible")),
         "route_elevator_field_session_handoff_visible": bool(result.get("routeElevatorFieldSessionHandoffVisible")),
         "route_elevator_field_session_handoff_fail_closed": bool(route_handoff_fail_closed),
+        "material_resolution_panels_fail_closed": bool(result.get("materialResolutionPanelsFailClosed")),
         "pwa_install_prompt_evidence_visible": bool(result.get("pwaInstallPromptVisible")),
         "real_device_retest_request_visible": bool(result.get("retestRequestVisible")),
         "real_device_retest_request_copyable": bool(result.get("retestRequestCopyable")),
@@ -1144,6 +1250,7 @@ def run_viewport(cdp, url, width, height, output_dir, config, service_worker_ass
         "screenshot": str(screenshot_path),
         "fresh_profile": bool(config["fresh_profile"]),
         "require_console_zero": bool(config["require_console_zero"]),
+        "capability": config["capability"],
         "evidence_boundary": config["evidence_boundary"],
         "compatible_evidence_boundary": COMPATIBLE_EVIDENCE_BOUNDARY,
         "refresh_evidence_boundary": REFRESH_EVIDENCE_BOUNDARY,
@@ -1170,6 +1277,16 @@ def parse_args():
         action="store_true",
         help="Fail when fresh browser proof records console.error, assert, Log error, or runtime exception events.",
     )
+    parser.add_argument(
+        "--capability",
+        default="",
+        help="Optional capability name to stamp into evidence artifacts and summaries.",
+    )
+    parser.add_argument(
+        "--evidence-boundary",
+        default="",
+        help="Optional evidence boundary override for this proof run.",
+    )
     return parser.parse_args()
 
 
@@ -1192,6 +1309,7 @@ def write_failure_summary(output_dir, config, *, browser="", error="", service_w
         },
         "fresh_profile": bool(config["fresh_profile"]),
         "require_console_zero": bool(config["require_console_zero"]),
+        "capability": config["capability"],
         "evidence_boundary": config["evidence_boundary"],
         "fresh_evidence_boundary": FRESH_EVIDENCE_BOUNDARY,
         "service_worker_static_assertions": service_worker_assertions or {},
@@ -1202,7 +1320,8 @@ def write_failure_summary(output_dir, config, *, browser="", error="", service_w
     }
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(
-        f"summary={summary_path} ok=false evidence_boundary={config['evidence_boundary']} "
+        f"summary={summary_path} ok=false capability={config['capability']} "
+        f"evidence_boundary={config['evidence_boundary']} "
         f"failure={str(error)[-300:]}"
     )
 
@@ -1254,6 +1373,7 @@ def main():
                         and judgment["device_handoff_session_visible"]
                         and judgment["route_elevator_field_session_handoff_visible"]
                         and judgment["route_elevator_field_session_handoff_fail_closed"]
+                        and judgment["material_resolution_panels_fail_closed"]
                         and judgment["pwa_install_prompt_evidence_visible"]
                         and judgment["real_device_retest_request_visible"]
                         and judgment["real_device_retest_request_copyable"]
@@ -1312,6 +1432,8 @@ def main():
                         f"{str(judgment['route_elevator_field_session_handoff_visible']).lower()} "
                         f"route_elevator_field_session_handoff_fail_closed="
                         f"{str(judgment['route_elevator_field_session_handoff_fail_closed']).lower()} "
+                        f"material_resolution_panels_fail_closed="
+                        f"{str(judgment['material_resolution_panels_fail_closed']).lower()} "
                         f"route_elevator_handoff_browser_proof={ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF} "
                         f"pwa_install_prompt_evidence_visible={str(judgment['pwa_install_prompt_evidence_visible']).lower()} "
                         f"real_device_retest_request_visible={str(judgment['real_device_retest_request_visible']).lower()} "
@@ -1368,6 +1490,7 @@ def main():
         "checks": per_viewport,
         "fresh_profile": bool(config["fresh_profile"]),
         "require_console_zero": bool(config["require_console_zero"]),
+        "capability": config["capability"],
         "evidence_boundary": config["evidence_boundary"],
         "compatible_evidence_boundary": COMPATIBLE_EVIDENCE_BOUNDARY,
         "refresh_evidence_boundary": REFRESH_EVIDENCE_BOUNDARY,
@@ -1390,6 +1513,7 @@ def main():
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(
         f"summary={summary_path} ok={str(all_passed).lower()} "
+        f"capability={config['capability']} "
         f"evidence_boundary={config['evidence_boundary']} "
         f"compatible_evidence_boundary={COMPATIBLE_EVIDENCE_BOUNDARY} "
         f"legacy_artifact_evidence_boundary={LEGACY_ARTIFACT_EVIDENCE_BOUNDARY} "

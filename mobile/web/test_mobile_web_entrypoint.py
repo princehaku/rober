@@ -3705,6 +3705,40 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
         self.assertIn("fresh_profile", gate)
         self.assertIn("not_proven", gate)
 
+    def test_current_panel_refresh_capability_covers_latest_read_only_panels(self):
+        gate = self.read_gate()
+        doc = DOC.read_text(encoding="utf-8")
+
+        # current-panel refresh 需要把最近新增的只读材料、云支持和 terminal-result 链纳入浏览器 proof。
+        self.assertIn("mobile_current_panel_browser_proof_refresh", gate)
+        self.assertIn("software_proof_docker_mobile_current_panel_browser_proof_refresh_gate", gate)
+        for token in (
+            "cloudReadinessTitle",
+            "cloudEvidenceBoundary",
+            "cloudSupportHandoffSafeExportTitle",
+            "cloudSupportHandoffSafeExportFlags",
+            "fieldEvidenceMaterialResolutionOwnerResponseIntakeTitle",
+            "fieldEvidenceMaterialResolutionOwnerResponseReviewDecisionTitle",
+            "fieldEvidenceMaterialResolutionReviewerAckIntakeTitle",
+            "verifiedTerminalResultMaterialIntakeTitle",
+            "verifiedTerminalResultMaterialReviewDecisionTitle",
+            "verifiedTerminalResultMaterialReviewHandoffTitle",
+        ):
+            self.assertIn(token, gate)
+        for token in (
+            "software_proof_docker_mobile_cloud_readiness_summary_gate",
+            "software_proof_docker_cloud_support_handoff_safe_export_gate",
+            "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
+            "software_proof_docker_verified_terminal_result_material_review_handoff_gate",
+            "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+        ):
+            self.assertIn(token, gate)
+
+        # 产品文档同步说明新 capability 仍只是本地 Chromium software proof，不是真机或送达证明。
+        self.assertIn("mobile_current_panel_browser_proof_refresh", doc)
+        self.assertIn("software_proof_docker_mobile_current_panel_browser_proof_refresh_gate", doc)
+        self.assertIn("not true phone/browser", doc)
+
 
 class HardwareSensorProcurementReceiptIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
