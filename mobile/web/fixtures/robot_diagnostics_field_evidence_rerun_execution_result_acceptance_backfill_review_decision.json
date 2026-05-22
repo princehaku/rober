@@ -1,0 +1,116 @@
+{
+  "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary.v1",
+    "schema_version": 1,
+    "source_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_backfill_review_decision.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary",
+    "source": "software_proof",
+    "review_decision": "needs_more_material",
+    "source_acceptance_backfill": "blocked_missing_backfill",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_acceptance_backfill_review_decision_fixture_20260522_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "accepted_categories": [
+      "accepted_categories=backfill summary shape is phone-safe",
+      "accepted_categories=decision can move to ready_for_field_rerun_result_acceptance_review_handoff after same evidence_ref materials"
+    ],
+    "missing_categories": [
+      "missing_categories=needs_more_material",
+      "missing_categories=real task record summary",
+      "missing_categories=real Nav2/fixed-route runtime log",
+      "missing_categories=real route completion signal",
+      "missing_categories=real elevator evidence",
+      "missing_categories=real dropoff/cancel completion",
+      "missing_categories=real delivery result",
+      "missing_categories=true phone/browser evidence"
+    ],
+    "blocked_categories": [
+      "blocked_categories=blocked_missing_backfill",
+      "blocked_categories=evidence_ref_mismatch",
+      "blocked_categories=success/control claims stay blocked"
+    ],
+    "rejected_categories": [
+      "rejected_categories=unsafe_rejected",
+      "rejected_categories=evidence_ref_mismatch"
+    ],
+    "owner_next_step": "owner_next_step=ready_for_field_rerun_result_acceptance_review_handoff only after same safe evidence_ref backfill is complete",
+    "safe_phone_copy": "现场证据复跑执行结果验收回填复核决策 safe copy: review_decision=needs_more_material, source=software_proof, not_proven, safe_to_control=false, delivery_success=false, primary_actions_enabled=false.",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "真实 task record",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 elevator evidence",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "true phone/browser evidence",
+      "HIL",
+      "O5 external proof"
+    ]
+  },
+  "field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary.v1",
+    "source": "software_proof",
+    "review_decision": "blocked_missing_backfill",
+    "source_acceptance_backfill": "blocked_missing_backfill",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_acceptance_backfill_review_decision_fixture_20260522_0001",
+    "same_evidence_ref_status": "same_evidence_ref_status=required_not_proven",
+    "missing_categories": [
+      "missing_categories=needs_more_material"
+    ],
+    "blocked_categories": [
+      "blocked_categories=blocked_missing_backfill"
+    ],
+    "rejected_categories": [
+      "rejected_categories=unsafe_rejected",
+      "rejected_categories=evidence_ref_mismatch"
+    ],
+    "owner_next_step": "owner_next_step=wait for same safe evidence_ref materials before handoff",
+    "safe_phone_copy": "fallback summary keeps现场证据复跑执行结果验收回填复核决策 read-only；not_proven。",
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "true phone/browser evidence"
+    ]
+  },
+  "field_evidence_rerun_execution_result_acceptance_backfill_review_decision": {
+    "summary": {
+      "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary.v1",
+      "source": "software_proof",
+      "review_decision": "blocked_missing_backfill",
+      "safe_evidence_ref": "field_evidence_rerun_execution_result_acceptance_backfill_review_decision_fixture_20260522_0001",
+      "missing_categories": [
+        "missing_categories=needs_more_material"
+      ],
+      "blocked_categories": [
+        "blocked_categories=blocked_missing_backfill"
+      ],
+      "rejected_categories": [
+        "rejected_categories=unsafe_rejected"
+      ],
+      "owner_next_step": "owner_next_step=ready_for_field_rerun_result_acceptance_review_handoff after same safe evidence_ref materials",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

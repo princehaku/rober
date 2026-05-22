@@ -916,6 +916,22 @@ acceptance backfill 固定检查八类回填材料：`task_record`、`nav2_fixed
 
 该 gate 只读取 acceptance packet 已白名单化的 summary 字段和 material-dir 中的脱敏元数据，不读取真实 Nav2 runtime、ROS graph、serial/UART、WAVE ROVER、真实电梯、外部云、真实手机/browser、raw task record、raw route completion signal、raw dropoff/cancel completion、raw delivery result 或 raw diagnostics，也不执行任何机器人动作。缺 source、坏 JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、acceptance packet 未 ready、缺任一回填材料、placeholder/template material、blocked/rejected material、unsafe copy、sensitive copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success/control claim、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_evidence_rerun_execution_result_acceptance_backfill_not_proven` 只表示 Docker/local gate 已把 packet 后的八类脱敏材料回填入口复账清楚，不是真实 field pass、真实 Nav2/fixed-route、真实电梯、dropoff/cancel completion、delivery result、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
 
+`pc-tools/evidence/field_evidence_rerun_execution_result_acceptance_backfill_review_decision.py` 只读上一节 `field_evidence_rerun_execution_result_acceptance_backfill` artifact、summary、Robot safe alias 或 wrapper/nested JSON，把 backfill 的 safe metadata、material completeness 和 same-`evidence_ref` alignment 转成 sanitized review decision：
+
+```bash
+python3 pc-tools/evidence/field_evidence_rerun_execution_result_acceptance_backfill_review_decision.py \
+  --acceptance-backfill-json /tmp/field_evidence_rerun_execution_result_acceptance_backfill_summary.json \
+  --evidence-ref ev-field-result-review-001 \
+  --output /tmp/field_evidence_rerun_execution_result_acceptance_backfill_review_decision.json \
+  --summary-output /tmp/field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary.json
+```
+
+输出 artifact 使用 `schema=trashbot.field_evidence_rerun_execution_result_acceptance_backfill_review_decision.v1`，summary 使用 `schema=trashbot.field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary.v1`，证据边界固定为 `software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_gate`。核心字段包括 `review_decision`、`allowed_review_decisions`、`decision_reasons`、safe `evidence_ref`、`source_acceptance_backfill`、`material_status`、`same_evidence_ref_alignment`、`owner_handoff`、`next_required_evidence`、`rerun_commands`、`safe_copy`、`source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false` 和 `primary_actions_enabled=false`。
+
+`review_decision` 只允许 `ready_for_field_rerun_result_acceptance_review_handoff`、`needs_more_material`、`evidence_ref_mismatch`、`unsafe_rejected` 和 `blocked_missing_backfill`。该 gate 继续只处理八类材料概念：task record、Nav2/fixed-route runtime log、route completion signal、elevator door state、target floor confirmation、human assistance record、dropoff/cancel completion or delivery result、true phone/browser evidence；顶层 acceptance command 可用 `python3 -m unittest pc-tools/evidence/test_field_evidence_rerun_execution_result_acceptance_backfill_review_decision.py` 运行离线围栏测试。
+
+该 gate 不重新读取 material-dir，不读取真实 task record、Nav2/fixed-route runtime log、route completion signal、电梯门/目标楼层证据、人工协助记录、dropoff/cancel completion、delivery result、true phone/browser evidence 或 raw diagnostics，不访问 ROS graph、serial/UART、WAVE ROVER、真实电梯、外部云、真实手机/browser，也不执行任何机器人动作。缺 source、坏 JSON、unsupported schema/boundary、source 不是 `source=software_proof` 或缺 `not_proven`、缺 safe `evidence_ref`、证据号不一致、弱类型 `same_evidence_ref_required`、backfill 未 ready、缺/拒绝任一回填材料、unsafe copy、sensitive copy、raw path/credential/ROS topic/serial/UART/WAVE ROVER detail、success/control claim、`safe_to_control=true`、`delivery_success=true` 或 `primary_actions_enabled=true` 都会 fail closed。`ready_for_field_rerun_result_acceptance_review_handoff` 只表示 Docker/local `software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_gate` 已把 acceptance backfill 复核成可交给下一步 owner handoff 的只读决策，不是真实 field rerun、真实 route/elevator pass、真实 Nav2/fixed-route、delivery result、delivery success、HIL、真实手机/browser 或 Objective 5 external proof。
+
 `pc-tools/evidence/field_evidence_real_material_request_dispatch.py` 只读上一节 `field_evidence_rerun_execution_result_acceptance_backfill` artifact、summary、Robot safe alias 或 wrapper/nested JSON 的 safe state，把同一 safe `evidence_ref` 下后续必须由 field owner 提供的真实材料转成 metadata-only request dispatch artifact / summary：
 
 ```bash

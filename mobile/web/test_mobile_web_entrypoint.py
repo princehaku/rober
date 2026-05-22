@@ -88,6 +88,10 @@ FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_BACKFILL_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill.json"
 )
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_BACKFILL_REVIEW_DECISION_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_review_decision.json"
+)
 FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_real_material_request_dispatch.json"
@@ -12070,6 +12074,167 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, acceptance_backfill_text)
+
+    def test_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_BACKFILL_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 验收回填复核决策只读消费 Robot safe alias，不新增 raw/material/review/handoff/control endpoint。
+        self.assertIn("FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_BACKFILL_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_BACKFILL_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeFieldEvidenceRerunExecutionResultAcceptanceBackfillReviewDecisionText", app)
+        self.assertIn("fieldEvidenceRerunExecutionResultAcceptanceBackfillReviewDecisionCandidate", app)
+        self.assertIn("fieldEvidenceRerunExecutionResultAcceptanceBackfillReviewDecisionFromStatus", app)
+        self.assertIn("renderFieldEvidenceRerunExecutionResultAcceptanceBackfillReviewDecision", app)
+        self.assertIn("现场证据复跑执行结果验收回填复核决策", app)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary",
+            app,
+        )
+        self.assertIn("field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary", app)
+        self.assertIn("field_evidence_rerun_execution_result_acceptance_backfill_review_decision?.summary", app)
+        self.assertIn("review_decision", app)
+        self.assertIn("missing_categories", app)
+        self.assertIn("blocked_categories", app)
+        self.assertIn("rejected_categories", app)
+        self.assertIn("owner_next_step", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceRerunExecutionResultAcceptanceBackfillReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotIn("copyFieldEvidenceRerunExecutionResultAcceptanceBackfillReviewDecisionButton", app)
+        self.assertNotIn("downloadFieldEvidenceRerunExecutionResultAcceptanceBackfillReviewDecisionButton", app)
+        self.assertNotIn("submitFieldEvidenceRerunExecutionResultAcceptanceBackfillReviewDecision", app)
+        self.assertNotIn("replayFieldEvidenceRerunExecutionResultAcceptanceBackfillReviewDecision", app)
+        self.assertNotIn("resubmitFieldEvidenceRerunExecutionResultAcceptanceBackfillReviewDecision", app)
+
+        # dedicated fixture 固定 needs_more_material / blocked_missing_backfill，不能打开三类主操作。
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary"
+        ]
+        fallback = dedicated_fixture[
+            "field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary"
+        ]
+        nested = dedicated_fixture[
+            "field_evidence_rerun_execution_result_acceptance_backfill_review_decision"
+        ]["summary"]
+        self.assertEqual(summary["review_decision"], "needs_more_material")
+        self.assertEqual(summary["source_acceptance_backfill"], "blocked_missing_backfill")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("missing_categories", summary)
+        self.assertIn("blocked_categories", summary)
+        self.assertIn("rejected_categories", summary)
+        self.assertIn("owner_next_step", summary)
+        self.assertEqual(fallback["review_decision"], "blocked_missing_backfill")
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["safe_to_control"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        self.assertIn(
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_gate",
+            dedicated_text,
+        )
+        self.assertIn("ready_for_field_rerun_result_acceptance_review_handoff", dedicated_text)
+        self.assertIn("needs_more_material", dedicated_text)
+        self.assertIn("evidence_ref_mismatch", dedicated_text)
+        self.assertIn("unsafe_rejected", dedicated_text)
+        self.assertIn("blocked_missing_backfill", dedicated_text)
+        self.assertIn("field_evidence_rerun_execution_result_acceptance_backfill_review_decision", doc)
+        self.assertIn("现场证据复跑执行结果验收回填复核决策", doc)
+        self.assertIn("not Objective 5 external proof", doc)
+
+    def test_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_BACKFILL_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        review_decision_text = json.dumps(
+            {
+                "review_decision":
+                    dedicated_fixture[
+                        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary"
+                    ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "field_evidence_rerun_execution_result_acceptance_backfill_review_decision"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # 复核决策 fixture 只保留分类和 owner next step，不泄漏 raw materials、routes、提交或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw packet",
+            "raw acceptance",
+            "raw backfill",
+            "raw material",
+            "raw review",
+            "raw decision",
+            "raw handoff",
+            "raw result",
+            "raw execution",
+            "full execution pack",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "material route",
+            "callback route",
+            "review route",
+            "handoff route",
+            "command replay",
+            "automatic resubmit",
+            "queue scheduling",
+            "execution scheduling",
+            "callback submission",
+            "review submission",
+            "handoff submission",
+            "result submission",
+            "acceptance submission",
+            "robot command",
+            "robot/internal",
+            "control authorization",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, review_decision_text)
 
     def test_field_evidence_real_material_request_dispatch_panel_is_fail_closed(self):
         app = self.read_web("app.js")

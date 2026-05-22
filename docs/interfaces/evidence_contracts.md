@@ -1634,6 +1634,68 @@ result, not delivery success, not HIL, not WAVE ROVER/UART feedback, not true
 phone/browser proof, not Objective 5 external cloud/4G/OSS/CDN/DB/queue proof,
 and not any primary robot action being enabled.
 
+## field_evidence_rerun_execution_result_acceptance_backfill_review_decision
+
+`pc-tools/evidence/field_evidence_rerun_execution_result_acceptance_backfill_review_decision.py`
+generates the PC-only review decision gate after
+`field_evidence_rerun_execution_result_acceptance_backfill.py`. It consumes only
+a safe acceptance backfill artifact/summary, Robot diagnostics safe alias, or
+wrapper/nested JSON. It does not scan the material directory again and does not
+read real Nav2 runtime, ROS graph state, serial/UART or WAVE ROVER data, real
+elevator systems, external cloud evidence, real phone/browser runtime state, or
+raw field artifacts.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_backfill_review_decision.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_backfill.v1` and
+  `trashbot.field_evidence_rerun_execution_result_acceptance_backfill_summary.v1`
+  under
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_gate`.
+
+Allowed `review_decision` values are exactly
+`ready_for_field_rerun_result_acceptance_review_handoff`,
+`needs_more_material`, `evidence_ref_mismatch`, `unsafe_rejected`, and
+`blocked_missing_backfill`. The decision is derived only from safe
+`source=software_proof` metadata, `not_proven`, safe `evidence_ref`,
+`same_evidence_ref_required=true`, material completeness, missing/rejected
+material lists, and same-evidence alignment. The material concepts are task
+record, Nav2/fixed-route runtime log, route completion signal, elevator door
+state, target floor confirmation, human assistance record, dropoff/cancel
+completion or delivery result, and true phone/browser evidence; these are
+category names only and do not imply raw material validation.
+
+The output always includes `source=software_proof`, `review_decision`,
+`allowed_review_decisions`, `decision_reasons`, safe `evidence_ref`,
+`source_acceptance_backfill`, `material_status`,
+`same_evidence_ref_alignment`, `owner_handoff`, `next_required_evidence`,
+`rerun_commands`, `safe_copy`, `not_proven`, `safe_to_control=false`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_gate`.
+
+Missing source, bad JSON, unsupported schema/boundary, source not marked as
+`source=software_proof` with `not_proven`, missing safe `evidence_ref`,
+evidence_ref mismatch, weak `same_evidence_ref_required`, non-ready acceptance
+backfill, missing materials, rejected materials, unsafe or sensitive copy, raw
+local paths, credentials, ROS topics, `/cmd_vel`, serial/UART/WAVE ROVER
+details, checksums, complete/raw artifacts, tracebacks, success/control claims,
+`safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` all fail closed to one of the allowed review
+decisions.
+
+This contract is software proof only. A ready review decision means the
+metadata-only acceptance backfill can move to the next owner handoff while
+remaining fail-closed. It is not real field rerun proof, not real route/elevator
+field pass, not real Nav2/fixed-route execution, not task record validation, not
+route completion signal validation, not dropoff/cancel completion, not delivery
+result, not delivery success, not HIL, not WAVE ROVER/UART feedback, not true
+phone/browser proof, not Objective 5 external cloud/4G/OSS/CDN/DB/queue proof,
+and not any primary robot action being enabled.
+
 ## field_evidence_real_material_request_dispatch
 
 `pc-tools/evidence/field_evidence_real_material_request_dispatch.py` generates
