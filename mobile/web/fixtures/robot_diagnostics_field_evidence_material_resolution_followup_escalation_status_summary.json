@@ -1,0 +1,122 @@
+{
+  "robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_followup_escalation_status_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_followup_escalation_status.v1",
+    "capability": "field_evidence_material_resolution_followup_escalation_status",
+    "source": "software_proof",
+    "followup_status": "escalated_for_owner_action_not_proven",
+    "followup_status_options": [
+      "pending_owner_response_not_proven",
+      "overdue_owner_response_not_proven",
+      "escalated_for_owner_action_not_proven",
+      "blocked_missing_review_handoff_not_proven",
+      "blocked_unsafe_review_handoff_not_proven"
+    ],
+    "owner": "owner=field_owner_backfills_real_materials",
+    "due_status": "due_status=overdue_owner_response_material",
+    "escalation_state": "escalation_state=escalate_to_owner_action",
+    "owner_response_material_status": "owner response material=missing",
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_followup_escalation_status_fixture_20260522_0001",
+    "previous_handoff_ref": "previous_handoff_ref=43a3f01",
+    "previous_review_decision_ref": "previous_review_decision_ref=a384c84",
+    "blocked_reason": "blocked_reason=missing owner response material",
+    "next_required_evidence": [
+      "next_required_evidence=owner response material on same safe evidence_ref",
+      "next_required_evidence=true phone browser note",
+      "next_required_evidence=route elevator runtime summary",
+      "next_required_evidence=verified terminal result material"
+    ],
+    "owner_action": [
+      "owner_action=escalate field owner for missing owner response material",
+      "owner_action=collect same safe evidence_ref material before any OKR lift"
+    ],
+    "safe_copy": "owner response material missing; escalate for owner action; source=software_proof; not_proven; primary_actions_enabled=false; delivery_success=false",
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate",
+    "proof_boundary": "software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "owner_response_material_missing",
+      "true_phone_browser_proof_missing",
+      "route_elevator_runtime_missing",
+      "dropoff_completion_missing",
+      "cancel_completion_missing",
+      "hardware_hil_missing",
+      "o5_external_proof_missing"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_followup_escalation_status_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_followup_escalation_status_summary.v1",
+    "capability": "field_evidence_material_resolution_followup_escalation_status",
+    "source": "software_proof",
+    "followup_status": "pending_owner_response_not_proven",
+    "owner": "owner=product_owner_keeps_not_proven_boundary",
+    "due_status": "due_status=owner_response_material_pending",
+    "escalation_state": "escalation_state=watch_owner_sla",
+    "owner_response_material_status": "owner response material=pending",
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_followup_escalation_status_fixture_20260522_0001",
+    "previous_handoff_ref": "previous_handoff_ref=43a3f01",
+    "previous_review_decision_ref": "previous_review_decision_ref=a384c84",
+    "blocked_reason": "blocked_reason=owner response material pending",
+    "next_required_evidence": [
+      "next_required_evidence=same safe evidence_ref owner response material"
+    ],
+    "owner_action": [
+      "owner_action=escalate if owner response material stays missing"
+    ],
+    "safe_copy": "owner response material pending; source=software_proof; not_proven; primary_actions_enabled=false; delivery_success=false",
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "field_evidence_material_resolution_followup_escalation_status": {
+    "summary": {
+      "schema": "trashbot.field_evidence_material_resolution_followup_escalation_status_summary.v1",
+      "capability": "field_evidence_material_resolution_followup_escalation_status",
+      "source": "software_proof",
+      "followup_status": "blocked_missing_review_handoff_not_proven",
+      "owner": "owner=field_owner_backfills_real_materials",
+      "due_status": "due_status=owner_response_material_missing",
+      "escalation_state": "escalation_state=escalate_after_missing_handoff",
+      "owner_response_material_status": "owner response material=missing",
+      "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_followup_escalation_status_fixture_20260522_0001",
+      "previous_handoff_ref": "previous_handoff_ref=43a3f01",
+      "previous_review_decision_ref": "previous_review_decision_ref=a384c84",
+      "blocked_reason": "blocked_reason=missing sanitized review handoff summary",
+      "next_required_evidence": [
+        "next_required_evidence=canonical Robot summary before owner action"
+      ],
+      "owner_action": [
+        "owner_action=escalate owner only after canonical summary exists"
+      ],
+      "safe_copy": "canonical summary missing; source=software_proof; not_proven; primary_actions_enabled=false; delivery_success=false",
+      "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "phone_action_feedback": {
+    "primary_actions_enabled": false,
+    "delivery_success": false,
+    "safe_to_control": false
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

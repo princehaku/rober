@@ -616,6 +616,23 @@ FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEW_HANDOFF_STATUSES = (
     "blocked_missing_review_decision_not_proven",
     "blocked_unsafe_handoff_not_proven",
 )
+FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_SCHEMA = (
+    "trashbot.field_evidence_material_resolution_followup_escalation_status.v1"
+)
+FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.field_evidence_material_resolution_followup_escalation_status_summary.v1"
+)
+FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary.v1"
+)
+FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_GATE = (
+    "software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate"
+)
+FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUSES = (
+    "pending_owner_response_not_proven",
+    "overdue_owner_response_not_proven",
+    "escalated_for_owner_action_not_proven",
+)
 ROUTE_TASK_FIELD_RETEST_EVIDENCE_DISPATCH_SCHEMA = (
     "trashbot.route_task_field_retest_evidence_dispatch.v1"
 )
@@ -11030,6 +11047,49 @@ def _field_evidence_material_resolution_review_handoff_not_proven(
     return values
 
 
+def _field_evidence_material_resolution_followup_escalation_status_not_proven(
+    followup=None,
+    summary_fragment=None,
+):
+    # follow-up escalation 只说明 owner response 缺口状态，不能证明 reviewer resolved 或材料齐备。
+    source_values = []
+    for item in (followup, summary_fragment):
+        if isinstance(item, dict) and isinstance(item.get("not_proven"), list):
+            source_values.extend(item.get("not_proven"))
+        if isinstance(item, dict) and isinstance(item.get("next_required_evidence"), list):
+            source_values.extend(item.get("next_required_evidence"))
+    required = (
+        "field_evidence_material_resolution_followup_escalation_status_only",
+        "owner_response_material_missing_or_pending",
+        "followup_status_not_readiness",
+        "escalation_status_not_control_authorization",
+        "pr5_PRRT_kwDOSWB9286CJ3tX_unresolved",
+        "comment_3269642220_not_reviewer_resolution",
+        "hardware_material_pending",
+        "route_elevator_field_result_not_verified",
+        "verified_terminal_delivery_result_not_verified",
+        "true_phone_browser_evidence_not_verified",
+        "real_cloud_external_proof_not_verified",
+        "hardware_hil_not_verified",
+        "delivery_success",
+        "primary_actions_enabled",
+        "safe_to_control",
+    )
+    values = []
+    for item in list(source_values) + list(required):
+        safe_item = _redact_route_task_rehearsal_text(item)
+        lowered = safe_item.lower()
+        # raw/path/checksum/HIL pass 线索只用于阻断，不能进入可见 not_proven 字段。
+        if any(
+            marker in lowered
+            for marker in ("raw", "path", "checksum", "hil pass", "[redacted")
+        ):
+            continue
+        if safe_item and safe_item not in values:
+            values.append(safe_item)
+    return values
+
+
 def _default_field_evidence_real_material_owner_ack_intake_summary(
     path,
     status="blocked_missing_field_evidence_real_material_owner_ack_intake",
@@ -11413,6 +11473,88 @@ def _default_field_evidence_material_resolution_review_handoff_summary(
         "boundary": FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEW_HANDOFF_GATE,
         "proof_boundary": FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEW_HANDOFF_GATE,
         "not_proven": _field_evidence_material_resolution_review_handoff_not_proven(),
+        "metadata_only": True,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+    }
+
+
+def _default_field_evidence_material_resolution_followup_escalation_status_summary(
+    path,
+    followup_status="pending_owner_response_not_proven",
+    read_error="",
+):
+    # 缺 follow-up status 时也要返回完整 false 栅栏，避免 diagnostics 被误读成 owner ready。
+    safe_copy = (
+        "Field evidence material resolution follow-up escalation status is "
+        "metadata-only; source=software_proof; not_proven; "
+        "safe_to_control=false; delivery_success=false; "
+        "primary_actions_enabled=false; owner response material missing."
+    )
+    reason = read_error or (
+        "field evidence material resolution follow-up escalation status is not configured"
+    )
+    return {
+        "schema": (
+            FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_SUMMARY_SCHEMA
+        ),
+        "schema_version": 1,
+        "evidence_boundary": (
+            FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_GATE
+        ),
+        "capability": "field_evidence_material_resolution_followup_escalation_status",
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "followup_status": followup_status,
+        "status": followup_status,
+        "overall_status": "not_proven",
+        "followup_review_status": {
+            "status": followup_status,
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": reason,
+        },
+        "previous_handoff_ref": "",
+        "previous_review_decision_ref": "",
+        "owner_response_material_status": "missing",
+        "due_status": "",
+        "blocked_reason": reason,
+        "next_required_evidence": [],
+        "owner_action": "",
+        "ceo_escalation_recommendation": "",
+        "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+        "pr5_thread_state": "unresolved",
+        "pr5_material_state": "hardware_material_pending",
+        "pr5_reply_comment_id": "3269642220",
+        "pr5_reply_resolution_claim": "not_reviewer_resolution",
+        "robot_diagnostics_summary": {
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+        },
+        "robot_compatible_summary": {"status": followup_status, "reason": reason},
+        "boundary": FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_GATE,
+        "proof_boundary": (
+            FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_GATE
+        ),
+        "not_proven": (
+            _field_evidence_material_resolution_followup_escalation_status_not_proven()
+        ),
         "metadata_only": True,
         "safe_to_control": False,
         "delivery_success": False,
@@ -18706,6 +18848,25 @@ def _field_evidence_material_resolution_review_handoff_source_contract(value):
     return source_schema, source_boundary
 
 
+def _field_evidence_material_resolution_followup_escalation_status_source_contract(
+    value,
+):
+    # follow-up escalation status 只信任 PC safe summary；artifact wrapper 必须嵌套 summary。
+    value = value if isinstance(value, dict) else {}
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema in {
+        FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_SOURCE_SUMMARY_SCHEMA,
+        FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_SUMMARY_SCHEMA,
+    }:
+        source_schema = str(
+            value.get("source_schema")
+            or FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _field_evidence_material_blocker_escalation_pack_has_unsafe_fields(value):
     # Robot diagnostics 只展示白名单摘要；路径、凭证、checksum、topic、串口和控制字段一律阻断。
     unsafe_key_fragments = (
@@ -19137,6 +19298,152 @@ def _field_evidence_material_resolution_review_handoff_has_unsafe_fields(value):
         "operation succeeded",
         "ready=true",
         "readiness=true",
+        "passed",
+        " pass",
+    )
+    return any(marker in text for marker in unsafe_text_fragments)
+
+
+def _field_evidence_material_resolution_followup_escalation_status_has_unsafe_fields(
+    value,
+):
+    # escalation status 是 read-only support metadata，任何 raw GitHub/ROS/硬件/控制字段都 fail closed。
+    unsafe_key_fragments = (
+        "raw",
+        "artifact_path",
+        "artifact_ref",
+        "complete_artifact",
+        "full_artifact",
+        "local_path",
+        "path",
+        "checksum",
+        "credential",
+        "secret",
+        "token",
+        "authorization",
+        "bearer",
+        "ros_topic",
+        "topic",
+        "cmd_vel",
+        "serial",
+        "uart",
+        "baud",
+        "wave_rover",
+        "ack",
+        "cursor",
+        "command",
+        "traceback",
+        "db_url",
+        "queue_url",
+        "oss",
+        "github_raw",
+        "reviewer_resolution",
+    )
+    safe_keys = {
+        "schema",
+        "schema_version",
+        "capability",
+        "source",
+        "source_schema",
+        "source_schema_version",
+        "source_evidence_boundary",
+        "evidence_boundary",
+        "boundary",
+        "proof_boundary",
+        "safe_evidence_ref",
+        "evidence_ref",
+        "followup_status",
+        "status",
+        "overall_status",
+        "followup_review_status",
+        "status_summary",
+        "verdict",
+        "reason",
+        "previous_handoff_ref",
+        "previous_review_decision_ref",
+        "owner_response_material_status",
+        "due_status",
+        "blocked_reason",
+        "next_required_evidence",
+        "owner_action",
+        "owner_next_action",
+        "ceo_escalation_recommendation",
+        "pr5_thread_id",
+        "pr5_thread_state",
+        "pr5_material_state",
+        "pr5_reply_comment_id",
+        "pr5_reply_resolution_claim",
+        "robot_diagnostics_summary",
+        "robot_compatible_summary",
+        "safe_copy",
+        "safe_phone_copy",
+        "not_proven",
+        "safe_to_control",
+        "delivery_success",
+        "primary_actions_enabled",
+        "metadata_only",
+        "boundary_flags",
+        "field_evidence_material_resolution_followup_escalation_status_summary",
+        "robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary",
+        "diagnostics",
+        "summary",
+        "diagnostics_summary",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text not in safe_keys and any(
+                fragment in key_text for fragment in unsafe_key_fragments
+            ):
+                return True
+            if (
+                _field_evidence_material_resolution_followup_escalation_status_has_unsafe_fields(
+                    item
+                )
+            ):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _field_evidence_material_resolution_followup_escalation_status_has_unsafe_fields(
+                item
+            )
+            for item in value
+        )
+    text = str(value or "").strip().lower()
+    unsafe_text_fragments = (
+        "/cmd_vel",
+        "/dev/tty",
+        "ttyusb",
+        "wave rover",
+        "wave_rover",
+        "traceback",
+        "checksum",
+        "bearer",
+        "authorization",
+        "credential",
+        "secret",
+        "token",
+        "ack payload",
+        "cursor payload",
+        "complete artifact",
+        "raw github",
+        "delivery success",
+        "delivery_success=true",
+        "primary_actions_enabled=true",
+        "safe_to_control=true",
+        "start delivery",
+        "confirm dropoff",
+        "control enabled",
+        "cancel enabled",
+        "reviewer resolved",
+        "thread resolved",
+        "success=true",
+        "operation succeeded",
+        "field pass",
+        "cloud proof",
+        "phone proof",
+        "hil pass",
         "passed",
         " pass",
     )
@@ -59508,6 +59815,390 @@ def summarize_field_evidence_material_resolution_review_handoff(source):
     return summary
 
 
+def summarize_field_evidence_material_resolution_followup_escalation_status(source):
+    """构建 field evidence material resolution follow-up escalation 的 Robot-safe 摘要。"""
+    # Robot 只发布 owner response 缺口状态；不能把 escalate/pending 转成 readiness 或控制许可。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = (
+        _default_field_evidence_material_resolution_followup_escalation_status_summary(
+            source_path,
+            read_error=(
+                "field_evidence_material_resolution_followup_escalation_status "
+                "summary is not configured"
+            ),
+        )
+    )
+    if isinstance(source, dict):
+        followup_doc = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = (
+                "field_evidence_material_resolution_followup_escalation_status "
+                "summary artifact missing"
+            )
+            summary["followup_review_status"]["reason"] = summary["read_error"]
+            summary["followup_review_status"]["status"] = "missing"
+            summary["status"] = "missing"
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                followup_doc = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                "failed reading field_evidence_material_resolution_followup_escalation_status "
+                f"summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["followup_review_status"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(followup_doc, dict):
+        summary["followup_review_status"]["reason"] = (
+            "field_evidence_material_resolution_followup_escalation_status JSON must be an object"
+        )
+        return summary
+
+    diagnostics = (
+        followup_doc.get("diagnostics")
+        if isinstance(followup_doc.get("diagnostics"), dict)
+        else {}
+    )
+    raw_schema = str(followup_doc.get("schema") or "")
+    source_schema, source_boundary = (
+        _field_evidence_material_resolution_followup_escalation_status_source_contract(
+            followup_doc
+        )
+    )
+    if raw_schema in {
+        FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_SOURCE_SUMMARY_SCHEMA,
+        FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_SUMMARY_SCHEMA,
+    }:
+        summary_fragment = followup_doc
+    else:
+        summary_fragment = {}
+        for candidate in (
+            followup_doc.get(
+                "field_evidence_material_resolution_followup_escalation_status_summary"
+            ),
+            followup_doc.get(
+                "robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary"
+            ),
+            followup_doc.get("diagnostics_summary"),
+            followup_doc.get("robot_diagnostics_summary"),
+            followup_doc.get("robot_compatible_summary"),
+            followup_doc.get("summary"),
+            diagnostics.get(
+                "field_evidence_material_resolution_followup_escalation_status_summary"
+            ),
+            diagnostics.get(
+                "robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary"
+            ),
+            diagnostics.get("diagnostics_summary"),
+            diagnostics.get("summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if summary_fragment:
+        nested_schema, nested_boundary = (
+            _field_evidence_material_resolution_followup_escalation_status_source_contract(
+                summary_fragment
+            )
+        )
+        if nested_schema:
+            source_schema, source_boundary = nested_schema, nested_boundary
+
+    status_doc = (
+        summary_fragment.get("followup_review_status")
+        if isinstance(summary_fragment.get("followup_review_status"), dict)
+        else summary_fragment.get("followup_status")
+        if isinstance(summary_fragment.get("followup_status"), dict)
+        else summary_fragment.get("escalation_status")
+        if isinstance(summary_fragment.get("escalation_status"), dict)
+        else summary_fragment.get("status_summary")
+        if isinstance(summary_fragment.get("status_summary"), dict)
+        else {}
+    )
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    safe_copy_text = _redact_route_task_rehearsal_text(safe_copy)
+    if "delivery_success=false" not in safe_copy_text:
+        # copy 是下游 UI 直接展示字段，因此强制追加软件证明和三 false flags。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false; owner response material missing."
+        )
+    followup_status = _redact_route_task_rehearsal_text(
+        summary_fragment.get("followup_status")
+        if isinstance(summary_fragment.get("followup_status"), str)
+        else status_doc.get("status")
+        or summary_fragment.get("status")
+        or "pending_owner_response_not_proven"
+    )
+    owner_response_status = _redact_route_task_rehearsal_text(
+        summary_fragment.get("owner_response_material_status")
+        or followup_doc.get("owner_response_material_status")
+        or "missing"
+    )
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or followup_doc.get("safe_evidence_ref")
+        or followup_doc.get("evidence_ref", "")
+    )
+    reason = _redact_route_task_rehearsal_text(
+        summary_fragment.get("reason")
+        or status_doc.get("reason")
+        or "owner response material is still missing or pending"
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                summary_fragment.get("source_schema_version")
+                or summary_fragment.get("schema_version")
+                or followup_doc.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or EVIDENCE_SOURCE_SOFTWARE
+            ),
+            "exists": True,
+            "safe_evidence_ref": safe_evidence_ref,
+            "followup_status": followup_status,
+            "status": followup_status,
+            "overall_status": "not_proven",
+            "followup_review_status": {
+                "status": followup_status,
+                "verdict": "not_proven",
+                "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                "reason": reason,
+            },
+            "previous_handoff_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("previous_handoff_ref")
+                or followup_doc.get("previous_handoff_ref")
+            ),
+            "previous_review_decision_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("previous_review_decision_ref")
+                or followup_doc.get("previous_review_decision_ref")
+            ),
+            "owner_response_material_status": owner_response_status,
+            "due_status": _redact_route_task_rehearsal_text(
+                summary_fragment.get("due_status") or followup_doc.get("due_status")
+            ),
+            "blocked_reason": _redact_route_task_rehearsal_text(
+                summary_fragment.get("blocked_reason")
+                or followup_doc.get("blocked_reason")
+                or reason
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "owner_action": _redact_route_task_rehearsal_text(
+                summary_fragment.get("owner_action")
+                or summary_fragment.get("owner_next_action")
+                or followup_doc.get("owner_action")
+            ),
+            "ceo_escalation_recommendation": _redact_route_task_rehearsal_text(
+                summary_fragment.get("ceo_escalation_recommendation")
+                or followup_doc.get("ceo_escalation_recommendation")
+            ),
+            "pr5_thread_id": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_thread_id")
+                or followup_doc.get("pr5_thread_id")
+                or "PRRT_kwDOSWB9286CJ3tX"
+            ),
+            "pr5_thread_state": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_thread_state")
+                or followup_doc.get("pr5_thread_state")
+                or "unresolved"
+            ),
+            "pr5_material_state": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_material_state")
+                or followup_doc.get("pr5_material_state")
+                or "hardware_material_pending"
+            ),
+            "pr5_reply_comment_id": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_reply_comment_id")
+                or followup_doc.get("pr5_reply_comment_id")
+                or "3269642220"
+            ),
+            "pr5_reply_resolution_claim": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_reply_resolution_claim")
+                or followup_doc.get("pr5_reply_resolution_claim")
+                or "not_reviewer_resolution"
+            ),
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "safe_copy": safe_copy_text,
+                "safe_phone_copy": safe_copy_text,
+                "status": followup_status,
+            },
+            "not_proven": (
+                _field_evidence_material_resolution_followup_escalation_status_not_proven(
+                    followup_doc,
+                    summary_fragment,
+                )
+            ),
+            "read_error": "",
+        }
+    )
+    required_safe_metadata = (
+        bool(summary_fragment),
+        bool(summary["safe_evidence_ref"]),
+        followup_status
+        in FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUSES,
+        owner_response_status in {"missing", "pending", "escalate"},
+        bool(summary["previous_handoff_ref"]),
+        bool(summary["previous_review_decision_ref"]),
+        bool(summary["due_status"]),
+        bool(summary["blocked_reason"]),
+        bool(summary["next_required_evidence"]),
+        bool(summary["owner_action"]),
+        bool(summary["ceo_escalation_recommendation"]),
+        summary["pr5_thread_id"] == "PRRT_kwDOSWB9286CJ3tX",
+        summary["pr5_thread_state"] == "unresolved",
+        summary["pr5_material_state"] == "hardware_material_pending",
+        summary["pr5_reply_comment_id"] == "3269642220",
+        summary["pr5_reply_resolution_claim"] == "not_reviewer_resolution",
+    )
+    boundary_flags = _safe_pc_route_debug_dict(summary_fragment.get("boundary_flags")) or {}
+    unsafe_material = any(
+        _field_evidence_material_resolution_followup_escalation_status_has_unsafe_fields(
+            item
+        )
+        for item in (
+            status_doc,
+            summary["next_required_evidence"],
+            robot_summary,
+            safe_copy,
+            safe_copy_text,
+        )
+    )
+    if not summary_fragment:
+        summary["followup_review_status"]["status"] = (
+            "blocked_missing_field_evidence_material_resolution_followup_escalation_status_summary"
+        )
+        summary["status"] = summary["followup_review_status"]["status"]
+        return summary
+    if (
+        source_schema
+        != FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_SCHEMA
+        or source_boundary
+        != FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_GATE
+    ):
+        summary["followup_review_status"] = {
+            "status": (
+                "blocked_unsupported_field_evidence_material_resolution_followup_escalation_status"
+            ),
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": (
+                "field evidence material resolution follow-up escalation status "
+                "schema or boundary is unsupported"
+            ),
+        }
+        summary["status"] = summary["followup_review_status"]["status"]
+        return summary
+    if summary["source"] != EVIDENCE_SOURCE_SOFTWARE:
+        summary["followup_review_status"]["status"] = (
+            "blocked_unsupported_field_evidence_material_resolution_followup_escalation_status"
+        )
+        summary["followup_review_status"]["reason"] = (
+            "field evidence material resolution follow-up escalation status must remain software_proof"
+        )
+        summary["status"] = summary["followup_review_status"]["status"]
+        return summary
+    if not all(required_safe_metadata):
+        summary["followup_review_status"]["status"] = (
+            "blocked_missing_field_evidence_material_resolution_followup_escalation_status_materials"
+        )
+        summary["followup_review_status"]["reason"] = (
+            "field evidence material resolution follow-up escalation status is missing required safe metadata"
+        )
+        summary["status"] = summary["followup_review_status"]["status"]
+        return summary
+    if (
+        summary_fragment.get("safe_to_control") is not False
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or bool(boundary_flags.get("control_entrypoint_enabled"))
+        or bool(boundary_flags.get("readiness_enabled"))
+        or unsafe_material
+        or _field_evidence_material_resolution_followup_escalation_status_has_unsafe_fields(
+            followup_doc
+        )
+        or _field_evidence_material_resolution_followup_escalation_status_has_unsafe_fields(
+            summary_fragment
+        )
+        or _field_evidence_material_resolution_followup_escalation_status_has_unsafe_fields(
+            robot_summary
+        )
+    ):
+        blocked_copy = (
+            "Field evidence material resolution follow-up escalation status was "
+            "blocked because summary fields could expose unsafe artifacts, raw "
+            "GitHub data, credentials, ROS topics, serial/UART details, WAVE ROVER "
+            "parameters, readiness, reviewer resolution, or truthy success/control "
+            "wording; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "followup_status": "blocked_unsafe_followup_escalation_not_proven",
+                "status": (
+                    "blocked_unsafe_field_evidence_material_resolution_followup_escalation_status"
+                ),
+                "followup_review_status": {
+                    "status": (
+                        "blocked_unsafe_field_evidence_material_resolution_followup_escalation_status"
+                    ),
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": (
+                        "unsafe artifact, raw GitHub, credential, ROS topic, "
+                        "serial/UART, WAVE ROVER, readiness, reviewer-resolution, "
+                        "control, path, or success material"
+                    ),
+                },
+                "safe_evidence_ref": "",
+                "previous_handoff_ref": "",
+                "previous_review_decision_ref": "",
+                "owner_response_material_status": "missing",
+                "due_status": "",
+                "blocked_reason": "",
+                "next_required_evidence": [],
+                "owner_action": "",
+                "ceo_escalation_recommendation": "",
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "status": "blocked_unsafe_followup_escalation_not_proven",
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+            }
+        )
+    return summary
+
+
 def summarize_route_task_rehearsal_execution_bundle(path):
     """构建只读、仅元数据的 route/task rehearsal execution bundle 摘要。"""
     bundle_path = os.path.expanduser(str(path or ""))
@@ -63299,6 +63990,7 @@ def build_diagnostics_payload(
     field_evidence_material_resolution_intake_ref="",
     field_evidence_material_resolution_review_decision_ref="",
     field_evidence_material_resolution_review_handoff_ref="",
+    field_evidence_material_resolution_followup_escalation_status_ref="",
     elevator_field_evidence_trace_callback_intake_ref="",
     elevator_field_evidence_trace_callback_review_decision_ref="",
     elevator_field_evidence_trace_callback_review_handoff_ref="",
@@ -63650,6 +64342,63 @@ def build_diagnostics_payload(
         else diagnostics_source.get("field_evidence_material_resolution_review_handoff")
         if isinstance(
             diagnostics_source.get("field_evidence_material_resolution_review_handoff"),
+            dict,
+        )
+        else {}
+    )
+    field_evidence_material_resolution_followup_escalation_status_preserved_source = (
+        latest_status.get(
+            "robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "field_evidence_material_resolution_followup_escalation_status_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "field_evidence_material_resolution_followup_escalation_status_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "field_evidence_material_resolution_followup_escalation_status"
+        )
+        if isinstance(
+            latest_status.get(
+                "field_evidence_material_resolution_followup_escalation_status"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "field_evidence_material_resolution_followup_escalation_status_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "field_evidence_material_resolution_followup_escalation_status_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "field_evidence_material_resolution_followup_escalation_status"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "field_evidence_material_resolution_followup_escalation_status"
+            ),
             dict,
         )
         else {}
@@ -66921,6 +67670,22 @@ def build_diagnostics_payload(
         None,
     )
     latest_status.pop("field_evidence_material_resolution_review_handoff_copy", None)
+    latest_status.pop(
+        "field_evidence_material_resolution_followup_escalation_status",
+        None,
+    )
+    latest_status.pop(
+        "field_evidence_material_resolution_followup_escalation_status_summary",
+        None,
+    )
+    latest_status.pop(
+        "robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary",
+        None,
+    )
+    latest_status.pop(
+        "field_evidence_material_resolution_followup_escalation_status_copy",
+        None,
+    )
     latest_status.pop("elevator_action_feedback_trace", None)
     latest_status.pop("robot_diagnostics_elevator_action_feedback_trace_summary", None)
     latest_status.pop("elevator_field_evidence_trace_callback_intake", None)
@@ -69051,6 +69816,23 @@ def build_diagnostics_payload(
             field_evidence_material_resolution_review_handoff_source
         )
     )
+    field_evidence_material_resolution_followup_escalation_status_source = (
+        field_evidence_material_resolution_followup_escalation_status_ref
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_SUMMARY",
+            "",
+        )
+        or field_evidence_material_resolution_followup_escalation_status_preserved_source
+    )
+    field_evidence_material_resolution_followup_escalation_status_summary = (
+        summarize_field_evidence_material_resolution_followup_escalation_status(
+            field_evidence_material_resolution_followup_escalation_status_source
+        )
+    )
     return status_payload(
         "diagnostics_ready",
         "diagnostics package ready",
@@ -69780,6 +70562,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_field_evidence_material_resolution_review_handoff_summary=(
             field_evidence_material_resolution_review_handoff_summary
+        ),
+        field_evidence_material_resolution_followup_escalation_status=(
+            field_evidence_material_resolution_followup_escalation_status_summary
+        ),
+        field_evidence_material_resolution_followup_escalation_status_summary=(
+            field_evidence_material_resolution_followup_escalation_status_summary
+        ),
+        robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary=(
+            field_evidence_material_resolution_followup_escalation_status_summary
         ),
         elevator_action_feedback_trace=elevator_action_feedback_trace_summary,
         robot_diagnostics_elevator_action_feedback_trace_summary=(

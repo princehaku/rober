@@ -2280,6 +2280,61 @@ prove real external cloud, real phone/browser, real route/elevator field pass,
 HIL, verified terminal result, dropoff/cancel completion, PR #5 resolution,
 delivery success, or any primary robot action being enabled.
 
+## field_evidence_material_resolution_followup_escalation_status
+
+`pc-tools/evidence/field_evidence_material_resolution_followup_escalation_status.py`
+generates the PC-only escalation-status gate after
+`field_evidence_material_resolution_review_handoff.py`.
+
+- Artifact schema:
+  `trashbot.field_evidence_material_resolution_followup_escalation_status.v1`
+- Summary schema:
+  `trashbot.field_evidence_material_resolution_followup_escalation_status_summary.v1`
+- Robot diagnostics alias:
+  `robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_material_resolution_review_handoff.v1`,
+  `trashbot.field_evidence_material_resolution_review_handoff_summary.v1`, the
+  Robot safe alias, or a compatible wrapper containing one of those safe schemas.
+
+The output always includes `followup_status`, safe `evidence_ref`,
+`owner_response_material_status`, `due_status`, `blocked_reason`,
+`next_required_evidence`, `owner_escalation`, `lineage`, `pr5_thread`,
+`safe_copy`, `same_evidence_ref_required=true`, `source=software_proof`,
+`not_proven`, `delivery_success=false`, `primary_actions_enabled=false`,
+`safe_to_control=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate`.
+
+Allowed `followup_status` values are
+`pending_owner_response_not_proven`,
+`overdue_owner_response_not_proven`,
+`escalated_for_owner_action_not_proven`, and
+`blocked_missing_or_unsafe_review_handoff_followup_not_proven`. A supported
+safe review handoff with `ready_for_owner_handoff_not_proven`, the same safe
+evidence ref, and preserved false-state flags maps to pending, overdue, or
+escalated owner response material status according to the requested due state.
+All three non-blocked statuses keep `owner_response_material_status=missing`
+because the gate records only followup escalation, not real material arrival.
+
+Decision mapping is fail closed. Missing input, bad JSON, unsupported
+schema/boundary, weak same-evidence-ref state, handoff not sent, unsafe copy,
+credentials, raw fields, local paths, ROS/control details, UART/WAVE ROVER
+details, verified terminal result, field pass, cloud proof, phone proof, HIL,
+reviewer resolution, truthy `delivery_success`, truthy
+`primary_actions_enabled`, or truthy `safe_to_control` maps to
+`blocked_missing_or_unsafe_review_handoff_followup_not_proven`.
+
+The contract carries lineage from previous handoff `43a3f01` and previous
+review decision `a384c84`. It also preserves PR #5 thread
+`PRRT_kwDOSWB9286CJ3tX` as unresolved / `hardware_material_pending`, and comment
+`3269642220` as a software-proof reply only. This contract is software proof
+only: `owner response material` and `escalate` wording do not prove real
+external cloud, real phone/browser, real route/elevator field pass, HIL,
+verified terminal result, dropoff/cancel completion, PR #5 resolution, delivery
+success, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_callback_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_callback_review_decision.py`

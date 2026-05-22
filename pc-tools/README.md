@@ -1079,6 +1079,54 @@ review decision 转成脱敏 owner handoff package，不是真实 field pass、�
 Nav2/fixed-route、真实电梯、verified terminal result、dropoff/cancel completion、
 delivery success、HIL、O5 external proof、PR #5 resolution 或真实 phone/browser 证据。
 
+## field evidence material resolution followup escalation status
+
+`pc-tools/evidence/field_evidence_material_resolution_followup_escalation_status.py`
+只读上一节 `field_evidence_material_resolution_review_handoff` artifact、summary、
+Robot safe alias 或 wrapper/nested JSON，把“handoff 已发出，但真实 owner response
+material 仍 missing / pending / overdue / escalated”整理成 PC-only escalation
+status：
+
+```bash
+python3 pc-tools/evidence/field_evidence_material_resolution_followup_escalation_status.py \
+  --input /tmp/field_evidence_material_resolution_review_handoff_summary.json \
+  --due-status escalated \
+  --output /tmp/field_evidence_material_resolution_followup_escalation_status.json \
+  --summary-output /tmp/field_evidence_material_resolution_followup_escalation_status_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.field_evidence_material_resolution_followup_escalation_status.v1`，
+summary 使用
+`schema=trashbot.field_evidence_material_resolution_followup_escalation_status_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary`，
+证据边界固定为
+`software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate`。
+核心字段包括 `followup_status`、safe `evidence_ref`、
+`owner_response_material_status`、`due_status`、`blocked_reason`、
+`next_required_evidence`、`owner_escalation`、`lineage`、`pr5_thread`、
+`safe_copy`、`source=software_proof`、`not_proven`、`delivery_success=false`、
+`primary_actions_enabled=false` 和 `safe_to_control=false`。
+
+`followup_status` 只允许 `pending_owner_response_not_proven`、
+`overdue_owner_response_not_proven`、`escalated_for_owner_action_not_proven`
+和 `blocked_missing_or_unsafe_review_handoff_followup_not_proven`。supported
+safe handoff source 必须来自
+`software_proof_docker_field_evidence_material_resolution_review_handoff_gate`，
+并保留同一个 safe `evidence_ref`、`source=software_proof`、`not_proven` 和 false-state
+flags。缺输入、bad JSON、unsupported schema/boundary、弱 evidence_ref、handoff 未 sent、
+raw artifact、credential/local path、ROS/control detail、UART/WAVE ROVER detail、
+verified terminal result、field pass、cloud proof、phone proof、HIL、reviewer resolution
+或 success/control wording 都会 fail closed。
+
+该 gate 固定保留 lineage：previous handoff `43a3f01`，previous review decision
+`a384c84`。PR #5 thread `PRRT_kwDOSWB9286CJ3tX` 仍输出为 unresolved /
+`hardware_material_pending`，comment `3269642220` 只表示 software-proof reply，不是
+reviewer resolution。`owner response material` 与 `escalate` 只用于 owner/CEO 后续行动，
+不是 OKR 百分比提升、真实 field pass、verified terminal result、delivery success、HIL、
+O5 external proof、真实 phone/browser 证据或 PR #5 resolved。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

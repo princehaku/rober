@@ -843,6 +843,56 @@ phone/browser proof, public cloud proof, PR #5 reviewer resolution, HIL, Nav2
 runtime proof, or permission to start/confirm/cancel/ACK/replay/resubmit robot
 commands.
 
+## robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary
+
+`robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary`
+is the Robot diagnostics safe alias for
+`field_evidence_material_resolution_followup_escalation_status`. It consumes
+only the sanitized
+`trashbot.field_evidence_material_resolution_followup_escalation_status_summary.v1`
+PC summary, a wrapper that contains that safe summary, or compatible latest
+status / diagnostics fallback metadata. It never reads or republishes raw
+GitHub data, raw artifacts, or local material paths.
+
+- Source artifact schema:
+  `trashbot.field_evidence_material_resolution_followup_escalation_status.v1`
+- Source summary schema:
+  `trashbot.field_evidence_material_resolution_followup_escalation_status_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate`
+
+Allowed follow-up statuses are `pending_owner_response_not_proven`,
+`overdue_owner_response_not_proven`, and
+`escalated_for_owner_action_not_proven`. Allowed owner response material states
+are `missing`, `pending`, and `escalate`. These states are escalation and
+support metadata only; they are not readiness, reviewer resolution, material
+completion, route/elevator field pass, or robot-control authorization.
+
+Allowed fields are limited to safe `evidence_ref`, previous handoff ref,
+previous review decision ref, owner response material status, due status,
+blocked reason, next required evidence, owner action, CEO escalation
+recommendation, PR #5 thread id `PRRT_kwDOSWB9286CJ3tX`, PR #5 thread state
+`unresolved`, PR #5 material state `hardware_material_pending`, reply comment
+`3269642220`, reply resolution claim `not_reviewer_resolution`, evidence
+boundary, `source=software_proof`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and `safe_to_control=false`.
+
+The alias is read-only diagnostics metadata. It must fail closed on raw
+artifacts, raw GitHub payloads, local paths, credentials, bearer tokens,
+complete artifacts, checksums, ROS topics, `/cmd_vel`, serial/UART details,
+WAVE ROVER parameters, ACK/cursor/command data, success/pass/control copy,
+field/cloud/phone/HIL proof claims, reviewer-resolution claims,
+`delivery_success=true`, `primary_actions_enabled=true`, or
+`safe_to_control=true`.
+
+`escalated_for_owner_action_not_proven` only means the missing owner response
+material should be escalated. It is not delivery success, a real field result,
+a verified terminal delivery/dropoff/cancel result, real phone/browser proof,
+public cloud proof, PR #5 reviewer resolution, HIL, Nav2 runtime proof, or
+permission to start/confirm/cancel/ACK/replay/resubmit robot commands.
+
 ## robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary
 
 `robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary`

@@ -68,6 +68,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_field_evidence_material_resolution_intake,
     summarize_field_evidence_material_resolution_review_decision,
     summarize_field_evidence_material_resolution_review_handoff,
+    summarize_field_evidence_material_resolution_followup_escalation_status,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -35127,6 +35128,265 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("blocked_unsafe_handoff_not_proven", json.dumps(unsafe))
         self.assertIn("blocked_missing_review_decision_not_proven", json.dumps(missing))
         self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+
+    def test_field_evidence_material_resolution_followup_escalation_status_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": "trashbot.field_evidence_material_resolution_followup_escalation_status_summary.v1",
+            "source_schema": "trashbot.field_evidence_material_resolution_followup_escalation_status.v1",
+            "source_schema_version": 1,
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate"
+            ),
+            "capability": "field_evidence_material_resolution_followup_escalation_status",
+            "source": "software_proof",
+            "safe_evidence_ref": "field-material-resolution-followup-001",
+            "followup_status": "escalated_for_owner_action_not_proven",
+            "followup_review_status": {
+                "status": "escalated_for_owner_action_not_proven",
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": "owner response material is still missing; escalate for owner action",
+            },
+            "previous_handoff_ref": "43a3f01",
+            "previous_review_decision_ref": "a384c84",
+            "owner_response_material_status": "escalate",
+            "due_status": "overdue",
+            "blocked_reason": "owner response material missing",
+            "next_required_evidence": [
+                "owner response material must attach safe same-ref field or hardware evidence"
+            ],
+            "owner_action": "Escalate owner response material collection without enabling Robot control.",
+            "ceo_escalation_recommendation": "Ask CEO to unblock owner response material.",
+            "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+            "pr5_thread_state": "unresolved",
+            "pr5_material_state": "hardware_material_pending",
+            "pr5_reply_comment_id": "3269642220",
+            "pr5_reply_resolution_claim": "not_reviewer_resolution",
+            "robot_diagnostics_summary": {
+                "safe_copy": (
+                    "Field evidence material resolution follow-up escalation status "
+                    "is metadata-only; owner response material missing; escalate; "
+                    "source=software_proof; not_proven; safe_to_control=false; "
+                    "delivery_success=false; primary_actions_enabled=false."
+                )
+            },
+            "not_proven": [
+                "owner response material missing",
+                "PRRT_kwDOSWB9286CJ3tX",
+                "3269642220",
+                "hardware_material_pending",
+            ],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+        }
+        artifact = {
+            "schema": "trashbot.field_evidence_material_resolution_followup_escalation_status.v1",
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate"
+            ),
+            "safe_evidence_ref": "field-material-resolution-followup-001",
+            "field_evidence_material_resolution_followup_escalation_status_summary": safe_summary,
+        }
+        with tempfile.TemporaryDirectory() as td:
+            followup_path = (
+                Path(td)
+                / "field_evidence_material_resolution_followup_escalation_status.json"
+            )
+            followup_path.write_text(json.dumps(artifact), encoding="utf-8")
+            payload = build_diagnostics_payload(
+                {
+                    "field_evidence_material_resolution_followup_escalation_status": {
+                        "delivery_success": True,
+                        "raw_github_data": {"ros_topic": "/cmd_vel"},
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                field_evidence_material_resolution_followup_escalation_status_ref=str(
+                    followup_path
+                ),
+            )
+            from_nested = (
+                summarize_field_evidence_material_resolution_followup_escalation_status(
+                    artifact
+                )
+            )
+            from_latest_status = build_diagnostics_payload(
+                {
+                    "robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary": (
+                        safe_summary
+                    )
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )[
+                "robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary"
+            ]
+            from_diagnostics_source = build_diagnostics_payload(
+                {
+                    "diagnostics": {
+                        "field_evidence_material_resolution_followup_escalation_status_summary": (
+                            safe_summary
+                        )
+                    }
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )[
+                "robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary"
+            ]
+            missing = (
+                summarize_field_evidence_material_resolution_followup_escalation_status(
+                    Path(td) / "missing_field_material_resolution_followup.json"
+                )
+            )
+            unsupported = (
+                summarize_field_evidence_material_resolution_followup_escalation_status(
+                    dict(
+                        safe_summary,
+                        source_schema="trashbot.field_evidence_material_resolution_review_handoff.v1",
+                        source_evidence_boundary=(
+                            "software_proof_docker_field_evidence_material_resolution_review_handoff_gate"
+                        ),
+                    )
+                )
+            )
+            missing_owner = (
+                summarize_field_evidence_material_resolution_followup_escalation_status(
+                    dict(safe_summary, owner_action="")
+                )
+            )
+            raw_only = (
+                summarize_field_evidence_material_resolution_followup_escalation_status(
+                    {
+                        "schema": "trashbot.field_evidence_material_resolution_followup_escalation_status.v1",
+                        "evidence_boundary": (
+                            "software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate"
+                        ),
+                        "safe_evidence_ref": "field-material-resolution-followup-001",
+                        "raw_artifact": {"checksum": "abc"},
+                    }
+                )
+            )
+            unsafe = (
+                summarize_field_evidence_material_resolution_followup_escalation_status(
+                    dict(
+                        safe_summary,
+                        safe_copy="Thread resolved; field pass; Start Delivery control enabled.",
+                        delivery_success=True,
+                        primary_actions_enabled=True,
+                        safe_to_control=True,
+                        boundary_flags={"readiness_enabled": True},
+                    )
+                )
+            )
+
+        summary = payload[
+            "robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary"
+        ]
+        self.assertEqual(
+            summary,
+            payload["field_evidence_material_resolution_followup_escalation_status"],
+        )
+        self.assertEqual(
+            summary,
+            payload["field_evidence_material_resolution_followup_escalation_status_summary"],
+        )
+        self.assertNotIn(
+            "field_evidence_material_resolution_followup_escalation_status",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_field_evidence_material_resolution_followup_escalation_status_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_material_resolution_followup_escalation_status.v1",
+        )
+        self.assertEqual(
+            summary["proof_boundary"],
+            "software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate",
+        )
+        self.assertEqual(
+            summary["capability"],
+            "field_evidence_material_resolution_followup_escalation_status",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["followup_status"], "escalated_for_owner_action_not_proven")
+        self.assertEqual(summary["owner_response_material_status"], "escalate")
+        self.assertEqual(summary["pr5_thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(summary["pr5_thread_state"], "unresolved")
+        self.assertEqual(summary["pr5_material_state"], "hardware_material_pending")
+        self.assertEqual(summary["pr5_reply_comment_id"], "3269642220")
+        self.assertEqual(summary["pr5_reply_resolution_claim"], "not_reviewer_resolution")
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertIn("owner response material missing", summary["not_proven"])
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", summary["not_proven"])
+        self.assertIn("3269642220", summary["not_proven"])
+        self.assertIn("hardware_material_pending", summary["not_proven"])
+        self.assertIn("escalate", summary["owner_action"].lower())
+        self.assertEqual(from_nested["safe_evidence_ref"], summary["safe_evidence_ref"])
+        self.assertEqual(from_latest_status["due_status"], summary["due_status"])
+        self.assertEqual(
+            from_diagnostics_source["owner_action"],
+            summary["owner_action"],
+        )
+        self.assertEqual(missing["followup_review_status"]["status"], "missing")
+        self.assertEqual(
+            unsupported["followup_review_status"]["status"],
+            "blocked_unsupported_field_evidence_material_resolution_followup_escalation_status",
+        )
+        self.assertEqual(
+            missing_owner["followup_review_status"]["status"],
+            "blocked_missing_field_evidence_material_resolution_followup_escalation_status_materials",
+        )
+        self.assertEqual(
+            raw_only["followup_review_status"]["status"],
+            "blocked_missing_field_evidence_material_resolution_followup_escalation_status_summary",
+        )
+        self.assertEqual(
+            unsafe["followup_review_status"]["status"],
+            "blocked_unsafe_field_evidence_material_resolution_followup_escalation_status",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("raw_github_data", encoded)
+        self.assertNotIn("checksum", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("uart", encoded.lower())
+        self.assertNotIn("wave_rover", encoded.lower())
+        self.assertNotIn("thread resolved", encoded.lower())
+        self.assertNotIn("field pass", encoded.lower())
+        self.assertIn("owner response material", encoded)
         self.assertIn("delivery_success=false", encoded)
         self.assertIn("primary_actions_enabled=false", encoded)
         self.assertIn("safe_to_control=false", encoded)
