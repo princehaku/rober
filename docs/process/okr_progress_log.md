@@ -6,6 +6,30 @@
 
 ---
 
+## 2026-05-23 系列
+
+更新时间：2026-05-23 00:59 Asia/Shanghai。
+
+### 2026-05-23 00-01｜field-evidence-rerun-acceptance-handoff-intake｜acceptance handoff intake software proof
+
+本轮 `sprints/2026.05.23_00-01_field-evidence-rerun-acceptance-handoff-intake/` 执行 `field_evidence_rerun_execution_result_acceptance_handoff_intake` epic closeout。用户价值是把上一轮 acceptance review handoff 转成 field owner / support 可接收的安全回执入口：同一 safe `evidence_ref`、accepted safe material refs、missing required materials、rejected unsafe material refs、owner/support next step、proof boundary 和禁止声明范围。本轮边界为 `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_gate`，必须保留 `source=software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+Autonomy worker 新增 PC-only handoff intake gate、focused tests、`pc-tools/README.md` 和 `docs/interfaces/evidence_contracts.md` 更新；新增 schema `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake.v1` 与 `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_summary.v1`。Robot worker 新增 `robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_summary` safe alias、fail-closed handling 和 `docs/interfaces/ros_runtime_contracts.md` 更新。Full-Stack worker 新增 mobile/web read-only “现场证据复跑执行结果验收交接回执入口”panel、fixture、tests 和 `docs/product/mobile_user_flow.md` 更新，优先消费 Robot safe alias 并保持 Start Delivery / Confirm Dropoff / Cancel disabled。
+
+Live PR #5 state：`PRRT_kwDOSWB9286CJ3tQ` resolved，`PRRT_kwDOSWB9286CJ3tU` resolved，`PRRT_kwDOSWB9286CJ3tX` remains `is_resolved=false` / unresolved / `hardware_material_pending`。
+
+本轮不是 true phone/browser proof，不是 route/elevator field pass，不是 Nav2/fixed-route runtime pass，不是 verified terminal result，不是 dropoff/cancel completion，不是 delivery success，不是 Objective 5 external proof，不是 Objective 1 HIL，也不是 PR #5 resolution；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰 hardware bridge、真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report 或 PR #5 真实 2D LiDAR / ToF materials；`PRRT_kwDOSWB9286CJ3tX` still unresolved/material pending。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只把 acceptance review handoff 转成 owner/support intake metadata；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal delivery/dropoff/cancel result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；handoff-intake gate 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能只读展示现场证据复跑执行结果验收交接回执入口，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料；本轮 not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_gate` 只证明 Docker/local PC handoff-intake gate + Robot diagnostics + mobile static fixture 下 acceptance handoff intake metadata 可见、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；unittest 输出 `Ran 5 tests in 0.096s OK`；CLI `--help`、required `rg` 与 scoped `git diff --check` 通过。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 295 tests in 2.268s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check mobile/web/app.js` 通过；fixture `json.tool` 通过；mobile unittest 输出 `Ran 276 tests in 2.348s OK`；required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、combined `py_compile`、combined unittest、`node --check`、fixture `json.tool`、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `pc-tools/README.md`、`docs/interfaces/evidence_contracts.md`、`docs/interfaces/ros_runtime_contracts.md`、`docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。
+
 ## 2026-05-22 系列
 
 更新时间：2026-05-22 23:18 Asia/Shanghai。
