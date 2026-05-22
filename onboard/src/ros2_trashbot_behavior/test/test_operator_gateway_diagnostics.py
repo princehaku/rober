@@ -67,6 +67,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_field_evidence_material_blocker_escalation_pack,
     summarize_field_evidence_material_resolution_intake,
     summarize_field_evidence_material_resolution_review_decision,
+    summarize_field_evidence_material_resolution_review_handoff,
     summarize_route_task_field_retest_evidence_dispatch,
     summarize_route_task_field_retest_callback_intake,
     summarize_route_task_field_retest_callback_review_decision,
@@ -34871,6 +34872,260 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("accepted_for_owner_review_not_proven", encoded)
         self.assertIn("rejected_unsafe_resolution_not_proven", json.dumps(unsafe))
         self.assertIn("blocked_missing_resolution_intake_not_proven", json.dumps(missing))
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+
+    def test_field_evidence_material_resolution_review_handoff_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": "trashbot.field_evidence_material_resolution_review_handoff_summary.v1",
+            "source_schema": "trashbot.field_evidence_material_resolution_review_handoff.v1",
+            "source_schema_version": 1,
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_material_resolution_review_handoff_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_field_evidence_material_resolution_review_handoff_gate"
+            ),
+            "capability": "field_evidence_material_resolution_review_handoff",
+            "source": "software_proof",
+            "safe_evidence_ref": "field-material-resolution-handoff-001",
+            "handoff_status": "ready_for_owner_handoff_not_proven",
+            "handoff_review_status": {
+                "status": "ready_for_owner_handoff_not_proven",
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": "owner can request real materials from safe summary only",
+            },
+            "previous_review_decision_ref": "field-material-resolution-review-001",
+            "previous_review_decision": "accepted_for_owner_review_not_proven",
+            "accepted_material_refs": ["terminal-intake-summary-001"],
+            "rejected_material_refs": ["unsafe-cloud-success-claim"],
+            "missing_required_materials": ["true_phone_browser_evidence"],
+            "owner_handoff_role": "product-okr-owner",
+            "owner_next_action": "Collect real external, terminal, phone, field, hardware, and PR #5 evidence.",
+            "next_required_real_evidence": [
+                "Same-ref real terminal delivery/dropoff/cancel result material."
+            ],
+            "blocked_categories": [
+                "external_cloud",
+                "terminal_result",
+                "phone_browser",
+                "field_route_elevator",
+                "hardware_hil",
+                "pr5",
+            ],
+            "robot_diagnostics_summary": {
+                "safe_copy": (
+                    "Field evidence material resolution review handoff is metadata-only; "
+                    "source=software_proof; not_proven; safe_to_control=false; "
+                    "delivery_success=false; primary_actions_enabled=false."
+                )
+            },
+            "not_proven": [
+                "field_evidence_material_resolution_review_handoff_only",
+                "handoff_status_not_readiness",
+                "delivery_success",
+            ],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+        }
+        artifact = {
+            "schema": "trashbot.field_evidence_material_resolution_review_handoff.v1",
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_material_resolution_review_handoff_gate"
+            ),
+            "safe_evidence_ref": "field-material-resolution-handoff-001",
+            "field_evidence_material_resolution_review_handoff_summary": safe_summary,
+        }
+        with tempfile.TemporaryDirectory() as td:
+            handoff_path = (
+                Path(td) / "field_evidence_material_resolution_review_handoff.json"
+            )
+            handoff_path.write_text(json.dumps(artifact), encoding="utf-8")
+            payload = build_diagnostics_payload(
+                {
+                    "field_evidence_material_resolution_review_handoff": {
+                        "delivery_success": True,
+                        "raw_artifact": {"ros_topic": "/cmd_vel"},
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                field_evidence_material_resolution_review_handoff_ref=str(
+                    handoff_path
+                ),
+            )
+            from_nested = summarize_field_evidence_material_resolution_review_handoff(
+                {
+                    "schema": "trashbot.field_evidence_material_resolution_review_handoff.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_material_resolution_review_handoff_gate"
+                    ),
+                    "field_evidence_material_resolution_review_handoff_summary": (
+                        safe_summary
+                    ),
+                }
+            )
+            from_latest_status = build_diagnostics_payload(
+                {
+                    "robot_diagnostics_field_evidence_material_resolution_review_handoff_summary": (
+                        safe_summary
+                    )
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )[
+                "robot_diagnostics_field_evidence_material_resolution_review_handoff_summary"
+            ]
+            from_diagnostics_source = build_diagnostics_payload(
+                {
+                    "diagnostics": {
+                        "field_evidence_material_resolution_review_handoff_summary": (
+                            safe_summary
+                        )
+                    }
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )[
+                "robot_diagnostics_field_evidence_material_resolution_review_handoff_summary"
+            ]
+            missing = summarize_field_evidence_material_resolution_review_handoff(
+                Path(td) / "missing_field_material_resolution_review_handoff.json"
+            )
+            unsupported = summarize_field_evidence_material_resolution_review_handoff(
+                dict(
+                    safe_summary,
+                    source_schema="trashbot.field_evidence_material_resolution_review_decision.v1",
+                    source_evidence_boundary=(
+                        "software_proof_docker_field_evidence_material_resolution_review_decision_gate"
+                    ),
+                )
+            )
+            missing_previous_decision = summarize_field_evidence_material_resolution_review_handoff(
+                dict(safe_summary, previous_review_decision_ref="")
+            )
+            raw_only = summarize_field_evidence_material_resolution_review_handoff(
+                {
+                    "schema": "trashbot.field_evidence_material_resolution_review_handoff.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_material_resolution_review_handoff_gate"
+                    ),
+                    "safe_evidence_ref": "field-material-resolution-handoff-001",
+                    "raw_artifact": {"checksum": "abc"},
+                }
+            )
+            unsafe = summarize_field_evidence_material_resolution_review_handoff(
+                dict(
+                    safe_summary,
+                    safe_copy="Handoff passed; Start Delivery control enabled.",
+                    delivery_success=True,
+                    primary_actions_enabled=True,
+                    safe_to_control=True,
+                    boundary_flags={"readiness_enabled": True},
+                )
+            )
+
+        summary = payload[
+            "robot_diagnostics_field_evidence_material_resolution_review_handoff_summary"
+        ]
+        self.assertEqual(
+            summary,
+            payload["field_evidence_material_resolution_review_handoff"],
+        )
+        self.assertEqual(
+            summary,
+            payload["field_evidence_material_resolution_review_handoff_summary"],
+        )
+        self.assertNotIn(
+            "field_evidence_material_resolution_review_handoff",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_field_evidence_material_resolution_review_handoff_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_material_resolution_review_handoff.v1",
+        )
+        self.assertEqual(
+            summary["proof_boundary"],
+            "software_proof_docker_field_evidence_material_resolution_review_handoff_gate",
+        )
+        self.assertEqual(summary["capability"], "field_evidence_material_resolution_review_handoff")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["handoff_status"], "ready_for_owner_handoff_not_proven")
+        self.assertEqual(summary["previous_review_decision"], "accepted_for_owner_review_not_proven")
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertIn(
+            "field_evidence_material_resolution_review_handoff_only",
+            summary["not_proven"],
+        )
+        self.assertIn("handoff_status_not_readiness", summary["not_proven"])
+        self.assertIn("terminal_result", summary["blocked_categories"])
+        self.assertIn("product-okr-owner", summary["owner_handoff_role"])
+        self.assertIn("terminal", summary["next_required_real_evidence"][0])
+        self.assertEqual(from_nested["safe_evidence_ref"], summary["safe_evidence_ref"])
+        self.assertEqual(
+            from_latest_status["handoff_status"],
+            "ready_for_owner_handoff_not_proven",
+        )
+        self.assertEqual(
+            from_diagnostics_source["owner_next_action"],
+            summary["owner_next_action"],
+        )
+        self.assertEqual(missing["handoff_review_status"]["status"], "missing")
+        self.assertEqual(
+            unsupported["handoff_review_status"]["status"],
+            "blocked_unsupported_field_evidence_material_resolution_review_handoff",
+        )
+        self.assertEqual(
+            missing_previous_decision["handoff_review_status"]["status"],
+            "blocked_missing_field_evidence_material_resolution_review_handoff_materials",
+        )
+        self.assertEqual(
+            raw_only["handoff_review_status"]["status"],
+            "blocked_missing_field_evidence_material_resolution_review_handoff_summary",
+        )
+        self.assertEqual(
+            unsafe["handoff_review_status"]["status"],
+            "blocked_unsafe_field_evidence_material_resolution_review_handoff",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("checksum", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("cursor payload", encoded.lower())
+        self.assertNotIn("ack payload", encoded.lower())
+        self.assertNotIn("passed", encoded.lower())
+        self.assertIn("ready_for_owner_handoff_not_proven", encoded)
+        self.assertIn("blocked_unsafe_handoff_not_proven", json.dumps(unsafe))
+        self.assertIn("blocked_missing_review_decision_not_proven", json.dumps(missing))
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success=false", encoded)
         self.assertIn("primary_actions_enabled=false", encoded)

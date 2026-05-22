@@ -1028,6 +1028,57 @@ resolution intake 转成只读 owner review decision，不是真实 field pass�
 Nav2/fixed-route、真实电梯、verified terminal result、delivery success、HIL、O5
 external proof、PR #5 resolution 或真实 phone/browser 证据。
 
+## field evidence material resolution review handoff
+
+`pc-tools/evidence/field_evidence_material_resolution_review_handoff.py` 只读上一节
+`field_evidence_material_resolution_review_decision` artifact、summary、Robot safe
+alias 或 wrapper/nested JSON，把 review decision 转成 owner handoff package：
+
+```bash
+python3 pc-tools/evidence/field_evidence_material_resolution_review_handoff.py \
+  --input /tmp/field_evidence_material_resolution_review_decision_summary.json \
+  --output /tmp/field_evidence_material_resolution_review_handoff.json \
+  --summary-output /tmp/field_evidence_material_resolution_review_handoff_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.field_evidence_material_resolution_review_handoff.v1`，summary 使用
+`schema=trashbot.field_evidence_material_resolution_review_handoff_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_field_evidence_material_resolution_review_handoff_summary`，证据边界
+固定为
+`software_proof_docker_field_evidence_material_resolution_review_handoff_gate`。核心字段
+包括 `handoff_status`、safe `evidence_ref`、`accepted_material_refs`、
+`rejected_material_refs`、`missing_required_materials`、`blocked_categories`、
+`owner_handoff`、`next_required_evidence`、`handoff_reasons`、`safe_copy`、
+`source=software_proof`、`not_proven`、`delivery_success=false`、
+`primary_actions_enabled=false` 和 `safe_to_control=false`。
+
+`handoff_status` 只允许 `ready_for_owner_handoff_not_proven`、
+`needs_more_evidence_owner_handoff_not_proven`、
+`rejected_unsafe_resolution_owner_handoff_not_proven` 和
+`blocked_missing_review_decision_handoff_not_proven`。accepted review decision 仅在
+safe schema / boundary、同一个 safe `evidence_ref`、`same_evidence_ref_required=true`
+且 false-state flags 未被改写时进入 `ready_for_owner_handoff_not_proven`；缺补证材料
+进入 `needs_more_evidence_owner_handoff_not_proven`；unsafe copy、
+success/control wording、raw 字段、凭证、本机路径、ROS/control detail、
+serial/UART/WAVE ROVER detail 或 rejected upstream 材料进入
+`rejected_unsafe_resolution_owner_handoff_not_proven`；缺输入、坏 JSON、unsupported
+schema/boundary 或 evidence-ref mismatch 进入
+`blocked_missing_review_decision_handoff_not_proven`。
+
+该 gate 不读取真实 task record、Nav2/fixed-route runtime log、route completion signal、
+电梯门/楼层材料、dropoff/cancel completion、delivery result、raw diagnostics、ROS graph、
+serial/UART、WAVE ROVER、真实电梯、外部云、OSS/CDN、DB/queue、4G、GitHub reviewer
+state 或真实手机/browser，也不执行任何机器人动作。blocked categories 只覆盖 external
+cloud、verified terminal result、phone/browser、field route/elevator、hardware/HIL 和
+PR #5 `PRRT_kwDOSWB9286CJ3tX` 的后续 owner 路由缺口。`ready_for_owner_handoff_not_proven`
+只表示 Docker/local
+`software_proof_docker_field_evidence_material_resolution_review_handoff_gate` 已把上一轮
+review decision 转成脱敏 owner handoff package，不是真实 field pass、真实
+Nav2/fixed-route、真实电梯、verified terminal result、dropoff/cancel completion、
+delivery success、HIL、O5 external proof、PR #5 resolution 或真实 phone/browser 证据。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

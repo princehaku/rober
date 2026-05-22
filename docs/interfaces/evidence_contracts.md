@@ -2225,6 +2225,61 @@ browser proof, HIL, field pass, verified terminal result, PR #5 resolution,
 delivery success, dropoff/cancel completion, or any primary robot action being
 enabled.
 
+## field_evidence_material_resolution_review_handoff
+
+`pc-tools/evidence/field_evidence_material_resolution_review_handoff.py`
+generates the PC-only owner handoff gate after
+`field_evidence_material_resolution_review_decision.py`.
+
+- Artifact schema:
+  `trashbot.field_evidence_material_resolution_review_handoff.v1`
+- Summary schema:
+  `trashbot.field_evidence_material_resolution_review_handoff_summary.v1`
+- Robot diagnostics alias:
+  `robot_diagnostics_field_evidence_material_resolution_review_handoff_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_review_handoff_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_material_resolution_review_decision.v1`,
+  `trashbot.field_evidence_material_resolution_review_decision_summary.v1`, the
+  Robot safe alias, or a compatible wrapper containing one of those safe schemas.
+- Handoff status values:
+  `ready_for_owner_handoff_not_proven`,
+  `needs_more_evidence_owner_handoff_not_proven`,
+  `rejected_unsafe_resolution_owner_handoff_not_proven`, and
+  `blocked_missing_review_decision_handoff_not_proven`.
+
+The output always includes `handoff_status`, safe `evidence_ref`,
+`accepted_material_refs`, `rejected_material_refs`,
+`missing_required_materials`, `blocked_categories`, `owner_handoff`,
+`next_required_evidence`, `handoff_reasons`, `safe_copy`,
+`same_evidence_ref_required=true`, `source=software_proof`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`,
+`safe_to_control=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_material_resolution_review_handoff_gate`.
+
+Decision mapping is fail closed. A supported safe review decision with
+`accepted_for_owner_review_not_proven`, the same safe evidence ref, and
+preserved false-state flags maps to
+`ready_for_owner_handoff_not_proven`. A source decision of
+`needs_more_evidence_not_proven` maps to
+`needs_more_evidence_owner_handoff_not_proven` while preserving missing required
+materials. Unsafe copy, rejected upstream material, success/control wording,
+credentials, raw fields, local paths, ROS/control details, serial/UART or WAVE
+ROVER details, truthy `delivery_success`, truthy `primary_actions_enabled`, or
+truthy `safe_to_control` maps to
+`rejected_unsafe_resolution_owner_handoff_not_proven`. Missing input, bad JSON,
+unsupported schema/boundary, weak same-evidence-ref state, or evidence-ref
+mismatch maps to `blocked_missing_review_decision_handoff_not_proven`.
+
+The handoff also carries blocked categories for external cloud, verified
+terminal result, phone/browser, field route/elevator, hardware/HIL, and PR #5
+`PRRT_kwDOSWB9286CJ3tX`. These categories are owner routing hints only. This
+contract is software proof only: `ready_for_owner_handoff_not_proven` does not
+prove real external cloud, real phone/browser, real route/elevator field pass,
+HIL, verified terminal result, dropoff/cancel completion, PR #5 resolution,
+delivery success, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_callback_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_callback_review_decision.py`

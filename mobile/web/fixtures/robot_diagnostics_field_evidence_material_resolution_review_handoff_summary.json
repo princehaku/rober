@@ -1,0 +1,110 @@
+{
+  "robot_diagnostics_field_evidence_material_resolution_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_review_handoff_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_review_handoff.v1",
+    "capability": "field_evidence_material_resolution_review_handoff",
+    "source": "software_proof",
+    "handoff_status": "ready_for_field_owner_handoff_not_proven",
+    "handoff_status_options": [
+      "ready_for_field_owner_handoff_not_proven",
+      "needs_more_evidence_handoff_not_proven",
+      "blocked_missing_review_decision_not_proven",
+      "blocked_unsafe_review_decision_not_proven"
+    ],
+    "owner": "owner=field_owner_backfills_real_materials",
+    "source_review_decision": "source_review_decision=needs_more_evidence_not_proven",
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_review_handoff_fixture_20260522_0001",
+    "next_required_evidence": [
+      "next_required_evidence=true phone browser note on same safe evidence_ref",
+      "next_required_evidence=route elevator runtime summary and completion material",
+      "next_required_evidence=verified terminal delivery dropoff cancel result material"
+    ],
+    "missing_categories": [
+      "missing_category=true_phone_browser_evidence",
+      "missing_category=route_elevator_runtime_material",
+      "missing_category=verified_terminal_result_material",
+      "missing_category=o5_external_material"
+    ],
+    "blocked_refs": [
+      "blocked_ref=PR5_hardware_material_pending",
+      "blocked_ref=terminal_result_material_pending",
+      "blocked_ref=route_elevator_material_pending"
+    ],
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_review_handoff_gate",
+    "proof_boundary": "software_proof_docker_field_evidence_material_resolution_review_handoff_gate",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "true_phone_browser_proof_missing",
+      "route_elevator_runtime_missing",
+      "dropoff_completion_missing",
+      "cancel_completion_missing",
+      "hardware_hil_missing",
+      "o5_external_proof_missing"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_review_handoff_summary.v1",
+    "capability": "field_evidence_material_resolution_review_handoff",
+    "source": "software_proof",
+    "handoff_status": "needs_more_evidence_handoff_not_proven",
+    "owner": "owner=product_owner_keeps_not_proven_boundary",
+    "source_review_decision": "source_review_decision=accepted_for_owner_review_not_proven",
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_review_handoff_fixture_20260522_0001",
+    "next_required_evidence": [
+      "next_required_evidence=same safe evidence_ref field materials"
+    ],
+    "missing_categories": [
+      "missing_category=field_material_response"
+    ],
+    "blocked_refs": [
+      "blocked_ref=owner_response_pending"
+    ],
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_review_handoff_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "field_evidence_material_resolution_review_handoff": {
+    "summary": {
+      "schema": "trashbot.field_evidence_material_resolution_review_handoff_summary.v1",
+      "capability": "field_evidence_material_resolution_review_handoff",
+      "source": "software_proof",
+      "handoff_status": "blocked_missing_review_decision_not_proven",
+      "owner": "owner=field_owner_backfills_real_materials",
+      "source_review_decision": "source_review_decision=blocked_missing_resolution_intake_not_proven",
+      "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_review_handoff_fixture_20260522_0001",
+      "next_required_evidence": [
+        "next_required_evidence=canonical Robot summary before owner action"
+      ],
+      "missing_categories": [
+        "missing_category=canonical_review_decision"
+      ],
+      "blocked_refs": [
+        "blocked_ref=review_decision_summary_missing"
+      ],
+      "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_review_handoff_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

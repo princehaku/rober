@@ -796,6 +796,53 @@ a verified terminal delivery/dropoff/cancel result, real phone/browser proof,
 public cloud proof, PR #5 reviewer resolution, HIL, Nav2 runtime proof, or
 permission to start/confirm/cancel/ACK/replay/resubmit robot commands.
 
+## robot_diagnostics_field_evidence_material_resolution_review_handoff_summary
+
+`robot_diagnostics_field_evidence_material_resolution_review_handoff_summary`
+is the Robot diagnostics safe alias for
+`field_evidence_material_resolution_review_handoff`. It consumes only sanitized
+`trashbot.field_evidence_material_resolution_review_handoff_summary.v1` input,
+or a compatible nested safe summary from latest status / diagnostics. A raw
+artifact wrapper is accepted only when it contains the sanitized summary.
+
+- Source artifact schema:
+  `trashbot.field_evidence_material_resolution_review_handoff.v1`
+- Source summary schema:
+  `trashbot.field_evidence_material_resolution_review_handoff_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_field_evidence_material_resolution_review_handoff_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_review_handoff_gate`
+
+Allowed handoff statuses are `ready_for_owner_handoff_not_proven`,
+`needs_more_evidence_not_proven`,
+`blocked_missing_review_decision_not_proven`, and
+`blocked_unsafe_handoff_not_proven`. These are handoff metadata states only;
+they are not readiness, success, or permission to operate the robot.
+
+Allowed fields are limited to safe `evidence_ref`, previous review decision
+reference, previous review decision, accepted material refs, rejected material
+refs, missing required materials, owner handoff role, owner next action, next
+required real evidence, blocked categories for `external_cloud`,
+`terminal_result`, `phone_browser`, `field_route_elevator`, `hardware_hil`, and
+`pr5`, evidence boundary, `source=software_proof`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`.
+
+The alias is read-only metadata. It must not expose raw artifact bodies, local
+paths, credentials, bearer tokens, ACK/cursor payloads, complete artifacts,
+checksums, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details,
+tracebacks, success/pass/control copy, readiness claims, `delivery_success=true`,
+`primary_actions_enabled=true`, or `safe_to_control=true`. Unsafe inputs fail
+closed as blocked/not_proven.
+
+`ready_for_owner_handoff_not_proven` only means the owner has a sanitized
+handoff package for collecting real evidence. It is not delivery success, a
+real field result, a verified terminal delivery/dropoff/cancel result, real
+phone/browser proof, public cloud proof, PR #5 reviewer resolution, HIL, Nav2
+runtime proof, or permission to start/confirm/cancel/ACK/replay/resubmit robot
+commands.
+
 ## robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary
 
 `robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary`
