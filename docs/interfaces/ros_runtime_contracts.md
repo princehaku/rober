@@ -454,6 +454,24 @@ Allowed Robot-visible fields are limited to sanitized owner response intake meta
 
 The alias must not expose raw artifact data, local paths, checksum values, tracebacks, raw route/elevator materials, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, DB/queue URLs, OSS secrets, full material bodies, ACK/cursor state, external-proof wording, HIL/pass wording, dropoff/cancel completion, delivery result success, or success/control claims. Missing canonical summary, malformed input, unsupported schema or boundary, missing `safe_evidence_ref`, unsupported owner response status, unsafe copy, raw artifact marker, local path, checksum, credential, DB/queue URL, traceback marker, HIL/pass wording, external-proof wording, or enabled action flags keep the summary blocked/not_proven and leave task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
 
+## robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision_summary
+
+`robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision_summary` is the Robot diagnostics safe alias for the `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision` gate. It consumes only the canonical sanitized summary schema `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision_summary.v1`, whose `source_schema` must point back to `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision.v1` and whose evidence boundary must remain `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision_gate`.
+
+The alias is metadata-only and fail-closed:
+
+- `source=software_proof`
+- `software_proof=true`
+- `not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `metadata_only=true`
+
+Allowed Robot-visible fields are limited to sanitized owner response review decision metadata: `status`, `review_decision_status`, `source_owner_response_intake_status`, `safe_evidence_ref`, `accepted_material_refs`, `missing_material_refs`, `rejected_material_refs`, `blocked_material_refs`, `decision_reasons`, `owner_next_step`, `support_next_step`, `reviewer_next_step`, `evidence_boundary_status`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, `software_proof`, and `not_proven`. Expected owner response review decision status values are exactly `ready_for_owner_response_review_handoff_not_proven`, `review_needs_owner_rework`, `review_evidence_ref_mismatch`, `review_unsafe_rejected`, and `blocked_missing_owner_response_intake`.
+
+The alias must not expose raw manifest contents, complete artifacts, local paths, checksum values, tracebacks, raw route/elevator materials, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, DB/queue URLs, OSS secrets, full material bodies, ACK/cursor state, external-proof wording, HIL/pass wording, PR-resolution wording, dropoff/cancel completion, delivery result success, or success/control claims. Missing canonical summary, malformed input, unsupported schema or boundary, missing `safe_evidence_ref`, unsupported owner response review decision status, unsafe copy, raw artifact marker, local path, checksum, credential, DB/queue URL, traceback marker, HIL/pass wording, external-proof wording, PR-resolution wording, or enabled action flags keep the summary blocked/not_proven and leave task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
+
 ## robot_diagnostics_field_evidence_real_material_request_dispatch_summary
 
 `robot_diagnostics_field_evidence_real_material_request_dispatch_summary` is the Robot diagnostics safe alias for the `field_evidence_real_material_request_dispatch` gate. It consumes the canonical sanitized summary schema `trashbot.field_evidence_real_material_request_dispatch_summary.v1`, or a compatible wrapper that contains that summary and points back to `trashbot.field_evidence_real_material_request_dispatch.v1`; the evidence boundary must remain `software_proof_docker_field_evidence_real_material_request_dispatch_gate`.
