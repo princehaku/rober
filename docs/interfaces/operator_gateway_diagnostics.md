@@ -1037,6 +1037,60 @@ real phone/browser proof, public cloud proof, PR #5 reviewer resolution, HIL,
 Nav2 runtime proof, or permission to start/confirm/cancel/ACK/replay/resubmit
 robot commands.
 
+## robot_diagnostics_field_evidence_material_resolution_owner_response_review_handoff_summary
+
+`robot_diagnostics_field_evidence_material_resolution_owner_response_review_handoff_summary`
+is the Robot diagnostics safe alias for
+`field_evidence_material_resolution_owner_response_review_handoff`. It
+consumes only the PC safe summary
+`trashbot.field_evidence_material_resolution_owner_response_review_handoff_summary.v1`,
+an artifact wrapper containing that summary, or compatible latest status /
+diagnostics fallback metadata.
+
+- Source artifact schema:
+  `trashbot.field_evidence_material_resolution_owner_response_review_handoff.v1`
+- Source summary schema:
+  `trashbot.field_evidence_material_resolution_owner_response_review_handoff_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_field_evidence_material_resolution_owner_response_review_handoff_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_owner_response_review_handoff_gate`
+
+Allowed handoff statuses are
+`accepted_for_resolution_owner_handoff_not_proven`,
+`needs_more_evidence_not_proven`,
+`rejected_unsafe_owner_response_review_handoff_not_proven`, and
+`blocked_missing_owner_response_review_handoff_not_proven`. These statuses are
+read-only review handoff metadata only.
+
+Allowed fields are limited to safe `evidence_ref`, source owner-response
+review-decision schema/status, previous owner-response review-decision ref,
+handoff reasons, handoff targets, accepted/missing/rejected/unsafe material
+categories, next required evidence, owner action, CEO escalation
+recommendation, PR #5 thread id `PRRT_kwDOSWB9286CJ3tX`, PR #5 state
+`unresolved`, material state `hardware_material_pending`, reply comment
+`3269642220`, reply resolution claim `not_reviewer_resolution`, evidence
+boundary, `source=software_proof`, `not_proven`, `safe_to_control=false`,
+`delivery_success=false`, and `primary_actions_enabled=false`.
+
+The alias must never turn review-handoff metadata into readiness, command
+authorization, delivery success, owner-material real acceptance, PR reviewer
+resolution, ACK/cursor mutation, replay, resubmit, serial open, WAVE ROVER
+command, Nav2 route execution, or action-result mutation. It must fail closed
+on raw artifacts, raw GitHub payloads, local paths, credentials, bearer tokens,
+DB/queue URLs, OSS secrets, complete artifacts, checksums, ROS topics,
+`/cmd_vel`, serial/UART details, WAVE ROVER parameters, ACK/cursor/command
+data, tracebacks, field/cloud/phone/HIL proof claims, reviewer-resolution
+claims, owner-material acceptance claims, `safe_to_control=true`,
+`delivery_success=true`, or `primary_actions_enabled=true`.
+
+`accepted_for_resolution_owner_handoff_not_proven` only means a sanitized
+owner-response review can be handed to the resolution owner for follow-up. It
+is not delivery success, real route/elevator field pass, verified terminal
+delivery/dropoff/cancel result, real phone/browser proof, public cloud proof,
+PR #5 reviewer resolution, HIL, Nav2 runtime proof, or permission to
+start/confirm/cancel/ACK/replay/resubmit robot commands.
+
 ## robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary
 
 `robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary`

@@ -1,0 +1,140 @@
+{
+  "robot_diagnostics_field_evidence_material_resolution_owner_response_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_owner_response_review_handoff_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_owner_response_review_handoff.v1",
+    "capability": "field_evidence_material_resolution_owner_response_review_handoff",
+    "source": "software_proof",
+    "handoff_status": "needs_owner_more_evidence_handoff_not_proven",
+    "handoff_status_options": [
+      "ready_for_material_review_handoff_not_proven",
+      "needs_owner_more_evidence_handoff_not_proven",
+      "rejected_unsafe_owner_response_handoff_not_proven",
+      "blocked_missing_owner_response_intake_handoff_not_proven"
+    ],
+    "source_review_decision": "source_review_decision=needs_more_evidence_not_proven",
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_owner_response_review_handoff_fixture_20260522_0001",
+    "field_owner_handoff": [
+      "field_owner_handoff=backfill same safe evidence_ref route elevator runtime summary",
+      "field_owner_handoff=backfill verified terminal result summary",
+      "field_owner_handoff=keep primary_actions_enabled=false"
+    ],
+    "support_handoff": [
+      "support_handoff=explain missing materials to field owner",
+      "support_handoff=do not expose unsafe owner packet or control route"
+    ],
+    "reviewer_handoff": [
+      "reviewer_handoff=review only sanitized owner response summary",
+      "reviewer_handoff=confirm missing required materials remain listed"
+    ],
+    "missing_required_materials": [
+      "missing_required_materials=route elevator runtime summary",
+      "missing_required_materials=verified terminal result summary",
+      "missing_required_materials=true phone browser note",
+      "missing_required_materials=same safe evidence_ref material index"
+    ],
+    "rejected_unsafe_materials": [
+      "rejected_unsafe_materials=unverified success wording",
+      "rejected_unsafe_materials=unsafe owner packet"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same safe evidence_ref route elevator runtime summary",
+      "next_required_evidence=verified terminal result summary",
+      "next_required_evidence=true phone browser note"
+    ],
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_owner_response_review_handoff_gate",
+    "proof_boundary": "software_proof_docker_field_evidence_material_resolution_owner_response_review_handoff_gate",
+    "safe_copy": "现场材料 owner response 复核交接仍是 software_proof/not_proven；not true phone/browser proof；不是 delivery_success=false 边界解除；primary_actions_enabled=false；safe_to_control=false。",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "owner_response_review_handoff_not_field_pass",
+      "true_phone_browser_proof_missing",
+      "route_elevator_runtime_missing",
+      "dropoff_completion_missing",
+      "cancel_completion_missing",
+      "verified_delivery_result_missing",
+      "hardware_hil_missing",
+      "o5_external_proof_missing"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_owner_response_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_owner_response_review_handoff_summary.v1",
+    "capability": "field_evidence_material_resolution_owner_response_review_handoff",
+    "source": "software_proof",
+    "handoff_status": "ready_for_material_review_handoff_not_proven",
+    "source_review_decision": "source_review_decision=accepted_for_material_review_not_proven",
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_owner_response_review_handoff_fixture_20260522_0001",
+    "field_owner_handoff": [
+      "field_owner_handoff=keep same safe evidence_ref"
+    ],
+    "support_handoff": [
+      "support_handoff=read-only owner response review handoff"
+    ],
+    "reviewer_handoff": [
+      "reviewer_handoff=route to later material review without robot control grant"
+    ],
+    "missing_required_materials": [
+      "missing_required_materials=later material review still required"
+    ],
+    "rejected_unsafe_materials": [
+      "rejected_unsafe_materials=none"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=later material review on same safe evidence_ref"
+    ],
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_owner_response_review_handoff_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "field_evidence_material_resolution_owner_response_review_handoff": {
+    "summary": {
+      "schema": "trashbot.field_evidence_material_resolution_owner_response_review_handoff_summary.v1",
+      "capability": "field_evidence_material_resolution_owner_response_review_handoff",
+      "source": "software_proof",
+      "handoff_status": "blocked_missing_owner_response_intake_handoff_not_proven",
+      "source_review_decision": "source_review_decision=blocked_missing_owner_response_review_decision_not_proven",
+      "safe_evidence_ref": "evidence_ref=not_proven",
+      "field_owner_handoff": [
+        "field_owner_handoff=provide review decision safe summary first"
+      ],
+      "support_handoff": [
+        "support_handoff=explain missing review decision"
+      ],
+      "reviewer_handoff": [
+        "reviewer_handoff=wait for safe review decision"
+      ],
+      "missing_required_materials": [
+        "missing_required_materials=canonical owner response review decision summary"
+      ],
+      "rejected_unsafe_materials": [
+        "rejected_unsafe_materials=unsafe owner packet or unverified completion wording"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=owner response review decision safe summary"
+      ],
+      "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_owner_response_review_handoff_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}
